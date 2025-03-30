@@ -15,9 +15,12 @@ def __create_database_instance():
     password = os.getenv("MONGODB_PASSWORD")
     auth_source = os.getenv("MONGODB_AUTH_SOURCE")
 
-    if uri and uri.startswith("mongodb://"):
-        # 优先使用URI连接
-        return MongoClient(uri)
+    if uri:
+        # Support both standard mongodb:// and mongodb+srv:// connection strings
+        if uri.startswith(("mongodb://", "mongodb+srv://")):
+            return MongoClient(uri)
+        else:
+            raise ValueError("Invalid MongoDB URI. Must start with 'mongodb://' or 'mongodb+srv://'")
 
     if username and password:
         # 如果有用户名和密码，使用认证连接
