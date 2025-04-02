@@ -375,7 +375,7 @@ def calculate_typing_time(input_string: str, chinese_time: float = 0.2, english_
     chinese_time *= 1 / typing_speed_multiplier
     english_time *= 1 / typing_speed_multiplier
     # 计算中文字符数
-    chinese_chars = sum(1 for char in input_string if "\u4e00" <= char <= "\u9fff")
+    chinese_chars = sum(1 for char in input_string if not is_western_char(char))
 
     # 如果只有一个中文字符，使用3倍时间
     if chinese_chars == 1 and len(input_string.strip()) == 1:
