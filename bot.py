@@ -130,9 +130,7 @@ def check_eula():
     privacy_file = Path("PRIVACY.md")
 
     eula_updated = True
-    eula_new_hash = None
     privacy_updated = True
-    privacy_new_hash = None
 
     eula_confirmed = False
     privacy_confirmed = False

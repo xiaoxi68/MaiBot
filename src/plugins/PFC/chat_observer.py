@@ -123,11 +123,7 @@ class ChatObserver:
         self.last_cold_chat_check = current_time
 
         # 判断是否冷场
-        is_cold = False
-        if self.last_message_time is None:
-            is_cold = True
-        else:
-            is_cold = (current_time - self.last_message_time) > self.cold_chat_threshold
+        is_cold = True if self.last_message_time is None else (current_time - self.last_message_time) > self.cold_chat_threshold
 
         # 如果冷场状态发生变化，发送通知
         if is_cold != self.is_cold_chat_state:

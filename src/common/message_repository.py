@@ -26,7 +26,6 @@ def find_messages(
     """
     try:
         query = db.messages.find(message_filter)
-        results: List[dict[str, Any]] = []
 
         if limit > 0:
             if limit_mode == "earliest":

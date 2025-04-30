@@ -156,7 +156,7 @@ async def get_recent_group_messages(chat_id: str, limit: int = 12) -> list:
     return message_objects
 
 
-def get_recent_group_detailed_plain_text(chat_stream_id: int, limit: int = 12, combine=False):
+def get_recent_group_detailed_plain_text(chat_stream_id: str, limit: int = 12, combine=False):
     recent_messages = list(
         db.messages.find(
             {"chat_id": chat_stream_id},

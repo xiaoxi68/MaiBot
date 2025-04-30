@@ -364,7 +364,6 @@ class Hippocampus:
         logger.debug(f"有效的关键词: {', '.join(valid_keywords)}")
 
         # 从每个关键词获取记忆
-        all_memories = []
         activate_map = {}  # 存储每个词的累计激活值
 
         # 对每个关键词进行扩散式检索
@@ -536,7 +535,6 @@ class Hippocampus:
         logger.debug(f"有效的关键词: {', '.join(valid_keywords)}")
 
         # 从每个关键词获取记忆
-        all_memories = []
         activate_map = {}  # 存储每个词的累计激活值
 
         # 对每个关键词进行扩散式检索

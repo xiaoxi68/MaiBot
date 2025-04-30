@@ -50,8 +50,6 @@ class MaiEmoji:
 
     async def initialize_hash_format(self):
         """从文件创建表情包实例, 计算哈希值和格式"""
-        image_base64 = None
-        image_bytes = None
         try:
             # 使用 full_path 检查文件是否存在
             if not os.path.exists(self.full_path):
