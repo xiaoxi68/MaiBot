@@ -1,7 +1,6 @@
 # src/plugins/heartFC_chat/heartFC_sender.py
 import asyncio  # 重新导入 asyncio
 from typing import Dict, Optional  # 重新导入类型
-from ..message.api import global_api
 from ..chat.message import MessageSending, MessageThinking  # 只保留 MessageSending 和 MessageThinking
 from ..storage.storage import MessageStorage
 from ..chat.utils import truncate_message

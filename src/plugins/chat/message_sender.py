@@ -4,7 +4,6 @@ import time
 from typing import Union
 
 # from ...common.database import db # 数据库依赖似乎不需要了，注释掉
-from ..message.api import global_api
 from .message import MessageSending, MessageThinking, MessageSet
 
 from ..storage.storage import MessageStorage
@@ -27,7 +26,7 @@ async def send_via_ws(message: MessageSending) -> None:
 
 
 async def send_message(
-        message: MessageSending,
+    message: MessageSending,
 ) -> None:
     """发送消息（核心发送逻辑）"""
 

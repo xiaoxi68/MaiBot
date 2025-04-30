@@ -78,7 +78,7 @@ def calculate_replacement_probability(similarity: float) -> float:
         # p = 3.5 * s - 1.4
         probability = 3.5 * similarity - 1.4
         return max(0.0, probability)
-    else: # 0.6 < similarity < 0.9
+    else:  # 0.6 < similarity < 0.9
         # p = s + 0.1
         probability = similarity + 0.1
         return min(1.0, max(0.0, probability))

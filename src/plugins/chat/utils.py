@@ -34,7 +34,7 @@ def db_message_to_str(message_dict: dict) -> str:
             message_dict.get("user_nickname", ""),
             message_dict.get("user_cardname", ""),
         )
-    except Exception as e:
+    except Exception:
         name = message_dict.get("user_nickname", "") or f"用户{message_dict['user_id']}"
     content = message_dict.get("processed_plain_text", "")
     result = f"[{time_str}] {name}: {content}\n"
@@ -76,7 +76,7 @@ def is_mentioned_bot_in_message(message: MessageRecv) -> tuple[bool, float]:
         if not is_mentioned:
             # 判断是否被回复
             if re.match(
-                f"\[回复 [\s\S]*?\({str(global_config.BOT_QQ)}\)：[\s\S]*?]，说：" , message.processed_plain_text
+                f"\[回复 [\s\S]*?\({str(global_config.BOT_QQ)}\)：[\s\S]*?]，说：", message.processed_plain_text
             ):
                 is_mentioned = True
             else:
@@ -731,7 +731,7 @@ def translate_timestamp_to_human_readable(timestamp: float, mode: str = "normal"
             return f"{int(diff / 86400)}天前:\n"
         else:
             return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp)) + ":\n"
-    else: # mode = "lite" or unknown
+    else:  # mode = "lite" or unknown
         # 只返回时分秒格式，喵~
         return time.strftime("%H:%M:%S", time.localtime(timestamp))
 

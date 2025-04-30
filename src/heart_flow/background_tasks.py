@@ -26,7 +26,7 @@ LOG_INTERVAL_SECONDS = 3
 
 
 async def _run_periodic_loop(
-        task_name: str, interval: int, task_func: Callable[..., Coroutine[Any, Any, None]], **kwargs
+    task_name: str, interval: int, task_func: Callable[..., Coroutine[Any, Any, None]], **kwargs
 ):
     """周期性任务主循环"""
     while True:
@@ -250,14 +250,10 @@ class BackgroundTaskManager:
 
     # --- Specific Task Runners --- #
     async def _run_state_update_cycle(self, interval: int):
-        await _run_periodic_loop(
-            task_name="State Update", interval=interval, task_func=self._perform_state_update_work
-        )
+        await _run_periodic_loop(task_name="State Update", interval=interval, task_func=self._perform_state_update_work)
 
     async def _run_absent_into_chat(self, interval: int):
-        await _run_periodic_loop(
-            task_name="Into Chat", interval=interval, task_func=self._perform_absent_into_chat
-        )
+        await _run_periodic_loop(task_name="Into Chat", interval=interval, task_func=self._perform_absent_into_chat)
 
     async def _run_normal_chat_timeout_check_cycle(self, interval: int):
         await _run_periodic_loop(

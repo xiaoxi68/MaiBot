@@ -30,7 +30,7 @@ def get_scene_by_factor(factor: str) -> dict | None:
     Returns:
         dict: 包含情景描述的字典
     """
-    return PERSONALITY_SCENES.get(factor,None)
+    return PERSONALITY_SCENES.get(factor, None)
 
 
 def get_all_scenes() -> dict:

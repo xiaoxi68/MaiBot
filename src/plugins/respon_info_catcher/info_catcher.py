@@ -185,18 +185,25 @@ class InfoCatcher:
         try:
             # 将消息对象转换为可序列化的字典喵~
 
-            thinking_log_data = {"chat_id": self.chat_id, "trigger_text": self.trigger_response_text,
-                                 "response_text": self.response_text, "trigger_info": {
+            thinking_log_data = {
+                "chat_id": self.chat_id,
+                "trigger_text": self.trigger_response_text,
+                "response_text": self.response_text,
+                "trigger_info": {
                     "time": self.trigger_response_time,
                     "message": self.message_to_dict(self.trigger_response_message),
-                }, "response_info": {
+                },
+                "response_info": {
                     "time": self.response_time,
                     "message": self.response_messages,
-                }, "timing_results": self.timing_results, "chat_history": self.message_list_to_dict(self.chat_history),
-                                 "chat_history_in_thinking": self.message_list_to_dict(self.chat_history_in_thinking),
-                                 "chat_history_after_response": self.message_list_to_dict(
-                                     self.chat_history_after_response), "heartflow_data": self.heartflow_data,
-                                 "reasoning_data": self.reasoning_data}
+                },
+                "timing_results": self.timing_results,
+                "chat_history": self.message_list_to_dict(self.chat_history),
+                "chat_history_in_thinking": self.message_list_to_dict(self.chat_history_in_thinking),
+                "chat_history_after_response": self.message_list_to_dict(self.chat_history_after_response),
+                "heartflow_data": self.heartflow_data,
+                "reasoning_data": self.reasoning_data,
+            }
 
             # 根据不同的响应模式添加相应的数据喵~ # 现在直接都加上去好了喵~
             # if self.response_mode == "heart_flow":

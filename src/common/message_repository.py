@@ -1,7 +1,7 @@
 from src.common.database import db
 from src.common.logger import get_module_logger
 import traceback
-from typing import List, Dict, Any, Optional
+from typing import List, Any, Optional
 
 logger = get_module_logger(__name__)
 

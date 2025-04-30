@@ -116,8 +116,6 @@ class MessageRecv(Message):
         self.processed_plain_text = await self._process_message_segments(self.message_segment)
         self.detailed_plain_text = self._generate_detailed_text()
 
-
-
     async def _process_single_segment(self, seg: Seg) -> str:
         """处理单个消息段
 

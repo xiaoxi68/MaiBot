@@ -151,9 +151,7 @@ JSON 结构如下，包含三个字段 "action", "reasoning", "emoji_query":
     Prompt("\n你有以下这些**知识**：\n{prompt_info}\n请你**记住上面的知识**，之后可能会用到。\n", "knowledge_prompt")
 
 
-async def _build_prompt_focus(
-        reason, current_mind_info, structured_info, chat_stream, sender_name
-) -> tuple[str, str]:
+async def _build_prompt_focus(reason, current_mind_info, structured_info, chat_stream, sender_name) -> tuple[str, str]:
     individuality = Individuality.get_instance()
     prompt_personality = individuality.get_prompt(x_person=0, level=2)
     # 日程构建
