@@ -86,6 +86,7 @@ def calculate_replacement_probability(similarity: float) -> float:
 
 class SubMind:
     def __init__(self, subheartflow_id: str, chat_state: ChatStateInfo, observations: Observation):
+        self.last_active_time = None
         self.subheartflow_id = subheartflow_id
 
         self.llm_model = LLMRequest(

@@ -147,14 +147,14 @@ class GoalAnalyzer:
                 # 返回第一个目标作为当前主要目标（如果有）
                 if result:
                     first_goal = result[0]
-                    return (first_goal.get("goal", ""), "", first_goal.get("reasoning", ""))
+                    return first_goal.get("goal", ""), "", first_goal.get("reasoning", "")
             else:
                 # 单个目标的情况
                 conversation_info.goal_list.append(result)
-                return (goal, "", reasoning)
+                return goal, "", reasoning
 
         # 如果解析失败，返回默认值
-        return ("", "", "")
+        return "", "", ""
 
     async def _update_goals(self, new_goal: str, method: str, reasoning: str):
         """更新目标列表

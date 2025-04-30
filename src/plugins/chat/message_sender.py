@@ -17,6 +17,40 @@ from src.common.logger_manager import get_logger
 logger = get_logger("sender")
 
 
+async def send_via_ws(message: MessageSending) -> None:
+    """通过 WebSocket 发送消息"""
+    try:
+        await send_message(message)
+    except Exception as e:
+        logger.error(f"WS发送失败: {e}")
+        raise ValueError(f"未找到平台：{message.message_info.platform} 的url配置，请检查配置文件") from e
+
+
+async def send_message(
+        message: MessageSending,
+) -> None:
+    """发送消息（核心发送逻辑）"""
+
+    # --- 添加计算打字和延迟的逻辑 (从 heartflow_message_sender 移动并调整) ---
+    typing_time = calculate_typing_time(
+        input_string=message.processed_plain_text,
+        thinking_start_time=message.thinking_start_time,
+        is_emoji=message.is_emoji,
+    )
+    # logger.trace(f"{message.processed_plain_text},{typing_time},计算输入时间结束") # 减少日志
+    await asyncio.sleep(typing_time)
+    # logger.trace(f"{message.processed_plain_text},{typing_time},等待输入时间结束") # 减少日志
+    # --- 结束打字延迟 ---
+
+    message_preview = truncate_message(message.processed_plain_text)
+
+    try:
+        await send_via_ws(message)
+        logger.success(f"发送消息   '{message_preview}'   成功")  # 调整日志格式
+    except Exception as e:
+        logger.error(f"发送消息   '{message_preview}'   失败: {str(e)}")
+
+
 class MessageSender:
     """发送器 (不再是单例)"""
 
@@ -28,39 +62,6 @@ class MessageSender:
     def set_bot(self, bot):
         """设置当前bot实例"""
         pass
-
-    async def send_via_ws(self, message: MessageSending) -> None:
-        """通过 WebSocket 发送消息"""
-        try:
-            await global_api.send_message(message)
-        except Exception as e:
-            logger.error(f"WS发送失败: {e}")
-            raise ValueError(f"未找到平台：{message.message_info.platform} 的url配置，请检查配置文件") from e
-
-    async def send_message(
-        self,
-        message: MessageSending,
-    ) -> None:
-        """发送消息（核心发送逻辑）"""
-
-        # --- 添加计算打字和延迟的逻辑 (从 heartflow_message_sender 移动并调整) ---
-        typing_time = calculate_typing_time(
-            input_string=message.processed_plain_text,
-            thinking_start_time=message.thinking_start_time,
-            is_emoji=message.is_emoji,
-        )
-        # logger.trace(f"{message.processed_plain_text},{typing_time},计算输入时间结束") # 减少日志
-        await asyncio.sleep(typing_time)
-        # logger.trace(f"{message.processed_plain_text},{typing_time},等待输入时间结束") # 减少日志
-        # --- 结束打字延迟 ---
-
-        message_preview = truncate_message(message.processed_plain_text)
-
-        try:
-            await self.send_via_ws(message)
-            logger.success(f"发送消息   '{message_preview}'   成功")  # 调整日志格式
-        except Exception as e:
-            logger.error(f"发送消息   '{message_preview}'   失败: {str(e)}")
 
 
 class MessageContainer:
@@ -119,7 +120,7 @@ class MessageContainer:
         """移除指定的消息对象，如果消息存在则返回True，否则返回False"""
         try:
             _initial_len = len(self.messages)
-            # 使用列表推导式或 filter 创建新列表，排除要删除的元素
+            # 使用列表推导式或 message_filter 创建新列表，排除要删除的元素
             # self.messages = [msg for msg in self.messages if msg is not message_to_remove]
             # 或者直接 remove (如果确定对象唯一性)
             if message_to_remove in self.messages:
@@ -146,6 +147,7 @@ class MessageManager:
     """管理所有聊天流的消息容器 (不再是单例)"""
 
     def __init__(self):
+        self._processor_task = None
         self.containers: Dict[str, MessageContainer] = {}
         self.storage = MessageStorage()  # 添加 storage 实例
         self._running = True  # 处理器运行状态
@@ -226,7 +228,7 @@ class MessageManager:
             await message.process()  # 预处理消息内容
 
             # 使用全局 message_sender 实例
-            await message_sender.send_message(message)
+            await send_message(message)
             await self.storage.store_message(message, message.chat_stream)
 
             # 移除消息要在发送 *之后*

@@ -30,6 +30,7 @@ class ScheduleGenerator:
 
     def __init__(self):
         # 使用离线LLM模型
+        self.enable_output = None
         self.llm_scheduler_all = LLMRequest(
             model=global_config.llm_reasoning,
             temperature=global_config.SCHEDULE_TEMPERATURE + 0.3,

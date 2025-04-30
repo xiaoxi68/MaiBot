@@ -151,6 +151,96 @@ JSON 结构如下，包含三个字段 "action", "reasoning", "emoji_query":
     Prompt("\n你有以下这些**知识**：\n{prompt_info}\n请你**记住上面的知识**，之后可能会用到。\n", "knowledge_prompt")
 
 
+async def _build_prompt_focus(
+        reason, current_mind_info, structured_info, chat_stream, sender_name
+) -> tuple[str, str]:
+    individuality = Individuality.get_instance()
+    prompt_personality = individuality.get_prompt(x_person=0, level=2)
+    # 日程构建
+    # schedule_prompt = f'''你现在正在做的事情是：{bot_schedule.get_current_num_task(num = 1,time_info = False)}'''
+
+    if chat_stream.group_info:
+        chat_in_group = True
+    else:
+        chat_in_group = False
+
+    message_list_before_now = get_raw_msg_before_timestamp_with_chat(
+        chat_id=chat_stream.stream_id,
+        timestamp=time.time(),
+        limit=global_config.observation_context_size,
+    )
+
+    chat_talking_prompt = await build_readable_messages(
+        message_list_before_now,
+        replace_bot_name=True,
+        merge_messages=False,
+        timestamp_mode="normal",
+        read_mark=0.0,
+        truncate=True,
+    )
+
+    # 中文高手(新加的好玩功能)
+    prompt_ger = ""
+    if random.random() < 0.04:
+        prompt_ger += "你喜欢用倒装句"
+    if random.random() < 0.02:
+        prompt_ger += "你喜欢用反问句"
+
+    reply_styles1 = [
+        ("给出日常且口语化的回复，平淡一些", 0.4),  # 40%概率
+        ("给出非常简短的回复", 0.4),  # 40%概率
+        ("给出缺失主语的回复，简短", 0.15),  # 15%概率
+        ("给出带有语病的回复，朴实平淡", 0.05),  # 5%概率
+    ]
+    reply_style1_chosen = random.choices(
+        [style[0] for style in reply_styles1], weights=[style[1] for style in reply_styles1], k=1
+    )[0]
+
+    reply_styles2 = [
+        ("不要回复的太有条理，可以有个性", 0.6),  # 60%概率
+        ("不要回复的太有条理，可以复读", 0.15),  # 15%概率
+        ("回复的认真一些", 0.2),  # 20%概率
+        ("可以回复单个表情符号", 0.05),  # 5%概率
+    ]
+    reply_style2_chosen = random.choices(
+        [style[0] for style in reply_styles2], weights=[style[1] for style in reply_styles2], k=1
+    )[0]
+
+    if structured_info:
+        structured_info_prompt = await global_prompt_manager.format_prompt(
+            "info_from_tools", structured_info=structured_info
+        )
+    else:
+        structured_info_prompt = ""
+
+    logger.debug("开始构建prompt")
+
+    prompt = await global_prompt_manager.format_prompt(
+        "heart_flow_prompt",
+        info_from_tools=structured_info_prompt,
+        chat_target=await global_prompt_manager.get_prompt_async("chat_target_group1")
+        if chat_in_group
+        else await global_prompt_manager.get_prompt_async("chat_target_private1"),
+        chat_talking_prompt=chat_talking_prompt,
+        bot_name=global_config.BOT_NICKNAME,
+        prompt_personality=prompt_personality,
+        chat_target_2=await global_prompt_manager.get_prompt_async("chat_target_group2")
+        if chat_in_group
+        else await global_prompt_manager.get_prompt_async("chat_target_private2"),
+        current_mind_info=current_mind_info,
+        reply_style2=reply_style2_chosen,
+        reply_style1=reply_style1_chosen,
+        reason=reason,
+        prompt_ger=prompt_ger,
+        moderation_prompt=await global_prompt_manager.get_prompt_async("moderation_prompt"),
+        sender_name=sender_name,
+    )
+
+    logger.debug(f"focus_chat_prompt: \n{prompt}")
+
+    return prompt
+
+
 class PromptBuilder:
     def __init__(self):
         self.prompt_built = ""
@@ -170,7 +260,7 @@ class PromptBuilder:
             return await self._build_prompt_normal(chat_stream, message_txt, sender_name)
 
         elif build_mode == "focus":
-            return await self._build_prompt_focus(
+            return await _build_prompt_focus(
                 reason,
                 current_mind_info,
                 structured_info,
@@ -178,95 +268,6 @@ class PromptBuilder:
                 sender_name,
             )
         return None
-
-    async def _build_prompt_focus(
-        self, reason, current_mind_info, structured_info, chat_stream, sender_name
-    ) -> tuple[str, str]:
-        individuality = Individuality.get_instance()
-        prompt_personality = individuality.get_prompt(x_person=0, level=2)
-        # 日程构建
-        # schedule_prompt = f'''你现在正在做的事情是：{bot_schedule.get_current_num_task(num = 1,time_info = False)}'''
-
-        if chat_stream.group_info:
-            chat_in_group = True
-        else:
-            chat_in_group = False
-
-        message_list_before_now = get_raw_msg_before_timestamp_with_chat(
-            chat_id=chat_stream.stream_id,
-            timestamp=time.time(),
-            limit=global_config.observation_context_size,
-        )
-
-        chat_talking_prompt = await build_readable_messages(
-            message_list_before_now,
-            replace_bot_name=True,
-            merge_messages=False,
-            timestamp_mode="normal",
-            read_mark=0.0,
-            truncate=True,
-        )
-
-        # 中文高手(新加的好玩功能)
-        prompt_ger = ""
-        if random.random() < 0.04:
-            prompt_ger += "你喜欢用倒装句"
-        if random.random() < 0.02:
-            prompt_ger += "你喜欢用反问句"
-
-        reply_styles1 = [
-            ("给出日常且口语化的回复，平淡一些", 0.4),  # 40%概率
-            ("给出非常简短的回复", 0.4),  # 40%概率
-            ("给出缺失主语的回复，简短", 0.15),  # 15%概率
-            ("给出带有语病的回复，朴实平淡", 0.05),  # 5%概率
-        ]
-        reply_style1_chosen = random.choices(
-            [style[0] for style in reply_styles1], weights=[style[1] for style in reply_styles1], k=1
-        )[0]
-
-        reply_styles2 = [
-            ("不要回复的太有条理，可以有个性", 0.6),  # 60%概率
-            ("不要回复的太有条理，可以复读", 0.15),  # 15%概率
-            ("回复的认真一些", 0.2),  # 20%概率
-            ("可以回复单个表情符号", 0.05),  # 5%概率
-        ]
-        reply_style2_chosen = random.choices(
-            [style[0] for style in reply_styles2], weights=[style[1] for style in reply_styles2], k=1
-        )[0]
-
-        if structured_info:
-            structured_info_prompt = await global_prompt_manager.format_prompt(
-                "info_from_tools", structured_info=structured_info
-            )
-        else:
-            structured_info_prompt = ""
-
-        logger.debug("开始构建prompt")
-
-        prompt = await global_prompt_manager.format_prompt(
-            "heart_flow_prompt",
-            info_from_tools=structured_info_prompt,
-            chat_target=await global_prompt_manager.get_prompt_async("chat_target_group1")
-            if chat_in_group
-            else await global_prompt_manager.get_prompt_async("chat_target_private1"),
-            chat_talking_prompt=chat_talking_prompt,
-            bot_name=global_config.BOT_NICKNAME,
-            prompt_personality=prompt_personality,
-            chat_target_2=await global_prompt_manager.get_prompt_async("chat_target_group2")
-            if chat_in_group
-            else await global_prompt_manager.get_prompt_async("chat_target_private2"),
-            current_mind_info=current_mind_info,
-            reply_style2=reply_style2_chosen,
-            reply_style1=reply_style1_chosen,
-            reason=reason,
-            prompt_ger=prompt_ger,
-            moderation_prompt=await global_prompt_manager.get_prompt_async("moderation_prompt"),
-            sender_name=sender_name,
-        )
-
-        logger.debug(f"focus_chat_prompt: \n{prompt}")
-
-        return prompt
 
     async def _build_prompt_normal(self, chat_stream, message_txt: str, sender_name: str = "某人") -> tuple[str, str]:
         individuality = Individuality.get_instance()

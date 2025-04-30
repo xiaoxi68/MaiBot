@@ -144,6 +144,25 @@ class SenderError(HeartFCError):
     pass
 
 
+async def _handle_cycle_delay(action_taken_this_cycle: bool, cycle_start_time: float, log_prefix: str):
+    """处理循环延迟"""
+    cycle_duration = time.monotonic() - cycle_start_time
+
+    try:
+        sleep_duration = 0.0
+        if not action_taken_this_cycle and cycle_duration < 1:
+            sleep_duration = 1 - cycle_duration
+        elif cycle_duration < 0.2:
+            sleep_duration = 0.2
+
+        if sleep_duration > 0:
+            await asyncio.sleep(sleep_duration)
+
+    except asyncio.CancelledError:
+        logger.info(f"{log_prefix} Sleep interrupted, loop likely cancelling.")
+        raise
+
+
 class HeartFChatting:
     """
     管理一个连续的Plan-Replier-Sender循环
@@ -327,7 +346,7 @@ class HeartFChatting:
                     self._current_cycle.timers = cycle_timers
 
                     # 防止循环过快消耗资源
-                    await self._handle_cycle_delay(action_taken, loop_cycle_start_time, self.log_prefix)
+                    await _handle_cycle_delay(action_taken, loop_cycle_start_time, self.log_prefix)
 
                 # 完成当前循环并保存历史
                 self._current_cycle.complete_cycle()
@@ -714,24 +733,6 @@ class HeartFChatting:
                 # 在记录前检查关闭标志
                 if not self._shutting_down:
                     logger.debug(f"{log_prefix} 该次决策耗时: {'; '.join(timer_strings)}")
-
-    async def _handle_cycle_delay(self, action_taken_this_cycle: bool, cycle_start_time: float, log_prefix: str):
-        """处理循环延迟"""
-        cycle_duration = time.monotonic() - cycle_start_time
-
-        try:
-            sleep_duration = 0.0
-            if not action_taken_this_cycle and cycle_duration < 1:
-                sleep_duration = 1 - cycle_duration
-            elif cycle_duration < 0.2:
-                sleep_duration = 0.2
-
-            if sleep_duration > 0:
-                await asyncio.sleep(sleep_duration)
-
-        except asyncio.CancelledError:
-            logger.info(f"{log_prefix} Sleep interrupted, loop likely cancelling.")
-            raise
 
     async def _get_submind_thinking(self, cycle_timers: dict) -> str:
         """

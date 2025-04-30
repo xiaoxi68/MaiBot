@@ -119,7 +119,6 @@ async def graceful_shutdown():
         for task in tasks:
             task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
-
     except Exception as e:
         logger.error(f"麦麦关闭失败: {e}")
 

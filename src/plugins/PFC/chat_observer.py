@@ -37,6 +37,10 @@ class ChatObserver:
         Args:
             stream_id: 聊天流ID
         """
+        self.last_check_time = None
+        self.last_check_time = None
+        self.last_bot_speak_time = None
+        self.last_user_speak_time = None
         if stream_id in self._instances:
             raise RuntimeError(f"ChatObserver for {stream_id} already exists. Use get_instance() instead.")
 

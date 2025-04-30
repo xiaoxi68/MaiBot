@@ -263,7 +263,7 @@ def split_into_sentences_w_remove_punctuation(text: str) -> List[str]:
         if char in separators:
             # 检查分割条件：如果分隔符左右都是英文字母，则不分割
             can_split = True
-            if i > 0 and i < len(text) - 1:
+            if 0 < i < len(text) - 1:
                 prev_char = text[i - 1]
                 next_char = text[i + 1]
                 # if is_english_letter(prev_char) and is_english_letter(next_char) and char == ' ': # 原计划只对空格应用此规则，现应用于所有分隔符
