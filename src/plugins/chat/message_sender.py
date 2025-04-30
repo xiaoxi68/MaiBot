@@ -1,7 +1,7 @@
 # src/plugins/chat/message_sender.py
 import asyncio
 import time
-from typing import Dict, List, Optional, Union
+from typing import Union
 
 # from ...common.database import db # 数据库依赖似乎不需要了，注释掉
 from ..message.api import global_api
@@ -70,7 +70,7 @@ class MessageContainer:
     def __init__(self, chat_id: str, max_size: int = 100):
         self.chat_id = chat_id
         self.max_size = max_size
-        self.messages: List[Union[MessageThinking, MessageSending]] = []  # 明确类型
+        self.messages: list[MessageThinking | MessageSending] = []  # 明确类型
         self.last_send_time = 0
         self.thinking_wait_timeout = 20  # 思考等待超时时间（秒） - 从旧 sender 合并
 
@@ -78,7 +78,7 @@ class MessageContainer:
         """计算当前容器中思考消息的数量"""
         return sum(1 for msg in self.messages if isinstance(msg, MessageThinking))
 
-    def get_timeout_sending_messages(self) -> List[MessageSending]:
+    def get_timeout_sending_messages(self) -> list[MessageSending]:
         """获取所有超时的MessageSending对象（思考时间超过20秒），按thinking_start_time排序 - 从旧 sender 合并"""
         current_time = time.time()
         timeout_messages = []
@@ -94,7 +94,7 @@ class MessageContainer:
         timeout_messages.sort(key=lambda x: x.thinking_start_time)
         return timeout_messages
 
-    def get_earliest_message(self) -> Optional[Union[MessageThinking, MessageSending]]:
+    def get_earliest_message(self):
         """获取thinking_start_time最早的消息对象"""
         if not self.messages:
             return None
@@ -108,7 +108,7 @@ class MessageContainer:
                 earliest_message = msg
         return earliest_message
 
-    def add_message(self, message: Union[MessageThinking, MessageSending, MessageSet]) -> None:
+    def add_message(self, message: Union[MessageThinking, MessageSending, MessageSet]):
         """添加消息到队列"""
         if isinstance(message, MessageSet):
             for single_message in message.messages:
@@ -116,7 +116,7 @@ class MessageContainer:
         else:
             self.messages.append(message)
 
-    def remove_message(self, message_to_remove: Union[MessageThinking, MessageSending]) -> bool:
+    def remove_message(self, message_to_remove: Union[MessageThinking, MessageSending]):
         """移除指定的消息对象，如果消息存在则返回True，否则返回False"""
         try:
             _initial_len = len(self.messages)
@@ -138,7 +138,7 @@ class MessageContainer:
         """检查是否有待发送的消息"""
         return bool(self.messages)
 
-    def get_all_messages(self) -> List[Union[MessageSending, MessageThinking]]:
+    def get_all_messages(self) -> list[MessageThinking | MessageSending]:
         """获取所有消息"""
         return list(self.messages)  # 返回副本
 
@@ -148,7 +148,7 @@ class MessageManager:
 
     def __init__(self):
         self._processor_task = None
-        self.containers: Dict[str, MessageContainer] = {}
+        self.containers: dict[str, MessageContainer] = {}
         self.storage = MessageStorage()  # 添加 storage 实例
         self._running = True  # 处理器运行状态
         self._container_lock = asyncio.Lock()  # 保护 containers 字典的锁

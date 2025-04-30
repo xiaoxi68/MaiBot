@@ -7,11 +7,11 @@ logger = get_module_logger(__name__)
 
 
 def find_messages(
-    message_filter: Dict[str, Any],
+    message_filter: dict[str, Any],
     sort: Optional[List[tuple[str, int]]] = None,
     limit: int = 0,
     limit_mode: str = "latest",
-) -> List[Dict[str, Any]]:
+) -> List[dict[str, Any]]:
     """
     根据提供的过滤器、排序和限制条件查找消息。
 
@@ -26,7 +26,7 @@ def find_messages(
     """
     try:
         query = db.messages.find(message_filter)
-        results: List[Dict[str, Any]] = []
+        results: List[dict[str, Any]] = []
 
         if limit > 0:
             if limit_mode == "earliest":
@@ -56,7 +56,7 @@ def find_messages(
         return []
 
 
-def count_messages(message_filter: Dict[str, Any]) -> int:
+def count_messages(message_filter: dict[str, Any]) -> int:
     """
     根据提供的过滤器计算消息数量。
 

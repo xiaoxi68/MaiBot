@@ -1,5 +1,5 @@
 from loguru import logger
-from typing import Dict, Optional, Union, List, Tuple
+from typing import Optional, Union, List, Tuple
 import sys
 import os
 from types import ModuleType
@@ -75,8 +75,8 @@ if default_handler_id is not None:
 LoguruLogger = logger.__class__
 
 # 全局注册表：记录模块与处理器ID的映射
-_handler_registry: Dict[str, List[int]] = {}
-_custom_style_handlers: Dict[Tuple[str, str], List[int]] = {}  # 记录自定义样式处理器ID
+_handler_registry: dict[str, List[int]] = {}
+_custom_style_handlers: dict[Tuple[str, str], List[int]] = {}  # 记录自定义样式处理器ID
 
 # 获取日志存储根地址
 current_file_path = Path(__file__).resolve()

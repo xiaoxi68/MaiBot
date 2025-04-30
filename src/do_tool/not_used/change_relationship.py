@@ -19,7 +19,7 @@ class RelationshipTool(BaseTool):
         "required": ["text", "changed_value", "reason"],
     }
 
-    async def execute(self, function_args: Dict[str, Any], message_txt: str = "") -> dict:
+    async def execute(self, function_args: dict[str, Any], message_txt: str = "") -> dict:
         """执行工具功能
 
         Args:

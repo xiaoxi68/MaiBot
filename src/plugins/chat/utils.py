@@ -2,7 +2,6 @@ import random
 import time
 import re
 from collections import Counter
-from typing import Dict, List, Optional
 
 import jieba
 import numpy as np
@@ -26,7 +25,7 @@ def is_english_letter(char: str) -> bool:
     return "a" <= char.lower() <= "z"
 
 
-def db_message_to_str(message_dict: Dict) -> str:
+def db_message_to_str(message_dict: dict) -> str:
     logger.debug(f"message_dict: {message_dict}")
     time_str = time.strftime("%m-%d %H:%M:%S", time.localtime(message_dict["time"]))
     try:
@@ -35,7 +34,7 @@ def db_message_to_str(message_dict: Dict) -> str:
             message_dict.get("user_nickname", ""),
             message_dict.get("user_cardname", ""),
         )
-    except Exception:
+    except Exception as e:
         name = message_dict.get("user_nickname", "") or f"用户{message_dict['user_id']}"
     content = message_dict.get("processed_plain_text", "")
     result = f"[{time_str}] {name}: {content}\n"
@@ -77,13 +76,13 @@ def is_mentioned_bot_in_message(message: MessageRecv) -> tuple[bool, float]:
         if not is_mentioned:
             # 判断是否被回复
             if re.match(
-                f"\[回复 [\s\S]*?\({str(global_config.BOT_QQ)}\)：[\s\S]*?\]，说：", message.processed_plain_text
+                f"\[回复 [\s\S]*?\({str(global_config.BOT_QQ)}\)：[\s\S]*?]，说：" , message.processed_plain_text
             ):
                 is_mentioned = True
             else:
                 # 判断内容中是否被提及
                 message_content = re.sub(r"@[\s\S]*?（(\d+)）", "", message.processed_plain_text)
-                message_content = re.sub(r"\[回复 [\s\S]*?\(((\d+)|未知id)\)：[\s\S]*?\]，说：", "", message_content)
+                message_content = re.sub(r"\[回复 [\s\S]*?\(((\d+)|未知id)\)：[\s\S]*?]，说：", "", message_content)
                 for keyword in keywords:
                     if keyword in message_content:
                         is_mentioned = True
@@ -223,7 +222,7 @@ def get_recent_group_speaker(chat_stream_id: int, sender, limit: int = 12) -> li
     return who_chat_in_group
 
 
-def split_into_sentences_w_remove_punctuation(text: str) -> List[str]:
+def split_into_sentences_w_remove_punctuation(text: str) -> list[str]:
     """将文本分割成句子，并根据概率合并
     1. 识别分割点（, ， 。 ; 空格），但如果分割点左右都是英文字母则不分割。
     2. 将文本分割成 (内容, 分隔符) 的元组。
@@ -370,7 +369,7 @@ def random_remove_punctuation(text: str) -> str:
     return result
 
 
-def process_llm_response(text: str) -> List[str]:
+def process_llm_response(text: str) -> list[str]:
     # 先保护颜文字
     if global_config.enable_kaomoji_protection:
         protected_text, kaomoji_mapping = protect_kaomoji(text)
@@ -379,7 +378,7 @@ def process_llm_response(text: str) -> List[str]:
         protected_text = text
         kaomoji_mapping = {}
     # 提取被 () 或 [] 包裹且包含中文的内容
-    pattern = re.compile(r"[\(\[\（](?=.*[\u4e00-\u9fff]).*?[\)\]\）]")
+    pattern = re.compile(r"[(\[（](?=.*[一-鿿]).*?[)\]）]")
     # _extracted_contents = pattern.findall(text)
     _extracted_contents = pattern.findall(protected_text)  # 在保护后的文本上查找
     # 去除 () 和 [] 及其包裹的内容
@@ -554,7 +553,7 @@ def protect_kaomoji(sentence):
         r"[^()\[\]（）【】]*?"  # 非括号字符（惰性匹配）
         r"[^一-龥a-zA-Z0-9\s]"  # 非中文、非英文、非数字、非空格字符（必须包含至少一个）
         r"[^()\[\]（）【】]*?"  # 非括号字符（惰性匹配）
-        r"[\)\]）】"  # 右括号
+        r"[)\]）】"  # 右括号
         r"]"
         r")"
         r"|"
@@ -704,7 +703,7 @@ def count_messages_between(start_time: float, end_time: float, stream_id: str) -
         return 0, 0
 
 
-def translate_timestamp_to_human_readable(timestamp: float, mode: str = "normal") -> Optional[str]:
+def translate_timestamp_to_human_readable(timestamp: float, mode: str = "normal") -> str:
     """将时间戳转换为人类可读的时间格式
 
     Args:
@@ -732,10 +731,9 @@ def translate_timestamp_to_human_readable(timestamp: float, mode: str = "normal"
             return f"{int(diff / 86400)}天前:\n"
         else:
             return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp)) + ":\n"
-    elif mode == "lite":
+    else: # mode = "lite" or unknown
         # 只返回时分秒格式，喵~
         return time.strftime("%H:%M:%S", time.localtime(timestamp))
-    return None
 
 
 def parse_text_timestamps(text: str, mode: str = "normal") -> str:

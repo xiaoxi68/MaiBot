@@ -271,8 +271,8 @@ class BotConfig:
     enable_pfc_chatting: bool = False  # 是否启用PFC聊天
 
     # 模型配置
-    llm_reasoning: Dict[str, str] = field(default_factory=lambda: {})
-    # llm_reasoning_minor: Dict[str, str] = field(default_factory=lambda: {})
+    llm_reasoning: dict[str, str] = field(default_factory=lambda: {})
+    # llm_reasoning_minor: dict[str, str] = field(default_factory=lambda: {})
     llm_normal: Dict[str, str] = field(default_factory=lambda: {})
     llm_topic_judge: Dict[str, str] = field(default_factory=lambda: {})
     llm_summary: Dict[str, str] = field(default_factory=lambda: {})

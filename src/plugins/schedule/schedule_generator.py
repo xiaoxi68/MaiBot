@@ -1,7 +1,6 @@
 import datetime
 import os
 import sys
-from typing import Dict
 import asyncio
 from dateutil import tz
 
@@ -162,7 +161,7 @@ class ScheduleGenerator:
     async def generate_daily_schedule(
         self,
         target_date: datetime.datetime = None,
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         daytime_prompt = self.construct_daytime_prompt(target_date)
         daytime_response, _ = await self.llm_scheduler_all.generate_response_async(daytime_prompt)
         return daytime_response

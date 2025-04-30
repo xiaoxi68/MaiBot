@@ -23,6 +23,7 @@ class ChatObserver:
 
         Args:
             stream_id: 聊天流ID
+            private_name: 私聊名称
 
         Returns:
             ChatObserver: 观察器实例
