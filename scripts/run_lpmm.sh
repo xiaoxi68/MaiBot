@@ -37,7 +37,7 @@ echo "============================"
 run_python_script() {
     local script_name=$1
     echo "🔄 Running $script_name"
-    if ! python3 "scripts/$script_name"; then
+    if ! python3 "$SCRIPTS_DIR/$script_name"; then
         echo "❌ $script_name failed" >&2
         exit 1
     fi
