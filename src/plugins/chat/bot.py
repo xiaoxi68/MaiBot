@@ -84,7 +84,7 @@ class ChatBot:
                 return
 
             # 群聊黑名单拦截
-            if groupinfo != None and groupinfo.group_id not in global_config.talk_allowed_groups:
+            if groupinfo is not None and groupinfo.group_id not in global_config.talk_allowed_groups:
                 logger.trace(f"群{groupinfo.group_id}被禁止回复")
                 return
 
