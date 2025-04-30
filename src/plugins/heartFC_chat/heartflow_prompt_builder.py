@@ -47,17 +47,15 @@ def init_prompt():
         "info_from_tools",
     )
 
-    # Planner提示词 - 优化版
+    # Planner提示词 - 修改为要求 JSON 输出
     Prompt(
         """你的名字是{bot_name},{prompt_personality}，你现在正在一个群聊中。需要基于以下信息决定如何参与对话：
 {structured_info_block}
 {chat_content_block}
-你的内心想法：
 {current_mind_block}
-{replan}
 {cycle_info_block}
 
-请综合分析聊天内容和你看到的新消息，参考内心想法，使用'decide_reply_action'工具做出决策。决策时请注意：
+请综合分析聊天内容和你看到的新消息，参考内心想法，并根据以下原则和可用动作做出决策。
 
 【回复原则】
 1. 不回复(no_reply)适用：
@@ -81,14 +79,34 @@ def init_prompt():
 - 避免重复或评价自己的发言
 - 不要和自己聊天
 
-【必须遵守】
-- 遵守回复原则
-- 必须调用工具并包含action和reasoning
-- 你可以选择文字回复(text_reply)，纯表情回复(emoji_reply)，不回复(no_reply)
-- 并不是所有选择都可用
-- 选择text_reply或emoji_reply时必须提供emoji_query
-- 保持回复自然，符合日常聊天习惯""",
-        "planner_prompt",
+【决策任务】
+{action_options_text}
+
+你必须从上面列出的可用行动中选择一个，并说明原因。
+你的决策必须以严格的 JSON 格式输出，且仅包含 JSON 内容，不要有任何其他文字或解释。
+JSON 结构如下，包含三个字段 "action", "reasoning", "emoji_query":
+{{
+  "action": "string", // 必须是上面提供的可用行动之一 (例如: '{example_action}')
+  "reasoning": "string", // 做出此决定的详细理由和思考过程，说明你如何应用了回复原则
+  "emoji_query": "string" // 可选。如果行动是 'emoji_reply'，必须提供表情主题(填写表情包的适用场合)；如果行动是 'text_reply' 且你想附带表情，也在此提供表情主题，否则留空字符串 ""。遵循回复原则，不要滥用。
+}}
+
+例如:
+{{
+  "action": "text_reply",
+  "reasoning": "用户提到了我，且问题比较具体，适合用文本回复。考虑到内容，可以带上一个微笑表情。",
+  "emoji_query": "微笑"
+}}
+或
+{{
+  "action": "no_reply",
+  "reasoning": "我已经连续回复了两次，而且这个话题我不太感兴趣，根据回复原则，选择不回复，等待其他人发言。",
+  "emoji_query": ""
+}}
+
+请输出你的决策 JSON：
+""",  # 使用三引号避免内部引号问题
+        "planner_prompt",  # 保持名称不变，替换内容
     )
 
     Prompt(
@@ -157,10 +175,13 @@ class PromptBuilder:
                 current_mind_info,
                 structured_info,
                 chat_stream,
+                sender_name,
             )
         return None
 
-    async def _build_prompt_focus(self, reason, current_mind_info, structured_info, chat_stream) -> tuple[str, str]:
+    async def _build_prompt_focus(
+        self, reason, current_mind_info, structured_info, chat_stream, sender_name
+    ) -> tuple[str, str]:
         individuality = Individuality.get_instance()
         prompt_personality = individuality.get_prompt(x_person=0, level=2)
         # 日程构建
@@ -240,6 +261,7 @@ class PromptBuilder:
             reason=reason,
             prompt_ger=prompt_ger,
             moderation_prompt=await global_prompt_manager.get_prompt_async("moderation_prompt"),
+            sender_name=sender_name,
         )
 
         logger.debug(f"focus_chat_prompt: \n{prompt}")
