@@ -19,10 +19,10 @@ cd "$PROJECT_ROOT" || {
 }
 
 # Step 4: 运行每个 Python 脚本并检查退出状态
-echo "🔄 正在运行 text_pre_process.py"
-python3 scripts/text_pre_process.py
+echo "🔄 正在运行 raw_data_preprocessor.py"
+python3 scripts/raw_data_preprocessor.py
 if [ $? -ne 0 ]; then
-    echo "❌ text_pre_process.py 执行失败" >&2
+    echo "❌ raw_data_preprocessor.py 执行失败" >&2
     exit 1
 fi
 
