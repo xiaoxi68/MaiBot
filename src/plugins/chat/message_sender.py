@@ -1,6 +1,7 @@
 # src/plugins/chat/message_sender.py
 import asyncio
 import time
+from asyncio import Task
 from typing import Union
 
 # from ...common.database import db # 数据库依赖似乎不需要了，注释掉
@@ -146,7 +147,7 @@ class MessageManager:
     """管理所有聊天流的消息容器 (不再是单例)"""
 
     def __init__(self):
-        self._processor_task = None
+        self._processor_task: Task | None = None
         self.containers: dict[str, MessageContainer] = {}
         self.storage = MessageStorage()  # 添加 storage 实例
         self._running = True  # 处理器运行状态
