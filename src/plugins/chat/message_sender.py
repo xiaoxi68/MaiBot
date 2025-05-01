@@ -146,6 +146,7 @@ class MessageManager:
     """管理所有聊天流的消息容器 (不再是单例)"""
 
     def __init__(self):
+        self._processor_task = None
         self.containers: dict[str, MessageContainer] = {}
         self.storage = MessageStorage()  # 添加 storage 实例
         self._running = True  # 处理器运行状态
@@ -155,7 +156,7 @@ class MessageManager:
     async def start(self):
         """启动后台处理器任务。"""
         # 检查是否已有任务在运行，避免重复启动
-        if hasattr(self, "_processor_task") and not self._processor_task.done():
+        if self._processor_task is not None and not self._processor_task.done():
             logger.warning("Processor task already running.")
             return
         self._processor_task = asyncio.create_task(self._start_processor_loop())
@@ -164,7 +165,7 @@ class MessageManager:
     def stop(self):
         """停止后台处理器任务。"""
         self._running = False
-        if hasattr(self, "_processor_task") and not self._processor_task.done():
+        if self._processor_task is not None and not self._processor_task.done():
             self._processor_task.cancel()
             logger.debug("MessageManager processor task stopping.")
         else:
