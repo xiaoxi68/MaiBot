@@ -14,6 +14,8 @@ from src.plugins.utils.chat_message_builder import (
 )
 from src.plugins.utils.prompt_builder import Prompt, global_prompt_manager
 from typing import Optional
+import difflib
+from src.plugins.chat.message import MessageRecv  # 添加 MessageRecv 导入
 
 # Import the new utility function
 from .utils_chat import get_chat_type_and_target_info
@@ -226,6 +228,70 @@ class ChattingObservation(Observation):
         logger.trace(
             f"Chat {self.chat_id} - 压缩早期记忆：{self.mid_memory_info}\n现在聊天内容：{self.talking_message_str}"
         )
+
+    async def find_best_matching_message(self, search_str: str, min_similarity: float = 0.6) -> Optional[MessageRecv]:
+        """
+        在 talking_message 中查找与 search_str 最匹配的消息。
+
+        Args:
+            search_str: 要搜索的字符串。
+            min_similarity: 要求的最低相似度（0到1之间）。
+
+        Returns:
+            匹配的 MessageRecv 实例，如果找不到则返回 None。
+        """
+        best_match_score = -1.0
+        best_match_dict = None
+
+        if not self.talking_message:
+            logger.debug(f"Chat {self.chat_id}: talking_message is empty, cannot find match for '{search_str}'")
+            return None
+
+        for message_dict in self.talking_message:
+            try:
+                # 临时创建 MessageRecv 以处理文本
+                temp_msg = MessageRecv(message_dict)
+                await temp_msg.process()  # 处理消息以获取 processed_plain_text
+                current_text = temp_msg.processed_plain_text
+
+                if not current_text:  # 跳过没有文本内容的消息
+                    continue
+
+                # 计算相似度
+                matcher = difflib.SequenceMatcher(None, search_str, current_text)
+                score = matcher.ratio()
+
+                # logger.debug(f"Comparing '{search_str}' with '{current_text}', score: {score}") # 可选：用于调试
+
+                if score > best_match_score:
+                    best_match_score = score
+                    best_match_dict = message_dict
+
+            except Exception as e:
+                logger.error(f"Error processing message for matching in chat {self.chat_id}: {e}", exc_info=True)
+                continue  # 继续处理下一条消息
+
+        if best_match_dict is not None and best_match_score >= min_similarity:
+            logger.debug(f"Found best match for '{search_str}' with score {best_match_score:.2f}")
+            try:
+                final_msg = MessageRecv(best_match_dict)
+                await final_msg.process()
+                # 确保 MessageRecv 实例有关联的 chat_stream
+                if hasattr(self, "chat_stream"):
+                    final_msg.update_chat_stream(self.chat_stream)
+                else:
+                    logger.warning(
+                        f"ChattingObservation instance for chat {self.chat_id} does not have a chat_stream attribute set."
+                    )
+                return final_msg
+            except Exception as e:
+                logger.error(f"Error creating final MessageRecv for chat {self.chat_id}: {e}", exc_info=True)
+                return None
+        else:
+            logger.debug(
+                f"No suitable match found for '{search_str}' in chat {self.chat_id} (best score: {best_match_score:.2f}, threshold: {min_similarity})"
+            )
+            return None
 
     async def has_new_messages_since(self, timestamp: float) -> bool:
         """检查指定时间戳之后是否有新消息"""

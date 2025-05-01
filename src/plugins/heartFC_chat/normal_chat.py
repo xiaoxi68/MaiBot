@@ -86,11 +86,12 @@ class NormalChat:
             bot_user_info=bot_user_info,
             reply=message,
             thinking_start_time=thinking_time_point,
-            timestamp=timestamp if timestamp is not None else None
+            timestamp=timestamp if timestamp is not None else None,
         )
 
         await message_manager.add_message(thinking_message)
         return thinking_id
+
     # 改为实例方法
     async def _add_messages_to_manager(
         self, message: MessageRecv, response_set: List[str], thinking_id
@@ -206,7 +207,10 @@ class NormalChat:
                 try:
                     # 处理消息
                     await self.normal_response(
-                        message=message, is_mentioned=is_mentioned, interested_rate=interest_value, rewind_response = False
+                        message=message,
+                        is_mentioned=is_mentioned,
+                        interested_rate=interest_value,
+                        rewind_response=False,
                     )
                 except Exception as e:
                     logger.error(f"[{self.stream_name}] 处理兴趣消息{msg_id}时出错: {e}\n{traceback.format_exc()}")
@@ -214,7 +218,9 @@ class NormalChat:
                     self.interest_dict.pop(msg_id, None)
 
     # 改为实例方法, 移除 chat 参数
-    async def normal_response(self, message: MessageRecv, is_mentioned: bool, interested_rate: float, rewind_response: bool = False) -> None:
+    async def normal_response(
+        self, message: MessageRecv, is_mentioned: bool, interested_rate: float, rewind_response: bool = False
+    ) -> None:
         # 检查收到的消息是否属于当前实例处理的 chat stream
         if message.chat_stream.stream_id != self.stream_id:
             logger.error(
@@ -393,13 +399,17 @@ class NormalChat:
 
             try:
                 logger.info(f"[{self.stream_name}] 处理初始高兴趣消息 {msg_id} (兴趣值: {interest_value:.2f})")
-                await self.normal_response(message=message, is_mentioned=is_mentioned, interested_rate=interest_value, rewind_response = True)
+                await self.normal_response(
+                    message=message, is_mentioned=is_mentioned, interested_rate=interest_value, rewind_response=True
+                )
                 processed_count += 1
             except Exception as e:
                 logger.error(f"[{self.stream_name}] 处理初始兴趣消息 {msg_id} 时出错: {e}\\n{traceback.format_exc()}")
 
         # --- 新增：处理完后清空整个字典 ---
-        logger.info(f"[{self.stream_name}] 处理了 {processed_count} 条初始高兴趣消息。现在清空所有剩余的初始兴趣消息...")
+        logger.info(
+            f"[{self.stream_name}] 处理了 {processed_count} 条初始高兴趣消息。现在清空所有剩余的初始兴趣消息..."
+        )
         self.interest_dict.clear()
         # --- 新增结束 ---
 

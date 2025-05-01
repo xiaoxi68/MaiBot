@@ -52,7 +52,7 @@ class SearchKnowledgeFromLPMMTool(BaseTool):
         except Exception as e:
             logger.error(f"知识库搜索工具执行失败: {str(e)}")
             # 在其他异常情况下，确保 id 仍然是 query (如果它被定义了)
-            query_id = query if 'query' in locals() else 'unknown_query'
+            query_id = query if "query" in locals() else "unknown_query"
             return {"type": "info", "id": query_id, "content": f"lpmm知识库搜索失败，炸了: {str(e)}"}
 
     # def get_info_from_db(
@@ -143,13 +143,15 @@ class SearchKnowledgeFromLPMMTool(BaseTool):
 
         formatted_string = "我找到了一些相关知识：\n"
         for i, result in enumerate(results):
-            chunk_id = result.get("chunk_id")
+            # chunk_id = result.get("chunk_id")
             text = result.get("text", "")
             source = result.get("source", "未知来源")
             source_type = result.get("source_type", "未知类型")
             similarity = result.get("similarity", 0.0)
 
-            formatted_string += f"{i + 1}. (相似度: {similarity:.2f}) 类型: {source_type}, 来源: {source} \n内容片段: {text}\n\n"
+            formatted_string += (
+                f"{i + 1}. (相似度: {similarity:.2f}) 类型: {source_type}, 来源: {source} \n内容片段: {text}\n\n"
+            )
             # 暂时去掉chunk_id
             # formatted_string += f"{i + 1}. (相似度: {similarity:.2f}) 类型: {source_type}, 来源: {source}, Chunk ID: {chunk_id} \n内容片段: {text}\n\n"
 

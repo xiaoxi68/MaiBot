@@ -128,7 +128,7 @@ class SubHeartflowManager:
                 # 添加聊天观察者
                 observation = ChattingObservation(chat_id=subheartflow_id)
                 await observation.initialize()
-                
+
                 new_subflow.add_observation(observation)
 
                 # 注册子心流

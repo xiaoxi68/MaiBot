@@ -372,6 +372,7 @@ class PromptBuilder:
             memory_prompt = await global_prompt_manager.format_prompt(
                 "memory_prompt", related_memory_info=related_memory_info
             )
+
         message_list_before_now = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_stream.stream_id,
             timestamp=time.time(),

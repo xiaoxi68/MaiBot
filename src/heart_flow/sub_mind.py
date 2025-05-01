@@ -1,4 +1,4 @@
-from .observation import Observation, ChattingObservation
+from .observation import ChattingObservation
 from src.plugins.models.utils_model import LLMRequest
 from src.config.config import global_config
 import time
@@ -146,10 +146,9 @@ class SubMind:
         lines = ["【信息】"]
         for item in self.structured_info:
             # 简化展示，突出内容和类型，包含TTL供调试
-            type_str = item.get('type', '未知类型')
-            content_str = item.get('content', '')
-            ttl = item.get('ttl', '?')
-            
+            type_str = item.get("type", "未知类型")
+            content_str = item.get("content", "")
+
             if type_str == "info":
                 lines.append(f"刚刚: {content_str}")
             elif type_str == "memory":
@@ -178,18 +177,24 @@ class SubMind:
 
         # ---------- 0. 更新和清理 structured_info ----------
         if self.structured_info:
-            logger.debug(f"{self.log_prefix} 更新前的 structured_info: {safe_json_dumps(self.structured_info, ensure_ascii=False)}")
+            logger.debug(
+                f"{self.log_prefix} 更新前的 structured_info: {safe_json_dumps(self.structured_info, ensure_ascii=False)}"
+            )
             updated_info = []
             for item in self.structured_info:
-                item['ttl'] -= 1
-                if item['ttl'] > 0:
+                item["ttl"] -= 1
+                if item["ttl"] > 0:
                     updated_info.append(item)
                 else:
                     logger.debug(f"{self.log_prefix} 移除过期的 structured_info 项: {item['id']}")
             self.structured_info = updated_info
-            logger.debug(f"{self.log_prefix} 更新后的 structured_info: {safe_json_dumps(self.structured_info, ensure_ascii=False)}")
+            logger.debug(
+                f"{self.log_prefix} 更新后的 structured_info: {safe_json_dumps(self.structured_info, ensure_ascii=False)}"
+            )
             self._update_structured_info_str()
-        logger.debug(f"{self.log_prefix} 当前完整的 structured_info: {safe_json_dumps(self.structured_info, ensure_ascii=False)}")
+        logger.debug(
+            f"{self.log_prefix} 当前完整的 structured_info: {safe_json_dumps(self.structured_info, ensure_ascii=False)}"
+        )
 
         # ---------- 1. 准备基础数据 ----------
         # 获取现有想法和情绪状态
@@ -202,10 +207,10 @@ class SubMind:
             logger.error(f"{self.log_prefix} 无法获取有效的观察对象或缺少聊天类型信息")
             self.update_current_mind("(观察出错了...)")
             return self.current_mind, self.past_mind
-        
+
         is_group_chat = observation.is_group_chat
         # logger.debug(f"is_group_chat: {is_group_chat}")
-        
+
         chat_target_info = observation.chat_target_info
         chat_target_name = "对方"  # Default for private
         if not is_group_chat and chat_target_info:
@@ -496,7 +501,7 @@ class SubMind:
             tool_instance: 工具使用器实例
         """
         tool_results = []
-        new_structured_items = [] # 收集新产生的结构化信息
+        new_structured_items = []  # 收集新产生的结构化信息
 
         # 执行所有工具调用
         for tool_call in tool_calls:
@@ -506,26 +511,26 @@ class SubMind:
                     tool_results.append(result)
                     # 创建新的结构化信息项
                     new_item = {
-                        "type": result.get("type", "unknown_type"), # 使用 'type' 键
-                        "id": result.get("id", f"fallback_id_{time.time()}"), # 使用 'id' 键
-                        "content": result.get("content", ""), # 'content' 键保持不变
-                        "ttl": 3
+                        "type": result.get("type", "unknown_type"),  # 使用 'type' 键
+                        "id": result.get("id", f"fallback_id_{time.time()}"),  # 使用 'id' 键
+                        "content": result.get("content", ""),  # 'content' 键保持不变
+                        "ttl": 3,
                     }
                     new_structured_items.append(new_item)
 
             except Exception as tool_e:
                 logger.error(f"[{self.subheartflow_id}] 工具执行失败: {tool_e}")
-                logger.error(traceback.format_exc()) # 添加 traceback 记录
+                logger.error(traceback.format_exc())  # 添加 traceback 记录
 
         # 如果有新的工具结果，记录并更新结构化信息
         if new_structured_items:
-            self.structured_info.extend(new_structured_items) # 添加到现有列表
+            self.structured_info.extend(new_structured_items)  # 添加到现有列表
             logger.debug(f"工具调用收集到新的结构化信息: {safe_json_dumps(new_structured_items, ensure_ascii=False)}")
             # logger.debug(f"当前完整的 structured_info: {safe_json_dumps(self.structured_info, ensure_ascii=False)}") # 可以取消注释以查看完整列表
-            self._update_structured_info_str() # 添加新信息后，更新字符串表示
+            self._update_structured_info_str()  # 添加新信息后，更新字符串表示
 
     def update_current_mind(self, response):
-        if self.current_mind: # 只有当 current_mind 非空时才添加到 past_mind
+        if self.current_mind:  # 只有当 current_mind 非空时才添加到 past_mind
             self.past_mind.append(self.current_mind)
             # 可以考虑限制 past_mind 的大小，例如:
             # max_past_mind_size = 10
