@@ -1,7 +1,6 @@
 from typing import List, Optional, Dict, Any, Set
 from maim_message import UserInfo
 import time
-from dataclasses import dataclass, field
 from src.common.logger import get_module_logger
 from .chat_observer import ChatObserver
 from .chat_states import NotificationHandler, NotificationType, Notification
