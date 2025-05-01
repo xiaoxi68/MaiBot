@@ -398,6 +398,11 @@ class NormalChat:
             except Exception as e:
                 logger.error(f"[{self.stream_name}] 处理初始兴趣消息 {msg_id} 时出错: {e}\\n{traceback.format_exc()}")
 
+        # --- 新增：处理完后清空整个字典 ---
+        logger.info(f"[{self.stream_name}] 处理了 {processed_count} 条初始高兴趣消息。现在清空所有剩余的初始兴趣消息...")
+        self.interest_dict.clear()
+        # --- 新增结束 ---
+
         logger.info(
             f"[{self.stream_name}] 初始高兴趣消息处理完毕，共处理 {processed_count} 条。剩余 {len(self.interest_dict)} 条待轮询。"
         )
