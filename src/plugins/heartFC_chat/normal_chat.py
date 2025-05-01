@@ -19,6 +19,7 @@ from src.plugins.chat.chat_stream import ChatStream, chat_manager
 from src.plugins.person_info.relationship_manager import relationship_manager
 from src.plugins.respon_info_catcher.info_catcher import info_catcher_manager
 from src.plugins.utils.timer_calculator import Timer
+from src.heart_flow.utils_chat import get_chat_type_and_target_info
 
 
 logger = get_logger("chat")
@@ -26,28 +27,46 @@ logger = get_logger("chat")
 
 class NormalChat:
     def __init__(self, chat_stream: ChatStream, interest_dict: dict):
-        """
-        初始化 NormalChat 实例，针对特定的 ChatStream。
+        """初始化 NormalChat 实例。只进行同步操作。"""
 
-        Args:
-            chat_stream (ChatStream): 此 NormalChat 实例关联的聊天流对象。
-        """
-
+        # Basic info from chat_stream (sync)
         self.chat_stream = chat_stream
         self.stream_id = chat_stream.stream_id
-        self.stream_name = chat_manager.get_stream_name(self.stream_id) or self.stream_id
+        # Get initial stream name, might be updated in initialize
+        self.stream_name = chat_manager.get_stream_name(self.stream_id) or self.stream_id 
 
+        # Interest dict
         self.interest_dict = interest_dict
 
+        # --- Initialize attributes (defaults) --- 
+        self.is_group_chat: bool = False
+        self.chat_target_info: Optional[dict] = None 
+        # --- End Initialization ---
+
+        # Other sync initializations
         self.gpt = NormalChatGenerator()
-        self.mood_manager = MoodManager.get_instance()  # MoodManager 保持单例
-        # 存储此实例的兴趣监控任务
+        self.mood_manager = MoodManager.get_instance()
         self.start_time = time.time()
-
         self.last_speak_time = 0
-
         self._chat_task: Optional[asyncio.Task] = None
-        logger.info(f"[{self.stream_name}] NormalChat 实例初始化完成。")
+        self._initialized = False # Track initialization status
+        
+        # logger.info(f"[{self.stream_name}] NormalChat 实例 __init__ 完成 (同步部分)。") 
+        # Avoid logging here as stream_name might not be final
+
+    async def initialize(self):
+        """异步初始化，获取聊天类型和目标信息。"""
+        if self._initialized:
+            return
+            
+        # --- Use utility function to determine chat type and fetch info ---
+        self.is_group_chat, self.chat_target_info = await get_chat_type_and_target_info(self.stream_id)
+        # Update stream_name again after potential async call in util func
+        self.stream_name = chat_manager.get_stream_name(self.stream_id) or self.stream_id 
+        logger.debug(f"[{self.stream_name}] NormalChat initialized: is_group={self.is_group_chat}, target_info={self.chat_target_info}")
+        # --- End using utility function ---
+        self._initialized = True
+        logger.info(f"[{self.stream_name}] NormalChat 实例 initialize 完成 (异步部分)。")
 
     # 改为实例方法
     async def _create_thinking_message(self, message: MessageRecv) -> str:
@@ -416,22 +435,18 @@ class NormalChat:
     # 改为实例方法, 移除 chat 参数
 
     async def start_chat(self):
-        """为此 NormalChat 实例关联的 ChatStream 启动聊天任务（如果尚未运行），
-        并在后台处理一次初始的高兴趣消息。"""  # 文言文注释示例：启聊之始，若有遗珠，当于暗处拂拭，勿碍正途。
+        """先进行异步初始化，然后启动聊天任务。"""
+        if not self._initialized:
+             await self.initialize() # Ensure initialized before starting tasks
+             
         if self._chat_task is None or self._chat_task.done():
-            # --- 修改：使用 create_task 启动初始消息处理 ---
-            logger.info(f"[{self.stream_name}] 开始后台处理初始兴趣消息...")
-            # 创建一个任务来处理初始消息，不阻塞当前流程
-            _initial_process_task = asyncio.create_task(self._process_initial_interest_messages())
-            # 可以考虑给这个任务也添加完成回调来记录日志或处理错误
-            # initial_process_task.add_done_callback(...)
-            # --- 修改结束 ---
-
-            # 启动后台轮询任务 (这部分不变)
-            logger.info(f"[{self.stream_name}] 启动后台兴趣消息轮询任务...")
-            polling_task = asyncio.create_task(self._reply_interested_message())  # 注意变量名区分
+            logger.info(f"[{self.stream_name}] 开始后台处理初始兴趣消息和轮询任务...")
+            # Process initial messages first
+            await self._process_initial_interest_messages()
+            # Then start polling task
+            polling_task = asyncio.create_task(self._reply_interested_message())
             polling_task.add_done_callback(lambda t: self._handle_task_completion(t))
-            self._chat_task = polling_task  # self._chat_task 仍然指向主要的轮询任务
+            self._chat_task = polling_task
         else:
             logger.info(f"[{self.stream_name}] 聊天轮询任务已在运行中。")
 

@@ -79,7 +79,7 @@ def init_prompt():
 - 避免重复或评价自己的发言
 - 不要和自己聊天
 
-【决策任务】
+决策任务
 {action_options_text}
 
 你必须从上面列出的可用行动中选择一个，并说明原因。
@@ -90,20 +90,6 @@ JSON 结构如下，包含三个字段 "action", "reasoning", "emoji_query":
   "reasoning": "string", // 做出此决定的详细理由和思考过程，说明你如何应用了回复原则
   "emoji_query": "string" // 可选。如果行动是 'emoji_reply'，必须提供表情主题(填写表情包的适用场合)；如果行动是 'text_reply' 且你想附带表情，也在此提供表情主题，否则留空字符串 ""。遵循回复原则，不要滥用。
 }}
-
-例如:
-{{
-  "action": "text_reply",
-  "reasoning": "用户提到了我，且问题比较具体，适合用文本回复。考虑到内容，可以带上一个微笑表情。",
-  "emoji_query": "微笑"
-}}
-或
-{{
-  "action": "no_reply",
-  "reasoning": "我已经连续回复了两次，而且这个话题我不太感兴趣，根据回复原则，选择不回复，等待其他人发言。",
-  "emoji_query": ""
-}}
-
 请输出你的决策 JSON：
 """,  # 使用三引号避免内部引号问题
         "planner_prompt",  # 保持名称不变，替换内容

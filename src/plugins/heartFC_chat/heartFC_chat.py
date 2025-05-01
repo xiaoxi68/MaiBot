@@ -27,6 +27,7 @@ from src.plugins.chat.utils import process_llm_response
 from src.plugins.respon_info_catcher.info_catcher import info_catcher_manager
 from src.plugins.moods.moods import MoodManager
 from src.individuality.individuality import Individuality
+from src.heart_flow.utils_chat import get_chat_type_and_target_info
 
 
 WAITING_TIME_THRESHOLD = 300  # 等待新消息时间阈值，单位秒
@@ -194,7 +195,12 @@ class HeartFChatting:
         self.on_consecutive_no_reply_callback = on_consecutive_no_reply_callback
 
         # 日志前缀
-        self.log_prefix: str = f"[{chat_manager.get_stream_name(chat_id) or chat_id}]"
+        self.log_prefix: str = str(chat_id)  # Initial default, will be updated
+
+        # --- Initialize attributes (defaults) --- 
+        self.is_group_chat: bool = False
+        self.chat_target_info: Optional[dict] = None 
+        # --- End Initialization ---
 
         # 动作管理器
         self.action_manager = ActionManager()
@@ -234,22 +240,34 @@ class HeartFChatting:
 
     async def _initialize(self) -> bool:
         """
-        懒初始化以使用提供的标识符解析chat_stream。
-        确保实例已准备好处理触发器。
+        懒初始化，解析chat_stream, 获取聊天类型和目标信息。
         """
         if self._initialized:
             return True
-
-        self.chat_stream = chat_manager.get_stream(self.stream_id)
-        if not self.chat_stream:
-            logger.error(f"{self.log_prefix} 获取ChatStream失败。")
-            return False
-
-        # 更新日志前缀（以防流名称发生变化）
-        self.log_prefix = f"[{chat_manager.get_stream_name(self.stream_id) or self.stream_id}]"
+        
+        # --- Use utility function to determine chat type and fetch info ---
+        # Note: get_chat_type_and_target_info handles getting the chat_stream internally
+        self.is_group_chat, self.chat_target_info = await get_chat_type_and_target_info(self.stream_id)
+        
+        # Update log prefix based on potential stream name (if needed, or get it from chat_stream if util doesn't return it)
+        # Assuming get_chat_type_and_target_info focuses only on type/target
+        # We still need the chat_stream object itself for other operations
+        try:
+            self.chat_stream = await asyncio.to_thread(chat_manager.get_stream, self.stream_id)
+            if not self.chat_stream:
+                 logger.error(f"[HFC:{self.stream_id}] 获取ChatStream失败 during _initialize, though util func might have succeeded earlier.")
+                 return False # Cannot proceed without chat_stream object
+            # Update log prefix using the fetched stream object
+            self.log_prefix = f"[{chat_manager.get_stream_name(self.stream_id) or self.stream_id}]"
+        except Exception as e:
+             logger.error(f"[HFC:{self.stream_id}] 获取ChatStream时出错 in _initialize: {e}")
+             return False
+        
+        logger.debug(f"{self.log_prefix} HeartFChatting initialized: is_group={self.is_group_chat}, target_info={self.chat_target_info}")
+        # --- End using utility function ---
 
         self._initialized = True
-        logger.debug(f"{self.log_prefix}麦麦感觉到了，可以开始认真水群 ")
+        logger.debug(f"{self.log_prefix} 麦麦感觉到了，可以开始认真水群 ")
         return True
 
     async def start(self):

@@ -12,8 +12,30 @@ from src.plugins.utils.chat_message_builder import (
     num_new_messages_since,
     get_person_id_list,
 )
+from src.plugins.utils.prompt_builder import Prompt, global_prompt_manager
+from src.plugins.chat.chat_stream import chat_manager
+from typing import Optional
+from src.plugins.person_info.person_info import person_info_manager
+# Import the new utility function
+from .utils_chat import get_chat_type_and_target_info 
 
 logger = get_logger("observation")
+
+# --- Define Prompt Templates for Chat Summary ---
+Prompt(
+    """这是qq群聊的聊天记录，请总结以下聊天记录的主题：
+{chat_logs}
+请用一句话概括，包括人物、事件和主要信息，不要分点。""",
+    "chat_summary_group_prompt" # Template for group chat
+)
+
+Prompt(
+    """这是你和{chat_target}的私聊记录，请总结以下聊天记录的主题：
+{chat_logs}
+请用一句话概括，包括事件，时间，和主要信息，不要分点。""",
+    "chat_summary_private_prompt" # Template for private chat
+)
+# --- End Prompt Template Definition ---
 
 
 # 所有观察的基类
@@ -34,28 +56,37 @@ class ChattingObservation(Observation):
         super().__init__("chat", chat_id)
         self.chat_id = chat_id
 
+        # --- Initialize attributes (defaults) --- 
+        self.is_group_chat: bool = False
+        self.chat_target_info: Optional[dict] = None 
+        # --- End Initialization ---
+
+        # --- Other attributes initialized in __init__ ---
         self.talking_message = []
         self.talking_message_str = ""
         self.talking_message_str_truncate = ""
-
         self.name = global_config.BOT_NICKNAME
         self.nick_name = global_config.BOT_ALIAS_NAMES
-
         self.max_now_obs_len = global_config.observation_context_size
         self.overlap_len = global_config.compressed_length
         self.mid_memorys = []
         self.max_mid_memory_len = global_config.compress_length_limit
         self.mid_memory_info = ""
-
         self.person_list = []
-
         self.llm_summary = LLMRequest(
             model=global_config.llm_observation, temperature=0.7, max_tokens=300, request_type="chat_observation"
         )
 
+
     async def initialize(self):
+        # --- Use utility function to determine chat type and fetch info ---
+        self.is_group_chat, self.chat_target_info = await get_chat_type_and_target_info(self.chat_id)
+        logger.debug(f"ChattingObservation {self.chat_id} initialized: is_group={self.is_group_chat}, target_info={self.chat_target_info}")
+        # --- End using utility function ---
+
+        # Fetch initial messages (existing logic)
         initial_messages = get_raw_msg_before_timestamp_with_chat(self.chat_id, self.last_observe_time, 10)
-        self.talking_message = initial_messages  # 将这些消息设为初始上下文
+        self.talking_message = initial_messages
         self.talking_message_str = await build_readable_messages(self.talking_message)
 
     # 进行一次观察 返回观察结果observe_info
@@ -109,18 +140,49 @@ class ChattingObservation(Observation):
                 messages=oldest_messages, timestamp_mode="normal", read_mark=0
             )
 
-            # 调用 LLM 总结主题
-            prompt = (
-                f"请总结以下聊天记录的主题：\n{oldest_messages_str}\n用一句话概括包括人物事件和主要信息，不要分点："
-            )
-            summary = "没有主题的闲聊"  # 默认值
+            # --- Build prompt using template ---
+            prompt = None # Initialize prompt as None
             try:
-                summary_result, _ = await self.llm_summary.generate_response_async(prompt)
-                if summary_result:  # 确保结果不为空
-                    summary = summary_result
+                # 构建 Prompt - 根据 is_group_chat 选择模板
+                if self.is_group_chat:
+                    prompt_template_name = "chat_summary_group_prompt"
+                    prompt = await global_prompt_manager.format_prompt(
+                        prompt_template_name,
+                        chat_logs=oldest_messages_str
+                    )
+                else:
+                    # For private chat, add chat_target to the prompt variables
+                    prompt_template_name = "chat_summary_private_prompt"
+                    # Determine the target name for the prompt
+                    chat_target_name = "对方" # Default fallback
+                    if self.chat_target_info:
+                        # Prioritize person_name, then nickname
+                        chat_target_name = self.chat_target_info.get('person_name') or self.chat_target_info.get('user_nickname') or chat_target_name
+                    
+                    # Format the private chat prompt
+                    prompt = await global_prompt_manager.format_prompt(
+                        prompt_template_name,
+                        # Assuming the private prompt template uses {chat_target}
+                        chat_target=chat_target_name, 
+                        chat_logs=oldest_messages_str
+                    )
             except Exception as e:
-                logger.error(f"总结主题失败 for chat {self.chat_id}: {e}")
-                # 保留默认总结 "没有主题的闲聊"
+                logger.error(f"构建总结 Prompt 失败 for chat {self.chat_id}: {e}")
+                # prompt remains None
+
+            summary = "没有主题的闲聊"  # 默认值
+
+            if prompt: # Check if prompt was built successfully
+                try:
+                    summary_result, _, _ = await self.llm_summary.generate_response(prompt)
+                    if summary_result:  # 确保结果不为空
+                        summary = summary_result
+                except Exception as e:
+                    logger.error(f"总结主题失败 for chat {self.chat_id}: {e}")
+                    # 保留默认总结 "没有主题的闲聊"
+            else:
+                logger.warning(f"因 Prompt 构建失败，跳过 LLM 总结 for chat {self.chat_id}")
+
 
             mid_memory = {
                 "id": str(int(datetime.now().timestamp())),
