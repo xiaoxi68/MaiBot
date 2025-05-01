@@ -13,11 +13,10 @@ from src.plugins.utils.chat_message_builder import (
     get_person_id_list,
 )
 from src.plugins.utils.prompt_builder import Prompt, global_prompt_manager
-from src.plugins.chat.chat_stream import chat_manager
 from typing import Optional
-from src.plugins.person_info.person_info import person_info_manager
+
 # Import the new utility function
-from .utils_chat import get_chat_type_and_target_info 
+from .utils_chat import get_chat_type_and_target_info
 
 logger = get_logger("observation")
 
@@ -26,14 +25,14 @@ Prompt(
     """这是qq群聊的聊天记录，请总结以下聊天记录的主题：
 {chat_logs}
 请用一句话概括，包括人物、事件和主要信息，不要分点。""",
-    "chat_summary_group_prompt" # Template for group chat
+    "chat_summary_group_prompt",  # Template for group chat
 )
 
 Prompt(
     """这是你和{chat_target}的私聊记录，请总结以下聊天记录的主题：
 {chat_logs}
 请用一句话概括，包括事件，时间，和主要信息，不要分点。""",
-    "chat_summary_private_prompt" # Template for private chat
+    "chat_summary_private_prompt",  # Template for private chat
 )
 # --- End Prompt Template Definition ---
 
@@ -56,9 +55,9 @@ class ChattingObservation(Observation):
         super().__init__("chat", chat_id)
         self.chat_id = chat_id
 
-        # --- Initialize attributes (defaults) --- 
+        # --- Initialize attributes (defaults) ---
         self.is_group_chat: bool = False
-        self.chat_target_info: Optional[dict] = None 
+        self.chat_target_info: Optional[dict] = None
         # --- End Initialization ---
 
         # --- Other attributes initialized in __init__ ---
@@ -77,11 +76,12 @@ class ChattingObservation(Observation):
             model=global_config.llm_observation, temperature=0.7, max_tokens=300, request_type="chat_observation"
         )
 
-
     async def initialize(self):
         # --- Use utility function to determine chat type and fetch info ---
         self.is_group_chat, self.chat_target_info = await get_chat_type_and_target_info(self.chat_id)
-        logger.debug(f"ChattingObservation {self.chat_id} initialized: is_group={self.is_group_chat}, target_info={self.chat_target_info}")
+        logger.debug(
+            f"ChattingObservation {self.chat_id} initialized: is_group={self.is_group_chat}, target_info={self.chat_target_info}"
+        )
         # --- End using utility function ---
 
         # Fetch initial messages (existing logic)
@@ -141,30 +141,33 @@ class ChattingObservation(Observation):
             )
 
             # --- Build prompt using template ---
-            prompt = None # Initialize prompt as None
+            prompt = None  # Initialize prompt as None
             try:
                 # 构建 Prompt - 根据 is_group_chat 选择模板
                 if self.is_group_chat:
                     prompt_template_name = "chat_summary_group_prompt"
                     prompt = await global_prompt_manager.format_prompt(
-                        prompt_template_name,
-                        chat_logs=oldest_messages_str
+                        prompt_template_name, chat_logs=oldest_messages_str
                     )
                 else:
                     # For private chat, add chat_target to the prompt variables
                     prompt_template_name = "chat_summary_private_prompt"
                     # Determine the target name for the prompt
-                    chat_target_name = "对方" # Default fallback
+                    chat_target_name = "对方"  # Default fallback
                     if self.chat_target_info:
                         # Prioritize person_name, then nickname
-                        chat_target_name = self.chat_target_info.get('person_name') or self.chat_target_info.get('user_nickname') or chat_target_name
-                    
+                        chat_target_name = (
+                            self.chat_target_info.get("person_name")
+                            or self.chat_target_info.get("user_nickname")
+                            or chat_target_name
+                        )
+
                     # Format the private chat prompt
                     prompt = await global_prompt_manager.format_prompt(
                         prompt_template_name,
                         # Assuming the private prompt template uses {chat_target}
-                        chat_target=chat_target_name, 
-                        chat_logs=oldest_messages_str
+                        chat_target=chat_target_name,
+                        chat_logs=oldest_messages_str,
                     )
             except Exception as e:
                 logger.error(f"构建总结 Prompt 失败 for chat {self.chat_id}: {e}")
@@ -172,7 +175,7 @@ class ChattingObservation(Observation):
 
             summary = "没有主题的闲聊"  # 默认值
 
-            if prompt: # Check if prompt was built successfully
+            if prompt:  # Check if prompt was built successfully
                 try:
                     summary_result, _, _ = await self.llm_summary.generate_response(prompt)
                     if summary_result:  # 确保结果不为空
@@ -182,7 +185,6 @@ class ChattingObservation(Observation):
                     # 保留默认总结 "没有主题的闲聊"
             else:
                 logger.warning(f"因 Prompt 构建失败，跳过 LLM 总结 for chat {self.chat_id}")
-
 
             mid_memory = {
                 "id": str(int(datetime.now().timestamp())),

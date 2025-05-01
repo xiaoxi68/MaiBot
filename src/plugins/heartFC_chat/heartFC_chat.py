@@ -26,7 +26,6 @@ from .heartFC_sender import HeartFCSender
 from src.plugins.chat.utils import process_llm_response
 from src.plugins.respon_info_catcher.info_catcher import info_catcher_manager
 from src.plugins.moods.moods import MoodManager
-from src.individuality.individuality import Individuality
 from src.heart_flow.utils_chat import get_chat_type_and_target_info
 
 
@@ -197,9 +196,9 @@ class HeartFChatting:
         # 日志前缀
         self.log_prefix: str = str(chat_id)  # Initial default, will be updated
 
-        # --- Initialize attributes (defaults) --- 
+        # --- Initialize attributes (defaults) ---
         self.is_group_chat: bool = False
-        self.chat_target_info: Optional[dict] = None 
+        self.chat_target_info: Optional[dict] = None
         # --- End Initialization ---
 
         # 动作管理器
@@ -244,26 +243,30 @@ class HeartFChatting:
         """
         if self._initialized:
             return True
-        
+
         # --- Use utility function to determine chat type and fetch info ---
         # Note: get_chat_type_and_target_info handles getting the chat_stream internally
         self.is_group_chat, self.chat_target_info = await get_chat_type_and_target_info(self.stream_id)
-        
+
         # Update log prefix based on potential stream name (if needed, or get it from chat_stream if util doesn't return it)
         # Assuming get_chat_type_and_target_info focuses only on type/target
         # We still need the chat_stream object itself for other operations
         try:
             self.chat_stream = await asyncio.to_thread(chat_manager.get_stream, self.stream_id)
             if not self.chat_stream:
-                 logger.error(f"[HFC:{self.stream_id}] 获取ChatStream失败 during _initialize, though util func might have succeeded earlier.")
-                 return False # Cannot proceed without chat_stream object
+                logger.error(
+                    f"[HFC:{self.stream_id}] 获取ChatStream失败 during _initialize, though util func might have succeeded earlier."
+                )
+                return False  # Cannot proceed without chat_stream object
             # Update log prefix using the fetched stream object
             self.log_prefix = f"[{chat_manager.get_stream_name(self.stream_id) or self.stream_id}]"
         except Exception as e:
-             logger.error(f"[HFC:{self.stream_id}] 获取ChatStream时出错 in _initialize: {e}")
-             return False
-        
-        logger.debug(f"{self.log_prefix} HeartFChatting initialized: is_group={self.is_group_chat}, target_info={self.chat_target_info}")
+            logger.error(f"[HFC:{self.stream_id}] 获取ChatStream时出错 in _initialize: {e}")
+            return False
+
+        logger.debug(
+            f"{self.log_prefix} HeartFChatting initialized: is_group={self.is_group_chat}, target_info={self.chat_target_info}"
+        )
         # --- End using utility function ---
 
         self._initialized = True
@@ -853,13 +856,13 @@ class HeartFChatting:
 
             # --- 构建提示词 (调用修改后的 PromptBuilder 方法) ---
             prompt = await prompt_builder.build_planner_prompt(
-                is_group_chat=self.is_group_chat,            # <-- Pass HFC state
-                chat_target_info=self.chat_target_info,      # <-- Pass HFC state
-                cycle_history=self._cycle_history,          # <-- Pass HFC state
-                observed_messages_str=observed_messages_str, # <-- Pass local variable
-                current_mind=current_mind,                   # <-- Pass argument
-                structured_info=self.sub_mind.structured_info, # <-- Pass SubMind info
-                current_available_actions=current_available_actions # <-- Pass determined actions
+                is_group_chat=self.is_group_chat,  # <-- Pass HFC state
+                chat_target_info=self.chat_target_info,  # <-- Pass HFC state
+                cycle_history=self._cycle_history,  # <-- Pass HFC state
+                observed_messages_str=observed_messages_str,  # <-- Pass local variable
+                current_mind=current_mind,  # <-- Pass argument
+                structured_info=self.sub_mind.structured_info,  # <-- Pass SubMind info
+                current_available_actions=current_available_actions,  # <-- Pass determined actions
             )
 
             # --- 调用 LLM (普通文本生成) ---
@@ -1279,25 +1282,29 @@ class HeartFChatting:
             # 2. 获取信息捕捉器
             info_catcher = info_catcher_manager.get_info_catcher(thinking_id)
 
-            # --- Determine sender_name for private chat --- 
-            sender_name_for_prompt = "某人" # Default for group or if info unavailable
+            # --- Determine sender_name for private chat ---
+            sender_name_for_prompt = "某人"  # Default for group or if info unavailable
             if not self.is_group_chat and self.chat_target_info:
                 # Prioritize person_name, then nickname
-                sender_name_for_prompt = self.chat_target_info.get('person_name') or self.chat_target_info.get('user_nickname') or sender_name_for_prompt
-            # --- End determining sender_name --- 
+                sender_name_for_prompt = (
+                    self.chat_target_info.get("person_name")
+                    or self.chat_target_info.get("user_nickname")
+                    or sender_name_for_prompt
+                )
+            # --- End determining sender_name ---
 
             # 3. 构建 Prompt
             with Timer("构建Prompt", {}):  # 内部计时器，可选保留
                 prompt = await prompt_builder.build_prompt(
                     build_mode="focus",
-                    chat_stream=self.chat_stream, # Pass the stream object
+                    chat_stream=self.chat_stream,  # Pass the stream object
                     # Focus specific args:
                     reason=reason,
                     current_mind_info=self.sub_mind.current_mind,
                     structured_info=self.sub_mind.structured_info,
-                    sender_name=sender_name_for_prompt, # Pass determined name
+                    sender_name=sender_name_for_prompt,  # Pass determined name
                     # Normal specific args (not used in focus mode):
-                    # message_txt="", 
+                    # message_txt="",
                 )
 
             # 4. 调用 LLM 生成回复
@@ -1305,9 +1312,9 @@ class HeartFChatting:
             reasoning_content = None
             model_name = "unknown_model"
             if not prompt:
-                 logger.error(f"{self.log_prefix}[Replier-{thinking_id}] Prompt 构建失败，无法生成回复。")
-                 return None
-                 
+                logger.error(f"{self.log_prefix}[Replier-{thinking_id}] Prompt 构建失败，无法生成回复。")
+                return None
+
             try:
                 with Timer("LLM生成", {}):  # 内部计时器，可选保留
                     content, reasoning_content, model_name = await self.model_normal.generate_response(prompt)

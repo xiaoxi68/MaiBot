@@ -20,7 +20,7 @@ logger = get_logger("sub_heartflow")
 
 
 def init_prompt():
-    # --- Group Chat Prompt --- 
+    # --- Group Chat Prompt ---
     group_prompt = """
 {extra_info}
 {relation_prompt}
@@ -45,7 +45,7 @@ def init_prompt():
 3. 如需处理消息或回复，请使用工具。"""
     Prompt(group_prompt, "sub_heartflow_prompt_before")
 
-    # --- Private Chat Prompt --- 
+    # --- Private Chat Prompt ---
     private_prompt = """
 {extra_info}
 {relation_prompt}
@@ -69,9 +69,9 @@ def init_prompt():
 1. 输出想法后考虑是否需要使用工具
 2. 工具可获取信息或执行操作
 3. 如需处理消息或回复，请使用工具。"""
-    Prompt(private_prompt, "sub_heartflow_prompt_private_before") # New template name
+    Prompt(private_prompt, "sub_heartflow_prompt_private_before")  # New template name
 
-    # --- Last Loop Prompt (remains the same) --- 
+    # --- Last Loop Prompt (remains the same) ---
     last_loop_t = """
 刚刚你的内心想法是：{current_thinking_info}
 {if_replan_prompt}
@@ -152,17 +152,19 @@ class SubMind:
 
         # 获取观察对象
         observation = self.observations[0] if self.observations else None
-        if not observation or not hasattr(observation, 'is_group_chat'): # Ensure it's ChattingObservation or similar
+        if not observation or not hasattr(observation, "is_group_chat"):  # Ensure it's ChattingObservation or similar
             logger.error(f"{self.log_prefix} 无法获取有效的观察对象或缺少聊天类型信息")
             self.update_current_mind("(观察出错了...)")
             return self.current_mind, self.past_mind
-            
+
         is_group_chat = observation.is_group_chat
         chat_target_info = observation.chat_target_info
-        chat_target_name = "对方" # Default for private
+        chat_target_name = "对方"  # Default for private
         if not is_group_chat and chat_target_info:
-            chat_target_name = chat_target_info.get('person_name') or chat_target_info.get('user_nickname') or chat_target_name
-        # --- End getting observation info --- 
+            chat_target_name = (
+                chat_target_info.get("person_name") or chat_target_info.get("user_nickname") or chat_target_name
+            )
+        # --- End getting observation info ---
 
         # 获取观察内容
         chat_observe_info = observation.get_observe_info()
@@ -274,7 +276,7 @@ class SubMind:
         )[0]
 
         # ---------- 4. 构建最终提示词 ----------
-        # --- Choose template based on chat type --- 
+        # --- Choose template based on chat type ---
         if is_group_chat:
             template_name = "sub_heartflow_prompt_before"
             prompt = (await global_prompt_manager.get_prompt_async(template_name)).format(
@@ -290,22 +292,22 @@ class SubMind:
                 cycle_info_block=cycle_info_block,
                 # chat_target_name is not used in group prompt
             )
-        else: # Private chat
+        else:  # Private chat
             template_name = "sub_heartflow_prompt_private_before"
             prompt = (await global_prompt_manager.get_prompt_async(template_name)).format(
-                extra_info="", 
+                extra_info="",
                 prompt_personality=prompt_personality,
-                relation_prompt=relation_prompt, # Might need adjustment for private context
+                relation_prompt=relation_prompt,  # Might need adjustment for private context
                 bot_name=individuality.name,
                 time_now=time_now,
-                chat_target_name=chat_target_name, # Pass target name
+                chat_target_name=chat_target_name,  # Pass target name
                 chat_observe_info=chat_observe_info,
                 mood_info=mood_info,
                 hf_do_next=hf_do_next,
                 last_loop_prompt=last_loop_prompt,
                 cycle_info_block=cycle_info_block,
             )
-        # --- End choosing template --- 
+        # --- End choosing template ---
 
         # ---------- 5. 执行LLM请求并处理响应 ----------
         content = ""  # 初始化内容变量

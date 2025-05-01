@@ -33,14 +33,14 @@ class NormalChat:
         self.chat_stream = chat_stream
         self.stream_id = chat_stream.stream_id
         # Get initial stream name, might be updated in initialize
-        self.stream_name = chat_manager.get_stream_name(self.stream_id) or self.stream_id 
+        self.stream_name = chat_manager.get_stream_name(self.stream_id) or self.stream_id
 
         # Interest dict
         self.interest_dict = interest_dict
 
-        # --- Initialize attributes (defaults) --- 
+        # --- Initialize attributes (defaults) ---
         self.is_group_chat: bool = False
-        self.chat_target_info: Optional[dict] = None 
+        self.chat_target_info: Optional[dict] = None
         # --- End Initialization ---
 
         # Other sync initializations
@@ -49,21 +49,23 @@ class NormalChat:
         self.start_time = time.time()
         self.last_speak_time = 0
         self._chat_task: Optional[asyncio.Task] = None
-        self._initialized = False # Track initialization status
-        
-        # logger.info(f"[{self.stream_name}] NormalChat 实例 __init__ 完成 (同步部分)。") 
+        self._initialized = False  # Track initialization status
+
+        # logger.info(f"[{self.stream_name}] NormalChat 实例 __init__ 完成 (同步部分)。")
         # Avoid logging here as stream_name might not be final
 
     async def initialize(self):
         """异步初始化，获取聊天类型和目标信息。"""
         if self._initialized:
             return
-            
+
         # --- Use utility function to determine chat type and fetch info ---
         self.is_group_chat, self.chat_target_info = await get_chat_type_and_target_info(self.stream_id)
         # Update stream_name again after potential async call in util func
-        self.stream_name = chat_manager.get_stream_name(self.stream_id) or self.stream_id 
-        logger.debug(f"[{self.stream_name}] NormalChat initialized: is_group={self.is_group_chat}, target_info={self.chat_target_info}")
+        self.stream_name = chat_manager.get_stream_name(self.stream_id) or self.stream_id
+        logger.debug(
+            f"[{self.stream_name}] NormalChat initialized: is_group={self.is_group_chat}, target_info={self.chat_target_info}"
+        )
         # --- End using utility function ---
         self._initialized = True
         logger.info(f"[{self.stream_name}] NormalChat 实例 initialize 完成 (异步部分)。")
@@ -437,8 +439,8 @@ class NormalChat:
     async def start_chat(self):
         """先进行异步初始化，然后启动聊天任务。"""
         if not self._initialized:
-             await self.initialize() # Ensure initialized before starting tasks
-             
+            await self.initialize()  # Ensure initialized before starting tasks
+
         if self._chat_task is None or self._chat_task.done():
             logger.info(f"[{self.stream_name}] 开始后台处理初始兴趣消息和轮询任务...")
             # Process initial messages first

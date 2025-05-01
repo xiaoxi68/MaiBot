@@ -138,7 +138,7 @@ JSON 结构如下，包含三个字段 "action", "reasoning", "emoji_query":
     Prompt("你现在正在做的事情是：{schedule_info}", "schedule_prompt")
     Prompt("\n你有以下这些**知识**：\n{prompt_info}\n请你**记住上面的知识**，之后可能会用到。\n", "knowledge_prompt")
 
-    # --- Template for HeartFChatting (FOCUSED mode) --- 
+    # --- Template for HeartFChatting (FOCUSED mode) ---
     Prompt(
         """
 {info_from_tools}
@@ -157,10 +157,10 @@ JSON 结构如下，包含三个字段 "action", "reasoning", "emoji_query":
 回复尽量简短一些。请注意把握聊天内容，{reply_style2}。{prompt_ger}
 {reply_style1}，说中文，不要刻意突出自身学科背景，注意只输出回复内容。
 {moderation_prompt}。注意：回复不要输出多余内容(包括前后缀，冒号和引号，括号，表情包，at或 @等 )。""",
-        "heart_flow_private_prompt", # New template for private FOCUSED chat
+        "heart_flow_private_prompt",  # New template for private FOCUSED chat
     )
 
-    # --- Template for NormalChat (CHAT mode) --- 
+    # --- Template for NormalChat (CHAT mode) ---
     Prompt(
         """
 {memory_prompt}
@@ -179,17 +179,17 @@ JSON 结构如下，包含三个字段 "action", "reasoning", "emoji_query":
 请注意不要输出多余内容(包括前后缀，冒号和引号，括号等)，只输出回复内容。
 {moderation_prompt}
 不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出回复内容""",
-        "reasoning_prompt_private_main", # New template for private CHAT chat
+        "reasoning_prompt_private_main",  # New template for private CHAT chat
     )
 
 
 async def _build_prompt_focus(reason, current_mind_info, structured_info, chat_stream, sender_name) -> str:
     individuality = Individuality.get_instance()
     prompt_personality = individuality.get_prompt(x_person=0, level=2)
-    
+
     # Determine if it's a group chat
     is_group_chat = bool(chat_stream.group_info)
-    
+
     # Use sender_name passed from caller for private chat, otherwise use a default for group
     # Default sender_name for group chat isn't used in the group prompt template, but set for consistency
     effective_sender_name = sender_name if not is_group_chat else "某人"
@@ -243,21 +243,21 @@ async def _build_prompt_focus(reason, current_mind_info, structured_info, chat_s
 
     logger.debug("开始构建 focus prompt")
 
-    # --- Choose template based on chat type --- 
+    # --- Choose template based on chat type ---
     if is_group_chat:
         template_name = "heart_flow_prompt"
         # Group specific formatting variables (already fetched or default)
         chat_target_1 = await global_prompt_manager.get_prompt_async("chat_target_group1")
         chat_target_2 = await global_prompt_manager.get_prompt_async("chat_target_group2")
-        
+
         prompt = await global_prompt_manager.format_prompt(
             template_name,
             info_from_tools=structured_info_prompt,
-            chat_target=chat_target_1, # Used in group template
+            chat_target=chat_target_1,  # Used in group template
             chat_talking_prompt=chat_talking_prompt,
             bot_name=global_config.BOT_NICKNAME,
             prompt_personality=prompt_personality,
-            chat_target_2=chat_target_2, # Used in group template
+            chat_target_2=chat_target_2,  # Used in group template
             current_mind_info=current_mind_info,
             reply_style2=reply_style2_chosen,
             reply_style1=reply_style1_chosen,
@@ -266,12 +266,12 @@ async def _build_prompt_focus(reason, current_mind_info, structured_info, chat_s
             moderation_prompt=await global_prompt_manager.get_prompt_async("moderation_prompt"),
             # sender_name is not used in the group template
         )
-    else: # Private chat
+    else:  # Private chat
         template_name = "heart_flow_private_prompt"
         prompt = await global_prompt_manager.format_prompt(
             template_name,
             info_from_tools=structured_info_prompt,
-            sender_name=effective_sender_name, # Used in private template
+            sender_name=effective_sender_name,  # Used in private template
             chat_talking_prompt=chat_talking_prompt,
             bot_name=global_config.BOT_NICKNAME,
             prompt_personality=prompt_personality,
@@ -283,7 +283,7 @@ async def _build_prompt_focus(reason, current_mind_info, structured_info, chat_s
             prompt_ger=prompt_ger,
             moderation_prompt=await global_prompt_manager.get_prompt_async("moderation_prompt"),
         )
-    # --- End choosing template --- 
+    # --- End choosing template ---
 
     logger.debug(f"focus_chat_prompt (is_group={is_group_chat}): \n{prompt}")
     return prompt
@@ -302,10 +302,8 @@ class PromptBuilder:
         current_mind_info=None,
         structured_info=None,
         message_txt=None,
-        sender_name = "某人",
+        sender_name="某人",
     ) -> Optional[str]:
-        is_group_chat = bool(chat_stream.group_info)
-
         if build_mode == "normal":
             return await self._build_prompt_normal(chat_stream, message_txt, sender_name)
 
@@ -326,20 +324,22 @@ class PromptBuilder:
 
         who_chat_in_group = []
         if is_group_chat:
-             who_chat_in_group = get_recent_group_speaker(
-                 chat_stream.stream_id,
-                 (chat_stream.user_info.platform, chat_stream.user_info.user_id) if chat_stream.user_info else None,
-                 limit=global_config.observation_context_size,
-             )
+            who_chat_in_group = get_recent_group_speaker(
+                chat_stream.stream_id,
+                (chat_stream.user_info.platform, chat_stream.user_info.user_id) if chat_stream.user_info else None,
+                limit=global_config.observation_context_size,
+            )
         elif chat_stream.user_info:
-             who_chat_in_group.append((chat_stream.user_info.platform, chat_stream.user_info.user_id, chat_stream.user_info.user_nickname))
-        
+            who_chat_in_group.append(
+                (chat_stream.user_info.platform, chat_stream.user_info.user_id, chat_stream.user_info.user_nickname)
+            )
+
         relation_prompt = ""
         for person in who_chat_in_group:
             if len(person) >= 3 and person[0] and person[1]:
-                 relation_prompt += await relationship_manager.build_relationship_info(person)
+                relation_prompt += await relationship_manager.build_relationship_info(person)
             else:
-                 logger.warning(f"Invalid person tuple encountered for relationship prompt: {person}")
+                logger.warning(f"Invalid person tuple encountered for relationship prompt: {person}")
 
         mood_manager = MoodManager.get_instance()
         mood_prompt = mood_manager.get_prompt()
@@ -425,8 +425,6 @@ class PromptBuilder:
         end_time = time.time()
         logger.debug(f"知识检索耗时: {(end_time - start_time):.3f}秒")
 
-
-
         if global_config.ENABLE_SCHEDULE_GEN:
             schedule_prompt = await global_prompt_manager.format_prompt(
                 "schedule_prompt", schedule_info=bot_schedule.get_current_num_task(num=1, time_info=False)
@@ -435,14 +433,14 @@ class PromptBuilder:
             schedule_prompt = ""
 
         logger.debug("开始构建 normal prompt")
-        
-        # --- Choose template and format based on chat type --- 
+
+        # --- Choose template and format based on chat type ---
         if is_group_chat:
             template_name = "reasoning_prompt_main"
-            effective_sender_name = sender_name 
+            effective_sender_name = sender_name
             chat_target_1 = await global_prompt_manager.get_prompt_async("chat_target_group1")
             chat_target_2 = await global_prompt_manager.get_prompt_async("chat_target_group2")
-            
+
             prompt = await global_prompt_manager.format_prompt(
                 template_name,
                 relation_prompt=relation_prompt,
@@ -466,8 +464,8 @@ class PromptBuilder:
             )
         else:
             template_name = "reasoning_prompt_private_main"
-            effective_sender_name = sender_name 
-            
+            effective_sender_name = sender_name
+
             prompt = await global_prompt_manager.format_prompt(
                 template_name,
                 relation_prompt=relation_prompt,
@@ -487,7 +485,7 @@ class PromptBuilder:
                 prompt_ger=prompt_ger,
                 moderation_prompt=await global_prompt_manager.get_prompt_async("moderation_prompt"),
             )
-        # --- End choosing template --- 
+        # --- End choosing template ---
 
         return prompt
 
@@ -749,9 +747,9 @@ class PromptBuilder:
 
     async def build_planner_prompt(
         self,
-        is_group_chat: bool, # Now passed as argument
-        chat_target_info: Optional[dict], # Now passed as argument
-        cycle_history: Deque["CycleInfo"], # Now passed as argument (Type hint needs import or string)
+        is_group_chat: bool,  # Now passed as argument
+        chat_target_info: Optional[dict],  # Now passed as argument
+        cycle_history: Deque["CycleInfo"],  # Now passed as argument (Type hint needs import or string)
         observed_messages_str: str,
         current_mind: Optional[str],
         structured_info: Dict[str, Any],
@@ -760,20 +758,22 @@ class PromptBuilder:
     ) -> str:
         """构建 Planner LLM 的提示词 (获取模板并填充数据)"""
         try:
-            # --- Determine chat context --- 
+            # --- Determine chat context ---
             chat_context_description = "你现在正在一个群聊中"
-            chat_target_name = None # Only relevant for private
+            chat_target_name = None  # Only relevant for private
             if not is_group_chat and chat_target_info:
-                chat_target_name = chat_target_info.get('person_name') or chat_target_info.get('user_nickname') or "对方"
+                chat_target_name = (
+                    chat_target_info.get("person_name") or chat_target_info.get("user_nickname") or "对方"
+                )
                 chat_context_description = f"你正在和 {chat_target_name} 私聊"
             # --- End determining chat context ---
-            
+
             # ... (Copy logic from HeartFChatting._build_planner_prompt here) ...
             # Structured info block
             structured_info_block = ""
             if structured_info:
                 structured_info_block = f"以下是一些额外的信息：\n{structured_info}\n"
-            
+
             # Chat content block
             chat_content_block = ""
             if observed_messages_str:
@@ -784,14 +784,14 @@ class PromptBuilder:
 ---"""
             else:
                 chat_content_block = "当前没有观察到新的聊天内容。\\n"
-                
+
             # Current mind block
             current_mind_block = ""
             if current_mind:
                 current_mind_block = f"你的内心想法：\n{current_mind}"
             else:
                 current_mind_block = "你的内心想法：\n[没有特别的想法]"
-                
+
             # Cycle info block (using passed cycle_history)
             cycle_info_block = ""
             recent_active_cycles = []

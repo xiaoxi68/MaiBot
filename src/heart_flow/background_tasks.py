@@ -20,7 +20,7 @@ NORMAL_CHAT_TIMEOUT_CHECK_INTERVAL_SECONDS = 60
 # 新增状态评估间隔
 HF_JUDGE_STATE_UPDATE_INTERVAL_SECONDS = 60
 # 新增私聊激活检查间隔
-PRIVATE_CHAT_ACTIVATION_CHECK_INTERVAL_SECONDS = 5 # 与兴趣评估类似，设为5秒
+PRIVATE_CHAT_ACTIVATION_CHECK_INTERVAL_SECONDS = 5  # 与兴趣评估类似，设为5秒
 
 CLEANUP_INTERVAL_SECONDS = 1200
 STATE_UPDATE_INTERVAL_SECONDS = 60
@@ -76,7 +76,7 @@ class BackgroundTaskManager:
         self._normal_chat_timeout_check_task: Optional[asyncio.Task] = None
         self._hf_judge_state_update_task: Optional[asyncio.Task] = None
         self._into_focus_task: Optional[asyncio.Task] = None
-        self._private_chat_activation_task: Optional[asyncio.Task] = None # 新增私聊激活任务引用
+        self._private_chat_activation_task: Optional[asyncio.Task] = None  # 新增私聊激活任务引用
         self._tasks: List[Optional[asyncio.Task]] = []  # Keep track of all tasks
 
     async def start_tasks(self):
@@ -129,9 +129,9 @@ class BackgroundTaskManager:
             ),
             # 新增私聊激活任务配置
             (
-                 # Use lambda to pass the interval to the runner function
+                # Use lambda to pass the interval to the runner function
                 lambda: self._run_private_chat_activation_cycle(PRIVATE_CHAT_ACTIVATION_CHECK_INTERVAL_SECONDS),
-                "debug", 
+                "debug",
                 f"私聊激活检查任务已启动 间隔:{PRIVATE_CHAT_ACTIVATION_CHECK_INTERVAL_SECONDS}s",
                 "_private_chat_activation_task",
             ),
@@ -294,5 +294,5 @@ class BackgroundTaskManager:
         await _run_periodic_loop(
             task_name="Private Chat Activation Check",
             interval=interval,
-            task_func=self.subheartflow_manager.sbhf_absent_private_into_focus 
+            task_func=self.subheartflow_manager.sbhf_absent_private_into_focus,
         )
