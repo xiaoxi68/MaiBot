@@ -146,7 +146,6 @@ class MessageManager:
     """管理所有聊天流的消息容器 (不再是单例)"""
 
     def __init__(self):
-        self._processor_task = None
         self.containers: dict[str, MessageContainer] = {}
         self.storage = MessageStorage()  # 添加 storage 实例
         self._running = True  # 处理器运行状态
