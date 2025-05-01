@@ -5,7 +5,6 @@ from ..chat.message import MessageSending, MessageThinking  # 只保留 MessageS
 from ..message import global_api
 from ..storage.storage import MessageStorage
 from ..chat.utils import truncate_message
-from src.plugins.message.api import global_api
 from src.common.logger_manager import get_logger
 from src.plugins.chat.utils import calculate_typing_time
 
@@ -145,3 +144,4 @@ class HeartFCSender:
             logger.error(f"[{chat_id}] 处理或存储消息 {message_id} 时出错: {e}")
             # 重新抛出异常，让调用者知道失败了
             raise e
+
