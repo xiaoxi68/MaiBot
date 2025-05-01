@@ -264,9 +264,6 @@ class HeartFChatting:
             logger.error(f"[HFC:{self.stream_id}] 获取ChatStream时出错 in _initialize: {e}")
             return False
 
-        logger.debug(
-            f"{self.log_prefix} HeartFChatting initialized: is_group={self.is_group_chat}, target_info={self.chat_target_info}"
-        )
         # --- End using utility function ---
 
         self._initialized = True
@@ -861,7 +858,7 @@ class HeartFChatting:
                 cycle_history=self._cycle_history,  # <-- Pass HFC state
                 observed_messages_str=observed_messages_str,  # <-- Pass local variable
                 current_mind=current_mind,  # <-- Pass argument
-                structured_info=self.sub_mind.structured_info,  # <-- Pass SubMind info
+                structured_info=self.sub_mind.structured_info_str,  # <-- Pass SubMind info
                 current_available_actions=current_available_actions,  # <-- Pass determined actions
             )
 
@@ -1301,7 +1298,7 @@ class HeartFChatting:
                     # Focus specific args:
                     reason=reason,
                     current_mind_info=self.sub_mind.current_mind,
-                    structured_info=self.sub_mind.structured_info,
+                    structured_info=self.sub_mind.structured_info_str,
                     sender_name=sender_name_for_prompt,  # Pass determined name
                     # Normal specific args (not used in focus mode):
                     # message_txt="",

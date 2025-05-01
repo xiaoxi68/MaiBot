@@ -107,53 +107,6 @@ async def get_embedding(text, request_type="embedding"):
     return embedding
 
 
-async def get_recent_group_messages(chat_id: str, limit: int = 12) -> list:
-    """从数据库获取群组最近的消息记录
-
-    Args:
-        chat_id: 群组ID
-        limit: 获取消息数量，默认12条
-
-    Returns:
-        list: Message对象列表，按时间正序排列
-    """
-
-    # 从数据库获取最近消息
-    recent_messages = list(
-        db.messages.find(
-            {"chat_id": chat_id},
-        )
-        .sort("time", -1)
-        .limit(limit)
-    )
-
-    if not recent_messages:
-        return []
-
-    # 转换为 Message对象列表
-    message_objects = []
-    for msg_data in recent_messages:
-        try:
-            chat_info = msg_data.get("chat_info", {})
-            chat_stream = ChatStream.from_dict(chat_info)
-            user_info = msg_data.get("user_info", {})
-            user_info = UserInfo.from_dict(user_info)
-            msg = Message(
-                message_id=msg_data["message_id"],
-                chat_stream=chat_stream,
-                timestamp=msg_data["time"],
-                user_info=user_info,
-                processed_plain_text=msg_data.get("processed_text", ""),
-                detailed_plain_text=msg_data.get("detailed_plain_text", ""),
-            )
-            message_objects.append(msg)
-        except KeyError:
-            logger.warning("数据库中存在无效的消息")
-            continue
-
-    # 按时间正序排列
-    message_objects.reverse()
-    return message_objects
 
 
 def get_recent_group_detailed_plain_text(chat_stream_id: str, limit: int = 12, combine=False):

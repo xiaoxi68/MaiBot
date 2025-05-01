@@ -1,4 +1,4 @@
-from .observation import Observation
+from .observation import Observation, ChattingObservation
 from src.plugins.models.utils_model import LLMRequest
 from src.config.config import global_config
 import time
@@ -114,7 +114,7 @@ def calculate_replacement_probability(similarity: float) -> float:
 
 
 class SubMind:
-    def __init__(self, subheartflow_id: str, chat_state: ChatStateInfo, observations: Observation):
+    def __init__(self, subheartflow_id: str, chat_state: ChatStateInfo, observations: ChattingObservation):
         self.last_active_time = None
         self.subheartflow_id = subheartflow_id
 
@@ -130,10 +130,41 @@ class SubMind:
 
         self.current_mind = ""
         self.past_mind = []
-        self.structured_info = {}
+        self.structured_info = []
+        self.structured_info_str = ""
 
         name = chat_manager.get_stream_name(self.subheartflow_id)
         self.log_prefix = f"[{name}] "
+        self._update_structured_info_str()
+
+    def _update_structured_info_str(self):
+        """根据 structured_info 更新 structured_info_str"""
+        if not self.structured_info:
+            self.structured_info_str = ""
+            return
+
+        lines = ["【信息】"]
+        for item in self.structured_info:
+            # 简化展示，突出内容和类型，包含TTL供调试
+            type_str = item.get('type', '未知类型')
+            content_str = item.get('content', '')
+            ttl = item.get('ttl', '?')
+            
+            if type_str == "info":
+                lines.append(f"刚刚: {content_str}")
+            elif type_str == "memory":
+                lines.append(f"{content_str}")
+            elif type_str == "comparison_result":
+                lines.append(f"数字大小比较结果: {content_str}")
+            elif type_str == "time_info":
+                lines.append(f"{content_str}")
+            elif type_str == "lpmm_knowledge":
+                lines.append(f"你知道：{content_str}")
+            else:
+                lines.append(f"{type_str}的信息: {content_str}")
+
+        self.structured_info_str = "\n".join(lines)
+        logger.debug(f"{self.log_prefix} 更新 structured_info_str: \n{self.structured_info_str}")
 
     async def do_thinking_before_reply(self, history_cycle: list[CycleInfo] = None):
         """
@@ -145,19 +176,36 @@ class SubMind:
         # 更新活跃时间
         self.last_active_time = time.time()
 
+        # ---------- 0. 更新和清理 structured_info ----------
+        if self.structured_info:
+            logger.debug(f"{self.log_prefix} 更新前的 structured_info: {safe_json_dumps(self.structured_info, ensure_ascii=False)}")
+            updated_info = []
+            for item in self.structured_info:
+                item['ttl'] -= 1
+                if item['ttl'] > 0:
+                    updated_info.append(item)
+                else:
+                    logger.debug(f"{self.log_prefix} 移除过期的 structured_info 项: {item['id']}")
+            self.structured_info = updated_info
+            logger.debug(f"{self.log_prefix} 更新后的 structured_info: {safe_json_dumps(self.structured_info, ensure_ascii=False)}")
+            self._update_structured_info_str()
+        logger.debug(f"{self.log_prefix} 当前完整的 structured_info: {safe_json_dumps(self.structured_info, ensure_ascii=False)}")
+
         # ---------- 1. 准备基础数据 ----------
         # 获取现有想法和情绪状态
         previous_mind = self.current_mind if self.current_mind else ""
         mood_info = self.chat_state.mood
 
         # 获取观察对象
-        observation = self.observations[0] if self.observations else None
+        observation: ChattingObservation = self.observations[0] if self.observations else None
         if not observation or not hasattr(observation, "is_group_chat"):  # Ensure it's ChattingObservation or similar
             logger.error(f"{self.log_prefix} 无法获取有效的观察对象或缺少聊天类型信息")
             self.update_current_mind("(观察出错了...)")
             return self.current_mind, self.past_mind
-
+        
         is_group_chat = observation.is_group_chat
+        # logger.debug(f"is_group_chat: {is_group_chat}")
+        
         chat_target_info = observation.chat_target_info
         chat_target_name = "对方"  # Default for private
         if not is_group_chat and chat_target_info:
@@ -277,10 +325,11 @@ class SubMind:
 
         # ---------- 4. 构建最终提示词 ----------
         # --- Choose template based on chat type ---
+        logger.debug(f"is_group_chat: {is_group_chat}")
         if is_group_chat:
             template_name = "sub_heartflow_prompt_before"
             prompt = (await global_prompt_manager.get_prompt_async(template_name)).format(
-                extra_info="",
+                extra_info=self.structured_info_str,
                 prompt_personality=prompt_personality,
                 relation_prompt=relation_prompt,
                 bot_name=individuality.name,
@@ -295,7 +344,7 @@ class SubMind:
         else:  # Private chat
             template_name = "sub_heartflow_prompt_private_before"
             prompt = (await global_prompt_manager.get_prompt_async(template_name)).format(
-                extra_info="",
+                extra_info=self.structured_info_str,
                 prompt_personality=prompt_personality,
                 relation_prompt=relation_prompt,  # Might need adjustment for private context
                 bot_name=individuality.name,
@@ -447,7 +496,7 @@ class SubMind:
             tool_instance: 工具使用器实例
         """
         tool_results = []
-        structured_info = {}  # 动态生成键
+        new_structured_items = [] # 收集新产生的结构化信息
 
         # 执行所有工具调用
         for tool_call in tool_calls:
@@ -455,23 +504,34 @@ class SubMind:
                 result = await tool_instance._execute_tool_call(tool_call)
                 if result:
                     tool_results.append(result)
+                    # 创建新的结构化信息项
+                    new_item = {
+                        "type": result.get("type", "unknown_type"), # 使用 'type' 键
+                        "id": result.get("id", f"fallback_id_{time.time()}"), # 使用 'id' 键
+                        "content": result.get("content", ""), # 'content' 键保持不变
+                        "ttl": 3
+                    }
+                    new_structured_items.append(new_item)
 
-                    # 使用工具名称作为键
-                    tool_name = result["name"]
-                    if tool_name not in structured_info:
-                        structured_info[tool_name] = []
-
-                    structured_info[tool_name].append({"name": result["name"], "content": result["content"]})
             except Exception as tool_e:
                 logger.error(f"[{self.subheartflow_id}] 工具执行失败: {tool_e}")
+                logger.error(traceback.format_exc()) # 添加 traceback 记录
 
-        # 如果有工具结果，记录并更新结构化信息
-        if structured_info:
-            logger.debug(f"工具调用收集到结构化信息: {safe_json_dumps(structured_info, ensure_ascii=False)}")
-            self.structured_info = structured_info
+        # 如果有新的工具结果，记录并更新结构化信息
+        if new_structured_items:
+            self.structured_info.extend(new_structured_items) # 添加到现有列表
+            logger.debug(f"工具调用收集到新的结构化信息: {safe_json_dumps(new_structured_items, ensure_ascii=False)}")
+            # logger.debug(f"当前完整的 structured_info: {safe_json_dumps(self.structured_info, ensure_ascii=False)}") # 可以取消注释以查看完整列表
+            self._update_structured_info_str() # 添加新信息后，更新字符串表示
 
     def update_current_mind(self, response):
-        self.past_mind.append(self.current_mind)
+        if self.current_mind: # 只有当 current_mind 非空时才添加到 past_mind
+            self.past_mind.append(self.current_mind)
+            # 可以考虑限制 past_mind 的大小，例如:
+            # max_past_mind_size = 10
+            # if len(self.past_mind) > max_past_mind_size:
+            #     self.past_mind.pop(0) # 移除最旧的
+
         self.current_mind = response
 
 

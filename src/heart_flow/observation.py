@@ -79,9 +79,8 @@ class ChattingObservation(Observation):
     async def initialize(self):
         # --- Use utility function to determine chat type and fetch info ---
         self.is_group_chat, self.chat_target_info = await get_chat_type_and_target_info(self.chat_id)
-        logger.debug(
-            f"ChattingObservation {self.chat_id} initialized: is_group={self.is_group_chat}, target_info={self.chat_target_info}"
-        )
+        # logger.debug(f"is_group_chat: {self.is_group_chat}")
+        # logger.debug(f"chat_target_info: {self.chat_target_info}")
         # --- End using utility function ---
 
         # Fetch initial messages (existing logic)

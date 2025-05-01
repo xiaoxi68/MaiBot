@@ -1,7 +1,9 @@
 from src.do_tool.tool_can_use.base_tool import BaseTool, register_tool
 from src.plugins.person_info.person_info import person_info_manager
 from src.common.logger_manager import get_logger
+from src.plugins.person_info.relationship_manager import relationship_manager
 import json
+import time
 
 logger = get_logger("rename_person_tool")
 
@@ -82,10 +84,10 @@ class RenamePersonTool(BaseTool):
                 new_name = result["nickname"]
                 reason = result.get("reason", "未提供理由")
                 logger.info(f"成功为用户 {person_id} 取了新昵称: {new_name}")
-                return {
-                    "name": self.name,
-                    "content": f"好的，我已经给 '{person_name_to_find}' 取了新昵称：'{new_name}'。因为：{reason}"
-                }
+
+                content = f"已成功将用户 {person_name_to_find} 的备注名更新为 {new_name}"
+                logger.info(content)
+                return {"type": "info", "id": f"rename_success_{time.time()}", "content": content}
             else:
                 logger.warning(f"为用户 {person_id} 调用 qv_person_name 后未能成功获取新昵称。")
                 # 尝试从内存中获取可能已经更新的名字
@@ -102,11 +104,9 @@ class RenamePersonTool(BaseTool):
                     }
 
         except Exception as e:
-            logger.error(f"执行 rename_person 工具时出错: {e}", exc_info=True)
-            return {
-                "name": self.name,
-                "content": f"执行重命名操作时遇到内部错误: {e}"
-            }
+            error_msg = f"重命名失败: {str(e)}"
+            logger.error(error_msg, exc_info=True)
+            return {"type": "info_error", "id": f"rename_error_{time.time()}", "content": error_msg}
 
 # 注册工具
 register_tool(RenamePersonTool) 

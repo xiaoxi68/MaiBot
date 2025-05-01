@@ -63,15 +63,12 @@ class NormalChat:
         self.is_group_chat, self.chat_target_info = await get_chat_type_and_target_info(self.stream_id)
         # Update stream_name again after potential async call in util func
         self.stream_name = chat_manager.get_stream_name(self.stream_id) or self.stream_id
-        logger.debug(
-            f"[{self.stream_name}] NormalChat initialized: is_group={self.is_group_chat}, target_info={self.chat_target_info}"
-        )
         # --- End using utility function ---
         self._initialized = True
         logger.info(f"[{self.stream_name}] NormalChat 实例 initialize 完成 (异步部分)。")
 
     # 改为实例方法
-    async def _create_thinking_message(self, message: MessageRecv) -> str:
+    async def _create_thinking_message(self, message: MessageRecv, timestamp: Optional[float] = None) -> str:
         """创建思考消息"""
         messageinfo = message.message_info
 
@@ -85,15 +82,15 @@ class NormalChat:
         thinking_id = "mt" + str(thinking_time_point)
         thinking_message = MessageThinking(
             message_id=thinking_id,
-            chat_stream=self.chat_stream,  # 使用 self.chat_stream
+            chat_stream=self.chat_stream,
             bot_user_info=bot_user_info,
             reply=message,
             thinking_start_time=thinking_time_point,
+            timestamp=timestamp if timestamp is not None else None
         )
 
         await message_manager.add_message(thinking_message)
         return thinking_id
-
     # 改为实例方法
     async def _add_messages_to_manager(
         self, message: MessageRecv, response_set: List[str], thinking_id
@@ -209,7 +206,7 @@ class NormalChat:
                 try:
                     # 处理消息
                     await self.normal_response(
-                        message=message, is_mentioned=is_mentioned, interested_rate=interest_value
+                        message=message, is_mentioned=is_mentioned, interested_rate=interest_value, rewind_response = False
                     )
                 except Exception as e:
                     logger.error(f"[{self.stream_name}] 处理兴趣消息{msg_id}时出错: {e}\n{traceback.format_exc()}")
@@ -217,7 +214,7 @@ class NormalChat:
                     self.interest_dict.pop(msg_id, None)
 
     # 改为实例方法, 移除 chat 参数
-    async def normal_response(self, message: MessageRecv, is_mentioned: bool, interested_rate: float) -> None:
+    async def normal_response(self, message: MessageRecv, is_mentioned: bool, interested_rate: float, rewind_response: bool = False) -> None:
         # 检查收到的消息是否属于当前实例处理的 chat stream
         if message.chat_stream.stream_id != self.stream_id:
             logger.error(
@@ -264,7 +261,10 @@ class NormalChat:
             await willing_manager.before_generate_reply_handle(message.message_info.message_id)
 
             with Timer("创建思考消息", timing_results):
-                thinking_id = await self._create_thinking_message(message)
+                if rewind_response:
+                    thinking_id = await self._create_thinking_message(message, message.message_info.time)
+                else:
+                    thinking_id = await self._create_thinking_message(message)
 
             logger.debug(f"[{self.stream_name}] 创建捕捉器，thinking_id:{thinking_id}")
 
@@ -393,7 +393,7 @@ class NormalChat:
 
             try:
                 logger.info(f"[{self.stream_name}] 处理初始高兴趣消息 {msg_id} (兴趣值: {interest_value:.2f})")
-                await self.normal_response(message=message, is_mentioned=is_mentioned, interested_rate=interest_value)
+                await self.normal_response(message=message, is_mentioned=is_mentioned, interested_rate=interest_value, rewind_response = True)
                 processed_count += 1
             except Exception as e:
                 logger.error(f"[{self.stream_name}] 处理初始兴趣消息 {msg_id} 时出错: {e}\\n{traceback.format_exc()}")

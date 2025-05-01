@@ -18,7 +18,7 @@ async def get_chat_type_and_target_info(chat_id: str) -> Tuple[bool, Optional[Di
         Tuple[bool, Optional[Dict]]:
             - bool: 是否为群聊 (True 是群聊, False 是私聊或未知)
             - Optional[Dict]: 如果是私聊，包含对方信息的字典；否则为 None。
-              字典包含: platform, user_id, user_nickname, person_id, person_name
+            字典包含: platform, user_id, user_nickname, person_id, person_name
     """
     is_group_chat = False  # Default to private/unknown
     chat_target_info = None
