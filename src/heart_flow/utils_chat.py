@@ -51,8 +51,8 @@ async def get_chat_type_and_target_info(chat_id: str) -> Tuple[bool, Optional[Di
                     person_id = await asyncio.to_thread(person_info_manager.get_person_id, platform, user_id)
                     person_name = None
                     if person_id:
-                         # get_value is async, so await it directly
-                         person_name = await person_info_manager.get_value(person_id, "person_name")
+                        # get_value is async, so await it directly
+                        person_name = await person_info_manager.get_value(person_id, "person_name")
 
                     target_info['person_id'] = person_id
                     target_info['person_name'] = person_name
