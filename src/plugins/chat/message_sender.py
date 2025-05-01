@@ -222,7 +222,7 @@ class MessageManager:
             if (
                 message.apply_set_reply_logic  # 检查标记
                 and message.is_head
-                and (thinking_messages_count > 1 or thinking_messages_length > 20)
+                and (thinking_messages_count > 3 or thinking_messages_length > 200)
                 and not message.is_private_message()
             ):
                 logger.debug(
