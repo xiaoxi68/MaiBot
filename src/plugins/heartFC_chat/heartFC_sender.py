@@ -144,4 +144,3 @@ class HeartFCSender:
             logger.error(f"[{chat_id}] 处理或存储消息 {message_id} 时出错: {e}")
             # 重新抛出异常，让调用者知道失败了
             raise e
-
