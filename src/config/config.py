@@ -268,6 +268,7 @@ class BotConfig:
     # experimental
     enable_friend_chat: bool = False  # 是否启用好友聊天
     # enable_think_flow: bool = False  # 是否启用思考流程
+    talk_allowed_private = set()
     enable_pfc_chatting: bool = False  # 是否启用PFC聊天
 
     # 模型配置
@@ -651,6 +652,7 @@ class BotConfig:
             experimental_config = parent["experimental"]
             config.enable_friend_chat = experimental_config.get("enable_friend_chat", config.enable_friend_chat)
             # config.enable_think_flow = experimental_config.get("enable_think_flow", config.enable_think_flow)
+            config.talk_allowed_private = set(str(user) for user in experimental_config.get("talk_allowed_private", []))
             if config.INNER_VERSION in SpecifierSet(">=1.1.0"):
                 config.enable_pfc_chatting = experimental_config.get("pfc_chatting", config.enable_pfc_chatting)
 
