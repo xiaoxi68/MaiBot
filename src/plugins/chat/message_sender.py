@@ -232,7 +232,7 @@ class MessageManager:
             # --- 结束条件 set_reply ---
 
             await message.process()  # 预处理消息内容
-            
+
             logger.debug(f"{message}")
 
             # 使用全局 message_sender 实例
