@@ -45,20 +45,15 @@ async def get_chat_type_and_target_info(chat_id: str) -> Tuple[bool, Optional[Di
                     'person_name': None 
                 }
                 
-                # Try to fetch person info (assuming person_info_manager methods are sync)
+                # Try to fetch person info 
                 try:
-                    # Use asyncio.to_thread for potentially blocking sync calls
+                    # Assume get_person_id is sync (as per original code), keep using to_thread
                     person_id = await asyncio.to_thread(person_info_manager.get_person_id, platform, user_id)
                     person_name = None
                     if person_id:
-                         person_name = await asyncio.to_thread(person_info_manager.get_value, person_id, "person_name")
+                         # get_value is async, so await it directly
+                         person_name = await person_info_manager.get_value(person_id, "person_name")
 
-                    # If person_info_manager methods are async, await them directly:
-                    # person_id = await person_info_manager.get_person_id(platform, user_id)
-                    # person_name = None
-                    # if person_id:
-                    #     person_name = await person_info_manager.get_value(person_id, "person_name")
-                        
                     target_info['person_id'] = person_id
                     target_info['person_name'] = person_name
                 except Exception as person_e:

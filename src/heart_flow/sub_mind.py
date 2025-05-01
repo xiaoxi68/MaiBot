@@ -20,34 +20,62 @@ logger = get_logger("sub_heartflow")
 
 
 def init_prompt():
-    prompt = ""
-    prompt += "{extra_info}\n"
-    prompt += "{relation_prompt}\n"
-    prompt += "你的名字是{bot_name},{prompt_personality}\n"
-    prompt += "{last_loop_prompt}\n"
-    prompt += "{cycle_info_block}\n"
-    prompt += "现在是{time_now}，你正在上网，和qq群里的网友们聊天，以下是正在进行的聊天内容：\n{chat_observe_info}\n"
-    prompt += "\n你现在{mood_info}\n"
-    prompt += "请仔细阅读当前群聊内容，分析讨论话题和群成员关系，分析你刚刚发言和别人对你的发言的反应，思考你要不要回复。然后思考你是否需要使用函数工具。"
-    prompt += "思考并输出你的内心想法\n"
-    prompt += "输出要求：\n"
-    prompt += "1. 根据聊天内容生成你的想法，{hf_do_next}\n"
-    prompt += "2. 不要分点、不要使用表情符号\n"
-    prompt += "3. 避免多余符号(冒号、引号、括号等)\n"
-    prompt += "4. 语言简洁自然，不要浮夸\n"
-    prompt += "5. 如果你刚发言，并且没有人回复你，不要回复\n"
-    prompt += "工具使用说明：\n"
-    prompt += "1. 输出想法后考虑是否需要使用工具\n"
-    prompt += "2. 工具可获取信息或执行操作\n"
-    prompt += "3. 如需处理消息或回复，请使用工具\n"
+    # --- Group Chat Prompt --- 
+    group_prompt = """
+{extra_info}
+{relation_prompt}
+你的名字是{bot_name},{prompt_personality}
+{last_loop_prompt}
+{cycle_info_block}
+现在是{time_now}，你正在上网，和qq群里的网友们聊天，以下是正在进行的聊天内容：
+{chat_observe_info}
 
-    Prompt(prompt, "sub_heartflow_prompt_before")
+你现在{mood_info}
+请仔细阅读当前群聊内容，分析讨论话题和群成员关系，分析你刚刚发言和别人对你的发言的反应，思考你要不要回复。然后思考你是否需要使用函数工具。
+思考并输出你的内心想法
+输出要求：
+1. 根据聊天内容生成你的想法，{hf_do_next}
+2. 不要分点、不要使用表情符号
+3. 避免多余符号(冒号、引号、括号等)
+4. 语言简洁自然，不要浮夸
+5. 如果你刚发言，并且没有人回复你，不要回复
+工具使用说明：
+1. 输出想法后考虑是否需要使用工具
+2. 工具可获取信息或执行操作
+3. 如需处理消息或回复，请使用工具。"""
+    Prompt(group_prompt, "sub_heartflow_prompt_before")
 
-    prompt = ""
-    prompt += "刚刚你的内心想法是：{current_thinking_info}\n"
-    prompt += "{if_replan_prompt}\n"
+    # --- Private Chat Prompt --- 
+    private_prompt = """
+{extra_info}
+{relation_prompt}
+你的名字是{bot_name},{prompt_personality}
+{last_loop_prompt}
+{cycle_info_block}
+现在是{time_now}，你正在上网，和 {chat_target_name} 私聊，以下是你们的聊天内容：
+{chat_observe_info}
 
-    Prompt(prompt, "last_loop")
+你现在{mood_info}
+请仔细阅读聊天内容，分析你和 {chat_target_name} 的关系，分析你刚刚发言和对方的反应，思考你要不要回复。然后思考你是否需要使用函数工具。
+思考并输出你的内心想法
+输出要求：
+1. 根据聊天内容生成你的想法，{hf_do_next}
+2. 不要分点、不要使用表情符号
+3. 避免多余符号(冒号、引号、括号等)
+4. 语言简洁自然，不要浮夸
+5. 如果你刚发言，对方没有回复你，请谨慎回复
+工具使用说明：
+1. 输出想法后考虑是否需要使用工具
+2. 工具可获取信息或执行操作
+3. 如需处理消息或回复，请使用工具。"""
+    Prompt(private_prompt, "sub_heartflow_prompt_private_before") # New template name
+
+    # --- Last Loop Prompt (remains the same) --- 
+    last_loop_t = """
+刚刚你的内心想法是：{current_thinking_info}
+{if_replan_prompt}
+"""
+    Prompt(last_loop_t, "last_loop")
 
 
 def calculate_similarity(text_a: str, text_b: str) -> float:
@@ -122,11 +150,18 @@ class SubMind:
         mood_info = self.chat_state.mood
 
         # 获取观察对象
-        observation = self.observations[0]
-        if not observation:
-            logger.error(f"{self.log_prefix} 无法获取观察对象")
-            self.update_current_mind("(我没看到任何聊天内容...)")
+        observation = self.observations[0] if self.observations else None
+        if not observation or not hasattr(observation, 'is_group_chat'): # Ensure it's ChattingObservation or similar
+            logger.error(f"{self.log_prefix} 无法获取有效的观察对象或缺少聊天类型信息")
+            self.update_current_mind("(观察出错了...)")
             return self.current_mind, self.past_mind
+            
+        is_group_chat = observation.is_group_chat
+        chat_target_info = observation.chat_target_info
+        chat_target_name = "对方" # Default for private
+        if not is_group_chat and chat_target_info:
+            chat_target_name = chat_target_info.get('person_name') or chat_target_info.get('user_nickname') or chat_target_name
+        # --- End getting observation info --- 
 
         # 获取观察内容
         chat_observe_info = observation.get_observe_info()
@@ -238,19 +273,38 @@ class SubMind:
         )[0]
 
         # ---------- 4. 构建最终提示词 ----------
-        # 获取提示词模板并填充数据
-        prompt = (await global_prompt_manager.get_prompt_async("sub_heartflow_prompt_before")).format(
-            extra_info="",  # 可以在这里添加额外信息
-            prompt_personality=prompt_personality,
-            relation_prompt=relation_prompt,
-            bot_name=individuality.name,
-            time_now=time_now,
-            chat_observe_info=chat_observe_info,
-            mood_info=mood_info,
-            hf_do_next=hf_do_next,
-            last_loop_prompt=last_loop_prompt,
-            cycle_info_block=cycle_info_block,
-        )
+        # --- Choose template based on chat type --- 
+        if is_group_chat:
+            template_name = "sub_heartflow_prompt_before"
+            prompt = (await global_prompt_manager.get_prompt_async(template_name)).format(
+                extra_info="",
+                prompt_personality=prompt_personality,
+                relation_prompt=relation_prompt,
+                bot_name=individuality.name,
+                time_now=time_now,
+                chat_observe_info=chat_observe_info,
+                mood_info=mood_info,
+                hf_do_next=hf_do_next,
+                last_loop_prompt=last_loop_prompt,
+                cycle_info_block=cycle_info_block,
+                # chat_target_name is not used in group prompt
+            )
+        else: # Private chat
+            template_name = "sub_heartflow_prompt_private_before"
+            prompt = (await global_prompt_manager.get_prompt_async(template_name)).format(
+                extra_info="", 
+                prompt_personality=prompt_personality,
+                relation_prompt=relation_prompt, # Might need adjustment for private context
+                bot_name=individuality.name,
+                time_now=time_now,
+                chat_target_name=chat_target_name, # Pass target name
+                chat_observe_info=chat_observe_info,
+                mood_info=mood_info,
+                hf_do_next=hf_do_next,
+                last_loop_prompt=last_loop_prompt,
+                cycle_info_block=cycle_info_block,
+            )
+        # --- End choosing template --- 
 
         # ---------- 5. 执行LLM请求并处理响应 ----------
         content = ""  # 初始化内容变量
