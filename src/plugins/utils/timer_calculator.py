@@ -3,6 +3,7 @@ from functools import wraps
 from typing import Optional, Dict, Callable
 import asyncio
 from rich.traceback import install
+
 install(show_locals=True, extra_lines=3)
 
 """

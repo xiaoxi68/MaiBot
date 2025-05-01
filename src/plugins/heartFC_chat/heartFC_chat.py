@@ -28,6 +28,7 @@ from src.plugins.respon_info_catcher.info_catcher import info_catcher_manager
 from src.plugins.moods.moods import MoodManager
 from src.heart_flow.utils_chat import get_chat_type_and_target_info
 from rich.traceback import install
+
 install(show_locals=True, extra_lines=3)
 
 

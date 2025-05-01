@@ -24,6 +24,7 @@ from .waiter import Waiter
 
 import traceback
 from rich.traceback import install
+
 install(show_locals=True, extra_lines=3)
 
 logger = get_logger("pfc")

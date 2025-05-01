@@ -15,6 +15,7 @@ from packaging.specifiers import SpecifierSet, InvalidSpecifier
 
 from src.common.logger_manager import get_logger
 from rich.traceback import install
+
 install(show_locals=True, extra_lines=3)
 
 

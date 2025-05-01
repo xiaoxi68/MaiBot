@@ -3,6 +3,7 @@ import inspect
 from typing import Callable, Any
 from .logger import logger, add_custom_style_handler
 from rich.traceback import install
+
 install(show_locals=True, extra_lines=3)
 
 

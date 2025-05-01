@@ -13,6 +13,7 @@ from .lpmmconfig import ENT_NAMESPACE, PG_NAMESPACE, REL_NAMESPACE, global_confi
 from .utils.hash import get_sha256
 from .global_logger import logger
 from rich.traceback import install
+
 install(show_locals=True, extra_lines=3)
 
 

@@ -14,6 +14,7 @@ from src.common.logger_manager import get_logger
 from src.common.crash_logger import install_crash_handler
 from src.main import MainSystem
 from rich.traceback import install
+
 install(show_locals=True, extra_lines=3)
 
 

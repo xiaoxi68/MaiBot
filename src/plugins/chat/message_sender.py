@@ -14,6 +14,7 @@ from .utils import truncate_message, calculate_typing_time, count_messages_betwe
 
 from src.common.logger_manager import get_logger
 from rich.traceback import install
+
 install(show_locals=True, extra_lines=3)
 
 

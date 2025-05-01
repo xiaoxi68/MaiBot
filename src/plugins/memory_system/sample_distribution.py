@@ -2,6 +2,7 @@ import numpy as np
 from scipy import stats
 from datetime import datetime, timedelta
 from rich.traceback import install
+
 install(show_locals=True, extra_lines=3)
 
 

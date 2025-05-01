@@ -8,6 +8,7 @@ from tqdm import tqdm
 from rich.console import Console
 from rich.table import Table
 from rich.traceback import install
+
 install(show_locals=True, extra_lines=3)
 
 # 添加项目根目录到 Python 路径

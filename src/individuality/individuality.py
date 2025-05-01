@@ -3,6 +3,7 @@ from .personality import Personality
 from .identity import Identity
 import random
 from rich.traceback import install
+
 install(show_locals=True, extra_lines=3)
 
 
