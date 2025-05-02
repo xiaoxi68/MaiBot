@@ -44,7 +44,7 @@ def process_text_file(file_path):
 
 def main():
     # 新增用户确认提示
-    print("=== 重要操作确认 ===")
+    print("=== 重要操作确认，请认真阅读以下内容哦 ===")
     print("如果你并非第一次导入知识")
     print("请先删除data/import.json文件，备份data/openie.json文件")
     print("在进行知识库导入之前")

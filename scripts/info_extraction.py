@@ -87,8 +87,8 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
 
     # 新增用户确认提示
-    print("=== 重要操作确认 ===")
-    print("实体提取操作将会花费较多资金和时间，建议在空闲时段执行。")
+    print("=== 重要操作确认，请认真阅读以下内容哦 ===")
+    print("实体提取操作将会花费较多api余额和时间，建议在空闲时段执行。")
     print("举例：600万字全剧情，提取选用deepseek v3 0324，消耗约40元，约3小时。")
     print("建议使用硅基流动的非Pro模型")
     print("或者使用可以用赠金抵扣的Pro模型")
