@@ -154,7 +154,8 @@ class OpenIE:
         """提取原始段落"""
         raw_paragraph_dict = dict({doc_item["idx"]: doc_item["passage"] for doc_item in self.docs})
         return raw_paragraph_dict
-    
+
+
 if __name__ == "__main__":
     # 测试代码
     print(ROOT_PATH)

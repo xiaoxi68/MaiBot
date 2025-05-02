@@ -18,15 +18,31 @@ from src.plugins.knowledge.src.ie_process import info_extract_from_str
 from src.plugins.knowledge.src.llm_client import LLMClient
 from src.plugins.knowledge.src.open_ie import OpenIE
 from src.plugins.knowledge.src.raw_processing import load_raw_data
-from rich.progress import BarColumn, TimeElapsedColumn, TimeRemainingColumn, TaskProgressColumn, MofNCompleteColumn, SpinnerColumn, TextColumn
+from rich.progress import (
+    BarColumn,
+    TimeElapsedColumn,
+    TimeRemainingColumn,
+    TaskProgressColumn,
+    MofNCompleteColumn,
+    SpinnerColumn,
+    TextColumn,
+)
 
 logger = get_module_logger("LPMM知识库-信息提取")
 
 
 ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 TEMP_DIR = os.path.join(ROOT_PATH, "temp")
-IMPORTED_DATA_PATH = global_config["persistence"]["raw_data_path"] if global_config["persistence"]["raw_data_path"] else os.path.join(ROOT_PATH, "data/imported_lpmm_data")
-OPENIE_OUTPUT_DIR = global_config["persistence"]["openie_data_path"] if global_config["persistence"]["openie_data_path"] else os.path.join(ROOT_PATH, "data/openie")
+IMPORTED_DATA_PATH = (
+    global_config["persistence"]["raw_data_path"]
+    if global_config["persistence"]["raw_data_path"]
+    else os.path.join(ROOT_PATH, "data/imported_lpmm_data")
+)
+OPENIE_OUTPUT_DIR = (
+    global_config["persistence"]["openie_data_path"]
+    if global_config["persistence"]["openie_data_path"]
+    else os.path.join(ROOT_PATH, "data/openie")
+)
 
 # 创建一个线程安全的锁，用于保护文件操作和共享数据
 file_lock = Lock()
@@ -206,7 +222,12 @@ def main():
         filename = now.strftime("%m-%d-%H-%S-openie.json")
         output_path = os.path.join(OPENIE_OUTPUT_DIR, filename)
         with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(openie_obj.to_dict() if hasattr(openie_obj, "to_dict") else openie_obj.__dict__, f, ensure_ascii=False, indent=4)
+            json.dump(
+                openie_obj.to_dict() if hasattr(openie_obj, "to_dict") else openie_obj.__dict__,
+                f,
+                ensure_ascii=False,
+                indent=4,
+            )
         logger.info(f"信息提取结果已保存到: {output_path}")
     else:
         logger.warning("没有可保存的信息提取结果")

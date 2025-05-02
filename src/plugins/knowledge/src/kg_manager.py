@@ -5,7 +5,16 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
-from rich.progress import Progress, BarColumn, TimeElapsedColumn, TimeRemainingColumn, TaskProgressColumn, MofNCompleteColumn, SpinnerColumn, TextColumn
+from rich.progress import (
+    Progress,
+    BarColumn,
+    TimeElapsedColumn,
+    TimeRemainingColumn,
+    TaskProgressColumn,
+    MofNCompleteColumn,
+    SpinnerColumn,
+    TextColumn,
+)
 from quick_algo import di_graph, pagerank
 
 
