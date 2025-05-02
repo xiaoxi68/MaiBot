@@ -19,7 +19,8 @@ from src.plugins.knowledge.src.utils.hash import get_sha256
 
 
 # 添加项目根目录到 sys.path
-
+ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+OPENIE_DIR = global_config["persistence"]["openie_data_path"] if global_config["persistence"]["openie_data_path"] else os.path.join(ROOT_PATH, "data/openie")
 
 logger = get_module_logger("LPMM知识库-OpenIE导入")
 
@@ -131,6 +132,7 @@ def main():
         embed_manager.load_from_file()
     except Exception as e:
         logger.error("从文件加载Embedding库时发生错误：{}".format(e))
+        logger.error("如果你是第一次导入知识，请忽略此错误")
     logger.info("Embedding库加载完成")
     # 初始化KG
     kg_manager = KGManager()
@@ -139,6 +141,7 @@ def main():
         kg_manager.load_from_file()
     except Exception as e:
         logger.error("从文件加载KG时发生错误：{}".format(e))
+        logger.error("如果你是第一次导入知识，请忽略此错误")
     logger.info("KG加载完成")
 
     logger.info(f"KG节点数量：{len(kg_manager.graph.get_node_list())}")
@@ -163,4 +166,5 @@ def main():
 
 
 if __name__ == "__main__":
+    # logger.info(f"111111111111111111111111{ROOT_PATH}")
     main()
