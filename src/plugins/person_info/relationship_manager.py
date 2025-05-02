@@ -5,7 +5,7 @@ from bson.decimal128 import Decimal128
 from .person_info import person_info_manager
 import time
 import random
-from maim_message import UserInfo, Seg
+from maim_message import UserInfo
 # import re
 # import traceback
 
