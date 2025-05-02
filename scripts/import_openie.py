@@ -6,6 +6,7 @@
 
 import sys
 import os
+from time import sleep
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -26,7 +27,7 @@ OPENIE_DIR = (
     else os.path.join(ROOT_PATH, "data/openie")
 )
 
-logger = get_module_logger("LPMM知识库-OpenIE导入")
+logger = get_module_logger("OpenIE导入")
 
 
 def hash_deduplicate(
@@ -71,8 +72,45 @@ def handle_import_openie(openie_data: OpenIE, embed_manager: EmbeddingManager, k
     entity_list_data = openie_data.extract_entity_dict()
     # 索引的三元组列表
     triple_list_data = openie_data.extract_triple_dict()
+    # print(openie_data.docs)
     if len(raw_paragraphs) != len(entity_list_data) or len(raw_paragraphs) != len(triple_list_data):
         logger.error("OpenIE数据存在异常")
+        logger.error(f"原始段落数量：{len(raw_paragraphs)}")
+        logger.error(f"实体列表数量：{len(entity_list_data)}")
+        logger.error(f"三元组列表数量：{len(triple_list_data)}")
+        logger.error("OpenIE数据段落数量与实体列表数量或三元组列表数量不一致")
+        logger.error("请保证你的原始数据分段良好，不要有类似于 “.....” 单独成一段的情况")
+        logger.error("或者一段中只有符号的情况")
+        # 新增：检查docs中每条数据的完整性
+        logger.error("系统将于2秒后开始检查数据完整性")
+        sleep(2)
+        found_missing = False
+        for doc in getattr(openie_data, "docs", []):
+            idx = doc.get("idx", "<无idx>")
+            passage = doc.get("passage", "<无passage>")
+            missing = []
+            # 检查字段是否存在且非空
+            if "passage" not in doc or not doc.get("passage"):
+                missing.append("passage")
+            if "extracted_entities" not in doc or not isinstance(doc.get("extracted_entities"), list):
+                missing.append("名词列表缺失")
+            elif len(doc.get("extracted_entities", [])) == 0:
+                missing.append("名词列表为空")
+            if "extracted_triples" not in doc or not isinstance(doc.get("extracted_triples"), list):
+                missing.append("主谓宾三元组缺失")
+            elif len(doc.get("extracted_triples", [])) == 0:
+                missing.append("主谓宾三元组为空")
+            # 输出所有doc的idx
+            # print(f"检查: idx={idx}")
+            if missing:
+                found_missing = True
+                logger.error("\n")
+                logger.error("数据缺失：")
+                logger.error(f"对应哈希值：{idx}")
+                logger.error(f"对应文段内容内容：{passage}")
+                logger.error(f"非法原因：{', '.join(missing)}")
+        if not found_missing:
+            print("所有数据均完整，没有发现缺失字段。")
         return False
     # 将索引换为对应段落的hash值
     logger.info("正在进行段落去重与重索引")
