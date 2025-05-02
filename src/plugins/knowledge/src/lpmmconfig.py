@@ -1,6 +1,7 @@
 import os
 import toml
 import sys
+
 # import argparse
 from .global_logger import logger
 
@@ -71,7 +72,7 @@ def _load_config(config, config_file_path):
 
 global_config = dict(
     {
-        "lpmm":{
+        "lpmm": {
             "version": "0.1.0",
         },
         "llm_providers": {
