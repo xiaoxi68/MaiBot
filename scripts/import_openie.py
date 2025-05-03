@@ -30,7 +30,6 @@ OPENIE_DIR = (
 logger = get_module_logger("OpenIE导入")
 
 
-
 def hash_deduplicate(
     raw_paragraphs: dict[str, str],
     triple_list_data: dict[str, list[list[str]]],
@@ -167,7 +166,6 @@ def main():
             global_config["llm_providers"][key]["base_url"],
             global_config["llm_providers"][key]["api_key"],
         )
-
 
     # 初始化Embedding库
     embed_manager = EmbeddingManager(llm_client_list[global_config["embedding"]["provider"]])

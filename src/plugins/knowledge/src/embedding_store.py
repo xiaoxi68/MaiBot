@@ -44,7 +44,7 @@ EMBEDDING_TEST_STRINGS = [
     "来玩巧克甜恋谢谢喵",
     "水印",
     "我也在纠结晚饭，铁锅炒鸡听着就香！",
-    "test你妈喵"
+    "test你妈喵",
 ]
 EMBEDDING_TEST_FILE = os.path.join(ROOT_PATH, "data", "embedding_model_test.json")
 EMBEDDING_SIM_THRESHOLD = 0.99
