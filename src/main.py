@@ -1,5 +1,6 @@
 import asyncio
 import time
+import os
 from .plugins.utils.statistic import LLMStatistics
 from .plugins.moods.moods import MoodManager
 from .plugins.schedule.schedule_generator import bot_schedule
@@ -18,6 +19,7 @@ from .plugins.remote import heartbeat_thread  # noqa: F401
 from .individuality.individuality import Individuality
 from .common.server import global_server
 from rich.traceback import install
+from .api.main import start_api_server
 
 install(extra_lines=3)
 
@@ -54,6 +56,9 @@ class MainSystem:
         self.llm_stats.start()
         logger.success("LLM统计功能启动成功")
 
+        # 启动API服务器
+        start_api_server()
+        logger.success("API服务器启动成功")
         # 初始化表情管理器
         emoji_manager.initialize()
         logger.success("表情包管理器初始化成功")
