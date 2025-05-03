@@ -41,6 +41,7 @@ from src.common.logger import (
     CHAT_MESSAGE_STYLE_CONFIG,
     CHAT_IMAGE_STYLE_CONFIG,
     INIT_STYLE_CONFIG,
+    API_SERVER_STYLE_CONFIG,
 )
 
 # 可根据实际需要补充更多模块配置
@@ -86,6 +87,7 @@ MODULE_LOGGER_CONFIGS = {
     "chat_message": CHAT_MESSAGE_STYLE_CONFIG,  # 聊天消息
     "chat_image": CHAT_IMAGE_STYLE_CONFIG,  # 聊天图片
     "init": INIT_STYLE_CONFIG,  # 初始化
+    "api": API_SERVER_STYLE_CONFIG,  # API服务器
     # ...如有更多模块，继续添加...
 }
 
