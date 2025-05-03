@@ -1,6 +1,5 @@
 import asyncio
 import time
-import os
 from .plugins.utils.statistic import LLMStatistics
 from .plugins.moods.moods import MoodManager
 from .plugins.schedule.schedule_generator import bot_schedule
