@@ -176,7 +176,7 @@ class SubHeartflowManager:
 
     def get_inactive_subheartflows(self, max_age_seconds=INACTIVE_THRESHOLD_SECONDS):
         """识别并返回需要清理的不活跃(处于ABSENT状态超过一小时)子心流(id, 原因)"""
-        current_time = time.time()
+        _current_time = time.time()
         flows_to_stop = []
 
         for subheartflow_id, subheartflow in list(self.subheartflows.items()):
@@ -184,7 +184,7 @@ class SubHeartflowManager:
             if state != ChatState.ABSENT:
                 continue
             subheartflow.update_last_chat_state_time()
-            absent_last_time = subheartflow.chat_state_last_time
+            _absent_last_time = subheartflow.chat_state_last_time
             flows_to_stop.append(subheartflow_id)
 
         return flows_to_stop
