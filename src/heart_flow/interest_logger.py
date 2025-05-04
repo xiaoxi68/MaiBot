@@ -29,6 +29,14 @@ def _ensure_log_directory():
     logger.info(f"已确保日志目录 '{LOG_DIRECTORY}' 存在")
 
 
+def _clear_and_create_log_file():
+    """清除日志文件并创建新的日志文件。"""
+    if os.path.exists(os.path.join(LOG_DIRECTORY, HISTORY_LOG_FILENAME)):
+        os.remove(os.path.join(LOG_DIRECTORY, HISTORY_LOG_FILENAME))
+    with open(os.path.join(LOG_DIRECTORY, HISTORY_LOG_FILENAME), "w", encoding="utf-8") as f:
+        f.write("")
+
+
 class InterestLogger:
     """负责定期记录主心流和所有子心流的状态到日志文件。"""
 
@@ -44,6 +52,7 @@ class InterestLogger:
         self.heartflow = heartflow  # 存储 Heartflow 实例
         self._history_log_file_path = os.path.join(LOG_DIRECTORY, HISTORY_LOG_FILENAME)
         _ensure_log_directory()
+        _clear_and_create_log_file()
 
     async def get_all_subflow_states(self) -> Dict[str, Dict]:
         """并发获取所有活跃子心流的当前完整状态。"""

@@ -1,0 +1,242 @@
+import flet as ft
+import os
+import atexit
+import psutil  # Keep for initial PID checks maybe, though state should handle it
+
+# --- Import refactored modules --- #
+from src.MaiGoi.state import AppState
+from src.MaiGoi.process_manager import (
+    start_bot_and_show_console,
+    output_processor_loop,  # Needed for restarting on navigate
+    cleanup_on_exit,
+    handle_disconnect,
+)
+from src.MaiGoi.ui_views import (
+    create_main_view,
+    create_console_view,
+    create_adapters_view,
+    create_settings_view,
+    create_process_output_view,
+)
+from src.MaiGoi.config_manager import load_config
+
+# --- Global AppState instance --- #
+# This holds all the state previously scattered as globals
+app_state = AppState()
+
+# --- File Picker Result Handler Placeholder ---
+# We need a placeholder function or logic to handle the result here if needed
+# For now, the result will be handled within the adapters view itself.
+# def handle_file_picker_result(e: ft.FilePickerResultEvent):
+#     print("File picker result in launcher (should be handled in view):", e.files)
+
+# --- atexit Cleanup Registration --- #
+# Register the cleanup function from the process manager module
+# It needs access to the app_state
+atexit.register(cleanup_on_exit, app_state)
+print("[Main Script] atexit cleanup handler from process_manager registered.", flush=True)
+
+
+# --- Routing Logic --- #
+def route_change(route: ft.RouteChangeEvent):
+    """Handles Flet route changes, creating and appending views."""
+    page = route.page
+    target_route = route.route
+
+    # Clear existing views before adding new ones
+    page.views.clear()
+
+    # Always add the main view
+    main_view = create_main_view(page, app_state)
+    page.views.append(main_view)
+
+    # --- Handle Specific Routes --- #
+    if target_route == "/console":
+        console_view = create_console_view(page, app_state)
+        page.views.append(console_view)
+
+        # Check process status and potentially restart processor loop if needed
+        is_running = app_state.bot_pid is not None and psutil.pid_exists(app_state.bot_pid)
+        print(
+            f"[Route Change /console] Checking status: PID={app_state.bot_pid}, is_running={is_running}, stop_event={app_state.stop_event.is_set()}",
+            flush=True,
+        )
+
+        if is_running:
+            print("[Route Change /console] Process is running.", flush=True)
+            # If the processor loop was stopped (e.g., by navigating away or stop button),
+            # but the process is still running, restart the loop.
+            if app_state.stop_event.is_set():
+                print("[Route Change /console] Stop event was set, clearing and restarting processor loop.", flush=True)
+                app_state.stop_event.clear()
+                # Make sure output_list_view is available before starting loop
+                if not app_state.output_list_view:
+                    print("[Route Change /console] Warning: output_list_view is None when restarting loop. Creating.")
+                    app_state.output_list_view = ft.ListView(
+                        expand=True, spacing=2, auto_scroll=app_state.is_auto_scroll_enabled, padding=5
+                    )
+                    console_view.controls[1].controls[0].content = app_state.output_list_view  # Update content in view
+
+                page.run_task(output_processor_loop, page, app_state)
+        else:
+            print("[Route Change /console] Process is not running.", flush=True)
+            # Ensure console view shows the 'not running' state if needed
+            if app_state.output_list_view:
+                # Check if already has the message? Might add duplicates.
+                # Simple approach: just add it if the list is empty or last msg isn't it.
+                add_not_running_msg = True
+                if app_state.output_list_view.controls:
+                    last_control = app_state.output_list_view.controls[-1]
+                    # Check if it's Text and value is not None before checking content
+                    if (
+                        isinstance(last_control, ft.Text)
+                        and last_control.value is not None
+                        and "Bot 进程未运行" in last_control.value
+                    ):
+                        add_not_running_msg = False
+                if add_not_running_msg:
+                    app_state.output_list_view.controls.append(ft.Text("--- Bot 进程未运行 ---", italic=True))
+            else:
+                # If list view doesn't exist here, create it and add the message
+                print("[Route Change /console] Creating ListView to show 'not running' message.")
+                app_state.output_list_view = ft.ListView(
+                    expand=True, spacing=2, auto_scroll=app_state.is_auto_scroll_enabled, padding=5
+                )
+                app_state.output_list_view.controls.append(ft.Text("--- Bot 进程未运行 ---", italic=True))
+                # Update the console view container's content
+                console_view.controls[1].controls[0].content = app_state.output_list_view
+    elif target_route == "/adapters":
+        adapters_view = create_adapters_view(page, app_state)
+        page.views.append(adapters_view)
+    elif target_route == "/settings":
+        settings_view = create_settings_view(page, app_state)
+        page.views.append(settings_view)
+
+    # --- Handle Dynamic Adapter Output Route --- #
+    # Check if the route matches the pattern /adapters/<something>
+    elif target_route.startswith("/adapters/") and len(target_route.split("/")) == 3:
+        parts = target_route.split("/")
+        process_id = parts[2]  # Extract the process ID (which is the script path for now)
+        print(f"[Route Change] Detected adapter output route for ID: {process_id}")
+        adapter_output_view = create_process_output_view(page, app_state, process_id)
+        if adapter_output_view:
+            page.views.append(adapter_output_view)
+        else:
+            # If view creation failed (e.g., process state not found), show error and stay on previous view?
+            # Or redirect back to /adapters? Let's go back to adapters list.
+            print(f"[Route Change] Failed to create output view for {process_id}. Redirecting to /adapters.")
+            # Avoid infinite loop if /adapters also fails
+            if len(page.views) > 1:  # Ensure we don't pop the main view
+                page.views.pop()  # Pop the failed view attempt
+            # Find the adapters view if it exists, otherwise just update
+            adapters_view_index = -1
+            for i, view in enumerate(page.views):
+                if view.route == "/adapters":
+                    adapters_view_index = i
+                    break
+            if adapters_view_index == -1:  # Adapters view wasn't in stack? Add it.
+                adapters_view = create_adapters_view(page, app_state)
+                page.views.append(adapters_view)
+            # Go back to the adapters list route to rebuild the view stack correctly
+            page.go("/adapters")
+            return  # Prevent page.update() below
+
+    # Update the page to show the correct view(s)
+    page.update()
+
+
+def view_pop(e: ft.ViewPopEvent):
+    """Handles view popping (e.g., back navigation)."""
+    page = e.page
+    # Remove the top view
+    page.views.pop()
+    if page.views:
+        top_view = page.views[-1]
+        # Go to the route of the view now at the top of the stack
+        # This will trigger route_change again to rebuild the view stack correctly
+        page.go(top_view.route)
+    # else: print("Warning: Popped the last view.")
+
+
+# --- Main Application Setup --- #
+def main(page: ft.Page):
+    # Load initial config and store in state
+    loaded_config = load_config()
+    app_state.gui_config = loaded_config
+    app_state.adapter_paths = loaded_config.get("adapters", []).copy()  # Get adapter paths
+    print(f"[Main] Initial adapters loaded: {app_state.adapter_paths}")
+
+    # Set script_dir in AppState early
+    app_state.script_dir = os.path.dirname(os.path.abspath(__file__))
+    print(f"[Main] Script directory set in state: {app_state.script_dir}", flush=True)
+
+    # --- Setup File Picker --- #
+    # Create the FilePicker instance
+    # The on_result handler will be set dynamically in the view that uses it
+    app_state.file_picker = ft.FilePicker()
+    # Add the FilePicker to the page's overlay controls
+    page.overlay.append(app_state.file_picker)
+    print("[Main] FilePicker created and added to page overlay.")
+
+    page.title = "MaiBot 启动器"
+    page.window_width = 500
+    page.window_height = 650  # Increased height slightly for monitor
+    page.vertical_alignment = ft.MainAxisAlignment.START
+    page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
+    page.theme_mode = ft.ThemeMode.SYSTEM
+    page.padding = 10  # Reduced padding slightly
+
+    # --- Create the main 'Start Bot' button and store in state --- #
+    # This button needs to exist before the first route_change call
+    app_state.start_bot_button = ft.FilledButton(
+        "启动 MaiBot 主程序 (bot.py)",
+        icon=ft.icons.SMART_TOY_OUTLINED,
+        # The click handler now calls the function from process_manager
+        on_click=lambda _: start_bot_and_show_console(page, app_state),
+        expand=True,
+        tooltip="启动主程序并在新视图中显示控制台输出",
+    )
+    print("[Main] Start Bot Button created and stored in state.", flush=True)
+
+    # --- Routing Setup --- #
+    page.on_route_change = route_change
+    page.on_view_pop = view_pop
+
+    # --- Disconnect Handler --- #
+    # Pass app_state to the disconnect handler
+    page.on_disconnect = lambda e: handle_disconnect(page, app_state, e)
+    print("[Main] Registered page.on_disconnect handler.", flush=True)
+
+    # Prevent immediate close to allow cleanup
+    page.window_prevent_close = True
+
+    # --- Initial Navigation --- #
+    # Trigger the initial route change to build the first view
+    page.go(page.route if page.route else "/")
+
+
+# --- Run Flet App --- #
+if __name__ == "__main__":
+    # No need to initialize globals here anymore, AppState handles it.
+    ft.app(target=main)
+    # This print will appear *after* the Flet window closes,
+    # but *before* the atexit handler runs.
+    print("[Main Script] Flet app exited. atexit handler should run next.", flush=True)
+
+# --- Removed Code Sections (Previously Globals and Functions) ---
+# (Keep this comment block or similar for reference if desired)
+# Removed: bot_process, bot_pid, output_queue, stop_event, interest_monitor_control,
+#          output_list_view, start_bot_button (now in AppState),
+#          is_auto_scroll_enabled (now in AppState)
+# Removed: ansi_converter
+# Removed: cleanup_on_exit (moved to process_manager)
+# Removed: update_page_safe (moved to utils)
+# Removed: show_snackbar (moved to utils)
+# Removed: run_script (moved to utils)
+# Removed: handle_disconnect (moved to process_manager)
+# Removed: stop_bot_process (moved to process_manager)
+# Removed: read_process_output (moved to process_manager)
+# Removed: output_processor_loop (moved to process_manager)
+# Removed: start_bot_and_show_console (moved to process_manager)
+# Removed: create_console_view (moved to ui_views)
+# (Main view creation logic also moved to ui_views within create_main_view)
