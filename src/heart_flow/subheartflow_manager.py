@@ -82,7 +82,7 @@ class SubHeartflowManager:
             max_tokens=1000,  # 与 Heartflow 一致 (虽然可能不需要这么多)
             request_type="subheartflow_state_eval",  # 保留特定的请求类型
         )
-    
+
     async def force_change_state(self, subflow_id: Any, target_state: ChatState) -> bool:
         """强制改变指定子心流的状态"""
         async with self._lock:

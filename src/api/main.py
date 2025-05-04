@@ -27,13 +27,15 @@ router.include_router(graphql_router, prefix="/graphql", tags=["GraphQL"])
 async def reload_config():
     return await reload_config_func()
 
+
 @router.get("/gui/subheartflow/get/all")
 async def get_subheartflow_ids():
     """获取所有子心流的ID列表"""
     return await get_all_subheartflow_ids()
 
+
 @router.post("/gui/subheartflow/forced_change_status")
-async def forced_change_subheartflow_status_api(subheartflow_id: str, status: ChatState): #noqa
+async def forced_change_subheartflow_status_api(subheartflow_id: str, status: ChatState):  # noqa
     """强制改变子心流的状态"""
     # 参数检查
     if not isinstance(status, ChatState):
@@ -47,7 +49,6 @@ async def forced_change_subheartflow_status_api(subheartflow_id: str, status: Ch
     else:
         logger.error(f"子心流 {subheartflow_id} 状态更改为 {status.value} 失败")
         return {"status": "failed"}
-
 
 
 def start_api_server():
