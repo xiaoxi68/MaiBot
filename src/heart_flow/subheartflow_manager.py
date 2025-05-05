@@ -83,6 +83,17 @@ class SubHeartflowManager:
             request_type="subheartflow_state_eval",  # 保留特定的请求类型
         )
 
+    async def force_change_state(self, subflow_id: Any, target_state: ChatState) -> bool:
+        """强制改变指定子心流的状态"""
+        async with self._lock:
+            subflow = self.subheartflows.get(subflow_id)
+            if not subflow:
+                logger.warning(f"[强制状态转换]尝试转换不存在的子心流{subflow_id} 到 {target_state.value}")
+                return False
+            await subflow.change_chat_state(target_state)
+            logger.info(f"[强制状态转换]子心流 {subflow_id} 已转换到 {target_state.value}")
+            return True
+
     def get_all_subheartflows(self) -> List["SubHeartflow"]:
         """获取所有当前管理的 SubHeartflow 实例列表 (快照)。"""
         return list(self.subheartflows.values())
@@ -92,7 +103,7 @@ class SubHeartflowManager:
 
         Args:
             subheartflow_id: 子心流唯一标识符
-            # mai_states 参数已被移除，使用 self.mai_state_info
+            mai_states 参数已被移除，使用 self.mai_state_info
 
         Returns:
             成功返回SubHeartflow实例，失败返回None
@@ -165,7 +176,7 @@ class SubHeartflowManager:
 
     def get_inactive_subheartflows(self, max_age_seconds=INACTIVE_THRESHOLD_SECONDS):
         """识别并返回需要清理的不活跃(处于ABSENT状态超过一小时)子心流(id, 原因)"""
-        current_time = time.time()
+        _current_time = time.time()
         flows_to_stop = []
 
         for subheartflow_id, subheartflow in list(self.subheartflows.items()):
@@ -173,9 +184,8 @@ class SubHeartflowManager:
             if state != ChatState.ABSENT:
                 continue
             subheartflow.update_last_chat_state_time()
-            absent_last_time = subheartflow.chat_state_last_time
-            if max_age_seconds and (current_time - absent_last_time) > max_age_seconds:
-                flows_to_stop.append(subheartflow_id)
+            _absent_last_time = subheartflow.chat_state_last_time
+            flows_to_stop.append(subheartflow_id)
 
         return flows_to_stop
 
