@@ -6,7 +6,8 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
-import tqdm
+
+# import tqdm
 import faiss
 
 from .llm_client import LLMClient
@@ -194,11 +195,25 @@ class EmbeddingStore:
         """从文件中加载"""
         if not os.path.exists(self.embedding_file_path):
             raise Exception(f"文件{self.embedding_file_path}不存在")
-
         logger.info(f"正在从文件{self.embedding_file_path}中加载{self.namespace}嵌入库")
         data_frame = pd.read_parquet(self.embedding_file_path, engine="pyarrow")
-        for _, row in tqdm.tqdm(data_frame.iterrows(), total=len(data_frame)):
-            self.store[row["hash"]] = EmbeddingStoreItem(row["hash"], row["embedding"], row["str"])
+        total = len(data_frame)
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TaskProgressColumn(),
+            MofNCompleteColumn(),
+            "•",
+            TimeElapsedColumn(),
+            "<",
+            TimeRemainingColumn(),
+            transient=False,
+        ) as progress:
+            task = progress.add_task("加载嵌入库", total=total)
+            for _, row in data_frame.iterrows():
+                self.store[row["hash"]] = EmbeddingStoreItem(row["hash"], row["embedding"], row["str"])
+                progress.update(task, advance=1)
         logger.info(f"{self.namespace}嵌入库加载成功")
 
         try:
