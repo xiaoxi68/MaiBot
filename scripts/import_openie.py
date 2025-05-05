@@ -126,7 +126,9 @@ def handle_import_openie(openie_data: OpenIE, embed_manager: EmbeddingManager, k
         # 删除非法文段
         logger.info("正在删除非法文段并继续导入...")
         # 过滤掉非法文段
-        openie_data.docs = [doc for doc in getattr(openie_data, "docs", []) if doc.get("idx", "<无idx>") not in missing_idxs]
+        openie_data.docs = [
+            doc for doc in getattr(openie_data, "docs", []) if doc.get("idx", "<无idx>") not in missing_idxs
+        ]
         # 重新提取数据
         raw_paragraphs = openie_data.extract_raw_paragraph_dict()
         entity_list_data = openie_data.extract_entity_dict()
