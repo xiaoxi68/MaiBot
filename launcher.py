@@ -2,6 +2,7 @@ import flet as ft
 import os
 import atexit
 import psutil  # Keep for initial PID checks maybe, though state should handle it
+# import asyncio # <--- 如果不再需要其他异步任务，可以考虑移除
 
 # --- Import refactored modules --- #
 from src.MaiGoi.state import AppState
@@ -45,6 +46,10 @@ def route_change(route: ft.RouteChangeEvent):
     page = route.page
     target_route = route.route
 
+    # --- 移除异步显示弹窗的辅助函数 ---
+    # async def show_python_path_dialog():
+    #     ...
+
     # Clear existing views before adding new ones
     page.views.clear()
 
@@ -54,8 +59,18 @@ def route_change(route: ft.RouteChangeEvent):
 
     # --- Handle Specific Routes --- #
     if target_route == "/console":
+        # 清理：移除之前添加的 is_python_dialog_opening 标志（如果愿意）
+        # app_state.is_python_dialog_opening = False # 可选清理
+
         console_view = create_console_view(page, app_state)
         page.views.append(console_view)
+
+        # --- 仅设置标志 ---
+        print(f"[Route Change /console] Checking python_path: '{app_state.python_path}'")
+        if not app_state.python_path:
+            print("[Route Change /console] python_path is empty, setting flag.")
+            app_state.needs_python_path_dialog = True
+            # *** 不再在这里打开弹窗 ***
 
         # Check process status and potentially restart processor loop if needed
         is_running = app_state.bot_pid is not None and psutil.pid_exists(app_state.bot_pid)
@@ -164,12 +179,18 @@ def view_pop(e: ft.ViewPopEvent):
 # --- Main Application Setup --- #
 def main(page: ft.Page):
     # Load initial config and store in state
-    # 启动时清除/logs/interest/interest_history.log
     if os.path.exists("logs/interest/interest_history.log"):
         os.remove("logs/interest/interest_history.log")
     loaded_config = load_config()
     app_state.gui_config = loaded_config
-    app_state.adapter_paths = loaded_config.get("adapters", []).copy()  # Get adapter paths
+    app_state.adapter_paths = loaded_config.get("adapters", []).copy()
+    app_state.bot_script_path = loaded_config.get("bot_script_path", "bot.py") # Load bot script path
+    
+    # 加载用户自定义的 Python 路径
+    if "python_path" in loaded_config and os.path.exists(loaded_config["python_path"]):
+        app_state.python_path = loaded_config["python_path"]
+        print(f"[Main] 从配置加载 Python 路径: {app_state.python_path}")
+    
     print(f"[Main] Initial adapters loaded: {app_state.adapter_paths}")
 
     # Set script_dir in AppState early
@@ -198,6 +219,26 @@ def main(page: ft.Page):
     except KeyError:
         print(f"[Main] Warning: Invalid theme '{saved_theme}' in config. Falling back to System.")
         page.theme_mode = ft.ThemeMode.SYSTEM
+        
+    # --- 自定义主题颜色 --- #
+    # 创建深色主题，使橙色变得更暗
+    dark_theme = ft.Theme(
+        color_scheme_seed=ft.colors.ORANGE,
+        primary_color=ft.colors.ORANGE_700,  # 使用更暗的橙色
+        color_scheme=ft.ColorScheme(
+            primary=ft.colors.ORANGE_700,
+            primary_container=ft.colors.ORANGE_800,
+        )
+    )
+    
+    # 创建亮色主题
+    light_theme = ft.Theme(
+        color_scheme_seed=ft.colors.ORANGE,
+    )
+    
+    # 设置自定义主题
+    page.theme = light_theme
+    page.dark_theme = dark_theme
 
     page.padding = 0  # <-- 将页面 padding 设置为 0
 
