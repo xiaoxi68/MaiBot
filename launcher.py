@@ -15,10 +15,12 @@ from src.MaiGoi.ui_views import (
     create_main_view,
     create_console_view,
     create_adapters_view,
-    create_settings_view,
     create_process_output_view,
 )
 from src.MaiGoi.config_manager import load_config
+
+# --- Import the new settings view --- #
+from src.MaiGoi.ui_settings_view import create_settings_view
 
 # --- Global AppState instance --- #
 # This holds all the state previously scattered as globals
@@ -109,6 +111,7 @@ def route_change(route: ft.RouteChangeEvent):
         adapters_view = create_adapters_view(page, app_state)
         page.views.append(adapters_view)
     elif target_route == "/settings":
+        # Call the new settings view function
         settings_view = create_settings_view(page, app_state)
         page.views.append(settings_view)
 
@@ -161,6 +164,9 @@ def view_pop(e: ft.ViewPopEvent):
 # --- Main Application Setup --- #
 def main(page: ft.Page):
     # Load initial config and store in state
+    # 启动时清除/logs/interest/interest_history.log
+    if os.path.exists("logs/interest/interest_history.log"):
+        os.remove("logs/interest/interest_history.log")
     loaded_config = load_config()
     app_state.gui_config = loaded_config
     app_state.adapter_paths = loaded_config.get("adapters", []).copy()  # Get adapter paths
@@ -179,12 +185,21 @@ def main(page: ft.Page):
     print("[Main] FilePicker created and added to page overlay.")
 
     page.title = "MaiBot 启动器"
-    page.window_width = 500
-    page.window_height = 650  # Increased height slightly for monitor
+    page.window.width = 1400
+    page.window.height = 1000  # Increased height slightly for monitor
     page.vertical_alignment = ft.MainAxisAlignment.START
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
-    page.theme_mode = ft.ThemeMode.SYSTEM
-    page.padding = 10  # Reduced padding slightly
+
+    # --- Apply Theme from Config --- #
+    saved_theme = app_state.gui_config.get("theme", "System").upper()
+    try:
+        page.theme_mode = ft.ThemeMode[saved_theme]
+        print(f"[Main] Applied theme from config: {page.theme_mode}")
+    except KeyError:
+        print(f"[Main] Warning: Invalid theme '{saved_theme}' in config. Falling back to System.")
+        page.theme_mode = ft.ThemeMode.SYSTEM
+
+    page.padding = 0  # <-- 将页面 padding 设置为 0
 
     # --- Create the main 'Start Bot' button and store in state --- #
     # This button needs to exist before the first route_change call
@@ -209,6 +224,10 @@ def main(page: ft.Page):
 
     # Prevent immediate close to allow cleanup
     page.window_prevent_close = True
+
+    # --- Hide Native Title Bar --- #
+    # page.window_title_bar_hidden = True
+    # page.window.frameless = True
 
     # --- Initial Navigation --- #
     # Trigger the initial route change to build the first view

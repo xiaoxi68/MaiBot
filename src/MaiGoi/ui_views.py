@@ -2,6 +2,7 @@ import flet as ft
 from typing import Optional, TYPE_CHECKING
 import psutil
 import os
+import sys
 
 # Import components and state
 from .flet_interest_monitor import InterestMonitorDisplay
@@ -10,8 +11,67 @@ if TYPE_CHECKING:
     from .state import AppState
 
 
+# --- 添加资源路径处理函数 ---
+def get_asset_path(relative_path: str) -> str:
+    """
+    获取资源文件的正确路径，在打包环境和源码环境下都能正常工作。
+
+    Args:
+        relative_path: 相对于项目根目录的资源路径，例如 "src/MaiGoi/assets/image.png"
+
+    Returns:
+        str: 资源文件的绝对路径
+    """
+    # 检查是否在打包环境中运行
+    if getattr(sys, "frozen", False):
+        # 打包环境
+        # 获取应用程序所在目录
+        base_dir = os.path.dirname(sys.executable)
+
+        # 尝试多种可能的路径
+        possible_paths = [
+            # 1. 直接在根目录下
+            os.path.join(base_dir, os.path.basename(relative_path)),
+            # 2. 保持原始相对路径结构
+            # os.path.join(base_dir, relative_path),
+            # 3. 在 _internal 目录下保持原始路径结构
+            os.path.join(base_dir, "_internal", relative_path),
+            # 4. 从路径中去掉 "src/" 部分
+            # os.path.join(base_dir, relative_path.replace("src/", "", 1)),
+            # 5. 只使用最后的文件名
+            # os.path.join(base_dir, os.path.basename(relative_path)),
+        ]
+
+        # 尝试所有可能的路径
+        for path in possible_paths:
+            if os.path.exists(path):
+                print(f"[AssetPath] 打包环境: 找到资源 '{relative_path}' 位置: {path}")
+                return path
+
+        # 如果找不到任何匹配的路径，记录错误并返回原始路径
+        print(f"[AssetPath] 警告: 在打包环境中找不到资源 '{relative_path}'")
+        return os.path.join(base_dir, relative_path)  # 返回可能的路径，以便更容易识别错误
+    else:
+        # 源码环境，直接使用相对路径
+        # 假设 cwd 是项目根目录
+        root_dir = os.getcwd()
+        path = os.path.join(root_dir, relative_path)
+
+        # 验证路径是否存在
+        if os.path.exists(path):
+            return path
+        else:
+            print(f"[AssetPath] 警告: 在源码环境中找不到资源 '{relative_path}'")
+            return relative_path  # 返回原始路径，方便调试
+
+
 def create_main_view(page: ft.Page, app_state: "AppState") -> ft.View:
     """Creates the main view ('/') of the application."""
+    # --- Set Page Padding to Zero --- #
+    page.padding = 0
+    # page.update() # Update the page to apply the padding change - 移除这行，避免闪烁
+    # ------------------------------ #
+
     # Get the main button from state (should be created in launcher.py main)
     start_button = app_state.start_bot_button
     if not start_button:
@@ -32,45 +92,156 @@ def create_main_view(page: ft.Page, app_state: "AppState") -> ft.View:
     card_radius = ft.border_radius.all(4)  # Slightly softer edges for glass
     # card_bgcolor = ft.colors.with_opacity(0.05, ft.colors.BLUE_GREY_50) # Subtle background
     # Use a semi-transparent primary color for the frosted glass effect
-    card_bgcolor = ft.colors.with_opacity(0.65, ft.colors.PRIMARY_CONTAINER)  # Example: using theme container color
+    _card_bgcolor = ft.colors.with_opacity(0.65, ft.colors.PRIMARY_CONTAINER)  # Example: using theme container color
 
     # --- Card Creation Function --- #
-    def create_action_card(icon: str, text: str, on_click_handler, tooltip: str = None):
+    def create_action_card(
+        page: ft.Page,
+        icon: str,
+        subtitle: str,
+        text: str,
+        on_click_handler,
+        tooltip: str = None,
+        width: int = 450,
+        height: int = 150,
+    ):
         # Removed icon parameter usage
-        return ft.Container(
-            content=ft.Row(
-                [
-                    # ft.Icon(name=icon, color=ft.colors.PRIMARY, size=20), # Icon Removed
-                    ft.Text(
+        subtitle_text = subtitle
+        # darker_bgcolor ='#ffffff' # Default Light mode background
+
+        # --- Determine colors based on theme ---
+        # is_dark = page.theme_mode == ft.ThemeMode.DARK
+        # card_bgcolor_actual = ft.colors.BLACK if is_dark else '#ffffff' # Use BLACK for dark, white for light
+        # main_text_color = ft.colors.GREY_200 if is_dark else ft.colors.BLACK # Light grey for dark, black for light
+        # subtitle_color = ft.colors.GREY_500 if is_dark else ft.colors.with_opacity(0.7, ft.colors.GREY_500) # Darker grey for dark, lighter grey for light
+
+        # --- Use Theme Colors Instead ---
+        # Let Flet handle the color adaptation based on theme
+        # card_bgcolor_theme = ft.colors.SURFACE_VARIANT # Or PRIMARY_CONTAINER, SURFACE etc.
+        # main_text_color_theme = ft.colors.ON_SURFACE_VARIANT
+        # subtitle_color_theme = ft.colors.with_opacity(0.8, ft.colors.ON_SURFACE_VARIANT) # Slightly transparent
+        card_bgcolor_theme = ft.colors.SURFACE  # Use SURFACE for a generally whiter/lighter background
+        main_text_color_theme = ft.colors.ON_SURFACE  # Corresponding text color
+        subtitle_color_theme = ft.colors.with_opacity(0.7, ft.colors.ON_SURFACE)  # Slightly more transparent ON_SURFACE
+
+        # --- 使用辅助函数获取Emoji图片路径 --- #
+        emoji_image_path = get_asset_path("src/MaiGoi/assets/button_shape.png")  # 使用辅助函数获取正确路径
+
+        # --- Create Text Content --- #
+        text_content_column = ft.Column(
+            [
+                # --- Main Title Text ---
+                ft.Container(
+                    content=ft.Text(
                         text,
-                        weight=ft.FontWeight.BOLD,  # Bolder text
-                        size=20,  # Even larger font size
-                        expand=True,  # Allow text to take available space
-                        text_align=ft.TextAlign.CENTER,  # Center text within the row
+                        weight=ft.FontWeight.W_800,
+                        size=50,
+                        text_align=ft.TextAlign.LEFT,
+                        font_family="SimSun",
+                        # color=ft.colors.BLACK,
+                        color=main_text_color_theme,  # Use theme color
                     ),
-                ],
-                # alignment=ft.MainAxisAlignment.START, # Row alignment doesn't matter much with only text
-                vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                # spacing=15, # Spacing removed as icon is gone
+                    margin=ft.margin.only(top=-5),
+                ),
+                # --- Subtitle Text (Wrapped in Container for Margin) ---
+                ft.Container(
+                    content=ft.Text(
+                        subtitle_text,
+                        weight=ft.FontWeight.BOLD,
+                        size=20,
+                        # color=ft.colors.with_opacity(0.7, ft.colors.GREY_500),
+                        color=subtitle_color_theme,  # Use theme color
+                        text_align=ft.TextAlign.LEFT,
+                        font_family="SimHei",
+                    ),
+                    margin=ft.margin.only(top=-20, left=10),
+                ),
+            ],
+            spacing=0,
+            alignment=ft.MainAxisAlignment.START,
+            horizontal_alignment=ft.CrossAxisAlignment.START,
+        )
+
+        # --- Create Emoji Image Layer --- #
+        emoji_image_layer = ft.Container(
+            content=ft.Image(
+                src=emoji_image_path,
+                fit=ft.ImageFit.COVER,  # <-- Change fit to COVER for zoom/fill effect
             ),
-            width=300,  # *** Explicitly set a fixed width for the card ***
-            # min_height=80, # Increase minimum height (Container doesn't have min_height)
+            alignment=ft.alignment.center,  # Center the image within the container
+            # Position the container itself to overlap the right side
+            right=-100,  # <-- Allow container to extend beyond the right edge slightly
+            top=10,  # <-- Allow container to extend beyond the top edge slightly
+            # bottom=5, # Remove bottom constraint
+            width=300,  # <-- Increase width of the image container area
+            height=300,  # <-- Give it a height too, slightly larger than card text area
+            opacity=0.3,  # <-- Set back to semi-transparent
+            # expand=True # Optionally expand if needed
+            rotate=ft.transform.Rotate(angle=0.2),
+            # transform=ft.transform.Scale(scale_x=-1), # <-- Remove transform from container
+        )
+
+        # --- Hover effect shadow --- #
+        hover_shadow = ft.BoxShadow(
+            spread_radius=2,
+            blur_radius=15,  # Slightly more blur on hover
+            color=ft.colors.with_opacity(0.3, ft.colors.BLACK87),  # Slightly darker shadow
+            offset=ft.Offset(2, 4),
+        )
+
+        # --- on_hover handler --- #
+        def handle_hover(e):
+            if e.data == "true":  # Mouse enters
+                e.control.scale = ft.transform.Scale(1.03)
+                e.control.shadow = hover_shadow
+            else:  # Mouse exits
+                e.control.scale = ft.transform.Scale(1.0)
+                e.control.shadow = card_shadow  # Restore original shadow
+            e.control.update()
+
+        return ft.Container(
+            # Use Stack to layer text and image
+            content=ft.Stack(
+                [
+                    # Layer 1: Text Content (aligned left implicitly by parent Row settings)
+                    # Need to wrap the column in a Row again if we removed the original one,
+                    # but let's try putting the column directly first if Stack handles alignment
+                    # We need padding inside the stack for the text
+                    ft.Container(
+                        content=text_content_column,
+                        padding=ft.padding.only(top=8, left=15, bottom=15, right=20),  # Apply padding here
+                    ),
+                    # Layer 2: Emoji Image
+                    emoji_image_layer,
+                ]
+            ),
+            height=height,
+            width=width,
             border_radius=card_radius,
-            # border=card_border, # Border removed
-            bgcolor=card_bgcolor,
-            padding=ft.padding.symmetric(vertical=25, horizontal=20),  # Further increase vertical padding for height
-            margin=ft.margin.only(bottom=20),  # Increased bottom margin for more spacing
+            # bgcolor=darker_bgcolor,
+            bgcolor=card_bgcolor_theme,  # Use theme color
+            # Padding is now applied to the inner container for text
+            padding=0,
+            margin=ft.margin.only(bottom=20),  # Margin applied outside the hover effect
             shadow=card_shadow,
             on_click=on_click_handler,
             tooltip=tooltip,
-            ink=True,  # Add ripple effect on click
+            ink=True,
+            # rotate=ft.transform.Rotate(angle=0.1), # Remove rotate as it might conflict
+            clip_behavior=ft.ClipBehavior.ANTI_ALIAS,  # Clip overflowing image within card bounds
+            # rotate=ft.transform.Rotate(angle=0.1), # Apply rotation outside hover if needed
+            scale=ft.transform.Scale(1.0),  # Initial scale
+            animate_scale=ft.animation.Animation(200, "easeOutCubic"),  # Animate scale changes
+            on_hover=handle_hover,  # Attach hover handler
         )
 
     # --- Main Button Action --- #
     # Need process_manager for the main button action
     start_bot_card = create_action_card(
+        page=page,  # Pass page object
         icon=ft.icons.SMART_TOY_OUTLINED,
-        text="启动麦麦Core",
+        text="主控室",
+        subtitle="在此启动 Bot",
         on_click_handler=lambda _: page.go("/console"),
         tooltip="打开 Bot 控制台视图 (在此启动 Bot)",
     )
@@ -93,61 +264,98 @@ def create_main_view(page: ft.Page, app_state: "AppState") -> ft.View:
     ]
 
     # --- Create "More..." Card Separately for Stack --- #
+    # more_options_card = create_action_card(
+    #     page=page,
+    #     icon=ft.icons.MORE_HORIZ_OUTLINED,
+    #     text="更多...",
+    #     subtitle="其他工具",
+    #     on_click_handler=None,  # 这里不设置点击动作，因为我们会覆盖内容
+    #     tooltip="选择要运行的脚本",
+    #     width=300,
+    #     height=100,
+    # )
+
+    # 创建一个包含 more_options_card 和 PopupMenuButton 的 Stack
     more_options_card_stack = ft.Container(
-        content=ft.Row(
+        content=ft.Stack(
             [
-                ft.Text(
-                    "更多...",  # Renamed text
-                    weight=ft.FontWeight.BOLD,
-                    size=14,  # Smaller size for less emphasis
-                    # expand=True,
-                    text_align=ft.TextAlign.LEFT,
+                # more_options_card,  # 作为背景卡片
+                # 将 PopupMenuButton 放在卡片上层
+                ft.Container(
+                    content=ft.PopupMenuButton(
+                        items=menu_items,
+                        icon=ft.icons.MORE_VERT,
+                        icon_size=50,
+                        icon_color=ft.colors.ORANGE,
+                        tooltip="选择要运行的脚本",
+                    ),
+                    right=50,  # 右侧距离
+                    top=20,  # 顶部距离
                 ),
-                ft.PopupMenuButton(items=menu_items, icon=ft.icons.MORE_VERT, tooltip="选择要运行的脚本"),
-            ],
-            vertical_alignment=ft.CrossAxisAlignment.CENTER,
-            spacing=5,  # Reduced spacing
-            alignment=ft.MainAxisAlignment.END,  # Align content to the end (right) of the row
+            ]
         ),
-        # width=150, # Reduced width
-        border_radius=card_radius,
-        bgcolor=card_bgcolor,
-        padding=ft.padding.symmetric(vertical=10, horizontal=15),  # Reduced padding
-        # margin=ft.margin.only(bottom=20), # Margin handled by Stack positioning
-        shadow=card_shadow,
+        height=150,  # 与普通卡片相同高度
+        width=450,  # 与普通卡片相同宽度
+        # 不需要设置 bgcolor 和 border_radius，因为 more_options_card 已包含这些样式
+        rotate=ft.transform.Rotate(angle=0.12),  # 与其他卡片使用相同的旋转角度
     )
 
     # --- Main Column of Cards --- #
     main_cards_column = ft.Column(
         controls=[
             ft.Container(height=15),  # Top spacing
-            # start_button, # Removed direct button
-            start_bot_card,  # Use the card
+            # Wrap start_bot_card
+            ft.Container(
+                content=start_bot_card,
+                margin=ft.margin.only(top=20, right=10),
+                rotate=ft.transform.Rotate(angle=0.12),
+            ),
             # --- Move Adapters Card Up --- #
-            create_action_card(
-                icon=ft.icons.EXTENSION_OUTLINED,  # Example icon
-                text="启动适配器...",
-                on_click_handler=lambda _: page.go("/adapters"),
-                tooltip="管理和运行适配器脚本",
+            # Wrap Adapters card
+            ft.Container(
+                content=create_action_card(
+                    page=page,  # Pass page object
+                    icon=ft.icons.EXTENSION_OUTLINED,  # Example icon
+                    text="适配器",
+                    subtitle="管理适配器脚本",
+                    on_click_handler=lambda _: page.go("/adapters"),
+                    tooltip="管理和运行适配器脚本",
+                ),
+                margin=ft.margin.only(top=20, right=45),
+                rotate=ft.transform.Rotate(angle=0.12),
             ),
             # Re-add the LPMM script card
-            create_action_card(
-                icon=ft.icons.MODEL_TRAINING_OUTLINED,  # Icon is not used visually but kept for consistency maybe
-                text="麦麦学习",
-                on_click_handler=lambda _: run_script("start_lpmm.bat", page, app_state),
-                tooltip="运行学习脚本 (start_lpmm.bat)",
+            # Wrap LPMM card
+            ft.Container(
+                content=create_action_card(
+                    page=page,  # Pass page object
+                    icon=ft.icons.MODEL_TRAINING_OUTLINED,  # Icon is not used visually but kept for consistency maybe
+                    text="学习",
+                    subtitle="使用LPMM知识库",
+                    on_click_handler=lambda _: run_script("start_lpmm.bat", page, app_state),
+                    tooltip="运行学习脚本 (start_lpmm.bat)",
+                ),
+                margin=ft.margin.only(top=20, right=15),
+                rotate=ft.transform.Rotate(angle=0.12),
             ),
             # more_options_card, # Add the new card with the popup menu (Moved to Stack)
             # --- Add Adapters and Settings Cards --- #
-            create_action_card(
-                icon=ft.icons.SETTINGS_OUTLINED,  # Example icon
-                text="设置",
-                on_click_handler=lambda _: page.go("/settings"),
-                tooltip="配置启动器选项",
+            # Wrap Settings card
+            ft.Container(
+                content=create_action_card(
+                    page=page,  # Pass page object
+                    icon=ft.icons.SETTINGS_OUTLINED,  # Example icon
+                    text="设置",
+                    subtitle="配置所有选项",
+                    on_click_handler=lambda _: page.go("/settings"),
+                    tooltip="配置启动器选项",
+                ),
+                margin=ft.margin.only(top=20, right=60),
+                rotate=ft.transform.Rotate(angle=0.12),
             ),
         ],
         # alignment=ft.MainAxisAlignment.START, # Default vertical alignment is START
-        horizontal_alignment=ft.CrossAxisAlignment.START,  # Align cards to the START (left)
+        horizontal_alignment=ft.CrossAxisAlignment.END,  # Align cards to the END (right)
         spacing=0,  # Let card margin handle spacing
         # expand=True, # Remove expand from the inner column if using Stack
     )
@@ -155,71 +363,101 @@ def create_main_view(page: ft.Page, app_state: "AppState") -> ft.View:
     return ft.View(
         "/",  # Main view route
         [
-            ft.AppBar(
-                # title=ft.Text("MaiBot 工具箱", size=18, weight=ft.FontWeight.W_600), # Larger, bolder title
-                # Use leading for custom title layout with a line
-                leading=ft.Row(
-                    [
-                        ft.Container(width=4, height=28, bgcolor=ft.colors.PRIMARY, border_radius=2),  # Vertical line
-                        ft.Container(width=5),  # Use a Container for simple horizontal spacing
-                        ft.Text("MaiBot 工具箱", size=22, weight=ft.FontWeight.BOLD),  # Larger title
-                    ],
-                    spacing=5,  # Spacing within the row
-                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                ),
-                leading_width=300,  # Adjust width to fit the custom leading widget
-                center_title=False,  # Left-align title
-            ),
-            # --- Use Stack for Layout --- #
             ft.Stack(
                 [
-                    # Main column of cards (aligned top-left implicitly)
-                    main_cards_column,
+                    # --- Giant Orange Stripe (Background) --- #
+                    ft.Container(
+                        bgcolor=ft.colors.with_opacity(1, ft.colors.ORANGE_ACCENT_200),  # Orange with opacity
+                        width=3000,  # Make it very wide
+                        height=1000,  # Give it substantial height
+                        rotate=ft.transform.Rotate(0.12),  # Apply rotation (adjust angle as needed)
+                        # alignment=ft.alignment.center, # Center it in the stack
+                        # Position it manually to better control placement with rotation
+                        left=-200,
+                        top=-500,
+                        opacity=1,  # Overall opacity for the stripe
+                    ),
+                    ft.Container(
+                        content=ft.Image(
+                            src=get_asset_path("src/MaiGoi/assets/button_shape.png"),  # 使用辅助函数获取正确路径
+                            fit=ft.ImageFit.CONTAIN,
+                        ),
+                        width=900,
+                        height=1800,
+                        left=35,  # 距离左侧
+                        top=-420,  # 距离顶部
+                        border_radius=ft.border_radius.all(10),
+                        rotate=ft.transform.Rotate(-1.2),
+                        clip_behavior=ft.ClipBehavior.ANTI_ALIAS,  # Helps with rounded corners
+                    ),
+                    ft.Container(
+                        bgcolor=ft.colors.with_opacity(1, ft.colors.ORANGE_ACCENT_200),  # Orange with opacity
+                        width=1000,  # Make it very wide
+                        height=1000,  # Give it substantial height
+                        rotate=ft.transform.Rotate(0.12),  # Apply rotation (adjust angle as needed)
+                        # alignment=ft.alignment.center, # Center it in the stack
+                        # Position it manually to better control placement with rotation
+                        left=280,
+                        top=-561.6,
+                        opacity=1,  # Overall opacity for the stripe
+                    ),
+                    # --- End Giant Orange Stripe ---
+                    ft.Container(
+                        bgcolor=ft.colors.with_opacity(1, ft.colors.PURPLE_200),  # Orange with opacity
+                        width=800,  # Make it very wide
+                        height=3000,  # Give it substantial height
+                        rotate=ft.transform.Rotate(0.6),  # Apply rotation (adjust angle as needed)
+                        # alignment=ft.alignment.center, # Center it in the stack
+                        # Position it manually to better control placement with rotation
+                        left=-500,
+                        top=-1600,
+                        opacity=1,  # Overall opacity for the stripe
+                    ),
+                    ft.Container(
+                        content=main_cards_column,
+                        top=20,  # 距离顶部
+                        right=20,  # 距离右侧
+                    ),
+                    # --- End positioned Container ---
                     # "More..." card aligned bottom-right
                     ft.Container(
                         content=more_options_card_stack,
-                        # Use Stack positioning properties instead of alignment
-                        right=10,  # Distance from right edge
-                        bottom=10,  # Distance from bottom edge
+                        # 重新定位"更多..."按钮
+                        right=10,  # 距离右侧
+                        bottom=15,  # 距离底部
                     ),
+                    # --- Add Large Text to Bottom Left ---
+                    ft.Container(
+                        content=ft.Text(
+                            "MAI",
+                            size=50,
+                            font_family="Microsoft YaHei",
+                            weight=ft.FontWeight.W_700,
+                            color=ft.colors.with_opacity(1, ft.colors.WHITE10),
+                        ),
+                        left=32,
+                        top=30,
+                        rotate=ft.transform.Rotate(-0.98),
+                    ),
+                    ft.Container(
+                        content=ft.Text(
+                            "工具箱",
+                            size=80,
+                            font_family="Microsoft YaHei",  # 使用相同的锐利字体
+                            weight=ft.FontWeight.W_700,  # 加粗
+                            color=ft.colors.with_opacity(1, ft.colors.WHITE10),
+                        ),
+                        left=-10,
+                        top=78,
+                        rotate=ft.transform.Rotate(-0.98),
+                    ),
+                    # --- End Add Large Text ---
                 ],
                 expand=True,  # Make Stack fill the available space
             ),
-            # ft.Column(
-            #     [
-            #         ft.Container(height=15), # Top spacing
-            #         # start_button, # Removed direct button
-            #         start_bot_card, # Use the card
-            #         # Re-add the LPMM script card
-            #         create_action_card(
-            #             icon=ft.icons.MODEL_TRAINING_OUTLINED, # Icon is not used visually but kept for consistency maybe
-            #             text="麦麦学习",
-            #             on_click_handler=lambda _: run_script("start_lpmm.bat", page, app_state),
-            #             tooltip="运行学习脚本 (start_lpmm.bat)"
-            #         ),
-            #         # more_options_card, # Add the new card with the popup menu (Moved to Stack)
-            #         # --- Add Adapters and Settings Cards --- #
-            #         create_action_card(
-            #             icon=ft.icons.EXTENSION_OUTLINED, # Example icon
-            #             text="适配器...",
-            #             on_click_handler=lambda _: page.go("/adapters"),
-            #             tooltip="管理和运行适配器脚本"
-            #         ),
-            #         create_action_card(
-            #             icon=ft.icons.SETTINGS_OUTLINED, # Example icon
-            #             text="设置",
-            #             on_click_handler=lambda _: page.go("/settings"),
-            #             tooltip="配置启动器选项"
-            #         ),
-            #     ],
-            #     # alignment=ft.MainAxisAlignment.START, # Default vertical alignment is START
-            #     horizontal_alignment=ft.CrossAxisAlignment.START, # Align cards to the START (left)
-            #     spacing=0, # Let card margin handle spacing
-            #     expand=True,
-            # )
         ],
-        padding=ft.padding.symmetric(horizontal=15),  # Add horizontal padding to the view
-        scroll=ft.ScrollMode.ADAPTIVE,  # Allow scrolling if content overflows
+        # padding=ft.padding.symmetric(horizontal=20), # <-- 移除水平 padding
+        # scroll=ft.ScrollMode.ADAPTIVE,  # Allow scrolling if content overflows
     )
 
 
@@ -227,8 +465,10 @@ def create_console_view(page: ft.Page, app_state: "AppState") -> ft.View:
     """Creates the console output view ('/console'), including the interest monitor."""
     # Get UI elements from state
     output_list_view = app_state.output_list_view
-    # start_button = app_state.start_bot_button # Variable is assigned but never used
     from .process_manager import update_buttons_state  # Dynamic import
+
+    # 默认开启自动滚动
+    app_state.is_auto_scroll_enabled = True
 
     # Create ListView if it doesn't exist (as a fallback, should be created by start_bot)
     if not output_list_view:
@@ -248,7 +488,35 @@ def create_console_view(page: ft.Page, app_state: "AppState") -> ft.View:
 
     interest_monitor = app_state.interest_monitor_control
 
-    # --- Process Manager Functions (Import for button actions) ---
+    # --- 为控制台输出和兴趣监控创建容器，以便动态调整大小 --- #
+    output_container = ft.Container(
+        content=output_list_view,
+        expand=4,  # 在左侧 Column 内部分配比例
+        border=ft.border.only(bottom=ft.border.BorderSide(1, ft.colors.OUTLINE)),
+    )
+
+    monitor_container = ft.Container(
+        content=interest_monitor,
+        expand=4,  # 在左侧 Column 内部分配比例
+    )
+
+    # --- 设置兴趣监控的切换回调函数 --- #
+    def on_monitor_toggle(is_expanded):
+        if is_expanded:
+            # 监控器展开时，恢复原比例
+            output_container.expand = 4
+            monitor_container.expand = 4
+        else:
+            # 监控器隐藏时，让输出区占据更多空间
+            output_container.expand = 9
+            monitor_container.expand = 0
+
+        # 更新容器以应用新布局
+        output_container.update()
+        monitor_container.update()
+
+    # 为监控器设置回调函数
+    interest_monitor.on_toggle = on_monitor_toggle
 
     # --- Auto-scroll toggle button callback (remains separate) --- #
     def toggle_auto_scroll(e):
@@ -256,6 +524,15 @@ def create_console_view(page: ft.Page, app_state: "AppState") -> ft.View:
         lv = app_state.output_list_view  # Get potentially updated list view
         if lv:
             lv.auto_scroll = app_state.is_auto_scroll_enabled
+
+            # 当关闭自动滚动时，记录当前滚动位置
+            if not app_state.is_auto_scroll_enabled:
+                # 标记视图正在手动观看模式，以便在更新时保持位置
+                app_state.manual_viewing = True
+            else:
+                # 开启自动滚动时，关闭手动观看模式
+                app_state.manual_viewing = False
+
         # Update button appearance (assuming button reference is available)
         # e.control is the Container now
         # We need to update the Text control stored in its data attribute
@@ -376,20 +653,9 @@ def create_console_view(page: ft.Page, app_state: "AppState") -> ft.View:
                     ft.Column(
                         controls=[
                             # 1. Console Output Area
-                            ft.Container(
-                                content=output_list_view,  # From state
-                                expand=5,  # 在左侧 Column 内部分配比例
-                                border=ft.border.only(bottom=ft.border.BorderSide(1, ft.colors.OUTLINE)),
-                            ),
+                            output_container,  # 使用容器替代直接引用
                             # 2. Interest Monitor Area
-                            ft.Container(
-                                content=interest_monitor,  # From state
-                                expand=4,  # 在左侧 Column 内部分配比例
-                                # border=ft.border.all(1, ft.colors.OUTLINE), # 可以去掉这里的边框
-                                # border_radius=ft.border_radius.all(5),
-                                # padding=10, # 可以调整或去掉
-                                # margin=ft.margin.only(top=10),
-                            ),
+                            monitor_container,  # 使用容器替代直接引用
                         ],
                         expand=True,  # 让左侧 Column 占据 Row 的大部分空间
                     ),
@@ -649,20 +915,14 @@ def create_adapters_view(page: ft.Page, app_state: "AppState") -> ft.View:
 
 # --- Settings View --- #
 def create_settings_view(page: ft.Page, app_state: "AppState") -> ft.View:
-    """Creates the settings view (/settings)."""
+    """Placeholder for settings view."""
+    # This function is now implemented in ui_settings_view.py
+    # This placeholder can be removed if no longer referenced anywhere else.
+    # For safety, let's keep it but make it clear it's deprecated/moved.
+    print("Warning: Deprecated create_settings_view called in ui_views.py. Should use ui_settings_view.py version.")
     return ft.View(
-        "/settings",
-        [
-            ft.AppBar(title=ft.Text("设置"), bgcolor=ft.colors.SURFACE_VARIANT),
-            # Pass padding value positionally, use content keyword argument
-            # ft.Padding(ft.padding.all(20), content=ft.Text("设置选项将在此处显示...")),
-            # Use a Container with the padding property instead
-            ft.Container(
-                padding=ft.padding.all(20),  # Set padding property on the Container
-                content=ft.Text("设置选项将在此处显示..."),  # Place the original content inside
-            ),
-            # Add settings controls here later
-        ],
+        "/settings_deprecated",
+        [ft.AppBar(title=ft.Text("Settings (Deprecated)")), ft.Text("This view has moved to ui_settings_view.py")],
     )
 
 

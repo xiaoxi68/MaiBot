@@ -101,7 +101,7 @@ class InterestLogger:
         try:
             current_timestamp = time.time()
 
-            main_mind = self.heartflow.current_mind
+            # main_mind = self.heartflow.current_mind
             # 获取 Mai 状态名称
             mai_state_name = self.heartflow.current_state.get_current_state().name
 
@@ -109,7 +109,7 @@ class InterestLogger:
 
             log_entry_base = {
                 "timestamp": round(current_timestamp, 2),
-                "main_mind": main_mind,
+                # "main_mind": main_mind,
                 "mai_state": mai_state_name,
                 "subflow_count": len(all_subflow_states),
                 "subflows": [],
@@ -144,7 +144,7 @@ class InterestLogger:
                     "sub_chat_state": state.get("chat_state", "未知"),
                     "interest_level": interest_state.get("interest_level", 0.0),
                     "start_hfc_probability": interest_state.get("start_hfc_probability", 0.0),
-                    "is_above_threshold": interest_state.get("is_above_threshold", False),
+                    # "is_above_threshold": interest_state.get("is_above_threshold", False),
                 }
                 subflow_details.append(subflow_entry)
 

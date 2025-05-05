@@ -916,6 +916,7 @@ INTEREST_CHAT_STYLE_CONFIG = (
     INTEREST_CHAT_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else INTEREST_CHAT_STYLE_CONFIG["advanced"]
 )
 
+
 def is_registered_module(record: dict) -> bool:
     """检查是否为已注册的模块"""
     return record["extra"].get("module") in _handler_registry

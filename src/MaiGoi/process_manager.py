@@ -53,7 +53,7 @@ def update_buttons_state(page: Optional[ft.Page], app_state: "AppState", is_runn
                     console_button.on_click = new_onclick
                     needs_update = True
             else:
-                new_text = "MaiCore 主控室"
+                new_text = "启动 MaiCore"
                 new_color = ft.colors.with_opacity(0.6, ft.colors.GREEN_ACCENT_100)
                 new_onclick = _start_action  # Use def
                 if (
@@ -317,9 +317,43 @@ async def output_processor_loop(
                 break
 
             if output_lv:
-                output_lv.controls.extend(lines_to_add)
-                while len(output_lv.controls) > 1000:
-                    output_lv.controls.pop(0)  # Limit lines
+                # 如果在手动观看模式（自动滚动关闭），记录首个元素索引
+                if process_id == "bot.py" and hasattr(app_state, "manual_viewing") and app_state.manual_viewing:
+                    # 只有在自动滚动关闭时才保存视图位置
+                    if not getattr(output_lv, "auto_scroll", True):
+                        # 记录当前第一个可见元素的索引
+                        first_visible_idx = 0
+                        if hasattr(output_lv, "first_visible") and output_lv.first_visible is not None:
+                            first_visible_idx = output_lv.first_visible
+
+                        # 添加新行
+                        output_lv.controls.extend(lines_to_add)
+
+                        # 移除过多的行
+                        removal_count = 0
+                        while len(output_lv.controls) > 1000:
+                            output_lv.controls.pop(0)
+                            removal_count += 1
+
+                        # 如果移除了行，需要调整首个可见元素的索引
+                        if removal_count > 0 and first_visible_idx > removal_count:
+                            new_idx = max(0, first_visible_idx - removal_count)
+                            # 设置滚动位置到调整后的索引
+                            output_lv.first_visible = new_idx
+                        else:
+                            # 保持当前滚动位置
+                            output_lv.first_visible = first_visible_idx
+                    else:
+                        # 自动滚动开启时，正常添加
+                        output_lv.controls.extend(lines_to_add)
+                        while len(output_lv.controls) > 1000:
+                            output_lv.controls.pop(0)  # Limit lines
+                else:
+                    # 对于非主控制台输出，或没有手动观看模式，正常处理
+                    output_lv.controls.extend(lines_to_add)
+                    while len(output_lv.controls) > 1000:
+                        output_lv.controls.pop(0)  # Limit lines
+
                 if output_lv.visible and page:
                     try:
                         await update_page_safe(page)
@@ -447,7 +481,7 @@ def start_managed_process(
         output_lv = app_state.output_list_view  # Use the main console view
     else:
         # Create and store a new ListView for this specific process
-        output_lv = ft.ListView(expand=True, spacing=2, padding=5, auto_scroll=True)  # Default auto_scroll on
+        output_lv = ft.ListView(expand=True, spacing=2, padding=5, auto_scroll=True)  # 始终默认开启自动滚动
         new_process_state.output_list_view = output_lv
 
     # Add starting message to the determined ListView
@@ -460,16 +494,87 @@ def start_managed_process(
         print(f"[Start Managed - {process_id}] Starting subprocess: {full_path}", flush=True)
         sub_env = os.environ.copy()
         # Set env vars if needed (e.g., for colorization)
-        sub_env["LOGURU_COLORIZE"] = "True"  # Tell Loguru (inside bot.py) to colorize
-        sub_env["FORCE_COLOR"] = "1"  # Force libraries that check this to use color
-        sub_env["SIMPLE_OUTPUT"] = "True"  # Custom flag for bot.py to use simple format
+        sub_env["LOGURU_COLORIZE"] = "True"
+        sub_env["FORCE_COLOR"] = "1"
+        sub_env["SIMPLE_OUTPUT"] = "True"
         print(
             f"[Start Managed - {process_id}] Subprocess environment set: COLORIZE={sub_env.get('LOGURU_COLORIZE')}, FORCE_COLOR={sub_env.get('FORCE_COLOR')}, SIMPLE_OUTPUT={sub_env.get('SIMPLE_OUTPUT')}",
             flush=True,
         )
 
+        # --- 修改启动命令 ---
+        cmd_list = []
+        executable_path = ""  # 用于日志记录
+
+        if getattr(sys, "frozen", False):
+            # 打包后运行
+            executable_dir = os.path.dirname(sys.executable)
+
+            # 修改逻辑：这次我们直接指定 _internal 目录下的 Python 解释器
+            # 而不是尝试其他选项
+            try:
+                # _internal 目录是 PyInstaller 默认放置 Python 解释器的位置
+                internal_dir = os.path.join(executable_dir, "_internal")
+
+                if os.path.exists(internal_dir):
+                    print(f"[Start Managed - {process_id}] 找到 _internal 目录: {internal_dir}")
+
+                    # 在 _internal 目录中查找 python.exe
+                    python_exe = None
+                    python_paths = []
+
+                    # 首先尝试直接查找
+                    direct_python = os.path.join(internal_dir, "python.exe")
+                    if os.path.exists(direct_python):
+                        python_exe = direct_python
+                        python_paths.append(direct_python)
+
+                    # 如果没找到，进行递归搜索
+                    if not python_exe:
+                        for root, _, files in os.walk(internal_dir):
+                            if "python.exe" in files:
+                                path = os.path.join(root, "python.exe")
+                                python_paths.append(path)
+                                if not python_exe:  # 只取第一个找到的
+                                    python_exe = path
+
+                    # 记录所有找到的路径
+                    if python_paths:
+                        print(f"[Start Managed - {process_id}] 在 _internal 中找到的所有 Python.exe: {python_paths}")
+
+                    if python_exe:
+                        # 找到 Python 解释器，使用它来运行脚本
+                        cmd_list = [python_exe, "-u", full_path]
+                        executable_path = python_exe
+                        print(f"[Start Managed - {process_id}] 使用打包内部的 Python: {executable_path}")
+                    else:
+                        # 如果找不到，只能使用脚本文件直接执行
+                        print(f"[Start Managed - {process_id}] 无法在 _internal 目录中找到 python.exe")
+                        cmd_list = [full_path]
+                        executable_path = full_path
+                        print(f"[Start Managed - {process_id}] 直接执行脚本: {executable_path}")
+                else:
+                    # _internal 目录不存在，尝试直接执行脚本
+                    print(f"[Start Managed - {process_id}] _internal 目录不存在: {internal_dir}")
+                    cmd_list = [full_path]
+                    executable_path = full_path
+                    print(f"[Start Managed - {process_id}] 直接执行脚本: {executable_path}")
+            except Exception as path_err:
+                print(f"[Start Managed - {process_id}] 查找 Python 路径时出错: {path_err}")
+                # 如果出现异常，尝试直接执行脚本
+                cmd_list = [full_path]
+                executable_path = full_path
+                print(f"[Start Managed - {process_id}] 出错回退：直接执行脚本 {executable_path}")
+        else:
+            # 源码运行，使用当前的 Python 解释器
+            cmd_list = [sys.executable, "-u", full_path]
+            executable_path = sys.executable
+            print(f"[Start Managed - {process_id}] 源码模式：使用当前 Python ({executable_path})")
+
+        print(f"[Start Managed - {process_id}] 最终命令列表: {cmd_list}")
+
         process = subprocess.Popen(
-            [sys.executable, "-u", full_path],  # -u for unbuffered output
+            cmd_list,  # 使用构建好的命令列表
             cwd=app_state.script_dir,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,

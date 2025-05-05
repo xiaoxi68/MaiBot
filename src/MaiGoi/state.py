@@ -40,7 +40,8 @@ class AppState:
         self.output_list_view: Optional[ft.ListView] = None
         self.start_bot_button: Optional[ft.FilledButton] = None
         self.console_action_button: Optional[ft.ElevatedButton] = None
-        self.is_auto_scroll_enabled: bool = False
+        self.is_auto_scroll_enabled: bool = True  # 默认启用自动滚动
+        self.manual_viewing: bool = False  # 手动观看模式标识，用于修复自动滚动关闭时的位移问题
         self.interest_monitor_control: Optional[InterestMonitorDisplay] = None
 
         # Script directory (useful for paths)

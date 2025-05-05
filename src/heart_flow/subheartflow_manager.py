@@ -852,3 +852,52 @@ class SubHeartflowManager:
     # --- 结束新增 --- #
 
     # --- 结束新增：处理来自 HeartFChatting 的状态转换请求 --- #
+
+    # 临时函数，用于GUI切换，有api后删除
+    # async def detect_command_from_gui(self):
+    #     """检测来自GUI的命令"""
+    #     command_file = Path("temp_command/gui_command.json")
+    #     if not command_file.exists():
+    #         return
+
+    #     try:
+    #         # 读取并解析命令文件
+    #         command_data = json.loads(command_file.read_text())
+    #         subflow_id = command_data.get("subflow_id")
+    #         target_state = command_data.get("target_state")
+
+    #         if not subflow_id or not target_state:
+    #             logger.warning("GUI命令文件格式不正确，缺少必要字段")
+    #             return
+
+    #         # 尝试转换为ChatState枚举
+    #         try:
+    #             target_state_enum = ChatState[target_state.upper()]
+    #         except KeyError:
+    #             logger.warning(f"无效的目标状态: {target_state}")
+    #             command_file.unlink()
+    #             return
+
+    #         # 执行状态转换
+    #         await self.force_change_by_gui(subflow_id, target_state_enum)
+
+    #         # 转换成功后删除文件
+    #         command_file.unlink()
+    #         logger.debug(f"已处理GUI命令并删除命令文件: {command_file}")
+
+    #     except json.JSONDecodeError:
+    #         logger.warning("GUI命令文件不是有效的JSON格式")
+    #     except Exception as e:
+    #         logger.error(f"处理GUI命令时发生错误: {e}", exc_info=True)
+
+    # async def force_change_by_gui(self, subflow_id: Any, target_state: ChatState):
+    #     """强制改变指定子心流的状态"""
+    #     async with self._lock:
+    #         subflow = self.subheartflows.get(subflow_id)
+    #         if not subflow:
+    #             logger.warning(f"[强制状态转换] 尝试转换不存在的子心流 {subflow_id} 到 {target_state.value}")
+    #             return
+    #         await subflow.change_chat_state(target_state)
+    #         logger.info(f"[强制状态转换] 成功将 {subflow_id} 的状态转换为 {target_state.value}")
+
+    # --- 结束新增 --- #
