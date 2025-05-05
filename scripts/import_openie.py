@@ -204,7 +204,8 @@ def main():
             logger.error("请保证你的嵌入模型从未更改,并且在导入时使用相同的模型")
             # print("检测到嵌入模型与本地存储不一致，已终止导入。请检查模型设置或清空嵌入库后重试。")
             sys.exit(1)
-        logger.error("如果你是第一次导入知识，请忽略此错误")
+        if "不存在" in str(e):
+            logger.error("如果你是第一次导入知识，请忽略此错误")
     logger.info("Embedding库加载完成")
     # 初始化KG
     kg_manager = KGManager()
