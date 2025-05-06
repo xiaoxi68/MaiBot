@@ -35,15 +35,16 @@ loop = None
 
 # shutdown_requested = False  # 新增全局变量
 
+
 async def request_shutdown() -> bool:
     """请求关闭程序"""
     try:
         if loop and not loop.is_closed():
-                try:
-                    loop.run_until_complete(graceful_shutdown())
-                except Exception as ge:  # 捕捉优雅关闭时可能发生的错误
-                    logger.error(f"优雅关闭时发生错误: {ge}")
-                    return False
+            try:
+                loop.run_until_complete(graceful_shutdown())
+            except Exception as ge:  # 捕捉优雅关闭时可能发生的错误
+                logger.error(f"优雅关闭时发生错误: {ge}")
+                return False
         return True
     except Exception as e:
         logger.error(f"请求关闭程序时发生错误: {e}")
@@ -246,9 +247,6 @@ def raw_main():
     return MainSystem()
 
 
-
-
-
 if __name__ == "__main__":
     exit_code = 0  # 用于记录程序最终的退出状态
     try:
@@ -272,7 +270,7 @@ if __name__ == "__main__":
                 except Exception as ge:  # 捕捉优雅关闭时可能发生的错误
                     logger.error(f"优雅关闭时发生错误: {ge}")
         # 新增：检测外部请求关闭
-        
+
         # except Exception as e: # 将主异常捕获移到外层 try...except
         #     logger.error(f"事件循环内发生错误: {str(e)} {str(traceback.format_exc())}")
         #     exit_code = 1
