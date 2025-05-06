@@ -672,12 +672,12 @@ class SubHeartflowManager:
         """处理来自 HeartFChatting 的连续无回复信号 (通过 partial 绑定 ID)"""
         # 注意：这里不需要再获取锁，因为 sbhf_focus_into_absent 内部会处理锁
         logger.debug(f"[管理器 HFC 处理器] 接收到来自 {subheartflow_id} 的 HFC 无回复信号")
-        await self.sbhf_focus_into_absent(subheartflow_id)
+        await self.sbhf_focus_into_absent_or_chat(subheartflow_id)
 
     # --- 结束新增 --- #
 
     # --- 新增：处理来自 HeartFChatting 的状态转换请求 --- #
-    async def sbhf_focus_into_absent(self, subflow_id: Any):
+    async def sbhf_focus_into_absent_or_chat(self, subflow_id: Any):
         """
         接收来自 HeartFChatting 的请求，将特定子心流的状态转换为 ABSENT 或 CHAT。
         通常在连续多次 "no_reply" 后被调用。
@@ -729,6 +729,8 @@ class SubHeartflowManager:
                     f"[状态转换请求] 接收到请求，将 {stream_name} (当前: {current_state.value}) 尝试转换为 {target_state.value} ({log_reason})"
                 )
                 try:
+                    # 从HFC到CHAT时，清空兴趣字典
+                    subflow.clear_interest_dict()
                     await subflow.change_chat_state(target_state)
                     final_state = subflow.chat_state.chat_status
                     if final_state == target_state:
