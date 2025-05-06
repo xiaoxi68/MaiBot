@@ -1,12 +1,15 @@
 from fastapi import APIRouter
 from strawberry.fastapi import GraphQLRouter
-
+import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 # from src.config.config import BotConfig
 from src.common.logger_manager import get_logger
 from src.api.reload_config import reload_config as reload_config_func
 from src.common.server import global_server
-from .apiforgui import get_all_subheartflow_ids, forced_change_subheartflow_status
+from src.api.apiforgui import get_all_subheartflow_ids, forced_change_subheartflow_status
 from src.heart_flow.sub_heartflow import ChatState
+
 # import uvicorn
 # import os
 
@@ -50,6 +53,17 @@ async def forced_change_subheartflow_status_api(subheartflow_id: str, status: Ch
         logger.error(f"子心流 {subheartflow_id} 状态更改为 {status.value} 失败")
         return {"status": "failed"}
 
+@router.get("/stop")
+async def force_stop_maibot():
+    """强制停止MAI Bot"""
+    from bot import request_shutdown
+    success = await request_shutdown()
+    if success:
+        logger.info("MAI Bot已强制停止")
+        return {"status": "success"}
+    else:
+        logger.error("MAI Bot强制停止失败")
+        return {"status": "failed"}
 
 def start_api_server():
     """启动API服务器"""
