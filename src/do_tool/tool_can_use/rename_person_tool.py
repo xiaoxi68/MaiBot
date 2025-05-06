@@ -8,7 +8,9 @@ logger = get_logger("rename_person_tool")
 
 class RenamePersonTool(BaseTool):
     name = "rename_person"
-    description = "这个工具可以改变用户的昵称。你可以选择改变对他人的称呼。你想给人改名，叫别人别的称呼，需要调用这个工具。"
+    description = (
+        "这个工具可以改变用户的昵称。你可以选择改变对他人的称呼。你想给人改名，叫别人别的称呼，需要调用这个工具。"
+    )
     parameters = {
         "type": "object",
         "properties": {
