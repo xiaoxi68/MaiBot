@@ -6,6 +6,7 @@ import os
 import json
 import threading
 import subprocess
+
 # from loguru import logger
 from src.common.logger_manager import get_logger
 from src.config.config import global_config
@@ -81,6 +82,7 @@ def get_unique_id():
 def generate_unique_id():
     # 基于机器码生成唯一ID，同一台机器上生成的UUID是固定的，只要机器码不变
     import hashlib
+
     system_info = platform.system()
     machine_code = None
 
@@ -88,7 +90,7 @@ def generate_unique_id():
         if system_info == "Windows":
             # 使用wmic命令获取主机UUID（更稳定）
             result = subprocess.check_output(
-                'wmic csproduct get uuid', shell=True, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL
+                "wmic csproduct get uuid", shell=True, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL
             )
             lines = result.decode(errors="ignore").splitlines()
             # 过滤掉空行和表头，只取有效UUID
@@ -117,6 +119,7 @@ def generate_unique_id():
             uuid_line = result.decode(errors="ignore")
             # 解析出 "IOPlatformUUID" = "xxxx-xxxx-xxxx-xxxx"
             import re
+
             m = re.search(r'"IOPlatformUUID"\s*=\s*"([^"]+)"', uuid_line)
             if m:
                 uuid_val = m.group(1)
@@ -237,6 +240,7 @@ def main():
 
         return heartbeat_thread  # 返回线程对象，便于外部控制
     return None
+
 
 # --- 测试用例 ---
 if __name__ == "__main__":
