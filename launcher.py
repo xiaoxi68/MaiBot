@@ -184,13 +184,13 @@ def main(page: ft.Page):
     loaded_config = load_config()
     app_state.gui_config = loaded_config
     app_state.adapter_paths = loaded_config.get("adapters", []).copy()
-    app_state.bot_script_path = loaded_config.get("bot_script_path", "bot.py") # Load bot script path
-    
+    app_state.bot_script_path = loaded_config.get("bot_script_path", "bot.py")  # Load bot script path
+
     # 加载用户自定义的 Python 路径
     if "python_path" in loaded_config and os.path.exists(loaded_config["python_path"]):
         app_state.python_path = loaded_config["python_path"]
         print(f"[Main] 从配置加载 Python 路径: {app_state.python_path}")
-    
+
     print(f"[Main] Initial adapters loaded: {app_state.adapter_paths}")
 
     # Set script_dir in AppState early
@@ -219,7 +219,7 @@ def main(page: ft.Page):
     except KeyError:
         print(f"[Main] Warning: Invalid theme '{saved_theme}' in config. Falling back to System.")
         page.theme_mode = ft.ThemeMode.SYSTEM
-        
+
     # --- 自定义主题颜色 --- #
     # 创建深色主题，使橙色变得更暗
     dark_theme = ft.Theme(
@@ -228,14 +228,14 @@ def main(page: ft.Page):
         color_scheme=ft.ColorScheme(
             primary=ft.colors.ORANGE_700,
             primary_container=ft.colors.ORANGE_800,
-        )
+        ),
     )
-    
+
     # 创建亮色主题
     light_theme = ft.Theme(
         color_scheme_seed=ft.colors.ORANGE,
     )
-    
+
     # 设置自定义主题
     page.theme = light_theme
     page.dark_theme = dark_theme
