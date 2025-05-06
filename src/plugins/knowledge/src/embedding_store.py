@@ -28,7 +28,11 @@ from rich.progress import (
 
 install(extra_lines=3)
 ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
-EMBEDDING_DATA_DIR = os.path.join(ROOT_PATH, "data", "embedding") if global_config["persistence"]["embedding_data_dir"] is None else os.path.join(ROOT_PATH, global_config["persistence"]["embedding_data_dir"])
+EMBEDDING_DATA_DIR = (
+    os.path.join(ROOT_PATH, "data", "embedding")
+    if global_config["persistence"]["embedding_data_dir"] is None
+    else os.path.join(ROOT_PATH, global_config["persistence"]["embedding_data_dir"])
+)
 EMBEDDING_DATA_DIR_STR = str(EMBEDDING_DATA_DIR).replace("\\", "/")
 TOTAL_EMBEDDING_TIMES = 3  # 统计嵌入次数
 
