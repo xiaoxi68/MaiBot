@@ -1,6 +1,8 @@
 import asyncio
 import time
-from .plugins.utils.statistic import LLMStatistics
+
+from .manager.async_task_manager import async_task_manager
+from .plugins.utils.statistic import OnlineTimeRecordTask, StatisticOutputTask
 from .plugins.moods.moods import MoodManager
 from .plugins.schedule.schedule_generator import bot_schedule
 from .plugins.emoji_system.emoji_manager import emoji_manager
@@ -26,11 +28,13 @@ logger = get_logger("main")
 
 
 class MainSystem:
+    mood_manager: MoodManager
+    hippocampus_manager: HippocampusManager
+    individuality: Individuality
+
     def __init__(self):
-        self.llm_stats = LLMStatistics("llm_statistics.txt")
         self.mood_manager = MoodManager.get_instance()
         self.hippocampus_manager = HippocampusManager.get_instance()
-        self._message_manager_started = False
         self.individuality = Individuality.get_instance()
 
         # 使用消息API替代直接的FastAPI实例
@@ -51,9 +55,12 @@ class MainSystem:
     async def _init_components(self):
         """初始化其他组件"""
         init_start_time = time.time()
-        # 启动LLM统计
-        self.llm_stats.start()
-        logger.success("LLM统计功能启动成功")
+
+        # 添加在线时间统计任务
+        await async_task_manager.add_task(OnlineTimeRecordTask())
+
+        # 添加统计信息输出任务
+        await async_task_manager.add_task(StatisticOutputTask())
 
         # 启动API服务器
         start_api_server()
