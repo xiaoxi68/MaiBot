@@ -17,3 +17,20 @@ async def forced_change_subheartflow_status(subheartflow_id: str, status: ChatSt
     if subheartflow:
         return await heartflow.force_change_subheartflow_status(subheartflow_id, status)
     return False
+
+async def get_subheartflow_cycle_info(subheartflow_id: str, history_len: int) -> dict:
+    """获取子心流的循环信息"""
+    subheartflow_cycle_info =  await heartflow.api_get_subheartflow_cycle_info(subheartflow_id, history_len)
+    logger.debug(f"子心流 {subheartflow_id} 循环信息: {subheartflow_cycle_info}")
+    if subheartflow_cycle_info:
+        return subheartflow_cycle_info
+    else:
+        logger.warning(f"子心流 {subheartflow_id} 循环信息未找到")
+        return None
+    
+
+async def get_all_states():
+    """获取所有状态"""
+    all_states = await heartflow.api_get_all_states()
+    logger.debug(f"所有状态: {all_states}")
+    return all_states
