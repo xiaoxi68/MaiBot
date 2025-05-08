@@ -87,7 +87,7 @@ class AsyncTaskManager:
         if not issubclass(task.__class__, AsyncTask):
             raise TypeError(f"task '{task.__class__.__name__}' 必须是继承 AsyncTask 的子类")
 
-        with self._lock:  # 由于可能需要await等待任务完成，所以需要加异步锁
+        async with self._lock:  # 由于可能需要await等待任务完成，所以需要加异步锁
             if task.task_name in self.tasks:
                 logger.warning(f"已存在名称为 '{task.task_name}' 的任务，正在尝试取消并替换")
                 self.tasks[task.task_name].cancel()  # 取消已存在的任务
@@ -120,7 +120,7 @@ class AsyncTaskManager:
         """
         终止所有任务并等待它们完成（该方法会阻塞其它尝试add_task()的操作）
         """
-        with self._lock:  # 由于可能需要await等待任务完成，所以需要加异步锁
+        async with self._lock:  # 由于可能需要await等待任务完成，所以需要加异步锁
             # 设置中止标志
             self.abort_flag.set()
             # 取消所有任务
