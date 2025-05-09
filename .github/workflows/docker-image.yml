@@ -91,6 +91,7 @@ jobs:
           file: ./Dockerfile
           platforms: ${{ matrix.platform }}
           labels: ${{ needs.prepare.outputs.labels }}
+          tags: ${{ env.REGISTRY_IMAGE }}:${{ github.sha }}-${{ env.PLATFORM_PAIR }}
           cache-from: type=registry,ref=${{ env.REGISTRY_IMAGE }}:buildcache-${{ env.PLATFORM_PAIR }}
           cache-to: type=registry,ref=${{ env.REGISTRY_IMAGE }}:buildcache-${{ env.PLATFORM_PAIR }},mode=max
           provenance: true
