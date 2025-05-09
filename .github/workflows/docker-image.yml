@@ -48,10 +48,6 @@ jobs:
         platform:
           - linux/amd64
           - linux/arm64
-          - linux/arm/v7
-          - linux/arm/v6
-          - linux/386
-          - linux/loong64
     steps:
       - name: Prepare
         run: |
@@ -91,7 +87,7 @@ jobs:
           file: ./Dockerfile
           platforms: ${{ matrix.platform }}
           labels: ${{ needs.prepare.outputs.labels }}
-          tags: ${{ env.REGISTRY_IMAGE }}:${{ github.sha }}-${{ env.PLATFORM_PAIR }}
+          tags: ${{ env.REGISTRY_IMAGE }}
           cache-from: type=registry,ref=${{ env.REGISTRY_IMAGE }}:buildcache-${{ env.PLATFORM_PAIR }}
           cache-to: type=registry,ref=${{ env.REGISTRY_IMAGE }}:buildcache-${{ env.PLATFORM_PAIR }},mode=max
           provenance: true
