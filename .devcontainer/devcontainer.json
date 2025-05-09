@@ -9,13 +9,23 @@
 		},
 		"ghcr.io/devcontainers/features/github-cli:1": {}
 	},
-    "forwardPorts": [
-      "8000:8000"
-    ],
+	"forwardPorts": [
+		"8000:8000"
+	],
 	"postCreateCommand": "pip3 install --user -r requirements.txt",
-  "customizations" : {
-    "jetbrains" : {
-      "backend" : "PyCharm"
-    }
-  }
+	"customizations": {
+		"jetbrains": {
+			"backend": "PyCharm"
+		},
+		"vscode": {
+			"extensions": [
+				"tamasfe.even-better-toml",
+				"njpwerner.autodocstring",
+				"ms-python.python",
+				"KevinRose.vsc-python-indent",
+				"ms-python.vscode-pylance",
+				"ms-python.autopep8"
+			]
+		}
+	}
 }
