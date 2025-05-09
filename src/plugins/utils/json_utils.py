@@ -2,6 +2,7 @@ import json
 import logging
 from typing import Any, Dict, TypeVar, List, Union, Tuple
 import ast
+import time
 
 # 定义类型变量用于泛型类型提示
 T = TypeVar("T")
@@ -224,3 +225,86 @@ def process_llm_tool_calls(
         return False, [], "所有工具调用格式均无效"
 
     return True, valid_tool_calls, ""
+
+
+def convert_custom_to_standard_tool_calls(
+    custom_tool_calls: List[Dict[str, Any]], log_prefix: str = ""
+) -> Tuple[bool, List[Dict[str, Any]], str]:
+    """
+    Converts a list of tool calls from a custom format (name, arguments_object)
+    to a standard format (id, type, function_with_name_and_arguments_string).
+
+    Custom format per item:
+    {
+        "name": "tool_name",
+        "arguments": {"param": "value"} 
+    }
+
+    Standard format per item:
+    {
+        "id": "call_...",
+        "type": "function",
+        "function": {
+            "name": "tool_name",
+            "arguments": "{\"param\": \"value\"}" 
+        }
+    }
+
+    Args:
+        custom_tool_calls: List of tool calls in the custom format.
+        log_prefix: Logger prefix.
+
+    Returns:
+        Tuple (success_flag, list_of_standard_tool_calls, error_message)
+    """
+    if not isinstance(custom_tool_calls, list):
+        return False, [], f"{log_prefix}Input custom_tool_calls is not a list, got {type(custom_tool_calls).__name__}"
+
+    if not custom_tool_calls:
+        return True, [], "Custom tool call list is empty."
+
+    standard_tool_calls = []
+    for i, custom_call in enumerate(custom_tool_calls):
+        if not isinstance(custom_call, dict):
+            msg = f"{log_prefix}Item {i} in custom_tool_calls is not a dictionary, got {type(custom_call).__name__}"
+            logger.warning(msg)
+            return False, [], msg
+
+        tool_name = custom_call.get("name")
+        tool_arguments_obj = custom_call.get("arguments")
+
+        if not isinstance(tool_name, str) or not tool_name:
+            msg = f"{log_prefix}Item {i} ('{custom_call}') is missing 'name' or name is not a string."
+            logger.warning(msg)
+            return False, [], msg
+
+        if not isinstance(tool_arguments_obj, dict):
+            # Allow empty arguments if it's missing, defaulting to {}
+            if tool_arguments_obj is None:
+                tool_arguments_obj = {}
+            else:
+                msg = f"{log_prefix}Item {i} ('{tool_name}') has 'arguments' but it's not a dictionary, got {type(tool_arguments_obj).__name__}."
+                logger.warning(msg)
+                return False, [], msg
+        
+        arguments_str = safe_json_dumps(tool_arguments_obj, default_value="{}", ensure_ascii=False)
+        if arguments_str == "{}" and tool_arguments_obj: # safe_json_dumps failed for non-empty obj
+             msg = f"{log_prefix}Item {i} ('{tool_name}') failed to dump arguments to JSON string: {tool_arguments_obj}"
+             logger.warning(msg)
+             # Potentially return False here if strict dumping is required, or proceed with "{}"
+             # For now, we'll proceed with "{}" if dumping fails but log it.
+
+        standard_call_id = f"call_{int(time.time() * 1000)}_{i}"
+        
+        standard_call = {
+            "id": standard_call_id,
+            "type": "function",
+            "function": {
+                "name": tool_name,
+                "arguments": arguments_str,
+            },
+        }
+        standard_tool_calls.append(standard_call)
+
+    logger.debug(f"{log_prefix}Converted {len(custom_tool_calls)} custom calls to {len(standard_tool_calls)} standard calls.")
+    return True, standard_tool_calls, ""
