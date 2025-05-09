@@ -136,8 +136,16 @@ jobs:
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
         run: |
-          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "${{ needs.prepare.outputs.tags }}") \
-            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
+          # 确保至少有一个默认标签
+          TAGS="-t ${{ env.REGISTRY_IMAGE }}:latest"
+          
+          # 如果 meta 输出的标签不为空，则使用它们
+          if [ -n "${{ needs.prepare.outputs.tags }}" ]; then
+            TAGS=$(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "${{ needs.prepare.outputs.tags }}")
+          fi
+          
+          echo "Using tags: ${TAGS}"
+          docker buildx imagetools create ${TAGS} $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
 
       - name: Inspect image
         run: |
