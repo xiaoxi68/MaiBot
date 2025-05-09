@@ -149,6 +149,20 @@ jobs:
 
       - name: Inspect image
         run: |
-          tags_json='${{ needs.prepare.outputs.tags }}'
-          first_tag=$(echo $tags_json | jq -r '.tags[0]')
-          docker buildx imagetools inspect $first_tag
+          # 使用默认标签
+          DEFAULT_TAG="${{ env.REGISTRY_IMAGE }}:latest"
+          
+          # 尝试从 prepare 输出中获取标签
+          if [ -n "${{ needs.prepare.outputs.tags }}" ]; then
+            TAGS_JSON='${{ needs.prepare.outputs.tags }}'
+            FIRST_TAG=$(echo $TAGS_JSON | jq -r '.tags[0]')
+            if [ -n "$FIRST_TAG" ] && [ "$FIRST_TAG" != "null" ]; then
+              echo "使用从 metadata 获取的标签: $FIRST_TAG"
+              docker buildx imagetools inspect $FIRST_TAG
+              exit 0
+            fi
+          fi
+          
+          # 如果没有标签或提取失败，使用默认标签
+          echo "使用默认标签: $DEFAULT_TAG"
+          docker buildx imagetools inspect $DEFAULT_TAG
