@@ -10,50 +10,13 @@ on:
       - "v*.*.*"
       - "v*"
 
-env:
-  REGISTRY_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/maibot
-
 jobs:
-  prepare:
+  build-amd64:
+    name: Build AMD64 Image
     runs-on: ubuntu-latest
-    outputs:
-      tags: ${{ steps.meta.outputs.tags }}
-      labels: ${{ steps.meta.outputs.labels }}
-      bake-file: ${{ steps.meta.outputs.bake-file }}
+    env:
+      DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USERNAME }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY_IMAGE }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=tag
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=sha
-
-  build:
-    runs-on: ubuntu-latest
-    needs: prepare
-    strategy:
-      fail-fast: false
-      matrix:
-        platform:
-          - linux/amd64
-          - linux/arm64
-    steps:
-      - name: Prepare
-        run: |
-          platform=${{ matrix.platform }}
-          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
-
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -64,9 +27,6 @@ jobs:
 
       - name: Clone lpmm
         run: git clone https://github.com/MaiM-with-u/MaiMBot-LPMM.git MaiMBot-LPMM
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -79,50 +39,61 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push by digest
-        id: build
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/maibot
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha
+
+      - name: Build and Push AMD64 Docker Image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
-          platforms: ${{ matrix.platform }}
-          labels: ${{ needs.prepare.outputs.labels }}
-          tags: ${{ env.REGISTRY_IMAGE }}
-          cache-from: type=registry,ref=${{ env.REGISTRY_IMAGE }}:buildcache-${{ env.PLATFORM_PAIR }}
-          cache-to: type=registry,ref=${{ env.REGISTRY_IMAGE }}:buildcache-${{ env.PLATFORM_PAIR }},mode=max
+          platforms: linux/amd64
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/maibot:amd64-${{ github.sha }}
+          push: true
+          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/maibot:amd64-buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/maibot:amd64-buildcache,mode=max
+          labels: ${{ steps.meta.outputs.labels }}
           provenance: true
           sbom: true
           build-args: |
             BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
             VCS_REF=${{ github.sha }}
-          outputs: type=image,push-by-digest=true,name-canonical=true,push=true
+          outputs: type=image,push=true
 
-      - name: Export digest
-        run: |
-          mkdir -p ${{ runner.temp }}/digests
-          digest="${{ steps.build.outputs.digest }}"
-          touch "${{ runner.temp }}/digests/${digest#sha256:}"
-
-      - name: Upload digest
-        uses: actions/upload-artifact@v4
-        with:
-          name: digests-${{ env.PLATFORM_PAIR }}
-          path: ${{ runner.temp }}/digests/*
-          if-no-files-found: error
-          retention-days: 1
-
-  merge:
+  build-arm64:
+    name: Build ARM64 Image
     runs-on: ubuntu-latest
-    needs:
-      - prepare
-      - build
+    env:
+      DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USERNAME }}
     steps:
-      - name: Download digests
-        uses: actions/download-artifact@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          path: ${{ runner.temp }}/digests
-          pattern: digests-*
-          merge-multiple: true
+          fetch-depth: 0
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Clone maim_message
+        run: git clone https://github.com/MaiM-with-u/maim_message maim_message
+
+      - name: Clone lpmm
+        run: git clone https://github.com/MaiM-with-u/MaiMBot-LPMM.git MaiMBot-LPMM
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          buildkitd-flags: --debug
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -130,39 +101,69 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/maibot
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha
 
-      - name: Create manifest list and push
-        working-directory: ${{ runner.temp }}/digests
-        run: |
-          # 确保至少有一个默认标签
-          TAGS="-t ${{ env.REGISTRY_IMAGE }}:latest"
-          
-          # 如果 meta 输出的标签不为空，则使用它们
-          if [ -n "${{ needs.prepare.outputs.tags }}" ]; then
-            TAGS=$(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "${{ needs.prepare.outputs.tags }}")
-          fi
-          
-          echo "Using tags: ${TAGS}"
-          docker buildx imagetools create ${TAGS} $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
+      - name: Build and Push ARM64 Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/arm64
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/maibot:arm64-${{ github.sha }}
+          push: true
+          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/maibot:arm64-buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/maibot:arm64-buildcache,mode=max
+          labels: ${{ steps.meta.outputs.labels }}
+          provenance: true
+          sbom: true
+          build-args: |
+            BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+            VCS_REF=${{ github.sha }}
+          outputs: type=image,push=true
 
-      - name: Inspect image
+  create-manifest:
+    name: Create Multi-Arch Manifest
+    runs-on: ubuntu-latest
+    needs:
+      - build-amd64
+      - build-arm64
+    steps:
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/maibot
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha
+
+      - name: Create and Push Manifest
         run: |
-          # 使用默认标签
-          DEFAULT_TAG="${{ env.REGISTRY_IMAGE }}:latest"
-          
-          # 尝试从 prepare 输出中获取标签
-          if [ -n "${{ needs.prepare.outputs.tags }}" ]; then
-            TAGS_JSON='${{ needs.prepare.outputs.tags }}'
-            FIRST_TAG=$(echo $TAGS_JSON | jq -r '.tags[0]')
-            if [ -n "$FIRST_TAG" ] && [ "$FIRST_TAG" != "null" ]; then
-              echo "使用从 metadata 获取的标签: $FIRST_TAG"
-              docker buildx imagetools inspect $FIRST_TAG
-              exit 0
-            fi
-          fi
-          
-          # 如果没有标签或提取失败，使用默认标签
-          echo "使用默认标签: $DEFAULT_TAG"
-          docker buildx imagetools inspect $DEFAULT_TAG
+          # 为每个标签创建多架构镜像
+          for tag in $(echo "${{ steps.meta.outputs.tags }}" | tr '\n' ' '); do
+            echo "Creating manifest for $tag"
+            docker buildx imagetools create -t $tag \
+              ${{ secrets.DOCKERHUB_USERNAME }}/maibot:amd64-${{ github.sha }} \
+              ${{ secrets.DOCKERHUB_USERNAME }}/maibot:arm64-${{ github.sha }}
+          done
