@@ -96,12 +96,37 @@ class OnlineTimeRecordTask(AsyncTask):
             logger.exception("在线时间记录失败")
 
 
+def _format_online_time(online_seconds: int) -> str:
+    """
+    格式化在线时间
+    :param online_seconds: 在线时间（秒）
+    :return: 格式化后的在线时间字符串
+    """
+    total_oneline_time = timedelta(seconds=online_seconds)
+
+    days = total_oneline_time.days
+    hours = total_oneline_time.seconds // 3600
+    minutes = (total_oneline_time.seconds // 60) % 60
+    seconds = total_oneline_time.seconds % 60
+    if days > 0:
+        # 如果在线时间超过1天，则格式化为“X天X小时X分钟”
+        total_oneline_time_str = f"{total_oneline_time.days}天{hours}小时{minutes}分钟{seconds}秒"
+    elif hours > 0:
+        # 如果在线时间超过1小时，则格式化为“X小时X分钟X秒”
+        total_oneline_time_str = f"{hours}小时{minutes}分钟{seconds}秒"
+    else:
+        # 其他情况格式化为“X分钟X秒”
+        total_oneline_time_str = f"{minutes}分钟{seconds}秒"
+
+    return total_oneline_time_str
+
+
 class StatisticOutputTask(AsyncTask):
     """统计输出任务"""
 
     SEP_LINE = "-" * 84
 
-    def __init__(self, record_file_path: str = "llm_statistics.txt"):
+    def __init__(self, record_file_path: str = "maibot_statistics.html"):
         # 延迟300秒启动，运行间隔300秒
         super().__init__(task_name="Statistics Data Output Task", wait_before_start=0, run_interval=300)
 
@@ -126,10 +151,10 @@ class StatisticOutputTask(AsyncTask):
             local_storage["deploy_time"] = now.timestamp()
 
         self.stat_period: List[Tuple[str, timedelta, str]] = [
-            ("all_time", now - deploy_time, "自部署以来的"),
-            ("last_7_days", timedelta(days=7), "最近7天的"),
-            ("last_24_hours", timedelta(days=1), "最近24小时的"),
-            ("last_hour", timedelta(hours=1), "最近1小时的"),
+            ("all_time", now - deploy_time, "自部署以来"),  # 必须保留“all_time”
+            ("last_7_days", timedelta(days=7), "最近7天"),
+            ("last_24_hours", timedelta(days=1), "最近24小时"),
+            ("last_hour", timedelta(hours=1), "最近1小时"),
         ]
         """
         统计时间段 [(统计名称, 统计时间段, 统计描述), ...]
@@ -158,52 +183,6 @@ class StatisticOutputTask(AsyncTask):
 
         logger.info("\n" + "\n".join(output))
 
-    def _statistic_file_output(self, stats: Dict[str, Any], now: datetime):
-        """
-        输出统计数据到文件
-        """
-        output = [f"MaiBot运行统计报告  (统计截止时间：{now.strftime('%Y-%m-%d %H:%M:%S')})", ""]
-
-        def _format_stat_data(title: str, stats_: Dict[str, Any]) -> str:
-            """
-            格式化统计数据
-            """
-            return "\n".join(
-                [
-                    self.SEP_LINE,
-                    f"  {title}",
-                    self.SEP_LINE,
-                    self._format_total_stat(stats_),
-                    "",
-                    self._format_model_classified_stat(stats_),
-                    "",
-                    self._format_req_type_classified_stat(stats_),
-                    "",
-                    self._format_user_classified_stat(stats_),
-                    "",
-                    self._format_chat_stat(stats_),
-                ]
-            )
-
-        for period_key, period_interval, period_desc in self.stat_period:
-            if period_key in stats:
-                start_time = (
-                    datetime.fromtimestamp(local_storage["deploy_time"])
-                    if period_key == "all_time"
-                    else now - period_interval
-                )
-                # 统计数据存在
-                output.append(
-                    _format_stat_data(
-                        f"{period_desc}统计数据  "
-                        f"(统计时段：{start_time.strftime('%Y-%m-%d %H:%M:%S')} ~ {now.strftime('%Y-%m-%d %H:%M:%S')})",
-                        stats[period_key],
-                    )
-                )
-
-        with open(self.record_file_path, "w", encoding="utf-8") as f:
-            f.write("\n\n".join(output))
-
     async def run(self):
         try:
             now = datetime.now()
@@ -212,8 +191,8 @@ class StatisticOutputTask(AsyncTask):
 
             # 输出统计数据到控制台
             self._statistic_console_output(stats, now)
-            # 输出统计数据到文件
-            self._statistic_file_output(stats, now)
+            # 输出统计数据到html文件
+            self._generate_html_report(stats, now)
         except Exception as e:
             logger.exception(f"输出统计数据过程中发生异常，错误信息：{e}")
 
@@ -340,10 +319,10 @@ class StatisticOutputTask(AsyncTask):
                         start_timestamp: datetime = record.get("start_timestamp")
                         if start_timestamp < _period_start:
                             # 如果开始时间在查询边界之前，则使用开始时间
-                            stats[period_key][ONLINE_TIME] += (end_timestamp - _period_start).total_seconds() / 60
+                            stats[period_key][ONLINE_TIME] += (end_timestamp - _period_start).total_seconds()
                         else:
                             # 否则，使用开始时间
-                            stats[period_key][ONLINE_TIME] += (end_timestamp - start_timestamp).total_seconds() / 60
+                            stats[period_key][ONLINE_TIME] += (end_timestamp - start_timestamp).total_seconds()
                     break  # 取消更早时间段的判断
 
         return stats
@@ -460,8 +439,9 @@ class StatisticOutputTask(AsyncTask):
         """
         格式化总统计数据
         """
+
         output = [
-            f"总在线时间: {stats[ONLINE_TIME]:.1f}分钟",
+            f"总在线时间: {_format_online_time(stats[ONLINE_TIME])}",
             f"总消息数: {stats[TOTAL_MSG_CNT]}",
             f"总请求数: {stats[TOTAL_REQ_CNT]}",
             f"总花费: {stats[TOTAL_COST]:.4f}¥",
@@ -495,66 +475,6 @@ class StatisticOutputTask(AsyncTask):
         else:
             return ""
 
-    @staticmethod
-    def _format_req_type_classified_stat(stats: Dict[str, Any]) -> str:
-        """
-        格式化按请求类型分类的统计数据
-        """
-        if stats[TOTAL_REQ_CNT] > 0:
-            # 按请求类型统计
-            data_fmt = "{:<32}  {:>10}  {:>12}  {:>12}  {:>12}  {:>9.4f}¥"
-
-            output = [
-                "按请求类型分类统计:",
-                " 请求类型                          调用次数    输入Token     输出Token     Token总量     累计花费",
-            ]
-            for req_type, count in sorted(stats[REQ_CNT_BY_TYPE].items()):
-                name = req_type[:29] + "..." if len(req_type) > 32 else req_type
-                in_tokens = stats[IN_TOK_BY_TYPE][req_type]
-                out_tokens = stats[OUT_TOK_BY_TYPE][req_type]
-                tokens = stats[TOTAL_TOK_BY_TYPE][req_type]
-                cost = stats[COST_BY_TYPE][req_type]
-                output.append(data_fmt.format(name, count, in_tokens, out_tokens, tokens, cost))
-
-            output.append("")
-            return "\n".join(output)
-        else:
-            return ""
-
-    @staticmethod
-    def _format_user_classified_stat(stats: Dict[str, Any]) -> str:
-        """
-        格式化按用户分类的统计数据
-        """
-        if stats[TOTAL_REQ_CNT] > 0:
-            # 修正用户统计列宽
-            data_fmt = "{:<32}  {:>10}  {:>12}  {:>12}  {:>12}  {:>9.4f}¥"
-
-            output = [
-                "按用户分类统计:",
-                " 用户名称                          调用次数    输入Token     输出Token     Token总量     累计花费",
-            ]
-            for user_id, count in sorted(stats[REQ_CNT_BY_USER].items()):
-                in_tokens = stats[IN_TOK_BY_USER][user_id]
-                out_tokens = stats[OUT_TOK_BY_USER][user_id]
-                tokens = stats[TOTAL_TOK_BY_USER][user_id]
-                cost = stats[COST_BY_USER][user_id]
-                output.append(
-                    data_fmt.format(
-                        user_id[:22],  # 不再添加省略号，保持原始ID
-                        count,
-                        in_tokens,
-                        out_tokens,
-                        tokens,
-                        cost,
-                    )
-                )
-
-            output.append("")
-            return "\n".join(output)
-        else:
-            return ""
-
     def _format_chat_stat(self, stats: Dict[str, Any]) -> str:
         """
         格式化聊天统计数据
@@ -568,3 +488,278 @@ class StatisticOutputTask(AsyncTask):
             return "\n".join(output)
         else:
             return ""
+
+    def _generate_html_report(self, stat: dict[str, Any], now: datetime):
+        """
+        生成HTML格式的统计报告
+        :param stat: 统计数据
+        :param now: 基准当前时间
+        :return: HTML格式的统计报告
+        """
+
+        tab_list = [
+            f'<button class="tab-link" onclick="showTab(event, \'{period[0]}\')">{period[2]}</button>'
+            for period in self.stat_period
+        ]
+
+        def _format_stat_data(stat_data: dict[str, Any], div_id: str, start_time: datetime) -> str:
+            """
+            格式化一个时间段的统计数据到html div块
+            :param stat_data: 统计数据
+            :param div_id: div的ID
+            :param start_time: 统计时间段开始时间
+            """
+            # format总在线时间
+
+            # 生成HTML
+            return f"""
+            <div id="{div_id}" class="tab-content">
+                <p class="info-item">
+                    <strong>统计时段: </strong>
+                    {start_time.strftime("%Y-%m-%d %H:%M:%S")} ~ {now.strftime("%Y-%m-%d %H:%M:%S")}
+                </p>
+                <p class="info-item"><strong>总在线时间: </strong>{_format_online_time(stat_data[ONLINE_TIME])}</p>
+                <p class="info-item"><strong>总消息数: </strong>{stat_data[TOTAL_MSG_CNT]}</p>
+                <p class="info-item"><strong>总请求数: </strong>{stat_data[TOTAL_REQ_CNT]}</p>
+                <p class="info-item"><strong>总花费: </strong>{stat_data[TOTAL_COST]:.4f} ¥</p>
+                
+                <h2>按模型分类统计</h2>
+                <table>
+                    <thead><tr><th>模型名称</th><th>调用次数</th><th>输入Token</th><th>输出Token</th><th>Token总量</th><th>累计花费</th></tr></thead>
+                    <tbody>
+                        {
+                "\n".join(
+                    [
+                        f"<tr>"
+                        f"<td>{model_name}</td>"
+                        f"<td>{count}</td>"
+                        f"<td>{stat_data[IN_TOK_BY_MODEL][model_name]}</td>"
+                        f"<td>{stat_data[OUT_TOK_BY_MODEL][model_name]}</td>"
+                        f"<td>{stat_data[TOTAL_TOK_BY_MODEL][model_name]}</td>"
+                        f"<td>{stat_data[COST_BY_MODEL][model_name]:.4f} ¥</td>"
+                        f"</tr>"
+                        for model_name, count in sorted(stat_data[REQ_CNT_BY_MODEL].items())
+                    ]
+                )
+            }
+                    </tbody>
+                </table>
+                
+                <h2>按请求类型分类统计</h2>
+                <table>
+                    <thead>
+                        <tr><th>请求类型</th><th>调用次数</th><th>输入Token</th><th>输出Token</th><th>Token总量</th><th>累计花费</th></tr>
+                    </thead>
+                    <tbody>
+                    {
+                "\n".join(
+                    [
+                        f"<tr>"
+                        f"<td>{req_type}</td>"
+                        f"<td>{count}</td>"
+                        f"<td>{stat_data[IN_TOK_BY_TYPE][req_type]}</td>"
+                        f"<td>{stat_data[OUT_TOK_BY_TYPE][req_type]}</td>"
+                        f"<td>{stat_data[TOTAL_TOK_BY_TYPE][req_type]}</td>"
+                        f"<td>{stat_data[COST_BY_TYPE][req_type]:.4f} ¥</td>"
+                        f"</tr>"
+                        for req_type, count in sorted(stat_data[REQ_CNT_BY_TYPE].items())
+                    ]
+                )
+            }
+                    </tbody>
+                </table>
+    
+                <h2>按用户分类统计</h2>
+                <table>
+                    <thead>
+                        <tr><th>用户名称</th><th>调用次数</th><th>输入Token</th><th>输出Token</th><th>Token总量</th><th>累计花费</th></tr>
+                    </thead>
+                    <tbody>
+                    {
+                "\n".join(
+                    [
+                        f"<tr>"
+                        f"<td>{user_id}</td>"
+                        f"<td>{count}</td>"
+                        f"<td>{stat_data[IN_TOK_BY_USER][user_id]}</td>"
+                        f"<td>{stat_data[OUT_TOK_BY_USER][user_id]}</td>"
+                        f"<td>{stat_data[TOTAL_TOK_BY_USER][user_id]}</td>"
+                        f"<td>{stat_data[COST_BY_USER][user_id]:.4f} ¥</td>"
+                        f"</tr>"
+                        for user_id, count in sorted(stat_data[REQ_CNT_BY_USER].items())
+                    ]
+                )
+            }
+                    </tbody>
+                </table>
+    
+                <h2>聊天消息统计</h2>
+                <table>
+                    <thead>
+                        <tr><th>联系人/群组名称</th><th>消息数量</th></tr>
+                    </thead>
+                    <tbody>
+                    {
+                "\n".join(
+                    [
+                        f"<tr><td>{self.name_mapping[chat_id][0]}</td><td>{count}</td></tr>"
+                        for chat_id, count in sorted(stat_data[MSG_CNT_BY_CHAT].items())
+                    ]
+                )
+            }
+                    </tbody>
+                </table>
+            </div>
+            """
+
+        tab_content_list = [
+            _format_stat_data(stat[period[0]], period[0], now - period[1])
+            for period in self.stat_period
+            if period[0] != "all_time"
+        ]
+
+        tab_content_list.append(
+            _format_stat_data(stat["all_time"], "all_time", datetime.fromtimestamp(local_storage["deploy_time"]))
+        )
+
+        html_template = (
+            """
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MaiBot运行统计报告</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f7f6;
+            color: #333;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 900px;
+            margin: 20px auto;
+            background-color: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+        h1 {
+            text-align: center;
+            font-size: 2em;
+        }
+        h2 {
+            font-size: 1.5em;
+            margin-top: 30px;
+        }
+        p {
+            margin-bottom: 10px;
+        }
+        .info-item {
+            background-color: #ecf0f1;
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+        .info-item strong {
+            color: #2980b9;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: 0.9em;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #3498db;
+            color: white;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 0.8em;
+            color: #7f8c8d;
+        }
+        .tabs {
+            overflow: hidden;
+            background: #ecf0f1;
+            display: flex;
+        }
+        .tabs button {
+            background: inherit; border: none; outline: none;
+            padding: 14px 16px; cursor: pointer;
+            transition: 0.3s; font-size: 16px;
+        }
+        .tabs button:hover {
+            background-color: #d4dbdc;
+        }
+        .tabs button.active {
+            background-color: #b3bbbd;
+        }
+        .tab-content {
+            display: none;
+            padding: 20px;
+            background-color: #fff;
+            border: 1px solid #ccc;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+"""
+            + f"""
+    <div class="container">
+        <h1>MaiBot运行统计报告</h1>
+        <p class="info-item"><strong>统计截止时间:</strong> {now.strftime("%Y-%m-%d %H:%M:%S")}</p>
+
+        <div class="tabs">
+            {"\n".join(tab_list)}
+        </div>
+
+        {"\n".join(tab_content_list)}
+    </div>
+"""
+            + """
+<script>
+    let i, tab_content, tab_links;
+    tab_content = document.getElementsByClassName("tab-content");
+    tab_links = document.getElementsByClassName("tab-link");
+    
+    tab_content[0].classList.add("active");
+    tab_links[0].classList.add("active");
+
+    function showTab(evt, tabName) {{
+        for (i = 0; i < tab_content.length; i++) tab_content[i].classList.remove("active");
+        for (i = 0; i < tab_links.length; i++) tab_links[i].classList.remove("active");
+        document.getElementById(tabName).classList.add("active");
+        evt.currentTarget.classList.add("active");
+    }}
+</script>
+</body>
+</html>
+        """
+        )
+
+        with open(self.record_file_path, "w", encoding="utf-8") as f:
+            f.write(html_template)

@@ -43,7 +43,7 @@ src/plugins/utils/statistic.py
 __pycache__/
 *.py[cod]
 *$py.class
-llm_statistics.txt
+maibot_statistics.html
 mongodb
 napcat
 run_dev.bat
