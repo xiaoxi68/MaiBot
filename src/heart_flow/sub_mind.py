@@ -8,99 +8,68 @@ from src.individuality.individuality import Individuality
 import random
 from ..plugins.utils.prompt_builder import Prompt, global_prompt_manager
 from src.do_tool.tool_use import ToolUser
-from src.plugins.utils.json_utils import safe_json_dumps, safe_json_loads, process_llm_tool_calls, convert_custom_to_standard_tool_calls
+from src.plugins.utils.json_utils import safe_json_dumps, process_llm_tool_calls
 from src.heart_flow.chat_state_info import ChatStateInfo
 from src.plugins.chat.chat_stream import chat_manager
 from src.plugins.heartFC_chat.heartFC_Cycleinfo import CycleInfo
 import difflib
 from src.plugins.person_info.relationship_manager import relationship_manager
-import json
 
 
 logger = get_logger("sub_heartflow")
 
 
 def init_prompt():
-    # 定义静态的工具调用JSON格式说明文本
-    tool_json_format_instructions_text = """
-如果你需要使用工具，请按照以下JSON格式输出：
-{
-    "thinking": "你的内心思考过程，即使调用工具也需要这部分",
-    "tool_calls": [  // 这是一个工具调用对象的列表，如果不需要工具则此列表为空或省略此键
-        {
-            "name": "工具的名称", // 例如："get_memory" 或 "compare_numbers"
-            "arguments": { // 注意：这里 arguments 是一个 JSON 对象
-                "参数名1": "参数值1", // 例如："topic": "最近的聊天"
-                "参数名2": "参数值2"  // 例如："max_memories": 3
-                // ... 根据工具定义的其他参数
-            }
-        }
-        // ... 如果有更多工具调用的话
-    ]
-}
-如果不需要使用工具，你可以只输出你的思考内容文本（此时不需要遵循JSON格式），或者输出一个仅包含 "thinking" 键的JSON对象。"""
-
     # --- Group Chat Prompt ---
-    group_prompt_text = f"""
-{{extra_info}}
-{{relation_prompt}}
-你的名字是{{bot_name}},{{prompt_personality}}
-{{last_loop_prompt}}
-{{cycle_info_block}}
-现在是{{time_now}}，你正在上网，和qq群里的网友们聊天，以下是正在进行的聊天内容：
-{{chat_observe_info}}
+    group_prompt = """
+{extra_info}
+{relation_prompt}
+你的名字是{bot_name},{prompt_personality}
+{last_loop_prompt}
+{cycle_info_block}
+现在是{time_now}，你正在上网，和qq群里的网友们聊天，以下是正在进行的聊天内容：
+{chat_observe_info}
 
-你现在{{mood_info}}
-请仔细阅读当前群聊内容，分析讨论话题和群成员关系，分析你刚刚发言和别人对你的发言的反应，思考你要不要回复。
-然后思考你是否需要使用函数工具来帮助你获取信息或执行操作。
-
-【可用的工具】
-如果你决定使用工具，你可以使用以下这些：
-{{{{available_tools_info}}}}
-
-【工具使用格式】
-{tool_json_format_instructions_text}
-
-现在，请先输出你的内心想法。如果需要调用工具，请按照上述格式组织你的输出。
+你现在{mood_info}
+请仔细阅读当前群聊内容，分析讨论话题和群成员关系，分析你刚刚发言和别人对你的发言的反应，思考你要不要回复。然后思考你是否需要使用函数工具。
+思考并输出你的内心想法
 输出要求：
-1. 根据聊天内容生成你的想法，{{hf_do_next}}
-2. （想法部分）不要分点、不要使用表情符号
-3. （想法部分）避免多余符号(冒号、引号、括号等)
-4. （想法部分）语言简洁自然，不要浮夸
-5. 如果你刚发言，并且没有人回复你，通常不需要回复，除非有特殊原因或需要使用工具获取新信息。
-"""
-    Prompt(group_prompt_text, "sub_heartflow_prompt_before")
+1. 根据聊天内容生成你的想法，{hf_do_next}
+2. 不要分点、不要使用表情符号
+3. 避免多余符号(冒号、引号、括号等)
+4. 语言简洁自然，不要浮夸
+5. 如果你刚发言，并且没有人回复你，不要回复
+工具使用说明：
+1. 输出想法后考虑是否需要使用工具
+2. 工具可获取信息或执行操作
+3. 如需处理消息或回复，请使用工具。"""
+    Prompt(group_prompt, "sub_heartflow_prompt_before")
 
     # --- Private Chat Prompt ---
-    private_prompt_text = f"""
-{{extra_info}}
-{{relation_prompt}}
-你的名字是{{bot_name}},{{prompt_personality}}
-{{last_loop_prompt}}
-{{cycle_info_block}}
-现在是{{time_now}}，你正在上网，和 {{{{chat_target_name}}}} 私聊，以下是你们的聊天内容：
-{{chat_observe_info}}
+    private_prompt = """
+{extra_info}
+{relation_prompt}
+你的名字是{bot_name},{prompt_personality}
+{last_loop_prompt}
+{cycle_info_block}
+现在是{time_now}，你正在上网，和 {chat_target_name} 私聊，以下是你们的聊天内容：
+{chat_observe_info}
 
-你现在{{mood_info}}
-请仔细阅读聊天内容，想想你和 {{{{chat_target_name}}}} 的关系，回顾你们刚刚的交流,你刚刚发言和对方的反应，思考聊天的主题。
-请思考你要不要回复以及如何回复对方。然后思考你是否需要使用函数工具来帮助你获取信息或执行操作。
-
-【可用的工具】
-如果你决定使用工具，你可以使用以下这些：
-{{{{available_tools_info}}}}
-
-【工具使用格式】
-{tool_json_format_instructions_text}
-
-现在，请先输出你的内心想法。如果需要调用工具，请按照上述格式组织你的输出。
+你现在{mood_info}
+请仔细阅读聊天内容，想想你和 {chat_target_name} 的关系，回顾你们刚刚的交流,你刚刚发言和对方的反应，思考聊天的主题。
+请思考你要不要回复以及如何回复对方。然后思考你是否需要使用函数工具。
+思考并输出你的内心想法
 输出要求：
-1. 根据聊天内容生成你的想法，{{hf_do_next}}
-2. （想法部分）不要分点、不要使用表情符号
-3. （想法部分）避免多余符号(冒号、引号、括号等)
-4. （想法部分）语言简洁自然，不要浮夸
-5. 如果你刚发言，对方没有回复你，请谨慎回复，除非有特殊原因或需要使用工具获取新信息。
-"""
-    Prompt(private_prompt_text, "sub_heartflow_prompt_private_before")
+1. 根据聊天内容生成你的想法，{hf_do_next}
+2. 不要分点、不要使用表情符号
+3. 避免多余符号(冒号、引号、括号等)
+4. 语言简洁自然，不要浮夸
+5. 如果你刚发言，对方没有回复你，请谨慎回复
+工具使用说明：
+1. 输出想法后考虑是否需要使用工具
+2. 工具可获取信息或执行操作
+3. 如需处理消息或回复，请使用工具。"""
+    Prompt(private_prompt, "sub_heartflow_prompt_private_before")  # New template name
 
     # --- Last Loop Prompt (remains the same) ---
     last_loop_t = """
@@ -234,7 +203,7 @@ class SubMind:
 
         # 获取观察对象
         observation: ChattingObservation = self.observations[0] if self.observations else None
-        if not observation or not hasattr(observation, "is_group_chat"):
+        if not observation or not hasattr(observation, "is_group_chat"):  # Ensure it's ChattingObservation or similar
             logger.error(f"{self.log_prefix} 无法获取有效的观察对象或缺少聊天类型信息")
             self.update_current_mind("(观察出错了...)")
             return self.current_mind, self.past_mind
@@ -248,6 +217,7 @@ class SubMind:
             chat_target_name = (
                 chat_target_info.get("person_name") or chat_target_info.get("user_nickname") or chat_target_name
             )
+        # --- End getting observation info ---
 
         # 获取观察内容
         chat_observe_info = observation.get_observe_info()
@@ -257,18 +227,16 @@ class SubMind:
         # 初始化工具
         tool_instance = ToolUser()
         tools = tool_instance._define_tools()
-        # 生成工具信息字符串，用于填充到提示词模板中
-        available_tools_info_str = "\n".join([f"- {tool['function']['name']}: {tool['function']['description']}" for tool in tools])
-        if not available_tools_info_str:
-            available_tools_info_str = "当前没有可用的工具。"
-
 
         # 获取个性化信息
         individuality = Individuality.get_instance()
 
         relation_prompt = ""
+        # print(f"person_list: {person_list}")
         for person in person_list:
             relation_prompt += await relationship_manager.build_relationship_info(person, is_id=True)
+
+        # print(f"relat22222ion_prompt: {relation_prompt}")
 
         # 构建个性部分
         prompt_personality = individuality.get_prompt(x_person=2, level=2)
@@ -336,6 +304,7 @@ class SubMind:
                 formatted_response = "[空回复]" if not response_text else " ".join(response_text)
                 responses_for_prompt.append(formatted_response)
             else:
+                # 一旦遇到非文本回复，连续性中断
                 break
 
         # 根据连续文本回复的数量构建提示信息
@@ -347,9 +316,11 @@ class SubMind:
         elif consecutive_text_replies == 1:  # 如果最近的一个活动是文本回复
             cycle_info_block = f'你刚刚已经回复一条消息（内容: "{responses_for_prompt[0]}"）'
 
+        # 包装提示块，增加可读性，即使没有连续回复也给个标记
         if cycle_info_block:
             cycle_info_block = f"\n【近期回复历史】\n{cycle_info_block}\n"
         else:
+            # 如果最近的活动循环不是文本回复，或者没有活动循环
             cycle_info_block = "\n【近期回复历史】\n(最近没有连续文本回复)\n"
 
         # 加权随机选择思考指导
@@ -358,7 +329,8 @@ class SubMind:
         )[0]
 
         # ---------- 4. 构建最终提示词 ----------
-        # 选择模板
+        # --- Choose template based on chat type ---
+        logger.debug(f"is_group_chat: {is_group_chat}")
         if is_group_chat:
             template_name = "sub_heartflow_prompt_before"
             prompt = (await global_prompt_manager.get_prompt_async(template_name)).format(
@@ -372,24 +344,24 @@ class SubMind:
                 hf_do_next=hf_do_next,
                 last_loop_prompt=last_loop_prompt,
                 cycle_info_block=cycle_info_block,
-                available_tools_info=available_tools_info_str # 新增：填充可用工具列表
+                # chat_target_name is not used in group prompt
             )
-        else:
+        else:  # Private chat
             template_name = "sub_heartflow_prompt_private_before"
             prompt = (await global_prompt_manager.get_prompt_async(template_name)).format(
                 extra_info=self.structured_info_str,
                 prompt_personality=prompt_personality,
-                relation_prompt=relation_prompt,
+                relation_prompt=relation_prompt,  # Might need adjustment for private context
                 bot_name=individuality.name,
                 time_now=time_now,
-                chat_target_name=chat_target_name,
+                chat_target_name=chat_target_name,  # Pass target name
                 chat_observe_info=chat_observe_info,
                 mood_info=mood_info,
                 hf_do_next=hf_do_next,
                 last_loop_prompt=last_loop_prompt,
                 cycle_info_block=cycle_info_block,
-                available_tools_info=available_tools_info_str # 新增：填充可用工具列表
             )
+        # --- End choosing template ---
 
         # ---------- 5. 执行LLM请求并处理响应 ----------
         content = ""  # 初始化内容变量
@@ -397,49 +369,34 @@ class SubMind:
 
         try:
             # 调用LLM生成响应
-            response, _reasoning_content, _ = await self.llm_model.generate_response(prompt=prompt)
-            
-            if not response:
-                logger.warning(f"{self.log_prefix} LLM返回空结果，思考失败。")
-                content = "(不知道该想些什么...)"
-                return self.current_mind, self.past_mind
+            response, _reasoning_content, tool_calls = await self.llm_model.generate_response_tool_async(
+                prompt=prompt, tools=tools
+            )
 
-            # 使用 safe_json_loads 解析响应
-            parsed_response = safe_json_loads(response, default_value={})
-            
-            if parsed_response:
-                thinking = parsed_response.get("thinking", "")
-                tool_calls_custom_format = parsed_response.get("tool_calls", []) # Renamed for clarity
+            logger.debug(f"{self.log_prefix} 子心流输出的原始LLM响应: {response}")
 
-                # 处理工具调用
-                if tool_calls_custom_format:
-                    # 使用 convert_custom_to_standard_tool_calls 将自定义格式转换为标准格式
-                    success, valid_tool_calls_standard_format, error_msg = convert_custom_to_standard_tool_calls(tool_calls_custom_format, self.log_prefix)
-                    
-                    if success and valid_tool_calls_standard_format:
-                        for tool_call_standard in valid_tool_calls_standard_format: # Iterate over standard format
-                            try:
-                                # _execute_tool_call expects the standard format
-                                result = await tool_instance._execute_tool_call(tool_call_standard)
-                                
-                                if result:
-                                    new_item = {
-                                        "type": result.get("type", "unknown_type"),
-                                        "id": result.get("id", f"fallback_id_{time.time()}"),
-                                        "content": result.get("content", ""),
-                                        "ttl": 3,
-                                    }
-                                    self.structured_info.append(new_item)
-                            except Exception as tool_e:
-                                logger.error(f"{self.log_prefix} 工具执行失败: {tool_e}")
-                                logger.error(traceback.format_exc())
-                    else:
-                        logger.warning(f"{self.log_prefix} 自定义工具调用转换或验证失败: {error_msg}")
+            # 直接使用LLM返回的文本响应作为 content
+            content = response if response else ""
 
-                content = thinking
+            if tool_calls:
+                # 直接将 tool_calls 传递给处理函数
+                success, valid_tool_calls, error_msg = process_llm_tool_calls(
+                    tool_calls, log_prefix=f"{self.log_prefix} "
+                )
+
+                if success and valid_tool_calls:
+                    # 记录工具调用信息
+                    tool_calls_str = ", ".join(
+                        [call.get("function", {}).get("name", "未知工具") for call in valid_tool_calls]
+                    )
+                    logger.info(f"{self.log_prefix} 模型请求调用{len(valid_tool_calls)}个工具: {tool_calls_str}")
+
+                    # 收集工具执行结果
+                    await self._execute_tool_calls(valid_tool_calls, tool_instance)
+                elif not success:
+                    logger.warning(f"{self.log_prefix} 处理工具调用时出错: {error_msg}")
             else:
-                # 如果不是JSON格式或解析失败，直接使用响应内容
-                content = response
+                logger.info(f"{self.log_prefix} 心流未使用工具")
 
         except Exception as e:
             # 处理总体异常
@@ -447,14 +404,22 @@ class SubMind:
             logger.error(traceback.format_exc())
             content = "思考过程中出现错误"
 
+        # 记录初步思考结果
+        logger.debug(f"{self.log_prefix} 初步心流思考结果: {content}\nprompt: {prompt}\n")
+
+        # 处理空响应情况
+        if not content:
+            content = "(不知道该想些什么...)"
+            logger.warning(f"{self.log_prefix} LLM返回空结果，思考失败。")
+
         # ---------- 6. 应用概率性去重和修饰 ----------
-        new_content = content
+        new_content = content  # 保存 LLM 直接输出的结果
         try:
             similarity = calculate_similarity(previous_mind, new_content)
             replacement_prob = calculate_replacement_probability(similarity)
             logger.debug(f"{self.log_prefix} 新旧想法相似度: {similarity:.2f}, 替换概率: {replacement_prob:.2f}")
 
-            # 定义词语列表
+            # 定义词语列表 (移到判断之前)
             yu_qi_ci_liebiao = ["嗯", "哦", "啊", "唉", "哈", "唔"]
             zhuan_zhe_liebiao = ["但是", "不过", "然而", "可是", "只是"]
             cheng_jie_liebiao = ["然后", "接着", "此外", "而且", "另外"]
@@ -512,19 +477,57 @@ class SubMind:
                         content = new_content  # 保留原始 content
             else:
                 logger.debug(f"{self.log_prefix} 未执行概率性去重 (概率: {replacement_prob:.2f})")
+                # content 保持 new_content 不变
 
         except Exception as e:
             logger.error(f"{self.log_prefix} 应用概率性去重或特殊处理时出错: {e}")
             logger.error(traceback.format_exc())
-            content = new_content # 出错时保留去重前的内容，或者可以考虑保留原始LLM输出
+            # 出错时保留原始 content
+            content = new_content
 
         # ---------- 7. 更新思考状态并返回结果 ----------
         logger.info(f"{self.log_prefix} 最终心流思考结果: {content}")
         # 更新当前思考内容
         self.update_current_mind(content)
-        self._update_structured_info_str()
 
         return self.current_mind, self.past_mind
+
+    async def _execute_tool_calls(self, tool_calls, tool_instance):
+        """
+        执行一组工具调用并收集结果
+
+        参数:
+            tool_calls: 工具调用列表
+            tool_instance: 工具使用器实例
+        """
+        tool_results = []
+        new_structured_items = []  # 收集新产生的结构化信息
+
+        # 执行所有工具调用
+        for tool_call in tool_calls:
+            try:
+                result = await tool_instance._execute_tool_call(tool_call)
+                if result:
+                    tool_results.append(result)
+                    # 创建新的结构化信息项
+                    new_item = {
+                        "type": result.get("type", "unknown_type"),  # 使用 'type' 键
+                        "id": result.get("id", f"fallback_id_{time.time()}"),  # 使用 'id' 键
+                        "content": result.get("content", ""),  # 'content' 键保持不变
+                        "ttl": 3,
+                    }
+                    new_structured_items.append(new_item)
+
+            except Exception as tool_e:
+                logger.error(f"[{self.subheartflow_id}] 工具执行失败: {tool_e}")
+                logger.error(traceback.format_exc())  # 添加 traceback 记录
+
+        # 如果有新的工具结果，记录并更新结构化信息
+        if new_structured_items:
+            self.structured_info.extend(new_structured_items)  # 添加到现有列表
+            logger.debug(f"工具调用收集到新的结构化信息: {safe_json_dumps(new_structured_items, ensure_ascii=False)}")
+            # logger.debug(f"当前完整的 structured_info: {safe_json_dumps(self.structured_info, ensure_ascii=False)}") # 可以取消注释以查看完整列表
+            self._update_structured_info_str()  # 添加新信息后，更新字符串表示
 
     def update_current_mind(self, response):
         if self.current_mind:  # 只有当 current_mind 非空时才添加到 past_mind
