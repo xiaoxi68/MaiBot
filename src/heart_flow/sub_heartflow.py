@@ -110,7 +110,7 @@ class SubHeartflow:
                 logger.error(f"{self.log_prefix} 停止 NormalChat 监控任务时出错: {e}")
                 logger.error(traceback.format_exc())
 
-    async def _start_normal_chat(self, rewind = False) -> bool:
+    async def _start_normal_chat(self, rewind=False) -> bool:
         """
         启动 NormalChat 实例，并进行异步初始化。
         进入 CHAT 状态时使用。
@@ -128,7 +128,6 @@ class SubHeartflow:
             if rewind:
                 self.normal_chat_instance = NormalChat(chat_stream=chat_stream, interest_dict=self.get_interest_dict())
             else:
-                
                 self.normal_chat_instance = NormalChat(chat_stream=chat_stream)
 
             # 进行异步初始化
@@ -252,7 +251,7 @@ class SubHeartflow:
         elif new_state == ChatState.ABSENT:
             logger.info(f"{log_prefix} 进入 ABSENT 状态，停止所有聊天活动...")
             await self.clear_interest_dict()
-            
+
             await self._stop_normal_chat()
             await self._stop_heart_fc_chat()
             state_changed = True  # 总是可以成功转换到 ABSENT

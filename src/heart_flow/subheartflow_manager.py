@@ -280,7 +280,7 @@ class SubHeartflowManager:
             # --- 新增：检查是否允许进入 FOCUS 模式 --- #
             if not global_config.allow_focus_mode:
                 if int(time.time()) % 60 == 0:  # 每60秒输出一次日志避免刷屏
-                    logger.trace(f"未开启 FOCUSED 状态 (allow_focus_mode=False)")
+                    logger.trace("未开启 FOCUSED 状态 (allow_focus_mode=False)")
                 return  # 如果不允许，直接返回
             # --- 结束新增 ---
 
@@ -298,23 +298,24 @@ class SubHeartflowManager:
             for sub_hf in list(self.subheartflows.values()):
                 flow_id = sub_hf.subheartflow_id
                 stream_name = chat_manager.get_stream_name(flow_id) or flow_id
-            
+
                 # 跳过非CHAT状态或已经是FOCUSED状态的子心流
                 if sub_hf.chat_state.chat_status == ChatState.FOCUSED:
                     continue
-                
-                
+
                 if sub_hf.interest_chatting.start_hfc_probability == 0:
                     continue
                 else:
-                    logger.debug(f"{stream_name}，现在状态: {sub_hf.chat_state.chat_status.value}，进入专注概率: {sub_hf.interest_chatting.start_hfc_probability}")
+                    logger.debug(
+                        f"{stream_name}，现在状态: {sub_hf.chat_state.chat_status.value}，进入专注概率: {sub_hf.interest_chatting.start_hfc_probability}"
+                    )
 
                 # 调试用
                 from .mai_state_manager import enable_unlimited_hfc_chat
+
                 if not enable_unlimited_hfc_chat:
                     if sub_hf.chat_state.chat_status != ChatState.CHAT:
                         continue
-
 
                 if random.random() >= sub_hf.interest_chatting.start_hfc_probability:
                     continue
@@ -416,7 +417,9 @@ class SubHeartflowManager:
 
             chat_status_prompt = "当前没有在任何群聊中。"  # 默认消息喵~
             if chat_status_lines:
-                chat_status_prompt = "当前聊天情况，你已经参与了下面这几个群的聊天：\n" + "\n".join(chat_status_lines)  # 拼接状态信息
+                chat_status_prompt = "当前聊天情况，你已经参与了下面这几个群的聊天：\n" + "\n".join(
+                    chat_status_lines
+                )  # 拼接状态信息
 
             prompt = (
                 f"{prompt_personality}\n"
@@ -526,7 +529,7 @@ class SubHeartflowManager:
                             # 随机判断是否退出
                             if random.random() < exit_probability:
                                 should_deactivate = True
-                                reason = f"已{minutes_since_last_bb:.1f}分钟未发言，触发{exit_probability*100:.0f}%退出概率"
+                                reason = f"已{minutes_since_last_bb:.1f}分钟未发言，触发{exit_probability * 100:.0f}%退出概率"
 
                 except AttributeError:
                     logger.error(

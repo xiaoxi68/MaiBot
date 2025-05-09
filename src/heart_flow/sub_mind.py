@@ -233,7 +233,7 @@ class SubMind:
             keywords = [word for word in chat_words if len(word) > 1]
             # 去重并限制数量
             keywords = list(set(keywords))[:5]
-            
+
             logger.debug(f"{self.log_prefix} 提取的关键词: {keywords}")
             # 检查已有记忆，过滤掉已存在的主题
             existing_topics = set()
@@ -243,28 +243,20 @@ class SubMind:
 
             # 过滤掉已存在的主题
             filtered_keywords = [k for k in keywords if k not in existing_topics]
-            
+
             if not filtered_keywords:
                 logger.debug(f"{self.log_prefix} 所有关键词对应的记忆都已存在，跳过记忆提取")
             else:
                 # 调用记忆系统获取相关记忆
                 related_memory = await HippocampusManager.get_instance().get_memory_from_topic(
-                    valid_keywords=filtered_keywords,
-                    max_memory_num=3,
-                    max_memory_length=2,
-                    max_depth=3
+                    valid_keywords=filtered_keywords, max_memory_num=3, max_memory_length=2, max_depth=3
                 )
 
                 logger.debug(f"{self.log_prefix} 获取到的记忆: {related_memory}")
-                
+
                 if related_memory:
                     for topic, memory in related_memory:
-                        new_item = {
-                            "type": "memory",
-                            "id": topic,
-                            "content": memory,
-                            "ttl": 3
-                        }
+                        new_item = {"type": "memory", "id": topic, "content": memory, "ttl": 3}
                         self.structured_info.append(new_item)
                         logger.debug(f"{self.log_prefix} 添加新记忆: {topic} - {memory}")
                 else:
