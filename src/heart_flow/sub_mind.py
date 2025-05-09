@@ -71,7 +71,49 @@ def init_prompt():
 1. 输出想法后考虑是否需要使用工具
 2. 工具可获取信息或执行操作
 3. 如需处理消息或回复，请使用工具。"""
-    Prompt(private_prompt, "sub_heartflow_prompt_private_before")  # New template name
+    Prompt(private_prompt, "sub_heartflow_prompt_private_before")
+
+    # --- 并行模式的Group Chat Prompt ---
+    parallel_group_prompt = """
+{extra_info}
+{relation_prompt}
+你的名字是{bot_name},{prompt_personality}
+{last_loop_prompt}
+{cycle_info_block}
+现在是{time_now}，你正在上网，和qq群里的网友们聊天，以下是正在进行的聊天内容：
+{chat_observe_info}
+
+你现在{mood_info}
+请仔细阅读当前群聊内容，分析讨论话题和群成员关系，分析你刚刚发言和别人对你的发言的反应，思考你要不要回复。
+思考并输出你的内心想法
+输出要求：
+1. 根据聊天内容生成你的想法，{hf_do_next}
+2. 不要分点、不要使用表情符号
+3. 避免多余符号(冒号、引号、括号等)
+4. 语言简洁自然，不要浮夸"""
+    Prompt(parallel_group_prompt, "sub_heartflow_prompt_parallel")
+
+    # --- 并行模式的Private Chat Prompt ---
+    parallel_private_prompt = """
+{extra_info}
+{relation_prompt}
+你的名字是{bot_name},{prompt_personality}
+{last_loop_prompt}
+{cycle_info_block}
+现在是{time_now}，你正在上网，和 {chat_target_name} 私聊，以下是你们的聊天内容：
+{chat_observe_info}
+
+你现在{mood_info}
+请仔细阅读聊天内容，想想你和 {chat_target_name} 的关系，回顾你们刚刚的交流,你刚刚发言和对方的反应，思考聊天的主题。
+请思考你要不要回复以及如何回复对方。
+思考并输出你的内心想法
+输出要求：
+1. 根据聊天内容生成你的想法，{hf_do_next}
+2. 不要分点、不要使用表情符号
+3. 避免多余符号(冒号、引号、括号等)
+4. 语言简洁自然，不要浮夸
+5. 如果你刚发言，对方没有回复你，请谨慎回复"""
+    Prompt(parallel_private_prompt, "sub_heartflow_prompt_private_parallel")
 
     # --- Last Loop Prompt (remains the same) ---
     last_loop_t = """
@@ -134,7 +176,11 @@ class SubMind:
         self.past_mind = []
         self.structured_info = []
         self.structured_info_str = ""
-
+        
+        # 并行模式设置，从全局配置获取
+        # 此变量将在构建提示词时使用，决定使用哪个模板
+        self.parallel_mode = False  # 默认为False，将在do_thinking_before_reply中检查心流的模式设置
+        
         name = chat_manager.get_stream_name(self.subheartflow_id)
         self.log_prefix = f"[{name}] "
         self._update_structured_info_str()
@@ -167,13 +213,21 @@ class SubMind:
         self.structured_info_str = "\n".join(lines)
         logger.debug(f"{self.log_prefix} 更新 structured_info_str: \n{self.structured_info_str}")
 
-    async def do_thinking_before_reply(self, history_cycle: list[CycleInfo] = None):
+    async def do_thinking_before_reply(self, history_cycle: list[CycleInfo] = None, parallel_mode: bool = False, no_tools: bool = False):
         """
         在回复前进行思考，生成内心想法并收集工具调用结果
+        
+        参数:
+            history_cycle: 历史循环信息
+            parallel_mode: 是否在并行模式下执行，默认为False
+            no_tools: 是否禁用工具调用，默认为False
 
         返回:
             tuple: (current_mind, past_mind) 当前想法和过去的想法列表
         """
+        # 设置并行模式
+        self.parallel_mode = parallel_mode
+        
         # 更新活跃时间
         self.last_active_time = time.time()
 
@@ -372,39 +426,37 @@ class SubMind:
         )[0]
 
         # ---------- 5. 构建最终提示词 ----------
-        # --- Choose template based on chat type ---
-        logger.debug(f"is_group_chat: {is_group_chat}")
+        # --- 根据并行模式和聊天类型选择模板 ---
+        logger.debug(f"is_group_chat: {is_group_chat}, parallel_mode: {self.parallel_mode}")
+        
         if is_group_chat:
-            template_name = "sub_heartflow_prompt_before"
-            prompt = (await global_prompt_manager.get_prompt_async(template_name)).format(
-                extra_info=self.structured_info_str,
-                prompt_personality=prompt_personality,
-                relation_prompt=relation_prompt,
-                bot_name=individuality.name,
-                time_now=time_now,
-                chat_observe_info=chat_observe_info,
-                mood_info=mood_info,
-                hf_do_next=hf_do_next,
-                last_loop_prompt=last_loop_prompt,
-                cycle_info_block=cycle_info_block,
-                # chat_target_name is not used in group prompt
-            )
+            if self.parallel_mode:
+                template_name = "sub_heartflow_prompt_parallel"
+                logger.debug(f"{self.log_prefix} 使用并行模式群聊思考模板")
+            else:
+                template_name = "sub_heartflow_prompt_before"
+                logger.debug(f"{self.log_prefix} 使用标准模式群聊思考模板")
         else:  # Private chat
-            template_name = "sub_heartflow_prompt_private_before"
-            prompt = (await global_prompt_manager.get_prompt_async(template_name)).format(
-                extra_info=self.structured_info_str,
-                prompt_personality=prompt_personality,
-                relation_prompt=relation_prompt,  # Might need adjustment for private context
-                bot_name=individuality.name,
-                time_now=time_now,
-                chat_target_name=chat_target_name,  # Pass target name
-                chat_observe_info=chat_observe_info,
-                mood_info=mood_info,
-                hf_do_next=hf_do_next,
-                last_loop_prompt=last_loop_prompt,
-                cycle_info_block=cycle_info_block,
-            )
-        # --- End choosing template ---
+            if self.parallel_mode:
+                template_name = "sub_heartflow_prompt_private_parallel"
+                logger.debug(f"{self.log_prefix} 使用并行模式私聊思考模板")
+            else:
+                template_name = "sub_heartflow_prompt_private_before"
+                logger.debug(f"{self.log_prefix} 使用标准模式私聊思考模板")
+                
+        prompt = (await global_prompt_manager.get_prompt_async(template_name)).format(
+            extra_info=self.structured_info_str,
+            prompt_personality=prompt_personality,
+            relation_prompt=relation_prompt,
+            bot_name=individuality.name,
+            time_now=time_now,
+            chat_observe_info=chat_observe_info,
+            mood_info=mood_info,
+            hf_do_next=hf_do_next,
+            last_loop_prompt=last_loop_prompt,
+            cycle_info_block=cycle_info_block,
+            chat_target_name=chat_target_name,
+        )
 
         # ---------- 6. 执行LLM请求并处理响应 ----------
         content = ""  # 初始化内容变量
@@ -421,8 +473,8 @@ class SubMind:
             # 直接使用LLM返回的文本响应作为 content
             content = response if response else ""
 
-            if tool_calls:
-                # 直接将 tool_calls 传递给处理函数
+            if tool_calls and not no_tools:
+                # 只有在no_tools=False时才执行工具调用
                 success, valid_tool_calls, error_msg = process_llm_tool_calls(
                     tool_calls, log_prefix=f"{self.log_prefix} "
                 )
@@ -438,6 +490,8 @@ class SubMind:
                     await self._execute_tool_calls(valid_tool_calls, tool_instance)
                 elif not success:
                     logger.warning(f"{self.log_prefix} 处理工具调用时出错: {error_msg}")
+            elif no_tools and tool_calls:
+                logger.info(f"{self.log_prefix} 模型请求了工具调用，但no_tools=True，跳过执行")
             else:
                 logger.info(f"{self.log_prefix} 心流未使用工具")
 

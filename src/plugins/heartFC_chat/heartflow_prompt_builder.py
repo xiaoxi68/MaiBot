@@ -17,6 +17,7 @@ from ..knowledge.knowledge_lib import qa_manager
 import traceback
 from .heartFC_Cycleinfo import CycleInfo
 
+
 logger = get_logger("prompt")
 
 
@@ -851,6 +852,124 @@ class PromptBuilder:
             logger.error(f"[PromptBuilder] 构建 Planner 提示词时出错: {e}")
             logger.error(traceback.format_exc())
             return "[构建 Planner Prompt 时出错]"
+
+    async def build_planner_prompt_parallel(
+        self,
+        is_group_chat: bool,  
+        chat_target_info: Optional[dict],
+        cycle_history: Deque["CycleInfo"],
+        observed_messages_str: str,
+        structured_info: str,
+        current_available_actions: Dict[str, str],
+    ) -> str:
+        """
+        构建并行规划器的提示词 (不依赖SubMind的思考结果)
+        这个方法与build_planner_prompt类似，但不需要current_mind参数，
+        允许与submind的思考过程并行执行
+
+        参数:
+            is_group_chat: 是否为群聊
+            chat_target_info: 目标聊天信息
+            cycle_history: 循环历史
+            observed_messages_str: 观察到的消息
+            structured_info: 结构化信息字符串
+            current_available_actions: 当前可用的动作
+
+        返回:
+            str: 规划器提示词
+        """
+        try:
+            # --- Determine chat context ---
+            chat_context_description = "你现在正在一个群聊中"
+            chat_target_name = None  # Only relevant for private
+            if not is_group_chat and chat_target_info:
+                chat_target_name = (
+                    chat_target_info.get("person_name") or chat_target_info.get("user_nickname") or "对方"
+                )
+                chat_context_description = f"你正在和 {chat_target_name} 私聊"
+            # --- End determining chat context ---
+
+            # Structured info block
+            structured_info_block = ""
+            if structured_info:
+                structured_info_block = f"以下是一些额外的信息：\n{structured_info}\n"
+
+            # Chat content block
+            chat_content_block = ""
+            if observed_messages_str:
+                # Use triple quotes for multi-line string literal
+                chat_content_block = f"""观察到的最新聊天内容如下：
+---
+{observed_messages_str}
+---"""
+            else:
+                chat_content_block = "当前没有观察到新的聊天内容。\\n"
+
+            # Current mind block (并行模式专用)
+            current_mind_block = ""
+
+            # Cycle info block (using passed cycle_history)
+            cycle_info_block = ""
+            recent_active_cycles = []
+            for cycle in reversed(cycle_history):
+                if cycle.action_taken:
+                    recent_active_cycles.append(cycle)
+                    if len(recent_active_cycles) == 3:
+                        break
+            
+            consecutive_text_replies = 0
+            responses_for_prompt = []
+            
+            for cycle in recent_active_cycles:
+                if cycle.action_type == "text_reply":
+                    consecutive_text_replies += 1
+                    response_text = cycle.response_info.get("response_text", [])
+                    formatted_response = "[空回复]" if not response_text else " ".join(response_text)
+                    responses_for_prompt.append(formatted_response)
+                else:
+                    break
+                    
+            if consecutive_text_replies >= 3:
+                cycle_info_block = f'你已经连续回复了三条消息（最近: "{responses_for_prompt[0]}"，第二近: "{responses_for_prompt[1]}"，第三近: "{responses_for_prompt[2]}"）。你回复的有点多了，请注意'
+            elif consecutive_text_replies == 2:
+                cycle_info_block = f'你已经连续回复了两条消息（最近: "{responses_for_prompt[0]}"，第二近: "{responses_for_prompt[1]}"），请注意'
+            elif consecutive_text_replies == 1:
+                cycle_info_block = f'你刚刚已经回复一条消息（内容: "{responses_for_prompt[0]}"）'
+                
+            if cycle_info_block:
+                cycle_info_block = f"\n【近期回复历史】\n{cycle_info_block}\n"
+            else:
+                cycle_info_block = "\n【近期回复历史】\n(最近没有连续文本回复)\n"
+
+            individuality = Individuality.get_instance()
+            prompt_personality = individuality.get_prompt(x_person=2, level=2)
+
+            action_options_text = "当前你可以选择的行动有：\n"
+            action_keys = list(current_available_actions.keys())
+            for name in action_keys:
+                desc = current_available_actions[name]
+                action_options_text += f"- '{name}': {desc}\n"
+            example_action_key = action_keys[0] if action_keys else "no_reply"
+
+            planner_prompt_template = await global_prompt_manager.get_prompt_async("planner_prompt")
+
+            prompt = planner_prompt_template.format(
+                bot_name=global_config.BOT_NICKNAME,
+                prompt_personality=prompt_personality,
+                chat_context_description=chat_context_description,
+                structured_info_block=structured_info_block,
+                chat_content_block=chat_content_block,
+                current_mind_block=current_mind_block,
+                cycle_info_block=cycle_info_block,
+                action_options_text=action_options_text,
+                example_action=example_action_key,
+            )
+            return prompt
+
+        except Exception as e:
+            logger.error(f"[PromptBuilder] 构建并行 Planner 提示词时出错: {e}")
+            logger.error(traceback.format_exc())
+            return "[构建并行 Planner Prompt 时出错]"
 
 
 init_prompt()

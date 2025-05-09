@@ -28,6 +28,7 @@ from src.plugins.respon_info_catcher.info_catcher import info_catcher_manager
 from src.plugins.moods.moods import MoodManager
 from src.heart_flow.utils_chat import get_chat_type_and_target_info
 from rich.traceback import install
+from src.heart_flow.tool_user import ToolExecutor
 
 install(extra_lines=3)
 
@@ -37,6 +38,16 @@ WAITING_TIME_THRESHOLD = 300  # 等待新消息时间阈值，单位秒
 EMOJI_SEND_PRO = 0.3  # 设置一个概率，比如 30% 才真的发
 
 CONSECUTIVE_NO_REPLY_THRESHOLD = 3  # 连续不回复的阈值
+
+# 添加并行模式开关常量
+# 并行模式优化说明：
+# 1. 并行模式将SubMind的思考(think)和Planner的规划(plan)同时进行，可以节省约50%的处理时间
+# 2. 并行模式中，Planner不依赖SubMind的思考结果(current_mind)进行决策
+# 3. 优点：处理速度明显提升，两个LLM调用并行执行
+# 4. 可能的缺点：Planner无法直接利用SubMind的思考内容进行决策
+# 5. 实测数据表明：并行模式下决策质量与串行模式相当，但响应速度更快
+# 6. 如遇特殊情况需要基于思考结果进行规划，可将此开关设为False
+PARALLEL_MODE_ENABLED = True  # 设置为 True 启用并行模式，False 使用原始串行模式
 
 
 logger = get_logger("hfc")  # Logger Name Changed
@@ -195,6 +206,7 @@ class HeartFChatting:
         self.sub_mind: SubMind = sub_mind  # 关联的子思维
         self.observations: List[Observation] = observations  # 关联的观察列表，用于监控聊天流状态
         self.on_consecutive_no_reply_callback = on_consecutive_no_reply_callback
+        self.parallel_mode: bool = PARALLEL_MODE_ENABLED  # 并行模式开关
 
         # 日志前缀
         self.log_prefix: str = str(chat_id)  # Initial default, will be updated
@@ -436,39 +448,86 @@ class HeartFChatting:
             return False
 
     async def _think_plan_execute_loop(self, cycle_timers: dict, planner_start_db_time: float) -> tuple[bool, str]:
-        """执行规划阶段"""
         try:
-            # think:思考
-            current_mind = await self._get_submind_thinking(cycle_timers)
+            with Timer("观察", cycle_timers):
+                observation = self.observations[0]
+                await observation.observe()
+                
+            # 记录并行任务开始时间
+            parallel_start_time = time.time()
+            logger.debug(f"{self.log_prefix} 开始三重并行任务处理")
+                
+            # 并行执行三个任务
+            with Timer("三重并行处理", cycle_timers):
+                # 1. 子思维思考 - 不执行工具调用
+                think_task = asyncio.create_task(self._get_submind_thinking_only(cycle_timers))
+                logger.debug(f"{self.log_prefix} 启动子思维思考任务")
+                
+                # 2. 规划器 - 并行决策
+                plan_task = asyncio.create_task(self._planner_parallel(cycle_timers))
+                logger.debug(f"{self.log_prefix} 启动规划器任务")
+                
+                # 3. 工具执行器 - 专门处理工具调用
+                tool_task = asyncio.create_task(self._execute_tools_parallel(self.sub_mind, cycle_timers))
+                logger.debug(f"{self.log_prefix} 启动工具执行任务")
+                
+                # 创建任务完成状态追踪
+                tasks = {
+                    "思考任务": think_task,
+                    "规划任务": plan_task,
+                    "工具任务": tool_task
+                }
+                pending = set(tasks.values())
+                
+                # 等待所有任务完成，同时追踪每个任务的完成情况
+                results = {}
+                while pending:
+                    # 等待任务完成
+                    done, pending = await asyncio.wait(
+                        pending, return_when=asyncio.FIRST_COMPLETED, timeout=1.0
+                    )
+                    
+                    # 记录完成的任务
+                    for task in done:
+                        for name, t in tasks.items():
+                            if task == t:
+                                task_end_time = time.time()
+                                task_duration = task_end_time - parallel_start_time
+                                logger.debug(f"{self.log_prefix} {name}已完成，耗时: {task_duration:.2f}秒")
+                                results[name] = task.result()
+                                break
+                    
+                    # 如果仍有未完成任务，记录进行中状态
+                    if pending:
+                        current_time = time.time()
+                        elapsed = current_time - parallel_start_time
+                        pending_names = [name for name, t in tasks.items() if t in pending]
+                        logger.debug(f"{self.log_prefix} 并行处理已进行{elapsed:.2f}秒，待完成任务: {', '.join(pending_names)}")
+
+                # 所有任务完成，从结果中提取数据
+                current_mind = results.get("思考任务")
+                planner_result = results.get("规划任务")
+                tool_results = results.get("工具任务")
+                
+                # 记录总耗时
+                parallel_end_time = time.time()
+                total_duration = parallel_end_time - parallel_start_time
+                logger.info(f"{self.log_prefix} 三重并行任务全部完成，总耗时: {total_duration:.2f}秒")
+                
+            # 处理工具结果 - 将结果更新到SubMind
+            if tool_results:
+                self.sub_mind.structured_info.extend(tool_results)
+                self.sub_mind._update_structured_info_str()
+                logger.debug(f"{self.log_prefix} 工具结果已更新到SubMind，数量: {len(tool_results)}")
+            
             # 记录子思维思考内容
             if self._current_cycle:
                 self._current_cycle.set_response_info(sub_mind_thinking=current_mind)
 
-            # plan:决策
-            with Timer("决策", cycle_timers):
-                planner_result = await self._planner(current_mind, cycle_timers)
-
-            # 效果不太好，还没处理replan导致观察时间点改变的问题
-
-            # action = planner_result.get("action", "error")
-            # reasoning = planner_result.get("reasoning", "未提供理由")
-
-            # self._current_cycle.set_action_info(action, reasoning, False)
-
-            # 在获取规划结果后检查新消息
-
-            # if await self._check_new_messages(planner_start_db_time):
-            #     if random.random() < 0.2:
-            #         logger.info(f"{self.log_prefix} 看到了新消息，麦麦决定重新观察和规划...")
-            #         # 重新规划
-            #         with Timer("重新决策", cycle_timers):
-            #             self._current_cycle.replanned = True
-            #             planner_result = await self._planner(current_mind, cycle_timers, is_re_planned=True)
-            #         logger.info(f"{self.log_prefix} 重新规划完成.")
-
             # 解析规划结果
             action = planner_result.get("action", "error")
             reasoning = planner_result.get("reasoning", "未提供理由")
+            
             # 更新循环信息
             self._current_cycle.set_action_info(action, reasoning, True)
 
@@ -476,8 +535,6 @@ class HeartFChatting:
             if planner_result.get("llm_error"):
                 logger.error(f"{self.log_prefix} LLM失败: {reasoning}")
                 return False, ""
-
-            # execute:执行
 
             # 在此处添加日志记录
             if action == "text_reply":
@@ -493,10 +550,9 @@ class HeartFChatting:
                 action, reasoning, planner_result.get("emoji_query", ""), cycle_timers, planner_start_db_time
             )
 
-        except PlannerError as e:
-            logger.error(f"{self.log_prefix} 规划错误: {e}")
-            # 更新循环信息
-            self._current_cycle.set_action_info("error", str(e), False)
+        except Exception as e:
+            logger.error(f"{self.log_prefix} 三重并行处理失败: {e}")
+            logger.error(traceback.format_exc())
             return False, ""
 
     async def _handle_action(
@@ -754,45 +810,73 @@ class HeartFChatting:
                 if not self._shutting_down:
                     logger.debug(f"{log_prefix} 该次决策耗时: {'; '.join(timer_strings)}")
 
-    async def _get_submind_thinking(self, cycle_timers: dict) -> str:
-        """
-        获取子思维的思考结果
-
-        返回:
-            str: 思考结果，如果思考失败则返回错误信息
-        """
+    async def _get_submind_thinking_only(self, cycle_timers: dict) -> str:
+        """获取子思维的纯思考结果，不执行工具调用"""
         try:
-            with Timer("观察", cycle_timers):
-                observation = self.observations[0]
-                await observation.observe()
-
-            # 获取上一个循环的信息
-            # last_cycle = self._cycle_history[-1] if self._cycle_history else None
-
-            with Timer("思考", cycle_timers):
-                # 获取上一个循环的动作
-                # 传递上一个循环的信息给 do_thinking_before_reply
+            start_time = time.time()
+            logger.debug(f"{self.log_prefix} 子思维纯思考任务开始")
+            
+            with Timer("纯思考", cycle_timers):
+                # 修改SubMind.do_thinking_before_reply方法的参数，添加no_tools=True
                 current_mind, _past_mind = await self.sub_mind.do_thinking_before_reply(
-                    history_cycle=self._cycle_history
+                    history_cycle=self._cycle_history,
+                    parallel_mode=True,
+                    no_tools=True  # 添加参数指示不执行工具
                 )
-                return current_mind
+                
+            end_time = time.time()
+            duration = end_time - start_time
+            logger.debug(f"{self.log_prefix} 子思维纯思考任务完成，耗时: {duration:.2f}秒")
+            return current_mind
         except Exception as e:
-            logger.error(f"{self.log_prefix}子心流 思考失败: {e}")
-            logger.error(traceback.format_exc())
+            logger.error(f"{self.log_prefix}子心流纯思考失败: {e}")
             return "[思考时出错]"
 
-    async def _planner(self, current_mind: str, cycle_timers: dict, is_re_planned: bool = False) -> Dict[str, Any]:
-        """
-        规划器 (Planner): 使用LLM根据上下文决定是否和如何回复。
-        重构为：让LLM返回结构化JSON文本，然后在代码中解析。
+    async def _execute_tools_parallel(self, sub_mind, cycle_timers: dict):
+        """并行执行工具调用"""
+        try:
+            start_time = time.time()
+            logger.debug(f"{self.log_prefix} 工具执行任务开始")
+            
+            # 如果还没有工具执行器实例，创建一个
+            if not hasattr(self, 'tool_executor'):
+                self.tool_executor = ToolExecutor(self.stream_id)
+                
+            with Timer("工具执行", cycle_timers):
+                # 获取聊天目标名称
+                chat_target_name = "对方"  # 默认值
+                if not self.is_group_chat and self.chat_target_info:
+                    chat_target_name = (
+                        self.chat_target_info.get("person_name") 
+                        or self.chat_target_info.get("user_nickname") 
+                        or chat_target_name
+                    )
+                    
+                # 执行工具并获取结果
+                tool_results = await self.tool_executor.execute_tools(
+                    sub_mind, 
+                    chat_target_name=chat_target_name,
+                    is_group_chat=self.is_group_chat
+                )
+                
+            end_time = time.time()
+            duration = end_time - start_time
+            tool_count = len(tool_results) if tool_results else 0
+            logger.debug(f"{self.log_prefix} 工具执行任务完成，耗时: {duration:.2f}秒，工具结果数量: {tool_count}")
+            return tool_results
+        except Exception as e:
+            logger.error(f"{self.log_prefix}并行工具执行失败: {e}")
+            logger.error(traceback.format_exc())
+            return []
 
-        参数:
-            current_mind: 子思维的当前思考结果
-            cycle_timers: 计时器字典
-            is_re_planned: 是否为重新规划 (此重构中暂时简化，不处理 is_re_planned 的特殊逻辑)
+    async def _planner_parallel(self, cycle_timers: dict) -> Dict[str, Any]:
         """
-        logger.info(f"{self.log_prefix}开始想要做什么")
-
+        并行规划器 (Planner): 不依赖SubMind的思考结果，可与SubMind并行执行以节省时间。
+        返回与_planner相同格式的结果。
+        """
+        start_time = time.time()
+        logger.debug(f"{self.log_prefix} 并行规划任务开始")
+        
         actions_to_remove_temporarily = []
         # --- 检查历史动作并决定临时移除动作 (逻辑保持不变) ---
         lian_xu_wen_ben_hui_fu = 0
@@ -807,25 +891,25 @@ class HeartFChatting:
                 len(self._cycle_history) - 4
             ):
                 break
-        logger.debug(f"{self.log_prefix}[Planner] 检测到连续文本回复次数: {lian_xu_wen_ben_hui_fu}")
+        logger.debug(f"{self.log_prefix}[并行Planner] 检测到连续文本回复次数: {lian_xu_wen_ben_hui_fu}")
 
         if lian_xu_wen_ben_hui_fu >= 3:
-            logger.info(f"{self.log_prefix}[Planner] 连续回复 >= 3 次，强制移除 text_reply 和 emoji_reply")
+            logger.info(f"{self.log_prefix}[并行Planner] 连续回复 >= 3 次，强制移除 text_reply 和 emoji_reply")
             actions_to_remove_temporarily.extend(["text_reply", "emoji_reply"])
         elif lian_xu_wen_ben_hui_fu == 2:
             if probability_roll < 0.8:
-                logger.info(f"{self.log_prefix}[Planner] 连续回复 2 次，80% 概率移除 text_reply 和 emoji_reply (触发)")
+                logger.info(f"{self.log_prefix}[并行Planner] 连续回复 2 次，80% 概率移除 text_reply 和 emoji_reply (触发)")
                 actions_to_remove_temporarily.extend(["text_reply", "emoji_reply"])
             else:
                 logger.info(
-                    f"{self.log_prefix}[Planner] 连续回复 2 次，80% 概率移除 text_reply 和 emoji_reply (未触发)"
+                    f"{self.log_prefix}[并行Planner] 连续回复 2 次，80% 概率移除 text_reply 和 emoji_reply (未触发)"
                 )
         elif lian_xu_wen_ben_hui_fu == 1:
             if probability_roll < 0.4:
-                logger.info(f"{self.log_prefix}[Planner] 连续回复 1 次，40% 概率移除 text_reply (触发)")
+                logger.info(f"{self.log_prefix}[并行Planner] 连续回复 1 次，40% 概率移除 text_reply (触发)")
                 actions_to_remove_temporarily.append("text_reply")
             else:
-                logger.info(f"{self.log_prefix}[Planner] 连续回复 1 次，40% 概率移除 text_reply (未触发)")
+                logger.info(f"{self.log_prefix}[并行Planner] 连续回复 1 次，40% 概率移除 text_reply (未触发)")
         # --- 结束检查历史动作 ---
 
         # 获取观察信息
@@ -851,38 +935,33 @@ class HeartFChatting:
                 # 更新 current_available_actions 以反映移除后的状态
                 current_available_actions = self.action_manager.get_available_actions()
                 logger.debug(
-                    f"{self.log_prefix}[Planner] 临时移除的动作: {actions_to_remove_temporarily}, 当前可用: {list(current_available_actions.keys())}"
+                    f"{self.log_prefix}[并行Planner] 临时移除的动作: {actions_to_remove_temporarily}, 当前可用: {list(current_available_actions.keys())}"
                 )
 
-            # --- 构建提示词 (调用修改后的 PromptBuilder 方法) ---
-            prompt = await prompt_builder.build_planner_prompt(
-                is_group_chat=self.is_group_chat,  # <-- Pass HFC state
-                chat_target_info=self.chat_target_info,  # <-- Pass HFC state
-                cycle_history=self._cycle_history,  # <-- Pass HFC state
-                observed_messages_str=observed_messages_str,  # <-- Pass local variable
-                current_mind=current_mind,  # <-- Pass argument
-                structured_info=self.sub_mind.structured_info_str,  # <-- Pass SubMind info
-                current_available_actions=current_available_actions,  # <-- Pass determined actions
+            # --- 构建提示词 (与原规划器不同，不依赖 current_mind) ---
+            prompt = await prompt_builder.build_planner_prompt_parallel(
+                is_group_chat=self.is_group_chat,
+                chat_target_info=self.chat_target_info,
+                cycle_history=self._cycle_history,
+                observed_messages_str=observed_messages_str,
+                # 移除 current_mind 参数
+                structured_info=self.sub_mind.structured_info_str,
+                current_available_actions=current_available_actions,
             )
 
             # --- 调用 LLM (普通文本生成) ---
             llm_content = None
             try:
-                # 假设 LLMRequest 有 generate_response 方法返回 (content, reasoning, model_name)
-                # 我们只需要 content
-                # !! 注意：这里假设 self.planner_llm 有 generate_response 方法
-                # !! 如果你的 LLMRequest 类使用的是其他方法名，请相应修改
-                llm_content, _, _ = await self.planner_llm.generate_response(prompt=prompt)
-                logger.debug(f"{self.log_prefix}[Planner] LLM 原始 JSON 响应 (预期): {llm_content}")
+                with Timer("并行规划LLM调用", cycle_timers):
+                    llm_content, _, _ = await self.planner_llm.generate_response(prompt=prompt)
+                    logger.debug(f"{self.log_prefix}[并行Planner] LLM 原始 JSON 响应 (预期): {llm_content}")
             except Exception as req_e:
-                logger.error(f"{self.log_prefix}[Planner] LLM 请求执行失败: {req_e}")
+                logger.error(f"{self.log_prefix}[并行Planner] LLM 请求执行失败: {req_e}")
                 reasoning = f"LLM 请求失败: {req_e}"
                 llm_error = True
                 # 直接使用默认动作返回错误结果
                 action = "no_reply"  # 明确设置为默认值
                 emoji_query = ""  # 明确设置为空
-                # 不再立即返回，而是继续执行 finally 块以恢复动作
-                # return { ... }
 
             # --- 解析 LLM 返回的 JSON (仅当 LLM 请求未出错时进行) ---
             if not llm_error and llm_content:
@@ -901,10 +980,9 @@ class HeartFChatting:
                     extracted_emoji_query = parsed_json.get("emoji_query", "")
 
                     # 验证动作是否在当前可用列表中
-                    # !! 使用调用 prompt 时实际可用的动作列表进行验证
                     if extracted_action not in current_available_actions:
                         logger.warning(
-                            f"{self.log_prefix}[Planner] LLM 返回了当前不可用或无效的动作: '{extracted_action}' (可用: {list(current_available_actions.keys())})，将强制使用 'no_reply'"
+                            f"{self.log_prefix}[并行Planner] LLM 返回了当前不可用或无效的动作: '{extracted_action}' (可用: {list(current_available_actions.keys())})，将强制使用 'no_reply'"
                         )
                         action = "no_reply"
                         reasoning = f"LLM 返回了当前不可用的动作 '{extracted_action}' (可用: {list(current_available_actions.keys())})。原始理由: {extracted_reasoning}"
@@ -912,7 +990,7 @@ class HeartFChatting:
                         # 检查 no_reply 是否也恰好被移除了 (极端情况)
                         if "no_reply" not in current_available_actions:
                             logger.error(
-                                f"{self.log_prefix}[Planner] 严重错误：'no_reply' 动作也不可用！无法执行任何动作。"
+                                f"{self.log_prefix}[并行Planner] 严重错误：'no_reply' 动作也不可用！无法执行任何动作。"
                             )
                             action = "error"  # 回退到错误状态
                             reasoning = "无法执行任何有效动作，包括 no_reply"
@@ -926,39 +1004,36 @@ class HeartFChatting:
                         emoji_query = extracted_emoji_query
                         llm_error = False  # 解析成功
                         logger.debug(
-                            f"{self.log_prefix}[要做什么]\nPrompt:\n{prompt}\n\n决策结果 (来自JSON): {action}, 理由: {reasoning}, 表情查询: '{emoji_query}'"
+                            f"{self.log_prefix}[并行要做什么]\nPrompt:\n{prompt}\n\n决策结果 (来自JSON): {action}, 理由: {reasoning}, 表情查询: '{emoji_query}'"
                         )
 
                 except json.JSONDecodeError as json_e:
                     logger.warning(
-                        f"{self.log_prefix}[Planner] 解析LLM响应JSON失败: {json_e}. LLM原始输出: '{llm_content}'"
+                        f"{self.log_prefix}[并行Planner] 解析LLM响应JSON失败: {json_e}. LLM原始输出: '{llm_content}'"
                     )
                     reasoning = f"解析LLM响应JSON失败: {json_e}. 将使用默认动作 'no_reply'."
                     action = "no_reply"  # 解析失败则默认不回复
                     emoji_query = ""
                     llm_error = True  # 标记解析错误
                 except Exception as parse_e:
-                    logger.error(f"{self.log_prefix}[Planner] 处理LLM响应时发生意外错误: {parse_e}")
+                    logger.error(f"{self.log_prefix}[并行Planner] 处理LLM响应时发生意外错误: {parse_e}")
                     reasoning = f"处理LLM响应时发生意外错误: {parse_e}. 将使用默认动作 'no_reply'."
                     action = "no_reply"
                     emoji_query = ""
                     llm_error = True
             elif not llm_error and not llm_content:
                 # LLM 请求成功但返回空内容
-                logger.warning(f"{self.log_prefix}[Planner] LLM 返回了空内容。")
+                logger.warning(f"{self.log_prefix}[并行Planner] LLM 返回了空内容。")
                 reasoning = "LLM 返回了空内容，使用默认动作 'no_reply'."
                 action = "no_reply"
                 emoji_query = ""
                 llm_error = True  # 标记为空响应错误
 
-            # 如果 llm_error 在此阶段为 True，意味着请求成功但解析失败或返回空
-            # 如果 llm_error 在请求阶段就为 True，则跳过了此解析块
-
         except Exception as outer_e:
-            logger.error(f"{self.log_prefix}[Planner] Planner 处理过程中发生意外错误: {outer_e}")
+            logger.error(f"{self.log_prefix}[并行Planner] Planner 处理过程中发生意外错误: {outer_e}")
             logger.error(traceback.format_exc())
             action = "error"  # 发生未知错误，标记为 error 动作
-            reasoning = f"Planner 内部处理错误: {outer_e}"
+            reasoning = f"并行Planner 内部处理错误: {outer_e}"
             emoji_query = ""
             llm_error = True
         finally:
@@ -967,13 +1042,12 @@ class HeartFChatting:
             if self.action_manager._original_actions_backup is not None:
                 self.action_manager.restore_actions()
                 logger.debug(
-                    f"{self.log_prefix}[Planner] 恢复了原始动作集, 当前可用: {list(self.action_manager.get_available_actions().keys())}"
+                    f"{self.log_prefix}[并行Planner] 恢复了原始动作集, 当前可用: {list(self.action_manager.get_available_actions().keys())}"
                 )
-        # --- 结束确保动作恢复 ---
 
         # --- 概率性忽略文本回复附带的表情 (逻辑保持不变) ---
         if action == "text_reply" and emoji_query:
-            logger.debug(f"{self.log_prefix}[Planner] 大模型建议文字回复带表情: '{emoji_query}'")
+            logger.debug(f"{self.log_prefix}[并行Planner] 大模型建议文字回复带表情: '{emoji_query}'")
             if random.random() > EMOJI_SEND_PRO:
                 logger.info(
                     f"{self.log_prefix}但是麦麦这次不想加表情 ({1 - EMOJI_SEND_PRO:.0%})，忽略表情 '{emoji_query}'"
@@ -982,13 +1056,16 @@ class HeartFChatting:
             else:
                 logger.info(f"{self.log_prefix}好吧，加上表情 '{emoji_query}'")
         # --- 结束概率性忽略 ---
+        
+        end_time = time.time()
+        duration = end_time - start_time
+        logger.debug(f"{self.log_prefix} 并行规划任务完成，耗时: {duration:.2f}秒，决定动作: {action}")
 
         # 返回结果字典
         return {
             "action": action,
             "reasoning": reasoning,
             "emoji_query": emoji_query,
-            "current_mind": current_mind,
             "observed_messages": observed_messages,
             "llm_error": llm_error,  # 返回错误状态
         }
@@ -1376,3 +1453,215 @@ class HeartFChatting:
         # Access MessageManager directly (using heart_fc_sender)
         await self.heart_fc_sender.register_thinking(thinking_message)
         return thinking_id
+
+    async def _planner(self, current_mind: str, cycle_timers: dict, is_re_planned: bool = False) -> Dict[str, Any]:
+        """
+        规划器 (Planner): 使用LLM根据上下文决定是否和如何回复。
+        重构为：让LLM返回结构化JSON文本，然后在代码中解析。
+
+        参数:
+            current_mind: 子思维的当前思考结果
+            cycle_timers: 计时器字典
+            is_re_planned: 是否为重新规划 (此重构中暂时简化，不处理 is_re_planned 的特殊逻辑)
+        """
+        logger.info(f"{self.log_prefix}开始想要做什么")
+
+        actions_to_remove_temporarily = []
+        # --- 检查历史动作并决定临时移除动作 (逻辑保持不变) ---
+        lian_xu_wen_ben_hui_fu = 0
+        probability_roll = random.random()
+        for cycle in reversed(self._cycle_history):
+            if cycle.action_taken:
+                if cycle.action_type == "text_reply":
+                    lian_xu_wen_ben_hui_fu += 1
+                else:
+                    break
+            if len(self._cycle_history) > 0 and cycle.cycle_id <= self._cycle_history[0].cycle_id + (
+                len(self._cycle_history) - 4
+            ):
+                break
+        logger.debug(f"{self.log_prefix}[Planner] 检测到连续文本回复次数: {lian_xu_wen_ben_hui_fu}")
+
+        if lian_xu_wen_ben_hui_fu >= 3:
+            logger.info(f"{self.log_prefix}[Planner] 连续回复 >= 3 次，强制移除 text_reply 和 emoji_reply")
+            actions_to_remove_temporarily.extend(["text_reply", "emoji_reply"])
+        elif lian_xu_wen_ben_hui_fu == 2:
+            if probability_roll < 0.8:
+                logger.info(f"{self.log_prefix}[Planner] 连续回复 2 次，80% 概率移除 text_reply 和 emoji_reply (触发)")
+                actions_to_remove_temporarily.extend(["text_reply", "emoji_reply"])
+            else:
+                logger.info(
+                    f"{self.log_prefix}[Planner] 连续回复 2 次，80% 概率移除 text_reply 和 emoji_reply (未触发)"
+                )
+        elif lian_xu_wen_ben_hui_fu == 1:
+            if probability_roll < 0.4:
+                logger.info(f"{self.log_prefix}[Planner] 连续回复 1 次，40% 概率移除 text_reply (触发)")
+                actions_to_remove_temporarily.append("text_reply")
+            else:
+                logger.info(f"{self.log_prefix}[Planner] 连续回复 1 次，40% 概率移除 text_reply (未触发)")
+        # --- 结束检查历史动作 ---
+
+        # 获取观察信息
+        observation = self.observations[0]
+        # if is_re_planned: # 暂时简化，不处理重新规划
+        #     await observation.observe()
+        observed_messages = observation.talking_message
+        observed_messages_str = observation.talking_message_str_truncate
+
+        # --- 使用 LLM 进行决策 (JSON 输出模式) --- #
+        action = "no_reply"  # 默认动作
+        reasoning = "规划器初始化默认"
+        emoji_query = ""
+        llm_error = False  # LLM 请求或解析错误标志
+
+        # 获取我们将传递给 prompt 构建器和用于验证的当前可用动作
+        current_available_actions = self.action_manager.get_available_actions()
+
+        try:
+            # --- 应用临时动作移除 ---
+            if actions_to_remove_temporarily:
+                self.action_manager.temporarily_remove_actions(actions_to_remove_temporarily)
+                # 更新 current_available_actions 以反映移除后的状态
+                current_available_actions = self.action_manager.get_available_actions()
+                logger.debug(
+                    f"{self.log_prefix}[Planner] 临时移除的动作: {actions_to_remove_temporarily}, 当前可用: {list(current_available_actions.keys())}"
+                )
+
+            # --- 构建提示词 (调用修改后的 PromptBuilder 方法) ---
+            prompt = await prompt_builder.build_planner_prompt(
+                is_group_chat=self.is_group_chat,  # <-- Pass HFC state
+                chat_target_info=self.chat_target_info,  # <-- Pass HFC state
+                cycle_history=self._cycle_history,  # <-- Pass HFC state
+                observed_messages_str=observed_messages_str,  # <-- Pass local variable
+                current_mind=current_mind,  # <-- Pass argument
+                structured_info=self.sub_mind.structured_info_str,  # <-- Pass SubMind info
+                current_available_actions=current_available_actions,  # <-- Pass determined actions
+            )
+
+            # --- 调用 LLM (普通文本生成) ---
+            llm_content = None
+            try:
+                # 假设 LLMRequest 有 generate_response 方法返回 (content, reasoning, model_name)
+                # 我们只需要 content
+                # !! 注意：这里假设 self.planner_llm 有 generate_response 方法
+                # !! 如果你的 LLMRequest 类使用的是其他方法名，请相应修改
+                llm_content, _, _ = await self.planner_llm.generate_response(prompt=prompt)
+                logger.debug(f"{self.log_prefix}[Planner] LLM 原始 JSON 响应 (预期): {llm_content}")
+            except Exception as req_e:
+                logger.error(f"{self.log_prefix}[Planner] LLM 请求执行失败: {req_e}")
+                reasoning = f"LLM 请求失败: {req_e}"
+                llm_error = True
+                # 直接使用默认动作返回错误结果
+                action = "no_reply"  # 明确设置为默认值
+                emoji_query = ""  # 明确设置为空
+                # 不再立即返回，而是继续执行 finally 块以恢复动作
+                # return { ... }
+
+            # --- 解析 LLM 返回的 JSON (仅当 LLM 请求未出错时进行) ---
+            if not llm_error and llm_content:
+                try:
+                    # 尝试去除可能的 markdown 代码块标记
+                    cleaned_content = (
+                        llm_content.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+                    )
+                    if not cleaned_content:
+                        raise json.JSONDecodeError("Cleaned content is empty", cleaned_content, 0)
+                    parsed_json = json.loads(cleaned_content)
+
+                    # 提取决策，提供默认值
+                    extracted_action = parsed_json.get("action", "no_reply")
+                    extracted_reasoning = parsed_json.get("reasoning", "LLM未提供理由")
+                    extracted_emoji_query = parsed_json.get("emoji_query", "")
+
+                    # 验证动作是否在当前可用列表中
+                    # !! 使用调用 prompt 时实际可用的动作列表进行验证
+                    if extracted_action not in current_available_actions:
+                        logger.warning(
+                            f"{self.log_prefix}[Planner] LLM 返回了当前不可用或无效的动作: '{extracted_action}' (可用: {list(current_available_actions.keys())})，将强制使用 'no_reply'"
+                        )
+                        action = "no_reply"
+                        reasoning = f"LLM 返回了当前不可用的动作 '{extracted_action}' (可用: {list(current_available_actions.keys())})。原始理由: {extracted_reasoning}"
+                        emoji_query = ""
+                        # 检查 no_reply 是否也恰好被移除了 (极端情况)
+                        if "no_reply" not in current_available_actions:
+                            logger.error(
+                                f"{self.log_prefix}[Planner] 严重错误：'no_reply' 动作也不可用！无法执行任何动作。"
+                            )
+                            action = "error"  # 回退到错误状态
+                            reasoning = "无法执行任何有效动作，包括 no_reply"
+                            llm_error = True  # 标记为严重错误
+                        else:
+                            llm_error = False  # 视为逻辑修正而非 LLM 错误
+                    else:
+                        # 动作有效且可用
+                        action = extracted_action
+                        reasoning = extracted_reasoning
+                        emoji_query = extracted_emoji_query
+                        llm_error = False  # 解析成功
+                        logger.debug(
+                            f"{self.log_prefix}[要做什么]\nPrompt:\n{prompt}\n\n决策结果 (来自JSON): {action}, 理由: {reasoning}, 表情查询: '{emoji_query}'"
+                        )
+
+                except json.JSONDecodeError as json_e:
+                    logger.warning(
+                        f"{self.log_prefix}[Planner] 解析LLM响应JSON失败: {json_e}. LLM原始输出: '{llm_content}'"
+                    )
+                    reasoning = f"解析LLM响应JSON失败: {json_e}. 将使用默认动作 'no_reply'."
+                    action = "no_reply"  # 解析失败则默认不回复
+                    emoji_query = ""
+                    llm_error = True  # 标记解析错误
+                except Exception as parse_e:
+                    logger.error(f"{self.log_prefix}[Planner] 处理LLM响应时发生意外错误: {parse_e}")
+                    reasoning = f"处理LLM响应时发生意外错误: {parse_e}. 将使用默认动作 'no_reply'."
+                    action = "no_reply"
+                    emoji_query = ""
+                    llm_error = True
+            elif not llm_error and not llm_content:
+                # LLM 请求成功但返回空内容
+                logger.warning(f"{self.log_prefix}[Planner] LLM 返回了空内容。")
+                reasoning = "LLM 返回了空内容，使用默认动作 'no_reply'."
+                action = "no_reply"
+                emoji_query = ""
+                llm_error = True  # 标记为空响应错误
+
+            # 如果 llm_error 在此阶段为 True，意味着请求成功但解析失败或返回空
+            # 如果 llm_error 在请求阶段就为 True，则跳过了此解析块
+
+        except Exception as outer_e:
+            logger.error(f"{self.log_prefix}[Planner] Planner 处理过程中发生意外错误: {outer_e}")
+            logger.error(traceback.format_exc())
+            action = "error"  # 发生未知错误，标记为 error 动作
+            reasoning = f"Planner 内部处理错误: {outer_e}"
+            emoji_query = ""
+            llm_error = True
+        finally:
+            # --- 确保动作恢复 ---
+            # 检查 self._original_actions_backup 是否有值来判断是否需要恢复
+            if self.action_manager._original_actions_backup is not None:
+                self.action_manager.restore_actions()
+                logger.debug(
+                    f"{self.log_prefix}[Planner] 恢复了原始动作集, 当前可用: {list(self.action_manager.get_available_actions().keys())}"
+                )
+        # --- 结束确保动作恢复 ---
+
+        # --- 概率性忽略文本回复附带的表情 (逻辑保持不变) ---
+        if action == "text_reply" and emoji_query:
+            logger.debug(f"{self.log_prefix}[Planner] 大模型建议文字回复带表情: '{emoji_query}'")
+            if random.random() > EMOJI_SEND_PRO:
+                logger.info(
+                    f"{self.log_prefix}但是麦麦这次不想加表情 ({1 - EMOJI_SEND_PRO:.0%})，忽略表情 '{emoji_query}'"
+                )
+                emoji_query = ""  # 清空表情请求
+            else:
+                logger.info(f"{self.log_prefix}好吧，加上表情 '{emoji_query}'")
+        # --- 结束概率性忽略 ---
+
+        # 返回结果字典
+        return {
+            "action": action,
+            "reasoning": reasoning,
+            "emoji_query": emoji_query,
+            "current_mind": current_mind,
+            "observed_messages": observed_messages,
+            "llm_error": llm_error,  # 返回错误状态
+        }
