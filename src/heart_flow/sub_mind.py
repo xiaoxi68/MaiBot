@@ -26,84 +26,35 @@ def init_prompt():
     group_prompt = """
 {extra_info}
 {relation_prompt}
-你的名字是{bot_name},{prompt_personality}
-{last_loop_prompt}
+你的名字是{bot_name},{prompt_personality},你现在{mood_info}
 {cycle_info_block}
 现在是{time_now}，你正在上网，和qq群里的网友们聊天，以下是正在进行的聊天内容：
 {chat_observe_info}
 
-你现在{mood_info}
-请仔细阅读当前群聊内容，分析讨论话题和群成员关系，分析你刚刚发言和别人对你的发言的反应，思考你要不要回复。然后思考你是否需要使用函数工具。
-思考并输出你的内心想法
-输出要求：
+以下是你之前对这个群聊的陈述：
+{last_mind}
+
+现在请你继续输出思考内容，输出要求：
 1. 根据聊天内容生成你的想法，{hf_do_next}
-2. 不要分点、不要使用表情符号
-3. 避免多余符号(冒号、引号、括号等)
-4. 语言简洁自然，不要浮夸
-5. 如果你刚发言，并且没有人回复你，不要回复
-工具使用说明：
-1. 输出想法后考虑是否需要使用工具
-2. 工具可获取信息或执行操作
-3. 如需处理消息或回复，请使用工具。"""
+2. 参考之前的思考，基于之前的内容对这个群聊继续陈述，可以删除不重要的内容，添加新的内容
+3. 思考群内进行的话题，话题由谁发起，进展状况如何，你如何参与？思考你在群聊天中的角色，你是一个什么样的人，你在这个群聊中扮演什么角色？
+4. 注意群聊的时间线索，思考聊天的时间线。
+5. 请结合你做出的行为，对前面的陈述进行补充
+6. 语言简洁自然，不要分点，不要浮夸，不要修辞，仅输出思考内容就好"""
     Prompt(group_prompt, "sub_heartflow_prompt_before")
 
     # --- Private Chat Prompt ---
     private_prompt = """
 {extra_info}
 {relation_prompt}
-你的名字是{bot_name},{prompt_personality}
-{last_loop_prompt}
+你的名字是{bot_name},{prompt_personality},你现在{mood_info}
 {cycle_info_block}
 现在是{time_now}，你正在上网，和 {chat_target_name} 私聊，以下是你们的聊天内容：
 {chat_observe_info}
 
-你现在{mood_info}
-请仔细阅读聊天内容，想想你和 {chat_target_name} 的关系，回顾你们刚刚的交流,你刚刚发言和对方的反应，思考聊天的主题。
-请思考你要不要回复以及如何回复对方。然后思考你是否需要使用函数工具。
-思考并输出你的内心想法
-输出要求：
-1. 根据聊天内容生成你的想法，{hf_do_next}
-2. 不要分点、不要使用表情符号
-3. 避免多余符号(冒号、引号、括号等)
-4. 语言简洁自然，不要浮夸
-5. 如果你刚发言，对方没有回复你，请谨慎回复
-工具使用说明：
-1. 输出想法后考虑是否需要使用工具
-2. 工具可获取信息或执行操作
-3. 如需处理消息或回复，请使用工具。"""
-    Prompt(private_prompt, "sub_heartflow_prompt_private_before")
+以下是你之前在这个群聊中的思考：
+{last_mind}
 
-    # --- 并行模式的Group Chat Prompt ---
-    parallel_group_prompt = """
-{extra_info}
-{relation_prompt}
-你的名字是{bot_name},{prompt_personality}
-{last_loop_prompt}
-{cycle_info_block}
-现在是{time_now}，你正在上网，和qq群里的网友们聊天，以下是正在进行的聊天内容：
-{chat_observe_info}
-
-你现在{mood_info}
-请仔细阅读当前群聊内容，分析讨论话题和群成员关系，分析你刚刚发言和别人对你的发言的反应，思考你要不要回复。
-思考并输出你的内心想法
-输出要求：
-1. 根据聊天内容生成你的想法，{hf_do_next}
-2. 不要分点、不要使用表情符号
-3. 避免多余符号(冒号、引号、括号等)
-4. 语言简洁自然，不要浮夸"""
-    Prompt(parallel_group_prompt, "sub_heartflow_prompt_parallel")
-
-    # --- 并行模式的Private Chat Prompt ---
-    parallel_private_prompt = """
-{extra_info}
-{relation_prompt}
-你的名字是{bot_name},{prompt_personality}
-{last_loop_prompt}
-{cycle_info_block}
-现在是{time_now}，你正在上网，和 {chat_target_name} 私聊，以下是你们的聊天内容：
-{chat_observe_info}
-
-你现在{mood_info}
 请仔细阅读聊天内容，想想你和 {chat_target_name} 的关系，回顾你们刚刚的交流,你刚刚发言和对方的反应，思考聊天的主题。
 请思考你要不要回复以及如何回复对方。
 思考并输出你的内心想法
@@ -113,14 +64,7 @@ def init_prompt():
 3. 避免多余符号(冒号、引号、括号等)
 4. 语言简洁自然，不要浮夸
 5. 如果你刚发言，对方没有回复你，请谨慎回复"""
-    Prompt(parallel_private_prompt, "sub_heartflow_prompt_private_parallel")
-
-    # --- Last Loop Prompt (remains the same) ---
-    last_loop_t = """
-刚刚你的内心想法是：{current_thinking_info}
-{if_replan_prompt}
-"""
-    Prompt(last_loop_t, "last_loop")
+    Prompt(private_prompt, "sub_heartflow_prompt_private_before")
 
 
 def calculate_similarity(text_a: str, text_b: str) -> float:
@@ -177,10 +121,6 @@ class SubMind:
         self.structured_info = []
         self.structured_info_str = ""
         
-        # 并行模式设置，从全局配置获取
-        # 此变量将在构建提示词时使用，决定使用哪个模板
-        self.parallel_mode = False  # 默认为False，将在do_thinking_before_reply中检查心流的模式设置
-        
         name = chat_manager.get_stream_name(self.subheartflow_id)
         self.log_prefix = f"[{name}] "
         self._update_structured_info_str()
@@ -213,29 +153,28 @@ class SubMind:
         self.structured_info_str = "\n".join(lines)
         logger.debug(f"{self.log_prefix} 更新 structured_info_str: \n{self.structured_info_str}")
 
-    async def do_thinking_before_reply(self, history_cycle: list[CycleInfo] = None, parallel_mode: bool = False, no_tools: bool = False):
+    async def do_thinking_before_reply(self, history_cycle: list[CycleInfo] = None, parallel_mode: bool = True, no_tools: bool = True, return_prompt: bool = False, cycle_info: CycleInfo = None):
         """
         在回复前进行思考，生成内心想法并收集工具调用结果
         
         参数:
             history_cycle: 历史循环信息
-            parallel_mode: 是否在并行模式下执行，默认为False
-            no_tools: 是否禁用工具调用，默认为False
+            parallel_mode: 是否在并行模式下执行，默认为True
+            no_tools: 是否禁用工具调用，默认为True
+            return_prompt: 是否返回prompt，默认为False
+            cycle_info: 循环信息对象，可用于记录详细执行信息
 
         返回:
-            tuple: (current_mind, past_mind) 当前想法和过去的想法列表
+            如果return_prompt为False:
+                tuple: (current_mind, past_mind) 当前想法和过去的想法列表
+            如果return_prompt为True:
+                tuple: (current_mind, past_mind, prompt) 当前想法、过去的想法列表和使用的prompt
         """
-        # 设置并行模式
-        self.parallel_mode = parallel_mode
-        
         # 更新活跃时间
         self.last_active_time = time.time()
 
         # ---------- 0. 更新和清理 structured_info ----------
         if self.structured_info:
-            logger.debug(
-                f"{self.log_prefix} 更新前的 structured_info: {safe_json_dumps(self.structured_info, ensure_ascii=False)}"
-            )
             updated_info = []
             for item in self.structured_info:
                 item["ttl"] -= 1
@@ -244,9 +183,6 @@ class SubMind:
                 else:
                     logger.debug(f"{self.log_prefix} 移除过期的 structured_info 项: {item['id']}")
             self.structured_info = updated_info
-            logger.debug(
-                f"{self.log_prefix} 更新后的 structured_info: {safe_json_dumps(self.structured_info, ensure_ascii=False)}"
-            )
             self._update_structured_info_str()
         logger.debug(
             f"{self.log_prefix} 当前完整的 structured_info: {safe_json_dumps(self.structured_info, ensure_ascii=False)}"
@@ -265,7 +201,6 @@ class SubMind:
             return self.current_mind, self.past_mind
 
         is_group_chat = observation.is_group_chat
-        # logger.debug(f"is_group_chat: {is_group_chat}")
 
         chat_target_info = observation.chat_target_info
         chat_target_name = "对方"  # Default for private
@@ -273,7 +208,6 @@ class SubMind:
             chat_target_name = (
                 chat_target_info.get("person_name") or chat_target_info.get("user_nickname") or chat_target_name
             )
-        # --- End getting observation info ---
 
         # 获取观察内容
         chat_observe_info = observation.get_observe_info()
@@ -320,20 +254,13 @@ class SubMind:
             logger.error(f"{self.log_prefix} 获取记忆时出错: {e}")
             logger.error(traceback.format_exc())
 
-        # ---------- 3. 准备工具和个性化数据 ----------
-        # 初始化工具
-        tool_instance = ToolUser()
-        tools = tool_instance._define_tools()
-
+        # ---------- 3. 准备个性化数据 ----------
         # 获取个性化信息
         individuality = Individuality.get_instance()
 
         relation_prompt = ""
-        # print(f"person_list: {person_list}")
         for person in person_list:
             relation_prompt += await relationship_manager.build_relationship_info(person, is_id=True)
-
-        # print(f"relat22222ion_prompt: {relation_prompt}")
 
         # 构建个性部分
         prompt_personality = individuality.get_prompt(x_person=2, level=2)
@@ -354,28 +281,6 @@ class SubMind:
             ("不要太深入", 0.2),
             ("进行深入思考", 0.2),
         ]
-
-        last_cycle = history_cycle[-1] if history_cycle else None
-        # 上一次决策信息
-        if last_cycle is not None:
-            last_action = last_cycle.action_type
-            last_reasoning = last_cycle.reasoning
-            is_replan = last_cycle.replanned
-            if is_replan:
-                if_replan_prompt = f"但是你有了上述想法之后，有了新消息，你决定重新思考后，你做了：{last_action}\n因为：{last_reasoning}\n"
-            else:
-                if_replan_prompt = f"出于这个想法，你刚才做了：{last_action}\n因为：{last_reasoning}\n"
-        else:
-            last_action = ""
-            last_reasoning = ""
-            is_replan = False
-            if_replan_prompt = ""
-        if previous_mind:
-            last_loop_prompt = (await global_prompt_manager.get_prompt_async("last_loop")).format(
-                current_thinking_info=previous_mind, if_replan_prompt=if_replan_prompt
-            )
-        else:
-            last_loop_prompt = ""
 
         # 准备循环信息块 (分析最近的活动循环)
         recent_active_cycles = []
@@ -426,23 +331,11 @@ class SubMind:
         )[0]
 
         # ---------- 5. 构建最终提示词 ----------
-        # --- 根据并行模式和聊天类型选择模板 ---
-        logger.debug(f"is_group_chat: {is_group_chat}, parallel_mode: {self.parallel_mode}")
+        # --- 根据聊天类型选择模板 ---
+        logger.debug(f"is_group_chat: {is_group_chat}")
         
-        if is_group_chat:
-            if self.parallel_mode:
-                template_name = "sub_heartflow_prompt_parallel"
-                logger.debug(f"{self.log_prefix} 使用并行模式群聊思考模板")
-            else:
-                template_name = "sub_heartflow_prompt_before"
-                logger.debug(f"{self.log_prefix} 使用标准模式群聊思考模板")
-        else:  # Private chat
-            if self.parallel_mode:
-                template_name = "sub_heartflow_prompt_private_parallel"
-                logger.debug(f"{self.log_prefix} 使用并行模式私聊思考模板")
-            else:
-                template_name = "sub_heartflow_prompt_private_before"
-                logger.debug(f"{self.log_prefix} 使用标准模式私聊思考模板")
+        template_name = "sub_heartflow_prompt_before" if is_group_chat else "sub_heartflow_prompt_private_before"
+        logger.debug(f"{self.log_prefix} 使用{'群聊' if is_group_chat else '私聊'}思考模板")
                 
         prompt = (await global_prompt_manager.get_prompt_async(template_name)).format(
             extra_info=self.structured_info_str,
@@ -453,47 +346,32 @@ class SubMind:
             chat_observe_info=chat_observe_info,
             mood_info=mood_info,
             hf_do_next=hf_do_next,
-            last_loop_prompt=last_loop_prompt,
+            last_mind = previous_mind,
             cycle_info_block=cycle_info_block,
             chat_target_name=chat_target_name,
         )
 
-        # ---------- 6. 执行LLM请求并处理响应 ----------
+        # 在构建完提示词后，生成最终的prompt字符串
+        final_prompt = prompt
+        
+        # ---------- 6. 调用LLM ----------
+        # 如果指定了cycle_info，记录structured_info和prompt
+        if cycle_info:
+            cycle_info.set_submind_info(
+                prompt=final_prompt,
+                structured_info=self.structured_info_str
+            )
+
         content = ""  # 初始化内容变量
-        _reasoning_content = ""  # 初始化推理内容变量
 
         try:
             # 调用LLM生成响应
-            response, _reasoning_content, tool_calls = await self.llm_model.generate_response_tool_async(
-                prompt=prompt, tools=tools
+            response = await self.llm_model.generate_response_async(
+                prompt=final_prompt
             )
-
-            logger.debug(f"{self.log_prefix} 子心流输出的原始LLM响应: {response}")
-
+            
             # 直接使用LLM返回的文本响应作为 content
             content = response if response else ""
-
-            if tool_calls and not no_tools:
-                # 只有在no_tools=False时才执行工具调用
-                success, valid_tool_calls, error_msg = process_llm_tool_calls(
-                    tool_calls, log_prefix=f"{self.log_prefix} "
-                )
-
-                if success and valid_tool_calls:
-                    # 记录工具调用信息
-                    tool_calls_str = ", ".join(
-                        [call.get("function", {}).get("name", "未知工具") for call in valid_tool_calls]
-                    )
-                    logger.info(f"{self.log_prefix} 模型请求调用{len(valid_tool_calls)}个工具: {tool_calls_str}")
-
-                    # 收集工具执行结果
-                    await self._execute_tool_calls(valid_tool_calls, tool_instance)
-                elif not success:
-                    logger.warning(f"{self.log_prefix} 处理工具调用时出错: {error_msg}")
-            elif no_tools and tool_calls:
-                logger.info(f"{self.log_prefix} 模型请求了工具调用，但no_tools=True，跳过执行")
-            else:
-                logger.info(f"{self.log_prefix} 心流未使用工具")
 
         except Exception as e:
             # 处理总体异常
@@ -502,7 +380,7 @@ class SubMind:
             content = "思考过程中出现错误"
 
         # 记录初步思考结果
-        logger.debug(f"{self.log_prefix} 初步心流思考结果: {content}\nprompt: {prompt}\n")
+        logger.debug(f"{self.log_prefix} 初步心流思考结果: {content}\nprompt: {final_prompt}\n")
 
         # 处理空响应情况
         if not content:
@@ -544,16 +422,67 @@ class SubMind:
                 else:
                     # 相似度较高但非100%，执行标准去重逻辑
                     logger.debug(f"{self.log_prefix} 执行概率性去重 (概率: {replacement_prob:.2f})...")
+                    logger.debug(f"{self.log_prefix} previous_mind类型: {type(previous_mind)}, new_content类型: {type(new_content)}")
+                    
                     matcher = difflib.SequenceMatcher(None, previous_mind, new_content)
+                    logger.debug(f"{self.log_prefix} matcher类型: {type(matcher)}")
+                    
                     deduplicated_parts = []
                     last_match_end_in_b = 0
-                    for _i, j, n in matcher.get_matching_blocks():
-                        if last_match_end_in_b < j:
-                            deduplicated_parts.append(new_content[last_match_end_in_b:j])
-                        last_match_end_in_b = j + n
-
-                    deduplicated_content = "".join(deduplicated_parts).strip()
-
+                    
+                    # 获取并记录所有匹配块
+                    matching_blocks = matcher.get_matching_blocks()
+                    logger.debug(f"{self.log_prefix} 匹配块数量: {len(matching_blocks)}")
+                    logger.debug(f"{self.log_prefix} 匹配块示例(前3个): {matching_blocks[:3] if len(matching_blocks) > 3 else matching_blocks}")
+                    
+                    # get_matching_blocks()返回形如[(i, j, n), ...]的列表，其中i是a中的索引，j是b中的索引，n是匹配的长度
+                    for idx, match in enumerate(matching_blocks):
+                        if not isinstance(match, tuple):
+                            logger.error(f"{self.log_prefix} 匹配块 {idx} 不是元组类型，而是 {type(match)}: {match}")
+                            continue
+                            
+                        try:
+                            _i, j, n = match  # 解包元组为三个变量
+                            logger.debug(f"{self.log_prefix} 匹配块 {idx}: i={_i}, j={j}, n={n}")
+                            
+                            if last_match_end_in_b < j:
+                                # 确保添加的是字符串，而不是元组
+                                try:
+                                    non_matching_part = new_content[last_match_end_in_b:j]
+                                    logger.debug(f"{self.log_prefix} 添加非匹配部分: '{non_matching_part}', 类型: {type(non_matching_part)}")
+                                    if not isinstance(non_matching_part, str):
+                                        logger.warning(f"{self.log_prefix} 非匹配部分不是字符串类型: {type(non_matching_part)}")
+                                        non_matching_part = str(non_matching_part)
+                                    deduplicated_parts.append(non_matching_part)
+                                except Exception as e:
+                                    logger.error(f"{self.log_prefix} 处理非匹配部分时出错: {e}")
+                                    logger.error(traceback.format_exc())
+                            last_match_end_in_b = j + n
+                        except Exception as e:
+                            logger.error(f"{self.log_prefix} 处理匹配块时出错: {e}")
+                            logger.error(traceback.format_exc())
+                    
+                    logger.debug(f"{self.log_prefix} 去重前部分列表: {deduplicated_parts}")
+                    logger.debug(f"{self.log_prefix} 列表元素类型: {[type(part) for part in deduplicated_parts]}")
+                    
+                    # 确保所有元素都是字符串
+                    deduplicated_parts = [str(part) for part in deduplicated_parts]
+                    
+                    # 防止列表为空
+                    if not deduplicated_parts:
+                        logger.warning(f"{self.log_prefix} 去重后列表为空，添加空字符串")
+                        deduplicated_parts = [""]
+                        
+                    logger.debug(f"{self.log_prefix} 处理后的部分列表: {deduplicated_parts}")
+                    
+                    try:
+                        deduplicated_content = "".join(deduplicated_parts).strip()
+                        logger.debug(f"{self.log_prefix} 拼接后的去重内容: '{deduplicated_content}'")
+                    except Exception as e:
+                        logger.error(f"{self.log_prefix} 拼接去重内容时出错: {e}")
+                        logger.error(traceback.format_exc())
+                        deduplicated_content = ""
+                    
                     if deduplicated_content:
                         # 根据概率决定是否添加词语
                         prefix_str = ""
@@ -587,44 +516,16 @@ class SubMind:
         # 更新当前思考内容
         self.update_current_mind(content)
 
-        return self.current_mind, self.past_mind
-
-    async def _execute_tool_calls(self, tool_calls, tool_instance):
-        """
-        执行一组工具调用并收集结果
-
-        参数:
-            tool_calls: 工具调用列表
-            tool_instance: 工具使用器实例
-        """
-        tool_results = []
-        new_structured_items = []  # 收集新产生的结构化信息
-
-        # 执行所有工具调用
-        for tool_call in tool_calls:
-            try:
-                result = await tool_instance._execute_tool_call(tool_call)
-                if result:
-                    tool_results.append(result)
-                    # 创建新的结构化信息项
-                    new_item = {
-                        "type": result.get("type", "unknown_type"),  # 使用 'type' 键
-                        "id": result.get("id", f"fallback_id_{time.time()}"),  # 使用 'id' 键
-                        "content": result.get("content", ""),  # 'content' 键保持不变
-                        "ttl": 3,
-                    }
-                    new_structured_items.append(new_item)
-
-            except Exception as tool_e:
-                logger.error(f"[{self.subheartflow_id}] 工具执行失败: {tool_e}")
-                logger.error(traceback.format_exc())  # 添加 traceback 记录
-
-        # 如果有新的工具结果，记录并更新结构化信息
-        if new_structured_items:
-            self.structured_info.extend(new_structured_items)  # 添加到现有列表
-            logger.debug(f"工具调用收集到新的结构化信息: {safe_json_dumps(new_structured_items, ensure_ascii=False)}")
-            # logger.debug(f"当前完整的 structured_info: {safe_json_dumps(self.structured_info, ensure_ascii=False)}") # 可以取消注释以查看完整列表
-            self._update_structured_info_str()  # 添加新信息后，更新字符串表示
+        # 在原始代码的return语句前，记录结果并根据return_prompt决定返回值
+        if cycle_info:
+            cycle_info.set_submind_info(
+                result=content
+            )
+            
+        if return_prompt:
+            return content, self.past_mind, final_prompt
+        else:
+            return content, self.past_mind
 
     def update_current_mind(self, response):
         if self.current_mind:  # 只有当 current_mind 非空时才添加到 past_mind

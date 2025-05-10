@@ -34,10 +34,11 @@ def init_prompt():
 
 {current_mind_info}
 因为上述想法，你决定发言，原因是：{reason}
-
-回复尽量简短一些。请注意把握聊天内容，{reply_style2}。请一次只回复一个话题，不要同时回复多个人。{prompt_ger}
-{reply_style1}，说中文，不要刻意突出自身学科背景，注意只输出回复内容。
-{moderation_prompt}。注意：回复不要输出多余内容(包括前后缀，冒号和引号，括号，表情包，at或 @等 )。""",
+依照这些内容组织回复：{in_mind_reply}，不要原句回复，根据下面的要求，对其进行修改
+要求：是尽量简短一些。把握聊天内容，{reply_style2}。不要复读自己说的话。{prompt_ger}
+{reply_style1}，说中文，不要刻意突出自身学科背景。
+{moderation_prompt}。不要浮夸，平淡一些。
+注意：回复不要输出多余内容(包括前后缀，冒号和引号，括号，表情包，at或 @等 )。""",
         "heart_flow_prompt",
     )
 
@@ -67,15 +68,15 @@ def init_prompt():
    - 讨论你不懂的专业话题
    - 你发送了太多消息，且无人回复
 
-2. 文字回复(text_reply)适用：
+2. 回复(reply)适用：
    - 有实质性内容需要表达
    - 有人提到你，但你还没有回应他
    - 可以追加emoji_query表达情绪(emoji_query填写表情包的适用场合，也就是当前场合)
    - 不要追加太多表情
-
-3. 纯表情回复(emoji_reply)适用：
-   - 适合用表情回应的场景
-   - 需提供明确的emoji_query
+   
+3. 回复要求：
+    -不要太浮夸
+    -一次只回复一个人
 
 4. 自我对话处理：
    - 如果是自己发的消息想继续，需自然衔接
@@ -87,11 +88,22 @@ def init_prompt():
 
 你必须从上面列出的可用行动中选择一个，并说明原因。
 你的决策必须以严格的 JSON 格式输出，且仅包含 JSON 内容，不要有任何其他文字或解释。
-JSON 结构如下，包含三个字段 "action", "reasoning", "emoji_query":
+你可以选择以下动作:
+1. no_reply: 不回复
+2. reply: 回复参考，可以只包含文本、表情或两者都有，可以发送一段或多段
+
+如果选择reply，请按以下JSON格式返回:
 {{
-  "action": "string", // 必须是上面提供的可用行动之一 (例如: '{example_action}')
-  "reasoning": "string", // 做出此决定的详细理由和思考过程，说明你如何应用了回复原则
-  "emoji_query": "string" // 可选。如果行动是 'emoji_reply'，必须提供表情主题(填写表情包的适用场合)；如果行动是 'text_reply' 且你想附带表情，也在此提供表情主题，否则留空字符串 ""。遵循回复原则，不要滥用。
+  "action": "reply",
+  "text": ["第一段文本", "第二段文本"],  // 可选，如果想发送文本
+  "emojis": ["表情关键词1", "表情关键词2"]  // 可选，如果想发送表情
+  "reasoning": "你的决策理由",
+}}
+
+如果选择no_reply，请按以下格式返回:
+{{
+  "action": "no_reply",
+  "reasoning": "你的决策理由"
 }}
 请输出你的决策 JSON：
 """,
@@ -155,7 +167,7 @@ JSON 结构如下，包含三个字段 "action", "reasoning", "emoji_query":
 {current_mind_info}
 因为上述想法，你决定回复，原因是：{reason}
 
-回复尽量简短一些。请注意把握聊天内容，{reply_style2}。{prompt_ger}
+回复尽量简短一些。请注意把握聊天内容，{reply_style2}。{prompt_ger}，不要复读自己说的话
 {reply_style1}，说中文，不要刻意突出自身学科背景，注意只输出回复内容。
 {moderation_prompt}。注意：回复不要输出多余内容(包括前后缀，冒号和引号，括号，表情包，at或 @等 )。""",
         "heart_flow_private_prompt",  # New template for private FOCUSED chat
@@ -184,7 +196,7 @@ JSON 结构如下，包含三个字段 "action", "reasoning", "emoji_query":
     )
 
 
-async def _build_prompt_focus(reason, current_mind_info, structured_info, chat_stream, sender_name) -> str:
+async def _build_prompt_focus(reason, current_mind_info, structured_info, chat_stream, sender_name, in_mind_reply) -> str:
     individuality = Individuality.get_instance()
     prompt_personality = individuality.get_prompt(x_person=0, level=2)
 
@@ -227,7 +239,7 @@ async def _build_prompt_focus(reason, current_mind_info, structured_info, chat_s
 
     reply_styles2 = [
         ("不要回复的太有条理，可以有个性", 0.6),
-        ("不要回复的太有条理，可以复读", 0.15),
+        ("不要回复的太有条理，可以复读，但是不要复读自己说的话", 0.15),
         ("回复的认真一些", 0.2),
         ("可以回复单个表情符号", 0.05),
     ]
@@ -263,6 +275,7 @@ async def _build_prompt_focus(reason, current_mind_info, structured_info, chat_s
             reply_style2=reply_style2_chosen,
             reply_style1=reply_style1_chosen,
             reason=reason,
+            in_mind_reply=in_mind_reply,
             prompt_ger=prompt_ger,
             moderation_prompt=await global_prompt_manager.get_prompt_async("moderation_prompt"),
             # sender_name is not used in the group template
@@ -304,6 +317,7 @@ class PromptBuilder:
         structured_info=None,
         message_txt=None,
         sender_name="某人",
+        in_mind_reply=None,
     ) -> Optional[str]:
         if build_mode == "normal":
             return await self._build_prompt_normal(chat_stream, message_txt, sender_name)
@@ -315,6 +329,7 @@ class PromptBuilder:
                 structured_info,
                 chat_stream,
                 sender_name,
+                in_mind_reply,
             )
         return None
 
@@ -844,7 +859,7 @@ class PromptBuilder:
                 current_mind_block=current_mind_block,
                 cycle_info_block=cycle_info_block,
                 action_options_text=action_options_text,
-                example_action=example_action_key,
+                # example_action=example_action_key,
             )
             return prompt
 

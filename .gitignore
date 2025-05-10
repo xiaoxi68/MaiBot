@@ -17,6 +17,7 @@ MaiBot-Napcat-Adapter
 nonebot-maibot-adapter/
 *.zip
 run.bat
+log_debug/
 run_none.bat
 run.py
 message_queue_content.txt

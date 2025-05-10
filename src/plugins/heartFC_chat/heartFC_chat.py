@@ -41,29 +41,31 @@ CONSECUTIVE_NO_REPLY_THRESHOLD = 3  # 连续不回复的阈值
 
 # 添加并行模式开关常量
 # 并行模式优化说明：
-# 1. 并行模式将SubMind的思考(think)和Planner的规划(plan)同时进行，可以节省约50%的处理时间
-# 2. 并行模式中，Planner不依赖SubMind的思考结果(current_mind)进行决策
-# 3. 优点：处理速度明显提升，两个LLM调用并行执行
-# 4. 可能的缺点：Planner无法直接利用SubMind的思考内容进行决策
-# 5. 实测数据表明：并行模式下决策质量与串行模式相当，但响应速度更快
-# 6. 如遇特殊情况需要基于思考结果进行规划，可将此开关设为False
-PARALLEL_MODE_ENABLED = True  # 设置为 True 启用并行模式，False 使用原始串行模式
+# 1. 并行模式下，SubMind的思考(think)和工具执行(tools)同时进行，而规划(plan)在获取思考结果后串行执行
+# 2. 这种半并行模式中，Planner依赖SubMind的思考结果(current_mind)进行决策，但仍能与工具调用并行处理
+# 3. 优点：处理速度显著提升，同时保持规划器能利用思考内容进行决策
+# 4. 可能的缺点：整体处理时间比完全并行模式略长，但决策质量可能更好
+# 5. 对比原来的全并行模式（think+plan+tools三者同时进行），这种模式更平衡效率和质量
+PARALLEL_MODE_ENABLED = True  # 设置为 True 启用半并行模式，False 使用原始串行模式
 
 
 logger = get_logger("hfc")  # Logger Name Changed
 
 
 # 默认动作定义
-DEFAULT_ACTIONS = {"no_reply": "不回复", "text_reply": "文本回复, 可选附带表情", "emoji_reply": "仅表情回复"}
+DEFAULT_ACTIONS = {
+    "no_reply": "不回复", 
+    "reply": "回复：可以包含文本、表情或两者结合，顺序任意"
+}
 
 
 class ActionManager:
     """动作管理器：控制每次决策可以使用的动作"""
 
     def __init__(self):
-        # 初始化为默认动作集
+        # 初始化为新的默认动作集
         self._available_actions: Dict[str, str] = DEFAULT_ACTIONS.copy()
-        self._original_actions_backup: Optional[Dict[str, str]] = None  # 用于临时移除时的备份
+        self._original_actions_backup: Optional[Dict[str, str]] = None
 
     def get_available_actions(self) -> Dict[str, str]:
         """获取当前可用的动作集"""
@@ -384,6 +386,13 @@ class HeartFChatting:
                 # 完成当前循环并保存历史
                 self._current_cycle.complete_cycle()
                 self._cycle_history.append(self._current_cycle)
+                
+                # 保存CycleInfo到文件
+                try:
+                    filepath = CycleInfo.save_to_file(self._current_cycle, self.stream_id)
+                    logger.info(f"{self.log_prefix} 已保存循环信息到文件: {filepath}")
+                except Exception as e:
+                    logger.error(f"{self.log_prefix} 保存循环信息到文件时出错: {e}")
 
                 # 记录循环信息和计时器结果
                 timer_strings = []
@@ -455,26 +464,21 @@ class HeartFChatting:
                 
             # 记录并行任务开始时间
             parallel_start_time = time.time()
-            logger.debug(f"{self.log_prefix} 开始三重并行任务处理")
+            logger.debug(f"{self.log_prefix} 开始思考和工具并行任务处理")
                 
-            # 并行执行三个任务
-            with Timer("三重并行处理", cycle_timers):
+            # 并行执行两个任务：思考和工具执行
+            with Timer("思考和工具并行处理", cycle_timers):
                 # 1. 子思维思考 - 不执行工具调用
                 think_task = asyncio.create_task(self._get_submind_thinking_only(cycle_timers))
                 logger.debug(f"{self.log_prefix} 启动子思维思考任务")
                 
-                # 2. 规划器 - 并行决策
-                plan_task = asyncio.create_task(self._planner_parallel(cycle_timers))
-                logger.debug(f"{self.log_prefix} 启动规划器任务")
-                
-                # 3. 工具执行器 - 专门处理工具调用
+                # 2. 工具执行器 - 专门处理工具调用
                 tool_task = asyncio.create_task(self._execute_tools_parallel(self.sub_mind, cycle_timers))
                 logger.debug(f"{self.log_prefix} 启动工具执行任务")
                 
                 # 创建任务完成状态追踪
                 tasks = {
                     "思考任务": think_task,
-                    "规划任务": plan_task,
                     "工具任务": tool_task
                 }
                 pending = set(tasks.values())
@@ -493,7 +497,7 @@ class HeartFChatting:
                             if task == t:
                                 task_end_time = time.time()
                                 task_duration = task_end_time - parallel_start_time
-                                logger.debug(f"{self.log_prefix} {name}已完成，耗时: {task_duration:.2f}秒")
+                                logger.info(f"{self.log_prefix} {name}已完成，耗时: {task_duration:.2f}秒")
                                 results[name] = task.result()
                                 break
                     
@@ -502,17 +506,16 @@ class HeartFChatting:
                         current_time = time.time()
                         elapsed = current_time - parallel_start_time
                         pending_names = [name for name, t in tasks.items() if t in pending]
-                        logger.debug(f"{self.log_prefix} 并行处理已进行{elapsed:.2f}秒，待完成任务: {', '.join(pending_names)}")
+                        logger.info(f"{self.log_prefix} 并行处理已进行{elapsed:.2f}秒，待完成任务: {', '.join(pending_names)}")
 
                 # 所有任务完成，从结果中提取数据
                 current_mind = results.get("思考任务")
-                planner_result = results.get("规划任务")
                 tool_results = results.get("工具任务")
                 
                 # 记录总耗时
                 parallel_end_time = time.time()
                 total_duration = parallel_end_time - parallel_start_time
-                logger.info(f"{self.log_prefix} 三重并行任务全部完成，总耗时: {total_duration:.2f}秒")
+                logger.info(f"{self.log_prefix} 思考和工具并行任务全部完成，总耗时: {total_duration:.2f}秒")
                 
             # 处理工具结果 - 将结果更新到SubMind
             if tool_results:
@@ -523,11 +526,22 @@ class HeartFChatting:
             # 记录子思维思考内容
             if self._current_cycle:
                 self._current_cycle.set_response_info(sub_mind_thinking=current_mind)
+            
+            # 串行执行规划器 - 使用刚获取的思考结果
+            logger.debug(f"{self.log_prefix} 开始串行规划任务")
+            with Timer("串行规划", cycle_timers):
+                # 调用原始的_planner方法而不是_planner_parallel
+                # _planner方法会使用current_mind作为输入参数，让规划器能够利用子思维的思考结果
+                # 而_planner_parallel设计为不依赖current_mind的结果，两者的主要区别在于prompt构建方式
+                planner_result = await self._planner(current_mind, cycle_timers)
 
-            # 解析规划结果
+            
             action = planner_result.get("action", "error")
+            action_data = planner_result.get("action_data", {})  # 新增获取动作数据
             reasoning = planner_result.get("reasoning", "未提供理由")
             
+            logger.debug(f"{self.log_prefix} 动作和动作信息: {action}, {action_data}, {reasoning}")
+
             # 更新循环信息
             self._current_cycle.set_action_info(action, reasoning, True)
 
@@ -537,26 +551,26 @@ class HeartFChatting:
                 return False, ""
 
             # 在此处添加日志记录
-            if action == "text_reply":
+            if action == "reply":
                 action_str = "回复"
-            elif action == "emoji_reply":
-                action_str = "回复表情"
-            else:
+            elif action == "no_reply":
                 action_str = "不回复"
+            else:
+                action_str = "位置动作"
 
             logger.info(f"{self.log_prefix} 麦麦决定'{action_str}', 原因'{reasoning}'")
 
             return await self._handle_action(
-                action, reasoning, planner_result.get("emoji_query", ""), cycle_timers, planner_start_db_time
+                action, reasoning, action_data, cycle_timers, planner_start_db_time
             )
 
         except Exception as e:
-            logger.error(f"{self.log_prefix} 三重并行处理失败: {e}")
+            logger.error(f"{self.log_prefix} 并行+串行处理失败: {e}")
             logger.error(traceback.format_exc())
             return False, ""
 
     async def _handle_action(
-        self, action: str, reasoning: str, emoji_query: str, cycle_timers: dict, planner_start_db_time: float
+        self, action: str, reasoning: str, action_data: dict, cycle_timers: dict, planner_start_db_time: float
     ) -> tuple[bool, str]:
         """
         处理规划动作
@@ -564,7 +578,7 @@ class HeartFChatting:
         参数:
             action: 动作类型
             reasoning: 决策理由
-            emoji_query: 表情查询
+            action_data: 动作数据，包含不同动作需要的参数
             cycle_timers: 计时器字典
             planner_start_db_time: 规划开始时间
 
@@ -572,8 +586,7 @@ class HeartFChatting:
             tuple[bool, str]: (是否执行了动作, 思考消息ID)
         """
         action_handlers = {
-            "text_reply": self._handle_text_reply,
-            "emoji_reply": self._handle_emoji_reply,
+            "reply": self._handle_reply,
             "no_reply": self._handle_no_reply,
         }
 
@@ -583,17 +596,15 @@ class HeartFChatting:
             return False, ""
 
         try:
-            if action == "text_reply":
-                return await handler(reasoning, emoji_query, cycle_timers)
-            elif action == "emoji_reply":
-                return await handler(reasoning, emoji_query), ""
+            if action == "reply":
+                return await handler(reasoning, action_data, cycle_timers)
             else:  # no_reply
                 return await handler(reasoning, planner_start_db_time, cycle_timers), ""
         except HeartFCError as e:
             logger.error(f"{self.log_prefix} 处理{action}时出错: {e}")
             # 出错时也重置计数器
             self._lian_xu_bu_hui_fu_ci_shu = 0
-            self._lian_xu_deng_dai_shi_jian = 0.0  # 重置累计等待时间
+            self._lian_xu_deng_dai_shi_jian = 0.0
             return False, ""
 
     async def _handle_text_reply(self, reasoning: str, emoji_query: str, cycle_timers: dict) -> tuple[bool, str]:
@@ -818,11 +829,21 @@ class HeartFChatting:
             
             with Timer("纯思考", cycle_timers):
                 # 修改SubMind.do_thinking_before_reply方法的参数，添加no_tools=True
-                current_mind, _past_mind = await self.sub_mind.do_thinking_before_reply(
+                current_mind, _past_mind, submind_prompt = await self.sub_mind.do_thinking_before_reply(
                     history_cycle=self._cycle_history,
-                    parallel_mode=True,
-                    no_tools=True  # 添加参数指示不执行工具
+                    parallel_mode=False,  # 设为False，因为规划器将依赖思考结果
+                    no_tools=True,  # 添加参数指示不执行工具
+                    return_prompt=True,  # 返回prompt
+                    cycle_info=self._current_cycle,  # 传递循环信息对象
                 )
+                
+                # 记录SubMind的信息到CycleInfo
+                if self._current_cycle:
+                    self._current_cycle.set_submind_info(
+                        prompt=submind_prompt,
+                        structured_info=self.sub_mind.structured_info_str,
+                        result=current_mind
+                    )
                 
             end_time = time.time()
             duration = end_time - start_time
@@ -853,11 +874,21 @@ class HeartFChatting:
                     )
                     
                 # 执行工具并获取结果
-                tool_results = await self.tool_executor.execute_tools(
+                tool_results, tools_used, tool_prompt = await self.tool_executor.execute_tools(
                     sub_mind, 
                     chat_target_name=chat_target_name,
-                    is_group_chat=self.is_group_chat
+                    is_group_chat=self.is_group_chat,
+                    return_details=True,  # 返回详细信息
+                    cycle_info=self._current_cycle,  # 传递循环信息对象
                 )
+                
+                # 记录工具执行信息到CycleInfo
+                if self._current_cycle:
+                    self._current_cycle.set_tooluse_info(
+                        prompt=tool_prompt,
+                        tools_used=tools_used,
+                        tool_results=tool_results
+                    )
                 
             end_time = time.time()
             duration = end_time - start_time
@@ -924,6 +955,8 @@ class HeartFChatting:
         reasoning = "规划器初始化默认"
         emoji_query = ""
         llm_error = False  # LLM 请求或解析错误标志
+        prompt = ""  # 初始化prompt变量
+        llm_content = ""  # 初始化LLM响应内容
 
         # 获取我们将传递给 prompt 构建器和用于验证的当前可用动作
         current_available_actions = self.action_manager.get_available_actions()
@@ -964,6 +997,7 @@ class HeartFChatting:
                 emoji_query = ""  # 明确设置为空
 
             # --- 解析 LLM 返回的 JSON (仅当 LLM 请求未出错时进行) ---
+            parsed_result = {}  # 初始化解析结果
             if not llm_error and llm_content:
                 try:
                     # 尝试去除可能的 markdown 代码块标记
@@ -973,6 +1007,7 @@ class HeartFChatting:
                     if not cleaned_content:
                         raise json.JSONDecodeError("Cleaned content is empty", cleaned_content, 0)
                     parsed_json = json.loads(cleaned_content)
+                    parsed_result = parsed_json  # 保存解析结果
 
                     # 提取决策，提供默认值
                     extracted_action = parsed_json.get("action", "no_reply")
@@ -1043,6 +1078,20 @@ class HeartFChatting:
                 self.action_manager.restore_actions()
                 logger.debug(
                     f"{self.log_prefix}[并行Planner] 恢复了原始动作集, 当前可用: {list(self.action_manager.get_available_actions().keys())}"
+                )
+
+            # 记录Planner信息到CycleInfo
+            if self._current_cycle:
+                result_dict = {
+                    "action": action,
+                    "reasoning": reasoning,
+                    "emoji_query": emoji_query,
+                    "llm_error": llm_error
+                }
+                self._current_cycle.set_planner_info(
+                    prompt=prompt,
+                    response=llm_content or "",
+                    parsed_result=parsed_result or result_dict
                 )
 
         # --- 概率性忽略文本回复附带的表情 (逻辑保持不变) ---
@@ -1342,6 +1391,7 @@ class HeartFChatting:
     # --- 回复器 (Replier) 的定义 --- #
     async def _replier_work(
         self,
+        in_mind_reply: List[str],
         reason: str,
         anchor_message: MessageRecv,
         thinking_id: str,
@@ -1375,6 +1425,7 @@ class HeartFChatting:
                 prompt = await prompt_builder.build_prompt(
                     build_mode="focus",
                     chat_stream=self.chat_stream,  # Pass the stream object
+                    in_mind_reply=in_mind_reply,
                     # Focus specific args:
                     reason=reason,
                     current_mind_info=self.sub_mind.current_mind,
@@ -1571,8 +1622,17 @@ class HeartFChatting:
                     # 提取决策，提供默认值
                     extracted_action = parsed_json.get("action", "no_reply")
                     extracted_reasoning = parsed_json.get("reasoning", "LLM未提供理由")
-                    extracted_emoji_query = parsed_json.get("emoji_query", "")
+                    # extracted_emoji_query = parsed_json.get("emoji_query", "")
 
+                    # 新的reply格式
+                    if extracted_action == "reply":
+                        action_data = {
+                            "text": parsed_json.get("text", []),
+                            "emojis": parsed_json.get("emojis", [])
+                        }
+                    else:
+                        action_data = {}  # 其他动作可能不需要额外数据
+                    
                     # 验证动作是否在当前可用列表中
                     # !! 使用调用 prompt 时实际可用的动作列表进行验证
                     if extracted_action not in current_available_actions:
@@ -1596,11 +1656,11 @@ class HeartFChatting:
                         # 动作有效且可用
                         action = extracted_action
                         reasoning = extracted_reasoning
-                        emoji_query = extracted_emoji_query
                         llm_error = False  # 解析成功
                         logger.debug(
-                            f"{self.log_prefix}[要做什么]\nPrompt:\n{prompt}\n\n决策结果 (来自JSON): {action}, 理由: {reasoning}, 表情查询: '{emoji_query}'"
+                            f"{self.log_prefix}[要做什么]\nPrompt:\n{prompt}\n\n决策结果 (来自JSON): {action}, 理由: {reasoning}"
                         )
+                        logger.debug(f"{self.log_prefix}动作信息: '{action_data}'")
 
                 except json.JSONDecodeError as json_e:
                     logger.warning(
@@ -1645,23 +1705,91 @@ class HeartFChatting:
         # --- 结束确保动作恢复 ---
 
         # --- 概率性忽略文本回复附带的表情 (逻辑保持不变) ---
-        if action == "text_reply" and emoji_query:
-            logger.debug(f"{self.log_prefix}[Planner] 大模型建议文字回复带表情: '{emoji_query}'")
+        emoji = action_data.get("emojis")
+        if action == "reply" and emoji:
+            logger.debug(f"{self.log_prefix}[Planner] 大模型建议文字回复带表情: '{emoji}'")
             if random.random() > EMOJI_SEND_PRO:
                 logger.info(
-                    f"{self.log_prefix}但是麦麦这次不想加表情 ({1 - EMOJI_SEND_PRO:.0%})，忽略表情 '{emoji_query}'"
+                    f"{self.log_prefix}但是麦麦这次不想加表情 ({1 - EMOJI_SEND_PRO:.0%})，忽略表情 '{emoji}'"
                 )
-                emoji_query = ""  # 清空表情请求
+                action_data["emojis"] = ""  # 清空表情请求
             else:
-                logger.info(f"{self.log_prefix}好吧，加上表情 '{emoji_query}'")
+                logger.info(f"{self.log_prefix}好吧，加上表情 '{emoji}'")
         # --- 结束概率性忽略 ---
 
         # 返回结果字典
         return {
             "action": action,
+            "action_data": action_data,
             "reasoning": reasoning,
-            "emoji_query": emoji_query,
             "current_mind": current_mind,
             "observed_messages": observed_messages,
             "llm_error": llm_error,  # 返回错误状态
         }
+
+    async def _handle_reply(self, reasoning: str, reply_data: dict, cycle_timers: dict) -> tuple[bool, str]:
+        """
+        处理统一的回复动作 - 可包含文本和表情，顺序任意
+        
+        reply_data格式:
+        {
+            "text": ["你好啊", "今天天气真不错"],  # 文本内容列表（可选）
+            "emojis": ["微笑", "阳光"]  # 表情关键词列表（可选）
+        }
+        """
+        # 重置连续不回复计数器
+        self._lian_xu_bu_hui_fu_ci_shu = 0
+        self._lian_xu_deng_dai_shi_jian = 0.0
+        
+        # 获取锚点消息
+        anchor_message = await self._get_anchor_message()
+        if not anchor_message:
+            raise PlannerError("无法获取锚点消息")
+        
+        # 创建思考消息
+        thinking_id = await self._create_thinking_message(anchor_message)
+        if not thinking_id:
+            raise PlannerError("无法创建思考消息")
+        
+        try:
+            has_sent_something = False
+            
+            # 处理文本部分
+            text_parts = reply_data.get("text", [])
+            if text_parts:
+                with Timer("生成回复", cycle_timers):
+                    # 可以保留原有的文本处理逻辑或进行适当调整
+                    reply = await self._replier_work(
+                        in_mind_reply = text_parts,
+                        anchor_message=anchor_message,
+                        thinking_id=thinking_id,
+                        reason=reasoning,
+                    )
+                
+                if reply:
+                    with Timer("发送文本消息", cycle_timers):
+                        await self._sender(
+                            thinking_id=thinking_id,
+                            anchor_message=anchor_message,
+                            response_set=reply,
+                            send_emoji=""  # 不在这里处理表情
+                        )
+                    has_sent_something = True
+                else:
+                    logger.warning(f"{self.log_prefix} 文本回复生成失败")
+            
+            # 处理表情部分
+            emoji_keywords = reply_data.get("emojis", [])
+            for emoji in emoji_keywords:
+                if emoji:
+                    await self._handle_emoji(anchor_message, [], emoji)
+                    has_sent_something = True
+            
+            if not has_sent_something:
+                logger.warning(f"{self.log_prefix} 回复动作未包含任何有效内容")
+            
+            return has_sent_something, thinking_id
+        
+        except (ReplierError, SenderError) as e:
+            logger.error(f"{self.log_prefix} 回复失败: {e}")
+            return False, thinking_id

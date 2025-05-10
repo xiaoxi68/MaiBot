@@ -56,15 +56,30 @@ class ToolExecutor:
         self.subheartflow_id = subheartflow_id
         self.log_prefix = f"[{subheartflow_id}:ToolExecutor] "
         self.llm_model = LLMRequest(
-            model=global_config.llm_sub_heartflow,  # 为工具执行器配置单独的模型
-            temperature=global_config.llm_sub_heartflow["temp"],
-            max_tokens=800,
+            model=global_config.llm_summary,  # 为工具执行器配置单独的模型
+            # temperature=global_config.llm_summary["temp"],
+            # max_tokens=800,
             request_type="tool_execution",
         )
         self.structured_info = []
         
-    async def execute_tools(self, sub_mind: SubMind, chat_target_name="对方", is_group_chat=False):
-        """并行执行工具，返回结构化信息"""
+    async def execute_tools(self, sub_mind: SubMind, chat_target_name="对方", is_group_chat=False, return_details=False, cycle_info=None):
+        """
+        并行执行工具，返回结构化信息
+        
+        参数:
+            sub_mind: 子思维对象
+            chat_target_name: 聊天目标名称，默认为"对方"
+            is_group_chat: 是否为群聊，默认为False
+            return_details: 是否返回详细信息，默认为False
+            cycle_info: 循环信息对象，可用于记录详细执行信息
+            
+        返回:
+            如果return_details为False:
+                List[Dict]: 工具执行结果的结构化信息列表
+            如果return_details为True:
+                Tuple[List[Dict], List[str], str]: (工具执行结果列表, 使用的工具列表, 工具执行提示词)
+        """
         # 初始化工具
         tool_instance = ToolUser()
         tools = tool_instance._define_tools()
@@ -107,19 +122,36 @@ class ToolExecutor:
             time_now=time_now
         )
         
+        # 如果指定了cycle_info，记录工具执行的prompt
+        if cycle_info:
+            cycle_info.set_tooluse_info(prompt=prompt)
+        
         # 调用LLM，专注于工具使用
+        logger.info(f"开始执行工具调用{prompt}")
         response, _, tool_calls = await self.llm_model.generate_response_tool_async(
             prompt=prompt, tools=tools
         )
         
+        logger.debug(f"获取到工具原始输出:\n{tool_calls}")
         # 处理工具调用和结果收集，类似于SubMind中的逻辑
         new_structured_items = []
+        used_tools = []  # 记录使用了哪些工具
+        
         if tool_calls:
             success, valid_tool_calls, error_msg = process_llm_tool_calls(tool_calls)
             if success and valid_tool_calls:
                 for tool_call in valid_tool_calls:
                     try:
+                        # 记录使用的工具名称
+                        tool_name = tool_call.get("name", "unknown_tool")
+                        used_tools.append(tool_name)
+                        
                         result = await tool_instance._execute_tool_call(tool_call)
+                        
+                        name = result.get("type", "unknown_type")
+                        content = result.get("content", "")
+                        
+                        logger.info(f"工具{name}，获得信息:{content}")
                         if result:
                             new_item = {
                                 "type": result.get("type", "unknown_type"),
@@ -131,7 +163,18 @@ class ToolExecutor:
                     except Exception as e:
                         logger.error(f"{self.log_prefix}工具执行失败: {e}")
         
-        return new_structured_items
+        # 如果指定了cycle_info，记录工具执行结果
+        if cycle_info:
+            cycle_info.set_tooluse_info(
+                tools_used=used_tools,
+                tool_results=new_structured_items
+            )
+            
+        # 根据return_details决定返回值
+        if return_details:
+            return new_structured_items, used_tools, prompt
+        else:
+            return new_structured_items
 
 
 init_prompt()
