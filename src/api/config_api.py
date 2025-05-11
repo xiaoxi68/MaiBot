@@ -1,5 +1,6 @@
 from typing import List, Optional, Dict, Any
 import strawberry
+
 # from packaging.version import Version
 import os
 
@@ -158,10 +159,25 @@ class APIBotConfig:
         """
         # 检查主层级
         required_sections = [
-            "inner", "bot", "groups", "personality", "identity", "schedule",
-            "platforms", "chat", "normal_chat", "focus_chat", "emoji", "memory",
-            "mood", "keywords_reaction", "chinese_typo", "response_splitter",
-            "remote", "experimental", "model"
+            "inner",
+            "bot",
+            "groups",
+            "personality",
+            "identity",
+            "schedule",
+            "platforms",
+            "chat",
+            "normal_chat",
+            "focus_chat",
+            "emoji",
+            "memory",
+            "mood",
+            "keywords_reaction",
+            "chinese_typo",
+            "response_splitter",
+            "remote",
+            "experimental",
+            "model",
         ]
         for section in required_sections:
             if section not in config:
@@ -193,9 +209,15 @@ class APIBotConfig:
 
         # 检查模型配置
         model_keys = [
-            "llm_reasoning", "llm_normal", "llm_topic_judge", "llm_summary",
-            "vlm", "llm_heartflow", "llm_observation", "llm_sub_heartflow",
-            "embedding"
+            "llm_reasoning",
+            "llm_normal",
+            "llm_topic_judge",
+            "llm_summary",
+            "vlm",
+            "llm_heartflow",
+            "llm_observation",
+            "llm_sub_heartflow",
+            "embedding",
         ]
         if "model" not in config:
             raise KeyError("缺少 [model] 配置段")
@@ -246,8 +268,15 @@ class APIEnvConfig:
         :raises: KeyError, TypeError
         """
         required_fields = [
-            "HOST", "PORT", "PLUGINS", "MONGODB_HOST", "MONGODB_PORT", "DATABASE_NAME",
-            "CHAT_ANY_WHERE_BASE_URL", "SILICONFLOW_BASE_URL", "DEEP_SEEK_BASE_URL"
+            "HOST",
+            "PORT",
+            "PLUGINS",
+            "MONGODB_HOST",
+            "MONGODB_PORT",
+            "DATABASE_NAME",
+            "CHAT_ANY_WHERE_BASE_URL",
+            "SILICONFLOW_BASE_URL",
+            "DEEP_SEEK_BASE_URL",
         ]
         for field in required_fields:
             if field not in config:
@@ -274,15 +303,23 @@ class APIEnvConfig:
 
         # 可选字段类型检查
         optional_str_fields = [
-            "DEEP_SEEK_KEY", "CHAT_ANY_WHERE_KEY", "SILICONFLOW_KEY",
-            "CONSOLE_LOG_LEVEL", "FILE_LOG_LEVEL",
-            "DEFAULT_CONSOLE_LOG_LEVEL", "DEFAULT_FILE_LOG_LEVEL"
+            "DEEP_SEEK_KEY",
+            "CHAT_ANY_WHERE_KEY",
+            "SILICONFLOW_KEY",
+            "CONSOLE_LOG_LEVEL",
+            "FILE_LOG_LEVEL",
+            "DEFAULT_CONSOLE_LOG_LEVEL",
+            "DEFAULT_FILE_LOG_LEVEL",
         ]
         for field in optional_str_fields:
             if field in config and config[field] is not None and not isinstance(config[field], str):
                 raise TypeError(f"{field} 必须为字符串或None")
 
-        if "SIMPLE_OUTPUT" in config and config["SIMPLE_OUTPUT"] is not None and not isinstance(config["SIMPLE_OUTPUT"], bool):
+        if (
+            "SIMPLE_OUTPUT" in config
+            and config["SIMPLE_OUTPUT"] is not None
+            and not isinstance(config["SIMPLE_OUTPUT"], bool)
+        ):
             raise TypeError("SIMPLE_OUTPUT 必须为布尔值或None")
 
         # 检查通过
