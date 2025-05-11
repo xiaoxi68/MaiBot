@@ -1,6 +1,6 @@
 from typing import List, Optional, Dict, Any
 import strawberry
-from packaging.version import Version
+# from packaging.version import Version
 import os
 
 ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
