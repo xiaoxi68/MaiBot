@@ -3,9 +3,10 @@ import time
 
 from maim_message import MessageServer
 
+from .plugins.remote.remote import TelemetryHeartBeatTask
 from .manager.async_task_manager import async_task_manager
 from .plugins.utils.statistic import OnlineTimeRecordTask, StatisticOutputTask
-from src.manager.mood_manager import logger, MoodPrintTask, MoodUpdateTask
+from .manager.mood_manager import MoodPrintTask, MoodUpdateTask
 from .plugins.schedule.schedule_generator import bot_schedule
 from .plugins.emoji_system.emoji_manager import emoji_manager
 from .plugins.person_info.person_info import person_info_manager
@@ -18,7 +19,6 @@ from .plugins.storage.storage import MessageStorage
 from .config.config import global_config
 from .plugins.chat.bot import chat_bot
 from .common.logger_manager import get_logger
-from .plugins.remote import heartbeat_thread  # noqa: F401
 from .individuality.individuality import Individuality
 from .common.server import global_server, Server
 from rich.traceback import install
@@ -58,6 +58,9 @@ class MainSystem:
 
         # 添加统计信息输出任务
         await async_task_manager.add_task(StatisticOutputTask())
+
+        # 添加遥测心跳任务
+        await async_task_manager.add_task(TelemetryHeartBeatTask())
 
         # 启动API服务器
         start_api_server()
