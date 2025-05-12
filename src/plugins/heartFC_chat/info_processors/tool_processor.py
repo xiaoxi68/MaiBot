@@ -1,4 +1,4 @@
-from src.heart_flow.chatting_observation import ChattingObservation
+from src.heart_flow.observation.chatting_observation import ChattingObservation
 from src.plugins.models.utils_model import LLMRequest
 from src.config.config import global_config
 import time
@@ -10,8 +10,8 @@ from src.plugins.utils.json_utils import process_llm_tool_calls
 from src.plugins.person_info.relationship_manager import relationship_manager
 from .base_processor import BaseProcessor
 from typing import List, Optional
-from src.heart_flow.chatting_observation import Observation
-from src.heart_flow.working_observation import WorkingObservation
+from src.heart_flow.observation.observation import Observation
+from src.heart_flow.observation.working_observation import WorkingObservation
 from src.heart_flow.info.structured_info import StructuredInfo
 
 logger = get_logger("tool_use")

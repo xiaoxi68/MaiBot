@@ -1,11 +1,11 @@
 from typing import List, Optional, Any
 from src.heart_flow.info.obs_info import ObsInfo
-from src.heart_flow.chatting_observation import Observation
+from src.heart_flow.observation.observation import Observation
 from src.heart_flow.info.info_base import InfoBase
 from .base_processor import BaseProcessor
 from src.common.logger_manager import get_logger
-from src.heart_flow.chatting_observation import ChattingObservation
-from src.heart_flow.hfcloop_observation import HFCloopObservation
+from src.heart_flow.observation.chatting_observation import ChattingObservation
+from src.heart_flow.observation.hfcloop_observation import HFCloopObservation
 from src.heart_flow.info.cycle_info import CycleInfo
 
 logger = get_logger("observation")

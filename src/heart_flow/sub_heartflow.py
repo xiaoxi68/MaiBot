@@ -1,5 +1,5 @@
-from .observation import Observation
-from .chatting_observation import ChattingObservation
+from .observation.observation import Observation
+from src.heart_flow.observation.chatting_observation import ChattingObservation
 import asyncio
 import time
 from typing import Optional, List, Dict, Tuple, Callable, Coroutine

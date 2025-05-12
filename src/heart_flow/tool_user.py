@@ -1,4 +1,4 @@
-from .observation import ChattingObservation
+from .observation.observation import ChattingObservation
 from src.plugins.models.utils_model import LLMRequest
 from src.config.config import global_config
 import time

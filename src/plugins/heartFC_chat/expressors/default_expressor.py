@@ -120,7 +120,7 @@ class DefaultExpressor:
             if not has_sent_something:
                 logger.warning(f"{self.log_prefix} 回复动作未包含任何有效内容")
 
-            return has_sent_something, thinking_id
+            return has_sent_something, reply
 
         except Exception as e:
             logger.error(f"回复失败: {e}")

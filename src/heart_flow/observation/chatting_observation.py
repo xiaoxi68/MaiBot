@@ -13,7 +13,7 @@ from src.plugins.utils.prompt_builder import global_prompt_manager
 from typing import Optional
 import difflib
 from src.plugins.chat.message import MessageRecv  # 添加 MessageRecv 导入
-from src.heart_flow.observation import Observation
+from heart_flow.observation.observation import Observation
 from src.common.logger_manager import get_logger
 from src.heart_flow.utils_chat import get_chat_type_and_target_info
 

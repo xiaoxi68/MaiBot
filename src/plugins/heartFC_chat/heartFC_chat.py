@@ -11,11 +11,11 @@ from src.common.logger_manager import get_logger
 from src.plugins.models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.plugins.utils.timer_calculator import Timer
-from src.heart_flow.chatting_observation import Observation
+from src.heart_flow.observation.observation import Observation
 from src.plugins.heartFC_chat.heartflow_prompt_builder import prompt_builder
 import contextlib
 from src.plugins.heartFC_chat.heartFC_Cycleinfo import CycleDetail
-from src.heart_flow.chatting_observation import ChattingObservation
+from src.heart_flow.observation.chatting_observation import ChattingObservation
 from src.heart_flow.utils_chat import get_chat_type_and_target_info
 from rich.traceback import install
 from src.heart_flow.info.info_base import InfoBase
@@ -25,9 +25,9 @@ from src.heart_flow.info.mind_info import MindInfo
 from src.heart_flow.info.structured_info import StructuredInfo
 from src.plugins.heartFC_chat.info_processors.chattinginfo_processor import ChattingInfoProcessor
 from src.plugins.heartFC_chat.info_processors.mind_processor import MindProcessor
-from src.heart_flow.memory_observation import MemoryObservation
-from src.heart_flow.hfcloop_observation import HFCloopObservation
-from src.heart_flow.working_observation import WorkingObservation
+from src.heart_flow.observation.memory_observation import MemoryObservation
+from src.heart_flow.observation.hfcloop_observation import HFCloopObservation
+from src.heart_flow.observation.working_observation import WorkingObservation
 from src.plugins.heartFC_chat.info_processors.tool_processor import ToolProcessor
 from src.plugins.heartFC_chat.expressors.default_expressor import DefaultExpressor
 from src.plugins.heartFC_chat.hfc_utils import _create_empty_anchor_message
@@ -517,7 +517,10 @@ class HeartFChatting:
 
             # 更新循环信息
             self._current_cycle.set_action_info(
-                action_type=action, reasoning=reasoning, action_taken=True, action_data=action_data
+                action_type=action,
+                action_data=action_data,
+                reasoning=reasoning,
+                action_taken=True,
             )
 
             # 处理LLM错误
@@ -983,6 +986,19 @@ class HeartFChatting:
         else:
             anchor_message.update_chat_stream(self.chat_stream)
 
-        return await self.expressor.deal_reply(
+        success, reply_set = await self.expressor.deal_reply(
             cycle_timers=cycle_timers, action_data=reply_data, anchor_message=anchor_message, reasoning=reasoning
         )
+        
+        reply_text = ""
+        for reply in reply_set:
+            reply_text += reply
+        
+        self._current_cycle.set_response_info(
+            success=success,
+            reply_text=reply_text,
+            anchor_message=anchor_message,
+        )
+        
+        return success, reply_text
+
