@@ -86,7 +86,7 @@ def init_prompt():
 {{
     "action": "reply",
     "text": "你想表达的内容",
-    "emojis": "表情关键词",
+    "emojis": "描述当前使用表情包的场景",
     "target": "你想要回复的原始文本内容（非必须，仅文本，不包含发送者)",
     "reasoning": "你的决策理由",
 }}

@@ -8,6 +8,7 @@ from src.config.config import global_config
 from typing import List, Dict, Any, Tuple  # 确保类型提示被导入
 import time  # 导入 time 模块以获取当前时间
 import random
+import re
 
 # 导入新的 repository 函数
 from src.common.message_repository import find_messages, count_messages
@@ -215,10 +216,43 @@ async def _build_readable_messages_internal(
             else:
                 person_name = "某人"
 
+        # 检查是否有 回复<aaa:bbb> 字段
+        reply_pattern = r"回复<([^:<>]+):([^:<>]+)>"
+        match = re.search(reply_pattern, content)
+        if match:
+            aaa = match.group(1)
+            bbb = match.group(2)
+            reply_person_id = person_info_manager.get_person_id(platform, bbb)
+            reply_person_name = await person_info_manager.get_value(reply_person_id, "person_name")
+            if not reply_person_name:
+                reply_person_name = aaa
+            # 在内容前加上回复信息
+            content = re.sub(reply_pattern, f"回复 {reply_person_name}", content, count=1)
+
+        # 检查是否有 @<aaa:bbb> 字段 @<{member_info.get('nickname')}:{member_info.get('user_id')}>
+        at_pattern = r"@<([^:<>]+):([^:<>]+)>"
+        at_matches = list(re.finditer(at_pattern, content))
+        if at_matches:
+            new_content = ""
+            last_end = 0
+            for m in at_matches:
+                new_content += content[last_end:m.start()]
+                aaa = m.group(1)
+                bbb = m.group(2)
+                at_person_id = person_info_manager.get_person_id(platform, bbb)
+                at_person_name = await person_info_manager.get_value(at_person_id, "person_name")
+                if not at_person_name:
+                    at_person_name = aaa
+                new_content += f"@{at_person_name}"
+                last_end = m.end()
+            new_content += content[last_end:]
+            content = new_content
+
         message_details_raw.append((timestamp, person_name, content))
 
     if not message_details_raw:
-        return "", []
+        return "", []            
+        
 
     message_details_raw.sort(key=lambda x: x[0])  # 按时间戳(第一个元素)升序排序，越早的消息排在前面
 

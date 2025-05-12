@@ -295,9 +295,6 @@ class SubHeartflow:
     def get_all_observations(self) -> list[Observation]:
         return self.observations
 
-    def clear_observations(self):
-        self.observations.clear()
-
     def _get_primary_observation(self) -> Optional[ChattingObservation]:
         if self.observations and isinstance(self.observations[0], ChattingObservation):
             return self.observations[0]

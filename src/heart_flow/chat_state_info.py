@@ -10,7 +10,7 @@ class ChatState(enum.Enum):
 
 class ChatStateInfo:
     def __init__(self):
-        self.chat_status: ChatState = ChatState.ABSENT
+        self.chat_status: ChatState = ChatState.CHAT
         self.current_state_time = 120
 
         self.mood_manager = MoodManager()

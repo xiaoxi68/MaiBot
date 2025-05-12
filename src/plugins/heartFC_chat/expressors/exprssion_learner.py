@@ -1,4 +1,5 @@
 import time
+import random
 from typing import List, Dict, Optional, Any, Tuple, Coroutine
 from src.common.logger_manager import get_logger
 from src.plugins.models.utils_model import LLMRequest
@@ -7,6 +8,9 @@ from src.plugins.utils.chat_message_builder import get_raw_msg_by_timestamp_rand
 from src.plugins.heartFC_chat.heartflow_prompt_builder import Prompt, global_prompt_manager
 import os
 import json
+
+
+MAX_EXPRESSION_COUNT = 300
 
 logger = get_logger("expressor")
 
@@ -52,6 +56,18 @@ class ExpressionLearner:
             expressions: List[dict] = json.load(f)
         return expressions
 
+    def is_similar(self, s1: str, s2: str) -> bool:
+        """
+        判断两个字符串是否相似（只考虑长度大于5且有80%以上重合，不考虑子串）
+        """
+        if not s1 or not s2:
+            return False
+        min_len = min(len(s1), len(s2))
+        if min_len < 5:
+            return False
+        same = sum(1 for a, b in zip(s1, s2) if a == b)
+        return same / min_len > 0.8
+
     async def learn_and_store_expression(self) -> List[Tuple[str, str, str]]:
         """选择从当前到最近1小时内的随机10条消息，然后学习这些消息的表达方式"""
         logger.info("开始学习表达方式...")
@@ -74,15 +90,40 @@ class ExpressionLearner:
             file_path = os.path.join(dir_path, "expressions.json")
             # 若已存在，先读出合并
             if os.path.exists(file_path):
-                old_data: List[Dict[str, str]] = []
+                old_data: List[Dict[str, str, str]] = []
                 try:
                     with open(file_path, "r", encoding="utf-8") as f:
                         old_data = json.load(f)
                 except Exception:
                     old_data = []
-                expr_list = old_data + expr_list
+            else:
+                old_data = []
+            # 超过最大数量时，20%概率移除count=1的项
+            if len(old_data) >= MAX_EXPRESSION_COUNT:
+                delete = True
+                new_old_data = []
+                for item in old_data:
+                    if item.get("count", 1) == 1 and random.random() < 0.2:
+                        continue  # 20%概率移除
+                    new_old_data.append(item)
+                old_data = new_old_data
+            # 合并逻辑
+            for new_expr in expr_list:
+                found = False
+                for old_expr in old_data:
+                    if self.is_similar(new_expr["situation"], old_expr.get("situation", "")) and self.is_similar(new_expr["style"], old_expr.get("style", "")):
+                        found = True
+                        # 50%概率替换
+                        if random.random() < 0.5:
+                            old_expr["situation"] = new_expr["situation"]
+                            old_expr["style"] = new_expr["style"]
+                        old_expr["count"] = old_expr.get("count", 1) + 1
+                        break
+                if not found:
+                    new_expr["count"] = 1
+                    old_data.append(new_expr)
             with open(file_path, "w", encoding="utf-8") as f:
-                json.dump(expr_list, f, ensure_ascii=False, indent=2)
+                json.dump(old_data, f, ensure_ascii=False, indent=2)
         return expressions
 
     async def learn_expression(self) -> Optional[List[Tuple[str, str, str]]]:
