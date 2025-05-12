@@ -442,7 +442,7 @@ class HeartFChatting:
                 pending = set(tasks.values())
 
                 # 等待所有任务完成，同时追踪每个任务的完成情况
-                results = {}
+                results: dict[str, list[InfoBase]] = {}
                 while pending:
                     # 等待任务完成
                     done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED, timeout=1.0)
@@ -467,12 +467,9 @@ class HeartFChatting:
                         )
 
                 # 所有任务完成，从结果中提取数据
-                mind_processed_infos = []
-                tool_processed_infos = []
-                chatting_info_processed_infos = []
-                mind_processed_infos = results.get("思考任务")
-                tool_processed_infos = results.get("工具任务")
-                chatting_info_processed_infos = results.get("聊天信息处理任务")
+                mind_processed_infos = results.get("思考任务", [])
+                tool_processed_infos = results.get("工具任务", [])
+                chatting_info_processed_infos = results.get("聊天信息处理任务", [])
 
                 # 记录总耗时
                 parallel_end_time = time.time()

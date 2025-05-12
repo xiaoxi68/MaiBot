@@ -79,12 +79,13 @@ class DefaultExpressor:
         action_data: Dict[str, Any],
         reasoning: str,
         anchor_message: MessageRecv,
-    ) -> tuple[bool, str]:
+    ) -> tuple[bool, Optional[List[str]]]:
         # 创建思考消息
         thinking_id = await self._create_thinking_message(anchor_message)
         if not thinking_id:
             raise Exception("无法创建思考消息")
 
+        reply = None  # 初始化 reply，防止未定义
         try:
             has_sent_something = False
 
@@ -124,7 +125,7 @@ class DefaultExpressor:
 
         except Exception as e:
             logger.error(f"回复失败: {e}")
-            return False, thinking_id
+            return False, None
 
         # --- 回复器 (Replier) 的定义 --- #
 
@@ -142,8 +143,8 @@ class DefaultExpressor:
         try:
             # 1. 获取情绪影响因子并调整模型温度
             arousal_multiplier = MoodManager.get_instance().get_arousal_multiplier()
-            current_temp = global_config.llm_normal["temp"] * arousal_multiplier
-            self.express_model.temperature = current_temp  # 动态调整温度
+            current_temp = float(global_config.llm_normal["temp"]) * arousal_multiplier
+            self.express_model.params["temperature"] = current_temp  # 动态调整温度
 
             # 2. 获取信息捕捉器
             info_catcher = info_catcher_manager.get_info_catcher(thinking_id)
@@ -217,11 +218,14 @@ class DefaultExpressor:
         self, anchor_message: Optional[MessageRecv], response_set: List[str], thinking_id: str
     ) -> Optional[MessageSending]:
         """发送回复消息 (尝试锚定到 anchor_message)，使用 HeartFCSender"""
-        if not anchor_message or not anchor_message.chat_stream:
-            logger.error(f"{self.log_prefix} 无法发送回复，缺少有效的锚点消息或聊天流。")
+        chat = self.chat_stream
+        if chat is None:
+            logger.error(f"{self.log_prefix} 无法发送回复，chat_stream 为空。")
+            return None
+        if not anchor_message:
+            logger.error(f"{self.log_prefix} 无法发送回复，anchor_message 为空。")
             return None
 
-        chat = self.chat_stream
         chat_id = self.chat_id
         stream_name = chat_manager.get_stream_name(chat_id) or chat_id  # 获取流名称用于日志
 

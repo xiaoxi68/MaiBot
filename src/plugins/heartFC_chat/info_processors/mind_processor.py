@@ -22,6 +22,7 @@ from src.plugins.heartFC_chat.info_processors.processor_utils import (
     get_spark,
 )
 from typing import Dict
+from src.heart_flow.info.info_base import InfoBase
 
 logger = get_logger("sub_heartflow")
 
@@ -123,14 +124,14 @@ class MindProcessor(BaseProcessor):
 
     async def process_info(
         self, observations: Optional[List[Observation]] = None, running_memorys: Optional[List[Dict]] = None, *infos
-    ) -> List[dict]:
+    ) -> List[InfoBase]:
         """处理信息对象
 
         Args:
             *infos: 可变数量的InfoBase类型的信息对象
 
         Returns:
-            List[dict]: 处理后的结构化信息列表
+            List[InfoBase]: 处理后的结构化信息列表
         """
         current_mind = await self.do_thinking_before_reply(observations, running_memorys)
 
@@ -180,6 +181,8 @@ class MindProcessor(BaseProcessor):
         # 获取现有想法和情绪状态
         previous_mind = self.current_mind if self.current_mind else ""
 
+        if observations is None:
+            observations = []
         for observation in observations:
             if isinstance(observation, ChattingObservation):
                 # 获取聊天元信息

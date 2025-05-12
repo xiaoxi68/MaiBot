@@ -50,7 +50,7 @@ def init_prompt():
         
 {chat_info}
 
-你需要学习聊天内容中其他人的回复风格，并结合到你的回复中
+你只需要了解聊天记录中的内容就好
         
 {chat_target}
 你的名字是{bot_name}，{prompt_personality}，你想表达：{in_mind_reply},原因是：{reason}
@@ -373,7 +373,7 @@ class PromptBuilder:
         in_mind_reply=None,
     ) -> Optional[str]:
         if build_mode == "normal":
-            return await self._build_prompt_normal(chat_stream, message_txt, sender_name)
+            return await self._build_prompt_normal(chat_stream, message_txt or "", sender_name)
 
         elif build_mode == "focus":
             return await _build_prompt_focus(
