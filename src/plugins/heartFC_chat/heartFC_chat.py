@@ -417,16 +417,22 @@ class HeartFChatting:
             # 并行执行两个任务：思考和工具执行
             with Timer("执行 信息处理器", cycle_timers):
                 # 1. 子思维思考 - 不执行工具调用
-                think_task = asyncio.create_task(self.mind_processor.process_info(observations=observations,running_memorys=running_memorys))
+                think_task = asyncio.create_task(
+                    self.mind_processor.process_info(observations=observations, running_memorys=running_memorys)
+                )
                 logger.debug(f"{self.log_prefix} 启动子思维思考任务")
 
                 # 2. 工具执行器 - 专门处理工具调用
-                tool_task = asyncio.create_task(self.tool_processor.process_info(observations=observations,running_memorys=running_memorys))
+                tool_task = asyncio.create_task(
+                    self.tool_processor.process_info(observations=observations, running_memorys=running_memorys)
+                )
                 logger.debug(f"{self.log_prefix} 启动工具执行任务")
 
                 # 3. 聊天信息处理器
                 chatting_info_task = asyncio.create_task(
-                    self.chatting_info_processor.process_info(observations=observations,running_memorys=running_memorys)
+                    self.chatting_info_processor.process_info(
+                        observations=observations, running_memorys=running_memorys
+                    )
                 )
                 logger.debug(f"{self.log_prefix} 启动聊天信息处理器任务")
 

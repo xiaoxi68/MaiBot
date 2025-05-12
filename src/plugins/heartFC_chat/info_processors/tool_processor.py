@@ -63,7 +63,9 @@ class ToolProcessor(BaseProcessor):
         )
         self.structured_info = []
 
-    async def process_info(self, observations: Optional[List[Observation]] = None, running_memorys: Optional[List[Dict]] = None, *infos) -> List[dict]:
+    async def process_info(
+        self, observations: Optional[List[Observation]] = None, running_memorys: Optional[List[Dict]] = None, *infos
+    ) -> List[dict]:
         """处理信息对象
 
         Args:
@@ -123,7 +125,7 @@ class ToolProcessor(BaseProcessor):
 
         chat_observe_info = observation.get_observe_info()
         person_list = observation.person_list
-        
+
         memory_str = ""
         if running_memorys:
             memory_str = "以下是当前在聊天中，你回忆起的记忆：\n"

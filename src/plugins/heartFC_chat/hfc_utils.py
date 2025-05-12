@@ -52,9 +52,9 @@ def get_keywords_from_json(json_str: str) -> list[str]:
     if start == -1 or end == 0:
         logger.error("未找到有效的JSON内容")
         return []
-    
+
     json_content = json_str[start:end]
-    
+
     # 解析JSON
     try:
         json_data = json.loads(json_content)

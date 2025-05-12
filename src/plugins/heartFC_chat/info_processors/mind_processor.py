@@ -15,7 +15,6 @@ from src.plugins.person_info.relationship_manager import relationship_manager
 from .base_processor import BaseProcessor
 from src.heart_flow.info.mind_info import MindInfo
 from typing import List, Optional
-from src.heart_flow.observation.memory_observation import MemoryObservation
 from src.heart_flow.observation.hfcloop_observation import HFCloopObservation
 from src.plugins.heartFC_chat.info_processors.processor_utils import (
     calculate_similarity,
@@ -124,7 +123,9 @@ class MindProcessor(BaseProcessor):
         self.structured_info_str = "\n".join(lines)
         logger.debug(f"{self.log_prefix} 更新 structured_info_str: \n{self.structured_info_str}")
 
-    async def process_info(self, observations: Optional[List[Observation]] = None, running_memorys: Optional[List[Dict]] = None, *infos) -> List[dict]:
+    async def process_info(
+        self, observations: Optional[List[Observation]] = None, running_memorys: Optional[List[Dict]] = None, *infos
+    ) -> List[dict]:
         """处理信息对象
 
         Args:
@@ -133,14 +134,16 @@ class MindProcessor(BaseProcessor):
         Returns:
             List[dict]: 处理后的结构化信息列表
         """
-        current_mind = await self.do_thinking_before_reply(observations,running_memorys)
+        current_mind = await self.do_thinking_before_reply(observations, running_memorys)
 
         mind_info = MindInfo()
         mind_info.set_current_mind(current_mind)
 
         return [mind_info]
 
-    async def do_thinking_before_reply(self, observations: Optional[List[Observation]] = None, running_memorys: Optional[List[Dict]] = None):
+    async def do_thinking_before_reply(
+        self, observations: Optional[List[Observation]] = None, running_memorys: Optional[List[Dict]] = None
+    ):
         """
         在回复前进行思考，生成内心想法并收集工具调用结果
 
@@ -193,8 +196,6 @@ class MindProcessor(BaseProcessor):
                 # 获取聊天内容
                 chat_observe_info = observation.get_observe_info()
                 person_list = observation.person_list
-            if isinstance(observation, MemoryObservation):
-                memory_observe_info = observation.get_observe_info()
             if isinstance(observation, HFCloopObservation):
                 hfcloop_observe_info = observation.get_observe_info()
 

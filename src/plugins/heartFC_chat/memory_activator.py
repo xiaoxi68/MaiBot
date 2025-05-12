@@ -32,12 +32,21 @@ Prompt(
 
 class MemoryActivator:
     def __init__(self):
-        self.summart_model = LLMRequest(
+        self.summary_model = LLMRequest(
             model=global_config.llm_observation, temperature=0.7, max_tokens=300, request_type="chat_observation"
         )
         self.running_memory = []
 
     async def activate_memory(self, observations) -> List[Dict]:
+        """
+        激活记忆
+
+        Args:
+            observations: 现有的进行观察后的 观察列表
+
+        Returns:
+            List[Dict]: 激活的记忆列表
+        """
         obs_info_text = ""
         for observation in observations:
             if isinstance(observation, ChattingObservation):
@@ -51,7 +60,11 @@ class MemoryActivator:
 
         prompt = global_prompt_manager.format_prompt("memory_activator_prompt", obs_info_text=obs_info_text)
 
-        response = self.summart_model.generate_response(prompt)
+        logger.debug(f"prompt: {prompt}")
+
+        response = await self.summary_model.generate_response(prompt)
+
+        logger.debug(f"response: {response}")
 
         keywords = get_keywords_from_json(response)
 

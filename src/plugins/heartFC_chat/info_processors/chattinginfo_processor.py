@@ -8,6 +8,7 @@ from src.heart_flow.observation.chatting_observation import ChattingObservation
 from src.heart_flow.observation.hfcloop_observation import HFCloopObservation
 from src.heart_flow.info.cycle_info import CycleInfo
 from typing import Dict
+
 logger = get_logger("observation")
 
 
@@ -21,7 +22,12 @@ class ChattingInfoProcessor(BaseProcessor):
         """初始化观察处理器"""
         super().__init__()
 
-    async def process_info(self, observations: Optional[List[Observation]] = None, running_memorys: Optional[List[Dict]] = None, **kwargs: Any) -> List[InfoBase]:
+    async def process_info(
+        self,
+        observations: Optional[List[Observation]] = None,
+        running_memorys: Optional[List[Dict]] = None,
+        **kwargs: Any,
+    ) -> List[InfoBase]:
         """处理Observation对象
 
         Args:

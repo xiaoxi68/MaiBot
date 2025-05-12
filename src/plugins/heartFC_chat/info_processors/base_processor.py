@@ -21,7 +21,11 @@ class BaseProcessor(ABC):
 
     @abstractmethod
     async def process_info(
-        self, infos: List[InfoBase], observations: Optional[List[Observation]] = None, running_memorys: Optional[List[Dict]] = None, **kwargs: Any
+        self,
+        infos: List[InfoBase],
+        observations: Optional[List[Observation]] = None,
+        running_memorys: Optional[List[Dict]] = None,
+        **kwargs: Any,
     ) -> List[InfoBase]:
         """处理信息对象的抽象方法
 
