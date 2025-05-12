@@ -33,10 +33,32 @@ def init_prompt() -> None:
 当"想说明某个观点，但懒得明说"，使用"懂的都懂"
 当"想搞笑的表现高深的感觉"，使用"文言文句式"
 
+注意不要总结你自己的发言
 现在请你概括
 """
     Prompt(learn_expression_prompt, "learn_expression_prompt")
 
+    personality_expression_prompt = """
+{personality}
+
+请从以上人设中总结出这个角色可能的语言风格
+思考回复语法，长度和情感
+思考有没有特殊的梗，一并总结成语言风格
+总结成如下格式的规律，总结的内容要详细，但具有概括性：
+当"xxx"时，可以"xxx", xxx不超过10个字
+
+例如：
+当"表示十分惊叹"时，使用"我嘞个xxxx"
+当"表示讽刺的赞同，不想讲道理"时，使用"对对对"
+当"想表达某个观点，但不想明说"，使用"反讽的句式"
+当"想说明某个观点，但懒得明说"，使用"懂的都懂"
+当"想搞笑的表现高深的感觉"，使用"文言文句式"
+
+现在请你概括
+"""
+    Prompt(personality_expression_prompt, "personality_expression_prompt")
+
+peronality = "情绪敏感，有时候有些搞怪幽默, 是一个女大学生，现在在读大二，你会刷贴吧"
 
 class ExpressionLearner:
     def __init__(self) -> None:
@@ -47,14 +69,22 @@ class ExpressionLearner:
             request_type="response_heartflow",
         )
 
-    async def get_expression_by_chat_id(self, chat_id: str) -> List[Dict[str, str]]:
-        """从/data/expression/对应chat_id/expressions.json中读取表达方式"""
-        file_path: str = os.path.join("data", "expression", str(chat_id), "expressions.json")
-        if not os.path.exists(file_path):
-            return []
-        with open(file_path, "r", encoding="utf-8") as f:
-            expressions: List[dict] = json.load(f)
-        return expressions
+    async def get_expression_by_chat_id(self, chat_id: str) -> Tuple[List[Dict[str, str]], List[Dict[str, str]]]:
+        """
+        读取/data/expression/learnt/{chat_id}/expressions.json和/data/expression/personality/expressions.json
+        返回(learnt_expressions, personality_expressions)
+        """
+        learnt_file = os.path.join("data", "expression", "learnt", str(chat_id), "expressions.json")
+        personality_file = os.path.join("data", "expression", "personality", "expressions.json")
+        learnt_expressions = []
+        personality_expressions = []
+        if os.path.exists(learnt_file):
+            with open(learnt_file, "r", encoding="utf-8") as f:
+                learnt_expressions = json.load(f)
+        if os.path.exists(personality_file):
+            with open(personality_file, "r", encoding="utf-8") as f:
+                personality_expressions = json.load(f)
+        return learnt_expressions, personality_expressions
 
     def is_similar(self, s1: str, s2: str) -> bool:
         """
@@ -85,7 +115,7 @@ class ExpressionLearner:
             chat_dict[chat_id].append({"situation": situation, "style": style})
         # 存储到/data/expression/对应chat_id/expressions.json
         for chat_id, expr_list in chat_dict.items():
-            dir_path = os.path.join("data", "expression", str(chat_id))
+            dir_path = os.path.join("data", "expression", "learnt", str(chat_id))
             os.makedirs(dir_path, exist_ok=True)
             file_path = os.path.join(dir_path, "expressions.json")
             # 若已存在，先读出合并
@@ -187,6 +217,38 @@ class ExpressionLearner:
             style = line[idx_quote3 + 1 : idx_quote4]
             expressions.append((chat_id, situation, style))
         return expressions
+
+    async def extract_and_store_personality_expressions(self):
+        """
+        检查data/expression/personality目录，不存在则创建。
+        用peronality变量作为chat_str，调用LLM生成表达风格，解析后count=100，存储到expressions.json。
+        """
+        dir_path = os.path.join("data", "expression", "personality")
+        os.makedirs(dir_path, exist_ok=True)
+        file_path = os.path.join(dir_path, "expressions.json")
+
+        # 构建prompt
+        prompt = await global_prompt_manager.format_prompt(
+            "personality_expression_prompt",
+            personality=peronality,
+        )
+        logger.info(f"个性表达方式提取prompt: {prompt}")
+        response, _ = await self.express_learn_model.generate_response_async(prompt)
+        logger.info(f"个性表达方式提取response: {response}")
+        # chat_id用personality
+        expressions = self.parse_expression_response(response, "personality")
+        # 转为dict并count=100
+        result = []
+        for _, situation, style in expressions:
+            result.append({"situation": situation, "style": style, "count": 100})
+        # 超过50条时随机删除多余的，只保留50条
+        if len(result) > 50:
+            remove_count = len(result) - 50
+            remove_indices = set(random.sample(range(len(result)), remove_count))
+            result = [item for idx, item in enumerate(result) if idx not in remove_indices]
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(result, f, ensure_ascii=False, indent=2)
+        logger.info(f"已写入{len(result)}条表达到{file_path}")
 
 
 init_prompt()

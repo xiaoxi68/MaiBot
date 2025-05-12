@@ -246,14 +246,22 @@ async def _build_prompt_focus(
         structured_info_prompt = ""
 
     # 从/data/expression/对应chat_id/expressions.json中读取表达方式
-    expressions = await expression_learner.get_expression_by_chat_id(chat_stream.stream_id)
-    if expressions:
-        language_habits = []
-        for expr in expressions:
-            # print(f"expr: {expr}")
+    learnt_expressions, personality_expressions = await expression_learner.get_expression_by_chat_id(chat_stream.stream_id)
+    language_habits = []
+    # 1. learnt_expressions加权随机选5条
+    if learnt_expressions:
+        weights = [expr["count"] for expr in learnt_expressions]
+        selected_learnt = weighted_sample_no_replacement(learnt_expressions, weights, 5)
+        for expr in selected_learnt:
             if isinstance(expr, dict) and "situation" in expr and "style" in expr:
                 language_habits.append(f"当{expr['situation']}时，使用 {expr['style']}")
-    else:
+    # 2. personality_expressions随机选1条
+    if personality_expressions:
+        expr = random.choice(personality_expressions)
+        if isinstance(expr, dict) and "situation" in expr and "style" in expr:
+            language_habits.append(f"当{expr['situation']}时，使用 {expr['style']}")
+    # 3. 如果都没有，给默认
+    if not language_habits:
         language_habits = [
             "当表示惊叹时，使用 我嘞个xxxx",
             "当表示惊讶无语是，使用 不是？",
@@ -264,8 +272,8 @@ async def _build_prompt_focus(
             "当你想表达某个观点，但不想明说，可以使用反讽",
             "当你想说明某个观点，但懒得明说，使用 懂的都懂",
         ]
-    selected = random.sample(language_habits, 8)
-    language_habits_str = "\n".join(selected)
+        language_habits = random.sample(language_habits, 6)
+    language_habits_str = "\n".join(language_habits)
 
     logger.debug("开始构建 focus prompt")
 
@@ -853,6 +861,38 @@ class PromptBuilder:
             logger.error(f"[PromptBuilder] 构建 Planner 提示词时出错: {e}")
             logger.error(traceback.format_exc())
             return "[构建 Planner Prompt 时出错]"
+
+
+def weighted_sample_no_replacement(items, weights, k):
+    """
+    加权且不放回地随机抽取k个元素。
+
+    参数：
+        items: 待抽取的元素列表
+        weights: 每个元素对应的权重（与items等长，且为正数）
+        k: 需要抽取的元素个数
+    返回：
+        selected: 按权重加权且不重复抽取的k个元素组成的列表
+
+    实现思路：
+        每次从当前池中按权重加权随机选出一个元素，选中后将其从池中移除，重复k次。
+        这样保证了：
+        1. count越大被选中概率越高
+        2. 不会重复选中同一个元素
+    """
+    selected = []
+    pool = list(zip(items, weights))
+    for _ in range(min(k, len(pool))):
+        total = sum(w for _, w in pool)
+        r = random.uniform(0, total)
+        upto = 0
+        for idx, (item, weight) in enumerate(pool):
+            upto += weight
+            if upto >= r:
+                selected.append(item)
+                pool.pop(idx)
+                break
+    return selected
 
 
 init_prompt()

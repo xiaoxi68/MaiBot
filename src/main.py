@@ -108,6 +108,9 @@ class MainSystem:
         )
         logger.success("个体特征初始化成功")
 
+        # 初始化表达方式
+        await expression_learner.extract_and_store_personality_expressions()
+
         try:
             # 启动全局消息管理器 (负责消息发送/排队)
             await message_manager.start()
