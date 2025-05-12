@@ -13,6 +13,7 @@ from typing import List, Dict
 
 logger = get_logger("memory_activator")
 
+
 def init_prompt():
     # --- Group Chat Prompt ---
     memory_activator_prompt = """
@@ -83,20 +84,17 @@ class MemoryActivator:
 
         # 激活时，所有已有记忆的duration+1，达到3则移除
         for m in self.running_memory[:]:
-            m['duration'] = m.get('duration', 1) + 1
-        self.running_memory = [m for m in self.running_memory if m['duration'] < 4]
+            m["duration"] = m.get("duration", 1) + 1
+        self.running_memory = [m for m in self.running_memory if m["duration"] < 4]
 
         if related_memory:
             for topic, memory in related_memory:
                 # 检查是否已存在相同topic和content的记忆
-                exists = any(m['topic'] == topic and m['content'] == memory for m in self.running_memory)
+                exists = any(m["topic"] == topic and m["content"] == memory for m in self.running_memory)
                 if not exists:
-                    self.running_memory.append({
-                        "topic": topic,
-                        "content": memory,
-                        "timestamp": datetime.now().isoformat(),
-                        "duration": 1
-                    })
+                    self.running_memory.append(
+                        {"topic": topic, "content": memory, "timestamp": datetime.now().isoformat(), "duration": 1}
+                    )
                     logger.debug(f"添加新记忆: {topic} - {memory}")
 
         return self.running_memory

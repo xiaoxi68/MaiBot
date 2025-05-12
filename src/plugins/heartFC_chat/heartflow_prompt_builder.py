@@ -7,7 +7,7 @@ from src.plugins.utils.chat_message_builder import build_readable_messages, get_
 from src.plugins.person_info.relationship_manager import relationship_manager
 from src.plugins.chat.utils import get_embedding
 import time
-from typing import Union, Optional, Deque, Dict, Any
+from typing import Union, Optional, Dict, Any
 from ...common.database import db
 from ..chat.utils import get_recent_group_speaker
 from ..moods.moods import MoodManager
@@ -15,7 +15,6 @@ from ..memory_system.Hippocampus import HippocampusManager
 from ..schedule.schedule_generator import bot_schedule
 from ..knowledge.knowledge_lib import qa_manager
 import traceback
-from .heartFC_Cycleinfo import CycleDetail
 
 
 logger = get_logger("prompt")
