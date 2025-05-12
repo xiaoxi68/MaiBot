@@ -236,7 +236,7 @@ async def _build_readable_messages_internal(
             new_content = ""
             last_end = 0
             for m in at_matches:
-                new_content += content[last_end:m.start()]
+                new_content += content[last_end : m.start()]
                 aaa = m.group(1)
                 bbb = m.group(2)
                 at_person_id = person_info_manager.get_person_id(platform, bbb)
@@ -251,8 +251,7 @@ async def _build_readable_messages_internal(
         message_details_raw.append((timestamp, person_name, content))
 
     if not message_details_raw:
-        return "", []            
-        
+        return "", []
 
     message_details_raw.sort(key=lambda x: x[0])  # 按时间戳(第一个元素)升序排序，越早的消息排在前面
 

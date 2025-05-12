@@ -1,6 +1,6 @@
 import time
 import random
-from typing import List, Dict, Optional, Any, Tuple, Coroutine
+from typing import List, Dict, Optional, Any, Tuple
 from src.common.logger_manager import get_logger
 from src.plugins.models.utils_model import LLMRequest
 from src.config.config import global_config
@@ -100,7 +100,6 @@ class ExpressionLearner:
                 old_data = []
             # 超过最大数量时，20%概率移除count=1的项
             if len(old_data) >= MAX_EXPRESSION_COUNT:
-                delete = True
                 new_old_data = []
                 for item in old_data:
                     if item.get("count", 1) == 1 and random.random() < 0.2:
@@ -111,7 +110,9 @@ class ExpressionLearner:
             for new_expr in expr_list:
                 found = False
                 for old_expr in old_data:
-                    if self.is_similar(new_expr["situation"], old_expr.get("situation", "")) and self.is_similar(new_expr["style"], old_expr.get("style", "")):
+                    if self.is_similar(new_expr["situation"], old_expr.get("situation", "")) and self.is_similar(
+                        new_expr["style"], old_expr.get("style", "")
+                    ):
                         found = True
                         # 50%概率替换
                         if random.random() < 0.5:
@@ -133,7 +134,9 @@ class ExpressionLearner:
             chat_stream (ChatStream): _description_
         """
         current_time = time.time()
-        random_msg: Optional[List[Dict[str, Any]]] = get_raw_msg_by_timestamp_random(current_time - 3600 * 24, current_time, limit=10)
+        random_msg: Optional[List[Dict[str, Any]]] = get_raw_msg_by_timestamp_random(
+            current_time - 3600 * 24, current_time, limit=10
+        )
         if not random_msg:
             return None
         # 转化成str
@@ -144,11 +147,11 @@ class ExpressionLearner:
             "learn_expression_prompt",
             chat_str=random_msg_str,
         )
-        
+
         logger.info(f"学习表达方式的prompt: {prompt}")
 
         response, _ = await self.express_learn_model.generate_response_async(prompt)
-        
+
         logger.info(f"学习表达方式的response: {response}")
 
         expressions: List[Tuple[str, str, str]] = self.parse_expression_response(response, chat_id)
@@ -184,6 +187,7 @@ class ExpressionLearner:
             style = line[idx_quote3 + 1 : idx_quote4]
             expressions.append((chat_id, situation, style))
         return expressions
+
 
 init_prompt()
 

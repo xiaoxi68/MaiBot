@@ -209,7 +209,7 @@ class MindProcessor(BaseProcessor):
             relation_prompt += await relationship_manager.build_relationship_info(person, is_id=True)
 
         # 构建个性部分
-        prompt_personality = individuality.get_prompt(x_person=2, level=2)
+        # prompt_personality = individuality.get_prompt(x_person=2, level=2)
 
         # 获取当前时间
         time_now = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
