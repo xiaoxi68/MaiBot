@@ -58,7 +58,6 @@ def init_prompt() -> None:
 """
     Prompt(personality_expression_prompt, "personality_expression_prompt")
 
-peronality = "情绪敏感，有时候有些搞怪幽默, 是一个女大学生，现在在读大二，你会刷贴吧"
 
 class ExpressionLearner:
     def __init__(self) -> None:
@@ -230,7 +229,7 @@ class ExpressionLearner:
         # 构建prompt
         prompt = await global_prompt_manager.format_prompt(
             "personality_expression_prompt",
-            personality=peronality,
+            personality=global_config.expression_style,
         )
         logger.info(f"个性表达方式提取prompt: {prompt}")
         response, _ = await self.express_learn_model.generate_response_async(prompt)

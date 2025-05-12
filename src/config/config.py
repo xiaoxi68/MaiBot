@@ -153,6 +153,7 @@ class BotConfig:
             "用一句话或几句话描述人格的一些侧面",
         ]
     )
+    expression_style = "描述麦麦说话的表达风格，表达习惯"
     # identity
     identity_detail: List[str] = field(
         default_factory=lambda: [
@@ -360,6 +361,8 @@ class BotConfig:
             if config.INNER_VERSION in SpecifierSet(">=1.2.4"):
                 config.personality_core = personality_config.get("personality_core", config.personality_core)
                 config.personality_sides = personality_config.get("personality_sides", config.personality_sides)
+            if config.INNER_VERSION in SpecifierSet(">=1.7.0"):
+                config.expression_style = personality_config.get("expression_style", config.expression_style)
 
         def identity(parent: dict):
             identity_config = parent["identity"]

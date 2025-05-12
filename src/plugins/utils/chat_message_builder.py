@@ -247,12 +247,12 @@ async def _build_readable_messages_internal(
                 last_end = m.end()
             new_content += content[last_end:]
             content = new_content
-        
+
         target_str = "这是QQ的一个功能，用于提及某人，但没那么明显"
         if target_str in content:
             if random.random() < 0.6:
                 content = content.replace(target_str, "")
-        
+
         if content != "":
             message_details_raw.append((timestamp, person_name, content))
 

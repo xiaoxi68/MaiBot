@@ -246,7 +246,9 @@ async def _build_prompt_focus(
         structured_info_prompt = ""
 
     # 从/data/expression/对应chat_id/expressions.json中读取表达方式
-    learnt_expressions, personality_expressions = await expression_learner.get_expression_by_chat_id(chat_stream.stream_id)
+    learnt_expressions, personality_expressions = await expression_learner.get_expression_by_chat_id(
+        chat_stream.stream_id
+    )
     language_habits = []
     # 1. learnt_expressions加权随机选5条
     if learnt_expressions:
