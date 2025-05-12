@@ -26,8 +26,8 @@ message_queue_window.bat
 message_queue_window.txt
 queue_update.txt
 memory_graph.gml
-/src/do_tool/tool_can_use/auto_create_tool.py
-/src/do_tool/tool_can_use/execute_python_code_tool.py
+/src/tools/tool_can_use/auto_create_tool.py
+/src/tools/tool_can_use/execute_python_code_tool.py
 .env
 .env.*
 .cursor

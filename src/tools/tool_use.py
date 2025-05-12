@@ -2,12 +2,12 @@ from src.plugins.models.utils_model import LLMRequest
 from src.config.config import global_config
 import json
 from src.common.logger_manager import get_logger
-from src.do_tool.tool_can_use import get_all_tool_definitions, get_tool_instance
+from src.tools.tool_can_use import get_all_tool_definitions, get_tool_instance
 import traceback
 from src.plugins.person_info.relationship_manager import relationship_manager
 from src.plugins.chat.utils import parse_text_timestamps
 from src.plugins.chat.chat_stream import ChatStream
-from src.heart_flow.chatting_observation import ChattingObservation
+from src.heart_flow.observation.chatting_observation import ChattingObservation
 
 logger = get_logger("tool_use")
 

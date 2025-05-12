@@ -4,11 +4,10 @@ from src.config.config import global_config
 from src.plugins.schedule.schedule_generator import bot_schedule
 from src.common.logger_manager import get_logger
 from typing import Any, Optional
-from src.do_tool.tool_use import ToolUser
+from src.tools.tool_use import ToolUser
 from src.plugins.person_info.relationship_manager import relationship_manager  # Module instance
 from src.heart_flow.mai_state_manager import MaiStateInfo, MaiStateManager
 from src.heart_flow.subheartflow_manager import SubHeartflowManager
-from src.heart_flow.mind import Mind
 from src.heart_flow.interest_logger import InterestLogger  # Import InterestLogger
 from src.heart_flow.background_tasks import BackgroundTaskManager  # Import BackgroundTaskManager
 
@@ -45,8 +44,6 @@ class Heartflow:
         self.tool_user_instance = ToolUser()  # 工具使用模块
         self.relationship_manager_instance = relationship_manager  # 关系管理模块
 
-        # 子系统初始化
-        self.mind: Mind = Mind(self.subheartflow_manager, self.llm_model)  # 思考管理器
         self.interest_logger: InterestLogger = InterestLogger(self.subheartflow_manager, self)  # 兴趣日志记录器
 
         # 后台任务管理器 (整合所有定时任务)

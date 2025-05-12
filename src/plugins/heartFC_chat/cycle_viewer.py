@@ -130,9 +130,6 @@ def main():
     parser = argparse.ArgumentParser(description="HeartFC循环信息查看工具")
     subparsers = parser.add_subparsers(dest="command", help="子命令")
 
-    # 列出所有聊天流
-    list_streams_parser = subparsers.add_parser("list-streams", help="列出所有聊天流")
-
     # 分析聊天流
     analyze_parser = subparsers.add_parser("analyze", help="分析指定聊天流的循环信息")
     analyze_parser.add_argument("stream_id", help="聊天流ID")

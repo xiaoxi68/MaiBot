@@ -168,9 +168,6 @@ class CycleDetail:
             filename = f"cycle_{cycle_info.cycle_id}_{timestamp}.txt"
             filepath = os.path.join(stream_dir, filename)
 
-            # 将CycleInfo转换为JSON格式
-            cycle_data = cycle_info.to_dict()
-
             # 格式化输出成易读的格式
             with open(filepath, "w", encoding="utf-8") as f:
                 # 写入基本信息

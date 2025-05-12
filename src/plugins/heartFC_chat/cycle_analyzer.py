@@ -129,7 +129,8 @@ class CycleAnalyzer:
                             try:
                                 duration = float(line[3:].strip().split("秒")[0])
                                 total_duration += duration
-                            except:
+                            except Exception as e:
+                                logger.error(f"解析耗时时出错: {e}")
                                 pass
 
                         # 解析工具使用
@@ -174,7 +175,8 @@ class CycleAnalyzer:
                         timestamp_str = filename.split("_", 2)[2].split(".")[0]
                         timestamp = time.mktime(time.strptime(timestamp_str, "%Y%m%d_%H%M%S"))
                         all_cycles.append((timestamp, stream_id, filepath))
-                    except:
+                    except Exception as e:
+                        logger.error(f"从文件名中提取时间戳时出错: {e}")
                         continue
 
             # 按时间戳排序，取最新的count个

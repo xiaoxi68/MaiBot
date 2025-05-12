@@ -31,6 +31,7 @@ from src.heart_flow.observation.working_observation import WorkingObservation
 from src.plugins.heartFC_chat.info_processors.tool_processor import ToolProcessor
 from src.plugins.heartFC_chat.expressors.default_expressor import DefaultExpressor
 from src.plugins.heartFC_chat.hfc_utils import _create_empty_anchor_message
+from src.plugins.heartFC_chat.memory_activator import MemoryActivator
 
 install(extra_lines=3)
 
@@ -115,39 +116,6 @@ class ActionManager:
             self._original_actions_backup = None
             # logger.debug("恢复了原始动作集") # 可选日志
 
-    def clear_actions(self):
-        """清空所有动作"""
-        self._available_actions.clear()
-
-    def reset_to_default(self):
-        """重置为默认动作集"""
-        self._available_actions = DEFAULT_ACTIONS.copy()
-
-
-# 在文件开头添加自定义异常类
-class HeartFCError(Exception):
-    """麦麦聊天系统基础异常类"""
-
-    pass
-
-
-class PlannerError(HeartFCError):
-    """规划器异常"""
-
-    pass
-
-
-class ReplierError(HeartFCError):
-    """回复器异常"""
-
-    pass
-
-
-class SenderError(HeartFCError):
-    """发送器异常"""
-
-    pass
-
 
 async def _handle_cycle_delay(action_taken_this_cycle: bool, cycle_start_time: float, log_prefix: str):
     """处理循环延迟"""
@@ -202,6 +170,7 @@ class HeartFChatting:
         self.hfcloop_observation = HFCloopObservation(observe_id=self.stream_id)
         self.tool_processor = ToolProcessor(subheartflow_id=self.stream_id)
         self.working_observation = WorkingObservation(observe_id=self.stream_id)
+        self.memory_activator = MemoryActivator()
 
         # 日志前缀
         self.log_prefix: str = str(chat_id)  # Initial default, will be updated
@@ -439,6 +408,8 @@ class HeartFChatting:
             for observation in observations:
                 logger.debug(f"{self.log_prefix} 观察信息: {observation}")
 
+            running_memorys = await self.memory_activator.activate_memory(observations)
+
             # 记录并行任务开始时间
             parallel_start_time = time.time()
             logger.debug(f"{self.log_prefix} 开始信息处理器并行任务")
@@ -446,16 +417,16 @@ class HeartFChatting:
             # 并行执行两个任务：思考和工具执行
             with Timer("执行 信息处理器", cycle_timers):
                 # 1. 子思维思考 - 不执行工具调用
-                think_task = asyncio.create_task(self.mind_processor.process_info(observations=observations))
+                think_task = asyncio.create_task(self.mind_processor.process_info(observations=observations,running_memorys=running_memorys))
                 logger.debug(f"{self.log_prefix} 启动子思维思考任务")
 
                 # 2. 工具执行器 - 专门处理工具调用
-                tool_task = asyncio.create_task(self.tool_processor.process_info(observations=observations))
+                tool_task = asyncio.create_task(self.tool_processor.process_info(observations=observations,running_memorys=running_memorys))
                 logger.debug(f"{self.log_prefix} 启动工具执行任务")
 
                 # 3. 聊天信息处理器
                 chatting_info_task = asyncio.create_task(
-                    self.chatting_info_processor.process_info(observations=observations)
+                    self.chatting_info_processor.process_info(observations=observations,running_memorys=running_memorys)
                 )
                 logger.debug(f"{self.log_prefix} 启动聊天信息处理器任务")
 
@@ -578,7 +549,7 @@ class HeartFChatting:
                 return await handler(reasoning, action_data, cycle_timers)
             else:  # no_reply
                 return await handler(reasoning, planner_start_db_time, cycle_timers), ""
-        except HeartFCError as e:
+        except Exception as e:
             logger.error(f"{self.log_prefix} 处理{action}时出错: {e}")
             # 出错时也重置计数器
             self._lian_xu_bu_hui_fu_ci_shu = 0
@@ -737,12 +708,6 @@ class HeartFChatting:
         if last_n is not None:
             history = history[-last_n:]
         return [cycle.to_dict() for cycle in history]
-
-    def get_last_cycle_info(self) -> Optional[Dict[str, Any]]:
-        """获取最近一个循环的信息"""
-        if self._cycle_history:
-            return self._cycle_history[-1].to_dict()
-        return None
 
     async def _planner(self, all_plan_info: List[InfoBase], cycle_timers: dict) -> Dict[str, Any]:
         """
@@ -989,16 +954,13 @@ class HeartFChatting:
         success, reply_set = await self.expressor.deal_reply(
             cycle_timers=cycle_timers, action_data=reply_data, anchor_message=anchor_message, reasoning=reasoning
         )
-        
+
         reply_text = ""
         for reply in reply_set:
             reply_text += reply
-        
-        self._current_cycle.set_response_info(
-            success=success,
-            reply_text=reply_text,
-            anchor_message=anchor_message,
-        )
-        
-        return success, reply_text
 
+        self._current_cycle.set_response_info(
+            response_text=reply_text,
+        )
+
+        return success, reply_text

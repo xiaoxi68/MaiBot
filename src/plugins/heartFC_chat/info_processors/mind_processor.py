@@ -22,6 +22,7 @@ from src.plugins.heartFC_chat.info_processors.processor_utils import (
     calculate_replacement_probability,
     get_spark,
 )
+from typing import Dict
 
 logger = get_logger("sub_heartflow")
 
@@ -29,6 +30,7 @@ logger = get_logger("sub_heartflow")
 def init_prompt():
     # --- Group Chat Prompt ---
     group_prompt = """
+{memory_str}
 {extra_info}
 {relation_prompt}
 你的名字是{bot_name},{prompt_personality},你现在{mood_info}
@@ -50,6 +52,7 @@ def init_prompt():
 
     # --- Private Chat Prompt ---
     private_prompt = """
+{memory_str}
 {extra_info}
 {relation_prompt}
 你的名字是{bot_name},{prompt_personality},你现在{mood_info}
@@ -121,7 +124,7 @@ class MindProcessor(BaseProcessor):
         self.structured_info_str = "\n".join(lines)
         logger.debug(f"{self.log_prefix} 更新 structured_info_str: \n{self.structured_info_str}")
 
-    async def process_info(self, observations: Optional[List[Observation]] = None, *infos) -> List[dict]:
+    async def process_info(self, observations: Optional[List[Observation]] = None, running_memorys: Optional[List[Dict]] = None, *infos) -> List[dict]:
         """处理信息对象
 
         Args:
@@ -130,14 +133,14 @@ class MindProcessor(BaseProcessor):
         Returns:
             List[dict]: 处理后的结构化信息列表
         """
-        current_mind = await self.do_thinking_before_reply(observations)
+        current_mind = await self.do_thinking_before_reply(observations,running_memorys)
 
         mind_info = MindInfo()
         mind_info.set_current_mind(current_mind)
 
         return [mind_info]
 
-    async def do_thinking_before_reply(self, observations: Optional[List[Observation]] = None):
+    async def do_thinking_before_reply(self, observations: Optional[List[Observation]] = None, running_memorys: Optional[List[Dict]] = None):
         """
         在回复前进行思考，生成内心想法并收集工具调用结果
 
@@ -165,6 +168,12 @@ class MindProcessor(BaseProcessor):
         logger.debug(
             f"{self.log_prefix} 当前完整的 structured_info: {safe_json_dumps(self.structured_info, ensure_ascii=False)}"
         )
+
+        memory_str = ""
+        if running_memorys:
+            memory_str = "以下是当前在聊天中，你回忆起的记忆：\n"
+            for running_memory in running_memorys:
+                memory_str += f"{running_memory['topic']}: {running_memory['content']}\n"
 
         # ---------- 1. 准备基础数据 ----------
         # 获取现有想法和情绪状态
@@ -210,6 +219,7 @@ class MindProcessor(BaseProcessor):
         logger.debug(f"{self.log_prefix} 使用{'群聊' if is_group_chat else '私聊'}思考模板")
 
         prompt = (await global_prompt_manager.get_prompt_async(template_name)).format(
+            memory_str=memory_str,
             extra_info=self.structured_info_str,
             prompt_personality=prompt_personality,
             relation_prompt=relation_prompt,

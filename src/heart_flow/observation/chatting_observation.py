@@ -13,12 +13,29 @@ from src.plugins.utils.prompt_builder import global_prompt_manager
 from typing import Optional
 import difflib
 from src.plugins.chat.message import MessageRecv  # 添加 MessageRecv 导入
-from heart_flow.observation.observation import Observation
+from src.heart_flow.observation.observation import Observation
 from src.common.logger_manager import get_logger
 from src.heart_flow.utils_chat import get_chat_type_and_target_info
+from src.plugins.utils.prompt_builder import Prompt
 
 
 logger = get_logger(__name__)
+
+
+Prompt(
+    """这是qq群聊的聊天记录，请总结以下聊天记录的主题：
+{chat_logs}
+请用一句话概括，包括人物、事件和主要信息，不要分点。""",
+    "chat_summary_group_prompt",  # Template for group chat
+)
+
+Prompt(
+    """这是你和{chat_target}的私聊记录，请总结以下聊天记录的主题：
+{chat_logs}
+请用一句话概括，包括事件，时间，和主要信息，不要分点。""",
+    "chat_summary_private_prompt",  # Template for private chat
+)
+# --- End Prompt Template Definition ---
 
 
 # 聊天观察
@@ -120,8 +137,6 @@ class ChattingObservation(Observation):
         content_format = ""
         accept_format = ""
         template_items = {}
-        template_name = {}
-        template_default = True
 
         format_info = {"content_format": content_format, "accept_format": accept_format}
         template_info = {
@@ -134,8 +149,6 @@ class ChattingObservation(Observation):
             "time": find_msg.get("time"),
             "group_info": group_info,
             "user_info": user_info,
-            "format_info": find_msg.get("format_info"),
-            "template_info": find_msg.get("template_info"),
             "additional_config": find_msg.get("additional_config"),
             "format_info": format_info,
             "template_info": template_info,

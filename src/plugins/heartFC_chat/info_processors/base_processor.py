@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import List, Any, Optional
+from typing import List, Any, Optional, Dict
 from src.heart_flow.info.info_base import InfoBase
-from src.heart_flow.chatting_observation import Observation
+from src.heart_flow.observation.observation import Observation
 from src.common.logger_manager import get_logger
 
 logger = get_logger("base_processor")
@@ -21,7 +21,7 @@ class BaseProcessor(ABC):
 
     @abstractmethod
     async def process_info(
-        self, infos: List[InfoBase], observations: Optional[List[Observation]] = None, **kwargs: Any
+        self, infos: List[InfoBase], observations: Optional[List[Observation]] = None, running_memorys: Optional[List[Dict]] = None, **kwargs: Any
     ) -> List[InfoBase]:
         """处理信息对象的抽象方法
 

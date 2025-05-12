@@ -14,7 +14,7 @@ from src.plugins.chat.chat_stream import chat_manager
 # 导入心流相关类
 from src.heart_flow.sub_heartflow import SubHeartflow, ChatState
 from src.heart_flow.mai_state_manager import MaiStateInfo
-from src.heart_flow.chatting_observation import ChattingObservation
+from src.heart_flow.observation.chatting_observation import ChattingObservation
 
 # 导入LLM请求工具
 from src.plugins.models.utils_model import LLMRequest

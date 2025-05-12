@@ -5,6 +5,7 @@ from src.plugins.chat.message import MessageRecv, BaseMessageInfo
 from src.plugins.chat.chat_stream import ChatStream
 from src.plugins.chat.message import UserInfo
 from src.common.logger_manager import get_logger
+import json
 
 logger = get_logger(__name__)
 
@@ -42,3 +43,22 @@ async def _create_empty_anchor_message(
         logger.error(f"Error getting/creating anchor message: {e}")
         logger.error(traceback.format_exc())
         return None
+
+
+def get_keywords_from_json(json_str: str) -> list[str]:
+    # 提取JSON内容
+    start = json_str.find("{")
+    end = json_str.rfind("}") + 1
+    if start == -1 or end == 0:
+        logger.error("未找到有效的JSON内容")
+        return []
+    
+    json_content = json_str[start:end]
+    
+    # 解析JSON
+    try:
+        json_data = json.loads(json_content)
+        return json_data.get("keywords", [])
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON解析失败: {e}")
+        return []

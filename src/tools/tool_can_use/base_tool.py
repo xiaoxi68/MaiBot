@@ -81,7 +81,7 @@ def discover_tools():
             continue
 
         # 导入模块
-        module = importlib.import_module(f"src.do_tool.{package_name}.{module_name}")
+        module = importlib.import_module(f"src.tools.{package_name}.{module_name}")
 
         # 查找模块中的工具类
         for _, obj in inspect.getmembers(module):

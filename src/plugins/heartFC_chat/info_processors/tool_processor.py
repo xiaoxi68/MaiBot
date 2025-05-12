@@ -5,11 +5,11 @@ import time
 from src.common.logger_manager import get_logger
 from src.individuality.individuality import Individuality
 from src.plugins.utils.prompt_builder import Prompt, global_prompt_manager
-from src.do_tool.tool_use import ToolUser
+from src.tools.tool_use import ToolUser
 from src.plugins.utils.json_utils import process_llm_tool_calls
 from src.plugins.person_info.relationship_manager import relationship_manager
 from .base_processor import BaseProcessor
-from typing import List, Optional
+from typing import List, Optional, Dict
 from src.heart_flow.observation.observation import Observation
 from src.heart_flow.observation.working_observation import WorkingObservation
 from src.heart_flow.info.structured_info import StructuredInfo
@@ -29,6 +29,8 @@ def init_prompt():
 
 你当前的额外信息：
 {extra_info}
+
+{memory_str}
 
 你的心情是：{mood_info}
 
@@ -61,7 +63,7 @@ class ToolProcessor(BaseProcessor):
         )
         self.structured_info = []
 
-    async def process_info(self, observations: Optional[List[Observation]] = None, *infos) -> List[dict]:
+    async def process_info(self, observations: Optional[List[Observation]] = None, running_memorys: Optional[List[Dict]] = None, *infos) -> List[dict]:
         """处理信息对象
 
         Args:
@@ -74,7 +76,7 @@ class ToolProcessor(BaseProcessor):
         if observations:
             for observation in observations:
                 if isinstance(observation, ChattingObservation):
-                    result, used_tools, prompt = await self.execute_tools(observation)
+                    result, used_tools, prompt = await self.execute_tools(observation, running_memorys)
 
             # 更新WorkingObservation中的结构化信息
             for observation in observations:
@@ -92,7 +94,7 @@ class ToolProcessor(BaseProcessor):
 
         return [structured_info]
 
-    async def execute_tools(self, observation: ChattingObservation):
+    async def execute_tools(self, observation: ChattingObservation, running_memorys: Optional[List[Dict]] = None):
         """
         并行执行工具，返回结构化信息
 
@@ -112,23 +114,21 @@ class ToolProcessor(BaseProcessor):
         tool_instance = ToolUser()
         tools = tool_instance._define_tools()
 
-        logger.debug(f"observation: {observation}")
-        logger.debug(f"observation.chat_target_info: {observation.chat_target_info}")
-        logger.debug(f"observation.is_group_chat: {observation.is_group_chat}")
-        logger.debug(f"observation.person_list: {observation.person_list}")
+        # logger.debug(f"observation: {observation}")
+        # logger.debug(f"observation.chat_target_info: {observation.chat_target_info}")
+        # logger.debug(f"observation.is_group_chat: {observation.is_group_chat}")
+        # logger.debug(f"observation.person_list: {observation.person_list}")
 
         is_group_chat = observation.is_group_chat
-        if not is_group_chat:
-            chat_target_name = (
-                observation.chat_target_info.get("person_name")
-                or observation.chat_target_info.get("user_nickname")
-                or "对方"
-            )
-        else:
-            chat_target_name = "群聊"
 
         chat_observe_info = observation.get_observe_info()
         person_list = observation.person_list
+        
+        memory_str = ""
+        if running_memorys:
+            memory_str = "以下是当前在聊天中，你回忆起的记忆：\n"
+            for running_memory in running_memorys:
+                memory_str += f"{running_memory['topic']}: {running_memory['content']}\n"
 
         # 构建关系信息
         relation_prompt = "【关系信息】\n"
@@ -148,6 +148,7 @@ class ToolProcessor(BaseProcessor):
         # 构建专用于工具调用的提示词
         prompt = await global_prompt_manager.format_prompt(
             "tool_executor_prompt",
+            memory_str=memory_str,
             extra_info="extra_structured_info",
             chat_observe_info=chat_observe_info,
             # chat_target_name=chat_target_name,

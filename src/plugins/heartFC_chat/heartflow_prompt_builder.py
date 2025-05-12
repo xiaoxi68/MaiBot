@@ -848,7 +848,6 @@ class PromptBuilder:
             for name in action_keys:
                 desc = current_available_actions[name]
                 action_options_text += f"- '{name}': {desc}\n"
-            example_action_key = action_keys[0] if action_keys else "no_reply"
 
             planner_prompt_template = await global_prompt_manager.get_prompt_async("planner_prompt")
 

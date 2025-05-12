@@ -9,7 +9,7 @@
 每个工具应该继承 `BaseTool` 基类并实现必要的属性和方法：
 
 ```python
-from src.do_tool.tool_can_use.base_tool import BaseTool, register_tool
+from src.tools.tool_can_use.base_tool import BaseTool, register_tool
 
 class MyNewTool(BaseTool):
     # 工具名称，必须唯一
@@ -86,7 +86,7 @@ register_tool(MyNewTool)
 ## 使用示例
 
 ```python
-from src.do_tool.tool_use import ToolUser
+from src.tools.tool_use import ToolUser
 
 # 创建工具用户
 tool_user = ToolUser()
