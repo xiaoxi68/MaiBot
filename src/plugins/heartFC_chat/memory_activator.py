@@ -13,27 +13,28 @@ from typing import List, Dict
 
 logger = get_logger("memory_activator")
 
-Prompt(
-    """
+def init_prompt():
+    # --- Group Chat Prompt ---
+    memory_activator_prompt = """
     你是一个记忆分析器，你需要根据以下信息来进行会议
     以下是一场聊天中的信息，请根据这些信息，总结出几个关键词作为记忆回忆的触发词
     
     {obs_info_text}
     
     请输出一个json格式，包含以下字段：
-    {
+    {{
         "keywords": ["关键词1", "关键词2", "关键词3",......]
-    }
+    }}
     不要输出其他多余内容，只输出json格式就好
-    """,
-    "memory_activator_prompt",
-)
+    """
+
+    Prompt(memory_activator_prompt, "memory_activator_prompt")
 
 
 class MemoryActivator:
     def __init__(self):
         self.summary_model = LLMRequest(
-            model=global_config.llm_observation, temperature=0.7, max_tokens=300, request_type="chat_observation"
+            model=global_config.llm_summary, temperature=0.7, max_tokens=300, request_type="chat_observation"
         )
         self.running_memory = []
 
@@ -58,7 +59,10 @@ class MemoryActivator:
             elif isinstance(observation, HFCloopObservation):
                 obs_info_text += observation.get_observe_info()
 
-        prompt = global_prompt_manager.format_prompt("memory_activator_prompt", obs_info_text=obs_info_text)
+        prompt = await global_prompt_manager.format_prompt(
+            "memory_activator_prompt",
+            obs_info_text=obs_info_text,
+        )
 
         logger.debug(f"prompt: {prompt}")
 
@@ -66,7 +70,9 @@ class MemoryActivator:
 
         logger.debug(f"response: {response}")
 
-        keywords = get_keywords_from_json(response)
+        # 只取response的第一个元素（字符串）
+        response_str = response[0]
+        keywords = list(get_keywords_from_json(response_str))
 
         # 调用记忆系统获取相关记忆
         related_memory = await HippocampusManager.get_instance().get_memory_from_topic(
@@ -75,9 +81,25 @@ class MemoryActivator:
 
         logger.debug(f"获取到的记忆: {related_memory}")
 
+        # 激活时，所有已有记忆的duration+1，达到3则移除
+        for m in self.running_memory[:]:
+            m['duration'] = m.get('duration', 1) + 1
+        self.running_memory = [m for m in self.running_memory if m['duration'] < 4]
+
         if related_memory:
             for topic, memory in related_memory:
-                self.running_memory.append({"topic": topic, "content": memory, "timestamp": datetime.now().isoformat()})
-                logger.debug(f"添加新记忆: {topic} - {memory}")
+                # 检查是否已存在相同topic和content的记忆
+                exists = any(m['topic'] == topic and m['content'] == memory for m in self.running_memory)
+                if not exists:
+                    self.running_memory.append({
+                        "topic": topic,
+                        "content": memory,
+                        "timestamp": datetime.now().isoformat(),
+                        "duration": 1
+                    })
+                    logger.debug(f"添加新记忆: {topic} - {memory}")
 
         return self.running_memory
+
+
+init_prompt()

@@ -47,12 +47,9 @@ class HFCloopObservation:
             if cycle.action_type == "reply":
                 consecutive_text_replies += 1
                 # 获取回复内容，如果不存在则返回'[空回复]'
-                response_text = cycle.response_info.get("response_text", [])
-                # 使用简单的 join 来格式化回复内容列表
-                formatted_response = "[空回复]" if not response_text else " ".join(response_text)
-                responses_for_prompt.append(formatted_response)
+                response_text = cycle.response_info.get("response_text", "[空回复]")
+                responses_for_prompt.append(response_text)
             else:
-                # 一旦遇到非文本回复，连续性中断
                 break
 
         # 根据连续文本回复的数量构建提示信息
