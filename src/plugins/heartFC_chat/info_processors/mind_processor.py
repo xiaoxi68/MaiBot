@@ -32,20 +32,20 @@ def init_prompt():
 {memory_str}
 {extra_info}
 {relation_prompt}
-你的名字是{bot_name},{prompt_personality},你现在{mood_info}
+你的名字是{bot_name}
+{mood_info}
 {cycle_info_block}
 现在是{time_now}，你正在上网，和qq群里的网友们聊天，以下是正在进行的聊天内容：
 {chat_observe_info}
 
-以下是你之前对这个群聊的陈述：
+以下是你之前对聊天的观察和规划，你的名字是{bot_name}：
 {last_mind}
 
-现在请你继续输出思考内容，输出要求：
-1. 根据聊天内容生成你的想法，{hf_do_next}
-2. 参考之前的思考，基于之前的内容对这个群聊继续陈述，可以删除不重要的内容，添加新的内容
-3. 思考群内进行的话题，话题由谁发起，进展状况如何，你如何参与？思考你在群聊天中的角色，你是一个什么样的人，你在这个群聊中扮演什么角色？
-4. 注意群聊的时间线索，思考聊天的时间线。
-5. 请结合你做出的行为，对前面的陈述进行补充
+现在请你继续输出观察和规划，输出要求：
+1. 先关注未读新消息的内容和近期回复历史
+2. 根据新信息，修改和删除之前的观察和规划
+3. 根据聊天内容继续输出观察和规划，{hf_do_next}
+4. 注意群聊的时间线索，话题由谁发起，进展状况如何，思考聊天的时间线。
 6. 语言简洁自然，不要分点，不要浮夸，不要修辞，仅输出思考内容就好"""
     Prompt(group_prompt, "sub_heartflow_prompt_before")
 
@@ -58,10 +58,8 @@ def init_prompt():
 {cycle_info_block}
 现在是{time_now}，你正在上网，和 {chat_target_name} 私聊，以下是你们的聊天内容：
 {chat_observe_info}
-
-以下是你之前在这个群聊中的思考：
+以下是你之前对聊天的观察和规划：
 {last_mind}
-
 请仔细阅读聊天内容，想想你和 {chat_target_name} 的关系，回顾你们刚刚的交流,你刚刚发言和对方的反应，思考聊天的主题。
 请思考你要不要回复以及如何回复对方。
 思考并输出你的内心想法
@@ -222,7 +220,7 @@ class MindProcessor(BaseProcessor):
         prompt = (await global_prompt_manager.get_prompt_async(template_name)).format(
             memory_str=memory_str,
             extra_info=self.structured_info_str,
-            prompt_personality=prompt_personality,
+            # prompt_personality=prompt_personality,
             relation_prompt=relation_prompt,
             bot_name=individuality.name,
             time_now=time_now,

@@ -37,6 +37,14 @@ class ObsInfo(InfoBase):
         """
         self.data["talking_message_str_truncate"] = message
 
+    def set_previous_chat_info(self, message: str) -> None:
+        """设置之前聊天信息
+
+        Args:
+            message (str): 之前聊天信息内容
+        """
+        self.data["previous_chat_info"] = message
+
     def set_chat_type(self, chat_type: str) -> None:
         """设置聊天类型
 

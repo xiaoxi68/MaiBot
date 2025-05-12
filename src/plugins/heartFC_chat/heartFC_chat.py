@@ -408,7 +408,8 @@ class HeartFChatting:
             for observation in observations:
                 logger.debug(f"{self.log_prefix} 观察信息: {observation}")
 
-            running_memorys = await self.memory_activator.activate_memory(observations)
+            with Timer("回忆", cycle_timers):
+                running_memorys = await self.memory_activator.activate_memory(observations)
 
             # 记录并行任务开始时间
             parallel_start_time = time.time()

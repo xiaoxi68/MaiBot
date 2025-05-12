@@ -4,8 +4,7 @@ from src.heart_flow.observation.hfcloop_observation import HFCloopObservation
 from src.plugins.models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.common.logger_manager import get_logger
-from src.plugins.utils.prompt_builder import Prompt, global_prompt_manager
-from src.plugins.heartFC_chat.hfc_utils import get_keywords_from_json
+from src.plugins.utils.prompt_builder import Prompt
 from datetime import datetime
 from src.plugins.memory_system.Hippocampus import HippocampusManager
 from typing import List, Dict
@@ -35,7 +34,7 @@ def init_prompt():
 class MemoryActivator:
     def __init__(self):
         self.summary_model = LLMRequest(
-            model=global_config.llm_summary, temperature=0.7, max_tokens=300, request_type="chat_observation"
+            model=global_config.llm_summary, temperature=0.7, max_tokens=50, request_type="chat_observation"
         )
         self.running_memory = []
 
@@ -60,24 +59,27 @@ class MemoryActivator:
             elif isinstance(observation, HFCloopObservation):
                 obs_info_text += observation.get_observe_info()
 
-        prompt = await global_prompt_manager.format_prompt(
-            "memory_activator_prompt",
-            obs_info_text=obs_info_text,
-        )
+        # prompt = await global_prompt_manager.format_prompt(
+        #     "memory_activator_prompt",
+        #     obs_info_text=obs_info_text,
+        # )
 
-        logger.debug(f"prompt: {prompt}")
+        # logger.debug(f"prompt: {prompt}")
 
-        response = await self.summary_model.generate_response(prompt)
+        # response = await self.summary_model.generate_response(prompt)
 
-        logger.debug(f"response: {response}")
+        # logger.debug(f"response: {response}")
 
-        # 只取response的第一个元素（字符串）
-        response_str = response[0]
-        keywords = list(get_keywords_from_json(response_str))
+        # # 只取response的第一个元素（字符串）
+        # response_str = response[0]
+        # keywords = list(get_keywords_from_json(response_str))
 
-        # 调用记忆系统获取相关记忆
-        related_memory = await HippocampusManager.get_instance().get_memory_from_topic(
-            valid_keywords=keywords, max_memory_num=3, max_memory_length=2, max_depth=3
+        # #调用记忆系统获取相关记忆
+        # related_memory = await HippocampusManager.get_instance().get_memory_from_topic(
+        #     valid_keywords=keywords, max_memory_num=3, max_memory_length=2, max_depth=3
+        # )
+        related_memory = await HippocampusManager.get_instance().get_memory_from_text(
+            text=obs_info_text, max_memory_num=3, max_memory_length=2, max_depth=3, fast_retrieval=True
         )
 
         logger.debug(f"获取到的记忆: {related_memory}")
@@ -85,7 +87,7 @@ class MemoryActivator:
         # 激活时，所有已有记忆的duration+1，达到3则移除
         for m in self.running_memory[:]:
             m["duration"] = m.get("duration", 1) + 1
-        self.running_memory = [m for m in self.running_memory if m["duration"] < 4]
+        self.running_memory = [m for m in self.running_memory if m["duration"] < 3]
 
         if related_memory:
             for topic, memory in related_memory:

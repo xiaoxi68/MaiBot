@@ -28,13 +28,7 @@ def init_prompt():
 {prompt_personality}
 
 你当前的额外信息：
-{extra_info}
-
 {memory_str}
-
-你的心情是：{mood_info}
-
-{relation_prompt}
 
 群里正在进行的聊天内容：
 {chat_observe_info}
@@ -46,7 +40,6 @@ def init_prompt():
 4. 考虑用户与你的关系以及当前的对话氛围
 
 如果需要使用工具，请直接调用相应的工具函数。如果不需要使用工具，请简单输出"无需使用工具"。
-尽量只在确实必要时才使用工具。
 """
     Prompt(tool_executor_prompt, "tool_executor_prompt")
 
@@ -57,7 +50,7 @@ class ToolProcessor(BaseProcessor):
         self.subheartflow_id = subheartflow_id
         self.log_prefix = f"[{subheartflow_id}:ToolExecutor] "
         self.llm_model = LLMRequest(
-            model=global_config.llm_normal,
+            model=global_config.llm_tool_use,
             max_tokens=500,
             request_type="tool_execution",
         )
@@ -141,9 +134,6 @@ class ToolProcessor(BaseProcessor):
         individuality = Individuality.get_instance()
         prompt_personality = individuality.get_prompt(x_person=2, level=2)
 
-        # 获取心情信息
-        mood_info = observation.chat_state.mood if hasattr(observation, "chat_state") else ""
-
         # 获取时间信息
         time_now = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
@@ -151,13 +141,13 @@ class ToolProcessor(BaseProcessor):
         prompt = await global_prompt_manager.format_prompt(
             "tool_executor_prompt",
             memory_str=memory_str,
-            extra_info="extra_structured_info",
+            # extra_info="extra_structured_info",
             chat_observe_info=chat_observe_info,
             # chat_target_name=chat_target_name,
             is_group_chat=is_group_chat,
-            relation_prompt=relation_prompt,
+            # relation_prompt=relation_prompt,
             prompt_personality=prompt_personality,
-            mood_info=mood_info,
+            # mood_info=mood_info,
             bot_name=individuality.name,
             time_now=time_now,
         )

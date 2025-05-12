@@ -7,6 +7,7 @@ from src.config.config import global_config
 # import traceback
 from typing import List, Dict, Any, Tuple  # 确保类型提示被导入
 import time  # 导入 time 模块以获取当前时间
+import random
 
 # 导入新的 repository 函数
 from src.common.message_repository import find_messages, count_messages
@@ -67,6 +68,23 @@ def get_raw_msg_by_timestamp_with_chat_users(
     # 只有当 limit 为 0 时才应用外部 sort
     sort_order = [("time", 1)] if limit == 0 else None
     return find_messages(message_filter=filter_query, sort=sort_order, limit=limit, limit_mode=limit_mode)
+
+
+def get_raw_msg_by_timestamp_random(
+    timestamp_start: float, timestamp_end: float, limit: int = 0, limit_mode: str = "latest"
+) -> List[Dict[str, Any]]:
+    """
+    先在范围时间戳内随机选择一条消息，取得消息的chat_id，然后根据chat_id获取该聊天在指定时间戳范围内的消息
+    """
+    # 获取所有消息，只取chat_id字段
+    all_msgs = get_raw_msg_by_timestamp(timestamp_start, timestamp_end)
+    if not all_msgs:
+        return []
+    # 随机选一条
+    msg = random.choice(all_msgs)
+    chat_id = msg["chat_id"]
+    # 用 chat_id 获取该聊天在指定时间戳范围内的消息
+    return get_raw_msg_by_timestamp_with_chat(chat_id, timestamp_start, timestamp_end, limit, limit_mode)
 
 
 def get_raw_msg_by_timestamp_with_users(

@@ -21,8 +21,8 @@ class HFCloopObservation:
         return self.observe_info
 
     def add_loop_info(self, loop_info: CycleDetail):
-        logger.debug(f"添加循环信息111111111111111111111111111111111111: {loop_info}")
-        print(f"添加循环信息111111111111111111111111111111111111: {loop_info}")
+        # logger.debug(f"添加循环信息111111111111111111111111111111111111: {loop_info}")
+        # print(f"添加循环信息111111111111111111111111111111111111: {loop_info}")
         print(f"action_taken: {loop_info.action_taken}")
         print(f"action_type: {loop_info.action_type}")
         print(f"response_info: {loop_info.response_info}")
@@ -63,9 +63,18 @@ class HFCloopObservation:
 
         # 包装提示块，增加可读性，即使没有连续回复也给个标记
         if cycle_info_block:
-            cycle_info_block = f"\n【近期回复历史】\n{cycle_info_block}\n"
+            cycle_info_block = f"\n你最近的回复\n{cycle_info_block}\n"
         else:
             # 如果最近的活动循环不是文本回复，或者没有活动循环
-            cycle_info_block = "\n【近期回复历史】\n(最近没有连续文本回复)\n"
+            cycle_info_block = "\n"
+
+        # 获取history_loop中最新添加的
+        if self.history_loop:
+            last_loop = self.history_loop[-1]
+            start_time = last_loop.start_time
+            end_time = last_loop.end_time
+            time_diff = int(end_time - start_time)
+
+            cycle_info_block += f"\n距离你上一次阅读消息已经过去了{time_diff}分钟\n"
 
         self.observe_info = cycle_info_block

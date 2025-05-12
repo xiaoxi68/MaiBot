@@ -54,10 +54,10 @@ class DefaultExpressor:
             user_nickname=global_config.BOT_NICKNAME,
             platform=messageinfo.platform,
         )
-        logger.debug(f"创建思考消息：{anchor_message}")
-        logger.debug(f"创建思考消息chat：{chat}")
-        logger.debug(f"创建思考消息bot_user_info：{bot_user_info}")
-        logger.debug(f"创建思考消息messageinfo：{messageinfo}")
+        # logger.debug(f"创建思考消息：{anchor_message}")
+        # logger.debug(f"创建思考消息chat：{chat}")
+        # logger.debug(f"创建思考消息bot_user_info：{bot_user_info}")
+        # logger.debug(f"创建思考消息messageinfo：{messageinfo}")
 
         thinking_time_point = round(time.time(), 2)
         thinking_id = "mt" + str(thinking_time_point)

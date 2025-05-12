@@ -18,6 +18,7 @@ from .plugins.remote import heartbeat_thread  # noqa: F401
 from .individuality.individuality import Individuality
 from .common.server import global_server
 from rich.traceback import install
+from .plugins.heartFC_chat.expressors.exprssion_learner import expression_learner
 from .api.main import start_api_server
 
 install(extra_lines=3)
@@ -129,6 +130,7 @@ class MainSystem:
                 self.build_memory_task(),
                 self.forget_memory_task(),
                 self.consolidate_memory_task(),
+                self.learn_and_store_expression_task(),
                 self.print_mood_task(),
                 self.remove_recalled_message_task(),
                 emoji_manager.start_periodic_check_register(),
@@ -162,6 +164,15 @@ class MainSystem:
             print("\033[1;32m[记忆整合]\033[0m 开始整合记忆...")
             await HippocampusManager.get_instance().consolidate_memory()
             print("\033[1;32m[记忆整合]\033[0m 记忆整合完成")
+
+    @staticmethod
+    async def learn_and_store_expression_task():
+        """学习并存储表达方式任务"""
+        while True:
+            await asyncio.sleep(60)
+            print("\033[1;32m[表达方式学习]\033[0m 开始学习表达方式...")
+            await expression_learner.learn_and_store_expression()
+            print("\033[1;32m[表达方式学习]\033[0m 表达方式学习完成")
 
     async def print_mood_task(self):
         """打印情绪状态"""

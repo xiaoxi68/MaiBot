@@ -61,6 +61,9 @@ class ChattingObservation(Observation):
         self.max_mid_memory_len = global_config.compress_length_limit
         self.mid_memory_info = ""
         self.person_list = []
+        self.oldest_messages = []
+        self.oldest_messages_str = ""
+        self.compressor_prompt = ""
         self.llm_summary = LLMRequest(
             model=global_config.llm_observation, temperature=0.7, max_tokens=300, request_type="chat_observation"
         )
@@ -75,8 +78,8 @@ class ChattingObservation(Observation):
 
     # 进行一次观察 返回观察结果observe_info
     def get_observe_info(self, ids=None):
+        mid_memory_str = ""
         if ids:
-            mid_memory_str = ""
             for id in ids:
                 print(f"id：{id}")
                 try:
@@ -97,7 +100,10 @@ class ChattingObservation(Observation):
             return mid_memory_str + "现在群里正在聊：\n" + self.talking_message_str
 
         else:
-            return self.talking_message_str
+            mid_memory_str = "之前的聊天内容：\n"
+            for mid_memory in self.mid_memorys:
+                mid_memory_str += f"{mid_memory['theme']}\n"
+            return mid_memory_str + "现在群里正在聊：\n" + self.talking_message_str
 
     def serch_message_by_text(self, text: str) -> Optional[MessageRecv]:
         """
@@ -221,40 +227,10 @@ class ChattingObservation(Observation):
                 logger.error(f"构建总结 Prompt 失败 for chat {self.chat_id}: {e}")
                 # prompt remains None
 
-            summary = "没有主题的闲聊"  # 默认值
-
             if prompt:  # Check if prompt was built successfully
-                try:
-                    summary_result, _, _ = await self.llm_summary.generate_response(prompt)
-                    if summary_result:  # 确保结果不为空
-                        summary = summary_result
-                except Exception as e:
-                    logger.error(f"总结主题失败 for chat {self.chat_id}: {e}")
-                    # 保留默认总结 "没有主题的闲聊"
-            else:
-                logger.warning(f"因 Prompt 构建失败，跳过 LLM 总结 for chat {self.chat_id}")
-
-            mid_memory = {
-                "id": str(int(datetime.now().timestamp())),
-                "theme": summary,
-                "messages": oldest_messages,  # 存储原始消息对象
-                "readable_messages": oldest_messages_str,
-                # "timestamps": oldest_timestamps,
-                "chat_id": self.chat_id,
-                "created_at": datetime.now().timestamp(),
-            }
-
-            self.mid_memorys.append(mid_memory)
-            if len(self.mid_memorys) > self.max_mid_memory_len:
-                self.mid_memorys.pop(0)  # 移除最旧的
-
-            mid_memory_str = "之前聊天的内容概述是：\n"
-            for mid_memory_item in self.mid_memorys:  # 重命名循环变量以示区分
-                time_diff = int((datetime.now().timestamp() - mid_memory_item["created_at"]) / 60)
-                mid_memory_str += (
-                    f"距离现在{time_diff}分钟前(聊天记录id:{mid_memory_item['id']})：{mid_memory_item['theme']}\n"
-                )
-            self.mid_memory_info = mid_memory_str
+                self.compressor_prompt = prompt
+                self.oldest_messages = oldest_messages
+                self.oldest_messages_str = oldest_messages_str
 
         self.talking_message_str = await build_readable_messages(
             messages=self.talking_message,
