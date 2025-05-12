@@ -1,14 +1,18 @@
-from .observation import ChattingObservation
+from src.heart_flow.chatting_observation import ChattingObservation
 from src.plugins.models.utils_model import LLMRequest
 from src.config.config import global_config
 import time
 from src.common.logger_manager import get_logger
 from src.individuality.individuality import Individuality
-from ..plugins.utils.prompt_builder import Prompt, global_prompt_manager
+from src.plugins.utils.prompt_builder import Prompt, global_prompt_manager
 from src.do_tool.tool_use import ToolUser
 from src.plugins.utils.json_utils import process_llm_tool_calls
 from src.plugins.person_info.relationship_manager import relationship_manager
-from src.heart_flow.sub_mind import SubMind
+from .base_processor import BaseProcessor
+from typing import List, Optional
+from src.heart_flow.chatting_observation import Observation
+from src.heart_flow.working_observation import WorkingObservation
+from src.heart_flow.info.structured_info import StructuredInfo
 
 logger = get_logger("tool_use")
 
@@ -45,21 +49,50 @@ def init_prompt():
     Prompt(tool_executor_prompt, "tool_executor_prompt")
 
 
-class ToolExecutor:
+class ToolProcessor(BaseProcessor):
     def __init__(self, subheartflow_id: str):
+        super().__init__()
         self.subheartflow_id = subheartflow_id
         self.log_prefix = f"[{subheartflow_id}:ToolExecutor] "
         self.llm_model = LLMRequest(
-            model=global_config.llm_summary,  # 为工具执行器配置单独的模型
-            # temperature=global_config.llm_summary["temp"],
-            # max_tokens=800,
+            model=global_config.llm_normal,
+            max_tokens=500,
             request_type="tool_execution",
         )
         self.structured_info = []
 
-    async def execute_tools(
-        self, sub_mind: SubMind, chat_target_name="对方", is_group_chat=False, return_details=False, cycle_info=None
-    ):
+    async def process_info(self, observations: Optional[List[Observation]] = None, *infos) -> List[dict]:
+        """处理信息对象
+
+        Args:
+            *infos: 可变数量的InfoBase类型的信息对象
+
+        Returns:
+            list: 处理后的结构化信息列表
+        """
+
+        if observations:
+            for observation in observations:
+                if isinstance(observation, ChattingObservation):
+                    result, used_tools, prompt = await self.execute_tools(observation)
+
+            # 更新WorkingObservation中的结构化信息
+            for observation in observations:
+                if isinstance(observation, WorkingObservation):
+                    for structured_info in result:
+                        logger.debug(f"{self.log_prefix} 更新WorkingObservation中的结构化信息: {structured_info}")
+                        observation.add_structured_info(structured_info)
+
+                    working_infos = observation.get_observe_info()
+                    logger.debug(f"{self.log_prefix} 获取更新后WorkingObservation中的结构化信息: {working_infos}")
+
+        structured_info = StructuredInfo()
+        for working_info in working_infos:
+            structured_info.set_info(working_info.get("type"), working_info.get("content"))
+
+        return [structured_info]
+
+    async def execute_tools(self, observation: ChattingObservation):
         """
         并行执行工具，返回结构化信息
 
@@ -76,18 +109,26 @@ class ToolExecutor:
             如果return_details为True:
                 Tuple[List[Dict], List[str], str]: (工具执行结果列表, 使用的工具列表, 工具执行提示词)
         """
-        # 初始化工具
         tool_instance = ToolUser()
         tools = tool_instance._define_tools()
 
-        observation: ChattingObservation = sub_mind.observations[0] if sub_mind.observations else None
+        logger.debug(f"observation: {observation}")
+        logger.debug(f"observation.chat_target_info: {observation.chat_target_info}")
+        logger.debug(f"observation.is_group_chat: {observation.is_group_chat}")
+        logger.debug(f"observation.person_list: {observation.person_list}")
 
-        # 获取观察内容
+        is_group_chat = observation.is_group_chat
+        if not is_group_chat:
+            chat_target_name = (
+                observation.chat_target_info.get("person_name")
+                or observation.chat_target_info.get("user_nickname")
+                or "对方"
+            )
+        else:
+            chat_target_name = "群聊"
+
         chat_observe_info = observation.get_observe_info()
         person_list = observation.person_list
-
-        # extra structured info
-        extra_structured_info = sub_mind.structured_info_str
 
         # 构建关系信息
         relation_prompt = "【关系信息】\n"
@@ -107,9 +148,9 @@ class ToolExecutor:
         # 构建专用于工具调用的提示词
         prompt = await global_prompt_manager.format_prompt(
             "tool_executor_prompt",
-            extra_info=extra_structured_info,
+            extra_info="extra_structured_info",
             chat_observe_info=chat_observe_info,
-            chat_target_name=chat_target_name,
+            # chat_target_name=chat_target_name,
             is_group_chat=is_group_chat,
             relation_prompt=relation_prompt,
             prompt_personality=prompt_personality,
@@ -117,10 +158,6 @@ class ToolExecutor:
             bot_name=individuality.name,
             time_now=time_now,
         )
-
-        # 如果指定了cycle_info，记录工具执行的prompt
-        if cycle_info:
-            cycle_info.set_tooluse_info(prompt=prompt)
 
         # 调用LLM，专注于工具使用
         logger.info(f"开始执行工具调用{prompt}")
@@ -157,15 +194,7 @@ class ToolExecutor:
                     except Exception as e:
                         logger.error(f"{self.log_prefix}工具执行失败: {e}")
 
-        # 如果指定了cycle_info，记录工具执行结果
-        if cycle_info:
-            cycle_info.set_tooluse_info(tools_used=used_tools, tool_results=new_structured_items)
-
-        # 根据return_details决定返回值
-        if return_details:
-            return new_structured_items, used_tools, prompt
-        else:
-            return new_structured_items
+        return new_structured_items, used_tools, prompt
 
 
 init_prompt()

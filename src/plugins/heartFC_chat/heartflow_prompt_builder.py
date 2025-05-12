@@ -15,29 +15,51 @@ from ..memory_system.Hippocampus import HippocampusManager
 from ..schedule.schedule_generator import bot_schedule
 from ..knowledge.knowledge_lib import qa_manager
 import traceback
-from .heartFC_Cycleinfo import CycleInfo
+from .heartFC_Cycleinfo import CycleDetail
 
 
 logger = get_logger("prompt")
 
 
 def init_prompt():
+    #     Prompt(
+    #         """
+    # {info_from_tools}
+    # {chat_target}
+    # {chat_talking_prompt}
+    # 现在你想要在群里发言或者回复。\n
+    # 你需要扮演一位网名叫{bot_name}的人进行回复，这个人的特点是："{prompt_personality}"。
+    # 你正在{chat_target_2},现在请你读读之前的聊天记录，然后给出日常且口语化的回复，平淡一些，你可以参考贴吧，知乎或者微博的回复风格。
+    # 看到以上聊天记录，你刚刚在想：
+
+    # {current_mind_info}
+    # 因为上述想法，你决定发言，原因是：{reason}
+    # 依照这些内容组织回复：{in_mind_reply}，不要原句回复，根据下面的要求，对其进行修改
+    # 要求：是尽量简短一些。把握聊天内容，{reply_style2}。不要复读自己说的话。{prompt_ger}
+    # {reply_style1}，说中文，不要刻意突出自身学科背景。
+    # {moderation_prompt}。不要浮夸，平淡一些。
+    # 注意：回复不要输出多余内容(包括前后缀，冒号和引号，括号，表情包，at或 @等 )。""",
+    #         "heart_flow_prompt",
+    #     )
     Prompt(
         """
-{info_from_tools}
+        你可以参考以下的语言习惯：
+        当表示惊叹时，使用 我嘞个xxxx
+        当表示惊讶无语是，使用 不是？
+        当表示无语时，使用 阿这
+        当表示震惊时，使用 卧槽
+        
 {chat_target}
-{chat_talking_prompt}
 现在你想要在群里发言或者回复。\n
 你需要扮演一位网名叫{bot_name}的人进行回复，这个人的特点是："{prompt_personality}"。
 你正在{chat_target_2},现在请你读读之前的聊天记录，然后给出日常且口语化的回复，平淡一些，你可以参考贴吧，知乎或者微博的回复风格。
-看到以上聊天记录，你刚刚在想：
 
-{current_mind_info}
-因为上述想法，你决定发言，原因是：{reason}
-依照这些内容组织回复：{in_mind_reply}，不要原句回复，根据下面的要求，对其进行修改
-要求：是尽量简短一些。把握聊天内容，{reply_style2}。不要复读自己说的话。{prompt_ger}
-{reply_style1}，说中文，不要刻意突出自身学科背景。
-{moderation_prompt}。不要浮夸，平淡一些。
+你想表达：{in_mind_reply}
+原因是：{reason}
+请根据你想表达的内容，参考上述语言习惯，和下面的要求，给出回复
+回复要求：
+尽量简短一些。{reply_style2}。{prompt_ger}
+{reply_style1}，说中文，不要刻意突出自身学科背景。不要浮夸，平淡一些。
 注意：回复不要输出多余内容(包括前后缀，冒号和引号，括号，表情包，at或 @等 )。""",
         "heart_flow_prompt",
     )
@@ -71,14 +93,19 @@ def init_prompt():
 2. 回复(reply)适用：
    - 有实质性内容需要表达
    - 有人提到你，但你还没有回应他
-   - 可以追加emoji_query表达情绪(emoji_query填写表情包的适用场合，也就是当前场合)
-   - 不要追加太多表情
+   - 在合适的时候添加表情（不要总是添加）
+   - 如果你要回复特定某人的某句话，或者你想回复较早的消息，请在target中指定那句话的原始文本
    
-3. 回复要求：
+3. 回复target选择：
+    -如果选择了target，不用特别提到某个人的人名
+    - 除非有明确的回复目标，否则不要添加target
+
+4. 回复要求：
     -不要太浮夸
     -一次只回复一个人
+    -一次只回复一个话题
 
-4. 自我对话处理：
+5. 自我对话处理：
    - 如果是自己发的消息想继续，需自然衔接
    - 避免重复或评价自己的发言
    - 不要和自己聊天
@@ -95,8 +122,9 @@ def init_prompt():
 如果选择reply，请按以下JSON格式返回:
 {{
   "action": "reply",
-  "text": ["第一段文本", "第二段文本"],  // 可选，如果想发送文本
-  "emojis": ["表情关键词1", "表情关键词2"]  // 可选，如果想发送表情
+  "text": "你想表达的内容",
+  "emojis": "表情关键词",
+  "target": "你想要回复的原始文本内容（非必须，仅文本，不包含发送者)",
   "reasoning": "你的决策理由",
 }}
 
@@ -196,7 +224,9 @@ def init_prompt():
     )
 
 
-async def _build_prompt_focus(reason, current_mind_info, structured_info, chat_stream, sender_name, in_mind_reply) -> str:
+async def _build_prompt_focus(
+    reason, current_mind_info, structured_info, chat_stream, sender_name, in_mind_reply
+) -> str:
     individuality = Individuality.get_instance()
     prompt_personality = individuality.get_prompt(x_person=0, level=2)
 
@@ -265,19 +295,20 @@ async def _build_prompt_focus(reason, current_mind_info, structured_info, chat_s
 
         prompt = await global_prompt_manager.format_prompt(
             template_name,
-            info_from_tools=structured_info_prompt,
+            # info_from_tools=structured_info_prompt,
             chat_target=chat_target_1,  # Used in group template
-            chat_talking_prompt=chat_talking_prompt,
+            # chat_talking_prompt=chat_talking_prompt,
             bot_name=global_config.BOT_NICKNAME,
-            prompt_personality=prompt_personality,
+            # prompt_personality=prompt_personality,
+            prompt_personality="",
             chat_target_2=chat_target_2,  # Used in group template
-            current_mind_info=current_mind_info,
+            # current_mind_info=current_mind_info,
             reply_style2=reply_style2_chosen,
             reply_style1=reply_style1_chosen,
             reason=reason,
             in_mind_reply=in_mind_reply,
             prompt_ger=prompt_ger,
-            moderation_prompt=await global_prompt_manager.get_prompt_async("moderation_prompt"),
+            # moderation_prompt=await global_prompt_manager.get_prompt_async("moderation_prompt"),
             # sender_name is not used in the group template
         )
     else:  # Private chat
@@ -766,11 +797,11 @@ class PromptBuilder:
         self,
         is_group_chat: bool,  # Now passed as argument
         chat_target_info: Optional[dict],  # Now passed as argument
-        cycle_history: Deque["CycleInfo"],  # Now passed as argument (Type hint needs import or string)
         observed_messages_str: str,
         current_mind: Optional[str],
         structured_info: Dict[str, Any],
         current_available_actions: Dict[str, str],
+        cycle_info: Optional[str],
         # replan_prompt: str, # Replan logic still simplified
     ) -> str:
         """构建 Planner LLM 的提示词 (获取模板并填充数据)"""
@@ -809,35 +840,6 @@ class PromptBuilder:
             else:
                 current_mind_block = "你的内心想法：\n[没有特别的想法]"
 
-            # Cycle info block (using passed cycle_history)
-            cycle_info_block = ""
-            recent_active_cycles = []
-            for cycle in reversed(cycle_history):
-                if cycle.action_taken:
-                    recent_active_cycles.append(cycle)
-                    if len(recent_active_cycles) == 3:
-                        break
-            consecutive_text_replies = 0
-            responses_for_prompt = []
-            for cycle in recent_active_cycles:
-                if cycle.action_type == "text_reply":
-                    consecutive_text_replies += 1
-                    response_text = cycle.response_info.get("response_text", [])
-                    formatted_response = "[空回复]" if not response_text else " ".join(response_text)
-                    responses_for_prompt.append(formatted_response)
-                else:
-                    break
-            if consecutive_text_replies >= 3:
-                cycle_info_block = f'你已经连续回复了三条消息（最近: "{responses_for_prompt[0]}"，第二近: "{responses_for_prompt[1]}"，第三近: "{responses_for_prompt[2]}"）。你回复的有点多了，请注意'
-            elif consecutive_text_replies == 2:
-                cycle_info_block = f'你已经连续回复了两条消息（最近: "{responses_for_prompt[0]}"，第二近: "{responses_for_prompt[1]}"），请注意'
-            elif consecutive_text_replies == 1:
-                cycle_info_block = f'你刚刚已经回复一条消息（内容: "{responses_for_prompt[0]}"）'
-            if cycle_info_block:
-                cycle_info_block = f"\n【近期回复历史】\n{cycle_info_block}\n"
-            else:
-                cycle_info_block = "\n【近期回复历史】\n(最近没有连续文本回复)\n"
-
             individuality = Individuality.get_instance()
             prompt_personality = individuality.get_prompt(x_person=2, level=2)
 
@@ -857,7 +859,7 @@ class PromptBuilder:
                 structured_info_block=structured_info_block,
                 chat_content_block=chat_content_block,
                 current_mind_block=current_mind_block,
-                cycle_info_block=cycle_info_block,
+                cycle_info_block=cycle_info,
                 action_options_text=action_options_text,
                 # example_action=example_action_key,
             )
@@ -870,9 +872,9 @@ class PromptBuilder:
 
     async def build_planner_prompt_parallel(
         self,
-        is_group_chat: bool,  
+        is_group_chat: bool,
         chat_target_info: Optional[dict],
-        cycle_history: Deque["CycleInfo"],
+        cycle_history: Deque["CycleDetail"],
         observed_messages_str: str,
         structured_info: str,
         current_available_actions: Dict[str, str],
@@ -931,10 +933,10 @@ class PromptBuilder:
                     recent_active_cycles.append(cycle)
                     if len(recent_active_cycles) == 3:
                         break
-            
+
             consecutive_text_replies = 0
             responses_for_prompt = []
-            
+
             for cycle in recent_active_cycles:
                 if cycle.action_type == "text_reply":
                     consecutive_text_replies += 1
@@ -943,14 +945,14 @@ class PromptBuilder:
                     responses_for_prompt.append(formatted_response)
                 else:
                     break
-                    
+
             if consecutive_text_replies >= 3:
                 cycle_info_block = f'你已经连续回复了三条消息（最近: "{responses_for_prompt[0]}"，第二近: "{responses_for_prompt[1]}"，第三近: "{responses_for_prompt[2]}"）。你回复的有点多了，请注意'
             elif consecutive_text_replies == 2:
                 cycle_info_block = f'你已经连续回复了两条消息（最近: "{responses_for_prompt[0]}"，第二近: "{responses_for_prompt[1]}"），请注意'
             elif consecutive_text_replies == 1:
                 cycle_info_block = f'你刚刚已经回复一条消息（内容: "{responses_for_prompt[0]}"）'
-                
+
             if cycle_info_block:
                 cycle_info_block = f"\n【近期回复历史】\n{cycle_info_block}\n"
             else:

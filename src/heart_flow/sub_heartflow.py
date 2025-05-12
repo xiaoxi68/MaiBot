@@ -1,4 +1,5 @@
-from .observation import Observation, ChattingObservation
+from .observation import Observation
+from .chatting_observation import ChattingObservation
 import asyncio
 import time
 from typing import Optional, List, Dict, Tuple, Callable, Coroutine
@@ -10,7 +11,6 @@ from src.plugins.heartFC_chat.heartFC_chat import HeartFChatting
 from src.plugins.heartFC_chat.normal_chat import NormalChat
 from src.heart_flow.mai_state_manager import MaiStateInfo
 from src.heart_flow.chat_state_info import ChatState, ChatStateInfo
-from src.heart_flow.sub_mind import SubMind
 from .utils_chat import get_chat_type_and_target_info
 from .interest_chatting import InterestChatting
 
@@ -67,11 +67,6 @@ class SubHeartflow:
         # 负责对处理过的消息进行观察
         self.observations: List[ChattingObservation] = []  # 观察列表
         # self.running_knowledges = []  # 运行中的知识，待完善
-
-        # LLM模型配置，负责进行思考
-        self.sub_mind = SubMind(
-            subheartflow_id=self.subheartflow_id, chat_state=self.chat_state, observations=self.observations
-        )
 
         # 日志前缀 - Moved determination to initialize
         self.log_prefix = str(subheartflow_id)  # Initial default prefix
@@ -186,7 +181,6 @@ class SubHeartflow:
             # 创建 HeartFChatting 实例，并传递 从构造函数传入的 回调函数
             self.heart_fc_instance = HeartFChatting(
                 chat_id=self.subheartflow_id,
-                sub_mind=self.sub_mind,
                 observations=self.observations,  # 传递所有观察者
                 on_consecutive_no_reply_callback=self.hfc_no_reply_callback,  # <-- Use stored callback
             )
@@ -288,9 +282,6 @@ class SubHeartflow:
 
         logger.info(f"{self.log_prefix} 子心流后台任务已停止。")
 
-    def update_current_mind(self, response):
-        self.sub_mind.update_current_mind(response)
-
     def add_observation(self, observation: Observation):
         for existing_obs in self.observations:
             if existing_obs.observe_id == observation.observe_id:
@@ -332,7 +323,6 @@ class SubHeartflow:
         interest_state = await self.get_interest_state()
         return {
             "interest_state": interest_state,
-            "current_mind": self.sub_mind.current_mind,
             "chat_state": self.chat_state.chat_status.value,
             "chat_state_changed_time": self.chat_state_changed_time,
         }

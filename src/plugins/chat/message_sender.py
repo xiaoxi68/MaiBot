@@ -212,7 +212,7 @@ class MessageManager:
             _ = message.update_thinking_time()  # 更新思考时间
             thinking_start_time = message.thinking_start_time
             now_time = time.time()
-            logger.debug(f"thinking_start_time:{thinking_start_time},now_time:{now_time}")
+            # logger.debug(f"thinking_start_time:{thinking_start_time},now_time:{now_time}")
             thinking_messages_count, thinking_messages_length = count_messages_between(
                 start_time=thinking_start_time, end_time=now_time, stream_id=message.chat_stream.stream_id
             )
@@ -236,7 +236,7 @@ class MessageManager:
 
             await message.process()  # 预处理消息内容
 
-            logger.debug(f"{message}")
+            # logger.debug(f"{message}")
 
             # 使用全局 message_sender 实例
             await send_message(message)

@@ -7,7 +7,7 @@ import traceback
 from src.plugins.person_info.relationship_manager import relationship_manager
 from src.plugins.chat.utils import parse_text_timestamps
 from src.plugins.chat.chat_stream import ChatStream
-from src.heart_flow.observation import ChattingObservation
+from src.heart_flow.chatting_observation import ChattingObservation
 
 logger = get_logger("tool_use")
 

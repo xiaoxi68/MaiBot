@@ -100,6 +100,7 @@ class MessageRecv(Message):
         Args:
             message_dict: MessageCQ序列化后的字典
         """
+        # print(f"message_dict: {message_dict}")
         self.message_info = BaseMessageInfo.from_dict(message_dict.get("message_info", {}))
 
         self.message_segment = Seg.from_dict(message_dict.get("message_segment", {}))

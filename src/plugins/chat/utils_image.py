@@ -117,7 +117,7 @@ class ImageManager:
             cached_description = self._get_description_from_db(image_hash, "emoji")
             if cached_description:
                 # logger.debug(f"缓存表情包描述: {cached_description}")
-                return f"[表达了：{cached_description}]"
+                return f"[表情包，含义看起来是：{cached_description}]"
 
             # 调用AI获取描述
             if image_format == "gif" or image_format == "GIF":
@@ -131,7 +131,7 @@ class ImageManager:
             cached_description = self._get_description_from_db(image_hash, "emoji")
             if cached_description:
                 logger.warning(f"虽然生成了描述，但是找到缓存表情包描述: {cached_description}")
-                return f"[表达了：{cached_description}]"
+                return f"[表情包，含义看起来是：{cached_description}]"
 
             # 根据配置决定是否保存图片
             if global_config.save_emoji:

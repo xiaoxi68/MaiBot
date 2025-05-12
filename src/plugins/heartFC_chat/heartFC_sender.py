@@ -99,9 +99,13 @@ class HeartFCSender:
             _ = message.update_thinking_time()
 
             # --- 条件应用 set_reply 逻辑 ---
-            if message.apply_set_reply_logic and message.is_head and not message.is_private_message():
+            if (
+                message.is_head
+                and not message.is_private_message()
+                and message.reply.processed_plain_text != "[System Trigger Context]"
+            ):
                 logger.debug(f"[{chat_id}] 应用 set_reply 逻辑: {message.processed_plain_text[:20]}...")
-                message.set_reply()
+                message.set_reply(message.reply)
             # --- 结束条件 set_reply ---
 
             await message.process()
