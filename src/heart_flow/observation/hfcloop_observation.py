@@ -73,8 +73,10 @@ class HFCloopObservation:
             last_loop = self.history_loop[-1]
             start_time = last_loop.start_time
             end_time = last_loop.end_time
-            time_diff = int(end_time - start_time)
-
-            cycle_info_block += f"\n距离你上一次阅读消息已经过去了{time_diff}分钟\n"
+            if start_time is not None and end_time is not None:
+                time_diff = int(end_time - start_time)
+                cycle_info_block += f"\n距离你上一次阅读消息已经过去了{time_diff}分钟\n"
+            else:
+                cycle_info_block += "\n无法获取上一次阅读消息的时间\n"
 
         self.observe_info = cycle_info_block

@@ -44,8 +44,6 @@ class MemoryObservation(Observation):
 
             if related_memory:
                 for topic, memory in related_memory:
-                    new_item = {"type": "memory", "id": topic, "content": memory, "ttl": 3}
-                    self.structured_info.append(new_item)
                     # 将记忆添加到 running_memory
                     self.running_memory.append(
                         {"topic": topic, "content": memory, "timestamp": datetime.now().isoformat()}

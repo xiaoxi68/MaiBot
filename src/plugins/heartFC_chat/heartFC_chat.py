@@ -46,7 +46,9 @@ logger = get_logger("hfc")  # Logger Name Changed
 
 
 # 默认动作定义
-DEFAULT_ACTIONS = {"no_reply": "不回复", "reply": "回复：可以包含文本、表情或两者结合，顺序任意"}
+DEFAULT_ACTIONS = {
+    "no_reply": "不操作，继续浏览",
+    "reply": "表达想法，可以只包含文本、表情或两者都有"}
 
 
 class ActionManager:
