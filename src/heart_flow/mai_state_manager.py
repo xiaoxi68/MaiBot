@@ -82,7 +82,7 @@ class MaiState(enum.Enum):
 
 class MaiStateInfo:
     def __init__(self):
-        self.mai_status: MaiState = MaiState.OFFLINE
+        self.mai_status: MaiState = MaiState.NORMAL_CHAT  # 初始状态改为 NORMAL_CHAT
         self.mai_status_history: List[Tuple[MaiState, float]] = []  # 历史状态，包含 状态，时间戳
         self.last_status_change_time: float = time.time()  # 状态最后改变时间
         self.last_min_check_time: float = time.time()  # 上次1分钟规则检查时间
@@ -141,12 +141,6 @@ class MaiStateManager:
     def check_and_decide_next_state(current_state_info: MaiStateInfo) -> Optional[MaiState]:
         """
         根据当前状态和规则检查是否需要转换状态，并决定下一个状态。
-
-        Args:
-            current_state_info: 当前的 MaiStateInfo 实例。
-
-        Returns:
-            Optional[MaiState]: 如果需要转换，返回目标 MaiState；否则返回 None。
         """
         current_time = time.time()
         current_status = current_state_info.mai_status
@@ -156,9 +150,9 @@ class MaiStateManager:
 
         # 辅助函数：根据 prevent_offline_state 标志调整目标状态
         def _resolve_offline(candidate_state: MaiState) -> MaiState:
-            if prevent_offline_state and candidate_state == MaiState.OFFLINE:
-                logger.debug("阻止进入 OFFLINE，改为 PEEKING")
-                return MaiState.PEEKING
+            # 现在不再切换到OFFLINE，直接返回当前状态
+            if candidate_state == MaiState.OFFLINE:
+                return current_status
             return candidate_state
 
         if current_status == MaiState.OFFLINE:
@@ -170,16 +164,16 @@ class MaiStateManager:
         elif current_status == MaiState.FOCUSED_CHAT:
             logger.info("当前在[专心看手机]思考要不要继续聊下去......")
 
-        # 1. 麦麦每分钟都有概率离线
-        if time_since_last_min_check >= 60:
-            if current_status != MaiState.OFFLINE:
-                if random.random() < 0.03:  # 3% 概率切换到 OFFLINE
-                    potential_next = MaiState.OFFLINE
-                    resolved_next = _resolve_offline(potential_next)
-                    logger.debug(f"概率触发下线，resolve 为 {resolved_next.value}")
-                    # 只有当解析后的状态与当前状态不同时才设置 next_state
-                    if resolved_next != current_status:
-                        next_state = resolved_next
+        # 1. 移除每分钟概率切换到OFFLINE的逻辑
+        # if time_since_last_min_check >= 60:
+        #     if current_status != MaiState.OFFLINE:
+        #         if random.random() < 0.03:  # 3% 概率切换到 OFFLINE
+        #             potential_next = MaiState.OFFLINE
+        #             resolved_next = _resolve_offline(potential_next)
+        #             logger.debug(f"概率触发下线，resolve 为 {resolved_next.value}")
+        #             # 只有当解析后的状态与当前状态不同时才设置 next_state
+        #             if resolved_next != current_status:
+        #                 next_state = resolved_next
 
         # 2. 状态持续时间规则 (只有在规则1没有触发状态改变时才检查)
         if next_state is None:
@@ -189,30 +183,26 @@ class MaiStateManager:
             rule_id = ""
 
             if current_status == MaiState.OFFLINE:
-                # 注意：即使 prevent_offline_state=True，也可能从初始的 OFFLINE 状态启动
-                if time_in_current_status >= 60:
-                    time_limit_exceeded = True
-                    rule_id = "2.1 (From OFFLINE)"
-                    weights = [30, 30, 20, 20]
-                    choices_list = [MaiState.PEEKING, MaiState.NORMAL_CHAT, MaiState.FOCUSED_CHAT, MaiState.OFFLINE]
+                # OFFLINE 状态不再自动切换，直接返回 None
+                return None
             elif current_status == MaiState.PEEKING:
                 if time_in_current_status >= 600:  # PEEKING 最多持续 600 秒
                     time_limit_exceeded = True
                     rule_id = "2.2 (From PEEKING)"
-                    weights = [70, 20, 10]
-                    choices_list = [MaiState.OFFLINE, MaiState.NORMAL_CHAT, MaiState.FOCUSED_CHAT]
+                    weights = [50, 50]
+                    choices_list = [MaiState.NORMAL_CHAT, MaiState.FOCUSED_CHAT]
             elif current_status == MaiState.NORMAL_CHAT:
                 if time_in_current_status >= 300:  # NORMAL_CHAT 最多持续 300 秒
                     time_limit_exceeded = True
                     rule_id = "2.3 (From NORMAL_CHAT)"
                     weights = [50, 50]
-                    choices_list = [MaiState.OFFLINE, MaiState.FOCUSED_CHAT]
+                    choices_list = [MaiState.PEEKING, MaiState.FOCUSED_CHAT]
             elif current_status == MaiState.FOCUSED_CHAT:
                 if time_in_current_status >= 600:  # FOCUSED_CHAT 最多持续 600 秒
                     time_limit_exceeded = True
                     rule_id = "2.4 (From FOCUSED_CHAT)"
-                    weights = [80, 20]
-                    choices_list = [MaiState.OFFLINE, MaiState.NORMAL_CHAT]
+                    weights = [50, 50]
+                    choices_list = [MaiState.NORMAL_CHAT, MaiState.PEEKING]
 
             if time_limit_exceeded:
                 next_state_candidate = random.choices(choices_list, weights=weights, k=1)[0]
@@ -232,14 +222,5 @@ class MaiStateManager:
         # 如果决定了下一个状态，且这个状态与当前状态不同，则返回下一个状态
         if next_state is not None and next_state != current_status:
             return next_state
-        # 如果决定保持 OFFLINE (next_state == MaiState.OFFLINE) 且当前也是 OFFLINE，
-        # 并且是由于持续时间规则触发的，返回 OFFLINE 以便调用者可以重置计时器。
-        # 注意：这个分支只有在 prevent_offline_state = False 时才可能被触发。
-        elif next_state == MaiState.OFFLINE and current_status == MaiState.OFFLINE and time_in_current_status >= 60:
-            logger.debug("决定保持 OFFLINE (持续时间规则)，返回 OFFLINE 以提示重置计时器。")
-            return MaiState.OFFLINE  # Return OFFLINE to signal caller that timer reset might be needed
         else:
-            # 1. next_state is None (没有触发任何转换规则)
-            # 2. next_state is not None 但等于 current_status (例如规则1想切OFFLINE但被resolve成PEEKING，而当前已经是PEEKING)
-            # 3. next_state is OFFLINE, current is OFFLINE, 但不是因为时间规则触发 (例如初始状态还没到60秒)
             return None  # 没有状态转换发生或无需重置计时器
