@@ -577,7 +577,7 @@ class LLMRequest:
                 )
                 # 安全地检查和记录请求详情
                 handled_payload = await _safely_record(request_content, payload)
-                logger.critical(f"请求头: {await self._build_headers(no_key=True)} 请求体: {handled_payload}")
+                logger.critical(f"请求头: {await self._build_headers(no_key=True)} 请求体: {handled_payload[:100]}")
                 raise RuntimeError(
                     f"模型 {self.model_name} API请求失败: 状态码 {exception.status}, {exception.message}"
                 )
@@ -591,7 +591,7 @@ class LLMRequest:
                 logger.critical(f"模型 {self.model_name} 请求失败: {str(exception)}")
                 # 安全地检查和记录请求详情
                 handled_payload = await _safely_record(request_content, payload)
-                logger.critical(f"请求头: {await self._build_headers(no_key=True)} 请求体: {handled_payload}")
+                logger.critical(f"请求头: {await self._build_headers(no_key=True)} 请求体: {handled_payload[:100]}")
                 raise RuntimeError(f"模型 {self.model_name} API请求失败: {str(exception)}")
 
     async def _transform_parameters(self, params: dict) -> dict:

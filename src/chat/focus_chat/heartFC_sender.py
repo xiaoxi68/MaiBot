@@ -15,7 +15,7 @@ install(extra_lines=3)
 logger = get_logger("sender")
 
 
-async def send_message(message: MessageSending) -> None:
+async def send_message(message: MessageSending) -> str:
     """合并后的消息发送函数，包含WS发送和日志记录"""
     message_preview = truncate_message(message.processed_plain_text, max_length=40)
 
@@ -23,6 +23,7 @@ async def send_message(message: MessageSending) -> None:
         # 直接调用API发送消息
         await global_api.send_message(message)
         logger.success(f"已将消息  '{message_preview}'  发往平台'{message.message_info.platform}'")
+        return message.processed_plain_text
 
     except Exception as e:
         logger.error(f"发送消息   '{message_preview}'   发往平台'{message.message_info.platform}' 失败: {str(e)}")
@@ -120,8 +121,13 @@ class HeartFCSender:
                 else:
                     await asyncio.sleep(0.5)
 
-            await send_message(message)
+            sent_msg = await send_message(message)
             await self.storage.store_message(message, message.chat_stream)
+            
+            if sent_msg:
+                return sent_msg
+            else:
+                return "发送失败"
 
         except Exception as e:
             logger.error(f"[{chat_id}] 处理或存储消息 {message_id} 时出错: {e}")

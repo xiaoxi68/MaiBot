@@ -106,7 +106,7 @@ class DefaultExpressor:
 
                 if reply:
                     with Timer("发送消息", cycle_timers):
-                        await self._send_response_messages(
+                        sent_msg_list = await self._send_response_messages(
                             anchor_message=anchor_message,
                             thinking_id=thinking_id,
                             response_set=reply,
@@ -118,7 +118,7 @@ class DefaultExpressor:
             if not has_sent_something:
                 logger.warning(f"{self.log_prefix} 回复动作未包含任何有效内容")
 
-            return has_sent_something, reply
+            return has_sent_something, sent_msg_list
 
         except Exception as e:
             logger.error(f"回复失败: {e}")
@@ -250,6 +250,8 @@ class DefaultExpressor:
         mark_head = False
         first_bot_msg: Optional[MessageSending] = None
         reply_message_ids = []  # 记录实际发送的消息ID
+        
+        sent_msg_list = []
 
         for i, msg_text in enumerate(response_set):
             # 为每个消息片段生成唯一ID
@@ -285,9 +287,11 @@ class DefaultExpressor:
                 if type == "emoji":
                     typing = False
 
-                await self.heart_fc_sender.send_message(bot_message, has_thinking=True, typing=typing)
+                sent_msg = await self.heart_fc_sender.send_message(bot_message, has_thinking=True, typing=typing)
 
                 reply_message_ids.append(part_message_id)  # 记录我们生成的ID
+                
+                sent_msg_list.append((type, sent_msg))
 
             except Exception as e:
                 logger.error(f"{self.log_prefix}发送回复片段 {i} ({part_message_id}) 时失败: {e}")
@@ -296,10 +300,11 @@ class DefaultExpressor:
         # 在尝试发送完所有片段后，完成原始的 thinking_id 状态
         try:
             await self.heart_fc_sender.complete_thinking(chat_id, thinking_id)
+        
         except Exception as e:
             logger.error(f"{self.log_prefix}完成思考状态 {thinking_id} 时出错: {e}")
 
-        return first_bot_msg  # 返回第一个成功发送的消息对象
+        return sent_msg_list
 
     async def _choose_emoji(self, send_emoji: str):
         """
