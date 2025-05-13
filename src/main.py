@@ -1,7 +1,12 @@
 import asyncio
 import time
-from .plugins.utils.statistic import LLMStatistics
-from .plugins.moods.moods import MoodManager
+
+from maim_message import MessageServer
+
+from .plugins.remote.remote import TelemetryHeartBeatTask
+from .manager.async_task_manager import async_task_manager
+from .plugins.utils.statistic import OnlineTimeRecordTask, StatisticOutputTask
+from .manager.mood_manager import MoodPrintTask, MoodUpdateTask
 from .plugins.schedule.schedule_generator import bot_schedule
 from .plugins.emoji_system.emoji_manager import emoji_manager
 from .plugins.person_info.person_info import person_info_manager
@@ -14,9 +19,8 @@ from .plugins.storage.storage import MessageStorage
 from .config.config import global_config
 from .plugins.chat.bot import chat_bot
 from .common.logger_manager import get_logger
-from .plugins.remote import heartbeat_thread  # noqa: F401
 from .individuality.individuality import Individuality
-from .common.server import global_server
+from .common.server import global_server, Server
 from rich.traceback import install
 from .plugins.heartFC_chat.expressors.exprssion_learner import expression_learner
 from .api.main import start_api_server
@@ -28,17 +32,14 @@ logger = get_logger("main")
 
 class MainSystem:
     def __init__(self):
-        self.llm_stats = LLMStatistics("llm_statistics.txt")
-        self.mood_manager = MoodManager.get_instance()
-        self.hippocampus_manager = HippocampusManager.get_instance()
-        self._message_manager_started = False
-        self.individuality = Individuality.get_instance()
+        self.hippocampus_manager: HippocampusManager = HippocampusManager.get_instance()
+        self.individuality: Individuality = Individuality.get_instance()
 
         # 使用消息API替代直接的FastAPI实例
         from .plugins.message import global_api
 
-        self.app = global_api
-        self.server = global_server
+        self.app: MessageServer = global_api
+        self.server: Server = global_server
 
     async def initialize(self):
         """初始化系统组件"""
@@ -52,9 +53,15 @@ class MainSystem:
     async def _init_components(self):
         """初始化其他组件"""
         init_start_time = time.time()
-        # 启动LLM统计
-        self.llm_stats.start()
-        logger.success("LLM统计功能启动成功")
+
+        # 添加在线时间统计任务
+        await async_task_manager.add_task(OnlineTimeRecordTask())
+
+        # 添加统计信息输出任务
+        await async_task_manager.add_task(StatisticOutputTask())
+
+        # 添加遥测心跳任务
+        await async_task_manager.add_task(TelemetryHeartBeatTask())
 
         # 启动API服务器
         start_api_server()
@@ -63,9 +70,10 @@ class MainSystem:
         emoji_manager.initialize()
         logger.success("表情包管理器初始化成功")
 
-        # 启动情绪管理器
-        self.mood_manager.start_mood_update(update_interval=global_config.mood_update_interval)
-        logger.success("情绪管理器启动成功")
+        # 添加情绪衰减任务
+        await async_task_manager.add_task(MoodUpdateTask())
+        # 添加情绪打印任务
+        await async_task_manager.add_task(MoodPrintTask())
 
         # 检查并清除person_info冗余字段，启动个人习惯推断
         await person_info_manager.del_all_undefined_field()
