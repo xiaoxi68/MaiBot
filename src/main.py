@@ -9,7 +9,7 @@ from .chat.emoji_system.emoji_manager import emoji_manager
 from .chat.person_info.person_info import person_info_manager
 from .chat.normal_chat.willing.willing_manager import willing_manager
 from .chat.message_receive.chat_stream import chat_manager
-from .heart_flow.heartflow import heartflow
+from src.chat.heart_flow.heartflow import heartflow
 from .chat.memory_system.Hippocampus import HippocampusManager
 from .chat.message_receive.message_sender import message_manager
 from .chat.message_receive.storage import MessageStorage
