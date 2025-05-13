@@ -560,9 +560,7 @@ class HeartFChatting:
                 return await handler(reasoning, cycle_timers, thinking_id)
         except Exception as e:
             logger.error(f"{self.log_prefix} 处理{action}时出错: {e}")
-            # 出错时也重置计数器
-            self.total_no_reply_count = 0
-            self.total_waiting_time = 0.0
+            traceback.print_exc()
             return False, ""
 
     async def _handle_no_reply(self, reasoning: str, cycle_timers: dict, thinking_id: str) -> bool:
@@ -969,7 +967,12 @@ class HeartFChatting:
 
         reply_text = ""
         for reply in reply_set:
-            reply_text += reply
+            type = reply[0]
+            data = reply[1]
+            if type == "text":
+                reply_text += data
+            elif type == "emoji":
+                reply_text += data
 
         self._current_cycle.set_response_info(
             response_text=reply_text,

@@ -77,7 +77,7 @@ class DefaultExpressor:
         reasoning: str,
         anchor_message: MessageRecv,
         thinking_id: str,
-    ) -> tuple[bool, Optional[List[str]]]:
+    ) -> tuple[bool, Optional[List[Tuple[str, str]]]]:
         # 创建思考消息
         await self._create_thinking_message(anchor_message, thinking_id)
 
@@ -265,7 +265,7 @@ class DefaultExpressor:
                 is_emoji = False
             reply_to = not mark_head
 
-            bot_message = self._build_single_sending_message(
+            bot_message = await self._build_single_sending_message(
                 anchor_message=anchor_message,
                 message_id=part_message_id,
                 message_segment=message_segment,
@@ -281,6 +281,9 @@ class DefaultExpressor:
                     typing = False
                 else:
                     typing = True
+                    
+                if type == "emoji":
+                    typing = False
 
                 await self.heart_fc_sender.send_message(bot_message, has_thinking=True, typing=typing)
 
@@ -302,6 +305,7 @@ class DefaultExpressor:
         """
         选择表情，根据send_emoji文本选择表情，返回表情base64
         """
+        emoji_base64 = ""
         emoji_raw = await emoji_manager.get_emoji_for_text(send_emoji)
         if emoji_raw:
             emoji_path, _description = emoji_raw
