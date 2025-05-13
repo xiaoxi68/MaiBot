@@ -69,19 +69,9 @@ class OnlineTimeRecordTask(AsyncTask):
             else:
                 # 如果没有记录，检查一分钟以内是否已有记录
                 current_time = datetime.now()
-                recent_record = db.online_time.find_one(
+                if recent_record := db.online_time.find_one(
                     {"end_timestamp": {"$gte": current_time - timedelta(minutes=1)}}
-                )
-
-                if not recent_record:
-                    # 若没有记录，则插入新的在线时间记录
-                    self.record_id = db.online_time.insert_one(
-                        {
-                            "start_timestamp": current_time,
-                            "end_timestamp": current_time + timedelta(minutes=1),
-                        }
-                    ).inserted_id
-                else:
+                ):
                     # 如果有记录，则更新结束时间
                     self.record_id = recent_record["_id"]
                     db.online_time.update_one(
@@ -92,8 +82,16 @@ class OnlineTimeRecordTask(AsyncTask):
                             }
                         },
                     )
-        except Exception:
-            logger.exception("在线时间记录失败")
+                else:
+                    # 若没有记录，则插入新的在线时间记录
+                    self.record_id = db.online_time.insert_one(
+                        {
+                            "start_timestamp": current_time,
+                            "end_timestamp": current_time + timedelta(minutes=1),
+                        }
+                    ).inserted_id
+        except Exception as e:
+            logger.error(f"在线时间记录失败，错误信息：{e}")
 
 
 def _format_online_time(online_seconds: int) -> str:
@@ -110,15 +108,13 @@ def _format_online_time(online_seconds: int) -> str:
     seconds = total_oneline_time.seconds % 60
     if days > 0:
         # 如果在线时间超过1天，则格式化为"X天X小时X分钟"
-        total_oneline_time_str = f"{total_oneline_time.days}天{hours}小时{minutes}分钟{seconds}秒"
+        return f"{total_oneline_time.days}天{hours}小时{minutes}分钟{seconds}秒"
     elif hours > 0:
         # 如果在线时间超过1小时，则格式化为"X小时X分钟X秒"
-        total_oneline_time_str = f"{hours}小时{minutes}分钟{seconds}秒"
+        return f"{hours}小时{minutes}分钟{seconds}秒"
     else:
         # 其他情况格式化为"X分钟X秒"
-        total_oneline_time_str = f"{minutes}分钟{seconds}秒"
-
-    return total_oneline_time_str
+        return f"{minutes}分钟{seconds}秒"
 
 
 class StatisticOutputTask(AsyncTask):
@@ -311,8 +307,7 @@ class StatisticOutputTask(AsyncTask):
             for idx, (_, period_start) in enumerate(collect_period):
                 if end_timestamp >= period_start:
                     # 由于end_timestamp会超前标记时间，所以我们需要判断是否晚于当前时间，如果是，则使用当前时间作为结束时间
-                    if end_timestamp > now:
-                        end_timestamp = now
+                    end_timestamp = min(end_timestamp, now)
                     # 如果记录时间在当前时间段内，则它一定在更早的时间段内
                     # 因此，我们可以直接跳过更早的时间段的判断，直接更新当前以及更早时间段的统计数据
                     for period_key, _period_start in collect_period[idx:]:
@@ -392,12 +387,15 @@ class StatisticOutputTask(AsyncTask):
 
         last_all_time_stat = None
 
-        if "last_full_statistics_timestamp" in local_storage and "last_full_statistics" in local_storage:
-            # 若存有上次完整统计的时间戳，则使用该时间戳作为"所有时间"的起始时间，进行增量统计
-            last_full_stat_ts: float = local_storage["last_full_statistics_timestamp"]
-            last_all_time_stat = local_storage["last_full_statistics"]
+        if "last_full_statistics" in local_storage:
+            # 如果存在上次完整统计数据，则使用该数据进行增量统计
+            last_stat = local_storage["last_full_statistics"]  # 上次完整统计数据
+
+            self.name_mapping = last_stat["name_mapping"]  # 上次完整统计数据的名称映射
+            last_all_time_stat = last_stat["stat_data"]  # 上次完整统计的统计数据
+            last_stat_timestamp = datetime.fromtimestamp(last_stat["timestamp"])  # 上次完整统计数据的时间戳
             self.stat_period = [item for item in self.stat_period if item[0] != "all_time"]  # 删除"所有时间"的统计时段
-            self.stat_period.append(("all_time", now - datetime.fromtimestamp(last_full_stat_ts), "自部署以来的"))
+            self.stat_period.append(("all_time", now - last_stat_timestamp, "自部署以来的"))
 
         stat_start_timestamp = [(period[0], now - period[1]) for period in self.stat_period]
 
@@ -426,9 +424,11 @@ class StatisticOutputTask(AsyncTask):
                     stat["all_time"][key] += val
 
         # 更新上次完整统计数据的时间戳
-        local_storage["last_full_statistics_timestamp"] = now.timestamp()
-        # 更新上次完整统计数据
-        local_storage["last_full_statistics"] = stat["all_time"]
+        local_storage["last_full_statistics"] = {
+            "name_mapping": self.name_mapping,
+            "stat_data": stat["all_time"],
+            "timestamp": now.timestamp(),
+        }
 
         return stat
 
@@ -455,39 +455,38 @@ class StatisticOutputTask(AsyncTask):
         """
         格式化按模型分类的统计数据
         """
-        if stats[TOTAL_REQ_CNT] > 0:
-            data_fmt = "{:<32}  {:>10}  {:>12}  {:>12}  {:>12}  {:>9.4f}¥"
-
-            output = [
-                "按模型分类统计:",
-                " 模型名称                          调用次数    输入Token     输出Token     Token总量     累计花费",
-            ]
-            for model_name, count in sorted(stats[REQ_CNT_BY_MODEL].items()):
-                name = model_name[:29] + "..." if len(model_name) > 32 else model_name
-                in_tokens = stats[IN_TOK_BY_MODEL][model_name]
-                out_tokens = stats[OUT_TOK_BY_MODEL][model_name]
-                tokens = stats[TOTAL_TOK_BY_MODEL][model_name]
-                cost = stats[COST_BY_MODEL][model_name]
-                output.append(data_fmt.format(name, count, in_tokens, out_tokens, tokens, cost))
-
-            output.append("")
-            return "\n".join(output)
-        else:
+        if stats[TOTAL_REQ_CNT] <= 0:
             return ""
+        data_fmt = "{:<32}  {:>10}  {:>12}  {:>12}  {:>12}  {:>9.4f}¥"
+
+        output = [
+            "按模型分类统计:",
+            " 模型名称                          调用次数    输入Token     输出Token     Token总量     累计花费",
+        ]
+        for model_name, count in sorted(stats[REQ_CNT_BY_MODEL].items()):
+            name = f"{model_name[:29]}..." if len(model_name) > 32 else model_name
+            in_tokens = stats[IN_TOK_BY_MODEL][model_name]
+            out_tokens = stats[OUT_TOK_BY_MODEL][model_name]
+            tokens = stats[TOTAL_TOK_BY_MODEL][model_name]
+            cost = stats[COST_BY_MODEL][model_name]
+            output.append(data_fmt.format(name, count, in_tokens, out_tokens, tokens, cost))
+
+        output.append("")
+        return "\n".join(output)
 
     def _format_chat_stat(self, stats: Dict[str, Any]) -> str:
         """
         格式化聊天统计数据
         """
-        if stats[TOTAL_MSG_CNT] > 0:
-            output = ["聊天消息统计:", " 联系人/群组名称                  消息数量"]
-            for chat_id, count in sorted(stats[MSG_CNT_BY_CHAT].items()):
-                output.append(f"{self.name_mapping[chat_id][0][:32]:<32}  {count:>10}")
-
-            output.append("")
-            return "\n".join(output)
-        else:
+        if stats[TOTAL_MSG_CNT] <= 0:
             return ""
+        output = ["聊天消息统计:", " 联系人/群组名称                  消息数量"]
+        output.extend(
+            f"{self.name_mapping[chat_id][0][:32]:<32}  {count:>10}"
+            for chat_id, count in sorted(stats[MSG_CNT_BY_CHAT].items())
+        )
+        output.append("")
+        return "\n".join(output)
 
     def _generate_html_report(self, stat: dict[str, Any], now: datetime):
         """
