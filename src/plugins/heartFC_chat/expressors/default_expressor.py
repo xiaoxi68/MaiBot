@@ -15,7 +15,7 @@ from src.plugins.heartFC_chat.heartflow_prompt_builder import prompt_builder
 from src.plugins.heartFC_chat.heartFC_sender import HeartFCSender
 from src.plugins.chat.utils import process_llm_response
 from src.plugins.respon_info_catcher.info_catcher import info_catcher_manager
-from src.plugins.moods.moods import MoodManager
+from src.manager.mood_manager import mood_manager
 from src.heart_flow.utils_chat import get_chat_type_and_target_info
 from src.plugins.chat.chat_stream import ChatStream
 
@@ -142,7 +142,7 @@ class DefaultExpressor:
         """
         try:
             # 1. 获取情绪影响因子并调整模型温度
-            arousal_multiplier = MoodManager.get_instance().get_arousal_multiplier()
+            arousal_multiplier = mood_manager.get_arousal_multiplier()
             current_temp = float(global_config.llm_normal["temp"]) * arousal_multiplier
             self.express_model.params["temperature"] = current_temp  # 动态调整温度
 
