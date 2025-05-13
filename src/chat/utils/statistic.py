@@ -512,46 +512,54 @@ class StatisticOutputTask(AsyncTask):
             # format总在线时间
 
             # 按模型分类统计
-            model_rows = "\n".join([
-                f"<tr>"
-                f"<td>{model_name}</td>"
-                f"<td>{count}</td>"
-                f"<td>{stat_data[IN_TOK_BY_MODEL][model_name]}</td>"
-                f"<td>{stat_data[OUT_TOK_BY_MODEL][model_name]}</td>"
-                f"<td>{stat_data[TOTAL_TOK_BY_MODEL][model_name]}</td>"
-                f"<td>{stat_data[COST_BY_MODEL][model_name]:.4f} ¥</td>"
-                f"</tr>"
-                for model_name, count in sorted(stat_data[REQ_CNT_BY_MODEL].items())
-            ])
+            model_rows = "\n".join(
+                [
+                    f"<tr>"
+                    f"<td>{model_name}</td>"
+                    f"<td>{count}</td>"
+                    f"<td>{stat_data[IN_TOK_BY_MODEL][model_name]}</td>"
+                    f"<td>{stat_data[OUT_TOK_BY_MODEL][model_name]}</td>"
+                    f"<td>{stat_data[TOTAL_TOK_BY_MODEL][model_name]}</td>"
+                    f"<td>{stat_data[COST_BY_MODEL][model_name]:.4f} ¥</td>"
+                    f"</tr>"
+                    for model_name, count in sorted(stat_data[REQ_CNT_BY_MODEL].items())
+                ]
+            )
             # 按请求类型分类统计
-            type_rows = "\n".join([
-                f"<tr>"
-                f"<td>{req_type}</td>"
-                f"<td>{count}</td>"
-                f"<td>{stat_data[IN_TOK_BY_TYPE][req_type]}</td>"
-                f"<td>{stat_data[OUT_TOK_BY_TYPE][req_type]}</td>"
-                f"<td>{stat_data[TOTAL_TOK_BY_TYPE][req_type]}</td>"
-                f"<td>{stat_data[COST_BY_TYPE][req_type]:.4f} ¥</td>"
-                f"</tr>"
-                for req_type, count in sorted(stat_data[REQ_CNT_BY_TYPE].items())
-            ])
+            type_rows = "\n".join(
+                [
+                    f"<tr>"
+                    f"<td>{req_type}</td>"
+                    f"<td>{count}</td>"
+                    f"<td>{stat_data[IN_TOK_BY_TYPE][req_type]}</td>"
+                    f"<td>{stat_data[OUT_TOK_BY_TYPE][req_type]}</td>"
+                    f"<td>{stat_data[TOTAL_TOK_BY_TYPE][req_type]}</td>"
+                    f"<td>{stat_data[COST_BY_TYPE][req_type]:.4f} ¥</td>"
+                    f"</tr>"
+                    for req_type, count in sorted(stat_data[REQ_CNT_BY_TYPE].items())
+                ]
+            )
             # 按用户分类统计
-            user_rows = "\n".join([
-                f"<tr>"
-                f"<td>{user_id}</td>"
-                f"<td>{count}</td>"
-                f"<td>{stat_data[IN_TOK_BY_USER][user_id]}</td>"
-                f"<td>{stat_data[OUT_TOK_BY_USER][user_id]}</td>"
-                f"<td>{stat_data[TOTAL_TOK_BY_USER][user_id]}</td>"
-                f"<td>{stat_data[COST_BY_USER][user_id]:.4f} ¥</td>"
-                f"</tr>"
-                for user_id, count in sorted(stat_data[REQ_CNT_BY_USER].items())
-            ])
+            user_rows = "\n".join(
+                [
+                    f"<tr>"
+                    f"<td>{user_id}</td>"
+                    f"<td>{count}</td>"
+                    f"<td>{stat_data[IN_TOK_BY_USER][user_id]}</td>"
+                    f"<td>{stat_data[OUT_TOK_BY_USER][user_id]}</td>"
+                    f"<td>{stat_data[TOTAL_TOK_BY_USER][user_id]}</td>"
+                    f"<td>{stat_data[COST_BY_USER][user_id]:.4f} ¥</td>"
+                    f"</tr>"
+                    for user_id, count in sorted(stat_data[REQ_CNT_BY_USER].items())
+                ]
+            )
             # 聊天消息统计
-            chat_rows = "\n".join([
-                f"<tr><td>{self.name_mapping[chat_id][0]}</td><td>{count}</td></tr>"
-                for chat_id, count in sorted(stat_data[MSG_CNT_BY_CHAT].items())
-            ])
+            chat_rows = "\n".join(
+                [
+                    f"<tr><td>{self.name_mapping[chat_id][0]}</td><td>{count}</td></tr>"
+                    for chat_id, count in sorted(stat_data[MSG_CNT_BY_CHAT].items())
+                ]
+            )
             # 生成HTML
             return f"""
             <div id=\"{div_id}\" class=\"tab-content\">
