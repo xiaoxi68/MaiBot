@@ -4,7 +4,7 @@ from typing import List, Dict, Optional, Any, Tuple
 from src.common.logger_manager import get_logger
 from src.chat.models.utils_model import LLMRequest
 from src.config.config import global_config
-from src.chat.utils.chat_message_builder import get_raw_msg_by_timestamp_random, build_readable_messages
+from src.chat.utils.chat_message_builder import get_raw_msg_by_timestamp_random, build_readable_messages, build_anonymous_messages
 from src.chat.focus_chat.heartflow_prompt_builder import Prompt, global_prompt_manager
 import os
 import json
@@ -225,14 +225,15 @@ class ExpressionLearner:
             return None
         # 转化成str
         chat_id: str = random_msg[0]["chat_id"]
-        random_msg_str: str = await build_readable_messages(random_msg, timestamp_mode="normal")
+        # random_msg_str: str = await build_readable_messages(random_msg, timestamp_mode="normal")
+        random_msg_str: str = await build_anonymous_messages(random_msg)
 
         prompt: str = await global_prompt_manager.format_prompt(
             prompt,
             chat_str=random_msg_str,
         )
 
-        logger.debug(f"学习{type_str}的prompt: {prompt}")
+        logger.info(f"学习{type_str}的prompt: {prompt}")
 
         try:
             response, _ = await self.express_learn_model.generate_response_async(prompt)
@@ -240,7 +241,7 @@ class ExpressionLearner:
             logger.error(f"学习{type_str}失败: {e}")
             return None
 
-        logger.debug(f"学习{type_str}的response: {response}")
+        logger.info(f"学习{type_str}的response: {response}")
 
         expressions: List[Tuple[str, str, str]] = self.parse_expression_response(response, chat_id)
 

@@ -907,15 +907,19 @@ class HeartFChatting:
                 )
 
         # --- 概率性忽略文本回复附带的表情 (逻辑保持不变) ---
-        emoji = action_data.get("emojis")
-        if action == "reply" and emoji:
-            logger.debug(f"{self.log_prefix}[Planner] 大模型建议文字回复带表情: '{emoji}'")
-            if random.random() > EMOJI_SEND_PRO:
-                logger.info(f"{self.log_prefix}但是麦麦这次不想加表情 ({1 - EMOJI_SEND_PRO:.0%})，忽略表情 '{emoji}'")
-                action_data["emojis"] = ""  # 清空表情请求
-            else:
-                logger.info(f"{self.log_prefix}好吧，加上表情 '{emoji}'")
-        # --- 结束概率性忽略 ---
+        try:
+            emoji = action_data.get("emojis")
+            if action == "reply" and emoji:
+                logger.debug(f"{self.log_prefix}[Planner] 大模型建议文字回复带表情: '{emoji}'")
+                if random.random() > EMOJI_SEND_PRO:
+                    logger.info(f"{self.log_prefix}但是麦麦这次不想加表情 ({1 - EMOJI_SEND_PRO:.0%})，忽略表情 '{emoji}'")
+                    action_data["emojis"] = ""  # 清空表情请求
+                else:
+                    logger.info(f"{self.log_prefix}好吧，加上表情 '{emoji}'")
+        except Exception as e:
+            logger.error(f"{self.log_prefix}[Planner] 概率性忽略表情时发生错误: {e}")
+            traceback.print_exc()
+            # --- 结束概率性忽略 ---
 
         # 返回结果字典
         return {

@@ -413,6 +413,53 @@ async def build_readable_messages(
             return read_mark_line.strip()  # 如果前后都无消息，只返回标记行
 
 
+async def build_anonymous_messages(messages: List[Dict[str, Any]]) -> str:
+    """
+    构建匿名可读消息，将不同人的名称转为唯一占位符（A、B、C...），bot自己用SELF。
+    """
+    if not messages:
+        return ""
+
+    # 分配占位符
+    person_map = {}
+    current_char = ord('A')
+    output_lines = []
+
+    for msg in messages:
+        user_info = msg.get("user_info", {})
+        platform = user_info.get("platform")
+        user_id = user_info.get("user_id")
+        timestamp = msg.get("time")
+        content = msg.get("processed_plain_text", "")
+
+        if not all([platform, user_id, timestamp is not None]):
+            continue
+
+        # 判断是否为bot
+        if user_id == global_config.BOT_QQ:
+            anon_name = "SELF"
+        else:
+            person_id = person_info_manager.get_person_id(platform, user_id)
+            if person_id not in person_map:
+                person_map[person_id] = chr(current_char)
+                current_char += 1
+            anon_name = person_map[person_id]
+
+        # 格式化时间
+        readable_time = translate_timestamp_to_human_readable(timestamp, mode="relative")
+        header = f"{readable_time}{anon_name}说:"
+        output_lines.append(header)
+        stripped_line = content.strip()
+        if stripped_line:
+            if stripped_line.endswith("。"):
+                stripped_line = stripped_line[:-1]
+            output_lines.append(f"{stripped_line};")
+        output_lines.append("\n")
+
+    formatted_string = "".join(output_lines).strip()
+    return formatted_string
+
+
 async def get_person_id_list(messages: List[Dict[str, Any]]) -> List[str]:
     """
     从消息列表中提取不重复的 person_id 列表 (忽略机器人自身)。
