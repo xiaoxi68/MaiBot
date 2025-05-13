@@ -109,13 +109,13 @@ def _format_online_time(online_seconds: int) -> str:
     minutes = (total_oneline_time.seconds // 60) % 60
     seconds = total_oneline_time.seconds % 60
     if days > 0:
-        # 如果在线时间超过1天，则格式化为“X天X小时X分钟”
+        # 如果在线时间超过1天，则格式化为"X天X小时X分钟"
         total_oneline_time_str = f"{total_oneline_time.days}天{hours}小时{minutes}分钟{seconds}秒"
     elif hours > 0:
-        # 如果在线时间超过1小时，则格式化为“X小时X分钟X秒”
+        # 如果在线时间超过1小时，则格式化为"X小时X分钟X秒"
         total_oneline_time_str = f"{hours}小时{minutes}分钟{seconds}秒"
     else:
-        # 其他情况格式化为“X分钟X秒”
+        # 其他情况格式化为"X分钟X秒"
         total_oneline_time_str = f"{minutes}分钟{seconds}秒"
 
     return total_oneline_time_str
@@ -151,7 +151,7 @@ class StatisticOutputTask(AsyncTask):
             local_storage["deploy_time"] = now.timestamp()
 
         self.stat_period: List[Tuple[str, timedelta, str]] = [
-            ("all_time", now - deploy_time, "自部署以来"),  # 必须保留“all_time”
+            ("all_time", now - deploy_time, "自部署以来"),  # 必须保留"all_time"
             ("last_7_days", timedelta(days=7), "最近7天"),
             ("last_24_hours", timedelta(days=1), "最近24小时"),
             ("last_hour", timedelta(hours=1), "最近1小时"),
@@ -511,37 +511,64 @@ class StatisticOutputTask(AsyncTask):
             """
             # format总在线时间
 
+            # 按模型分类统计
+            model_rows = "\n".join([
+                f"<tr>"
+                f"<td>{model_name}</td>"
+                f"<td>{count}</td>"
+                f"<td>{stat_data[IN_TOK_BY_MODEL][model_name]}</td>"
+                f"<td>{stat_data[OUT_TOK_BY_MODEL][model_name]}</td>"
+                f"<td>{stat_data[TOTAL_TOK_BY_MODEL][model_name]}</td>"
+                f"<td>{stat_data[COST_BY_MODEL][model_name]:.4f} ¥</td>"
+                f"</tr>"
+                for model_name, count in sorted(stat_data[REQ_CNT_BY_MODEL].items())
+            ])
+            # 按请求类型分类统计
+            type_rows = "\n".join([
+                f"<tr>"
+                f"<td>{req_type}</td>"
+                f"<td>{count}</td>"
+                f"<td>{stat_data[IN_TOK_BY_TYPE][req_type]}</td>"
+                f"<td>{stat_data[OUT_TOK_BY_TYPE][req_type]}</td>"
+                f"<td>{stat_data[TOTAL_TOK_BY_TYPE][req_type]}</td>"
+                f"<td>{stat_data[COST_BY_TYPE][req_type]:.4f} ¥</td>"
+                f"</tr>"
+                for req_type, count in sorted(stat_data[REQ_CNT_BY_TYPE].items())
+            ])
+            # 按用户分类统计
+            user_rows = "\n".join([
+                f"<tr>"
+                f"<td>{user_id}</td>"
+                f"<td>{count}</td>"
+                f"<td>{stat_data[IN_TOK_BY_USER][user_id]}</td>"
+                f"<td>{stat_data[OUT_TOK_BY_USER][user_id]}</td>"
+                f"<td>{stat_data[TOTAL_TOK_BY_USER][user_id]}</td>"
+                f"<td>{stat_data[COST_BY_USER][user_id]:.4f} ¥</td>"
+                f"</tr>"
+                for user_id, count in sorted(stat_data[REQ_CNT_BY_USER].items())
+            ])
+            # 聊天消息统计
+            chat_rows = "\n".join([
+                f"<tr><td>{self.name_mapping[chat_id][0]}</td><td>{count}</td></tr>"
+                for chat_id, count in sorted(stat_data[MSG_CNT_BY_CHAT].items())
+            ])
             # 生成HTML
             return f"""
-            <div id="{div_id}" class="tab-content">
-                <p class="info-item">
+            <div id=\"{div_id}\" class=\"tab-content\">
+                <p class=\"info-item\">
                     <strong>统计时段: </strong>
                     {start_time.strftime("%Y-%m-%d %H:%M:%S")} ~ {now.strftime("%Y-%m-%d %H:%M:%S")}
                 </p>
-                <p class="info-item"><strong>总在线时间: </strong>{_format_online_time(stat_data[ONLINE_TIME])}</p>
-                <p class="info-item"><strong>总消息数: </strong>{stat_data[TOTAL_MSG_CNT]}</p>
-                <p class="info-item"><strong>总请求数: </strong>{stat_data[TOTAL_REQ_CNT]}</p>
-                <p class="info-item"><strong>总花费: </strong>{stat_data[TOTAL_COST]:.4f} ¥</p>
+                <p class=\"info-item\"><strong>总在线时间: </strong>{_format_online_time(stat_data[ONLINE_TIME])}</p>
+                <p class=\"info-item\"><strong>总消息数: </strong>{stat_data[TOTAL_MSG_CNT]}</p>
+                <p class=\"info-item\"><strong>总请求数: </strong>{stat_data[TOTAL_REQ_CNT]}</p>
+                <p class=\"info-item\"><strong>总花费: </strong>{stat_data[TOTAL_COST]:.4f} ¥</p>
                 
                 <h2>按模型分类统计</h2>
                 <table>
                     <thead><tr><th>模型名称</th><th>调用次数</th><th>输入Token</th><th>输出Token</th><th>Token总量</th><th>累计花费</th></tr></thead>
                     <tbody>
-                        {
-                "\n".join(
-                    [
-                        f"<tr>"
-                        f"<td>{model_name}</td>"
-                        f"<td>{count}</td>"
-                        f"<td>{stat_data[IN_TOK_BY_MODEL][model_name]}</td>"
-                        f"<td>{stat_data[OUT_TOK_BY_MODEL][model_name]}</td>"
-                        f"<td>{stat_data[TOTAL_TOK_BY_MODEL][model_name]}</td>"
-                        f"<td>{stat_data[COST_BY_MODEL][model_name]:.4f} ¥</td>"
-                        f"</tr>"
-                        for model_name, count in sorted(stat_data[REQ_CNT_BY_MODEL].items())
-                    ]
-                )
-            }
+                        {model_rows}
                     </tbody>
                 </table>
                 
@@ -551,21 +578,7 @@ class StatisticOutputTask(AsyncTask):
                         <tr><th>请求类型</th><th>调用次数</th><th>输入Token</th><th>输出Token</th><th>Token总量</th><th>累计花费</th></tr>
                     </thead>
                     <tbody>
-                    {
-                "\n".join(
-                    [
-                        f"<tr>"
-                        f"<td>{req_type}</td>"
-                        f"<td>{count}</td>"
-                        f"<td>{stat_data[IN_TOK_BY_TYPE][req_type]}</td>"
-                        f"<td>{stat_data[OUT_TOK_BY_TYPE][req_type]}</td>"
-                        f"<td>{stat_data[TOTAL_TOK_BY_TYPE][req_type]}</td>"
-                        f"<td>{stat_data[COST_BY_TYPE][req_type]:.4f} ¥</td>"
-                        f"</tr>"
-                        for req_type, count in sorted(stat_data[REQ_CNT_BY_TYPE].items())
-                    ]
-                )
-            }
+                    {type_rows}
                     </tbody>
                 </table>
     
@@ -575,21 +588,7 @@ class StatisticOutputTask(AsyncTask):
                         <tr><th>用户名称</th><th>调用次数</th><th>输入Token</th><th>输出Token</th><th>Token总量</th><th>累计花费</th></tr>
                     </thead>
                     <tbody>
-                    {
-                "\n".join(
-                    [
-                        f"<tr>"
-                        f"<td>{user_id}</td>"
-                        f"<td>{count}</td>"
-                        f"<td>{stat_data[IN_TOK_BY_USER][user_id]}</td>"
-                        f"<td>{stat_data[OUT_TOK_BY_USER][user_id]}</td>"
-                        f"<td>{stat_data[TOTAL_TOK_BY_USER][user_id]}</td>"
-                        f"<td>{stat_data[COST_BY_USER][user_id]:.4f} ¥</td>"
-                        f"</tr>"
-                        for user_id, count in sorted(stat_data[REQ_CNT_BY_USER].items())
-                    ]
-                )
-            }
+                    {user_rows}
                     </tbody>
                 </table>
     
@@ -599,14 +598,7 @@ class StatisticOutputTask(AsyncTask):
                         <tr><th>联系人/群组名称</th><th>消息数量</th></tr>
                     </thead>
                     <tbody>
-                    {
-                "\n".join(
-                    [
-                        f"<tr><td>{self.name_mapping[chat_id][0]}</td><td>{count}</td></tr>"
-                        for chat_id, count in sorted(stat_data[MSG_CNT_BY_CHAT].items())
-                    ]
-                )
-            }
+                    {chat_rows}
                     </tbody>
                 </table>
             </div>
@@ -621,6 +613,9 @@ class StatisticOutputTask(AsyncTask):
         tab_content_list.append(
             _format_stat_data(stat["all_time"], "all_time", datetime.fromtimestamp(local_storage["deploy_time"]))
         )
+
+        joined_tab_list = "\n".join(tab_list)
+        joined_tab_content = "\n".join(tab_content_list)
 
         html_template = (
             """
@@ -734,10 +729,10 @@ class StatisticOutputTask(AsyncTask):
         <p class="info-item"><strong>统计截止时间:</strong> {now.strftime("%Y-%m-%d %H:%M:%S")}</p>
 
         <div class="tabs">
-            {"\n".join(tab_list)}
+            {joined_tab_list}
         </div>
 
-        {"\n".join(tab_content_list)}
+        {joined_tab_content}
     </div>
 """
             + """
