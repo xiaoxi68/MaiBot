@@ -281,7 +281,7 @@ class DefaultExpressor:
                     typing = False
                 else:
                     typing = True
-                    
+
                 if type == "emoji":
                     typing = False
 
