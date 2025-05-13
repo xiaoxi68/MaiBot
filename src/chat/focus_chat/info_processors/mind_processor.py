@@ -1,5 +1,5 @@
-from src.heart_flow.observation.chatting_observation import ChattingObservation
-from src.heart_flow.observation.observation import Observation
+from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
+from src.chat.heart_flow.observation.observation import Observation
 from src.chat.models.utils_model import LLMRequest
 from src.config.config import global_config
 import time
@@ -15,7 +15,7 @@ from src.chat.person_info.relationship_manager import relationship_manager
 from .base_processor import BaseProcessor
 from src.chat.focus_chat.info.mind_info import MindInfo
 from typing import List, Optional
-from src.heart_flow.observation.hfcloop_observation import HFCloopObservation
+from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
 from src.chat.focus_chat.info_processors.processor_utils import (
     calculate_similarity,
     calculate_replacement_probability,

@@ -11,9 +11,9 @@ from src.common.logger_manager import get_logger
 from src.chat.message_receive.chat_stream import chat_manager
 
 if TYPE_CHECKING:
-    from src.heart_flow.subheartflow_manager import SubHeartflowManager
-    from src.heart_flow.sub_heartflow import SubHeartflow
-    from src.heart_flow.heartflow import Heartflow  # 导入 Heartflow 类型
+    from src.chat.heart_flow.subheartflow_manager import SubHeartflowManager
+    from src.chat.heart_flow.sub_heartflow import SubHeartflow
+    from src.chat.heart_flow.heartflow import Heartflow  # 导入 Heartflow 类型
 
 
 logger = get_logger("interest")

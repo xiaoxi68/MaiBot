@@ -5,9 +5,9 @@ from typing import Optional, Coroutine, Callable, Any, List
 from src.common.logger_manager import get_logger
 
 # Need manager types for dependency injection
-from src.heart_flow.mai_state_manager import MaiStateManager, MaiStateInfo
-from src.heart_flow.subheartflow_manager import SubHeartflowManager
-from src.heart_flow.interest_logger import InterestLogger
+from src.chat.heart_flow.mai_state_manager import MaiStateManager, MaiStateInfo
+from src.chat.heart_flow.subheartflow_manager import SubHeartflowManager
+from src.chat.heart_flow.interest_logger import InterestLogger
 
 
 logger = get_logger("background_tasks")

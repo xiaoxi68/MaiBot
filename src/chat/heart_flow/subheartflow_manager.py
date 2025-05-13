@@ -12,9 +12,9 @@ from src.common.logger_manager import get_logger
 from src.chat.message_receive.chat_stream import chat_manager
 
 # 导入心流相关类
-from src.heart_flow.sub_heartflow import SubHeartflow, ChatState
-from src.heart_flow.mai_state_manager import MaiStateInfo
-from src.heart_flow.observation.chatting_observation import ChattingObservation
+from src.chat.heart_flow.sub_heartflow import SubHeartflow, ChatState
+from src.chat.heart_flow.mai_state_manager import MaiStateInfo
+from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 
 # 导入LLM请求工具
 from src.chat.models.utils_model import LLMRequest

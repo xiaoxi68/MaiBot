@@ -1,5 +1,5 @@
 from .observation.observation import Observation
-from src.heart_flow.observation.chatting_observation import ChattingObservation
+from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 import asyncio
 import time
 from typing import Optional, List, Dict, Tuple, Callable, Coroutine
@@ -9,8 +9,8 @@ from src.chat.message_receive.message import MessageRecv
 from src.chat.message_receive.chat_stream import chat_manager
 from src.chat.focus_chat.heartFC_chat import HeartFChatting
 from src.chat.normal_chat.normal_chat import NormalChat
-from src.heart_flow.mai_state_manager import MaiStateInfo
-from src.heart_flow.chat_state_info import ChatState, ChatStateInfo
+from src.chat.heart_flow.mai_state_manager import MaiStateInfo
+from src.chat.heart_flow.chat_state_info import ChatState, ChatStateInfo
 from .utils_chat import get_chat_type_and_target_info
 from .interest_chatting import InterestChatting
 

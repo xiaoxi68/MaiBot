@@ -13,11 +13,11 @@ from src.common.logger_manager import get_logger
 from src.chat.models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.chat.utils.timer_calculator import Timer
-from src.heart_flow.observation.observation import Observation
+from src.chat.heart_flow.observation.observation import Observation
 from src.chat.focus_chat.heartflow_prompt_builder import prompt_builder
 from src.chat.focus_chat.heartFC_Cycleinfo import CycleDetail
-from src.heart_flow.observation.chatting_observation import ChattingObservation
-from src.heart_flow.utils_chat import get_chat_type_and_target_info
+from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
+from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
 from src.chat.focus_chat.info.info_base import InfoBase
 from src.chat.focus_chat.info.obs_info import ObsInfo
 from src.chat.focus_chat.info.cycle_info import CycleInfo
@@ -25,9 +25,9 @@ from src.chat.focus_chat.info.mind_info import MindInfo
 from src.chat.focus_chat.info.structured_info import StructuredInfo
 from src.chat.focus_chat.info_processors.chattinginfo_processor import ChattingInfoProcessor
 from src.chat.focus_chat.info_processors.mind_processor import MindProcessor
-from src.heart_flow.observation.memory_observation import MemoryObservation
-from src.heart_flow.observation.hfcloop_observation import HFCloopObservation
-from src.heart_flow.observation.working_observation import WorkingObservation
+from src.chat.heart_flow.observation.memory_observation import MemoryObservation
+from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
+from src.chat.heart_flow.observation.working_observation import WorkingObservation
 from src.chat.focus_chat.info_processors.tool_processor import ToolProcessor
 from src.chat.focus_chat.expressors.default_expressor import DefaultExpressor
 from src.chat.focus_chat.hfc_utils import _create_empty_anchor_message

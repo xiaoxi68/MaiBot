@@ -1,4 +1,4 @@
-from src.heart_flow.observation.observation import Observation
+from src.chat.heart_flow.observation.observation import Observation
 from datetime import datetime
 from src.common.logger_manager import get_logger
 import traceback

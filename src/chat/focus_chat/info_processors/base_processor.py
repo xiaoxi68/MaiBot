@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Any, Optional, Dict
 from src.chat.focus_chat.info.info_base import InfoBase
-from src.heart_flow.observation.observation import Observation
+from src.chat.heart_flow.observation.observation import Observation
 from src.common.logger_manager import get_logger
 
 logger = get_logger("base_processor")

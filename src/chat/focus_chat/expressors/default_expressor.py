@@ -16,7 +16,7 @@ from src.chat.focus_chat.heartFC_sender import HeartFCSender
 from src.chat.utils.utils import process_llm_response
 from src.chat.utils.info_catcher import info_catcher_manager
 from src.manager.mood_manager import mood_manager
-from src.heart_flow.utils_chat import get_chat_type_and_target_info
+from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
 from src.chat.message_receive.chat_stream import ChatStream
 
 logger = get_logger("expressor")

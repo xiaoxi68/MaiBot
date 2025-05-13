@@ -8,7 +8,7 @@ from typing import List, Optional  # 导入 Optional
 from maim_message import UserInfo, Seg
 
 from src.common.logger_manager import get_logger
-from src.heart_flow.utils_chat import get_chat_type_and_target_info
+from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
 from src.manager.mood_manager import mood_manager
 from src.chat.message_receive.chat_stream import ChatStream, chat_manager
 from src.chat.person_info.relationship_manager import relationship_manager
