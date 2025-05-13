@@ -59,7 +59,7 @@ gender = "男" # 性别
 appearance = "用几句话描述外貌特征" # 外貌特征 该选项还在调试中，暂时未生效
 
 [platforms] # 必填项目，填写每个平台适配器提供的链接
-nonebot-qq="http://127.0.0.1:18002/api/message"
+qq="http://127.0.0.1:18002/api/message"
 
 [chat] #麦麦的聊天通用设置
 allow_focus_mode = false # 是否允许专注聊天状态

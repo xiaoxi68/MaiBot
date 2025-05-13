@@ -7,6 +7,7 @@ from src.chat.utils.utils import truncate_message
 from src.common.logger_manager import get_logger
 from src.chat.utils.utils import calculate_typing_time
 from rich.traceback import install
+import traceback
 
 install(extra_lines=3)
 
@@ -16,17 +17,16 @@ logger = get_logger("sender")
 
 async def send_message(message: MessageSending) -> None:
     """合并后的消息发送函数，包含WS发送和日志记录"""
-    message_preview = truncate_message(message.processed_plain_text)
+    message_preview = truncate_message(message.processed_plain_text, max_length=40)
 
     try:
         # 直接调用API发送消息
         await global_api.send_message(message)
-        logger.success(f"发送消息   '{message_preview}'   成功")
+        logger.success(f"已将消息  '{message_preview}'  发往平台'{message.message_info.platform}'")
 
     except Exception as e:
-        logger.error(f"发送消息   '{message_preview}'   失败: {str(e)}")
-        if not message.message_info.platform:
-            raise ValueError(f"未找到平台：{message.message_info.platform} 的url配置，请检查配置文件") from e
+        logger.error(f"发送消息   '{message_preview}'   发往平台'{message.message_info.platform}' 失败: {str(e)}")
+        traceback.print_exc()
         raise e  # 重新抛出其他异常
 
 
@@ -66,21 +66,24 @@ class HeartFCSender:
                     del self.thinking_messages[chat_id]
                     logger.debug(f"[{chat_id}] Removed empty thinking message container.")
 
-    def is_thinking(self, chat_id: str, message_id: str) -> bool:
-        """检查指定的消息 ID 是否当前正处于思考状态。"""
-        return chat_id in self.thinking_messages and message_id in self.thinking_messages[chat_id]
-
     async def get_thinking_start_time(self, chat_id: str, message_id: str) -> Optional[float]:
         """获取已注册思考消息的开始时间。"""
         async with self._thinking_lock:
             thinking_message = self.thinking_messages.get(chat_id, {}).get(message_id)
             return thinking_message.thinking_start_time if thinking_message else None
 
-    async def type_and_send_message(self, message: MessageSending, typing=False):
+    async def send_message(self, message: MessageSending, has_thinking=False, typing=False):
         """
-        立即处理、发送并存储单个 MessageSending 消息。
-        调用此方法前，应先调用 register_thinking 注册对应的思考消息。
-        此方法执行后会调用 complete_thinking 清理思考状态。
+        处理、发送并存储一条消息。
+
+        参数：
+            message: MessageSending 对象，待发送的消息。
+            has_thinking: 是否管理思考状态，表情包无思考状态（如需调用 register_thinking/complete_thinking）。
+            typing: 是否模拟打字等待（根据 has_thinking 控制等待时长）。
+
+        用法：
+            - has_thinking=True 时，自动处理思考消息的时间和清理。
+            - typing=True 时，发送前会有打字等待。
         """
         if not message.chat_stream:
             logger.error("消息缺少 chat_stream，无法发送")
@@ -93,27 +96,29 @@ class HeartFCSender:
         message_id = message.message_info.message_id
 
         try:
-            _ = message.update_thinking_time()
+            if has_thinking:
+                _ = message.update_thinking_time()
 
-            # --- 条件应用 set_reply 逻辑 ---
-            if (
-                message.is_head
-                and not message.is_private_message()
-                and message.reply.processed_plain_text != "[System Trigger Context]"
-            ):
-                logger.debug(f"[{chat_id}] 应用 set_reply 逻辑: {message.processed_plain_text[:20]}...")
-                message.set_reply(message.reply)
-            # --- 结束条件 set_reply ---
+                # --- 条件应用 set_reply 逻辑 ---
+                if (
+                    message.is_head
+                    and not message.is_private_message()
+                    and message.reply.processed_plain_text != "[System Trigger Context]"
+                ):
+                    logger.debug(f"[{chat_id}] 应用 set_reply 逻辑: {message.processed_plain_text[:20]}...")
 
             await message.process()
 
             if typing:
-                typing_time = calculate_typing_time(
-                    input_string=message.processed_plain_text,
-                    thinking_start_time=message.thinking_start_time,
-                    is_emoji=message.is_emoji,
-                )
-                await asyncio.sleep(typing_time)
+                if has_thinking:
+                    typing_time = calculate_typing_time(
+                        input_string=message.processed_plain_text,
+                        thinking_start_time=message.thinking_start_time,
+                        is_emoji=message.is_emoji,
+                    )
+                    await asyncio.sleep(typing_time)
+                else:
+                    await asyncio.sleep(0.5)
 
             await send_message(message)
             await self.storage.store_message(message, message.chat_stream)
@@ -123,30 +128,3 @@ class HeartFCSender:
             raise e
         finally:
             await self.complete_thinking(chat_id, message_id)
-
-    async def send_and_store(self, message: MessageSending):
-        """处理、发送并存储单个消息，不涉及思考状态管理。"""
-        if not message.chat_stream:
-            logger.error(f"[{message.message_info.platform or 'UnknownPlatform'}] 消息缺少 chat_stream，无法发送")
-            return
-        if not message.message_info or not message.message_info.message_id:
-            logger.error(
-                f"[{message.chat_stream.stream_id if message.chat_stream else 'UnknownStream'}] 消息缺少 message_info 或 message_id，无法发送"
-            )
-            return
-
-        chat_id = message.chat_stream.stream_id
-        message_id = message.message_info.message_id  # 获取消息ID用于日志
-
-        try:
-            await message.process()
-
-            await asyncio.sleep(0.5)
-
-            await send_message(message)  # 使用现有的发送方法
-            await self.storage.store_message(message, message.chat_stream)  # 使用现有的存储方法
-
-        except Exception as e:
-            logger.error(f"[{chat_id}] 处理或存储消息 {message_id} 时出错: {e}")
-            # 重新抛出异常，让调用者知道失败了
-            raise e

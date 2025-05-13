@@ -622,12 +622,6 @@ class BotConfig:
             # config.ban_user_id = set(groups_config.get("ban_user_id", []))
             config.ban_user_id = set(str(user) for user in groups_config.get("ban_user_id", []))
 
-        def platforms(parent: dict):
-            platforms_config = parent["platforms"]
-            if platforms_config and isinstance(platforms_config, dict):
-                for k in platforms_config.keys():
-                    config.api_urls[k] = platforms_config[k]
-
         def experimental(parent: dict):
             experimental_config = parent["experimental"]
             config.enable_friend_chat = experimental_config.get("enable_friend_chat", config.enable_friend_chat)
@@ -662,7 +656,6 @@ class BotConfig:
             "remote": {"func": remote, "support": ">=0.0.10", "necessary": False},
             "keywords_reaction": {"func": keywords_reaction, "support": ">=0.0.2", "necessary": False},
             "chinese_typo": {"func": chinese_typo, "support": ">=0.0.3", "necessary": False},
-            "platforms": {"func": platforms, "support": ">=1.0.0"},
             "response_splitter": {"func": response_splitter, "support": ">=0.0.11", "necessary": False},
             "experimental": {"func": experimental, "support": ">=0.0.11", "necessary": False},
             "chat": {"func": chat, "support": ">=1.6.0", "necessary": False},

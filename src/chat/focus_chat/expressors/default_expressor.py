@@ -1,6 +1,5 @@
-import time
 import traceback
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 from src.chat.message_receive.message import MessageRecv, MessageThinking, MessageSending
 from src.chat.message_receive.message import Seg  # Local import needed after move
 from src.chat.message_receive.message import UserInfo
@@ -18,6 +17,7 @@ from src.chat.utils.info_catcher import info_catcher_manager
 from src.manager.mood_manager import mood_manager
 from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
 from src.chat.message_receive.chat_stream import ChatStream
+from src.chat.focus_chat.hfc_utils import parse_thinking_id_to_timestamp
 
 logger = get_logger("expressor")
 
@@ -41,7 +41,7 @@ class DefaultExpressor:
     async def initialize(self):
         self.is_group_chat, self.chat_target_info = await get_chat_type_and_target_info(self.chat_id)
 
-    async def _create_thinking_message(self, anchor_message: Optional[MessageRecv]) -> Optional[str]:
+    async def _create_thinking_message(self, anchor_message: Optional[MessageRecv], thinking_id: str):
         """创建思考消息 (尝试锚定到 anchor_message)"""
         if not anchor_message or not anchor_message.chat_stream:
             logger.error(f"{self.log_prefix} 无法创建思考消息，缺少有效的锚点消息或聊天流。")
@@ -49,6 +49,7 @@ class DefaultExpressor:
 
         chat = anchor_message.chat_stream
         messageinfo = anchor_message.message_info
+        thinking_time_point = parse_thinking_id_to_timestamp(thinking_id)
         bot_user_info = UserInfo(
             user_id=global_config.BOT_QQ,
             user_nickname=global_config.BOT_NICKNAME,
@@ -58,9 +59,6 @@ class DefaultExpressor:
         # logger.debug(f"创建思考消息chat：{chat}")
         # logger.debug(f"创建思考消息bot_user_info：{bot_user_info}")
         # logger.debug(f"创建思考消息messageinfo：{messageinfo}")
-
-        thinking_time_point = round(time.time(), 2)
-        thinking_id = "mt" + str(thinking_time_point)
         thinking_message = MessageThinking(
             message_id=thinking_id,
             chat_stream=chat,
@@ -69,9 +67,8 @@ class DefaultExpressor:
             thinking_start_time=thinking_time_point,
         )
         logger.debug(f"创建思考消息thinking_message：{thinking_message}")
-        # Access MessageManager directly (using heart_fc_sender)
+
         await self.heart_fc_sender.register_thinking(thinking_message)
-        return thinking_id
 
     async def deal_reply(
         self,
@@ -79,11 +76,10 @@ class DefaultExpressor:
         action_data: Dict[str, Any],
         reasoning: str,
         anchor_message: MessageRecv,
+        thinking_id: str,
     ) -> tuple[bool, Optional[List[str]]]:
         # 创建思考消息
-        thinking_id = await self._create_thinking_message(anchor_message)
-        if not thinking_id:
-            raise Exception("无法创建思考消息")
+        await self._create_thinking_message(anchor_message, thinking_id)
 
         reply = None  # 初始化 reply，防止未定义
         try:
@@ -102,8 +98,14 @@ class DefaultExpressor:
                         action_data=action_data,
                     )
 
+                with Timer("选择表情", cycle_timers):
+                    emoji_keyword = action_data.get("emojis", [])
+                    emoji_base64 = await self._choose_emoji(emoji_keyword)
+                    if emoji_base64:
+                        reply.append(("emoji", emoji_base64))
+
                 if reply:
-                    with Timer("发送文本消息", cycle_timers):
+                    with Timer("发送消息", cycle_timers):
                         await self._send_response_messages(
                             anchor_message=anchor_message,
                             thinking_id=thinking_id,
@@ -112,12 +114,6 @@ class DefaultExpressor:
                     has_sent_something = True
                 else:
                     logger.warning(f"{self.log_prefix} 文本回复生成失败")
-
-            # 处理表情部分
-            emoji_keyword = action_data.get("emojis", [])
-            if emoji_keyword:
-                await self._handle_emoji(anchor_message, [], emoji_keyword)
-                has_sent_something = True
 
             if not has_sent_something:
                 logger.warning(f"{self.log_prefix} 回复动作未包含任何有效内容")
@@ -195,40 +191,46 @@ class DefaultExpressor:
                     logger.info(f"想要表达：{in_mind_reply}")
                     logger.info(f"理由：{reason}")
                     logger.info(f"生成回复: {content}\n")
+
                 info_catcher.catch_after_llm_generated(
                     prompt=prompt, response=content, reasoning_content=reasoning_content, model_name=model_name
                 )
 
             except Exception as llm_e:
                 # 精简报错信息
-                logger.error(f"{self.log_prefix}[Replier-{thinking_id}] LLM 生成失败: {llm_e}")
+                logger.error(f"{self.log_prefix}LLM 生成失败: {llm_e}")
                 return None  # LLM 调用失败则无法生成回复
-
-            # 5. 处理 LLM 响应
-            if not content:
-                logger.warning(f"{self.log_prefix}[Replier-{thinking_id}] LLM 生成了空内容。")
-                return None
 
             processed_response = process_llm_response(content)
 
+            # 5. 处理 LLM 响应
+            if not content:
+                logger.warning(f"{self.log_prefix}LLM 生成了空内容。")
+                return None
             if not processed_response:
-                logger.warning(f"{self.log_prefix}[Replier-{thinking_id}] 处理后的回复为空。")
+                logger.warning(f"{self.log_prefix}处理后的回复为空。")
                 return None
 
-            return processed_response
+            reply_set = []
+            for str in processed_response:
+                reply_seg = ("text", str)
+                reply_set.append(reply_seg)
+
+            return reply_set
 
         except Exception as e:
-            logger.error(f"{self.log_prefix}[Replier-{thinking_id}] 回复生成意外失败: {e}")
+            logger.error(f"{self.log_prefix}回复生成意外失败: {e}")
             traceback.print_exc()
             return None
 
         # --- 发送器 (Sender) --- #
 
     async def _send_response_messages(
-        self, anchor_message: Optional[MessageRecv], response_set: List[str], thinking_id: str
+        self, anchor_message: Optional[MessageRecv], response_set: List[Tuple[str, str]], thinking_id: str
     ) -> Optional[MessageSending]:
         """发送回复消息 (尝试锚定到 anchor_message)，使用 HeartFCSender"""
         chat = self.chat_stream
+        chat_id = self.chat_id
         if chat is None:
             logger.error(f"{self.log_prefix} 无法发送回复，chat_stream 为空。")
             return None
@@ -236,98 +238,104 @@ class DefaultExpressor:
             logger.error(f"{self.log_prefix} 无法发送回复，anchor_message 为空。")
             return None
 
-        chat_id = self.chat_id
         stream_name = chat_manager.get_stream_name(chat_id) or chat_id  # 获取流名称用于日志
 
         # 检查思考过程是否仍在进行，并获取开始时间
         thinking_start_time = await self.heart_fc_sender.get_thinking_start_time(chat_id, thinking_id)
 
         if thinking_start_time is None:
-            logger.warning(f"[{stream_name}] {thinking_id} 思考过程未找到或已结束，无法发送回复。")
+            logger.error(f"[{stream_name}]思考过程未找到或已结束，无法发送回复。")
             return None
 
         mark_head = False
         first_bot_msg: Optional[MessageSending] = None
         reply_message_ids = []  # 记录实际发送的消息ID
-        bot_user_info = UserInfo(
-            user_id=global_config.BOT_QQ,
-            user_nickname=global_config.BOT_NICKNAME,
-            platform=chat.platform,
-        )
 
         for i, msg_text in enumerate(response_set):
             # 为每个消息片段生成唯一ID
+            type = msg_text[0]
+            data = msg_text[1]
+
             part_message_id = f"{thinking_id}_{i}"
-            message_segment = Seg(type="text", data=msg_text)
-            bot_message = MessageSending(
-                message_id=part_message_id,  # 使用片段的唯一ID
-                chat_stream=chat,
-                bot_user_info=bot_user_info,
-                sender_info=anchor_message.message_info.user_info,
+            message_segment = Seg(type=type, data=data)
+
+            if type == "emoji":
+                is_emoji = True
+            else:
+                is_emoji = False
+            reply_to = not mark_head
+
+            bot_message = self._build_single_sending_message(
+                anchor_message=anchor_message,
+                message_id=part_message_id,
                 message_segment=message_segment,
-                reply=anchor_message,  # 回复原始锚点
-                is_head=not mark_head,
-                is_emoji=False,
-                thinking_start_time=thinking_start_time,  # 传递原始思考开始时间
+                reply_to=reply_to,
+                is_emoji=is_emoji,
+                thinking_id=thinking_id,
             )
+
             try:
                 if not mark_head:
                     mark_head = True
                     first_bot_msg = bot_message  # 保存第一个成功发送的消息对象
-                    await self.heart_fc_sender.type_and_send_message(bot_message, typing=False)
+                    typing = False
                 else:
-                    await self.heart_fc_sender.type_and_send_message(bot_message, typing=True)
+                    typing = True
+
+                await self.heart_fc_sender.send_message(bot_message, has_thinking=True, typing=typing)
 
                 reply_message_ids.append(part_message_id)  # 记录我们生成的ID
 
             except Exception as e:
-                logger.error(
-                    f"{self.log_prefix}[Sender-{thinking_id}] 发送回复片段 {i} ({part_message_id}) 时失败: {e}"
-                )
+                logger.error(f"{self.log_prefix}发送回复片段 {i} ({part_message_id}) 时失败: {e}")
                 # 这里可以选择是继续发送下一个片段还是中止
 
         # 在尝试发送完所有片段后，完成原始的 thinking_id 状态
         try:
             await self.heart_fc_sender.complete_thinking(chat_id, thinking_id)
         except Exception as e:
-            logger.error(f"{self.log_prefix}[Sender-{thinking_id}] 完成思考状态 {thinking_id} 时出错: {e}")
+            logger.error(f"{self.log_prefix}完成思考状态 {thinking_id} 时出错: {e}")
 
         return first_bot_msg  # 返回第一个成功发送的消息对象
 
-    async def _handle_emoji(self, anchor_message: Optional[MessageRecv], response_set: List[str], send_emoji: str = ""):
-        """处理表情包 (尝试锚定到 anchor_message)，使用 HeartFCSender"""
-        if not anchor_message or not anchor_message.chat_stream:
-            logger.error(f"{self.log_prefix} 无法处理表情包，缺少有效的锚点消息或聊天流。")
-            return
-
-        chat = anchor_message.chat_stream
-
+    async def _choose_emoji(self, send_emoji: str):
+        """
+        选择表情，根据send_emoji文本选择表情，返回表情base64
+        """
         emoji_raw = await emoji_manager.get_emoji_for_text(send_emoji)
-
         if emoji_raw:
-            emoji_path, description = emoji_raw
+            emoji_path, _description = emoji_raw
+            emoji_base64 = image_path_to_base64(emoji_path)
+        return emoji_base64
 
-            emoji_cq = image_path_to_base64(emoji_path)
-            thinking_time_point = round(time.time(), 2)  # 用于唯一ID
-            message_segment = Seg(type="emoji", data=emoji_cq)
-            bot_user_info = UserInfo(
-                user_id=global_config.BOT_QQ,
-                user_nickname=global_config.BOT_NICKNAME,
-                platform=anchor_message.message_info.platform,
-            )
-            bot_message = MessageSending(
-                message_id="me" + str(thinking_time_point),  # 表情消息的唯一ID
-                chat_stream=chat,
-                bot_user_info=bot_user_info,
-                sender_info=anchor_message.message_info.user_info,
-                message_segment=message_segment,
-                reply=anchor_message,  # 回复原始锚点
-                is_head=False,  # 表情通常不是头部消息
-                is_emoji=True,
-                # 不需要 thinking_start_time
-            )
+    async def _build_single_sending_message(
+        self,
+        anchor_message: MessageRecv,
+        message_id: str,
+        message_segment: Seg,
+        reply_to: bool,
+        is_emoji: bool,
+        thinking_id: str,
+    ) -> MessageSending:
+        """构建单个发送消息"""
 
-            try:
-                await self.heart_fc_sender.send_and_store(bot_message)
-            except Exception as e:
-                logger.error(f"{self.log_prefix} 发送表情包 {bot_message.message_info.message_id} 时失败: {e}")
+        thinking_start_time = await self.heart_fc_sender.get_thinking_start_time(self.chat_id, thinking_id)
+        bot_user_info = UserInfo(
+            user_id=global_config.BOT_QQ,
+            user_nickname=global_config.BOT_NICKNAME,
+            platform=self.chat_stream.platform,
+        )
+
+        bot_message = MessageSending(
+            message_id=message_id,  # 使用片段的唯一ID
+            chat_stream=self.chat_stream,
+            bot_user_info=bot_user_info,
+            sender_info=anchor_message.message_info.user_info,
+            message_segment=message_segment,
+            reply=anchor_message,  # 回复原始锚点
+            is_head=reply_to,
+            is_emoji=is_emoji,
+            thinking_start_time=thinking_start_time,  # 传递原始思考开始时间
+        )
+
+        return bot_message

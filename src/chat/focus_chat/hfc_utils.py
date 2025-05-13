@@ -1,5 +1,4 @@
 import time
-import traceback
 from typing import Optional
 from src.chat.message_receive.message import MessageRecv, BaseMessageInfo
 from src.chat.message_receive.chat_stream import ChatStream
@@ -10,7 +9,7 @@ import json
 logger = get_logger(__name__)
 
 
-async def _create_empty_anchor_message(
+async def create_empty_anchor_message(
     platform: str, group_info: dict, chat_stream: ChatStream
 ) -> Optional[MessageRecv]:
     """
@@ -18,31 +17,36 @@ async def _create_empty_anchor_message(
     如果重构失败或观察为空，则创建一个占位符。
     """
 
-    try:
-        placeholder_id = f"mid_pf_{int(time.time() * 1000)}"
-        placeholder_user = UserInfo(user_id="system_trigger", user_nickname="System Trigger", platform=platform)
-        placeholder_msg_info = BaseMessageInfo(
-            message_id=placeholder_id,
-            platform=platform,
-            group_info=group_info,
-            user_info=placeholder_user,
-            time=time.time(),
-        )
-        placeholder_msg_dict = {
-            "message_info": placeholder_msg_info.to_dict(),
-            "processed_plain_text": "[System Trigger Context]",
-            "raw_message": "",
-            "time": placeholder_msg_info.time,
-        }
-        anchor_message = MessageRecv(placeholder_msg_dict)
-        anchor_message.update_chat_stream(chat_stream)
-        logger.debug(f"创建占位符锚点消息: ID={anchor_message.message_info.message_id}")
-        return anchor_message
+    placeholder_id = f"mid_pf_{int(time.time() * 1000)}"
+    placeholder_user = UserInfo(user_id="system_trigger", user_nickname="System Trigger", platform=platform)
+    placeholder_msg_info = BaseMessageInfo(
+        message_id=placeholder_id,
+        platform=platform,
+        group_info=group_info,
+        user_info=placeholder_user,
+        time=time.time(),
+    )
+    placeholder_msg_dict = {
+        "message_info": placeholder_msg_info.to_dict(),
+        "processed_plain_text": "[System Trigger Context]",
+        "raw_message": "",
+        "time": placeholder_msg_info.time,
+    }
+    anchor_message = MessageRecv(placeholder_msg_dict)
+    anchor_message.update_chat_stream(chat_stream)
 
-    except Exception as e:
-        logger.error(f"Error getting/creating anchor message: {e}")
-        logger.error(traceback.format_exc())
-        return None
+    return anchor_message
+
+
+def parse_thinking_id_to_timestamp(thinking_id: str) -> float:
+    """
+    将形如 'tid<timestamp>' 的 thinking_id 解析回 float 时间戳
+    例如: 'tid1718251234.56' -> 1718251234.56
+    """
+    if not thinking_id.startswith("tid"):
+        raise ValueError("thinking_id 格式不正确")
+    ts_str = thinking_id[3:]
+    return float(ts_str)
 
 
 def get_keywords_from_json(json_str: str) -> list[str]:

@@ -94,13 +94,23 @@ class RelationshipManager:
             return False
 
     @staticmethod
-    async def first_knowing_some_one(platform, user_id, user_nickname, user_cardname, user_avatar):
+    async def first_knowing_some_one(
+        platform: str, user_id: str, user_nickname: str, user_cardname: str, user_avatar: str
+    ):
         """判断是否认识某人"""
         person_id = person_info_manager.get_person_id(platform, user_id)
-        await person_info_manager.update_one_field(person_id, "nickname", user_nickname)
-        # await person_info_manager.update_one_field(person_id, "user_cardname", user_cardname)
-        # await person_info_manager.update_one_field(person_id, "user_avatar", user_avatar)
-        await person_info_manager.qv_person_name(person_id, user_nickname, user_cardname, user_avatar)
+        data = {
+            "platform": platform,
+            "user_id": user_id,
+            "nickname": user_nickname,
+            "konw_time": int(time.time()),
+        }
+        await person_info_manager.update_one_field(
+            person_id=person_id, field_name="nickname", value=user_nickname, data=data
+        )
+        await person_info_manager.qv_person_name(
+            person_id=person_id, user_nickname=user_nickname, user_cardname=user_cardname, user_avatar=user_avatar
+        )
 
     async def calculate_update_relationship_value(self, user_info: UserInfo, platform: str, label: str, stance: str):
         """计算并变更关系值
