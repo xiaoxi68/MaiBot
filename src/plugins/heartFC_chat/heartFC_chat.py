@@ -6,30 +6,32 @@ import time
 import traceback
 from collections import deque
 from typing import List, Optional, Dict, Any, Deque, Callable, Coroutine
-
-from rich.traceback import install
-
-from src.common.logger_manager import get_logger
-from src.config.config import global_config
-from src.heart_flow.observation import Observation
-from src.heart_flow.sub_mind import SubMind
-from src.heart_flow.utils_chat import get_chat_type_and_target_info
-from src.manager.mood_manager import mood_manager
 from src.plugins.chat.chat_stream import ChatStream
 from src.plugins.chat.chat_stream import chat_manager
-from src.plugins.chat.message import MessageRecv, BaseMessageInfo, MessageThinking, MessageSending
-from src.plugins.chat.message import Seg  # Local import needed after move
-from src.plugins.chat.message import UserInfo
-from src.plugins.chat.utils import process_llm_response
-from src.plugins.chat.utils_image import image_path_to_base64  # Local import needed after move
-from src.plugins.emoji_system.emoji_manager import emoji_manager
-from src.plugins.heartFC_chat.heartFC_Cycleinfo import CycleInfo
-from src.plugins.heartFC_chat.heartflow_prompt_builder import global_prompt_manager, prompt_builder
+from rich.traceback import install
+from src.common.logger_manager import get_logger
 from src.plugins.models.utils_model import LLMRequest
-from src.plugins.respon_info_catcher.info_catcher import info_catcher_manager
-from src.plugins.utils.chat_message_builder import num_new_messages_since
-from src.plugins.utils.timer_calculator import Timer  # <--- Import Timer
-from .heartFC_sender import HeartFCSender
+from src.config.config import global_config
+from src.plugins.utils.timer_calculator import Timer
+from src.heart_flow.observation.observation import Observation
+from src.plugins.heartFC_chat.heartflow_prompt_builder import prompt_builder
+from src.plugins.heartFC_chat.heartFC_Cycleinfo import CycleDetail
+from src.heart_flow.observation.chatting_observation import ChattingObservation
+from src.heart_flow.utils_chat import get_chat_type_and_target_info
+from src.heart_flow.info.info_base import InfoBase
+from src.heart_flow.info.obs_info import ObsInfo
+from src.heart_flow.info.cycle_info import CycleInfo
+from src.heart_flow.info.mind_info import MindInfo
+from src.heart_flow.info.structured_info import StructuredInfo
+from src.plugins.heartFC_chat.info_processors.chattinginfo_processor import ChattingInfoProcessor
+from src.plugins.heartFC_chat.info_processors.mind_processor import MindProcessor
+from src.heart_flow.observation.memory_observation import MemoryObservation
+from src.heart_flow.observation.hfcloop_observation import HFCloopObservation
+from src.heart_flow.observation.working_observation import WorkingObservation
+from src.plugins.heartFC_chat.info_processors.tool_processor import ToolProcessor
+from src.plugins.heartFC_chat.expressors.default_expressor import DefaultExpressor
+from src.plugins.heartFC_chat.hfc_utils import _create_empty_anchor_message
+from src.plugins.heartFC_chat.memory_activator import MemoryActivator
 
 install(extra_lines=3)
 
