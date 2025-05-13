@@ -4,7 +4,7 @@ from src.common.logger_manager import get_logger
 import traceback
 
 # Import the new utility function
-from src.plugins.memory_system.Hippocampus import HippocampusManager
+from src.chat.memory_system.Hippocampus import HippocampusManager
 import jieba
 from typing import List
 

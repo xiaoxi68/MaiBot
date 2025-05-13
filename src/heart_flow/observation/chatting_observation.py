@@ -1,22 +1,22 @@
 from datetime import datetime
-from src.plugins.models.utils_model import LLMRequest
+from src.chat.models.utils_model import LLMRequest
 from src.config.config import global_config
 import traceback
-from src.plugins.utils.chat_message_builder import (
+from src.chat.utils.chat_message_builder import (
     get_raw_msg_before_timestamp_with_chat,
     build_readable_messages,
     get_raw_msg_by_timestamp_with_chat,
     num_new_messages_since,
     get_person_id_list,
 )
-from src.plugins.utils.prompt_builder import global_prompt_manager
+from src.chat.utils.prompt_builder import global_prompt_manager
 from typing import Optional
 import difflib
-from src.plugins.chat.message import MessageRecv  # 添加 MessageRecv 导入
+from src.chat.message_receive.message import MessageRecv  # 添加 MessageRecv 导入
 from src.heart_flow.observation.observation import Observation
 from src.common.logger_manager import get_logger
 from src.heart_flow.utils_chat import get_chat_type_and_target_info
-from src.plugins.utils.prompt_builder import Prompt
+from src.chat.utils.prompt_builder import Prompt
 
 
 logger = get_logger(__name__)

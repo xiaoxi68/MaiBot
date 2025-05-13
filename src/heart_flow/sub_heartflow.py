@@ -5,10 +5,10 @@ import time
 from typing import Optional, List, Dict, Tuple, Callable, Coroutine
 import traceback
 from src.common.logger_manager import get_logger
-from src.plugins.chat.message import MessageRecv
-from src.plugins.chat.chat_stream import chat_manager
-from src.plugins.heartFC_chat.heartFC_chat import HeartFChatting
-from src.plugins.heartFC_chat.normal_chat import NormalChat
+from src.chat.message_receive.message import MessageRecv
+from src.chat.message_receive.chat_stream import chat_manager
+from src.chat.focus_chat.heartFC_chat import HeartFChatting
+from src.chat.normal_chat.normal_chat import NormalChat
 from src.heart_flow.mai_state_manager import MaiStateInfo
 from src.heart_flow.chat_state_info import ChatState, ChatStateInfo
 from .utils_chat import get_chat_type_and_target_info
@@ -58,7 +58,7 @@ class SubHeartflow:
         self.should_stop = False  # 停止标志
         self.task: Optional[asyncio.Task] = None  # 后台任务
 
-        # 随便水群 normal_chat 和 认真水群 heartFC_chat 实例
+        # 随便水群 normal_chat 和 认真水群 focus_chat 实例
         # CHAT模式激活 随便水群  FOCUS模式激活 认真水群
         self.heart_fc_instance: Optional[HeartFChatting] = None  # 该sub_heartflow的HeartFChatting实例
         self.normal_chat_instance: Optional[NormalChat] = None  # 该sub_heartflow的NormalChat实例

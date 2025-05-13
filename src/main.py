@@ -1,28 +1,25 @@
 import asyncio
 import time
-
 from maim_message import MessageServer
-
-from .plugins.remote.remote import TelemetryHeartBeatTask
+from .common.remote import TelemetryHeartBeatTask
 from .manager.async_task_manager import async_task_manager
-from .plugins.utils.statistic import OnlineTimeRecordTask, StatisticOutputTask
+from .chat.utils.statistic import OnlineTimeRecordTask, StatisticOutputTask
 from .manager.mood_manager import MoodPrintTask, MoodUpdateTask
-from .plugins.schedule.schedule_generator import bot_schedule
-from .plugins.emoji_system.emoji_manager import emoji_manager
-from .plugins.person_info.person_info import person_info_manager
-from .plugins.willing.willing_manager import willing_manager
-from .plugins.chat.chat_stream import chat_manager
+from .chat.emoji_system.emoji_manager import emoji_manager
+from .chat.person_info.person_info import person_info_manager
+from .chat.normal_chat.willing.willing_manager import willing_manager
+from .chat.message_receive.chat_stream import chat_manager
 from .heart_flow.heartflow import heartflow
-from .plugins.memory_system.Hippocampus import HippocampusManager
-from .plugins.chat.message_sender import message_manager
-from .plugins.storage.storage import MessageStorage
+from .chat.memory_system.Hippocampus import HippocampusManager
+from .chat.message_receive.message_sender import message_manager
+from .chat.message_receive.storage import MessageStorage
 from .config.config import global_config
-from .plugins.chat.bot import chat_bot
+from .chat.message_receive.bot import chat_bot
 from .common.logger_manager import get_logger
 from .individuality.individuality import Individuality
 from .common.server import global_server, Server
 from rich.traceback import install
-from .plugins.heartFC_chat.expressors.exprssion_learner import expression_learner
+from .chat.focus_chat.expressors.exprssion_learner import expression_learner
 from .api.main import start_api_server
 
 install(extra_lines=3)
@@ -36,7 +33,7 @@ class MainSystem:
         self.individuality: Individuality = Individuality.get_instance()
 
         # 使用消息API替代直接的FastAPI实例
-        from .plugins.message import global_api
+        from src.common.message import global_api
 
         self.app: MessageServer = global_api
         self.server: Server = global_server
@@ -89,15 +86,6 @@ class MainSystem:
         # 使用HippocampusManager初始化海马体
         self.hippocampus_manager.initialize(global_config=global_config)
         # await asyncio.sleep(0.5) #防止logger输出飞了
-
-        # 初始化日程
-        bot_schedule.initialize(
-            name=global_config.BOT_NICKNAME,
-            personality=global_config.personality_core,
-            behavior=global_config.PROMPT_SCHEDULE_GEN,
-            interval=global_config.SCHEDULE_DOING_UPDATE_INTERVAL,
-        )
-        asyncio.create_task(bot_schedule.mai_schedule_start())
 
         # 将bot.py中的chat_bot.message_process消息处理函数注册到api.py的消息处理基类中
         self.app.register_message_handler(chat_bot.message_process)

@@ -1,5 +1,5 @@
 from src.tools.tool_can_use.base_tool import BaseTool
-from src.plugins.memory_system.Hippocampus import HippocampusManager
+from src.chat.memory_system.Hippocampus import HippocampusManager
 from src.common.logger import get_module_logger
 from typing import Dict, Any
 

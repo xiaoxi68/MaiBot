@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Dict, List
 from src.common.logger_manager import get_logger
 
 # Need chat_manager to get stream names
-from src.plugins.chat.chat_stream import chat_manager
+from src.chat.message_receive.chat_stream import chat_manager
 
 if TYPE_CHECKING:
     from src.heart_flow.subheartflow_manager import SubHeartflowManager

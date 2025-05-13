@@ -1,10 +1,10 @@
 from src.tools.tool_can_use.base_tool import BaseTool
-from src.plugins.chat.utils import get_embedding
+from src.chat.utils.utils import get_embedding
 
 # from src.common.database import db
 from src.common.logger_manager import get_logger
 from typing import Dict, Any
-from src.plugins.knowledge.knowledge_lib import qa_manager
+from src.chat.knowledge.knowledge_lib import qa_manager
 
 
 logger = get_logger("lpmm_get_knowledge_tool")

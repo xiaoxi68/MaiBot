@@ -3,7 +3,7 @@ from src.config.config import global_config
 from typing import Optional, Dict
 import traceback
 from src.common.logger_manager import get_logger
-from src.plugins.chat.message import MessageRecv
+from src.chat.message_receive.message import MessageRecv
 import math
 
 
