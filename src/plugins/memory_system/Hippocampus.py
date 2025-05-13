@@ -499,7 +499,7 @@ class Hippocampus:
         for topic, memory_items, _ in unique_memories:
             memory = memory_items[0]  # 因为每个topic只有一条记忆
             result.append((topic, memory))
-            logger.info(f"选中记忆: {memory} (来自节点: {topic})")
+            logger.debug(f"选中记忆: {memory} (来自节点: {topic})")
 
         return result
 
@@ -665,7 +665,7 @@ class Hippocampus:
         for topic, memory_items, _ in unique_memories:
             memory = memory_items[0]  # 因为每个topic只有一条记忆
             result.append((topic, memory))
-            logger.info(f"选中记忆: {memory} (来自节点: {topic})")
+            logger.debug(f"选中记忆: {memory} (来自节点: {topic})")
 
         return result
 

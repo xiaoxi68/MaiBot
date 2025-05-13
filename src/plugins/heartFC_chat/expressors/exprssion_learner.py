@@ -177,11 +177,11 @@ class ExpressionLearner:
             chat_str=random_msg_str,
         )
 
-        logger.info(f"学习表达方式的prompt: {prompt}")
+        logger.debug(f"学习表达方式的prompt: {prompt}")
 
         response, _ = await self.express_learn_model.generate_response_async(prompt)
 
-        logger.info(f"学习表达方式的response: {response}")
+        logger.debug(f"学习表达方式的response: {response}")
 
         expressions: List[Tuple[str, str, str]] = self.parse_expression_response(response, chat_id)
 

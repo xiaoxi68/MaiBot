@@ -142,7 +142,6 @@ class MainSystem:
                 self.forget_memory_task(),
                 self.consolidate_memory_task(),
                 self.learn_and_store_expression_task(),
-                self.print_mood_task(),
                 self.remove_recalled_message_task(),
                 emoji_manager.start_periodic_check_register(),
                 self.app.run(),
@@ -185,11 +184,11 @@ class MainSystem:
             await expression_learner.learn_and_store_expression()
             print("\033[1;32m[表达方式学习]\033[0m 表达方式学习完成")
 
-    async def print_mood_task(self):
-        """打印情绪状态"""
-        while True:
-            self.mood_manager.print_mood_status()
-            await asyncio.sleep(60)
+    # async def print_mood_task(self):
+    #     """打印情绪状态"""
+    #     while True:
+    #         self.mood_manager.print_mood_status()
+    #         await asyncio.sleep(60)
 
     @staticmethod
     async def remove_recalled_message_task():

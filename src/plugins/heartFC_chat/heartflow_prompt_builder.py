@@ -265,13 +265,10 @@ async def _build_prompt_focus(
     # 3. 如果都没有，给默认
     if not language_habits:
         language_habits = [
-            "当表示惊叹时，使用 我嘞个xxxx",
             "当表示惊讶无语是，使用 不是？",
             "当表示无语时，使用 阿这",
-            "当表示震惊时，使用 卧槽",
             "当用调侃的方式称呼某人，使用 哈基X",
             "当表示讽刺的赞同时，使用 对对对",
-            "当你想表达某个观点，但不想明说，可以使用反讽",
             "当你想说明某个观点，但懒得明说，使用 懂的都懂",
         ]
         language_habits = random.sample(language_habits, 6)

@@ -44,13 +44,13 @@ class ChattingInfoProcessor(BaseProcessor):
         Returns:
             List[InfoBase]: 处理后的ObsInfo实例列表
         """
-        print(f"observations: {observations}")
+        # print(f"observations: {observations}")
         processed_infos = []
 
         # 处理Observation对象
         if observations:
             for obs in observations:
-                print(f"obs: {obs}")
+                # print(f"obs: {obs}")
                 if isinstance(obs, ChattingObservation):
                     obs_info = ObsInfo()
 
