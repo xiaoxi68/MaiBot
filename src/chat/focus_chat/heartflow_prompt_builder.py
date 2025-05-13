@@ -310,6 +310,7 @@ class PromptBuilder:
         message_txt=None,
         sender_name="某人",
         in_mind_reply=None,
+        target_message=None,
     ) -> Optional[str]:
         if build_mode == "normal":
             return await self._build_prompt_normal(chat_stream, message_txt or "", sender_name)
@@ -322,6 +323,7 @@ class PromptBuilder:
                 chat_stream,
                 sender_name,
                 in_mind_reply,
+                target_message,
             )
         return None
 
