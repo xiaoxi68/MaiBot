@@ -16,7 +16,7 @@ root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 sys.path.append(root_path)
 
 # 现在可以导入src模块
-from src.common.database import db  # noqa E402
+from common.database.database import db  # noqa E402
 
 
 # 加载根目录下的env.edv文件

@@ -5,7 +5,7 @@ from typing import Any, Dict, Tuple, List
 from src.common.logger import get_module_logger
 from src.manager.async_task_manager import AsyncTask
 
-from ...common.database import db
+from ...common.database.database import db
 from src.manager.local_store_manager import local_storage
 
 logger = get_module_logger("maibot_statistic")

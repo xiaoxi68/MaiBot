@@ -10,7 +10,7 @@ from PIL import Image
 import io
 import re
 
-from ...common.database import db
+from ...common.database.database import db
 from ...config.config import global_config
 from ..utils.utils_image import image_path_to_base64, image_manager
 from ..models.utils_model import LLMRequest

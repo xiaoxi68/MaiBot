@@ -1,7 +1,7 @@
 import re
 from typing import Union
 
-from ...common.database import db
+from ...common.database.database import db
 from .message import MessageSending, MessageRecv
 from .chat_stream import ChatStream
 from src.common.logger import get_module_logger

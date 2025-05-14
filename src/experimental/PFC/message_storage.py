@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any
-from src.common.database import db
+from common.database.database import db
 
 
 class MessageStorage(ABC):

@@ -1,6 +1,6 @@
 from src.config.config import global_config
 from src.chat.message_receive.message import MessageRecv, MessageSending, Message
-from src.common.database import db
+from common.database.database import db
 import time
 import traceback
 from typing import List

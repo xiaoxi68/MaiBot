@@ -8,7 +8,7 @@ import io
 import numpy as np
 
 
-from ...common.database import db
+from ...common.database.database import db
 from ...config.config import global_config
 from ..models.utils_model import LLMRequest
 

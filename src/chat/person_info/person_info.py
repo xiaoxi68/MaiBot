@@ -1,5 +1,5 @@
 from src.common.logger_manager import get_logger
-from ...common.database import db
+from ...common.database.database import db
 import copy
 import hashlib
 from typing import Any, Callable, Dict
