@@ -4,7 +4,7 @@ from typing import List, Dict, Any, Optional
 from rich.traceback import install
 from src.chat.models.utils_model import LLMRequest
 from src.config.config import global_config
-from src.chat.focus_chat.heartflow_prompt_builder import prompt_builder
+# from src.chat.focus_chat.heartflow_prompt_builder import prompt_builder
 from src.chat.focus_chat.info.info_base import InfoBase
 from src.chat.focus_chat.info.obs_info import ObsInfo
 from src.chat.focus_chat.info.cycle_info import CycleInfo
