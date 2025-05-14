@@ -45,6 +45,7 @@ from src.common.logger import (
     INIT_STYLE_CONFIG,
     INTEREST_CHAT_STYLE_CONFIG,
     API_SERVER_STYLE_CONFIG,
+    MAIM_MESSAGE_STYLE_CONFIG,
 )
 
 # 可根据实际需要补充更多模块配置
@@ -94,6 +95,7 @@ MODULE_LOGGER_CONFIGS = {
     "init": INIT_STYLE_CONFIG,  # 初始化
     "interest_chat": INTEREST_CHAT_STYLE_CONFIG,  # 兴趣
     "api": API_SERVER_STYLE_CONFIG,  # API服务器
+    "maim_message": MAIM_MESSAGE_STYLE_CONFIG,  # 消息服务
     # ...如有更多模块，继续添加...
 }
 
