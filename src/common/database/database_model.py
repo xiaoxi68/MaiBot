@@ -240,3 +240,63 @@ class ThinkingLog(BaseModel):
     class Meta:
         table_name = 'thinking_logs'
 
+def create_tables():
+    """
+    创建所有在模型中定义的数据库表。
+    """
+    with db:
+        db.create_tables([
+            ChatStreams,
+            LLMUsage,
+            Emoji,
+            Messages,
+            Images,
+            ImageDescriptions,
+            OnlineTime,
+            PersonInfo,
+            Knowledges,
+            ThinkingLog
+        ])
+
+def initialize_database():
+    """
+    检查所有定义的表是否存在，如果不存在则创建它们。
+    """
+    models = [
+        ChatStreams,
+        LLMUsage,
+        Emoji,
+        Messages,
+        Images,
+        ImageDescriptions,
+        OnlineTime,
+        PersonInfo,
+        Knowledges,
+        ThinkingLog
+    ]
+    
+    needs_creation = False
+    try:
+        with db:  # 管理 table_exists 检查的连接
+            for model in models:
+                if not db.table_exists(model):
+                    print(f"表 '{model._meta.table_name}' 未找到。")
+                    needs_creation = True
+                    break  # 一个表丢失，无需进一步检查。
+    except Exception as e:
+        print(f"检查表是否存在时出错: {e}")
+        # 如果检查失败（例如数据库不可用），则退出
+        return
+
+    if needs_creation:
+        print("正在初始化数据库：一个或多个表丢失。正在尝试创建所有定义的表...")
+        try:
+            create_tables()  # 此函数有其自己的 'with db:' 上下文管理。
+            print("数据库表创建过程完成。")
+        except Exception as e:
+            print(f"创建表期间出错: {e}")
+    else:
+        print("所有数据库表均已存在。")
+
+# 模块加载时调用初始化函数
+initialize_database()
