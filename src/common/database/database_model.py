@@ -143,3 +143,42 @@ class Messages(BaseModel):
         # database = db # 继承自 BaseModel
         table_name = 'messages'
 
+class Images(BaseModel):
+    """
+    用于存储图像信息的模型。
+    """
+    hash = TextField(index=True)  # 图像的哈希值
+    description = TextField(null=True)  # 图像的描述
+    path = TextField(unique=True)  # 图像文件的路径
+    timestamp = FloatField()  # 时间戳
+    type = TextField()  # 图像类型，例如 "emoji"
+
+    class Meta:
+        # database = db # 继承自 BaseModel
+        table_name = 'images'
+
+class ImageDescriptions(BaseModel):
+    """
+    用于存储图像描述信息的模型。
+    """
+    type = TextField()  # 类型，例如 "emoji"
+    hash = TextField(index=True)  # 图像的哈希值
+    description = TextField()  # 图像的描述
+    timestamp = FloatField()  # 时间戳
+
+    class Meta:
+        # database = db # 继承自 BaseModel
+        table_name = 'image_descriptions'
+
+class OnlineTime(BaseModel):
+    """
+    用于存储在线时长记录的模型。
+    """
+    # timestamp: "$date": "2025-05-01T18:52:18.191Z" (存储为字符串)
+    timestamp = TextField()
+    duration = IntegerField()  # 时长，单位分钟
+
+    class Meta:
+        # database = db # 继承自 BaseModel
+        table_name = 'online_time'
+
