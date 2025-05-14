@@ -77,6 +77,7 @@ def init_prompt():
     - 一次只回复一个人，一次只回复一个话题,突出重点
     - 如果是自己发的消息想继续，需自然衔接
     - 避免重复或评价自己的发言,不要和自己聊天
+    注意：回复尽量简短一些。可以参考贴吧，知乎和微博的回复风格，回复不要浮夸，不要用夸张修辞，平淡一些。
 
 你必须从上面列出的可用行动中选择一个，并说明原因。
 你的决策必须以严格的 JSON 格式输出，且仅包含 JSON 内容，不要有任何其他文字或解释。
@@ -291,7 +292,7 @@ async def _build_prompt_focus(
         )
     # --- End choosing template ---
 
-    logger.debug(f"focus_chat_prompt (is_group={is_group_chat}): \n{prompt}")
+    # logger.debug(f"focus_chat_prompt (is_group={is_group_chat}): \n{prompt}")
     return prompt
 
 

@@ -250,7 +250,7 @@ class DefaultExpressor:
         mark_head = False
         first_bot_msg: Optional[MessageSending] = None
         reply_message_ids = []  # 记录实际发送的消息ID
-        
+
         sent_msg_list = []
 
         for i, msg_text in enumerate(response_set):
@@ -290,7 +290,7 @@ class DefaultExpressor:
                 sent_msg = await self.heart_fc_sender.send_message(bot_message, has_thinking=True, typing=typing)
 
                 reply_message_ids.append(part_message_id)  # 记录我们生成的ID
-                
+
                 sent_msg_list.append((type, sent_msg))
 
             except Exception as e:
@@ -300,7 +300,7 @@ class DefaultExpressor:
         # 在尝试发送完所有片段后，完成原始的 thinking_id 状态
         try:
             await self.heart_fc_sender.complete_thinking(chat_id, thinking_id)
-        
+
         except Exception as e:
             logger.error(f"{self.log_prefix}完成思考状态 {thinking_id} 时出错: {e}")
 
