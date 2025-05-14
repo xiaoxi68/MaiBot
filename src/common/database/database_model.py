@@ -182,3 +182,23 @@ class OnlineTime(BaseModel):
         # database = db # 继承自 BaseModel
         table_name = 'online_time'
 
+class PersonInfo(BaseModel):
+    """
+    用于存储个人信息数据的模型。
+    """
+    person_id = TextField(unique=True, index=True)  # 个人唯一ID
+    person_name = TextField()  # 个人名称
+    name_reason = TextField(null=True)  # 名称设定的原因
+    platform = TextField()  # 平台
+    user_id = TextField(index=True)  # 用户ID
+    nickname = TextField()  # 用户昵称
+    relationship_value = IntegerField(default=0)  # 关系值
+    konw_time = FloatField()  # 认识时间 (时间戳)
+    msg_interval = IntegerField()  # 消息间隔
+    # msg_interval_list: 存储为 JSON 字符串的列表
+    msg_interval_list = TextField(null=True)
+
+    class Meta:
+        # database = db # 继承自 BaseModel
+        table_name = 'person_info'
+
