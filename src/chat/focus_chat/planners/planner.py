@@ -103,7 +103,7 @@ class ActionPlanner:
                     cycle_info = info.get_observe_info()
                 elif isinstance(info, StructuredInfo):
                     logger.debug(f"{self.log_prefix} 结构化信息: {info}")
-                    structured_info = info.get_data()
+                    _structured_info = info.get_data()
 
             current_available_actions = self.action_manager.get_using_actions()
             
