@@ -1,9 +1,10 @@
-from peewee import Model, DoubleField, IntegerField, SqliteDatabase, BooleanField, TextField, FloatField
-
+from peewee import Model, DoubleField, IntegerField, BooleanField, TextField, FloatField, DateTimeField
+from .database import db
+import datetime
 # 请在此处定义您的数据库实例。
 # 您需要取消注释并配置适合您的数据库的部分。
 # 例如，对于 SQLite:
-db = SqliteDatabase('my_application.db')
+# db = SqliteDatabase('MaiBot.db')
 #
 # 对于 PostgreSQL:
 # db = PostgresqlDatabase('your_db_name', user='your_user', password='your_password',
@@ -69,17 +70,16 @@ class LLMUsage(BaseModel):
     """
     用于存储 API 使用日志数据的模型。
     """
-    model_name = TextField()
-    user_id = TextField()
-    request_type = TextField()
+    model_name = TextField(index=True) # 添加索引
+    user_id = TextField(index=True) # 添加索引
+    request_type = TextField(index=True) # 添加索引
     endpoint = TextField()
     prompt_tokens = IntegerField()
     completion_tokens = IntegerField()
     total_tokens = IntegerField()
     cost = DoubleField()
     status = TextField()
-    # timestamp: "$date": "2025-05-01T18:52:50.870Z" (存储为字符串)
-    timestamp = TextField()
+    timestamp = DateTimeField(index=True) # 更改为 DateTimeField 并添加索引
 
     class Meta:
         # 如果 BaseModel.Meta.database 已设置，则此模型将继承该数据库配置。
@@ -177,6 +177,8 @@ class OnlineTime(BaseModel):
     # timestamp: "$date": "2025-05-01T18:52:18.191Z" (存储为字符串)
     timestamp = TextField()
     duration = IntegerField()  # 时长，单位分钟
+    start_timestamp = DateTimeField(default=datetime.datetime.now)
+    end_timestamp = DateTimeField(index=True)
 
     class Meta:
         # database = db # 继承自 BaseModel
@@ -201,4 +203,40 @@ class PersonInfo(BaseModel):
     class Meta:
         # database = db # 继承自 BaseModel
         table_name = 'person_info'
+
+class Knowledges(BaseModel):
+    """
+    用于存储知识库条目的模型。
+    """
+    content = TextField()  # 知识内容的文本
+    embedding = TextField()  # 知识内容的嵌入向量，存储为 JSON 字符串的浮点数列表
+    # 可以添加其他元数据字段，如 source, create_time 等
+
+    class Meta:
+        # database = db # 继承自 BaseModel
+        table_name = 'knowledges'
+
+
+class ThinkingLog(BaseModel):
+    chat_id = TextField(index=True)
+    trigger_text = TextField(null=True)
+    response_text = TextField(null=True)
+    
+    # Store complex dicts/lists as JSON strings
+    trigger_info_json = TextField(null=True)
+    response_info_json = TextField(null=True)
+    timing_results_json = TextField(null=True)
+    chat_history_json = TextField(null=True)
+    chat_history_in_thinking_json = TextField(null=True)
+    chat_history_after_response_json = TextField(null=True)
+    heartflow_data_json = TextField(null=True)
+    reasoning_data_json = TextField(null=True)
+
+    # Add a timestamp for the log entry itself
+    # Ensure you have: from peewee import DateTimeField
+    # And: import datetime
+    created_at = DateTimeField(default=datetime.datetime.now) 
+
+    class Meta:
+        table_name = 'thinking_logs'
 

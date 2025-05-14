@@ -5,7 +5,8 @@ from typing import Any, Dict, Tuple, List
 from src.common.logger import get_module_logger
 from src.manager.async_task_manager import AsyncTask
 
-from ...common.database.database import db
+from ...common.database.database import db # This db is the Peewee database instance
+from ...common.database.database_model import OnlineTime # Import the Peewee model
 from src.manager.local_store_manager import local_storage
 
 logger = get_module_logger("maibot_statistic")
@@ -39,7 +40,7 @@ class OnlineTimeRecordTask(AsyncTask):
     def __init__(self):
         super().__init__(task_name="Online Time Record Task", run_interval=60)
 
-        self.record_id: str | None = None
+        self.record_id: int | None = None  # Changed to int for Peewee's default ID
         """记录ID"""
 
         self._init_database()  # 初始化数据库
@@ -47,51 +48,44 @@ class OnlineTimeRecordTask(AsyncTask):
     @staticmethod
     def _init_database():
         """初始化数据库"""
-        if "online_time" not in db.list_collection_names():
-            # 初始化数据库（在线时长）
-            db.create_collection("online_time")
-            # 创建索引
-            if ("end_timestamp", 1) not in db.online_time.list_indexes():
-                db.online_time.create_index([("end_timestamp", 1)])
+        with db.atomic(): # Use atomic operations for schema changes
+            OnlineTime.create_table(safe=True) # Creates table if it doesn't exist, Peewee handles indexes from model
 
     async def run(self):
         try:
+            current_time = datetime.now()
+            extended_end_time = current_time + timedelta(minutes=1)
+
             if self.record_id:
                 # 如果有记录，则更新结束时间
-                db.online_time.update_one(
-                    {"_id": self.record_id},
-                    {
-                        "$set": {
-                            "end_timestamp": datetime.now() + timedelta(minutes=1),
-                        }
-                    },
-                )
-            else:
+                query = OnlineTime.update(end_timestamp=extended_end_time).where(OnlineTime.id == self.record_id)
+                updated_rows = query.execute()
+                if updated_rows == 0:
+                    # Record might have been deleted or ID is stale, try to find/create
+                    self.record_id = None # Reset record_id to trigger find/create logic below
+            
+            if not self.record_id: # Check again if record_id was reset or initially None
                 # 如果没有记录，检查一分钟以内是否已有记录
-                current_time = datetime.now()
-                if recent_record := db.online_time.find_one(
-                    {"end_timestamp": {"$gte": current_time - timedelta(minutes=1)}}
-                ):
+                # Look for a record whose end_timestamp is recent enough to be considered ongoing
+                recent_record = OnlineTime.select().where(
+                    OnlineTime.end_timestamp >= (current_time - timedelta(minutes=1))
+                ).order_by(OnlineTime.end_timestamp.desc()).first()
+
+                if recent_record:
                     # 如果有记录，则更新结束时间
-                    self.record_id = recent_record["_id"]
-                    db.online_time.update_one(
-                        {"_id": self.record_id},
-                        {
-                            "$set": {
-                                "end_timestamp": current_time + timedelta(minutes=1),
-                            }
-                        },
-                    )
+                    self.record_id = recent_record.id
+                    recent_record.end_timestamp = extended_end_time
+                    recent_record.save()
                 else:
                     # 若没有记录，则插入新的在线时间记录
-                    self.record_id = db.online_time.insert_one(
-                        {
-                            "start_timestamp": current_time,
-                            "end_timestamp": current_time + timedelta(minutes=1),
-                        }
-                    ).inserted_id
+                    new_record = OnlineTime.create(
+                        start_timestamp=current_time,
+                        end_timestamp=extended_end_time,
+                    )
+                    self.record_id = new_record.id
         except Exception as e:
             logger.error(f"在线时间记录失败，错误信息：{e}")
+
 
 
 def _format_online_time(online_seconds: int) -> str:
