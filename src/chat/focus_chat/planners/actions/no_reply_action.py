@@ -2,7 +2,7 @@ import asyncio
 import traceback
 from src.common.logger_manager import get_logger
 from src.chat.utils.timer_calculator import Timer
-from src.chat.focus_chat.planners.actions.base_action import BaseAction
+from src.chat.focus_chat.planners.actions.base_action import BaseAction, register_action
 from typing import Tuple, List, Callable, Coroutine
 from src.chat.heart_flow.observation.observation import Observation
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
@@ -16,15 +16,25 @@ WAITING_TIME_THRESHOLD = 300  # 等待新消息时间阈值，单位秒
 CONSECUTIVE_NO_REPLY_THRESHOLD = 3  # 连续不回复的阈值
 
 
+@register_action
 class NoReplyAction(BaseAction):
     """不回复动作处理类
 
     处理决定不回复的动作。
     """
 
+    action_name = "no_reply"
+    action_description = "不回复"
+    action_parameters = {}
+    action_require = [
+        "话题无关/无聊/不感兴趣/不懂",
+        "最后一条消息是你自己发的且无人回应你",
+        "你发送了太多消息，且无人回复"
+    ]
+    default = True
+
     def __init__(
         self,
-        action_name: str,
         action_data: dict,
         reasoning: str,
         cycle_timers: dict,
@@ -36,6 +46,7 @@ class NoReplyAction(BaseAction):
         total_no_reply_count: int = 0,
         total_waiting_time: float = 0.0,
         shutting_down: bool = False,
+        **kwargs
     ):
         """初始化不回复动作处理器
 
@@ -53,7 +64,7 @@ class NoReplyAction(BaseAction):
             total_waiting_time: 累计等待时间
             shutting_down: 是否正在关闭
         """
-        super().__init__(action_name, action_data, reasoning, cycle_timers, thinking_id)
+        super().__init__(action_data, reasoning, cycle_timers, thinking_id)
         self.observations = observations
         self.on_consecutive_no_reply_callback = on_consecutive_no_reply_callback
         self._current_cycle = current_cycle

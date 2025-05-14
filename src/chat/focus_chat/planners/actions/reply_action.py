@@ -1,21 +1,46 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 from src.common.logger_manager import get_logger
-from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
-from src.chat.focus_chat.hfc_utils import create_empty_anchor_message
-from src.chat.focus_chat.planners.actions.base_action import BaseAction
-from typing import Tuple, List
-from src.chat.focus_chat.heartFC_Cycleinfo import CycleDetail
-from src.chat.message_receive.chat_stream import ChatStream
+from src.chat.utils.timer_calculator import Timer
+from src.chat.focus_chat.planners.actions.base_action import BaseAction, register_action
+from typing import Tuple, List, Optional
 from src.chat.heart_flow.observation.observation import Observation
 from src.chat.focus_chat.expressors.default_expressor import DefaultExpressor
+from src.chat.message_receive.chat_stream import ChatStream
+from src.chat.focus_chat.heartFC_Cycleinfo import CycleDetail
+from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
+from src.chat.focus_chat.hfc_utils import create_empty_anchor_message
 
 logger = get_logger("action_taken")
 
 
+@register_action
 class ReplyAction(BaseAction):
     """回复动作处理类
 
-    处理发送回复消息的动作，包括文本和表情。
+    处理构建和发送消息回复的动作。
     """
+
+    action_name:str = "reply"
+    action_description:str = "表达想法，可以只包含文本、表情或两者都有"
+    action_parameters:dict[str:str] = {
+        "text": "你想要表达的内容（可选）",
+        "emojis": "描述当前使用表情包的场景（可选）",
+        "target": "你想要回复的原始文本内容（非必须，仅文本，不包含发送者)（可选）",
+    }
+    action_require:list[str] = [
+        "有实质性内容需要表达",
+        "有人提到你，但你还没有回应他",
+        "在合适的时候添加表情（不要总是添加）",
+        "如果你要回复特定某人的某句话，或者你想回复较早的消息，请在target中指定那句话的原始文本",
+        "除非有明确的回复目标，如果选择了target，不用特别提到某个人的人名",
+        "一次只回复一个人，一次只回复一个话题,突出重点",
+        "如果是自己发的消息想继续，需自然衔接",
+        "避免重复或评价自己的发言,不要和自己聊天",
+        "注意：回复尽量简短一些。可以参考贴吧，知乎和微博的回复风格，回复不要浮夸，不要用夸张修辞，平淡一些。"
+    ]
+    default = True
 
     def __init__(
         self,
@@ -29,12 +54,13 @@ class ReplyAction(BaseAction):
         chat_stream: ChatStream,
         current_cycle: CycleDetail,
         log_prefix: str,
+        **kwargs
     ):
         """初始化回复动作处理器
 
         Args:
             action_name: 动作名称
-            action_data: 动作数据
+            action_data: 动作数据，包含 message, emojis, target 等
             reasoning: 执行该动作的理由
             cycle_timers: 计时器字典
             thinking_id: 思考ID
@@ -44,16 +70,31 @@ class ReplyAction(BaseAction):
             current_cycle: 当前循环信息
             log_prefix: 日志前缀
         """
-        super().__init__(action_name, action_data, reasoning, cycle_timers, thinking_id)
+        super().__init__(action_data, reasoning, cycle_timers, thinking_id)
         self.observations = observations
         self.expressor = expressor
         self.chat_stream = chat_stream
         self._current_cycle = current_cycle
         self.log_prefix = log_prefix
-        self.total_no_reply_count = 0
-        self.total_waiting_time = 0.0
 
     async def handle_action(self) -> Tuple[bool, str]:
+        """
+        处理回复动作
+
+        Returns:
+            Tuple[bool, str]: (是否执行成功, 回复文本)
+        """
+        # 注意: 此处可能会使用不同的expressor实现根据任务类型切换不同的回复策略
+        return await self._handle_reply(
+            reasoning=self.reasoning,
+            reply_data=self.action_data,
+            cycle_timers=self.cycle_timers,
+            thinking_id=self.thinking_id
+        )
+    
+    async def _handle_reply(
+        self, reasoning: str, reply_data: dict, cycle_timers: dict, thinking_id: str
+    ) -> tuple[bool, str]:
         """
         处理统一的回复动作 - 可包含文本和表情，顺序任意
 
@@ -63,9 +104,6 @@ class ReplyAction(BaseAction):
             "target": "锚定消息",  # 锚定消息的文本内容
             "emojis": "微笑"  # 表情关键词列表（可选）
         }
-
-        Returns:
-            Tuple[bool, str]: (是否执行成功, 回复文本)
         """
         # 重置连续不回复计数器
         self.total_no_reply_count = 0
@@ -73,7 +111,7 @@ class ReplyAction(BaseAction):
 
         # 从聊天观察获取锚定消息
         observations: ChattingObservation = self.observations[0]
-        anchor_message = observations.serch_message_by_text(self.action_data["target"])
+        anchor_message = observations.serch_message_by_text(reply_data["target"])
 
         # 如果没有找到锚点消息，创建一个占位符
         if not anchor_message:
@@ -85,11 +123,11 @@ class ReplyAction(BaseAction):
             anchor_message.update_chat_stream(self.chat_stream)
 
         success, reply_set = await self.expressor.deal_reply(
-            cycle_timers=self.cycle_timers,
-            action_data=self.action_data,
+            cycle_timers=cycle_timers,
+            action_data=reply_data,
             anchor_message=anchor_message,
-            reasoning=self.reasoning,
-            thinking_id=self.thinking_id,
+            reasoning=reasoning,
+            thinking_id=thinking_id,
         )
 
         reply_text = ""

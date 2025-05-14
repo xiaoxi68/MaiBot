@@ -248,7 +248,7 @@ class DefaultExpressor:
             return None
 
         mark_head = False
-        first_bot_msg: Optional[MessageSending] = None
+        # first_bot_msg: Optional[MessageSending] = None
         reply_message_ids = []  # 记录实际发送的消息ID
 
         sent_msg_list = []
@@ -279,7 +279,7 @@ class DefaultExpressor:
             try:
                 if not mark_head:
                     mark_head = True
-                    first_bot_msg = bot_message  # 保存第一个成功发送的消息对象
+                    # first_bot_msg = bot_message  # 保存第一个成功发送的消息对象
                     typing = False
                 else:
                     typing = True

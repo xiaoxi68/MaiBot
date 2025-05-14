@@ -1,6 +1,6 @@
 import json  # <--- 确保导入 json
 import traceback
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from rich.traceback import install
 from src.chat.models.utils_model import LLMRequest
 from src.config.config import global_config
@@ -10,16 +10,57 @@ from src.chat.focus_chat.info.obs_info import ObsInfo
 from src.chat.focus_chat.info.cycle_info import CycleInfo
 from src.chat.focus_chat.info.mind_info import MindInfo
 from src.chat.focus_chat.info.structured_info import StructuredInfo
-from src.chat.focus_chat.planners.action_factory import ActionFactory
 from src.common.logger_manager import get_logger
-
+from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
+from src.individuality.individuality import Individuality
+from src.chat.focus_chat.planners.action_factory import ActionManager
+from src.chat.focus_chat.planners.action_factory import ActionInfo
 logger = get_logger("planner")
 
 install(extra_lines=3)
 
+def init_prompt():
+    Prompt(
+        """你的名字是{bot_name},{prompt_personality}，{chat_context_description}。需要基于以下信息决定如何参与对话：
+{chat_content_block}
+{mind_info_block}
+{cycle_info_block}
+
+请综合分析聊天内容和你看到的新消息，参考聊天规划，选择合适的action:
+
+{action_options_text}
+
+你必须从上面列出的可用action中选择一个，并说明原因。
+你的决策必须以严格的 JSON 格式输出，且仅包含 JSON 内容，不要有任何其他文字或解释。
+
+请你以下面格式输出你选择的action：
+{{
+    "action": "action_name",
+    "reasoning": "你的决策理由",
+    "参数1": "参数1的值",
+    "参数2": "参数2的值",
+    "参数3": "参数3的值",
+    ...
+}}
+
+请输出你的决策 JSON：""",
+"planner_prompt",)
+    
+    Prompt(
+        """
+action_name: {action_name}
+    描述：{action_description}
+    参数：
+    {action_parameters}
+    动作要求：
+    {action_require}
+        """,
+        "action_prompt",
+    )
+    
 
 class ActionPlanner:
-    def __init__(self, log_prefix: str):
+    def __init__(self, log_prefix: str, action_manager: ActionManager):
         self.log_prefix = log_prefix
         # LLM规划器配置
         self.planner_llm = LLMRequest(
@@ -27,6 +68,8 @@ class ActionPlanner:
             max_tokens=1000,
             request_type="action_planning",  # 用于动作规划
         )
+        
+        self.action_manager = action_manager
 
     async def plan(self, all_plan_info: List[InfoBase], cycle_timers: dict) -> Dict[str, Any]:
         """
@@ -62,16 +105,15 @@ class ActionPlanner:
                     logger.debug(f"{self.log_prefix} 结构化信息: {info}")
                     structured_info = info.get_data()
 
-            # 获取我们将传递给 prompt 构建器和用于验证的当前可用动作
-            current_available_actions = ActionFactory.get_available_actions()
-
+            current_available_actions = self.action_manager.get_using_actions()
+            
             # --- 构建提示词 (调用修改后的 PromptBuilder 方法) ---
-            prompt = await prompt_builder.build_planner_prompt(
+            prompt = await self.build_planner_prompt(
                 is_group_chat=is_group_chat,  # <-- Pass HFC state
                 chat_target_info=None,
                 observed_messages_str=observed_messages_str,  # <-- Pass local variable
                 current_mind=current_mind,  # <-- Pass argument
-                structured_info=structured_info,  # <-- Pass SubMind info
+                # structured_info=structured_info,  # <-- Pass SubMind info
                 current_available_actions=current_available_actions,  # <-- Pass determined actions
                 cycle_info=cycle_info,  # <-- Pass cycle info
             )
@@ -139,9 +181,9 @@ class ActionPlanner:
         )
 
         # 恢复原始动作集
-        ActionFactory.restore_actions()
+        self.action_manager.restore_actions()
         logger.debug(
-            f"{self.log_prefix}恢复了原始动作集, 当前可用: {list(ActionFactory.get_available_actions().keys())}"
+            f"{self.log_prefix}恢复了原始动作集, 当前可用: {list(self.action_manager.get_using_actions().keys())}"
         )
 
         action_result = {"action_type": action, "action_data": action_data, "reasoning": reasoning}
@@ -154,3 +196,91 @@ class ActionPlanner:
 
         # 返回结果字典
         return plan_result
+
+    
+    async def build_planner_prompt(
+        self,
+        is_group_chat: bool,  # Now passed as argument
+        chat_target_info: Optional[dict],  # Now passed as argument
+        observed_messages_str: str,
+        current_mind: Optional[str],
+        current_available_actions: Dict[str, ActionInfo],
+        cycle_info: Optional[str],
+    ) -> str:
+        """构建 Planner LLM 的提示词 (获取模板并填充数据)"""
+        try:
+            # --- Determine chat context ---
+            chat_context_description = "你现在正在一个群聊中"
+            chat_target_name = None  # Only relevant for private
+            if not is_group_chat and chat_target_info:
+                chat_target_name = (
+                    chat_target_info.get("person_name") or chat_target_info.get("user_nickname") or "对方"
+                )
+                chat_context_description = f"你正在和 {chat_target_name} 私聊"
+
+
+            chat_content_block = ""
+            if observed_messages_str:
+                chat_content_block = f"聊天记录：\n{observed_messages_str}"
+            else:
+                chat_content_block = "你还未开始聊天"
+
+            mind_info_block = ""
+            if current_mind:
+                mind_info_block = f"对聊天的规划：{current_mind}"
+            else:
+                mind_info_block = "你刚参与聊天"
+
+            individuality = Individuality.get_instance()
+            personality_block = individuality.get_prompt(x_person=2, level=2)
+
+
+            action_options_block = ""
+            for using_actions_name, using_actions_info in current_available_actions.items():
+                # print(using_actions_name)
+                # print(using_actions_info)
+                # print(using_actions_info["parameters"])
+                # print(using_actions_info["require"])
+                # print(using_actions_info["description"])
+                
+                using_action_prompt = await global_prompt_manager.get_prompt_async("action_prompt")
+                
+                param_text = ""
+                for param_name, param_description in using_actions_info["parameters"].items():
+                    param_text += f"{param_name}: {param_description}\n"
+                
+                require_text = ""
+                for require_item in using_actions_info["require"]:
+                    require_text += f"- {require_item}\n"
+                
+                using_action_prompt = using_action_prompt.format(
+                    action_name=using_actions_name,
+                    action_description=using_actions_info["description"],
+                    action_parameters=param_text,
+                    action_require=require_text,
+                )
+                
+                action_options_block += using_action_prompt
+                
+
+
+            
+            planner_prompt_template = await global_prompt_manager.get_prompt_async("planner_prompt")
+            prompt = planner_prompt_template.format(
+                bot_name=global_config.BOT_NICKNAME,
+                prompt_personality=personality_block,
+                chat_context_description=chat_context_description,
+                chat_content_block=chat_content_block,
+                mind_info_block=mind_info_block,
+                cycle_info_block=cycle_info,
+                action_options_text=action_options_block,
+            )
+            return prompt
+
+        except Exception as e:
+            logger.error(f"构建 Planner 提示词时出错: {e}")
+            logger.error(traceback.format_exc())
+            return "构建 Planner Prompt 时出错"
+
+
+init_prompt()

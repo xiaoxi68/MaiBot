@@ -21,8 +21,8 @@ from src.chat.focus_chat.info_processors.tool_processor import ToolProcessor
 from src.chat.focus_chat.expressors.default_expressor import DefaultExpressor
 from src.chat.focus_chat.memory_activator import MemoryActivator
 from src.chat.focus_chat.info_processors.base_processor import BaseProcessor
-from src.chat.focus_chat.planners.action_factory import ActionFactory
 from src.chat.focus_chat.planners.planner import ActionPlanner
+from src.chat.focus_chat.planners.action_factory import ActionManager
 
 install(extra_lines=3)
 
@@ -88,7 +88,9 @@ class HeartFChatting:
         self.working_observation = WorkingObservation(observe_id=self.stream_id)
         self.memory_activator = MemoryActivator()
         self.expressor = DefaultExpressor(chat_id=self.stream_id)
-        self.action_planner = ActionPlanner(log_prefix=self.log_prefix)
+        self.action_manager = ActionManager()
+        self.action_planner = ActionPlanner(log_prefix=self.log_prefix, action_manager=self.action_manager)
+
 
         # --- 处理器列表 ---
         self.processors: List[BaseProcessor] = []
@@ -340,7 +342,7 @@ class HeartFChatting:
         parallel_end_time = time.time()
         total_duration = parallel_end_time - parallel_start_time
         logger.info(f"{self.log_prefix} 所有处理器任务全部完成，总耗时: {total_duration:.2f}秒")
-        logger.debug(f"{self.log_prefix} 所有信息处理器处理后的信息: {all_plan_info}")
+        # logger.debug(f"{self.log_prefix} 所有信息处理器处理后的信息: {all_plan_info}")
 
         return all_plan_info
 
@@ -444,7 +446,7 @@ class HeartFChatting:
         """
         try:
             # 使用工厂创建动作处理器实例
-            action_handler = ActionFactory.create_action(
+            action_handler = self.action_manager.create_action(
                 action_name=action,
                 action_data=action_data,
                 reasoning=reasoning,
@@ -524,3 +526,5 @@ class HeartFChatting:
         if last_n is not None:
             history = history[-last_n:]
         return [cycle.to_dict() for cycle in history]
+
+
