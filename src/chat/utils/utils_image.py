@@ -35,13 +35,13 @@ class ImageManager:
         if not self._initialized:
             self._ensure_image_dir()
             self._llm = LLMRequest(model=global_config.vlm, temperature=0.4, max_tokens=300, request_type="image")
-            
+
             try:
                 db.connect(reuse_if_open=True)
                 db.create_tables([Images, ImageDescriptions], safe=True)
             except Exception as e:
                 logger.error(f"数据库连接或表创建失败: {e}")
-            
+
             self._initialized = True
 
     def _ensure_image_dir(self):
@@ -61,8 +61,7 @@ class ImageManager:
         """
         try:
             record = ImageDescriptions.get_or_none(
-                (ImageDescriptions.hash == image_hash) &
-                (ImageDescriptions.type == description_type)
+                (ImageDescriptions.hash == image_hash) & (ImageDescriptions.type == description_type)
             )
             return record.description if record else None
         except Exception as e:
@@ -80,14 +79,9 @@ class ImageManager:
         """
         try:
             current_timestamp = time.time()
-            defaults = {
-                'description': description,
-                'timestamp': current_timestamp
-            }
+            defaults = {"description": description, "timestamp": current_timestamp}
             desc_obj, created = ImageDescriptions.get_or_create(
-                hash=image_hash,
-                type=description_type,
-                defaults=defaults
+                hash=image_hash, type=description_type, defaults=defaults
             )
             if not created:  # 如果记录已存在，则更新
                 desc_obj.description = description
@@ -120,7 +114,7 @@ class ImageManager:
             else:
                 prompt = "这是一个表情包，请用使用几个词描述一下表情包所表达的情感和内容，简短一些"
                 description, _ = await self._llm.generate_response_for_image(prompt, image_base64, image_format)
-            
+
             if description is None:
                 logger.warning("AI未能生成表情包描述")
                 return "[表情包(描述生成失败)]"
@@ -191,7 +185,7 @@ class ImageManager:
                 "请用中文描述这张图片的内容。如果有文字，请把文字都描述出来。并尝试猜测这个图片的含义。最多100个字。"
             )
             description, _ = await self._llm.generate_response_for_image(prompt, image_base64, image_format)
-            
+
             if description is None:
                 logger.warning("AI未能生成图片描述")
                 return "[图片(描述生成失败)]"

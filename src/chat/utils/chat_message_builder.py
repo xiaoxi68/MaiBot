@@ -454,7 +454,7 @@ async def build_anonymous_messages(messages: List[Dict[str, Any]]) -> str:
         def reply_replacer(match):
             # aaa = match.group(1)
             bbb = match.group(2)
-            anon_reply = get_anon_name(platform, bbb) #noqa
+            anon_reply = get_anon_name(platform, bbb)  # noqa
             return f"回复 {anon_reply}"
 
         content = re.sub(reply_pattern, reply_replacer, content, count=1)
@@ -465,7 +465,7 @@ async def build_anonymous_messages(messages: List[Dict[str, Any]]) -> str:
         def at_replacer(match):
             # aaa = match.group(1)
             bbb = match.group(2)
-            anon_at = get_anon_name(platform, bbb) #noqa
+            anon_at = get_anon_name(platform, bbb)  # noqa
             return f"@{anon_at}"
 
         content = re.sub(at_pattern, at_replacer, content)

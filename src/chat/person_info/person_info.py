@@ -261,7 +261,9 @@ class PersonInfoManager:
                 qv_name_prompt += f"你之前叫他{old_name}，是因为{old_reason}，"
 
             qv_name_prompt += f"\n其他取名的要求是：{request}，不要太浮夸"
-            qv_name_prompt += "\n请根据以上用户信息，想想你叫他什么比较好，不要太浮夸，请最好使用用户的qq昵称，可以稍作修改"
+            qv_name_prompt += (
+                "\n请根据以上用户信息，想想你叫他什么比较好，不要太浮夸，请最好使用用户的qq昵称，可以稍作修改"
+            )
 
             if existing_names_str:
                 qv_name_prompt += f"\n请注意，以下名称已被你尝试过或已知存在，请避免：{existing_names_str}。\n"
@@ -289,6 +291,7 @@ class PersonInfoManager:
             if generated_nickname in current_name_set:
                 is_duplicate = True
             else:
+
                 def _db_check_name_exists_sync(name_to_check):
                     return PersonInfo.select().where(PersonInfo.person_name == name_to_check).exists()
 
@@ -415,7 +418,9 @@ class PersonInfoManager:
     @staticmethod
     async def del_all_undefined_field():
         """删除所有项里的未定义字段 - 对于Peewee (SQL)，此操作通常不适用，因为模式是固定的。"""
-        logger.info("del_all_undefined_field: 对于使用Peewee的SQL数据库，此操作通常不适用或不需要，因为表结构是预定义的。")
+        logger.info(
+            "del_all_undefined_field: 对于使用Peewee的SQL数据库，此操作通常不适用或不需要，因为表结构是预定义的。"
+        )
         return
 
     @staticmethod
@@ -512,7 +517,9 @@ class PersonInfoManager:
                             if trimmed_interval:
                                 msg_interval_val = int(round(np.percentile(trimmed_interval, 37)))
                                 await self.update_one_field(person_id, "msg_interval", msg_interval_val)
-                                logger.trace(f"用户{person_id}的msg_interval通过头尾截断和37分位数更新为{msg_interval_val}")
+                                logger.trace(
+                                    f"用户{person_id}的msg_interval通过头尾截断和37分位数更新为{msg_interval_val}"
+                                )
                             else:
                                 logger.trace(f"用户{person_id}截断后数据为空，无法计算msg_interval")
                         else:
@@ -577,13 +584,17 @@ class PersonInfoManager:
                 break
 
         if not found_person_id:
+
             def _db_find_by_name_sync(p_name_to_find: str):
                 return PersonInfo.get_or_none(PersonInfo.person_name == p_name_to_find)
 
             record = await asyncio.to_thread(_db_find_by_name_sync, person_name)
             if record:
                 found_person_id = record.person_id
-                if found_person_id not in self.person_name_list or self.person_name_list[found_person_id] != person_name:
+                if (
+                    found_person_id not in self.person_name_list
+                    or self.person_name_list[found_person_id] != person_name
+                ):
                     self.person_name_list[found_person_id] = person_name
             else:
                 logger.debug(f"数据库中也未找到名为 '{person_name}' 的用户 (Peewee)")
@@ -600,7 +611,9 @@ class PersonInfoManager:
                 "person_name",
                 "name_reason",
             ]
-            valid_fields_to_get = [f for f in required_fields if f in PersonInfo._meta.fields or f in person_info_default]
+            valid_fields_to_get = [
+                f for f in required_fields if f in PersonInfo._meta.fields or f in person_info_default
+            ]
 
             person_data = await self.get_values(found_person_id, valid_fields_to_get)
 

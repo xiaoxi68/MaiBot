@@ -89,7 +89,9 @@ class SearchKnowledgeTool(BaseTool):
                         logger.warning(f"Knowledge item ID {item.id} has empty embedding string.")
                         continue
                     item_embedding = json.loads(item_embedding_str)
-                    if not isinstance(item_embedding, list) or not all(isinstance(x, (int, float)) for x in item_embedding):
+                    if not isinstance(item_embedding, list) or not all(
+                        isinstance(x, (int, float)) for x in item_embedding
+                    ):
                         logger.warning(f"Knowledge item ID {item.id} has invalid embedding format after JSON parsing.")
                         continue
                 except json.JSONDecodeError:

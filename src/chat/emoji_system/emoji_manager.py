@@ -148,20 +148,21 @@ class MaiEmoji:
                 # 准备数据库记录 for emoji collection
                 emotion_str = ",".join(self.emotion) if self.emotion else ""
 
-                Emoji.create(hash=self.hash, 
-                            full_path=self.full_path,
-                            format=self.format,
-                            description=self.description,
-                            emotion=emotion_str, # Store as comma-separated string
-                            query_count=0, # Default value
-                            is_registered=True,
-                            is_banned=False, # Default value
-                            record_time=self.register_time, # Use MaiEmoji's register_time for DB record_time
-                            register_time=self.register_time,
-                            usage_count=self.usage_count,
-                            last_used_time=self.last_used_time,
-                            )
-                
+                Emoji.create(
+                    hash=self.hash,
+                    full_path=self.full_path,
+                    format=self.format,
+                    description=self.description,
+                    emotion=emotion_str,  # Store as comma-separated string
+                    query_count=0,  # Default value
+                    is_registered=True,
+                    is_banned=False,  # Default value
+                    record_time=self.register_time,  # Use MaiEmoji's register_time for DB record_time
+                    register_time=self.register_time,
+                    usage_count=self.usage_count,
+                    last_used_time=self.last_used_time,
+                )
+
                 logger.success(f"[注册] 表情包信息保存到数据库: {self.filename} ({self.emotion})")
 
                 return True
@@ -197,10 +198,10 @@ class MaiEmoji:
             # 2. 删除数据库记录
             try:
                 will_delete_emoji = Emoji.get(Emoji.hash == self.hash)
-                result = will_delete_emoji.delete_instance() # Returns the number of rows deleted.
+                result = will_delete_emoji.delete_instance()  # Returns the number of rows deleted.
             except Emoji.DoesNotExist:
                 logger.warning(f"[删除] 数据库中未找到哈希值为 {self.hash} 的表情包记录。")
-                result = 0 # Indicate no DB record was deleted
+                result = 0  # Indicate no DB record was deleted
 
             if result > 0:
                 logger.info(f"[删除] 表情包数据库记录 {self.filename} (Hash: {self.hash})")
@@ -245,12 +246,14 @@ def _to_emoji_objects(data):
     emoji_objects = []
     load_errors = 0
     # data is now an iterable of Peewee Emoji model instances
-    emoji_data_list = list(data) 
+    emoji_data_list = list(data)
 
-    for emoji_data in emoji_data_list: # emoji_data is an Emoji model instance
+    for emoji_data in emoji_data_list:  # emoji_data is an Emoji model instance
         full_path = emoji_data.full_path
         if not full_path:
-            logger.warning(f"[加载错误] 数据库记录缺少 'full_path' 字段: ID {emoji_data.id if hasattr(emoji_data, 'id') else 'Unknown'}")
+            logger.warning(
+                f"[加载错误] 数据库记录缺少 'full_path' 字段: ID {emoji_data.id if hasattr(emoji_data, 'id') else 'Unknown'}"
+            )
             load_errors += 1
             continue
 
@@ -265,9 +268,9 @@ def _to_emoji_objects(data):
 
             emoji.description = emoji_data.description
             # Deserialize emotion string from DB to list
-            emoji.emotion = emoji_data.emotion.split(',') if emoji_data.emotion else []
+            emoji.emotion = emoji_data.emotion.split(",") if emoji_data.emotion else []
             emoji.usage_count = emoji_data.usage_count
-            
+
             db_last_used_time = emoji_data.last_used_time
             db_register_time = emoji_data.register_time
 
@@ -275,7 +278,7 @@ def _to_emoji_objects(data):
             emoji.last_used_time = db_last_used_time if db_last_used_time is not None else emoji.register_time
             # If register_time from DB is None, use MaiEmoji's initialized register_time (which is time.time())
             emoji.register_time = db_register_time if db_register_time is not None else emoji.register_time
-            
+
             emoji.format = emoji_data.format
 
             emoji_objects.append(emoji)
@@ -385,7 +388,7 @@ class EmojiManager:
                 # Ensure Peewee database connection is up and tables are created
                 if not peewee_db.is_closed():
                     peewee_db.connect(reuse_if_open=True)
-                Emoji.create_table(safe=True) # Ensures table exists
+                Emoji.create_table(safe=True)  # Ensures table exists
 
                 _ensure_emoji_dir()
                 self._initialized = True
@@ -404,8 +407,8 @@ class EmojiManager:
         try:
             emoji_update = Emoji.get(Emoji.hash == emoji_hash)
             emoji_update.usage_count += 1
-            emoji_update.last_used_time = time.time() # Update last used time
-            emoji_update.save() # Persist changes to DB
+            emoji_update.last_used_time = time.time()  # Update last used time
+            emoji_update.save()  # Persist changes to DB
         except Emoji.DoesNotExist:
             logger.error(f"记录表情使用失败: 未找到 hash 为 {emoji_hash} 的表情包")
         except Exception as e:
@@ -674,7 +677,7 @@ class EmojiManager:
                     "[查询] 未提供 hash，将尝试加载所有表情包，建议使用 get_all_emoji_from_db 更新管理器状态。"
                 )
                 query = Emoji.select()
-            
+
             emoji_peewee_instances = query
             emoji_objects, load_errors = _to_emoji_objects(emoji_peewee_instances)
 

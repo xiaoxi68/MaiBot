@@ -1,4 +1,4 @@
-from src.common.database.database_model import Messages # 更改导入
+from src.common.database.database_model import Messages  # 更改导入
 from src.common.logger import get_module_logger
 import traceback
 from typing import List, Any, Optional
@@ -42,9 +42,7 @@ def find_messages(
                 if hasattr(Messages, key):
                     conditions.append(getattr(Messages, key) == value)
                 else:
-                    logger.warning(
-                        f"过滤器键 '{key}' 在 Messages 模型中未找到。将跳过此条件。"
-                    )
+                    logger.warning(f"过滤器键 '{key}' 在 Messages 模型中未找到。将跳过此条件。")
             if conditions:
                 # 使用 *conditions 将所有条件以 AND 连接
                 query = query.where(*conditions)
@@ -59,9 +57,7 @@ def find_messages(
                 query = query.order_by(Messages.time.desc()).limit(limit)
                 latest_results_peewee = list(query)
                 # 将结果按时间正序排列
-                peewee_results = sorted(
-                    latest_results_peewee, key=lambda msg: msg.time
-                )
+                peewee_results = sorted(latest_results_peewee, key=lambda msg: msg.time)
         else:
             # limit 为 0 时，应用传入的 sort 参数
             if sort:
@@ -74,13 +70,9 @@ def find_messages(
                         elif direction == -1:  # DESC
                             peewee_sort_terms.append(field.desc())
                         else:
-                            logger.warning(
-                                f"字段 '{field_name}' 的排序方向 '{direction}' 无效。将跳过此排序条件。"
-                            )
+                            logger.warning(f"字段 '{field_name}' 的排序方向 '{direction}' 无效。将跳过此排序条件。")
                     else:
-                        logger.warning(
-                            f"排序字段 '{field_name}' 在 Messages 模型中未找到。将跳过此排序条件。"
-                        )
+                        logger.warning(f"排序字段 '{field_name}' 在 Messages 模型中未找到。将跳过此排序条件。")
                 if peewee_sort_terms:
                     query = query.order_by(*peewee_sort_terms)
             peewee_results = list(query)
@@ -116,9 +108,7 @@ def count_messages(message_filter: dict[str, Any]) -> int:
                 if hasattr(Messages, key):
                     conditions.append(getattr(Messages, key) == value)
                 else:
-                    logger.warning(
-                        f"计数时，过滤器键 '{key}' 在 Messages 模型中未找到。将跳过此条件。"
-                    )
+                    logger.warning(f"计数时，过滤器键 '{key}' 在 Messages 模型中未找到。将跳过此条件。")
             if conditions:
                 query = query.where(*conditions)
 

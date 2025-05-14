@@ -5,8 +5,8 @@ from typing import Any, Dict, Tuple, List
 from src.common.logger import get_module_logger
 from src.manager.async_task_manager import AsyncTask
 
-from ...common.database.database import db # This db is the Peewee database instance
-from ...common.database.database_model import OnlineTime, LLMUsage, Messages # Import the Peewee model
+from ...common.database.database import db  # This db is the Peewee database instance
+from ...common.database.database_model import OnlineTime, LLMUsage, Messages  # Import the Peewee model
 from src.manager.local_store_manager import local_storage
 
 logger = get_module_logger("maibot_statistic")
@@ -48,8 +48,8 @@ class OnlineTimeRecordTask(AsyncTask):
     @staticmethod
     def _init_database():
         """初始化数据库"""
-        with db.atomic(): # Use atomic operations for schema changes
-            OnlineTime.create_table(safe=True) # Creates table if it doesn't exist, Peewee handles indexes from model
+        with db.atomic():  # Use atomic operations for schema changes
+            OnlineTime.create_table(safe=True)  # Creates table if it doesn't exist, Peewee handles indexes from model
 
     async def run(self):
         try:
@@ -62,14 +62,17 @@ class OnlineTimeRecordTask(AsyncTask):
                 updated_rows = query.execute()
                 if updated_rows == 0:
                     # Record might have been deleted or ID is stale, try to find/create
-                    self.record_id = None # Reset record_id to trigger find/create logic below
-            
-            if not self.record_id: # Check again if record_id was reset or initially None
+                    self.record_id = None  # Reset record_id to trigger find/create logic below
+
+            if not self.record_id:  # Check again if record_id was reset or initially None
                 # 如果没有记录，检查一分钟以内是否已有记录
                 # Look for a record whose end_timestamp is recent enough to be considered ongoing
-                recent_record = OnlineTime.select().where(
-                    OnlineTime.end_timestamp >= (current_time - timedelta(minutes=1))
-                ).order_by(OnlineTime.end_timestamp.desc()).first()
+                recent_record = (
+                    OnlineTime.select()
+                    .where(OnlineTime.end_timestamp >= (current_time - timedelta(minutes=1)))
+                    .order_by(OnlineTime.end_timestamp.desc())
+                    .first()
+                )
 
                 if recent_record:
                     # 如果有记录，则更新结束时间
@@ -85,7 +88,6 @@ class OnlineTimeRecordTask(AsyncTask):
                     self.record_id = new_record.id
         except Exception as e:
             logger.error(f"在线时间记录失败，错误信息：{e}")
-
 
 
 def _format_online_time(online_seconds: int) -> str:
@@ -197,7 +199,7 @@ class StatisticOutputTask(AsyncTask):
         """
         if not collect_period:
             return {}
-        
+
         # 排序-按照时间段开始时间降序排列（最晚的时间段在前）
         collect_period.sort(key=lambda x: x[1], reverse=True)
 
@@ -228,14 +230,14 @@ class StatisticOutputTask(AsyncTask):
         # Assuming LLMUsage.timestamp is a DateTimeField
         query_start_time = collect_period[-1][1]
         for record in LLMUsage.select().where(LLMUsage.timestamp >= query_start_time):
-            record_timestamp = record.timestamp # This is already a datetime object
+            record_timestamp = record.timestamp  # This is already a datetime object
             for idx, (_, period_start) in enumerate(collect_period):
                 if record_timestamp >= period_start:
                     for period_key, _ in collect_period[idx:]:
                         stats[period_key][TOTAL_REQ_CNT] += 1
 
                         request_type = record.request_type or "unknown"
-                        user_id = record.user_id or "unknown" # user_id is TextField, already string
+                        user_id = record.user_id or "unknown"  # user_id is TextField, already string
                         model_name = record.model_name or "unknown"
 
                         stats[period_key][REQ_CNT_BY_TYPE][request_type] += 1
@@ -275,7 +277,7 @@ class StatisticOutputTask(AsyncTask):
         """
         if not collect_period:
             return {}
-        
+
         collect_period.sort(key=lambda x: x[1], reverse=True)
 
         stats = {
@@ -300,7 +302,7 @@ class StatisticOutputTask(AsyncTask):
                     for period_key, current_period_start_time in collect_period[idx:]:
                         # Determine the portion of the record that falls within this specific statistical period
                         overlap_start = max(record_start_timestamp, current_period_start_time)
-                        overlap_end = effective_end_time # Already capped by 'now' and record's own end
+                        overlap_end = effective_end_time  # Already capped by 'now' and record's own end
 
                         if overlap_end > overlap_start:
                             stats[period_key][ONLINE_TIME] += (overlap_end - overlap_start).total_seconds()
@@ -315,7 +317,7 @@ class StatisticOutputTask(AsyncTask):
         """
         if not collect_period:
             return {}
-        
+
         collect_period.sort(key=lambda x: x[1], reverse=True)
 
         stats = {
@@ -326,9 +328,9 @@ class StatisticOutputTask(AsyncTask):
             for period_key, _ in collect_period
         }
 
-        query_start_timestamp = collect_period[-1][1].timestamp() # Messages.time is a DoubleField (timestamp)
+        query_start_timestamp = collect_period[-1][1].timestamp()  # Messages.time is a DoubleField (timestamp)
         for message in Messages.select().where(Messages.time >= query_start_timestamp):
-            message_time_ts = message.time # This is a float timestamp
+            message_time_ts = message.time  # This is a float timestamp
 
             chat_id = None
             chat_name = None
@@ -337,16 +339,18 @@ class StatisticOutputTask(AsyncTask):
             if message.chat_info_group_id:
                 chat_id = f"g{message.chat_info_group_id}"
                 chat_name = message.chat_info_group_name or f"群{message.chat_info_group_id}"
-            elif message.user_id: # Fallback to sender's info for chat_id if not a group_info based chat
-                                  # This uses the message SENDER's ID as per original logic's fallback
-                chat_id = f"u{message.user_id}" # SENDER's user_id
-                chat_name = message.user_nickname # SENDER's nickname
+            elif message.user_id:  # Fallback to sender's info for chat_id if not a group_info based chat
+                # This uses the message SENDER's ID as per original logic's fallback
+                chat_id = f"u{message.user_id}"  # SENDER's user_id
+                chat_name = message.user_nickname  # SENDER's nickname
             else:
                 # If neither group_id nor sender_id is available for chat identification
-                logger.warning(f"Message (PK: {message.id if hasattr(message, 'id') else 'N/A'}) lacks group_id and user_id for chat stats.")
+                logger.warning(
+                    f"Message (PK: {message.id if hasattr(message, 'id') else 'N/A'}) lacks group_id and user_id for chat stats."
+                )
                 continue
-            
-            if not chat_id: # Should not happen if above logic is correct
+
+            if not chat_id:  # Should not happen if above logic is correct
                 continue
 
             # Update name_mapping

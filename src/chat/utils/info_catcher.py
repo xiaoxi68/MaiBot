@@ -103,11 +103,11 @@ class InfoCatcher:
 
             print(f"查询参数: time_start={time_start}, time_end={time_end}, chat_id={chat_id}")
 
-            messages_between_query = Messages.select().where(
-                (Messages.chat_id == chat_id) &
-                (Messages.time > time_start) &
-                (Messages.time < time_end)
-            ).order_by(Messages.time.desc())
+            messages_between_query = (
+                Messages.select()
+                .where((Messages.chat_id == chat_id) & (Messages.time > time_start) & (Messages.time < time_end))
+                .order_by(Messages.time.desc())
+            )
 
             result = list(messages_between_query)
             print(f"查询结果数量: {len(result)}")
@@ -124,10 +124,12 @@ class InfoCatcher:
         message_id_val = message.message_info.message_id
         chat_id_val = message.chat_stream.stream_id
 
-        messages_before_query = Messages.select().where(
-            (Messages.chat_id == chat_id_val) &
-            (Messages.message_id < message_id_val)
-        ).order_by(Messages.time.desc()).limit(self.context_length * 3)
+        messages_before_query = (
+            Messages.select()
+            .where((Messages.chat_id == chat_id_val) & (Messages.message_id < message_id_val))
+            .order_by(Messages.time.desc())
+            .limit(self.context_length * 3)
+        )
 
         return list(messages_before_query)
 
@@ -137,7 +139,7 @@ class InfoCatcher:
             processed_msg_item = msg_item
             if not isinstance(msg_item, dict):
                 processed_msg_item = self.message_to_dict(msg_item)
-            
+
             if not processed_msg_item:
                 continue
 
@@ -163,15 +165,15 @@ class InfoCatcher:
                 "user_nickname": msg_obj.user_nickname,
                 "processed_plain_text": msg_obj.processed_plain_text,
             }
-        
-        if hasattr(msg_obj, 'message_info') and hasattr(msg_obj.message_info, 'user_info'):
+
+        if hasattr(msg_obj, "message_info") and hasattr(msg_obj.message_info, "user_info"):
             return {
                 "time": msg_obj.message_info.time,
                 "user_id": msg_obj.message_info.user_info.user_id,
                 "user_nickname": msg_obj.message_info.user_info.user_nickname,
                 "processed_plain_text": msg_obj.processed_plain_text,
             }
-        
+
         print(f"Warning: message_to_dict received an unhandled type: {type(msg_obj)}")
         return {}
 
@@ -198,7 +200,7 @@ class InfoCatcher:
                 chat_history_in_thinking_json=json.dumps(chat_history_in_thinking_list),
                 chat_history_after_response_json=json.dumps(chat_history_after_response_list),
                 heartflow_data_json=json.dumps(self.heartflow_data),
-                reasoning_data_json=json.dumps(self.reasoning_data)
+                reasoning_data_json=json.dumps(self.reasoning_data),
             )
             log_entry.save()
 

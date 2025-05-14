@@ -7,12 +7,14 @@ from src.chat.person_info.relationship_manager import relationship_manager
 from src.chat.utils.utils import get_embedding
 import time
 from typing import Union, Optional
+
 # from common.database.database import db
 from src.chat.utils.utils import get_recent_group_speaker
 from src.manager.mood_manager import mood_manager
 from src.chat.memory_system.Hippocampus import HippocampusManager
 from src.chat.knowledge.knowledge_lib import qa_manager
 from src.chat.focus_chat.expressors.exprssion_learner import expression_learner
+
 # import traceback
 import random
 import json
@@ -614,7 +616,7 @@ class PromptBuilder:
                 return "" if not return_raw else []
 
             query_embedding_magnitude = math.sqrt(sum(x * x for x in query_embedding))
-            if query_embedding_magnitude == 0: # Avoid division by zero
+            if query_embedding_magnitude == 0:  # Avoid division by zero
                 return "" if not return_raw else []
 
             for knowledge_item in all_knowledges:
@@ -623,35 +625,35 @@ class PromptBuilder:
                     db_embedding = json.loads(db_embedding_str)
 
                     if len(db_embedding) != len(query_embedding):
-                        logger.warning(f"Embedding length mismatch for knowledge ID {knowledge_item.id if hasattr(knowledge_item, 'id') else 'N/A'}. Skipping.")
+                        logger.warning(
+                            f"Embedding length mismatch for knowledge ID {knowledge_item.id if hasattr(knowledge_item, 'id') else 'N/A'}. Skipping."
+                        )
                         continue
-                    
+
                     # Calculate Cosine Similarity
                     dot_product = sum(q * d for q, d in zip(query_embedding, db_embedding))
                     db_embedding_magnitude = math.sqrt(sum(x * x for x in db_embedding))
 
-                    if db_embedding_magnitude == 0: # Avoid division by zero
+                    if db_embedding_magnitude == 0:  # Avoid division by zero
                         similarity = 0.0
                     else:
                         similarity = dot_product / (query_embedding_magnitude * db_embedding_magnitude)
-                    
+
                     if similarity >= threshold:
-                        results_with_similarity.append({
-                            "content": knowledge_item.content,
-                            "similarity": similarity
-                        })
+                        results_with_similarity.append({"content": knowledge_item.content, "similarity": similarity})
                 except json.JSONDecodeError:
-                    logger.error(f"Failed to parse embedding for knowledge ID {knowledge_item.id if hasattr(knowledge_item, 'id') else 'N/A'}")
+                    logger.error(
+                        f"Failed to parse embedding for knowledge ID {knowledge_item.id if hasattr(knowledge_item, 'id') else 'N/A'}"
+                    )
                 except Exception as e:
                     logger.error(f"Error processing knowledge item: {e}")
-
 
             # Sort by similarity in descending order
             results_with_similarity.sort(key=lambda x: x["similarity"], reverse=True)
 
             # Limit results
             limited_results = results_with_similarity[:limit]
-            
+
             logger.debug(f"知识库查询结果数量 (after Peewee processing): {len(limited_results)}")
 
             if not limited_results:
