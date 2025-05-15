@@ -54,6 +54,8 @@ class ChattingInfoProcessor(BaseProcessor):
             for obs in observations:
                 # print(f"obs: {obs}")
                 if isinstance(obs, ChattingObservation):
+                    # print("1111111111111111111111读取111111111111111")
+                    
                     obs_info = ObsInfo()
 
                     await self.chat_compress(obs)

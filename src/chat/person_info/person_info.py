@@ -94,6 +94,15 @@ class PersonInfoManager:
             return True
         else:
             return False
+    
+    def get_person_id_by_person_name(self, person_name: str):
+        """根据用户名获取用户ID"""
+        document = db.person_info.find_one({"person_name": person_name})
+        if document:
+            return document["person_id"]
+        else:
+            return ""
+        
 
     @staticmethod
     async def create_person_info(person_id: str, data: dict = None):

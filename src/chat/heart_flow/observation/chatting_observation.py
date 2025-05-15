@@ -14,6 +14,7 @@ from typing import Optional
 import difflib
 from src.chat.message_receive.message import MessageRecv  # 添加 MessageRecv 导入
 from src.chat.heart_flow.observation.observation import Observation
+
 from src.common.logger_manager import get_logger
 from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
 from src.chat.utils.prompt_builder import Prompt
@@ -43,6 +44,7 @@ class ChattingObservation(Observation):
     def __init__(self, chat_id):
         super().__init__(chat_id)
         self.chat_id = chat_id
+        self.platform = "qq"
 
         # --- Initialize attributes (defaults) ---
         self.is_group_chat: bool = False
@@ -105,7 +107,7 @@ class ChattingObservation(Observation):
                 mid_memory_str += f"{mid_memory['theme']}\n"
             return mid_memory_str + "现在群里正在聊：\n" + self.talking_message_str
 
-    def serch_message_by_text(self, text: str) -> Optional[MessageRecv]:
+    def search_message_by_text(self, text: str) -> Optional[MessageRecv]:
         """
         根据回复的纯文本
         1. 在talking_message中查找最新的，最匹配的消息
@@ -150,7 +152,7 @@ class ChattingObservation(Observation):
         }
 
         message_info = {
-            "platform": find_msg.get("platform"),
+            "platform": self.platform,
             "message_id": find_msg.get("message_id"),
             "time": find_msg.get("time"),
             "group_info": group_info,

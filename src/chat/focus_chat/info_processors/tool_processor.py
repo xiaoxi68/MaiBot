@@ -155,7 +155,7 @@ class ToolProcessor(BaseProcessor):
         )
 
         # 调用LLM，专注于工具使用
-        logger.debug(f"开始执行工具调用{prompt}")
+        # logger.debug(f"开始执行工具调用{prompt}")
         response, _, tool_calls = await self.llm_model.generate_response_tool_async(prompt=prompt, tools=tools)
 
         logger.debug(f"获取到工具原始输出:\n{tool_calls}")

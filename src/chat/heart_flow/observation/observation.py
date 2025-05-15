@@ -5,7 +5,6 @@ from src.common.logger_manager import get_logger
 
 logger = get_logger("observation")
 
-
 # 所有观察的基类
 class Observation:
     def __init__(self, observe_id):
