@@ -37,7 +37,9 @@ class MessageStorage:
             try:
                 msg_id = int(message.message_info.message_id)
             except ValueError:
-                logger.error(f"Message ID {message.message_info.message_id} is not a valid integer. Storing as 0 or consider changing model field type.")
+                logger.error(
+                    f"Message ID {message.message_info.message_id} is not a valid integer. Storing as 0 or consider changing model field type."
+                )
                 msg_id = 0  # Or handle as appropriate, e.g. skip storing, or change model field to TextField
 
             Messages.create(

@@ -2,6 +2,7 @@ from peewee import Model, DoubleField, IntegerField, BooleanField, TextField, Fl
 from .database import db
 import datetime
 from ..logger_manager import get_logger
+
 logger = get_logger("database_model")
 # 请在此处定义您的数据库实例。
 # 您需要取消注释并配置适合您的数据库的部分。
