@@ -77,8 +77,7 @@ def find_messages(
                     query = query.order_by(*peewee_sort_terms)
             peewee_results = list(query)
 
-        results = [_model_to_dict(msg) for msg in peewee_results]
-        return results
+        return [_model_to_dict(msg) for msg in peewee_results]
     except Exception as e:
         log_message = (
             f"使用 Peewee 查找消息失败 (filter={message_filter}, sort={sort}, limit={limit}, limit_mode={limit_mode}): {e}\n"
