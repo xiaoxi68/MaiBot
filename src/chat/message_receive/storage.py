@@ -33,14 +33,13 @@ class MessageStorage:
             chat_info_dict = chat_stream.to_dict()
             user_info_dict = message.message_info.user_info.to_dict()
 
-            # Ensure message_id is an int if the model field is IntegerField
-            try:
-                msg_id = int(message.message_info.message_id)
-            except ValueError:
-                logger.error(
-                    f"Message ID {message.message_info.message_id} is not a valid integer. Storing as 0 or consider changing model field type."
-                )
-                msg_id = 0  # Or handle as appropriate, e.g. skip storing, or change model field to TextField
+            # message_id 现在是 TextField，直接使用字符串值
+            msg_id = message.message_info.message_id
+
+            # 安全地获取 group_info, 如果为 None 则视为空字典
+            group_info_from_chat = chat_info_dict.get("group_info") or {}
+            # 安全地获取 user_info, 如果为 None 则视为空字典 (以防万一)
+            user_info_from_chat = chat_info_dict.get("user_info") or {}
 
             Messages.create(
                 message_id=msg_id,
@@ -49,13 +48,13 @@ class MessageStorage:
                 # Flattened chat_info
                 chat_info_stream_id=chat_info_dict.get("stream_id"),
                 chat_info_platform=chat_info_dict.get("platform"),
-                chat_info_user_platform=chat_info_dict.get("user_info", {}).get("platform"),
-                chat_info_user_id=chat_info_dict.get("user_info", {}).get("user_id"),
-                chat_info_user_nickname=chat_info_dict.get("user_info", {}).get("user_nickname"),
-                chat_info_user_cardname=chat_info_dict.get("user_info", {}).get("user_cardname"),
-                chat_info_group_platform=chat_info_dict.get("group_info", {}).get("platform"),
-                chat_info_group_id=chat_info_dict.get("group_info", {}).get("group_id"),
-                chat_info_group_name=chat_info_dict.get("group_info", {}).get("group_name"),
+                chat_info_user_platform=user_info_from_chat.get("platform"),
+                chat_info_user_id=user_info_from_chat.get("user_id"),
+                chat_info_user_nickname=user_info_from_chat.get("user_nickname"),
+                chat_info_user_cardname=user_info_from_chat.get("user_cardname"),
+                chat_info_group_platform=group_info_from_chat.get("platform"),
+                chat_info_group_id=group_info_from_chat.get("group_id"),
+                chat_info_group_name=group_info_from_chat.get("group_name"),
                 chat_info_create_time=float(chat_info_dict.get("create_time", 0.0)),
                 chat_info_last_active_time=float(chat_info_dict.get("last_active_time", 0.0)),
                 # Flattened user_info (message sender)

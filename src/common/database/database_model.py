@@ -122,7 +122,7 @@ class Messages(BaseModel):
     用于存储消息数据的模型。
     """
 
-    message_id = IntegerField(index=True)  # 消息 ID
+    message_id = TextField(index=True)  # 消息 ID (更改自 IntegerField)
     time = DoubleField()  # 消息时间戳
 
     chat_id = TextField(index=True)  # 对应的 ChatStreams stream_id
@@ -208,7 +208,7 @@ class PersonInfo(BaseModel):
     """
 
     person_id = TextField(unique=True, index=True)  # 个人唯一ID
-    person_name = TextField()  # 个人名称
+    person_name = TextField(null=True)  # 个人名称 (允许为空)
     name_reason = TextField(null=True)  # 名称设定的原因
     platform = TextField()  # 平台
     user_id = TextField(index=True)  # 用户ID

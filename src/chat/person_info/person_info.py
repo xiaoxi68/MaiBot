@@ -39,13 +39,13 @@ logger = get_logger("person_info")
 
 person_info_default = {
     "person_id": None,
-    "person_name": None,
+    "person_name": None,  # 模型中已设为 null=True，此默认值OK
     "name_reason": None,
-    "platform": None,
-    "user_id": None,
-    "nickname": None,
+    "platform": "unknown",  # 提供非None的默认值
+    "user_id": "unknown",  # 提供非None的默认值
+    "nickname": "Unknown",  # 提供非None的默认值
     "relationship_value": 0,
-    "konw_time": 0,
+    "know_time": 0,  # 修正拼写：konw_time -> know_time
     "msg_interval": 2000,
     "msg_interval_list": [],  # 将作为 JSON 字符串存储在 Peewee 的 TextField
     "user_cardname": None,  # 注意：此字段不在 PersonInfo Peewee 模型中
@@ -561,7 +561,7 @@ class PersonInfoManager:
                 "platform": platform,
                 "user_id": str(user_id),
                 "nickname": nickname,
-                "konw_time": int(datetime.datetime.now().timestamp()),
+                "know_time": int(datetime.datetime.now().timestamp()),  # 修正拼写：konw_time -> know_time
             }
             model_fields = PersonInfo._meta.fields.keys()
             filtered_initial_data = {k: v for k, v in initial_data.items() if v is not None and k in model_fields}
