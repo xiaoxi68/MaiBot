@@ -59,9 +59,7 @@ def find_messages(
                             elif op == "$nin":
                                 conditions.append(field.not_in(op_value))
                             else:
-                                logger.warning(
-                                    f"过滤器中遇到未知操作符 '{op}' (字段: '{key}')。将跳过此操作符。"
-                                )
+                                logger.warning(f"过滤器中遇到未知操作符 '{op}' (字段: '{key}')。将跳过此操作符。")
                     else:
                         # 直接相等比较
                         conditions.append(field == value)
