@@ -613,7 +613,7 @@ class PromptBuilder:
             all_knowledges = Knowledges.select()
 
             if not all_knowledges:
-                return "" if not return_raw else []
+                return [] if return_raw else ""
 
             query_embedding_magnitude = math.sqrt(sum(x * x for x in query_embedding))
             if query_embedding_magnitude == 0:  # Avoid division by zero
