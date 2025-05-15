@@ -115,7 +115,7 @@ def count_messages(message_filter: dict[str, Any]) -> int:
         count = query.count()
         return count
     except Exception as e:
-        log_message = f"使用 Peewee 计数消息失败 (message_filter={message_filter}): {e}\n" + traceback.format_exc()
+        log_message = f"使用 Peewee 计数消息失败 (message_filter={message_filter}): {e}\n{traceback.format_exc()}"
         logger.error(log_message)
         return 0
 
