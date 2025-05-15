@@ -2,6 +2,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Any, Dict, Tuple, List
 
+
 from src.common.logger import get_module_logger
 from src.manager.async_task_manager import AsyncTask
 
@@ -82,8 +83,10 @@ class OnlineTimeRecordTask(AsyncTask):
                 else:
                     # 若没有记录，则插入新的在线时间记录
                     new_record = OnlineTime.create(
+                        timestamp=current_time.timestamp(),  # 添加此行
                         start_timestamp=current_time,
                         end_timestamp=extended_end_time,
+                        duration=5,  # 初始时长为5分钟
                     )
                     self.record_id = new_record.id
         except Exception as e:

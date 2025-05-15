@@ -1,6 +1,8 @@
 from peewee import Model, DoubleField, IntegerField, BooleanField, TextField, FloatField, DateTimeField
 from .database import db
 import datetime
+from ..logger_manager import get_logger
+logger = get_logger("database_model")
 # 请在此处定义您的数据库实例。
 # 您需要取消注释并配置适合您的数据库的部分。
 # 例如，对于 SQLite:
@@ -189,7 +191,7 @@ class OnlineTime(BaseModel):
     """
 
     # timestamp: "$date": "2025-05-01T18:52:18.191Z" (存储为字符串)
-    timestamp = TextField()
+    timestamp = TextField(default=datetime.datetime.now)  # 时间戳
     duration = IntegerField()  # 时长，单位分钟
     start_timestamp = DateTimeField(default=datetime.datetime.now)
     end_timestamp = DateTimeField(index=True)
@@ -259,6 +261,19 @@ class ThinkingLog(BaseModel):
         table_name = "thinking_logs"
 
 
+class RecalledMessages(BaseModel):
+    """
+    用于存储撤回消息记录的模型。
+    """
+
+    message_id = TextField(index=True)  # 被撤回的消息 ID
+    time = DoubleField()  # 撤回操作发生的时间戳
+    stream_id = TextField()  # 对应的 ChatStreams stream_id
+
+    class Meta:
+        table_name = "recalled_messages"
+
+
 def create_tables():
     """
     创建所有在模型中定义的数据库表。
@@ -276,6 +291,7 @@ def create_tables():
                 PersonInfo,
                 Knowledges,
                 ThinkingLog,
+                RecalledMessages,  # 添加新模型
             ]
         )
 
@@ -295,6 +311,7 @@ def initialize_database():
         PersonInfo,
         Knowledges,
         ThinkingLog,
+        RecalledMessages,  # 添加新模型
     ]
 
     needs_creation = False
@@ -302,23 +319,23 @@ def initialize_database():
         with db:  # 管理 table_exists 检查的连接
             for model in models:
                 if not db.table_exists(model):
-                    print(f"表 '{model._meta.table_name}' 未找到。")
+                    logger.warning(f"表 '{model._meta.table_name}' 未找到。")
                     needs_creation = True
                     break  # 一个表丢失，无需进一步检查。
     except Exception as e:
-        print(f"检查表是否存在时出错: {e}")
+        logger.exception(f"检查表是否存在时出错: {e}")
         # 如果检查失败（例如数据库不可用），则退出
         return
 
     if needs_creation:
-        print("正在初始化数据库：一个或多个表丢失。正在尝试创建所有定义的表...")
+        logger.info("正在初始化数据库：一个或多个表丢失。正在尝试创建所有定义的表...")
         try:
             create_tables()  # 此函数有其自己的 'with db:' 上下文管理。
-            print("数据库表创建过程完成。")
+            logger.info("数据库表创建过程完成。")
         except Exception as e:
-            print(f"创建表期间出错: {e}")
+            logger.exception(f"创建表期间出错: {e}")
     else:
-        print("所有数据库表均已存在。")
+        logger.info("所有数据库表均已存在。")
 
 
 # 模块加载时调用初始化函数
