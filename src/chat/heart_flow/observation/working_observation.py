@@ -2,33 +2,33 @@
 # 外部世界可以是某个聊天 不同平台的聊天 也可以是任意媒体
 from datetime import datetime
 from src.common.logger_manager import get_logger
-
+from src.chat.focus_chat.working_memory.working_memory import WorkingMemory
+from src.chat.focus_chat.working_memory.memory_item import MemoryItem
+from typing import List
 # Import the new utility function
 
 logger = get_logger("observation")
 
 
 # 所有观察的基类
-class WorkingObservation:
-    def __init__(self, observe_id):
+class WorkingMemoryObservation:
+    def __init__(self, observe_id, working_memory: WorkingMemory):
         self.observe_info = ""
         self.observe_id = observe_id
-        self.last_observe_time = datetime.now().timestamp()  # 初始化为当前时间
-        self.history_loop = []
-        self.structured_info = []
+        self.last_observe_time = datetime.now().timestamp()
+
+        self.working_memory = working_memory
+
+        self.retrieved_working_memory = []
 
     def get_observe_info(self):
-        return self.structured_info
+        return self.working_memory
 
-    def add_structured_info(self, structured_info: dict):
-        self.structured_info.append(structured_info)
+    def add_retrieved_working_memory(self, retrieved_working_memory: List[MemoryItem]):
+        self.retrieved_working_memory.append(retrieved_working_memory)
+
+    def get_retrieved_working_memory(self):
+        return self.retrieved_working_memory
 
     async def observe(self):
-        observed_structured_infos = []
-        for structured_info in self.structured_info:
-            if structured_info.get("ttl") > 0:
-                structured_info["ttl"] -= 1
-            observed_structured_infos.append(structured_info)
-            logger.debug(f"观察到结构化信息仍旧在: {structured_info}")
-
-        self.structured_info = observed_structured_infos
+        pass

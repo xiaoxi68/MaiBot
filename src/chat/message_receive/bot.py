@@ -72,6 +72,7 @@ class ChatBot:
             message_data["message_info"]["user_info"]["user_id"] = str(
                 message_data["message_info"]["user_info"]["user_id"]
             )
+            # print(message_data)
             logger.trace(f"处理消息:{str(message_data)[:120]}...")
             message = MessageRecv(message_data)
             groupinfo = message.message_info.group_info
@@ -86,12 +87,14 @@ class ChatBot:
                 logger.trace("检测到私聊消息，检查")
                 # 好友黑名单拦截
                 if userinfo.user_id not in global_config.experimental.talk_allowed_private:
-                    logger.debug(f"用户{userinfo.user_id}没有私聊权限")
+                    # logger.debug(f"用户{userinfo.user_id}没有私聊权限")
                     return
 
             # 群聊黑名单拦截
+            # print(groupinfo.group_id)
+            # print(global_config.chat_target.talk_allowed_groups)
             if groupinfo is not None and groupinfo.group_id not in global_config.chat_target.talk_allowed_groups:
-                logger.trace(f"群{groupinfo.group_id}被禁止回复")
+                logger.debug(f"群{groupinfo.group_id}被禁止回复")
                 return
 
             # 确认从接口发来的message是否有自定义的prompt模板信息

@@ -13,7 +13,7 @@ from src.manager.mood_manager import mood_manager
 from ..message_receive.message import MessageRecv
 from ..models.utils_model import LLMRequest
 from .typo_generator import ChineseTypoGenerator
-from ...common.database import db
+from ...common.database.database import db
 from ...config.config import global_config
 
 logger = get_module_logger("chat_utils")

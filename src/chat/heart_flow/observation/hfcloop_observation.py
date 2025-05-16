@@ -3,6 +3,7 @@
 from datetime import datetime
 from src.common.logger_manager import get_logger
 from src.chat.focus_chat.heartFC_Cycleinfo import CycleDetail
+from src.chat.focus_chat.planners.action_manager import ActionManager
 from typing import List
 # Import the new utility function
 
@@ -16,14 +17,16 @@ class HFCloopObservation:
         self.observe_id = observe_id
         self.last_observe_time = datetime.now().timestamp()  # 初始化为当前时间
         self.history_loop: List[CycleDetail] = []
+        self.action_manager = ActionManager()
 
     def get_observe_info(self):
         return self.observe_info
 
     def add_loop_info(self, loop_info: CycleDetail):
-        # logger.debug(f"添加循环信息111111111111111111111111111111111111: {loop_info}")
-        # print(f"添加循环信息111111111111111111111111111111111111: {loop_info}")
         self.history_loop.append(loop_info)
+
+    def set_action_manager(self, action_manager: ActionManager):
+        self.action_manager = action_manager
 
     async def observe(self):
         recent_active_cycles: List[CycleDetail] = []
@@ -62,7 +65,6 @@ class HFCloopObservation:
         if cycle_info_block:
             cycle_info_block = f"\n你最近的回复\n{cycle_info_block}\n"
         else:
-            # 如果最近的活动循环不是文本回复，或者没有活动循环
             cycle_info_block = "\n"
 
         # 获取history_loop中最新添加的
@@ -72,8 +74,16 @@ class HFCloopObservation:
             end_time = last_loop.end_time
             if start_time is not None and end_time is not None:
                 time_diff = int(end_time - start_time)
-                cycle_info_block += f"\n距离你上一次阅读消息已经过去了{time_diff}分钟\n"
+                if time_diff > 60:
+                    cycle_info_block += f"\n距离你上一次阅读消息已经过去了{time_diff / 60}分钟\n"
+                else:
+                    cycle_info_block += f"\n距离你上一次阅读消息已经过去了{time_diff}秒\n"
             else:
-                cycle_info_block += "\n无法获取上一次阅读消息的时间\n"
+                cycle_info_block += "\n你还没看过消息\n"
+
+        using_actions = self.action_manager.get_using_actions()
+        for action_name, action_info in using_actions.items():
+            action_description = action_info["description"]
+            cycle_info_block += f"\n你在聊天中可以使用{action_name}，这个动作的描述是{action_description}\n"
 
         self.observe_info = cycle_info_block

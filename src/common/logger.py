@@ -629,22 +629,22 @@ PROCESSOR_STYLE_CONFIG = {
 
 PLANNER_STYLE_CONFIG = {
     "advanced": {
-        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #36DEFF>规划器</fg #36DEFF> | <fg #36DEFF>{message}</fg #36DEFF>",
+        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #4DCDFF>规划器</fg #4DCDFF> | <fg #4DCDFF>{message}</fg #4DCDFF>",
         "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 规划器 | {message}",
     },
     "simple": {
-        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #36DEFF>规划器</fg #36DEFF> | <fg #36DEFF>{message}</fg #36DEFF>",
+        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #4DCDFF>规划器</fg #4DCDFF> | <fg #4DCDFF>{message}</fg #4DCDFF>",
         "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 规划器 | {message}",
     },
 }
 
 ACTION_TAKEN_STYLE_CONFIG = {
     "advanced": {
-        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #22DAFF>动作</fg #22DAFF> | <fg #22DAFF>{message}</fg #22DAFF>",
+        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #FFA01F>动作</fg #FFA01F> | <fg #FFA01F>{message}</fg #FFA01F>",
         "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 动作 | {message}",
     },
     "simple": {
-        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #22DAFF>动作</fg #22DAFF> | <fg #22DAFF>{message}</fg #22DAFF>",
+        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #FFA01F>动作</fg #FFA01F> | <fg #FFA01F>{message}</fg #FFA01F>",
         "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 动作 | {message}",
     },
 }

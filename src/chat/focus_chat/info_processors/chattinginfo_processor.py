@@ -27,7 +27,7 @@ class ChattingInfoProcessor(BaseProcessor):
         """初始化观察处理器"""
         super().__init__()
         # TODO: API-Adapter修改标记
-        self.llm_summary = LLMRequest(
+        self.model_summary = LLMRequest(
             model=global_config.model.observation, temperature=0.7, max_tokens=300, request_type="chat_observation"
         )
 
@@ -55,6 +55,8 @@ class ChattingInfoProcessor(BaseProcessor):
             for obs in observations:
                 # print(f"obs: {obs}")
                 if isinstance(obs, ChattingObservation):
+                    # print("1111111111111111111111读取111111111111111")
+
                     obs_info = ObsInfo()
 
                     await self.chat_compress(obs)
@@ -92,7 +94,7 @@ class ChattingInfoProcessor(BaseProcessor):
     async def chat_compress(self, obs: ChattingObservation):
         if obs.compressor_prompt:
             try:
-                summary_result, _, _ = await self.llm_summary.generate_response(obs.compressor_prompt)
+                summary_result, _, _ = await self.model_summary.generate_response(obs.compressor_prompt)
                 summary = "没有主题的闲聊"  # 默认值
                 if summary_result:  # 确保结果不为空
                     summary = summary_result

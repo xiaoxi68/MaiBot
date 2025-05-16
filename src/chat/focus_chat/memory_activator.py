@@ -1,5 +1,5 @@
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
-from src.chat.heart_flow.observation.working_observation import WorkingObservation
+from src.chat.heart_flow.observation.structure_observation import StructureObservation
 from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
 from src.chat.models.utils_model import LLMRequest
 from src.config.config import global_config
@@ -54,7 +54,7 @@ class MemoryActivator:
         for observation in observations:
             if isinstance(observation, ChattingObservation):
                 obs_info_text += observation.get_observe_info()
-            elif isinstance(observation, WorkingObservation):
+            elif isinstance(observation, StructureObservation):
                 working_info = observation.get_observe_info()
                 for working_info_item in working_info:
                     obs_info_text += f"{working_info_item['type']}: {working_info_item['content']}\n"

@@ -14,15 +14,17 @@ from src.chat.focus_chat.heartFC_Cycleinfo import CycleDetail
 from src.chat.focus_chat.info.info_base import InfoBase
 from src.chat.focus_chat.info_processors.chattinginfo_processor import ChattingInfoProcessor
 from src.chat.focus_chat.info_processors.mind_processor import MindProcessor
-from src.chat.heart_flow.observation.memory_observation import MemoryObservation
+from src.chat.focus_chat.info_processors.working_memory_processor import WorkingMemoryProcessor
 from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
-from src.chat.heart_flow.observation.working_observation import WorkingObservation
+from src.chat.heart_flow.observation.working_observation import WorkingMemoryObservation
 from src.chat.focus_chat.info_processors.tool_processor import ToolProcessor
 from src.chat.focus_chat.expressors.default_expressor import DefaultExpressor
 from src.chat.focus_chat.memory_activator import MemoryActivator
 from src.chat.focus_chat.info_processors.base_processor import BaseProcessor
+from src.chat.focus_chat.info_processors.self_processor import SelfProcessor
 from src.chat.focus_chat.planners.planner import ActionPlanner
-from src.chat.focus_chat.planners.action_factory import ActionManager
+from src.chat.focus_chat.planners.action_manager import ActionManager
+from src.chat.focus_chat.working_memory.working_memory import WorkingMemory
 
 install(extra_lines=3)
 
@@ -57,7 +59,7 @@ async def _handle_cycle_delay(action_taken_this_cycle: bool, cycle_start_time: f
 
 class HeartFChatting:
     """
-    管理一个连续的Plan-Replier-Sender循环
+    管理一个连续的Focus Chat循环
     用于在特定聊天流中生成回复。
     其生命周期现在由其关联的 SubHeartflow 的 FOCUSED 状态控制。
     """
@@ -79,18 +81,24 @@ class HeartFChatting:
         # 基础属性
         self.stream_id: str = chat_id  # 聊天流ID
         self.chat_stream: Optional[ChatStream] = None  # 关联的聊天流
-        self.observations: List[Observation] = observations  # 关联的观察列表，用于监控聊天流状态
         self.on_consecutive_no_reply_callback = on_consecutive_no_reply_callback
         self.log_prefix: str = str(chat_id)  # Initial default, will be updated
-
-        self.memory_observation = MemoryObservation(observe_id=self.stream_id)
         self.hfcloop_observation = HFCloopObservation(observe_id=self.stream_id)
-        self.working_observation = WorkingObservation(observe_id=self.stream_id)
+        self.chatting_observation = observations[0]
+
         self.memory_activator = MemoryActivator()
+        self.working_memory = WorkingMemory(chat_id=self.stream_id)
+        self.working_observation = WorkingMemoryObservation(
+            observe_id=self.stream_id, working_memory=self.working_memory
+        )
+
         self.expressor = DefaultExpressor(chat_id=self.stream_id)
         self.action_manager = ActionManager()
         self.action_planner = ActionPlanner(log_prefix=self.log_prefix, action_manager=self.action_manager)
 
+        self.hfcloop_observation.set_action_manager(self.action_manager)
+
+        self.all_observations = observations
         # --- 处理器列表 ---
         self.processors: List[BaseProcessor] = []
         self._register_default_processors()
@@ -107,9 +115,7 @@ class HeartFChatting:
         self._cycle_counter = 0
         self._cycle_history: Deque[CycleDetail] = deque(maxlen=10)  # 保留最近10个循环的信息
         self._current_cycle: Optional[CycleDetail] = None
-        self.total_no_reply_count: int = 0  # 连续不回复计数器
         self._shutting_down: bool = False  # 关闭标志位
-        self.total_waiting_time: float = 0.0  # 累计等待时间
 
     async def _initialize(self) -> bool:
         """
@@ -150,6 +156,8 @@ class HeartFChatting:
         self.processors.append(ChattingInfoProcessor())
         self.processors.append(MindProcessor(subheartflow_id=self.stream_id))
         self.processors.append(ToolProcessor(subheartflow_id=self.stream_id))
+        self.processors.append(WorkingMemoryProcessor(subheartflow_id=self.stream_id))
+        self.processors.append(SelfProcessor(subheartflow_id=self.stream_id))
         logger.info(f"{self.log_prefix} 已注册默认处理器: {[p.__class__.__name__ for p in self.processors]}")
 
     async def start(self):
@@ -327,6 +335,7 @@ class HeartFChatting:
                         f"{self.log_prefix} 处理器 {processor_name} 执行失败，耗时 (自并行开始): {duration_since_parallel_start:.2f}秒. 错误: {e}",
                         exc_info=True,
                     )
+                    traceback.print_exc()
                     # 即使出错，也认为该任务结束了，已从 pending_tasks 中移除
 
             if pending_tasks:
@@ -348,19 +357,20 @@ class HeartFChatting:
     async def _observe_process_plan_action_loop(self, cycle_timers: dict, thinking_id: str) -> tuple[bool, str]:
         try:
             with Timer("观察", cycle_timers):
-                await self.observations[0].observe()
-                await self.memory_observation.observe()
+                # await self.observations[0].observe()
+                await self.chatting_observation.observe()
                 await self.working_observation.observe()
                 await self.hfcloop_observation.observe()
                 observations: List[Observation] = []
-                observations.append(self.observations[0])
-                observations.append(self.memory_observation)
+                observations.append(self.chatting_observation)
                 observations.append(self.working_observation)
                 observations.append(self.hfcloop_observation)
 
                 loop_observation_info = {
                     "observations": observations,
                 }
+
+                self.all_observations = observations
 
             with Timer("回忆", cycle_timers):
                 running_memorys = await self.memory_activator.activate_memory(observations)
@@ -394,8 +404,7 @@ class HeartFChatting:
                 elif action_type == "no_reply":
                     action_str = "不回复"
                 else:
-                    action_type = "unknown"
-                    action_str = "未知动作"
+                    action_str = action_type
 
                 logger.info(f"{self.log_prefix} 麦麦决定'{action_str}', 原因'{reasoning}'")
 
@@ -451,14 +460,14 @@ class HeartFChatting:
                 reasoning=reasoning,
                 cycle_timers=cycle_timers,
                 thinking_id=thinking_id,
-                observations=self.observations,
+                observations=self.all_observations,
                 expressor=self.expressor,
                 chat_stream=self.chat_stream,
                 current_cycle=self._current_cycle,
                 log_prefix=self.log_prefix,
                 on_consecutive_no_reply_callback=self.on_consecutive_no_reply_callback,
-                total_no_reply_count=self.total_no_reply_count,
-                total_waiting_time=self.total_waiting_time,
+                # total_no_reply_count=self.total_no_reply_count,
+                # total_waiting_time=self.total_waiting_time,
                 shutting_down=self._shutting_down,
             )
 
@@ -468,14 +477,6 @@ class HeartFChatting:
 
             # 处理动作并获取结果
             success, reply_text = await action_handler.handle_action()
-
-            # 更新状态计数器
-            if action == "no_reply":
-                self.total_no_reply_count = getattr(action_handler, "total_no_reply_count", self.total_no_reply_count)
-                self.total_waiting_time = getattr(action_handler, "total_waiting_time", self.total_waiting_time)
-            elif action == "reply":
-                self.total_no_reply_count = 0
-                self.total_waiting_time = 0.0
 
             return success, reply_text
 

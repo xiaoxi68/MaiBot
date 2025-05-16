@@ -14,6 +14,7 @@ from typing import Optional
 import difflib
 from src.chat.message_receive.message import MessageRecv  # 添加 MessageRecv 导入
 from src.chat.heart_flow.observation.observation import Observation
+
 from src.common.logger_manager import get_logger
 from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
 from src.chat.utils.prompt_builder import Prompt
@@ -43,6 +44,7 @@ class ChattingObservation(Observation):
     def __init__(self, chat_id):
         super().__init__(chat_id)
         self.chat_id = chat_id
+        self.platform = "qq"
 
         # --- Initialize attributes (defaults) ---
         self.is_group_chat: bool = False
@@ -65,7 +67,7 @@ class ChattingObservation(Observation):
         self.oldest_messages_str = ""
         self.compressor_prompt = ""
         # TODO: API-Adapter修改标记
-        self.llm_summary = LLMRequest(
+        self.model_summary = LLMRequest(
             model=global_config.model.observation, temperature=0.7, max_tokens=300, request_type="chat_observation"
         )
 
@@ -106,7 +108,7 @@ class ChattingObservation(Observation):
                 mid_memory_str += f"{mid_memory['theme']}\n"
             return mid_memory_str + "现在群里正在聊：\n" + self.talking_message_str
 
-    def serch_message_by_text(self, text: str) -> Optional[MessageRecv]:
+    def search_message_by_text(self, text: str) -> Optional[MessageRecv]:
         """
         根据回复的纯文本
         1. 在talking_message中查找最新的，最匹配的消息
@@ -119,12 +121,12 @@ class ChattingObservation(Observation):
         for message in reverse_talking_message:
             if message["processed_plain_text"] == text:
                 find_msg = message
-                logger.debug(f"找到的锚定消息：find_msg: {find_msg}")
+                # logger.debug(f"找到的锚定消息：find_msg: {find_msg}")
                 break
             else:
                 similarity = difflib.SequenceMatcher(None, text, message["processed_plain_text"]).ratio()
                 msg_list.append({"message": message, "similarity": similarity})
-            logger.debug(f"对锚定消息检查：message: {message['processed_plain_text']},similarity: {similarity}")
+            # logger.debug(f"对锚定消息检查：message: {message['processed_plain_text']},similarity: {similarity}")
         if not find_msg:
             if msg_list:
                 msg_list.sort(key=lambda x: x["similarity"], reverse=True)
@@ -151,7 +153,7 @@ class ChattingObservation(Observation):
         }
 
         message_info = {
-            "platform": find_msg.get("platform"),
+            "platform": self.platform,
             "message_id": find_msg.get("message_id"),
             "time": find_msg.get("time"),
             "group_info": group_info,

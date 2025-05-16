@@ -77,7 +77,7 @@ class RelationshipManager:
     @staticmethod
     async def is_known_some_one(platform, user_id):
         """判断是否认识某人"""
-        is_known = person_info_manager.is_person_known(platform, user_id)
+        is_known = await person_info_manager.is_person_known(platform, user_id)
         return is_known
 
     @staticmethod
