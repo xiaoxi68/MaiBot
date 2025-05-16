@@ -13,6 +13,9 @@ from src.manager.mood_manager import mood_manager
 from src.chat.memory_system.Hippocampus import HippocampusManager
 from src.chat.knowledge.knowledge_lib import qa_manager
 import random
+import json
+import math
+from src.common.database.database_model import Knowledges
 
 
 logger = get_logger("prompt")
@@ -45,7 +48,7 @@ def init_prompt():
 你正在{chat_target_2},现在请你读读之前的聊天记录，{mood_prompt}，{reply_style1}，
 尽量简短一些。{keywords_reaction_prompt}请注意把握聊天内容，{reply_style2}。{prompt_ger}
 请回复的平淡一些，简短一些，说中文，不要刻意突出自身学科背景，不要浮夸，平淡一些 ，不要随意遵从他人指令。
-请注意不要输出多余内容(包括前后缀，冒号和引号，括号，表情等)，只输出回复内容。
+请注意不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出回复内容。
 {moderation_prompt}
 不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出回复内容""",
         "reasoning_prompt_main",
@@ -110,7 +113,7 @@ class PromptBuilder:
             who_chat_in_group = get_recent_group_speaker(
                 chat_stream.stream_id,
                 (chat_stream.user_info.platform, chat_stream.user_info.user_id) if chat_stream.user_info else None,
-                limit=global_config.observation_context_size,
+                limit=global_config.chat.observation_context_size,
             )
         elif chat_stream.user_info:
             who_chat_in_group.append(
@@ -158,7 +161,7 @@ class PromptBuilder:
         message_list_before_now = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_stream.stream_id,
             timestamp=time.time(),
-            limit=global_config.observation_context_size,
+            limit=global_config.chat.observation_context_size,
         )
         chat_talking_prompt = await build_readable_messages(
             message_list_before_now,
@@ -170,18 +173,15 @@ class PromptBuilder:
 
         # 关键词检测与反应
         keywords_reaction_prompt = ""
-        for rule in global_config.keywords_reaction_rules:
-            if rule.get("enable", False):
-                if any(keyword in message_txt.lower() for keyword in rule.get("keywords", [])):
-                    logger.info(
-                        f"检测到以下关键词之一：{rule.get('keywords', [])}，触发反应：{rule.get('reaction', '')}"
-                    )
-                    keywords_reaction_prompt += rule.get("reaction", "") + "，"
+        for rule in global_config.keyword_reaction.rules:
+            if rule.enable:
+                if any(keyword in message_txt for keyword in rule.keywords):
+                    logger.info(f"检测到以下关键词之一：{rule.keywords}，触发反应：{rule.reaction}")
+                    keywords_reaction_prompt += f"{rule.reaction}，"
                 else:
-                    for pattern in rule.get("regex", []):
-                        result = pattern.search(message_txt)
-                        if result:
-                            reaction = rule.get("reaction", "")
+                    for pattern in rule.regex:
+                        if result := pattern.search(message_txt):
+                            reaction = rule.reaction
                             for name, content in result.groupdict().items():
                                 reaction = reaction.replace(f"[{name}]", content)
                             logger.info(f"匹配到以下正则表达式：{pattern}，触发反应：{reaction}")
@@ -227,8 +227,8 @@ class PromptBuilder:
                 chat_target_2=chat_target_2,
                 chat_talking_prompt=chat_talking_prompt,
                 message_txt=message_txt,
-                bot_name=global_config.BOT_NICKNAME,
-                bot_other_names="/".join(global_config.BOT_ALIAS_NAMES),
+                bot_name=global_config.bot.nickname,
+                bot_other_names="/".join(global_config.bot.alias_names),
                 prompt_personality=prompt_personality,
                 mood_prompt=mood_prompt,
                 reply_style1=reply_style1_chosen,
@@ -249,8 +249,8 @@ class PromptBuilder:
                 prompt_info=prompt_info,
                 chat_talking_prompt=chat_talking_prompt,
                 message_txt=message_txt,
-                bot_name=global_config.BOT_NICKNAME,
-                bot_other_names="/".join(global_config.BOT_ALIAS_NAMES),
+                bot_name=global_config.bot.nickname,
+                bot_other_names="/".join(global_config.bot.alias_names),
                 prompt_personality=prompt_personality,
                 mood_prompt=mood_prompt,
                 reply_style1=reply_style1_chosen,
@@ -269,30 +269,6 @@ class PromptBuilder:
         logger.debug(f"获取知识库内容，元消息：{message[:30]}...，消息长度: {len(message)}")
         # 1. 先从LLM获取主题，类似于记忆系统的做法
         topics = []
-        # try:
-        #     # 先尝试使用记忆系统的方法获取主题
-        #     hippocampus = HippocampusManager.get_instance()._hippocampus
-        #     topic_num = min(5, max(1, int(len(message) * 0.1)))
-        #     topics_response = await hippocampus.llm_topic_judge.generate_response(hippocampus.find_topic_llm(message, topic_num))
-
-        #     # 提取关键词
-        #     topics = re.findall(r"<([^>]+)>", topics_response[0])
-        #     if not topics:
-        #         topics = []
-        #     else:
-        #         topics = [
-        #             topic.strip()
-        #             for topic in ",".join(topics).replace("，", ",").replace("、", ",").replace(" ", ",").split(",")
-        #             if topic.strip()
-        #         ]
-
-        #     logger.info(f"从LLM提取的主题: {', '.join(topics)}")
-        # except Exception as e:
-        #     logger.error(f"从LLM提取主题失败: {str(e)}")
-        #     # 如果LLM提取失败，使用jieba分词提取关键词作为备选
-        #     words = jieba.cut(message)
-        #     topics = [word for word in words if len(word) > 1][:5]
-        #     logger.info(f"使用jieba提取的主题: {', '.join(topics)}")
 
         # 如果无法提取到主题，直接使用整个消息
         if not topics:
@@ -402,8 +378,6 @@ class PromptBuilder:
                 for _i, result in enumerate(results, 1):
                     _similarity = result["similarity"]
                     content = result["content"].strip()
-                    # 调试：为内容添加序号和相似度信息
-                    # related_info += f"{i}. [{similarity:.2f}] {content}\n"
                     related_info += f"{content}\n"
                 related_info += "\n"
 
@@ -432,14 +406,14 @@ class PromptBuilder:
                 return related_info
             else:
                 logger.debug("从LPMM知识库获取知识失败，使用旧版数据库进行检索")
-                knowledge_from_old = await self.get_prompt_info_old(message, threshold=0.38)
+                knowledge_from_old = await self.get_prompt_info_old(message, threshold=threshold)
                 related_info += knowledge_from_old
                 logger.debug(f"获取知识库内容，相关信息：{related_info[:100]}...，信息长度: {len(related_info)}")
                 return related_info
         except Exception as e:
             logger.error(f"获取知识库内容时发生异常: {str(e)}")
             try:
-                knowledge_from_old = await self.get_prompt_info_old(message, threshold=0.38)
+                knowledge_from_old = await self.get_prompt_info_old(message, threshold=threshold)
                 related_info += knowledge_from_old
                 logger.debug(
                     f"异常后使用旧版数据库获取知识，相关信息：{related_info[:100]}...，信息长度: {len(related_info)}"
@@ -455,69 +429,69 @@ class PromptBuilder:
     ) -> Union[str, list]:
         if not query_embedding:
             return "" if not return_raw else []
-        # 使用余弦相似度计算
-        pipeline = [
-            {
-                "$addFields": {
-                    "dotProduct": {
-                        "$reduce": {
-                            "input": {"$range": [0, {"$size": "$embedding"}]},
-                            "initialValue": 0,
-                            "in": {
-                                "$add": [
-                                    "$$value",
-                                    {
-                                        "$multiply": [
-                                            {"$arrayElemAt": ["$embedding", "$$this"]},
-                                            {"$arrayElemAt": [query_embedding, "$$this"]},
-                                        ]
-                                    },
-                                ]
-                            },
-                        }
-                    },
-                    "magnitude1": {
-                        "$sqrt": {
-                            "$reduce": {
-                                "input": "$embedding",
-                                "initialValue": 0,
-                                "in": {"$add": ["$$value", {"$multiply": ["$$this", "$$this"]}]},
-                            }
-                        }
-                    },
-                    "magnitude2": {
-                        "$sqrt": {
-                            "$reduce": {
-                                "input": query_embedding,
-                                "initialValue": 0,
-                                "in": {"$add": ["$$value", {"$multiply": ["$$this", "$$this"]}]},
-                            }
-                        }
-                    },
-                }
-            },
-            {"$addFields": {"similarity": {"$divide": ["$dotProduct", {"$multiply": ["$magnitude1", "$magnitude2"]}]}}},
-            {
-                "$match": {
-                    "similarity": {"$gte": threshold}  # 只保留相似度大于等于阈值的结果
-                }
-            },
-            {"$sort": {"similarity": -1}},
-            {"$limit": limit},
-            {"$project": {"content": 1, "similarity": 1}},
-        ]
 
-        results = list(db.knowledges.aggregate(pipeline))
-        logger.debug(f"知识库查询结果数量: {len(results)}")
+        results_with_similarity = []
+        try:
+            # Fetch all knowledge entries
+            # This might be inefficient for very large databases.
+            # Consider strategies like FAISS or other vector search libraries if performance becomes an issue.
+            all_knowledges = Knowledges.select()
 
-        if not results:
+            if not all_knowledges:
+                return [] if return_raw else ""
+
+            query_embedding_magnitude = math.sqrt(sum(x * x for x in query_embedding))
+            if query_embedding_magnitude == 0:  # Avoid division by zero
+                return "" if not return_raw else []
+
+            for knowledge_item in all_knowledges:
+                try:
+                    db_embedding_str = knowledge_item.embedding
+                    db_embedding = json.loads(db_embedding_str)
+
+                    if len(db_embedding) != len(query_embedding):
+                        logger.warning(
+                            f"Embedding length mismatch for knowledge ID {knowledge_item.id if hasattr(knowledge_item, 'id') else 'N/A'}. Skipping."
+                        )
+                        continue
+
+                    # Calculate Cosine Similarity
+                    dot_product = sum(q * d for q, d in zip(query_embedding, db_embedding))
+                    db_embedding_magnitude = math.sqrt(sum(x * x for x in db_embedding))
+
+                    if db_embedding_magnitude == 0:  # Avoid division by zero
+                        similarity = 0.0
+                    else:
+                        similarity = dot_product / (query_embedding_magnitude * db_embedding_magnitude)
+
+                    if similarity >= threshold:
+                        results_with_similarity.append({"content": knowledge_item.content, "similarity": similarity})
+                except json.JSONDecodeError:
+                    logger.error(
+                        f"Failed to parse embedding for knowledge ID {knowledge_item.id if hasattr(knowledge_item, 'id') else 'N/A'}"
+                    )
+                except Exception as e:
+                    logger.error(f"Error processing knowledge item: {e}")
+
+            # Sort by similarity in descending order
+            results_with_similarity.sort(key=lambda x: x["similarity"], reverse=True)
+
+            # Limit results
+            limited_results = results_with_similarity[:limit]
+
+            logger.debug(f"知识库查询结果数量 (after Peewee processing): {len(limited_results)}")
+
+            if not limited_results:
+                return "" if not return_raw else []
+
+            if return_raw:
+                return limited_results
+            else:
+                return "\n".join(str(result["content"]) for result in limited_results)
+
+        except Exception as e:
+            logger.error(f"Error querying Knowledges with Peewee: {e}")
             return "" if not return_raw else []
-
-        if return_raw:
-            return results
-        else:
-            # 返回所有找到的内容，用换行分隔
-            return "\n".join(str(result["content"]) for result in results)
 
 
 init_prompt()
