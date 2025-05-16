@@ -46,14 +46,14 @@
 ## 🔥 更新和安装
 
 **最新版本: v0.6.3** ([更新日志](changelogs/changelog.md))
-
+可前往 [Release](https://github.com/MaiM-with-u/MaiBot/releases/) 页面下载最新版本
 **GitHub 分支说明：**
-- `main`: 稳定发布版本
-- `dev`: 开发测试版本（不稳定）
-- `classical`: 0.6.0 之前的版本 (停止维护)
+- `main`: 稳定发布版本(推荐)
+- `dev`: 开发测试版本(不稳定)
+- `classical`: 旧版本(停止维护)
 
 ### 最新版本部署教程 (MaiCore 版本)
-- [🚀 最新版本部署教程](https://docs.mai-mai.org/manual/deployment/mmc_deploy_windows.html) - 基于 MaiCore 的新版本部署方式（与旧版本不兼容）
+- [🚀 最新版本部署教程](https://docs.mai-mai.org/manual/deployment/mmc_deploy_windows.html) - 基于 MaiCore 的新版本部署方式(与旧版本不兼容)
 
 > [!WARNING]
 > - 从 0.5.x 旧版本升级前请务必阅读：[升级指南](https://docs.mai-mai.org/faq/maibot/backup_update.html)
@@ -76,8 +76,8 @@
 **部分内容可能更新不够及时，请注意版本对应**
 
 - [📚 核心 Wiki 文档](https://docs.mai-mai.org) - 项目最全面的文档中心，你可以了解麦麦有关的一切。
-- [📚 开发文档](https://docs.mai-mai.org/develop/) - 为开发者提供了有关MaiBot架构、API和扩展开发的全面指南。
-### 设计理念（原始时代的火花）
+
+### 设计理念(原始时代的火花)
 
 > **千石可乐说：**
 > - 这个项目最初只是为了给牛牛 bot 添加一点额外的功能，但是功能越写越多，最后决定重写。其目的是为了创造一个活跃在 QQ 群聊的"生命体"。目的并不是为了写一个功能齐全的机器人，而是一个尽可能让人感知到真实的类人存在。
@@ -87,10 +87,9 @@
 > - SengokuCola~~纯编程外行，面向 cursor 编程，很多代码写得不好多多包涵~~已得到大脑升级。
 
 ## 🙋 贡献和致谢
-
-MaiCore 是一个开源项目，我们非常欢迎你的参与。你的贡献，无论是提交 bug 报告、功能需求还是代码 pr，都对项目非常宝贵。我们非常感谢你的支持！  🎉  
 你可以阅读[开发文档](https://docs.mai-mai.org/develop/)来更好的了解麦麦!  
-但无序的讨论会降低沟通效率，进而影响问题的解决速度，因此在提交任何贡献前，请务必先阅读本项目的[贡献指南](docs/CONTRIBUTE.md)（待补完）  
+MaiCore 是一个开源项目，我们非常欢迎你的参与。你的贡献，无论是提交 bug 报告、功能需求还是代码 pr，都对项目非常宝贵。我们非常感谢你的支持！🎉  
+但无序的讨论会降低沟通效率，进而影响问题的解决速度，因此在提交任何贡献前，请务必先阅读本项目的[贡献指南](docs/CONTRIBUTE.md)。(待补完)  
 
 ### 贡献者
 
