@@ -16,7 +16,7 @@
   <strong><a href="#show-cases">🌟 案例展示</a> | <a href="[#quick-start](https://docs.mai-mai.org/manual/deployment/)">🚀 快速入门</a> | <a href="https://docs.mai-mai.org/">📃 教程</a> | <a href="https://github.com/kvcache-ai/ktransformers/discussions">💬 讨论</a> | <a href="#FAQ">🙋 常见问题</a> </strong>
   </div>
 
-## 📝 项目简介
+## 🎉 介绍
 
 **🍔MaiCore是一个基于大语言模型的可交互智能体**
 
@@ -34,14 +34,15 @@
 </a>
 </div>
 
-### 📢 版本信息
-
+## 🔥 更新和安装
 **最新版本: v0.6.3** ([更新日志](changelogs/changelog.md))
-
 **GitHub分支说明：**
 - `main`: 稳定发布版本
 - `dev`: 开发测试版本（不稳定）
 - `classical`: 0.6.0之前的版本(停止维护)
+
+### 最新版本部署教程(MaiCore版本)
+- [🚀 最新版本部署教程](https://docs.mai-mai.org/manual/deployment/mmc_deploy_windows.html) - 基于MaiCore的新版本部署方式（与旧版本不兼容）
 
 ### ⚠️ 重要提示
 
@@ -52,24 +53,15 @@
 - 由于持续迭代，可能存在一些已知或未知的bug。
 - 由于程序处于开发中，可能消耗较多token。
 
-### 💬交流群
+## 💬 讨论
 - [一群](https://qm.qq.com/q/VQ3XZrWgMs) | [二群](https://qm.qq.com/q/RzmCiRtHEW) | [五群](https://qm.qq.com/q/JxvHZnxyec) | [三群](https://qm.qq.com/q/wlH5eT8OmQ)(已满)| [四群](https://qm.qq.com/q/wGePTl1UyY)(已满)
 
 ## 📚 文档
+**部分内容可能更新不够及时，请注意版本对应**
 
-### (部分内容可能过时，请注意版本对应)
-
-### 核心文档
 - [📚 核心Wiki文档](https://docs.mai-mai.org) - 项目最全面的文档中心，你可以了解麦麦有关的一切
 
-### 最新版本部署教程(MaiCore版本)
-- [🚀 最新版本部署教程](https://docs.mai-mai.org/manual/deployment/mmc_deploy_windows.html) - 基于MaiCore的新版本部署方式（与旧版本不兼容）
-
-## ✍️如何给本项目报告BUG/提交建议/做贡献
-
-MaiCore是一个开源项目，我们非常欢迎你的参与。你的贡献，无论是提交bug报告、功能需求还是代码pr，都对项目非常宝贵。我们非常感谢你的支持！🎉 但无序的讨论会降低沟通效率，进而影响问题的解决速度，因此在提交任何贡献前，请务必先阅读本项目的[贡献指南](docs/CONTRIBUTE.md)（待补完）
-
-## 设计理念（原始时代的火花）
+### 设计理念（原始时代的火花）
 
 > **千石可乐说：**
 > - 这个项目最初只是为了给牛牛bot添加一点额外的功能，但是功能越写越多，最后决定重写。其目的是为了创造一个活跃在QQ群聊的"生命体"。可以目的并不是为了写一个功能齐全的机器人，而是一个尽可能让人感知到真实的类人存在。
@@ -82,21 +74,21 @@ MaiCore是一个开源项目，我们非常欢迎你的参与。你的贡献，�
 ## 📌 注意事项
 
 > [!WARNING]
-> 使用本项目前必须阅读和同意[用户协议](https://docs.mai-mai.org/manual/other/EULA.html)和隐私协议。  
-> 本应用生成内容来自人工智能模型，由 AI 生成，请仔细甄别，请勿用于违反法律的用途，AI生成内容不代表本人观点和立场。
+> 使用本项目前必须阅读和同意[用户协议](https://docs.mai-mai.org/manual/other/EULA.html)和[隐私协议](PRIVACY.md)。  
+> 本应用生成内容来自人工智能模型，由 AI 生成，请仔细甄别，请勿用于违反法律的用途，AI生成内容不代表本项目团队的观点和立场。
 
-## 贡献者
+## 贡献和致谢
+MaiCore是一个开源项目，我们非常欢迎你的参与。你的贡献，无论是提交bug报告、功能需求还是代码pr，都对项目非常宝贵。我们非常感谢你的支持！🎉 但无序的讨论会降低沟通效率，进而影响问题的解决速度，因此在提交任何贡献前，请务必先阅读本项目的[贡献指南](docs/CONTRIBUTE.md)（待补完）  
 
-感谢各位大佬！
+### 贡献
+感谢各位大佬！  
 
 <a href="https://github.com/MaiM-with-u/MaiBot/graphs/contributors">
   <img alt="contributors" src="https://contrib.rocks/image?repo=MaiM-with-u/MaiBot" />
 </a>
-<a href="https://space.bilibili.com/1344099355" align=right>
-  画师：略nd
-</a>
-### 致谢
 
+### 致谢
+- [略nd](https://space.bilibili.com/1344099355): 麦麦人设
 - [NapCat](https://github.com/NapNeko/NapCatQQ): 现代化的基于 NTQQ 的 Bot 协议端实现  
 
 **也感谢每一位给麦麦发展提出宝贵意见与建议的用户，感谢陪伴麦麦走到现在的你们**
@@ -105,6 +97,6 @@ MaiCore是一个开源项目，我们非常欢迎你的参与。你的贡献，�
 
 ![Alt](https://repobeats.axiom.co/api/embed/9faca9fccfc467931b87dd357b60c6362b5cfae0.svg "Repobeats analytics image")
 
-## Star 趋势
+### Star 趋势
 
 [![Star 趋势](https://starchart.cc/MaiM-with-u/MaiBot.svg?variant=adaptive)](https://starchart.cc/MaiM-with-u/MaiBot)
