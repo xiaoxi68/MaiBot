@@ -93,7 +93,7 @@ class ReplyGenerator:
             request_type="reply_generation",
         )
         self.personality_info = Individuality.get_instance().get_prompt(x_person=2, level=3)
-        self.name = global_config.BOT_NICKNAME
+        self.name = global_config.bot.nickname
         self.private_name = private_name
         self.chat_observer = ChatObserver.get_instance(stream_id, private_name)
         self.reply_checker = ReplyChecker(stream_id, private_name)

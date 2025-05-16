@@ -16,7 +16,7 @@ class MessageProcessor:
     @staticmethod
     def _check_ban_words(text: str, chat, userinfo) -> bool:
         """检查消息中是否包含过滤词"""
-        for word in global_config.ban_words:
+        for word in global_config.chat.ban_words:
             if word in text:
                 logger.info(
                     f"[{chat.group_info.group_name if chat.group_info else '私聊'}]{userinfo.user_nickname}:{text}"
@@ -28,7 +28,7 @@ class MessageProcessor:
     @staticmethod
     def _check_ban_regex(text: str, chat, userinfo) -> bool:
         """检查消息是否匹配过滤正则表达式"""
-        for pattern in global_config.ban_msgs_regex:
+        for pattern in global_config.chat.ban_msgs_regex:
             if pattern.search(text):
                 logger.info(
                     f"[{chat.group_info.group_name if chat.group_info else '私聊'}]{userinfo.user_nickname}:{text}"
