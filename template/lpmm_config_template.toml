@@ -1,3 +1,6 @@
+[lpmm]
+version = "0.1.0"
+
 # LLM API 服务提供商，可配置多个
 [[llm_providers]]
 name = "localhost"
@@ -35,8 +38,8 @@ synonym_threshold = 0.8   # 同义词阈值（相似度高于此阈值的词语�
 provider = "siliconflow"                 # 服务提供商
 model = "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B" # 模型名称
 
-[info_extraction]
-workers = 10
+[info_extraction] 
+workers = 3            # 实体提取同时执行线程数，非Pro模型不要设置超过5
 
 [qa.params]
 # QA参数配置
@@ -51,7 +54,7 @@ res_top_k = 3                 # 最终提供的文段TopK
 [persistence]
 # 持久化配置（存储中间数据，防止重复计算）
 data_root_path = "data"                              # 数据根目录
-raw_data_path = "data/import.json"                   # 原始数据路径
-openie_data_path = "data/openie.json"                # OpenIE数据路径
+raw_data_path = "data/imported_lpmm_data"            # 原始数据路径
+openie_data_path = "data/openie"                     # OpenIE数据路径
 embedding_data_dir = "data/embedding"                # 嵌入数据目录
 rag_data_dir = "data/rag"                            # RAG数据目录

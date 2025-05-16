@@ -1,4 +1,4 @@
-from src.heart_flow.sub_heartflow import SubHeartflow
+from src.heart_flow.sub_heartflow import SubHeartflow, ChatState
 from src.plugins.models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.plugins.schedule.schedule_generator import bot_schedule
@@ -61,6 +61,28 @@ class Heartflow:
         """获取或创建一个新的SubHeartflow实例 - 委托给 SubHeartflowManager"""
         # 不再需要传入 self.current_state
         return await self.subheartflow_manager.get_or_create_subheartflow(subheartflow_id)
+
+    async def force_change_subheartflow_status(self, subheartflow_id: str, status: ChatState) -> None:
+        """强制改变子心流的状态"""
+        # 这里的 message 是可选的，可能是一个消息对象，也可能是其他类型的数据
+        return await self.subheartflow_manager.force_change_state(subheartflow_id, status)
+
+    async def api_get_all_states(self):
+        """获取所有状态"""
+        return await self.interest_logger.api_get_all_states()
+
+    async def api_get_subheartflow_cycle_info(self, subheartflow_id: str, history_len: int) -> Optional[dict]:
+        """获取子心流的循环信息"""
+        subheartflow = await self.subheartflow_manager.get_or_create_subheartflow(subheartflow_id)
+        if not subheartflow:
+            logger.warning(f"尝试获取不存在的子心流 {subheartflow_id} 的周期信息")
+            return None
+        heartfc_instance = subheartflow.heart_fc_instance
+        if not heartfc_instance:
+            logger.warning(f"子心流 {subheartflow_id} 没有心流实例，无法获取周期信息")
+            return None
+
+        return heartfc_instance.get_cycle_history(last_n=history_len)
 
     async def heartflow_start_working(self):
         """启动后台任务"""

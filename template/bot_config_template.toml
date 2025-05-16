@@ -1,5 +1,5 @@
 [inner]
-version = "1.6.0"
+version = "1.6.1"
 
 #----以下是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 #如果你想要修改配置文件，请在修改后将version的值进行变更
@@ -68,9 +68,9 @@ nonebot-qq="http://127.0.0.1:18002/api/message"
 [chat] #麦麦的聊天通用设置
 allow_focus_mode = true # 是否允许专注聊天状态
 # 是否启用heart_flowC(HFC)模式
-# 启用后麦麦会自主选择进入heart_flowC模式(持续一段时间），进行主动的观察和回复，并给出回复，比较消耗token
-base_normal_chat_num = 3 # 最多允许多少个群进行普通聊天
-base_focused_chat_num = 2 # 最多允许多少个群进行专注聊天
+# 启用后麦麦会自主选择进入heart_flowC模式（持续一段时间），进行主动的观察和回复，并给出回复，比较消耗token
+base_normal_chat_num = 8 # 最多允许多少个群进行普通聊天
+base_focused_chat_num = 5 # 最多允许多少个群进行专注聊天
 
 observation_context_size = 15 # 观察到的最长上下文大小,建议15，太短太长都会导致脑袋尖尖
 message_buffer = true # 启用消息缓冲器？启用此项以解决消息的拆分问题，但会使麦麦的回复延迟
@@ -186,6 +186,7 @@ enable = true
 
 [experimental] #实验性功能
 enable_friend_chat = false # 是否启用好友聊天
+talk_allowed_private = [] # 可以回复消息的QQ号
 pfc_chatting = false # 是否启用PFC聊天，该功能仅作用于私聊，与回复模式独立
 
 #下面的模型若使用硅基流动则不需要更改，使用ds官方则改成.env自定义的宏，使用自定义模型则选择定位相似的模型自己填写

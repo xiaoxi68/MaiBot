@@ -1,60 +1,10 @@
 from loguru import logger
-from typing import Dict, Optional, Union, List, Tuple
+from typing import Optional, Union, List, Tuple
 import sys
 import os
 from types import ModuleType
 from pathlib import Path
 from dotenv import load_dotenv
-
-"""
-日志颜色说明:
-
-1. 主程序(Main)
-浅黄色标题 | 浅黄色消息
-
-2. 海马体(Memory)  
-浅黄色标题 | 浅黄色消息
-
-3. PFC(前额叶皮质)
-浅绿色标题 | 浅绿色消息
-
-4. 心情(Mood)
-品红色标题 | 品红色消息
-
-5. 工具使用(Tool)
-品红色标题 | 品红色消息
-
-6. 关系(Relation)
-浅品红色标题 | 浅品红色消息
-
-7. 配置(Config)
-浅青色标题 | 浅青色消息
-
-8. 麦麦大脑袋
-浅绿色标题 | 浅绿色消息
-
-9. 在干嘛
-青色标题 | 青色消息
-
-10. 麦麦组织语言
-浅绿色标题 | 浅绿色消息
-
-11. 见闻(Chat)
-浅蓝色标题 | 绿色消息
-
-12. 表情包(Emoji)
-橙色标题 | 橙色消息 fg #FFD700
-
-13. 子心流
-
-13. 其他模块
-模块名标题 | 对应颜色消息
-
-
-注意:
-1. 级别颜色遵循loguru默认配置
-2. 可通过环境变量修改日志级别
-"""
 
 
 # 加载 .env 文件
@@ -75,12 +25,13 @@ if default_handler_id is not None:
 LoguruLogger = logger.__class__
 
 # 全局注册表：记录模块与处理器ID的映射
-_handler_registry: Dict[str, List[int]] = {}
-_custom_style_handlers: Dict[Tuple[str, str], List[int]] = {}  # 记录自定义样式处理器ID
+_handler_registry: dict[str, List[int]] = {}
+_custom_style_handlers: dict[Tuple[str, str], List[int]] = {}  # 记录自定义样式处理器ID
 
 # 获取日志存储根地址
 current_file_path = Path(__file__).resolve()
-LOG_ROOT = "logs"
+ROOT_PATH = os.path.abspath(os.path.join(current_file_path, "..", ".."))
+LOG_ROOT = str(ROOT_PATH) + "/" + "logs"
 
 SIMPLE_OUTPUT = os.getenv("SIMPLE_OUTPUT", "false").strip().lower()
 if SIMPLE_OUTPUT == "true":
@@ -321,7 +272,7 @@ CHAT_STYLE_CONFIG = {
         "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 见闻 | {message}",
     },
     "simple": {
-        "console_format": ("<level>{time:MM-DD HH:mm}</level> | <green>见闻</green> | <green>{message}</green>"),  # noqa: E501
+        "console_format": "<level>{time:MM-DD HH:mm}</level> | <green>见闻</green> | <green>{message}</green>",  # noqa: E501
         "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 见闻 | {message}",
     },
 }
@@ -353,10 +304,27 @@ SUB_HEARTFLOW_STYLE_CONFIG = {
         "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 麦麦小脑袋 | {message}",
     },
     "simple": {
-        "console_format": ("<level>{time:MM-DD HH:mm}</level> | <fg #3399FF>麦麦水群 | {message}</fg #3399FF>"),  # noqa: E501
+        "console_format": "<level>{time:MM-DD HH:mm}</level> | <fg #3399FF>麦麦水群 | {message}</fg #3399FF>",  # noqa: E501
         "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 麦麦水群 | {message}",
     },
 }
+
+INTEREST_CHAT_STYLE_CONFIG = {
+    "advanced": {
+        "console_format": (
+            "<white>{time:YYYY-MM-DD HH:mm:ss}</white> | "
+            "<level>{level: <8}</level> | "
+            "<light-blue>兴趣</light-blue> | "
+            "<level>{message}</level>"
+        ),
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 兴趣 | {message}",
+    },
+    "simple": {
+        "console_format": "<level>{time:MM-DD HH:mm}</level> | <fg #55DDFF>兴趣 | {message}</fg #55DDFF>",  # noqa: E501
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 兴趣 | {message}",
+    },
+}
+
 
 SUB_HEARTFLOW_MIND_STYLE_CONFIG = {
     "advanced": {
@@ -369,7 +337,7 @@ SUB_HEARTFLOW_MIND_STYLE_CONFIG = {
         "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 麦麦小脑袋 | {message}",
     },
     "simple": {
-        "console_format": ("<level>{time:MM-DD HH:mm}</level> | <fg #66CCFF>麦麦小脑袋 | {message}</fg #66CCFF>"),  # noqa: E501
+        "console_format": "<level>{time:MM-DD HH:mm}</level> | <fg #66CCFF>麦麦小脑袋 | {message}</fg #66CCFF>",  # noqa: E501
         "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 麦麦小脑袋 | {message}",
     },
 }
@@ -385,7 +353,7 @@ SUBHEARTFLOW_MANAGER_STYLE_CONFIG = {
         "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 麦麦水群[管理] | {message}",
     },
     "simple": {
-        "console_format": ("<level>{time:MM-DD HH:mm}</level> | <fg #005BA2>麦麦水群[管理] | {message}</fg #005BA2>"),  # noqa: E501
+        "console_format": "<level>{time:MM-DD HH:mm}</level> | <fg #005BA2>麦麦水群[管理] | {message}</fg #005BA2>",  # noqa: E501
         "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 麦麦水群[管理] | {message}",
     },
 }
@@ -633,7 +601,7 @@ HFC_STYLE_CONFIG = {
         "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 专注聊天 | {message}",
     },
     "simple": {
-        "console_format": ("<level>{time:MM-DD HH:mm}</level> | <light-green>专注聊天 | {message}</light-green>"),
+        "console_format": "<level>{time:MM-DD HH:mm}</level> | <light-green>专注聊天 | {message}</light-green>",
         "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 专注聊天 | {message}",
     },
 }
@@ -808,6 +776,22 @@ INIT_STYLE_CONFIG = {
     },
 }
 
+API_SERVER_STYLE_CONFIG = {
+    "advanced": {
+        "console_format": (
+            "<white>{time:YYYY-MM-DD HH:mm:ss}</white> | "
+            "<level>{level: <8}</level> | "
+            "<light-yellow>API服务</light-yellow> | "
+            "<level>{message}</level>"
+        ),
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | API服务 | {message}",
+    },
+    "simple": {
+        "console_format": "<level>{time:MM-DD HH:mm}</level> | <light-green>API服务</light-green> | {message}",
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | API服务 | {message}",
+    },
+}
+
 
 # 根据SIMPLE_OUTPUT选择配置
 MAIN_STYLE_CONFIG = MAIN_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else MAIN_STYLE_CONFIG["advanced"]
@@ -878,6 +862,10 @@ CHAT_MESSAGE_STYLE_CONFIG = (
 )
 CHAT_IMAGE_STYLE_CONFIG = CHAT_IMAGE_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else CHAT_IMAGE_STYLE_CONFIG["advanced"]
 INIT_STYLE_CONFIG = INIT_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else INIT_STYLE_CONFIG["advanced"]
+API_SERVER_STYLE_CONFIG = API_SERVER_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else API_SERVER_STYLE_CONFIG["advanced"]
+INTEREST_CHAT_STYLE_CONFIG = (
+    INTEREST_CHAT_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else INTEREST_CHAT_STYLE_CONFIG["advanced"]
+)
 
 
 def is_registered_module(record: dict) -> bool:
@@ -1031,7 +1019,7 @@ def add_custom_style_handler(
     #             retention=current_config["retention"],
     #             compression=current_config["compression"],
     #             encoding="utf-8",
-    #             filter=lambda record: record["extra"].get("module") == module_name
+    #             message_filter=lambda record: record["extra"].get("module") == module_name
     #             and record["extra"].get("custom_style") == style_name,
     #             enqueue=True,
     #         )

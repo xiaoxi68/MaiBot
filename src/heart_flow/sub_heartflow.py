@@ -1,213 +1,21 @@
 from .observation import Observation, ChattingObservation
 import asyncio
-from src.config.config import global_config
 import time
 from typing import Optional, List, Dict, Tuple, Callable, Coroutine
 import traceback
 from src.common.logger_manager import get_logger
 from src.plugins.chat.message import MessageRecv
 from src.plugins.chat.chat_stream import chat_manager
-import math
 from src.plugins.heartFC_chat.heartFC_chat import HeartFChatting
 from src.plugins.heartFC_chat.normal_chat import NormalChat
 from src.heart_flow.mai_state_manager import MaiStateInfo
 from src.heart_flow.chat_state_info import ChatState, ChatStateInfo
 from src.heart_flow.sub_mind import SubMind
+from .utils_chat import get_chat_type_and_target_info
+from .interest_chatting import InterestChatting
 
-
-# 定义常量 (从 interest.py 移动过来)
-MAX_INTEREST = 15.0
 
 logger = get_logger("sub_heartflow")
-
-PROBABILITY_INCREASE_RATE_PER_SECOND = 0.1
-PROBABILITY_DECREASE_RATE_PER_SECOND = 0.1
-MAX_REPLY_PROBABILITY = 1
-
-
-class InterestChatting:
-    def __init__(
-        self,
-        decay_rate=global_config.default_decay_rate_per_second,
-        max_interest=MAX_INTEREST,
-        trigger_threshold=global_config.reply_trigger_threshold,
-        max_probability=MAX_REPLY_PROBABILITY,
-    ):
-        # 基础属性初始化
-        self.interest_level: float = 0.0
-        self.decay_rate_per_second: float = decay_rate
-        self.max_interest: float = max_interest
-
-        self.trigger_threshold: float = trigger_threshold
-        self.max_reply_probability: float = max_probability
-        self.is_above_threshold: bool = False
-
-        # 任务相关属性初始化
-        self.update_task: Optional[asyncio.Task] = None
-        self._stop_event = asyncio.Event()
-        self._task_lock = asyncio.Lock()
-        self._is_running = False
-
-        self.interest_dict: Dict[str, tuple[MessageRecv, float, bool]] = {}
-        self.update_interval = 1.0
-
-        self.above_threshold = False
-        self.start_hfc_probability = 0.0
-
-    async def initialize(self):
-        async with self._task_lock:
-            if self._is_running:
-                logger.debug("后台兴趣更新任务已在运行中。")
-                return
-
-            # 清理已完成或已取消的任务
-            if self.update_task and (self.update_task.done() or self.update_task.cancelled()):
-                self.update_task = None
-
-            if not self.update_task:
-                self._stop_event.clear()
-                self._is_running = True
-                self.update_task = asyncio.create_task(self._run_update_loop(self.update_interval))
-                logger.debug("后台兴趣更新任务已创建并启动。")
-
-    def add_interest_dict(self, message: MessageRecv, interest_value: float, is_mentioned: bool):
-        """添加消息到兴趣字典
-
-        参数:
-            message: 接收到的消息
-            interest_value: 兴趣值
-            is_mentioned: 是否被提及
-
-        功能:
-            1. 将消息添加到兴趣字典
-            2. 更新最后交互时间
-            3. 如果字典长度超过10，删除最旧的消息
-        """
-        # 添加新消息
-        self.interest_dict[message.message_info.message_id] = (message, interest_value, is_mentioned)
-
-        # 如果字典长度超过10，删除最旧的消息
-        if len(self.interest_dict) > 10:
-            oldest_key = next(iter(self.interest_dict))
-            self.interest_dict.pop(oldest_key)
-
-    async def _calculate_decay(self):
-        """计算兴趣值的衰减
-
-        参数:
-            current_time: 当前时间戳
-
-        处理逻辑:
-        1. 计算时间差
-        2. 处理各种异常情况(负值/零值)
-        3. 正常计算衰减
-        4. 更新最后更新时间
-        """
-
-        # 处理极小兴趣值情况
-        if self.interest_level < 1e-9:
-            self.interest_level = 0.0
-            return
-
-        # 异常情况处理
-        if self.decay_rate_per_second <= 0:
-            logger.warning(f"衰减率({self.decay_rate_per_second})无效，重置兴趣值为0")
-            self.interest_level = 0.0
-            return
-
-        # 正常衰减计算
-        try:
-            decay_factor = math.pow(self.decay_rate_per_second, self.update_interval)
-            self.interest_level *= decay_factor
-        except ValueError as e:
-            logger.error(
-                f"衰减计算错误: {e} 参数: 衰减率={self.decay_rate_per_second} 时间差={self.update_interval} 当前兴趣={self.interest_level}"
-            )
-            self.interest_level = 0.0
-
-    async def _update_reply_probability(self):
-        self.above_threshold = self.interest_level >= self.trigger_threshold
-        if self.above_threshold:
-            self.start_hfc_probability += PROBABILITY_INCREASE_RATE_PER_SECOND
-        else:
-            if self.start_hfc_probability > 0:
-                self.start_hfc_probability = max(0, self.start_hfc_probability - PROBABILITY_DECREASE_RATE_PER_SECOND)
-
-    async def increase_interest(self, value: float):
-        self.interest_level += value
-        self.interest_level = min(self.interest_level, self.max_interest)
-
-    async def decrease_interest(self, value: float):
-        self.interest_level -= value
-        self.interest_level = max(self.interest_level, 0.0)
-
-    async def get_interest(self) -> float:
-        return self.interest_level
-
-    async def get_state(self) -> dict:
-        interest = self.interest_level  # 直接使用属性值
-        return {
-            "interest_level": round(interest, 2),
-            "start_hfc_probability": round(self.start_hfc_probability, 4),
-            "above_threshold": self.above_threshold,
-        }
-
-    # --- 新增后台更新任务相关方法 ---
-    async def _run_update_loop(self, update_interval: float = 1.0):
-        """后台循环，定期更新兴趣和回复概率。"""
-        try:
-            while not self._stop_event.is_set():
-                try:
-                    if self.interest_level != 0:
-                        await self._calculate_decay()
-
-                    await self._update_reply_probability()
-
-                    # 等待下一个周期或停止事件
-                    await asyncio.wait_for(self._stop_event.wait(), timeout=update_interval)
-                except asyncio.TimeoutError:
-                    # 正常超时，继续循环
-                    continue
-                except Exception as e:
-                    logger.error(f"InterestChatting 更新循环出错: {e}")
-                    logger.error(traceback.format_exc())
-                    # 防止错误导致CPU飙升，稍作等待
-                    await asyncio.sleep(5)
-        except asyncio.CancelledError:
-            logger.info("InterestChatting 更新循环被取消。")
-        finally:
-            self._is_running = False
-            logger.info("InterestChatting 更新循环已停止。")
-
-    async def stop_updates(self):
-        """停止后台更新任务，使用锁确保并发安全"""
-        async with self._task_lock:
-            if not self._is_running:
-                logger.debug("后台兴趣更新任务未运行。")
-                return
-
-            logger.info("正在停止 InterestChatting 后台更新任务...")
-            self._stop_event.set()
-
-            if self.update_task and not self.update_task.done():
-                try:
-                    # 等待任务结束，设置超时
-                    await asyncio.wait_for(self.update_task, timeout=5.0)
-                    logger.info("InterestChatting 后台更新任务已成功停止。")
-                except asyncio.TimeoutError:
-                    logger.warning("停止 InterestChatting 后台任务超时，尝试取消...")
-                    self.update_task.cancel()
-                    try:
-                        await self.update_task  # 等待取消完成
-                    except asyncio.CancelledError:
-                        logger.info("InterestChatting 后台更新任务已被取消。")
-                except Exception as e:
-                    logger.error(f"停止 InterestChatting 后台任务时发生异常: {e}")
-                finally:
-                    self.update_task = None
-                    self._is_running = False
-
-    # --- 结束 新增方法 ---
 
 
 class SubHeartflow:
@@ -238,6 +46,11 @@ class SubHeartflow:
         self.chat_state_last_time: float = 0
         self.history_chat_state: List[Tuple[ChatState, float]] = []
 
+        # --- Initialize attributes ---
+        self.is_group_chat: bool = False
+        self.chat_target_info: Optional[dict] = None
+        # --- End Initialization ---
+
         # 兴趣检测器
         self.interest_chatting: InterestChatting = InterestChatting()
 
@@ -260,11 +73,24 @@ class SubHeartflow:
             subheartflow_id=self.subheartflow_id, chat_state=self.chat_state, observations=self.observations
         )
 
-        # 日志前缀
-        self.log_prefix = chat_manager.get_stream_name(self.subheartflow_id) or self.subheartflow_id
+        # 日志前缀 - Moved determination to initialize
+        self.log_prefix = str(subheartflow_id)  # Initial default prefix
 
     async def initialize(self):
-        """异步初始化方法，创建兴趣流"""
+        """异步初始化方法，创建兴趣流并确定聊天类型"""
+
+        # --- Use utility function to determine chat type and fetch info ---
+        self.is_group_chat, self.chat_target_info = await get_chat_type_and_target_info(self.chat_id)
+        # Update log prefix after getting info (potential stream name)
+        self.log_prefix = (
+            chat_manager.get_stream_name(self.subheartflow_id) or self.subheartflow_id
+        )  # Keep this line or adjust if utils provides name
+        logger.debug(
+            f"SubHeartflow {self.chat_id} initialized: is_group={self.is_group_chat}, target_info={self.chat_target_info}"
+        )
+        # --- End using utility function ---
+
+        # Initialize interest system (existing logic)
         await self.interest_chatting.initialize()
         logger.debug(f"{self.log_prefix} InterestChatting 实例已初始化。")
 
@@ -284,28 +110,37 @@ class SubHeartflow:
                 logger.error(f"{self.log_prefix} 停止 NormalChat 监控任务时出错: {e}")
                 logger.error(traceback.format_exc())
 
-    async def _start_normal_chat(self) -> bool:
+    async def _start_normal_chat(self, rewind=False) -> bool:
         """
-        启动 NormalChat 实例，
-        进入 CHAT 状态时使用
-
-        确保 HeartFChatting 已停止
+        启动 NormalChat 实例，并进行异步初始化。
+        进入 CHAT 状态时使用。
+        确保 HeartFChatting 已停止。
         """
         await self._stop_heart_fc_chat()  # 确保 专注聊天已停止
 
         log_prefix = self.log_prefix
         try:
-            # 获取聊天流并创建 NormalChat 实例
+            # 获取聊天流并创建 NormalChat 实例 (同步部分)
             chat_stream = chat_manager.get_stream(self.chat_id)
-            self.normal_chat_instance = NormalChat(chat_stream=chat_stream, interest_dict=self.get_interest_dict())
+            if not chat_stream:
+                logger.error(f"{log_prefix} 无法获取 chat_stream，无法启动 NormalChat。")
+                return False
+            if rewind:
+                self.normal_chat_instance = NormalChat(chat_stream=chat_stream, interest_dict=self.get_interest_dict())
+            else:
+                self.normal_chat_instance = NormalChat(chat_stream=chat_stream)
 
+            # 进行异步初始化
+            await self.normal_chat_instance.initialize()
+
+            # 启动聊天任务
             logger.info(f"{log_prefix} 开始普通聊天，随便水群...")
-            await self.normal_chat_instance.start_chat()  # <--- 修正：调用 start_chat
+            await self.normal_chat_instance.start_chat()  # start_chat now ensures init is called again if needed
             return True
         except Exception as e:
-            logger.error(f"{log_prefix} 启动 NormalChat 时出错: {e}")
+            logger.error(f"{log_prefix} 启动 NormalChat 或其初始化时出错: {e}")
             logger.error(traceback.format_exc())
-            self.normal_chat_instance = None  # 启动失败，清理实例
+            self.normal_chat_instance = None  # 启动/初始化失败，清理实例
             return False
 
     async def _stop_heart_fc_chat(self):
@@ -385,13 +220,22 @@ class SubHeartflow:
         if new_state == ChatState.CHAT:
             # 移除限额检查逻辑
             logger.debug(f"{log_prefix} 准备进入或保持 聊天 状态")
-            if await self._start_normal_chat():
-                # logger.info(f"{log_prefix} 成功进入或保持 NormalChat 状态。")
-                state_changed = True
+            if current_state == ChatState.FOCUSED:
+                if await self._start_normal_chat(rewind=False):
+                    # logger.info(f"{log_prefix} 成功进入或保持 NormalChat 状态。")
+                    state_changed = True
+                else:
+                    logger.error(f"{log_prefix} 从FOCUSED状态启动 NormalChat 失败，无法进入 CHAT 状态。")
+                    # 考虑是否需要回滚状态或采取其他措施
+                    return  # 启动失败，不改变状态
             else:
-                logger.error(f"{log_prefix} 启动 NormalChat 失败，无法进入 CHAT 状态。")
-                # 考虑是否需要回滚状态或采取其他措施
-                return  # 启动失败，不改变状态
+                if await self._start_normal_chat(rewind=True):
+                    # logger.info(f"{log_prefix} 成功进入或保持 NormalChat 状态。")
+                    state_changed = True
+                else:
+                    logger.error(f"{log_prefix} 从ABSENT状态启动 NormalChat 失败，无法进入 CHAT 状态。")
+                    # 考虑是否需要回滚状态或采取其他措施
+                    return  # 启动失败，不改变状态
 
         elif new_state == ChatState.FOCUSED:
             # 移除限额检查逻辑
@@ -406,6 +250,8 @@ class SubHeartflow:
 
         elif new_state == ChatState.ABSENT:
             logger.info(f"{log_prefix} 进入 ABSENT 状态，停止所有聊天活动...")
+            await self.clear_interest_dict()
+
             await self._stop_normal_chat()
             await self._stop_heart_fc_chat()
             state_changed = True  # 总是可以成功转换到 ABSENT

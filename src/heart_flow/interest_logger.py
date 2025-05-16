@@ -23,6 +23,20 @@ LOG_DIRECTORY = "logs/interest"
 HISTORY_LOG_FILENAME = "interest_history.log"
 
 
+def _ensure_log_directory():
+    """确保日志目录存在。"""
+    os.makedirs(LOG_DIRECTORY, exist_ok=True)
+    logger.info(f"已确保日志目录 '{LOG_DIRECTORY}' 存在")
+
+
+def _clear_and_create_log_file():
+    """清除日志文件并创建新的日志文件。"""
+    if os.path.exists(os.path.join(LOG_DIRECTORY, HISTORY_LOG_FILENAME)):
+        os.remove(os.path.join(LOG_DIRECTORY, HISTORY_LOG_FILENAME))
+    with open(os.path.join(LOG_DIRECTORY, HISTORY_LOG_FILENAME), "w", encoding="utf-8") as f:
+        f.write("")
+
+
 class InterestLogger:
     """负责定期记录主心流和所有子心流的状态到日志文件。"""
 
@@ -37,12 +51,8 @@ class InterestLogger:
         self.subheartflow_manager = subheartflow_manager
         self.heartflow = heartflow  # 存储 Heartflow 实例
         self._history_log_file_path = os.path.join(LOG_DIRECTORY, HISTORY_LOG_FILENAME)
-        self._ensure_log_directory()
-
-    def _ensure_log_directory(self):
-        """确保日志目录存在。"""
-        os.makedirs(LOG_DIRECTORY, exist_ok=True)
-        logger.info(f"已确保日志目录 '{LOG_DIRECTORY}' 存在")
+        _ensure_log_directory()
+        _clear_and_create_log_file()
 
     async def get_all_subflow_states(self) -> Dict[str, Dict]:
         """并发获取所有活跃子心流的当前完整状态。"""
@@ -91,7 +101,7 @@ class InterestLogger:
         try:
             current_timestamp = time.time()
 
-            main_mind = self.heartflow.current_mind
+            # main_mind = self.heartflow.current_mind
             # 获取 Mai 状态名称
             mai_state_name = self.heartflow.current_state.get_current_state().name
 
@@ -99,7 +109,7 @@ class InterestLogger:
 
             log_entry_base = {
                 "timestamp": round(current_timestamp, 2),
-                "main_mind": main_mind,
+                # "main_mind": main_mind,
                 "mai_state": mai_state_name,
                 "subflow_count": len(all_subflow_states),
                 "subflows": [],
@@ -134,7 +144,7 @@ class InterestLogger:
                     "sub_chat_state": state.get("chat_state", "未知"),
                     "interest_level": interest_state.get("interest_level", 0.0),
                     "start_hfc_probability": interest_state.get("start_hfc_probability", 0.0),
-                    "is_above_threshold": interest_state.get("is_above_threshold", False),
+                    # "is_above_threshold": interest_state.get("is_above_threshold", False),
                 }
                 subflow_details.append(subflow_entry)
 
@@ -145,6 +155,58 @@ class InterestLogger:
 
         except IOError as e:
             logger.error(f"写入状态日志到 {self._history_log_file_path} 出错: {e}")
+        except Exception as e:
+            logger.error(f"记录状态时发生意外错误: {e}")
+            logger.error(traceback.format_exc())
+
+    async def api_get_all_states(self):
+        """获取主心流和所有子心流的状态。"""
+        try:
+            current_timestamp = time.time()
+
+            # main_mind = self.heartflow.current_mind
+            # 获取 Mai 状态名称
+            mai_state_name = self.heartflow.current_state.get_current_state().name
+
+            all_subflow_states = await self.get_all_subflow_states()
+
+            log_entry_base = {
+                "timestamp": round(current_timestamp, 2),
+                # "main_mind": main_mind,
+                "mai_state": mai_state_name,
+                "subflow_count": len(all_subflow_states),
+                "subflows": [],
+            }
+
+            subflow_details = []
+            items_snapshot = list(all_subflow_states.items())
+            for stream_id, state in items_snapshot:
+                group_name = stream_id
+                try:
+                    chat_stream = chat_manager.get_stream(stream_id)
+                    if chat_stream:
+                        if chat_stream.group_info:
+                            group_name = chat_stream.group_info.group_name
+                        elif chat_stream.user_info:
+                            group_name = f"私聊_{chat_stream.user_info.user_nickname}"
+                except Exception as e:
+                    logger.trace(f"无法获取 stream_id {stream_id} 的群组名: {e}")
+
+                interest_state = state.get("interest_state", {})
+
+                subflow_entry = {
+                    "stream_id": stream_id,
+                    "group_name": group_name,
+                    "sub_mind": state.get("current_mind", "未知"),
+                    "sub_chat_state": state.get("chat_state", "未知"),
+                    "interest_level": interest_state.get("interest_level", 0.0),
+                    "start_hfc_probability": interest_state.get("start_hfc_probability", 0.0),
+                    # "is_above_threshold": interest_state.get("is_above_threshold", False),
+                }
+                subflow_details.append(subflow_entry)
+
+            log_entry_base["subflows"] = subflow_details
+            return subflow_details
         except Exception as e:
             logger.error(f"记录状态时发生意外错误: {e}")
             logger.error(traceback.format_exc())
