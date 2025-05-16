@@ -380,7 +380,7 @@ def process_llm_response(text: str) -> list[str]:
     #         sentences.append(content)
 
     # 在所有句子处理完毕后，对包含占位符的列表进行恢复
-    if global_config.enable_kaomoji_protection:
+    if global_config.response_splitter.enable_kaomoji_protection:
         sentences = recover_kaomoji(sentences, kaomoji_mapping)
 
     return sentences

@@ -63,13 +63,16 @@ class ChattingInfoProcessor(BaseProcessor):
 
                     # 设置说话消息
                     if hasattr(obs, "talking_message_str"):
+                        print(f"设置说话消息：obs.talking_message_str: {obs.talking_message_str}")
                         obs_info.set_talking_message(obs.talking_message_str)
 
                     # 设置截断后的说话消息
                     if hasattr(obs, "talking_message_str_truncate"):
+                        print(f"设置截断后的说话消息：obs.talking_message_str_truncate: {obs.talking_message_str_truncate}")
                         obs_info.set_talking_message_str_truncate(obs.talking_message_str_truncate)
 
                     if hasattr(obs, "mid_memory_info"):
+                        print(f"设置之前聊天信息：obs.mid_memory_info: {obs.mid_memory_info}")
                         obs_info.set_previous_chat_info(obs.mid_memory_info)
 
                     # 设置聊天类型

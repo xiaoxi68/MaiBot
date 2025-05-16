@@ -140,8 +140,23 @@ class ChattingObservation(Observation):
                 return None
 
         # logger.debug(f"找到的锚定消息：find_msg: {find_msg}")
-        group_info = find_msg.get("chat_info", {}).get("group_info")
-        user_info = find_msg.get("chat_info", {}).get("user_info")
+        
+        # 创建所需的user_info字段
+        user_info = {
+            "platform": find_msg.get("user_platform", ""),
+            "user_id": find_msg.get("user_id", ""),
+            "user_nickname": find_msg.get("user_nickname", ""),
+            "user_cardname": find_msg.get("user_cardname", "")
+        }
+        
+        # 创建所需的group_info字段，如果是群聊的话
+        group_info = {}
+        if find_msg.get("chat_info_group_id"):
+            group_info = {
+                "platform": find_msg.get("chat_info_group_platform", ""),
+                "group_id": find_msg.get("chat_info_group_id", ""),
+                "group_name": find_msg.get("chat_info_group_name", "")
+            }
 
         content_format = ""
         accept_format = ""
@@ -181,6 +196,8 @@ class ChattingObservation(Observation):
             limit=self.max_now_obs_len,
             limit_mode="latest",
         )
+        
+        # print(f"new_messages_list: {new_messages_list}")
 
         last_obs_time_mark = self.last_observe_time
         if new_messages_list:
@@ -193,6 +210,7 @@ class ChattingObservation(Observation):
             oldest_messages = self.talking_message[:messages_to_remove_count]
             self.talking_message = self.talking_message[messages_to_remove_count:]  # 保留后半部分，即最新的
 
+            # print(f"压缩中：oldest_messages: {oldest_messages}")
             oldest_messages_str = await build_readable_messages(
                 messages=oldest_messages, timestamp_mode="normal", read_mark=0
             )
@@ -235,21 +253,24 @@ class ChattingObservation(Observation):
                 self.oldest_messages = oldest_messages
                 self.oldest_messages_str = oldest_messages_str
 
+        # 构建中
+        # print(f"构建中：self.talking_message: {self.talking_message}")
         self.talking_message_str = await build_readable_messages(
             messages=self.talking_message,
             timestamp_mode="lite",
             read_mark=last_obs_time_mark,
         )
+        # print(f"构建中：self.talking_message_str: {self.talking_message_str}")
         self.talking_message_str_truncate = await build_readable_messages(
             messages=self.talking_message,
             timestamp_mode="normal",
             read_mark=last_obs_time_mark,
             truncate=True,
         )
+        # print(f"构建中：self.talking_message_str_truncate: {self.talking_message_str_truncate}")
 
         self.person_list = await get_person_id_list(self.talking_message)
-
-        # print(f"self.11111person_list: {self.person_list}")
+        # print(f"构建中：self.person_list: {self.person_list}")
 
         logger.trace(
             f"Chat {self.chat_id} - 压缩早期记忆：{self.mid_memory_info}\n现在聊天内容：{self.talking_message_str}"

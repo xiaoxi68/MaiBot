@@ -174,6 +174,16 @@ async def _build_readable_messages_internal(
 
     # 1 & 2: 获取发送者信息并提取消息组件
     for msg in messages:
+        # 检查并修复缺少的user_info字段
+        if 'user_info' not in msg:
+            # 创建user_info字段
+            msg['user_info'] = {
+                'platform': msg.get('user_platform', ''),
+                'user_id': msg.get('user_id', ''),
+                'user_nickname': msg.get('user_nickname', ''),
+                'user_cardname': msg.get('user_cardname', '')
+            }
+        
         user_info = msg.get("user_info", {})
         platform = user_info.get("platform")
         user_id = user_info.get("user_id")
