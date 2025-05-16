@@ -1,7 +1,7 @@
 # 麦麦！MaiCore-MaiBot (编辑中)
 
 <picture>
-    <img alt="MaiBot" src="depends-data/maimai.png" alt="MaiBot" align="right" width = "384" height = "512" />
+    <img alt="MaiBot" src="depends-data/maimai.png" alt="MaiBot" align="right" width = "256" height = "314" />
 </picture>
 
 ![Python Version](https://img.shields.io/badge/Python-3.10+-blue)
