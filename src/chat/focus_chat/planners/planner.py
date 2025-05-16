@@ -24,7 +24,8 @@ def init_prompt():
     Prompt(
         """{extra_info_block}
 
-你的名字是{bot_name},{prompt_personality}，{chat_context_description}。需要基于以下信息决定如何参与对话：
+你需要基于以下信息决定如何参与对话
+这些信息可能会有冲突，请你整合这些信息，并选择一个最合适的action：
 {chat_content_block}
 
 {mind_info_block}
@@ -92,7 +93,7 @@ class ActionPlanner:
             extra_info: list[str] = []
             for info in all_plan_info:
                 if isinstance(info, ObsInfo):
-                    logger.debug(f"{self.log_prefix} 观察信息: {info}")
+                    # logger.debug(f"{self.log_prefix} 观察信息: {info}")
                     observed_messages = info.get_talking_message()
                     observed_messages_str = info.get_talking_message_str_truncate()
                     chat_type = info.get_chat_type()
@@ -101,15 +102,16 @@ class ActionPlanner:
                     else:
                         is_group_chat = False
                 elif isinstance(info, MindInfo):
-                    logger.debug(f"{self.log_prefix} 思维信息: {info}")
+                    # logger.debug(f"{self.log_prefix} 思维信息: {info}")
                     current_mind = info.get_current_mind()
                 elif isinstance(info, CycleInfo):
-                    logger.debug(f"{self.log_prefix} 循环信息: {info}")
+                    # logger.debug(f"{self.log_prefix} 循环信息: {info}")
                     cycle_info = info.get_observe_info()
                 elif isinstance(info, StructuredInfo):
-                    logger.debug(f"{self.log_prefix} 结构化信息: {info}")
+                    # logger.debug(f"{self.log_prefix} 结构化信息: {info}")
                     structured_info = info.get_data()
                 else:
+                    logger.debug(f"{self.log_prefix} 其他信息: {info}")
                     extra_info.append(info.get_processed_info())
 
             current_available_actions = self.action_manager.get_using_actions()

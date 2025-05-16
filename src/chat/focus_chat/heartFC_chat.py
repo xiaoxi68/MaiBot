@@ -22,6 +22,7 @@ from src.chat.focus_chat.info_processors.tool_processor import ToolProcessor
 from src.chat.focus_chat.expressors.default_expressor import DefaultExpressor
 from src.chat.focus_chat.memory_activator import MemoryActivator
 from src.chat.focus_chat.info_processors.base_processor import BaseProcessor
+from src.chat.focus_chat.info_processors.self_processor import SelfProcessor
 from src.chat.focus_chat.planners.planner import ActionPlanner
 from src.chat.focus_chat.planners.action_manager import ActionManager
 from src.chat.focus_chat.working_memory.working_memory import WorkingMemory
@@ -154,6 +155,7 @@ class HeartFChatting:
         self.processors.append(MindProcessor(subheartflow_id=self.stream_id))
         self.processors.append(ToolProcessor(subheartflow_id=self.stream_id))
         self.processors.append(WorkingMemoryProcessor(subheartflow_id=self.stream_id))
+        self.processors.append(SelfProcessor(subheartflow_id=self.stream_id))
         logger.info(f"{self.log_prefix} 已注册默认处理器: {[p.__class__.__name__ for p in self.processors]}")
 
     async def start(self):
@@ -331,6 +333,7 @@ class HeartFChatting:
                         f"{self.log_prefix} 处理器 {processor_name} 执行失败，耗时 (自并行开始): {duration_since_parallel_start:.2f}秒. 错误: {e}",
                         exc_info=True,
                     )
+                    traceback.print_exc()
                     # 即使出错，也认为该任务结束了，已从 pending_tasks 中移除
 
             if pending_tasks:

@@ -127,7 +127,7 @@ class DefaultExpressor:
             reply=anchor_message,  # 回复的是锚点消息
             thinking_start_time=thinking_time_point,
         )
-        logger.debug(f"创建思考消息thinking_message：{thinking_message}")
+        # logger.debug(f"创建思考消息thinking_message：{thinking_message}")
 
         await self.heart_fc_sender.register_thinking(thinking_message)
 
@@ -244,7 +244,7 @@ class DefaultExpressor:
                     # logger.info(f"{self.log_prefix}[Replier-{thinking_id}]\nPrompt:\n{prompt}\n")
                     content, reasoning_content, model_name = await self.express_model.generate_response(prompt)
 
-                    logger.info(f"{self.log_prefix}\nPrompt:\n{prompt}\n---------------------------\n")
+                    # logger.info(f"{self.log_prefix}\nPrompt:\n{prompt}\n---------------------------\n")
 
                     logger.info(f"想要表达：{in_mind_reply}")
                     logger.info(f"理由：{reason}")

@@ -77,10 +77,10 @@ class ActionManager:
                     if is_default:
                         self._default_actions[action_name] = action_info
 
-            logger.info(f"所有注册动作: {list(self._registered_actions.keys())}")
-            logger.info(f"默认动作: {list(self._default_actions.keys())}")
-            for action_name, action_info in self._default_actions.items():
-                logger.info(f"动作名称: {action_name}, 动作信息: {action_info}")
+            # logger.info(f"所有注册动作: {list(self._registered_actions.keys())}")
+            # logger.info(f"默认动作: {list(self._default_actions.keys())}")
+            # for action_name, action_info in self._default_actions.items():
+                # logger.info(f"动作名称: {action_name}, 动作信息: {action_info}")
 
         except Exception as e:
             logger.error(f"加载已注册动作失败: {e}")

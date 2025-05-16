@@ -120,12 +120,12 @@ class ChattingObservation(Observation):
         for message in reverse_talking_message:
             if message["processed_plain_text"] == text:
                 find_msg = message
-                logger.debug(f"找到的锚定消息：find_msg: {find_msg}")
+                # logger.debug(f"找到的锚定消息：find_msg: {find_msg}")
                 break
             else:
                 similarity = difflib.SequenceMatcher(None, text, message["processed_plain_text"]).ratio()
                 msg_list.append({"message": message, "similarity": similarity})
-            logger.debug(f"对锚定消息检查：message: {message['processed_plain_text']},similarity: {similarity}")
+            # logger.debug(f"对锚定消息检查：message: {message['processed_plain_text']},similarity: {similarity}")
         if not find_msg:
             if msg_list:
                 msg_list.sort(key=lambda x: x["similarity"], reverse=True)
