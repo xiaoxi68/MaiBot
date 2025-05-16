@@ -100,7 +100,7 @@ class Emoji(BaseModel):
 
     full_path = TextField(unique=True, index=True)  # 文件的完整路径 (包括文件名)
     format = TextField()  # 图片格式
-    hash = TextField(index=True)  # 表情包的哈希值
+    emoji_hash = TextField(index=True)  # 表情包的哈希值
     description = TextField()  # 表情包的描述
     query_count = IntegerField(default=0)  # 查询次数（用于统计表情包被查询描述的次数）
     is_registered = BooleanField(default=False)  # 是否已注册
@@ -160,7 +160,7 @@ class Images(BaseModel):
     用于存储图像信息的模型。
     """
 
-    hash = TextField(index=True)  # 图像的哈希值
+    emoji_hash = TextField(index=True)  # 图像的哈希值
     description = TextField(null=True)  # 图像的描述
     path = TextField(unique=True)  # 图像文件的路径
     timestamp = FloatField()  # 时间戳
@@ -177,7 +177,7 @@ class ImageDescriptions(BaseModel):
     """
 
     type = TextField()  # 类型，例如 "emoji"
-    hash = TextField(index=True)  # 图像的哈希值
+    image_description_hash = TextField(index=True)  # 图像的哈希值
     description = TextField()  # 图像的描述
     timestamp = FloatField()  # 时间戳
 

@@ -197,7 +197,7 @@ class MaiEmoji:
 
             # 2. 删除数据库记录
             try:
-                will_delete_emoji = Emoji.get(Emoji.hash == self.hash)
+                will_delete_emoji = Emoji.get(Emoji.emoji_hash == self.hash)
                 result = will_delete_emoji.delete_instance()  # Returns the number of rows deleted.
             except Emoji.DoesNotExist:
                 logger.warning(f"[删除] 数据库中未找到哈希值为 {self.hash} 的表情包记录。")
@@ -260,7 +260,7 @@ def _to_emoji_objects(data):
         try:
             emoji = MaiEmoji(full_path=full_path)
 
-            emoji.hash = emoji_data.hash
+            emoji.hash = emoji_data.emoji_hash
             if not emoji.hash:
                 logger.warning(f"[加载错误] 数据库记录缺少 'hash' 字段: {full_path}")
                 load_errors += 1
@@ -405,7 +405,7 @@ class EmojiManager:
     def record_usage(self, emoji_hash: str):
         """记录表情使用次数"""
         try:
-            emoji_update = Emoji.get(Emoji.hash == emoji_hash)
+            emoji_update = Emoji.get(Emoji.emoji_hash == emoji_hash)
             emoji_update.usage_count += 1
             emoji_update.last_used_time = time.time()  # Update last used time
             emoji_update.save()  # Persist changes to DB
@@ -475,7 +475,7 @@ class EmojiManager:
             selected_emoji, similarity, matched_emotion = random.choice(top_emojis)  # 把匹配的 emotion 也拿出来喵~
 
             # 更新使用次数
-            self.record_usage(selected_emoji.hash)
+            self.record_usage(selected_emoji.emoji_hash)
 
             _time_end = time.time()
 
@@ -671,7 +671,7 @@ class EmojiManager:
             self._ensure_db()
 
             if emoji_hash:
-                query = Emoji.select().where(Emoji.hash == emoji_hash)
+                query = Emoji.select().where(Emoji.emoji_hash == emoji_hash)
             else:
                 logger.warning(
                     "[查询] 未提供 hash，将尝试加载所有表情包，建议使用 get_all_emoji_from_db 更新管理器状态。"
@@ -804,7 +804,7 @@ class EmojiManager:
 
                     # 删除选定的表情包
                     logger.info(f"[决策] 删除表情包: {emoji_to_delete.description}")
-                    delete_success = await self.delete_emoji(emoji_to_delete.hash)
+                    delete_success = await self.delete_emoji(emoji_to_delete.emoji_hash)
 
                     if delete_success:
                         # 修复：等待异步注册完成

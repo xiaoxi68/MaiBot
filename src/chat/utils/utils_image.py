@@ -61,7 +61,7 @@ class ImageManager:
         """
         try:
             record = ImageDescriptions.get_or_none(
-                (ImageDescriptions.hash == image_hash) & (ImageDescriptions.type == description_type)
+                (ImageDescriptions.image_description_hash == image_hash) & (ImageDescriptions.type == description_type)
             )
             return record.description if record else None
         except Exception as e:
@@ -141,7 +141,7 @@ class ImageManager:
 
                     # 保存到数据库 (Images表)
                     try:
-                        img_obj = Images.get((Images.hash == image_hash) & (Images.type == "emoji"))
+                        img_obj = Images.get((Images.emoji_hash == image_hash) & (Images.type == "emoji"))
                         img_obj.path = file_path
                         img_obj.description = description
                         img_obj.timestamp = current_timestamp
@@ -214,7 +214,7 @@ class ImageManager:
 
                     # 保存到数据库 (Images表)
                     try:
-                        img_obj = Images.get((Images.hash == image_hash) & (Images.type == "image"))
+                        img_obj = Images.get((Images.emoji_hash == image_hash) & (Images.type == "image"))
                         img_obj.path = file_path
                         img_obj.description = description
                         img_obj.timestamp = current_timestamp
