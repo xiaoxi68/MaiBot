@@ -2,14 +2,14 @@
 <br />
 <div style="text-align: center">
 
-  ![Python Version](https://img.shields.io/badge/Python-3.10+-blue)
-  ![License](https://img.shields.io/github/license/SengokuCola/MaiMBot?label=协议)
-  ![Status](https://img.shields.io/badge/状态-开发中-yellow)
-  ![Contributors](https://img.shields.io/github/contributors/MaiM-with-u/MaiBot.svg?style=flat&label=贡献者)
-  ![forks](https://img.shields.io/github/forks/MaiM-with-u/MaiBot.svg?style=flat&label=分支数)
-  ![stars](https://img.shields.io/github/stars/MaiM-with-u/MaiBot?style=flat&label=星标数)
-  ![issues](https://img.shields.io/github/issues/MaiM-with-u/MaiBot)
-
+![Python Version](https://img.shields.io/badge/Python-3.10+-blue)
+![License](https://img.shields.io/github/license/SengokuCola/MaiMBot?label=协议)
+![Status](https://img.shields.io/badge/状态-开发中-yellow)
+![Contributors](https://img.shields.io/github/contributors/MaiM-with-u/MaiBot.svg?style=flat&label=贡献者)
+![forks](https://img.shields.io/github/forks/MaiM-with-u/MaiBot.svg?style=flat&label=分支数)
+![stars](https://img.shields.io/github/stars/MaiM-with-u/MaiBot?style=flat&label=星标数)
+![issues](https://img.shields.io/github/issues/MaiM-with-u/MaiBot)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/DrSmoothl/MaiBot)
   </div>
 
 <p style="text-align: center">
