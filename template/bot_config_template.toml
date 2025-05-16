@@ -18,11 +18,11 @@ nickname = "麦麦"
 alias_names = ["麦叠", "牢麦"] #该选项还在调试中，暂时未生效
 
 [chat_target]
-talk_allowed = [
+talk_allowed_groups = [
     123,
     123,
 ]  #可以回复消息的群号码
-talk_frequency_down = []  #降低回复频率的群号码
+talk_frequency_down_groups = []  #降低回复频率的群号码
 ban_user_id = []  #禁止回复和读取消息的QQ号
 
 [personality] #未完善
@@ -121,7 +121,7 @@ memory_build_sample_length = 40 # 采样长度，数值越高一段记忆内容�
 memory_compress_rate = 0.1 # 记忆压缩率 控制记忆精简程度 建议保持默认,调高可以获得更多信息，但是冗余信息也会增多
 
 forget_memory_interval = 1000 # 记忆遗忘间隔 单位秒   间隔越低，麦麦遗忘越频繁，记忆更精简，但更难学习
-memory_forget_time = 24 #多长时间后的记忆会被遗忘 单位小时 
+memory_forget_time = 24 #多长时间后的记忆会被遗忘 单位小时
 memory_forget_percentage = 0.01 # 记忆遗忘比例 控制记忆遗忘程度 越大遗忘越多 建议保持默认
 
 consolidate_memory_interval = 1000 # 记忆整合间隔 单位秒   间隔越低，麦麦整合越频繁，记忆更精简
