@@ -1,7 +1,7 @@
 # 麦麦！MaiCore-MaiBot (编辑中)
 
 <picture>
-    <img alt="MaiBot" src="depends-data/maimai.png" title="作者:略nd" align="right" style="width: 50%;" />
+    <img alt="MaiBot" src="depends-data/maimai.png" title="作者:略nd" align="right" width="30%" />
 </picture>
 
 ![Python Version](https://img.shields.io/badge/Python-3.10+-blue)
@@ -33,7 +33,7 @@
 
 <div style="text-align: center">
 <a href="https://www.bilibili.com/video/BV1amAneGE3P" target="_blank">
-    <img src="depends-data/video.png" style="width: 80%;" alt="麦麦演示视频" />
+    <img src="depends-data/video.png" width="50%" alt="麦麦演示视频" />
     <br />
     👆 点击观看麦麦演示视频 👆
 </a>
