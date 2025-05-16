@@ -4,7 +4,6 @@ from typing import List, Dict, Any, Optional
 from rich.traceback import install
 from src.chat.models.utils_model import LLMRequest
 from src.config.config import global_config
-from src.chat.focus_chat.heartflow_prompt_builder import prompt_builder
 from src.chat.focus_chat.info.info_base import InfoBase
 from src.chat.focus_chat.info.obs_info import ObsInfo
 from src.chat.focus_chat.info.cycle_info import CycleInfo
@@ -15,9 +14,11 @@ from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.individuality.individuality import Individuality
 from src.chat.focus_chat.planners.action_factory import ActionManager
 from src.chat.focus_chat.planners.action_factory import ActionInfo
+
 logger = get_logger("planner")
 
 install(extra_lines=3)
+
 
 def init_prompt():
     Prompt(
@@ -44,8 +45,9 @@ def init_prompt():
 }}
 
 请输出你的决策 JSON：""",
-"planner_prompt",)
-    
+        "planner_prompt",
+    )
+
     Prompt(
         """
 action_name: {action_name}
@@ -57,7 +59,7 @@ action_name: {action_name}
         """,
         "action_prompt",
     )
-    
+
 
 class ActionPlanner:
     def __init__(self, log_prefix: str, action_manager: ActionManager):
@@ -68,7 +70,7 @@ class ActionPlanner:
             max_tokens=1000,
             request_type="action_planning",  # 用于动作规划
         )
-        
+
         self.action_manager = action_manager
 
     async def plan(self, all_plan_info: List[InfoBase], cycle_timers: dict) -> Dict[str, Any]:
@@ -103,10 +105,10 @@ class ActionPlanner:
                     cycle_info = info.get_observe_info()
                 elif isinstance(info, StructuredInfo):
                     logger.debug(f"{self.log_prefix} 结构化信息: {info}")
-                    structured_info = info.get_data()
+                    _structured_info = info.get_data()
 
             current_available_actions = self.action_manager.get_using_actions()
-            
+
             # --- 构建提示词 (调用修改后的 PromptBuilder 方法) ---
             prompt = await self.build_planner_prompt(
                 is_group_chat=is_group_chat,  # <-- Pass HFC state
@@ -197,7 +199,6 @@ class ActionPlanner:
         # 返回结果字典
         return plan_result
 
-    
     async def build_planner_prompt(
         self,
         is_group_chat: bool,  # Now passed as argument
@@ -218,7 +219,6 @@ class ActionPlanner:
                 )
                 chat_context_description = f"你正在和 {chat_target_name} 私聊"
 
-
             chat_content_block = ""
             if observed_messages_str:
                 chat_content_block = f"聊天记录：\n{observed_messages_str}"
@@ -234,7 +234,6 @@ class ActionPlanner:
             individuality = Individuality.get_instance()
             personality_block = individuality.get_prompt(x_person=2, level=2)
 
-
             action_options_block = ""
             for using_actions_name, using_actions_info in current_available_actions.items():
                 # print(using_actions_name)
@@ -242,29 +241,26 @@ class ActionPlanner:
                 # print(using_actions_info["parameters"])
                 # print(using_actions_info["require"])
                 # print(using_actions_info["description"])
-                
+
                 using_action_prompt = await global_prompt_manager.get_prompt_async("action_prompt")
-                
+
                 param_text = ""
                 for param_name, param_description in using_actions_info["parameters"].items():
                     param_text += f"{param_name}: {param_description}\n"
-                
+
                 require_text = ""
                 for require_item in using_actions_info["require"]:
                     require_text += f"- {require_item}\n"
-                
+
                 using_action_prompt = using_action_prompt.format(
                     action_name=using_actions_name,
                     action_description=using_actions_info["description"],
                     action_parameters=param_text,
                     action_require=require_text,
                 )
-                
+
                 action_options_block += using_action_prompt
-                
 
-
-            
             planner_prompt_template = await global_prompt_manager.get_prompt_async("planner_prompt")
             prompt = planner_prompt_template.format(
                 bot_name=global_config.BOT_NICKNAME,

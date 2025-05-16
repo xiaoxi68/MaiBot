@@ -114,7 +114,7 @@ class ActionPlanner:
             request_type="action_planning",
         )
         self.personality_info = Individuality.get_instance().get_prompt(x_person=2, level=3)
-        self.name = global_config.BOT_NICKNAME
+        self.name = global_config.bot.nickname
         self.private_name = private_name
         self.chat_observer = ChatObserver.get_instance(stream_id, private_name)
         # self.action_planner_info = ActionPlannerInfo() # 移除未使用的变量
@@ -140,7 +140,7 @@ class ActionPlanner:
         # (这部分逻辑不变)
         time_since_last_bot_message_info = ""
         try:
-            bot_id = str(global_config.BOT_QQ)
+            bot_id = str(global_config.bot.qq_account)
             if hasattr(observation_info, "chat_history") and observation_info.chat_history:
                 for i in range(len(observation_info.chat_history) - 1, -1, -1):
                     msg = observation_info.chat_history[i]
