@@ -4,7 +4,7 @@ from src.config.config import global_config
 import time
 from src.common.logger_manager import get_logger
 from src.individuality.individuality import Individuality
-from src.chat.utils.prompt_builder import Prompt, global_prompt_manager 
+from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.tools.tool_use import ToolUser
 from src.chat.utils.json_utils import process_llm_tool_calls
 from src.chat.person_info.relationship_manager import relationship_manager
@@ -68,7 +68,7 @@ class ToolProcessor(BaseProcessor):
         """
 
         working_infos = []
-        
+
         if observations:
             for observation in observations:
                 if isinstance(observation, ChattingObservation):
@@ -134,7 +134,7 @@ class ToolProcessor(BaseProcessor):
 
         # 获取个性信息
         individuality = Individuality.get_instance()
-        prompt_personality = individuality.get_prompt(x_person=2, level=2)
+        # prompt_personality = individuality.get_prompt(x_person=2, level=2)
 
         # 获取时间信息
         time_now = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())

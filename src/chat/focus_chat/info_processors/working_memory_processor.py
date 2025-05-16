@@ -5,17 +5,11 @@ from src.config.config import global_config
 import time
 import traceback
 from src.common.logger_manager import get_logger
-from src.individuality.individuality import Individuality
-import random
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
-from src.chat.utils.json_utils import safe_json_dumps
 from src.chat.message_receive.chat_stream import chat_manager
-import difflib
-from src.chat.person_info.relationship_manager import relationship_manager
 from .base_processor import BaseProcessor
 from src.chat.focus_chat.info.mind_info import MindInfo
 from typing import List, Optional
-from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
 from src.chat.heart_flow.observation.working_observation import WorkingMemoryObservation
 from src.chat.focus_chat.working_memory.working_memory import WorkingMemory
 from typing import Dict
@@ -76,8 +70,6 @@ class WorkingMemoryProcessor(BaseProcessor):
         name = chat_manager.get_stream_name(self.subheartflow_id)
         self.log_prefix = f"[{name}] "
 
-
-
     async def process_info(
         self, observations: Optional[List[Observation]] = None, running_memorys: Optional[List[Dict]] = None, *infos
     ) -> List[InfoBase]:
@@ -95,11 +87,11 @@ class WorkingMemoryProcessor(BaseProcessor):
             for observation in observations:
                 if isinstance(observation, WorkingMemoryObservation):
                     working_memory = observation.get_observe_info()
-                    working_memory_obs = observation
+                    # working_memory_obs = observation
                 if isinstance(observation, ChattingObservation):
                     chat_info = observation.get_observe_info()
                     # chat_info_truncate = observation.talking_message_str_truncate
-                    
+
             if not working_memory:
                 logger.warning(f"{self.log_prefix} 没有找到工作记忆对象")
                 mind_info = MindInfo()
@@ -108,44 +100,42 @@ class WorkingMemoryProcessor(BaseProcessor):
             logger.error(f"{self.log_prefix} 处理观察时出错: {e}")
             logger.error(traceback.format_exc())
             return []
-                
+
         all_memory = working_memory.get_all_memories()
         memory_prompts = []
         for memory in all_memory:
-            memory_content = memory.data
+            # memory_content = memory.data
             memory_summary = memory.summary
             memory_id = memory.id
             memory_brief = memory_summary.get("brief")
-            memory_detailed = memory_summary.get("detailed")
+            # memory_detailed = memory_summary.get("detailed")
             memory_keypoints = memory_summary.get("keypoints")
             memory_events = memory_summary.get("events")
             memory_single_prompt = f"记忆id:{memory_id},记忆摘要:{memory_brief}\n"
             memory_prompts.append(memory_single_prompt)
-                
+
         memory_choose_str = "".join(memory_prompts)
-            
+
         # 使用提示模板进行处理
         prompt = (await global_prompt_manager.get_prompt_async("prompt_memory_proces")).format(
             bot_name=global_config.BOT_NICKNAME,
             time_now=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
             chat_observe_info=chat_info,
-            memory_str=memory_choose_str
+            memory_str=memory_choose_str,
         )
-            
+
         # 调用LLM处理记忆
         content = ""
         try:
-            
             logger.debug(f"{self.log_prefix} 处理工作记忆的prompt: {prompt}")
-            
-            
+
             content, _ = await self.llm_model.generate_response_async(prompt=prompt)
             if not content:
                 logger.warning(f"{self.log_prefix} LLM返回空结果，处理工作记忆失败。")
         except Exception as e:
             logger.error(f"{self.log_prefix} 执行LLM请求或处理响应时出错: {e}")
             logger.error(traceback.format_exc())
-            
+
         # 解析LLM返回的JSON
         try:
             result = repair_json(content)
@@ -154,7 +144,7 @@ class WorkingMemoryProcessor(BaseProcessor):
             if not isinstance(result, dict):
                 logger.error(f"{self.log_prefix} 解析LLM返回的JSON失败，结果不是字典类型: {type(result)}")
                 return []
-                
+
             selected_memory_ids = result.get("selected_memory_ids", [])
             new_memory = result.get("new_memory", "")
             merge_memory = result.get("merge_memory", [])
@@ -162,20 +152,20 @@ class WorkingMemoryProcessor(BaseProcessor):
             logger.error(f"{self.log_prefix} 解析LLM返回的JSON失败: {e}")
             logger.error(traceback.format_exc())
             return []
-        
+
         logger.debug(f"{self.log_prefix} 解析LLM返回的JSON成功: {result}")
-        
+
         # 根据selected_memory_ids，调取记忆
         memory_str = ""
         if selected_memory_ids:
             for memory_id in selected_memory_ids:
                 memory = await working_memory.retrieve_memory(memory_id)
                 if memory:
-                    memory_content = memory.data
+                    # memory_content = memory.data
                     memory_summary = memory.summary
                     memory_id = memory.id
                     memory_brief = memory_summary.get("brief")
-                    memory_detailed = memory_summary.get("detailed")
+                    # memory_detailed = memory_summary.get("detailed")
                     memory_keypoints = memory_summary.get("keypoints")
                     memory_events = memory_summary.get("events")
                     for keypoint in memory_keypoints:
@@ -184,21 +174,20 @@ class WorkingMemoryProcessor(BaseProcessor):
                         memory_str += f"记忆事件:{event}\n"
                     # memory_str += f"记忆摘要:{memory_detailed}\n"
                     # memory_str += f"记忆主题:{memory_brief}\n"
-                
-                
+
         working_memory_info = WorkingMemoryInfo()
         if memory_str:
             working_memory_info.add_working_memory(memory_str)
             logger.debug(f"{self.log_prefix} 取得工作记忆: {memory_str}")
         else:
             logger.warning(f"{self.log_prefix} 没有找到工作记忆")
-        
+
         # 根据聊天内容添加新记忆
         if new_memory:
             # 使用异步方式添加新记忆，不阻塞主流程
             logger.debug(f"{self.log_prefix} {new_memory}新记忆: ")
             asyncio.create_task(self.add_memory_async(working_memory, chat_info))
-            
+
         if merge_memory:
             for merge_pairs in merge_memory:
                 memory1 = await working_memory.retrieve_memory(merge_pairs[0])
@@ -207,12 +196,12 @@ class WorkingMemoryProcessor(BaseProcessor):
                     memory_str = f"记忆id:{memory1.id},记忆摘要:{memory1.summary.get('brief')}\n"
                     memory_str += f"记忆id:{memory2.id},记忆摘要:{memory2.summary.get('brief')}\n"
                     asyncio.create_task(self.merge_memory_async(working_memory, merge_pairs[0], merge_pairs[1]))
-                
+
         return [working_memory_info]
 
     async def add_memory_async(self, working_memory: WorkingMemory, content: str):
         """异步添加记忆，不阻塞主流程
-        
+
         Args:
             working_memory: 工作记忆对象
             content: 记忆内容
@@ -223,10 +212,10 @@ class WorkingMemoryProcessor(BaseProcessor):
         except Exception as e:
             logger.error(f"{self.log_prefix} 异步添加新记忆失败: {e}")
             logger.error(traceback.format_exc())
-            
+
     async def merge_memory_async(self, working_memory: WorkingMemory, memory_id1: str, memory_id2: str):
         """异步合并记忆，不阻塞主流程
-        
+
         Args:
             working_memory: 工作记忆对象
             memory_str: 记忆内容
@@ -238,7 +227,7 @@ class WorkingMemoryProcessor(BaseProcessor):
             logger.debug(f"{self.log_prefix} 合并后的记忆详情: {merged_memory.summary.get('detailed')}")
             logger.debug(f"{self.log_prefix} 合并后的记忆要点: {merged_memory.summary.get('keypoints')}")
             logger.debug(f"{self.log_prefix} 合并后的记忆事件: {merged_memory.summary.get('events')}")
-            
+
         except Exception as e:
             logger.error(f"{self.log_prefix} 异步合并记忆失败: {e}")
             logger.error(traceback.format_exc())

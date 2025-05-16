@@ -17,7 +17,7 @@ class InfoBase:
 
     type: str = "base"
     data: Dict[str, Any] = field(default_factory=dict)
-    processed_info:str = ""
+    processed_info: str = ""
 
     def get_type(self) -> str:
         """获取信息类型

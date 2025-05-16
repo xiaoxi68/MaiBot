@@ -37,7 +37,7 @@ class ActionManager:
 
         # 加载所有已注册动作
         self._load_registered_actions()
-        
+
         # 加载插件动作
         self._load_plugin_actions()
 
@@ -52,11 +52,11 @@ class ActionManager:
             # 从_ACTION_REGISTRY获取所有已注册动作
             for action_name, action_class in _ACTION_REGISTRY.items():
                 # 获取动作相关信息
-                
+
                 # 不读取插件动作和基类
                 if action_name == "base_action" or action_name == "plugin_action":
                     continue
-                
+
                 action_description: str = getattr(action_class, "action_description", "")
                 action_parameters: dict[str:str] = getattr(action_class, "action_parameters", {})
                 action_require: list[str] = getattr(action_class, "action_require", [])
@@ -80,11 +80,11 @@ class ActionManager:
             # logger.info(f"所有注册动作: {list(self._registered_actions.keys())}")
             # logger.info(f"默认动作: {list(self._default_actions.keys())}")
             # for action_name, action_info in self._default_actions.items():
-                # logger.info(f"动作名称: {action_name}, 动作信息: {action_info}")
+            # logger.info(f"动作名称: {action_name}, 动作信息: {action_info}")
 
         except Exception as e:
             logger.error(f"加载已注册动作失败: {e}")
-            
+
     def _load_plugin_actions(self) -> None:
         """
         加载所有插件目录中的动作
@@ -92,23 +92,25 @@ class ActionManager:
         try:
             # 检查插件目录是否存在
             plugin_path = "src.plugins"
-            plugin_dir = plugin_path.replace('.', os.path.sep)
+            plugin_dir = plugin_path.replace(".", os.path.sep)
             if not os.path.exists(plugin_dir):
                 logger.info(f"插件目录 {plugin_dir} 不存在，跳过插件动作加载")
                 return
-                
+
             # 导入插件包
             try:
                 plugins_package = importlib.import_module(plugin_path)
             except ImportError as e:
                 logger.error(f"导入插件包失败: {e}")
                 return
-                
+
             # 遍历插件包中的所有子包
-            for _, plugin_name, is_pkg in pkgutil.iter_modules(plugins_package.__path__, plugins_package.__name__ + '.'):
+            for _, plugin_name, is_pkg in pkgutil.iter_modules(
+                plugins_package.__path__, plugins_package.__name__ + "."
+            ):
                 if not is_pkg:
                     continue
-                    
+
                 # 检查插件是否有actions子包
                 plugin_actions_path = f"{plugin_name}.actions"
                 try:
@@ -118,10 +120,10 @@ class ActionManager:
                 except ImportError as e:
                     logger.debug(f"插件 {plugin_name} 没有actions子包或导入失败: {e}")
                     continue
-                    
+
             # 再次从_ACTION_REGISTRY获取所有动作（包括刚刚从插件加载的）
             self._load_registered_actions()
-                
+
         except Exception as e:
             logger.error(f"加载插件动作失败: {e}")
 
@@ -316,4 +318,3 @@ class ActionManager:
             Optional[Type[BaseAction]]: 动作处理器类，如果不存在则返回None
         """
         return _ACTION_REGISTRY.get(action_name)
-

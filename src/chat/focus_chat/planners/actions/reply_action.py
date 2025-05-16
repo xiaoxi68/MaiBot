@@ -105,8 +105,7 @@ class ReplyAction(BaseAction):
 
         # 从聊天观察获取锚定消息
         chatting_observation: ChattingObservation = next(
-            obs for obs in self.observations 
-            if isinstance(obs, ChattingObservation)
+            obs for obs in self.observations if isinstance(obs, ChattingObservation)
         )
         if reply_data.get("target"):
             anchor_message = chatting_observation.search_message_by_text(reply_data["target"])

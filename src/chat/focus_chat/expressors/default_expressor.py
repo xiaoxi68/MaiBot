@@ -10,7 +10,6 @@ from src.config.config import global_config
 from src.chat.utils.utils_image import image_path_to_base64  # Local import needed after move
 from src.chat.utils.timer_calculator import Timer  # <--- Import Timer
 from src.chat.emoji_system.emoji_manager import emoji_manager
-from src.chat.focus_chat.heartflow_prompt_builder import prompt_builder,Prompt
 from src.chat.focus_chat.heartFC_sender import HeartFCSender
 from src.chat.utils.utils import process_llm_response
 from src.chat.utils.info_catcher import info_catcher_manager
@@ -18,24 +17,15 @@ from src.manager.mood_manager import mood_manager
 from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
 from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.focus_chat.hfc_utils import parse_thinking_id_to_timestamp
-from src.config.config import global_config
-from src.common.logger_manager import get_logger
 from src.individuality.individuality import Individuality
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_before_timestamp_with_chat
-from src.chat.person_info.relationship_manager import relationship_manager
-from src.chat.utils.utils import get_embedding
 import time
-from typing import Union, Optional
-from src.common.database import db
-from src.chat.utils.utils import get_recent_group_speaker
-from src.manager.mood_manager import mood_manager
-from src.chat.memory_system.Hippocampus import HippocampusManager
-from src.chat.knowledge.knowledge_lib import qa_manager
 from src.chat.focus_chat.expressors.exprssion_learner import expression_learner
 import random
 
 logger = get_logger("expressor")
+
 
 def init_prompt():
     Prompt(
@@ -59,7 +49,7 @@ def init_prompt():
 """,
         "default_expressor_prompt",
     )
-    
+
     Prompt(
         """
 你可以参考以下的语言习惯，如果情景合适就使用，不要盲目使用,不要生硬使用，而是结合到表达中：
@@ -280,7 +270,7 @@ class DefaultExpressor:
             logger.error(f"{self.log_prefix}回复生成意外失败: {e}")
             traceback.print_exc()
             return None
-        
+
     async def build_prompt_focus(
         self,
         reason,
@@ -357,7 +347,7 @@ class DefaultExpressor:
                 template_name,
                 style_habbits=style_habbits_str,
                 grammar_habbits=grammar_habbits_str,
-                chat_target=chat_target_1, 
+                chat_target=chat_target_1,
                 chat_info=chat_talking_prompt,
                 bot_name=global_config.BOT_NICKNAME,
                 prompt_personality="",
@@ -377,9 +367,7 @@ class DefaultExpressor:
                 moderation_prompt=await global_prompt_manager.get_prompt_async("moderation_prompt"),
             )
 
-
-        return prompt    
-    
+        return prompt
 
         # --- 发送器 (Sender) --- #
 
@@ -402,7 +390,7 @@ class DefaultExpressor:
         if thinking_id:
             thinking_start_time = await self.heart_fc_sender.get_thinking_start_time(chat_id, thinking_id)
         else:
-            thinking_id = "ds"+ str(round(time.time(),2))
+            thinking_id = "ds" + str(round(time.time(), 2))
             thinking_start_time = time.time()
 
         if thinking_start_time is None:
@@ -514,7 +502,6 @@ class DefaultExpressor:
         return bot_message
 
 
-
 def weighted_sample_no_replacement(items, weights, k) -> list:
     """
     加权且不放回地随机抽取k个元素。
@@ -547,5 +534,6 @@ def weighted_sample_no_replacement(items, weights, k) -> list:
                 pool.pop(idx)
                 break
     return selected
+
 
 init_prompt()

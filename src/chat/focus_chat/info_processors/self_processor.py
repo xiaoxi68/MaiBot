@@ -6,14 +6,10 @@ import time
 import traceback
 from src.common.logger_manager import get_logger
 from src.individuality.individuality import Individuality
-import random
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
-from src.chat.utils.json_utils import safe_json_dumps
 from src.chat.message_receive.chat_stream import chat_manager
-import difflib
 from src.chat.person_info.relationship_manager import relationship_manager
 from .base_processor import BaseProcessor
-from src.chat.focus_chat.info.mind_info import MindInfo
 from typing import List, Optional
 from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
 from typing import Dict
@@ -44,7 +40,6 @@ def init_prompt():
     Prompt(indentify_prompt, "indentify_prompt")
 
 
-
 class SelfProcessor(BaseProcessor):
     log_prefix = "自我认同"
 
@@ -63,7 +58,6 @@ class SelfProcessor(BaseProcessor):
         name = chat_manager.get_stream_name(self.subheartflow_id)
         self.log_prefix = f"[{name}] "
 
-
     async def process_info(
         self, observations: Optional[List[Observation]] = None, running_memorys: Optional[List[Dict]] = None, *infos
     ) -> List[InfoBase]:
@@ -76,7 +70,7 @@ class SelfProcessor(BaseProcessor):
             List[InfoBase]: 处理后的结构化信息列表
         """
         self_info_str = await self.self_indentify(observations, running_memorys)
-        
+
         if self_info_str:
             self_info = SelfInfo()
             self_info.set_self_info(self_info_str)
@@ -102,13 +96,11 @@ class SelfProcessor(BaseProcessor):
                 tuple: (current_mind, past_mind, prompt) 当前想法、过去的想法列表和使用的prompt
         """
 
-
         memory_str = ""
         if running_memorys:
             memory_str = "以下是当前在聊天中，你回忆起的记忆：\n"
             for running_memory in running_memorys:
                 memory_str += f"{running_memory['topic']}: {running_memory['content']}\n"
-
 
         if observations is None:
             observations = []
@@ -127,8 +119,8 @@ class SelfProcessor(BaseProcessor):
                 chat_observe_info = observation.get_observe_info()
                 person_list = observation.person_list
             if isinstance(observation, HFCloopObservation):
-                hfcloop_observe_info = observation.get_observe_info()
-
+                # hfcloop_observe_info = observation.get_observe_info()
+                pass
 
         individuality = Individuality.get_instance()
         personality_block = individuality.get_prompt(x_person=2, level=2)
@@ -136,7 +128,6 @@ class SelfProcessor(BaseProcessor):
         relation_prompt = ""
         for person in person_list:
             relation_prompt += await relationship_manager.build_relationship_info(person, is_id=True)
-
 
         prompt = (await global_prompt_manager.get_prompt_async("indentify_prompt")).format(
             bot_name=individuality.name,
@@ -146,7 +137,6 @@ class SelfProcessor(BaseProcessor):
             time_now=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
             chat_observe_info=chat_observe_info,
         )
-
 
         content = ""
         try:
@@ -159,14 +149,13 @@ class SelfProcessor(BaseProcessor):
             logger.error(traceback.format_exc())
             content = "自我识别过程中出现错误"
 
-        if content == 'None':
+        if content == "None":
             content = ""
         # 记录初步思考结果
         logger.debug(f"{self.log_prefix} 自我识别prompt: \n{prompt}\n")
         logger.info(f"{self.log_prefix} 自我识别结果: {content}")
 
         return content
-
 
 
 init_prompt()

@@ -5,10 +5,9 @@ from .info_base import InfoBase
 
 @dataclass
 class WorkingMemoryInfo(InfoBase):
-
     type: str = "workingmemory"
-    
-    processed_info:str = ""
+
+    processed_info: str = ""
 
     def set_talking_message(self, message: str) -> None:
         """设置说话消息
@@ -25,7 +24,7 @@ class WorkingMemoryInfo(InfoBase):
             working_memory (str): 工作记忆内容
         """
         self.data["working_memory"] = working_memory
-    
+
     def add_working_memory(self, working_memory: str) -> None:
         """添加工作记忆
 
@@ -37,7 +36,7 @@ class WorkingMemoryInfo(InfoBase):
         working_memory_list.append(working_memory)
         # print(f"working_memory_list: {working_memory_list}")
         self.data["working_memory"] = working_memory_list
-    
+
     def get_working_memory(self) -> List[str]:
         """获取工作记忆
 
@@ -72,7 +71,7 @@ class WorkingMemoryInfo(InfoBase):
             Optional[str]: 属性值，如果键不存在则返回 None
         """
         return self.data.get(key)
-    
+
     def get_processed_info(self) -> Dict[str, str]:
         """获取处理后的信息
 
@@ -84,7 +83,7 @@ class WorkingMemoryInfo(InfoBase):
         memory_str = ""
         for memory in all_memory:
             memory_str += f"{memory}\n"
-                
+
         self.processed_info = memory_str
-        
+
         return self.processed_info

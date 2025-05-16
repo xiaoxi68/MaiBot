@@ -17,7 +17,6 @@ from src.chat.focus_chat.info_processors.mind_processor import MindProcessor
 from src.chat.focus_chat.info_processors.working_memory_processor import WorkingMemoryProcessor
 from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
 from src.chat.heart_flow.observation.working_observation import WorkingMemoryObservation
-from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 from src.chat.focus_chat.info_processors.tool_processor import ToolProcessor
 from src.chat.focus_chat.expressors.default_expressor import DefaultExpressor
 from src.chat.focus_chat.memory_activator import MemoryActivator
@@ -26,6 +25,7 @@ from src.chat.focus_chat.info_processors.self_processor import SelfProcessor
 from src.chat.focus_chat.planners.planner import ActionPlanner
 from src.chat.focus_chat.planners.action_manager import ActionManager
 from src.chat.focus_chat.working_memory.working_memory import WorkingMemory
+
 install(extra_lines=3)
 
 
@@ -85,17 +85,19 @@ class HeartFChatting:
         self.log_prefix: str = str(chat_id)  # Initial default, will be updated
         self.hfcloop_observation = HFCloopObservation(observe_id=self.stream_id)
         self.chatting_observation = observations[0]
-        
+
         self.memory_activator = MemoryActivator()
         self.working_memory = WorkingMemory(chat_id=self.stream_id)
-        self.working_observation = WorkingMemoryObservation(observe_id=self.stream_id, working_memory=self.working_memory)
-        
+        self.working_observation = WorkingMemoryObservation(
+            observe_id=self.stream_id, working_memory=self.working_memory
+        )
+
         self.expressor = DefaultExpressor(chat_id=self.stream_id)
         self.action_manager = ActionManager()
         self.action_planner = ActionPlanner(log_prefix=self.log_prefix, action_manager=self.action_manager)
-        
+
         self.hfcloop_observation.set_action_manager(self.action_manager)
-        
+
         self.all_observations = observations
         # --- 处理器列表 ---
         self.processors: List[BaseProcessor] = []
@@ -369,7 +371,7 @@ class HeartFChatting:
                 }
 
                 self.all_observations = observations
-                    
+
             with Timer("回忆", cycle_timers):
                 running_memorys = await self.memory_activator.activate_memory(observations)
 

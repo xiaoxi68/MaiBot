@@ -94,8 +94,7 @@ class NoReplyAction(BaseAction):
                 # 等待新消息、超时或关闭信号，并获取结果
                 await self._wait_for_new_message(observation, self.thinking_id, self.log_prefix)
             # 从计时器获取实际等待时间
-            current_waiting = self.cycle_timers.get("等待新消息", 0.0)
-
+            _current_waiting = self.cycle_timers.get("等待新消息", 0.0)
 
             return True, ""  # 不回复动作没有回复文本
 

@@ -1,5 +1,4 @@
-from typing import Dict, Any
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from .info_base import InfoBase
 
 
@@ -31,7 +30,7 @@ class SelfInfo(InfoBase):
             self_info: 要设置的思维状态
         """
         self.data["self_info"] = self_info
-        
+
     def get_processed_info(self) -> str:
         """获取处理后的信息
 

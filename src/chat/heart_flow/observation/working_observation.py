@@ -16,9 +16,9 @@ class WorkingMemoryObservation:
         self.observe_info = ""
         self.observe_id = observe_id
         self.last_observe_time = datetime.now().timestamp()
-        
+
         self.working_memory = working_memory
-        
+
         self.retrieved_working_memory = []
 
     def get_observe_info(self):
@@ -26,7 +26,7 @@ class WorkingMemoryObservation:
 
     def add_retrieved_working_memory(self, retrieved_working_memory: List[MemoryItem]):
         self.retrieved_working_memory.append(retrieved_working_memory)
-        
+
     def get_retrieved_working_memory(self):
         return self.retrieved_working_memory
 

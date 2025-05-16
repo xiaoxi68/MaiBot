@@ -6,11 +6,9 @@ import time
 import traceback
 from src.common.logger_manager import get_logger
 from src.individuality.individuality import Individuality
-import random
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.utils.json_utils import safe_json_dumps
 from src.chat.message_receive.chat_stream import chat_manager
-import difflib
 from src.chat.person_info.relationship_manager import relationship_manager
 from .base_processor import BaseProcessor
 from src.chat.focus_chat.info.mind_info import MindInfo
@@ -202,7 +200,6 @@ class MindProcessor(BaseProcessor):
         for person in person_list:
             relation_prompt += await relationship_manager.build_relationship_info(person, is_id=True)
 
-
         template_name = "sub_heartflow_prompt_before" if is_group_chat else "sub_heartflow_prompt_private_before"
         logger.debug(f"{self.log_prefix} 使用{'群聊' if is_group_chat else '私聊'}思考模板")
 
@@ -217,7 +214,6 @@ class MindProcessor(BaseProcessor):
             cycle_info_block=hfcloop_observe_info,
             chat_target_name=chat_target_name,
         )
-
 
         content = "(不知道该想些什么...)"
         try:

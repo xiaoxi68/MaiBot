@@ -17,14 +17,14 @@ class HFCloopObservation:
         self.observe_id = observe_id
         self.last_observe_time = datetime.now().timestamp()  # 初始化为当前时间
         self.history_loop: List[CycleDetail] = []
-        self.action_manager = ActionManager()   
+        self.action_manager = ActionManager()
 
     def get_observe_info(self):
         return self.observe_info
 
     def add_loop_info(self, loop_info: CycleDetail):
         self.history_loop.append(loop_info)
-    
+
     def set_action_manager(self, action_manager: ActionManager):
         self.action_manager = action_manager
 
@@ -75,16 +75,15 @@ class HFCloopObservation:
             if start_time is not None and end_time is not None:
                 time_diff = int(end_time - start_time)
                 if time_diff > 60:
-                    cycle_info_block += f"\n距离你上一次阅读消息已经过去了{time_diff/60}分钟\n"
+                    cycle_info_block += f"\n距离你上一次阅读消息已经过去了{time_diff / 60}分钟\n"
                 else:
                     cycle_info_block += f"\n距离你上一次阅读消息已经过去了{time_diff}秒\n"
             else:
                 cycle_info_block += "\n你还没看过消息\n"
-                
+
         using_actions = self.action_manager.get_using_actions()
         for action_name, action_info in using_actions.items():
             action_description = action_info["description"]
             cycle_info_block += f"\n你在聊天中可以使用{action_name}，这个动作的描述是{action_description}\n"
-        
 
         self.observe_info = cycle_info_block

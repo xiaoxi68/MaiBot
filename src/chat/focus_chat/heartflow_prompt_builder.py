@@ -12,7 +12,6 @@ from src.chat.utils.utils import get_recent_group_speaker
 from src.manager.mood_manager import mood_manager
 from src.chat.memory_system.Hippocampus import HippocampusManager
 from src.chat.knowledge.knowledge_lib import qa_manager
-from src.chat.focus_chat.expressors.exprssion_learner import expression_learner
 import random
 
 
@@ -20,7 +19,6 @@ logger = get_logger("prompt")
 
 
 def init_prompt():
-
     Prompt(
         """
 你有以下信息可供参考：
@@ -520,6 +518,7 @@ class PromptBuilder:
         else:
             # 返回所有找到的内容，用换行分隔
             return "\n".join(str(result["content"]) for result in results)
+
 
 init_prompt()
 prompt_builder = PromptBuilder()

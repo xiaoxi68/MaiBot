@@ -109,7 +109,7 @@ class ActionPlanner:
                     cycle_info = info.get_observe_info()
                 elif isinstance(info, StructuredInfo):
                     # logger.debug(f"{self.log_prefix} 结构化信息: {info}")
-                    structured_info = info.get_data()
+                    _structured_info = info.get_data()
                 else:
                     logger.debug(f"{self.log_prefix} 其他信息: {info}")
                     extra_info.append(info.get_processed_info())
@@ -157,7 +157,7 @@ class ActionPlanner:
                     for key, value in parsed_json.items():
                         if key not in ["action", "reasoning"]:
                             action_data[key] = value
-                    
+
                     # 对于reply动作不需要额外处理，因为相关字段已经在上面的循环中添加到action_data
 
                     if extracted_action not in current_available_actions:
