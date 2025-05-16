@@ -10,7 +10,6 @@ import json
 class InfoCatcher:
     def __init__(self):
         self.chat_history = []  # 聊天历史，长度为三倍使用的上下文喵~
-        self.context_length = global_config.observation_context_size
         self.chat_history_in_thinking = []  # 思考期间的聊天内容喵~
         self.chat_history_after_response = []  # 回复后的聊天内容，长度为一倍上下文喵~
 
@@ -128,7 +127,7 @@ class InfoCatcher:
             Messages.select()
             .where((Messages.chat_id == chat_id_val) & (Messages.message_id < message_id_val))
             .order_by(Messages.time.desc())
-            .limit(self.context_length * 3)
+            .limit(global_config.chat.observation_context_size * 3)
         )
 
         return list(messages_before_query)

@@ -16,7 +16,7 @@ class ReplyChecker:
         self.llm = LLMRequest(
             model=global_config.llm_PFC_reply_checker, temperature=0.50, max_tokens=1000, request_type="reply_check"
         )
-        self.name = global_config.BOT_NICKNAME
+        self.name = global_config.bot.nickname
         self.private_name = private_name
         self.chat_observer = ChatObserver.get_instance(stream_id, private_name)
         self.max_retries = 3  # 最大重试次数
@@ -43,7 +43,7 @@ class ReplyChecker:
             bot_messages = []
             for msg in reversed(chat_history):
                 user_info = UserInfo.from_dict(msg.get("user_info", {}))
-                if str(user_info.user_id) == str(global_config.BOT_QQ):  # 确保比较的是字符串
+                if str(user_info.user_id) == str(global_config.bot.qq_account):  # 确保比较的是字符串
                     bot_messages.append(msg.get("processed_plain_text", ""))
                 if len(bot_messages) >= 2:  # 只和最近的两条比较
                     break

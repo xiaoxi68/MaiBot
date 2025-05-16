@@ -25,8 +25,8 @@ def register_action(cls):
         logger.error(f"动作类 {cls.__name__} 缺少必要的属性: action_name 或 action_description")
         return cls
 
-    action_name = getattr(cls, "action_name")  # noqa
-    action_description = getattr(cls, "action_description")  # noqa
+    action_name = cls.action_name
+    action_description = cls.action_description
     is_default = getattr(cls, "default", False)
 
     if not action_name or not action_description:

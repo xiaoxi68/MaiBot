@@ -323,7 +323,7 @@ class ChatObserver:
         for msg in messages:
             try:
                 user_info = UserInfo.from_dict(msg.get("user_info", {}))
-                if user_info.user_id == global_config.BOT_QQ:
+                if user_info.user_id == global_config.bot.qq_account:
                     self.update_bot_speak_time(msg["time"])
                 else:
                     self.update_user_speak_time(msg["time"])

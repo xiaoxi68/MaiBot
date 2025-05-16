@@ -34,7 +34,9 @@ class ImageManager:
     def __init__(self):
         if not self._initialized:
             self._ensure_image_dir()
-            self._llm = LLMRequest(model=global_config.vlm, temperature=0.4, max_tokens=300, request_type="image")
+
+            self._initialized = True
+            self._llm = LLMRequest(model=global_config.model.vlm, temperature=0.4, max_tokens=300, request_type="image")
 
             try:
                 db.connect(reuse_if_open=True)
@@ -126,7 +128,7 @@ class ImageManager:
                 return f"[表情包，含义看起来是：{cached_description}]"
 
             # 根据配置决定是否保存图片
-            if global_config.save_emoji:
+            if global_config.emoji.save_emoji:
                 # 生成文件名和路径
                 current_timestamp = time.time()
                 filename = f"{int(current_timestamp)}_{image_hash[:8]}.{image_format}"
@@ -199,7 +201,7 @@ class ImageManager:
             logger.debug(f"描述是{description}")
 
             # 根据配置决定是否保存图片
-            if global_config.save_pic:
+            if global_config.emoji.save_pic:
                 # 生成文件名和路径
                 current_timestamp = time.time()
                 filename = f"{int(current_timestamp)}_{image_hash[:8]}.{image_format}"
