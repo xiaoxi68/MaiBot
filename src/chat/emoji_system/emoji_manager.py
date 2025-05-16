@@ -391,11 +391,7 @@ class EmojiManager:
         # if not self._initialized:
         #     try:
         #         # Ensure Peewee database connection is up and tables are created
-                
-                    
-                
 
-                
         #         self._initialized = True
         #     except Exception as e:
         #         logger.exception(f"初始化表情管理器失败: {e}")

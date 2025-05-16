@@ -336,9 +336,7 @@ def initialize_database():
                     model_fields = model._meta.fields
                     for field_name in model_fields:
                         if field_name not in existing_columns:
-                            logger.error(
-                                f"表 '{table_name}' 缺失字段 '{field_name}'，请手动迁移数据库结构后重启程序。"
-                            )
+                            logger.error(f"表 '{table_name}' 缺失字段 '{field_name}'，请手动迁移数据库结构后重启程序。")
                             sys.exit(1)
     except Exception as e:
         logger.exception(f"检查表或字段是否存在时出错: {e}")
