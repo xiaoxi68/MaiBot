@@ -63,7 +63,7 @@ allow_focus_mode = false # 是否允许专注聊天状态
 base_normal_chat_num = 999 # 最多允许多少个群进行普通聊天
 base_focused_chat_num = 4 # 最多允许多少个群进行专注聊天
 
-observation_context_size = 15 # 观察到的最长上下文大小,建议15，太短太长都会导致脑袋尖尖
+chat.observation_context_size = 15 # 观察到的最长上下文大小,建议15，太短太长都会导致脑袋尖尖
 message_buffer = true # 启用消息缓冲器？启用此项以解决消息的拆分问题，但会使麦麦的回复延迟
 
 # 以下是消息过滤，可以根据规则过滤特定消息，将不会读取这些消息
@@ -99,7 +99,7 @@ default_decay_rate_per_second = 0.98 # 默认衰减率，越大衰减越快，�
 consecutive_no_reply_threshold = 3 # 连续不回复的阈值，越低越容易结束专注聊天
 
 # 以下选项暂时无效
-compressed_length = 5 # 不能大于observation_context_size,心流上下文压缩的最短压缩长度，超过心流观察到的上下文长度，会压缩，最短压缩长度为5
+compressed_length = 5 # 不能大于chat.observation_context_size,心流上下文压缩的最短压缩长度，超过心流观察到的上下文长度，会压缩，最短压缩长度为5
 compress_length_limit = 5 #最多压缩份数，超过该数值的压缩上下文会被删除
 
 

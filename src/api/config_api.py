@@ -41,7 +41,7 @@ class APIBotConfig:
     allow_focus_mode: bool  # 是否允许专注聊天状态
     base_normal_chat_num: int  # 最多允许多少个群进行普通聊天
     base_focused_chat_num: int  # 最多允许多少个群进行专注聊天
-    observation_context_size: int  # 观察到的最长上下文大小
+    chat.observation_context_size: int  # 观察到的最长上下文大小
     message_buffer: bool  # 是否启用消息缓冲
     ban_words: List[str]  # 禁止词列表
     ban_msgs_regex: List[str]  # 禁止消息的正则表达式列表

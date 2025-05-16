@@ -294,7 +294,7 @@ class DefaultExpressor:
         message_list_before_now = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_stream.stream_id,
             timestamp=time.time(),
-            limit=global_config.observation_context_size,
+            limit=global_config.chat.observation_context_size,
         )
         chat_talking_prompt = await build_readable_messages(
             message_list_before_now,
