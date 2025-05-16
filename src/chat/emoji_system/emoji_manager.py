@@ -223,7 +223,7 @@ class MaiEmoji:
             return False
 
 
-def _emoji_objects_to_readable_list(emoji_objects: List['MaiEmoji']) -> List[str]:
+def _emoji_objects_to_readable_list(emoji_objects: List["MaiEmoji"]) -> List[str]:
     """将表情包对象列表转换为可读的字符串列表
 
     参数:
@@ -242,7 +242,7 @@ def _emoji_objects_to_readable_list(emoji_objects: List['MaiEmoji']) -> List[str
     return emoji_info_list
 
 
-def _to_emoji_objects(data: Any) -> Tuple[List['MaiEmoji'], int]:
+def _to_emoji_objects(data: Any) -> Tuple[List["MaiEmoji"], int]:
     emoji_objects = []
     load_errors = 0
     # data is now an iterable of Peewee Emoji model instances
@@ -320,7 +320,7 @@ async def clear_temp_emoji() -> None:
     logger.success("[清理] 完成")
 
 
-async def clean_unused_emojis(emoji_dir: str, emoji_objects: List['MaiEmoji']) -> None:
+async def clean_unused_emojis(emoji_dir: str, emoji_objects: List["MaiEmoji"]) -> None:
     """清理指定目录中未被 emoji_objects 追踪的表情包文件"""
     if not os.path.exists(emoji_dir):
         logger.warning(f"[清理] 目标目录不存在，跳过清理: {emoji_dir}")
@@ -360,7 +360,7 @@ async def clean_unused_emojis(emoji_dir: str, emoji_objects: List['MaiEmoji']) -
 class EmojiManager:
     _instance = None
 
-    def __new__(cls) -> 'EmojiManager':
+    def __new__(cls) -> "EmojiManager":
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._initialized = False
@@ -456,9 +456,7 @@ class EmojiManager:
             emoji_similarities.sort(key=lambda x: x[1], reverse=True)
 
             # 获取前10个最相似的表情包
-            top_emojis = (
-                emoji_similarities[:10] if len(emoji_similarities) > 10 else emoji_similarities
-            )
+            top_emojis = emoji_similarities[:10] if len(emoji_similarities) > 10 else emoji_similarities
 
             if not top_emojis:
                 logger.warning("未找到匹配的表情包")
@@ -651,7 +649,7 @@ class EmojiManager:
             self.emoji_objects = []  # 加载失败则清空列表
             self.emoji_num = 0
 
-    async def get_emoji_from_db(self, emoji_hash: Optional[str] = None) -> List['MaiEmoji']:
+    async def get_emoji_from_db(self, emoji_hash: Optional[str] = None) -> List["MaiEmoji"]:
         """获取指定哈希值的表情包并初始化为MaiEmoji类对象列表 (主要用于调试或特定查找)
 
         参数:
@@ -683,7 +681,7 @@ class EmojiManager:
             logger.error(f"[错误] 从数据库获取表情包对象失败: {str(e)}")
             return []
 
-    async def get_emoji_from_manager(self, emoji_hash: str) -> Optional['MaiEmoji']:
+    async def get_emoji_from_manager(self, emoji_hash: str) -> Optional["MaiEmoji"]:
         """从内存中的 emoji_objects 列表获取表情包
 
         参数:
@@ -736,7 +734,7 @@ class EmojiManager:
             logger.error(traceback.format_exc())
             return False
 
-    async def replace_a_emoji(self, new_emoji: 'MaiEmoji') -> bool:
+    async def replace_a_emoji(self, new_emoji: "MaiEmoji") -> bool:
         """替换一个表情包
 
         Args:
