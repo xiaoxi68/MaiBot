@@ -5,8 +5,11 @@ NapCat.Framework.Windows.Once/
 log/
 logs/
 out/
+log_debug/
 tool_call_benchmark.py
 run_maibot_core.bat
+maibot_statistics.html
+maibot_statistic.html
 run_napcat_adapter.bat
 run_ad.bat
 llm_tool_benchmark_results.json
@@ -300,3 +303,5 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
+src/chat/focus_chat/working_memory/test/test1.txt
+src/chat/focus_chat/working_memory/test/test4.txt
