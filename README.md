@@ -9,6 +9,7 @@
   ![forks](https://img.shields.io/github/forks/MaiM-with-u/MaiBot.svg?style=flat&label=分支数)
   ![stars](https://img.shields.io/github/stars/MaiM-with-u/MaiBot?style=flat&label=星标数)
   ![issues](https://img.shields.io/github/issues/MaiM-with-u/MaiBot)
+  [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/DrSmoothl/MaiBot)
 
   </div>
 
