@@ -351,7 +351,7 @@ class DefaultExpressor:
                 grammar_habbits=grammar_habbits_str,
                 chat_target=chat_target_1,
                 chat_info=chat_talking_prompt,
-                bot_name=global_config.BOT_NICKNAME,
+                bot_name=global_config.bot.nickname,
                 prompt_personality="",
                 reason=reason,
                 in_mind_reply=in_mind_reply,
@@ -363,7 +363,7 @@ class DefaultExpressor:
                 template_name,
                 sender_name=effective_sender_name,  # Used in private template
                 chat_talking_prompt=chat_talking_prompt,
-                bot_name=global_config.BOT_NICKNAME,
+                bot_name=global_config.bot.nickname,
                 prompt_personality=prompt_personality,
                 reason=reason,
                 moderation_prompt=await global_prompt_manager.get_prompt_async("moderation_prompt"),

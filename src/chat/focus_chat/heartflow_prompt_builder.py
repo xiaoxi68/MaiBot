@@ -7,7 +7,6 @@ from src.chat.person_info.relationship_manager import relationship_manager
 from src.chat.utils.utils import get_embedding
 import time
 from typing import Union, Optional
-from src.common.database import db
 from src.chat.utils.utils import get_recent_group_speaker
 from src.manager.mood_manager import mood_manager
 from src.chat.memory_system.Hippocampus import HippocampusManager

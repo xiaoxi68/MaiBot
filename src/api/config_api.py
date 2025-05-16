@@ -128,7 +128,7 @@ class APIBotConfig:
     llm_reasoning: Dict[str, Any]  # 推理模型配置
     llm_normal: Dict[str, Any]  # 普通模型配置
     llm_topic_judge: Dict[str, Any]  # 主题判断模型配置
-    llm_summary: Dict[str, Any]  # 总结模型配置
+    model.summary: Dict[str, Any]  # 总结模型配置
     vlm: Dict[str, Any]  # VLM模型配置
     llm_heartflow: Dict[str, Any]  # 心流模型配置
     llm_observation: Dict[str, Any]  # 观察模型配置
@@ -203,7 +203,7 @@ class APIBotConfig:
             "llm_reasoning",
             "llm_normal",
             "llm_topic_judge",
-            "llm_summary",
+            "model.summary",
             "vlm",
             "llm_heartflow",
             "llm_observation",

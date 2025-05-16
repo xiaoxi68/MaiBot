@@ -69,7 +69,7 @@ class ActionPlanner:
         self.log_prefix = log_prefix
         # LLM规划器配置
         self.planner_llm = LLMRequest(
-            model=global_config.llm_plan,
+            model=global_config.model.plan,
             max_tokens=1000,
             request_type="action_planning",  # 用于动作规划
         )
@@ -273,7 +273,7 @@ class ActionPlanner:
 
             planner_prompt_template = await global_prompt_manager.get_prompt_async("planner_prompt")
             prompt = planner_prompt_template.format(
-                bot_name=global_config.BOT_NICKNAME,
+                bot_name=global_config.bot.nickname,
                 prompt_personality=personality_block,
                 chat_context_description=chat_context_description,
                 chat_content_block=chat_content_block,

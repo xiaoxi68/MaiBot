@@ -67,7 +67,7 @@ class ChattingObservation(Observation):
         self.oldest_messages_str = ""
         self.compressor_prompt = ""
         # TODO: API-Adapter修改标记
-        self.llm_summary = LLMRequest(
+        self.model_summary = LLMRequest(
             model=global_config.model.observation, temperature=0.7, max_tokens=300, request_type="chat_observation"
         )
 

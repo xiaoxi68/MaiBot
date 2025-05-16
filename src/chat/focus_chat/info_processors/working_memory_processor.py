@@ -61,8 +61,8 @@ class WorkingMemoryProcessor(BaseProcessor):
         self.subheartflow_id = subheartflow_id
 
         self.llm_model = LLMRequest(
-            model=global_config.llm_sub_heartflow,
-            temperature=global_config.llm_sub_heartflow["temp"],
+            model=global_config.model.sub_heartflow,
+            temperature=global_config.model.sub_heartflow["temp"],
             max_tokens=800,
             request_type="working_memory",
         )
@@ -118,7 +118,7 @@ class WorkingMemoryProcessor(BaseProcessor):
 
         # 使用提示模板进行处理
         prompt = (await global_prompt_manager.get_prompt_async("prompt_memory_proces")).format(
-            bot_name=global_config.BOT_NICKNAME,
+            bot_name=global_config.bot.nickname,
             time_now=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
             chat_observe_info=chat_info,
             memory_str=memory_choose_str,
