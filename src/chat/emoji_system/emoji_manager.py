@@ -383,17 +383,22 @@ class EmojiManager:
 
     def initialize(self):
         """初始化数据库连接和表情目录"""
-        if not self._initialized:
-            try:
-                # Ensure Peewee database connection is up and tables are created
-                if not peewee_db.is_closed():
-                    peewee_db.connect(reuse_if_open=True)
-                Emoji.create_table(safe=True)  # Ensures table exists
+        peewee_db.connect(reuse_if_open=True)
+        if peewee_db.is_closed():
+            raise RuntimeError("数据库连接失败")
+        _ensure_emoji_dir()
+        Emoji.create_table(safe=True)  # Ensures table exists
+        # if not self._initialized:
+        #     try:
+        #         # Ensure Peewee database connection is up and tables are created
+                
+                    
+                
 
-                _ensure_emoji_dir()
-                self._initialized = True
-            except Exception as e:
-                logger.exception(f"初始化表情管理器失败: {e}")
+                
+        #         self._initialized = True
+        #     except Exception as e:
+        #         logger.exception(f"初始化表情管理器失败: {e}")
 
     def _ensure_db(self):
         """确保数据库已初始化"""

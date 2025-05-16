@@ -300,7 +300,10 @@ def create_tables():
 def initialize_database():
     """
     检查所有定义的表是否存在，如果不存在则创建它们。
+    检查所有表的所有字段是否存在，如果缺失则警告用户并退出程序。
     """
+    import sys
+
     models = [
         ChatStreams,
         LLMUsage,
@@ -319,12 +322,26 @@ def initialize_database():
     try:
         with db:  # 管理 table_exists 检查的连接
             for model in models:
+                table_name = model._meta.table_name
                 if not db.table_exists(model):
-                    logger.warning(f"表 '{model._meta.table_name}' 未找到。")
+                    logger.warning(f"表 '{table_name}' 未找到。")
                     needs_creation = True
                     break  # 一个表丢失，无需进一步检查。
+            if not needs_creation:
+                # 检查字段
+                for model in models:
+                    table_name = model._meta.table_name
+                    cursor = db.execute_sql(f"PRAGMA table_info('{table_name}')")
+                    existing_columns = {row[1] for row in cursor.fetchall()}
+                    model_fields = model._meta.fields
+                    for field_name in model_fields:
+                        if field_name not in existing_columns:
+                            logger.error(
+                                f"表 '{table_name}' 缺失字段 '{field_name}'，请手动迁移数据库结构后重启程序。"
+                            )
+                            sys.exit(1)
     except Exception as e:
-        logger.exception(f"检查表是否存在时出错: {e}")
+        logger.exception(f"检查表或字段是否存在时出错: {e}")
         # 如果检查失败（例如数据库不可用），则退出
         return
 
@@ -336,7 +353,7 @@ def initialize_database():
         except Exception as e:
             logger.exception(f"创建表期间出错: {e}")
     else:
-        logger.info("所有数据库表均已存在。")
+        logger.info("所有数据库表及字段均已存在。")
 
 
 # 模块加载时调用初始化函数
