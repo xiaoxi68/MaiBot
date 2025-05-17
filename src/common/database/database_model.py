@@ -275,6 +275,35 @@ class RecalledMessages(BaseModel):
         table_name = "recalled_messages"
 
 
+class GraphNodes(BaseModel):
+    """
+    用于存储记忆图节点的模型
+    """
+    concept = TextField(unique=True, index=True)  # 节点概念
+    memory_items = TextField()  # JSON格式存储的记忆列表
+    hash = TextField()  # 节点哈希值
+    created_time = FloatField()  # 创建时间戳
+    last_modified = FloatField()  # 最后修改时间戳
+
+    class Meta:
+        table_name = "graph_nodes"
+
+
+class GraphEdges(BaseModel):
+    """
+    用于存储记忆图边的模型
+    """
+    source = TextField(index=True)  # 源节点
+    target = TextField(index=True)  # 目标节点
+    strength = IntegerField()  # 连接强度
+    hash = TextField()  # 边哈希值
+    created_time = FloatField()  # 创建时间戳
+    last_modified = FloatField()  # 最后修改时间戳
+
+    class Meta:
+        table_name = "graph_edges"
+
+
 def create_tables():
     """
     创建所有在模型中定义的数据库表。
@@ -293,6 +322,8 @@ def create_tables():
                 Knowledges,
                 ThinkingLog,
                 RecalledMessages,  # 添加新模型
+                GraphNodes,  # 添加图节点表
+                GraphEdges,  # 添加图边表
             ]
         )
 
@@ -315,7 +346,9 @@ def initialize_database():
         PersonInfo,
         Knowledges,
         ThinkingLog,
-        RecalledMessages,  # 添加新模型
+        RecalledMessages,
+        GraphNodes,  # 添加图节点表
+        GraphEdges,  # 添加图边表
     ]
 
     needs_creation = False
