@@ -861,9 +861,7 @@ class EntorhinalCortex:
                         # 确保在更新前获取最新的 memorized_times
                         current_memorized_times = message.get("memorized_times", 0)
                         # 使用 Peewee 更新记录
-                        Messages.update(
-                            memorized_times=current_memorized_times + 1
-                        ).where(
+                        Messages.update(memorized_times=current_memorized_times + 1).where(
                             Messages.message_id == message["message_id"]
                         ).execute()
                     return messages  # 直接返回原始的消息列表
@@ -983,9 +981,7 @@ class EntorhinalCortex:
                 if not node.last_modified:
                     update_data["last_modified"] = current_time
 
-                GraphNodes.update(
-                    **update_data
-                ).where(GraphNodes.concept == concept).execute()
+                GraphNodes.update(**update_data).where(GraphNodes.concept == concept).execute()
                 logger.info(f"[时间更新] 节点 {concept} 添加缺失的时间字段")
 
             # 获取时间信息(如果不存在则使用当前时间)
@@ -1014,9 +1010,7 @@ class EntorhinalCortex:
                 if not edge.last_modified:
                     update_data["last_modified"] = current_time
 
-                GraphEdges.update(
-                    **update_data
-                ).where(
+                GraphEdges.update(**update_data).where(
                     (GraphEdges.source == source) & (GraphEdges.target == target)
                 ).execute()
                 logger.info(f"[时间更新] 边 {source} - {target} 添加缺失的时间字段")

@@ -140,22 +140,22 @@ class ChattingObservation(Observation):
                 return None
 
         # logger.debug(f"找到的锚定消息：find_msg: {find_msg}")
-        
+
         # 创建所需的user_info字段
         user_info = {
             "platform": find_msg.get("user_platform", ""),
             "user_id": find_msg.get("user_id", ""),
             "user_nickname": find_msg.get("user_nickname", ""),
-            "user_cardname": find_msg.get("user_cardname", "")
+            "user_cardname": find_msg.get("user_cardname", ""),
         }
-        
+
         # 创建所需的group_info字段，如果是群聊的话
         group_info = {}
         if find_msg.get("chat_info_group_id"):
             group_info = {
                 "platform": find_msg.get("chat_info_group_platform", ""),
                 "group_id": find_msg.get("chat_info_group_id", ""),
-                "group_name": find_msg.get("chat_info_group_name", "")
+                "group_name": find_msg.get("chat_info_group_name", ""),
             }
 
         content_format = ""
@@ -196,7 +196,7 @@ class ChattingObservation(Observation):
             limit=self.max_now_obs_len,
             limit_mode="latest",
         )
-        
+
         # print(f"new_messages_list: {new_messages_list}")
 
         last_obs_time_mark = self.last_observe_time

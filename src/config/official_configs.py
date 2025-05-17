@@ -340,11 +340,11 @@ class TelemetryConfig(ConfigBase):
 class ExperimentalConfig(ConfigBase):
     """实验功能配置类"""
 
-    enable_friend_chat: bool = False
-    """是否启用好友聊天"""
+    # enable_friend_chat: bool = False
+    # """是否启用好友聊天"""
 
-    talk_allowed_private: set[str] = field(default_factory=lambda: set())
-    """允许聊天的私聊列表"""
+    # talk_allowed_private: set[str] = field(default_factory=lambda: set())
+    # """允许聊天的私聊列表"""
 
     pfc_chatting: bool = False
     """是否启用PFC"""

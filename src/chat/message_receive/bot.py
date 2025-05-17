@@ -38,10 +38,10 @@ class ChatBot:
 
     async def _create_pfc_chat(self, message: MessageRecv):
         try:
-            chat_id = str(message.chat_stream.stream_id)
-            private_name = str(message.message_info.user_info.user_nickname)
+            if global_config.experimental.pfc_chatting:
+                chat_id = str(message.chat_stream.stream_id)
+                private_name = str(message.message_info.user_info.user_nickname)
 
-            if global_config.experimental.enable_pfc_chatting:
                 await self.pfc_manager.get_or_create_conversation(chat_id, private_name)
 
         except Exception as e:
@@ -75,27 +75,27 @@ class ChatBot:
             # print(message_data)
             logger.trace(f"处理消息:{str(message_data)[:120]}...")
             message = MessageRecv(message_data)
-            groupinfo = message.message_info.group_info
-            userinfo = message.message_info.user_info
+            group_info = message.message_info.group_info
+            user_info = message.message_info.user_info
 
             # 用户黑名单拦截
-            if userinfo.user_id in global_config.chat_target.ban_user_id:
-                logger.debug(f"用户{userinfo.user_id}被禁止回复")
-                return
+            # if userinfo.user_id in global_config.chat_target.ban_user_id:
+            #     logger.debug(f"用户{userinfo.user_id}被禁止回复")
+            #     return
 
-            if groupinfo is None:
-                logger.trace("检测到私聊消息，检查")
-                # 好友黑名单拦截
-                if userinfo.user_id not in global_config.experimental.talk_allowed_private:
-                    # logger.debug(f"用户{userinfo.user_id}没有私聊权限")
-                    return
+            # if groupinfo is None:
+            #     logger.trace("检测到私聊消息，检查")
+            #     # 好友黑名单拦截
+            #     if userinfo.user_id not in global_config.experimental.talk_allowed_private:
+            #         # logger.debug(f"用户{userinfo.user_id}没有私聊权限")
+            #         return
 
             # 群聊黑名单拦截
             # print(groupinfo.group_id)
             # print(global_config.chat_target.talk_allowed_groups)
-            if groupinfo is not None and groupinfo.group_id not in global_config.chat_target.talk_allowed_groups:
-                logger.debug(f"群{groupinfo.group_id}被禁止回复")
-                return
+            # if groupinfo is not None and groupinfo.group_id not in global_config.chat_target.talk_allowed_groups:
+            #     logger.debug(f"群{groupinfo.group_id}被禁止回复")
+            #     return
 
             # 确认从接口发来的message是否有自定义的prompt模板信息
             if message.message_info.template_info and not message.message_info.template_info.template_default:
@@ -112,33 +112,49 @@ class ChatBot:
             async def preprocess():
                 logger.trace("开始预处理消息...")
                 # 如果在私聊中
-                if groupinfo is None:
+                if group_info is None:
                     logger.trace("检测到私聊消息")
                     # 是否在配置信息中开启私聊模式
-                    if global_config.experimental.enable_friend_chat:
-                        logger.trace("私聊模式已启用")
-                        # 是否进入PFC
-                        if global_config.enable_pfc_chatting:
-                            logger.trace("进入PFC私聊处理流程")
-                            userinfo = message.message_info.user_info
-                            messageinfo = message.message_info
-                            # 创建聊天流
-                            logger.trace(f"为{userinfo.user_id}创建/获取聊天流")
-                            chat = await chat_manager.get_or_create_stream(
-                                platform=messageinfo.platform,
-                                user_info=userinfo,
-                                group_info=groupinfo,
-                            )
-                            message.update_chat_stream(chat)
-                            await self.only_process_chat.process_message(message)
-                            await self._create_pfc_chat(message)
-                        # 禁止PFC，进入普通的心流消息处理逻辑
-                        else:
-                            logger.trace("进入普通心流私聊处理")
-                            await self.heartflow_processor.process_message(message_data)
+                    # if global_config.experimental.enable_friend_chat:
+                    #     logger.trace("私聊模式已启用")
+                    #     # 是否进入PFC
+                    #     if global_config.enable_pfc_chatting:
+                    #         logger.trace("进入PFC私聊处理流程")
+                    #         userinfo = message.message_info.user_info
+                    #         messageinfo = message.message_info
+                    #         # 创建聊天流
+                    #         logger.trace(f"为{userinfo.user_id}创建/获取聊天流")
+                    #         chat = await chat_manager.get_or_create_stream(
+                    #             platform=messageinfo.platform,
+                    #             user_info=userinfo,
+                    #             group_info=groupinfo,
+                    #         )
+                    #         message.update_chat_stream(chat)
+                    #         await self.only_process_chat.process_message(message)
+                    #         await self._create_pfc_chat(message)
+                    #     # 禁止PFC，进入普通的心流消息处理逻辑
+                    #     else:
+                    #         logger.trace("进入普通心流私聊处理")
+                    #         await self.heartflow_processor.process_message(message_data)
+                    if global_config.experimental.pfc_chatting:
+                        logger.trace("进入PFC私聊处理流程")
+                        # 创建聊天流
+                        logger.trace(f"为{user_info.user_id}创建/获取聊天流")
+                        chat = await chat_manager.get_or_create_stream(
+                            platform=message.message_info.platform,
+                            user_info=user_info,
+                            group_info=group_info,
+                        )
+                        message.update_chat_stream(chat)
+                        await self.only_process_chat.process_message(message)
+                        await self._create_pfc_chat(message)
+                    # 禁止PFC，进入普通的心流消息处理逻辑
+                    else:
+                        logger.trace("进入普通心流私聊处理")
+                        await self.heartflow_processor.process_message(message_data)
                 # 群聊默认进入心流消息处理逻辑
                 else:
-                    logger.trace(f"检测到群聊消息，群ID: {groupinfo.group_id}")
+                    logger.trace(f"检测到群聊消息，群ID: {group_info.group_id}")
                     await self.heartflow_processor.process_message(message_data)
 
             if template_group_name:
