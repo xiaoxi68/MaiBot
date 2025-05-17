@@ -205,6 +205,8 @@ class NormalChat:
                 items_to_process = list(self.interest_dict.items())
                 if not items_to_process:
                     continue
+            else:
+                return
 
             # 处理每条兴趣消息
             for msg_id, (message, interest_value, is_mentioned) in items_to_process:
