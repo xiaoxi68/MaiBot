@@ -279,6 +279,7 @@ class GraphNodes(BaseModel):
     """
     用于存储记忆图节点的模型
     """
+
     concept = TextField(unique=True, index=True)  # 节点概念
     memory_items = TextField()  # JSON格式存储的记忆列表
     hash = TextField()  # 节点哈希值
@@ -293,6 +294,7 @@ class GraphEdges(BaseModel):
     """
     用于存储记忆图边的模型
     """
+
     source = TextField(index=True)  # 源节点
     target = TextField(index=True)  # 目标节点
     strength = IntegerField()  # 连接强度
