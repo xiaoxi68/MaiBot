@@ -39,7 +39,7 @@ class ChatStream:
 
     def to_dict(self) -> dict:
         """转换为字典格式"""
-        result = {
+        return {
             "stream_id": self.stream_id,
             "platform": self.platform,
             "user_info": self.user_info.to_dict() if self.user_info else None,
@@ -47,7 +47,6 @@ class ChatStream:
             "create_time": self.create_time,
             "last_active_time": self.last_active_time,
         }
-        return result
 
     @classmethod
     def from_dict(cls, data: dict) -> "ChatStream":
@@ -235,33 +234,34 @@ class ChatManager:
     @staticmethod
     async def _save_stream(stream: ChatStream):
         """保存聊天流到数据库"""
-        if not stream.saved:
-            stream_data_dict = stream.to_dict()
+        if stream.saved:
+            return
+        stream_data_dict = stream.to_dict()
 
-            def _db_save_stream_sync(s_data_dict: dict):
-                user_info_d = s_data_dict.get("user_info")
-                group_info_d = s_data_dict.get("group_info")
+        def _db_save_stream_sync(s_data_dict: dict):
+            user_info_d = s_data_dict.get("user_info")
+            group_info_d = s_data_dict.get("group_info")
 
-                fields_to_save = {
-                    "platform": s_data_dict["platform"],
-                    "create_time": s_data_dict["create_time"],
-                    "last_active_time": s_data_dict["last_active_time"],
-                    "user_platform": user_info_d["platform"] if user_info_d else "",
-                    "user_id": user_info_d["user_id"] if user_info_d else "",
-                    "user_nickname": user_info_d["user_nickname"] if user_info_d else "",
-                    "user_cardname": user_info_d.get("user_cardname", "") if user_info_d else None,
-                    "group_platform": group_info_d["platform"] if group_info_d else "",
-                    "group_id": group_info_d["group_id"] if group_info_d else "",
-                    "group_name": group_info_d["group_name"] if group_info_d else "",
-                }
+            fields_to_save = {
+                "platform": s_data_dict["platform"],
+                "create_time": s_data_dict["create_time"],
+                "last_active_time": s_data_dict["last_active_time"],
+                "user_platform": user_info_d["platform"] if user_info_d else "",
+                "user_id": user_info_d["user_id"] if user_info_d else "",
+                "user_nickname": user_info_d["user_nickname"] if user_info_d else "",
+                "user_cardname": user_info_d.get("user_cardname", "") if user_info_d else None,
+                "group_platform": group_info_d["platform"] if group_info_d else "",
+                "group_id": group_info_d["group_id"] if group_info_d else "",
+                "group_name": group_info_d["group_name"] if group_info_d else "",
+            }
 
-                ChatStreams.replace(stream_id=s_data_dict["stream_id"], **fields_to_save).execute()
+            ChatStreams.replace(stream_id=s_data_dict["stream_id"], **fields_to_save).execute()
 
-            try:
-                await asyncio.to_thread(_db_save_stream_sync, stream_data_dict)
-                stream.saved = True
-            except Exception as e:
-                logger.error(f"保存聊天流 {stream.stream_id} 到数据库失败 (Peewee): {e}", exc_info=True)
+        try:
+            await asyncio.to_thread(_db_save_stream_sync, stream_data_dict)
+            stream.saved = True
+        except Exception as e:
+            logger.error(f"保存聊天流 {stream.stream_id} 到数据库失败 (Peewee): {e}", exc_info=True)
 
     async def _save_all_streams(self):
         """保存所有聊天流"""
