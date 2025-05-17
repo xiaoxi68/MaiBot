@@ -22,6 +22,7 @@ from ..utils.utils import translate_timestamp_to_human_readable
 from rich.traceback import install
 
 from ...config.config import global_config
+from src.common.database.database_model import Messages  # Peewee Messages 模型导入
 
 install(extra_lines=3)
 
@@ -856,11 +857,14 @@ class EntorhinalCortex:
                 if all_valid:
                     # 更新数据库中的记忆次数
                     for message in messages:
-                        # 确保在更新前获取最新的 memorized_times，以防万一
+                        # 确保在更新前获取最新的 memorized_times
                         current_memorized_times = message.get("memorized_times", 0)
-                        db.messages.update_one(
-                            {"_id": message["_id"]}, {"$set": {"memorized_times": current_memorized_times + 1}}
-                        )
+                        # 使用 Peewee 更新记录
+                        Messages.update(
+                            memorized_times=current_memorized_times + 1
+                        ).where(
+                            Messages.message_id == message["message_id"]
+                        ).execute()
                     return messages  # 直接返回原始的消息列表
 
             # 如果获取失败或消息无效，增加尝试次数
@@ -919,7 +923,7 @@ class EntorhinalCortex:
                                 "last_modified": last_modified,
                             }
                         },
-                    )
+                    ).execute()
 
         # 处理边的信息
         db_edges = list(db.graph_data.edges.find())
@@ -965,7 +969,7 @@ class EntorhinalCortex:
                                 "last_modified": last_modified,
                             }
                         },
-                    )
+                    ).execute()
 
     def sync_memory_from_db(self):
         """从数据库同步数据到内存中的图结构"""
@@ -993,7 +997,7 @@ class EntorhinalCortex:
                 if "last_modified" not in node:
                     update_data["last_modified"] = current_time
 
-                db.graph_data.nodes.update_one({"concept": concept}, {"$set": update_data})
+                db.graph_data.nodes.update_one({"concept": concept}, {"$set": update_data}).execute()
                 logger.info(f"[时间更新] 节点 {concept} 添加缺失的时间字段")
 
             # 获取时间信息(如果不存在则使用当前时间)
@@ -1022,7 +1026,7 @@ class EntorhinalCortex:
                 if "last_modified" not in edge:
                     update_data["last_modified"] = current_time
 
-                db.graph_data.edges.update_one({"source": source, "target": target}, {"$set": update_data})
+                db.graph_data.edges.update_one({"source": source, "target": target}, {"$set": update_data}).execute()
                 logger.info(f"[时间更新] 边 {source} - {target} 添加缺失的时间字段")
 
             # 获取时间信息(如果不存在则使用当前时间)
