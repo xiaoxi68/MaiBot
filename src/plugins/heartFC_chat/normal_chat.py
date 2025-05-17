@@ -201,9 +201,10 @@ class NormalChat:
                 break
 
             # 获取待处理消息列表
-            items_to_process = list(self.interest_dict.items())
-            if not items_to_process:
-                continue
+            if self.interest_dict:
+                items_to_process = list(self.interest_dict.items())
+                if not items_to_process:
+                    continue
 
             # 处理每条兴趣消息
             for msg_id, (message, interest_value, is_mentioned) in items_to_process:
