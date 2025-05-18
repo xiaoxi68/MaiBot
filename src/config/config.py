@@ -165,8 +165,6 @@ class BotConfig:
     gender: str = "男"  # 性别
     appearance: str = "用几句话描述外貌特征"  # 外貌特征
 
-
-
     # chat
     allow_focus_mode: bool = True  # 是否允许专注水群状态
 
@@ -364,8 +362,6 @@ class BotConfig:
                 config.age = identity_config.get("age", config.age)
                 config.gender = identity_config.get("gender", config.gender)
                 config.appearance = identity_config.get("appearance", config.appearance)
-
-
 
         def emoji(parent: dict):
             emoji_config = parent["emoji"]

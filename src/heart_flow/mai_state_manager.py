@@ -14,6 +14,7 @@ class MaiState(enum.Enum):
     NORMAL_CHAT: 正常看手机：回复概率较高，会进行一些普通聊天和少量的专注水群
     FOCUSED_CHAT: 专注水群：回复概率极高，会进行专注水群和少量的普通聊天
     """
+
     NORMAL_CHAT = "正常看手机"
     FOCUSED_CHAT = "专心看手机"
 
