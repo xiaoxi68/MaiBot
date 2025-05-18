@@ -2,7 +2,6 @@ import os
 import re
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
-from dateutil import tz
 
 import tomli
 import tomlkit

@@ -1,8 +1,7 @@
 import asyncio
 import time
 import random
-from typing import Dict, Any, Optional, List, Tuple
-import json  # 导入 json 模块
+from typing import Dict, Any, Optional, List
 import functools  # <-- 新增导入
 
 # 导入日志模块
@@ -17,10 +16,7 @@ from src.heart_flow.mai_state_manager import MaiStateInfo
 from .observation import ChattingObservation
 
 # 导入LLM请求工具
-from src.plugins.models.utils_model import LLMRequest
 from src.config.config import global_config
-from src.individuality.individuality import Individuality
-import traceback
 
 
 # 初始化日志记录器
