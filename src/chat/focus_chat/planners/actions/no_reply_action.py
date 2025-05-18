@@ -6,14 +6,12 @@ from src.chat.focus_chat.planners.actions.base_action import BaseAction, registe
 from typing import Tuple, List, Callable, Coroutine
 from src.chat.heart_flow.observation.observation import Observation
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
-from src.chat.focus_chat.heartFC_Cycleinfo import CycleDetail
 from src.chat.focus_chat.hfc_utils import parse_thinking_id_to_timestamp
 
 logger = get_logger("action_taken")
 
 # 常量定义
 WAITING_TIME_THRESHOLD = 300  # 等待新消息时间阈值，单位秒
-CONSECUTIVE_NO_REPLY_THRESHOLD = 3  # 连续不回复的阈值
 
 
 @register_action
@@ -40,11 +38,7 @@ class NoReplyAction(BaseAction):
         cycle_timers: dict,
         thinking_id: str,
         observations: List[Observation],
-        on_consecutive_no_reply_callback: Callable[[], Coroutine[None, None, None]],
-        current_cycle: CycleDetail,
         log_prefix: str,
-        # total_no_reply_count: int = 0,
-        # total_waiting_time: float = 0.0,
         shutting_down: bool = False,
         **kwargs,
     ):
@@ -57,20 +51,12 @@ class NoReplyAction(BaseAction):
             cycle_timers: 计时器字典
             thinking_id: 思考ID
             observations: 观察列表
-            on_consecutive_no_reply_callback: 连续不回复达到阈值时调用的回调函数
-            current_cycle: 当前循环信息
             log_prefix: 日志前缀
-            total_no_reply_count: 连续不回复计数
-            total_waiting_time: 累计等待时间
             shutting_down: 是否正在关闭
         """
         super().__init__(action_data, reasoning, cycle_timers, thinking_id)
         self.observations = observations
-        self.on_consecutive_no_reply_callback = on_consecutive_no_reply_callback
-        self._current_cycle = current_cycle
         self.log_prefix = log_prefix
-        # self.total_no_reply_count = total_no_reply_count
-        # self.total_waiting_time = total_waiting_time
         self._shutting_down = shutting_down
 
     async def handle_action(self) -> Tuple[bool, str]:
@@ -93,8 +79,6 @@ class NoReplyAction(BaseAction):
             with Timer("等待新消息", self.cycle_timers):
                 # 等待新消息、超时或关闭信号，并获取结果
                 await self._wait_for_new_message(observation, self.thinking_id, self.log_prefix)
-            # 从计时器获取实际等待时间
-            _current_waiting = self.cycle_timers.get("等待新消息", 0.0)
 
             return True, ""  # 不回复动作没有回复文本
 

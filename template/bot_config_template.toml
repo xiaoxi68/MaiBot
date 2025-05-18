@@ -1,5 +1,5 @@
 [inner]
-version = "2.1.0"
+version = "2.2.0"
 
 #----以下是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 #如果你想要修改配置文件，请在修改后将version的值进行变更
@@ -55,8 +55,6 @@ qq="http://127.0.0.1:18002/api/message"
 allow_focus_mode = false # 是否允许专注聊天状态
 # 是否启用heart_flowC(HFC)模式
 # 启用后麦麦会自主选择进入heart_flowC模式（持续一段时间），进行主动的观察和回复，并给出回复，比较消耗token
-base_normal_chat_num = 999 # 最多允许多少个群进行普通聊天
-base_focused_chat_num = 4 # 最多允许多少个群进行专注聊天
 
 chat.observation_context_size = 15 # 观察到的最长上下文大小,建议15，太短太长都会导致脑袋尖尖
 message_buffer = true # 启用消息缓冲器？启用此项以解决消息的拆分问题，但会使麦麦的回复延迟
@@ -226,14 +224,14 @@ provider = "SILICONFLOW"
 pri_in = 0
 pri_out = 0
 
-[model.sub_heartflow] #心流：认真水群时,生成麦麦的内心想法，必须使用具有工具调用能力的模型
+[model.sub_heartflow] #心流：认真聊天时,生成麦麦的内心想法，必须使用具有工具调用能力的模型
 name = "Pro/deepseek-ai/DeepSeek-V3"
 provider = "SILICONFLOW"
 pri_in = 2
 pri_out = 8
 temp = 0.3 #模型的温度，新V3建议0.1-0.3
 
-[model.plan] #决策：认真水群时,负责决定麦麦该做什么
+[model.plan] #决策：认真聊天时,负责决定麦麦该做什么
 name = "Pro/deepseek-ai/DeepSeek-V3"
 provider = "SILICONFLOW"
 pri_in = 2

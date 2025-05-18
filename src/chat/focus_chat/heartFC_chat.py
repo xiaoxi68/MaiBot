@@ -68,7 +68,6 @@ class HeartFChatting:
         self,
         chat_id: str,
         observations: list[Observation],
-        on_consecutive_no_reply_callback: Callable[[], Coroutine[None, None, None]],
     ):
         """
         HeartFChatting 初始化函数
@@ -76,12 +75,10 @@ class HeartFChatting:
         参数:
             chat_id: 聊天流唯一标识符(如stream_id)
             observations: 关联的观察列表
-            on_consecutive_no_reply_callback: 连续不回复达到阈值时调用的异步回调函数
         """
         # 基础属性
         self.stream_id: str = chat_id  # 聊天流ID
         self.chat_stream: Optional[ChatStream] = None  # 关联的聊天流
-        self.on_consecutive_no_reply_callback = on_consecutive_no_reply_callback
         self.log_prefix: str = str(chat_id)  # Initial default, will be updated
         self.hfcloop_observation = HFCloopObservation(observe_id=self.stream_id)
         self.chatting_observation = observations[0]
@@ -165,7 +162,7 @@ class HeartFChatting:
         启动 HeartFChatting 的主循环。
         注意：调用此方法前必须确保已经成功初始化。
         """
-        logger.info(f"{self.log_prefix} 开始认真水群(HFC)...")
+        logger.info(f"{self.log_prefix} 开始认真聊天(HFC)...")
         await self._start_loop_if_needed()
 
     async def _start_loop_if_needed(self):
@@ -463,11 +460,7 @@ class HeartFChatting:
                 observations=self.all_observations,
                 expressor=self.expressor,
                 chat_stream=self.chat_stream,
-                current_cycle=self._current_cycle,
                 log_prefix=self.log_prefix,
-                on_consecutive_no_reply_callback=self.on_consecutive_no_reply_callback,
-                # total_no_reply_count=self.total_no_reply_count,
-                # total_waiting_time=self.total_waiting_time,
                 shutting_down=self._shutting_down,
             )
 

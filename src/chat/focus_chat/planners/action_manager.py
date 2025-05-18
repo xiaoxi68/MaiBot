@@ -137,11 +137,7 @@ class ActionManager:
         observations: List[Observation],
         expressor: DefaultExpressor,
         chat_stream: ChatStream,
-        current_cycle: CycleDetail,
         log_prefix: str,
-        on_consecutive_no_reply_callback: Callable[[], Coroutine[None, None, None]],
-        # total_no_reply_count: int = 0,
-        # total_waiting_time: float = 0.0,
         shutting_down: bool = False,
     ) -> Optional[BaseAction]:
         """
@@ -156,11 +152,7 @@ class ActionManager:
             observations: 观察列表
             expressor: 表达器
             chat_stream: 聊天流
-            current_cycle: 当前循环信息
             log_prefix: 日志前缀
-            on_consecutive_no_reply_callback: 连续不回复回调
-            total_no_reply_count: 连续不回复计数
-            total_waiting_time: 累计等待时间
             shutting_down: 是否正在关闭
 
         Returns:
@@ -179,7 +171,6 @@ class ActionManager:
         try:
             # 创建动作实例
             instance = handler_class(
-                action_name=action_name,
                 action_data=action_data,
                 reasoning=reasoning,
                 cycle_timers=cycle_timers,
@@ -187,11 +178,7 @@ class ActionManager:
                 observations=observations,
                 expressor=expressor,
                 chat_stream=chat_stream,
-                current_cycle=current_cycle,
                 log_prefix=log_prefix,
-                on_consecutive_no_reply_callback=on_consecutive_no_reply_callback,
-                # total_no_reply_count=total_no_reply_count,
-                # total_waiting_time=total_waiting_time,
                 shutting_down=shutting_down,
             )
 

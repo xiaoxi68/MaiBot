@@ -149,7 +149,7 @@ c HeartFChatting工作方式
 - **状态及含义**:
     - `ChatState.ABSENT` (不参与/没在看): 初始或停用状态。子心流不观察新信息，不进行思考，也不回复。
     - `ChatState.CHAT` (随便看看/水群): 普通聊天模式。激活 `NormalChatInstance`。
-    *   `ChatState.FOCUSED` (专注/认真水群): 专注聊天模式。激活 `HeartFlowChatInstance`。
+    *   `ChatState.FOCUSED` (专注/认真聊天): 专注聊天模式。激活 `HeartFlowChatInstance`。
 - **选择**: 子心流可以根据外部指令（来自 `SubHeartflowManager`）或内部逻辑（未来的扩展）选择进入 `ABSENT` 状态（不回复不观察），或进入 `CHAT` / `FOCUSED` 中的一种回复模式。
 - **状态转换机制** (由 `SubHeartflowManager` 驱动，更细致的说明):
     - **初始状态**: 新创建的 `SubHeartflow` 默认为 `ABSENT` 状态。

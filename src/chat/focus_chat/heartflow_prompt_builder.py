@@ -234,7 +234,8 @@ class PromptBuilder:
                 reply_style2=reply_style2_chosen,
                 keywords_reaction_prompt=keywords_reaction_prompt,
                 prompt_ger=prompt_ger,
-                moderation_prompt=await global_prompt_manager.get_prompt_async("moderation_prompt"),
+                # moderation_prompt=await global_prompt_manager.get_prompt_async("moderation_prompt"),
+                moderation_prompt="",
             )
         else:
             template_name = "reasoning_prompt_private_main"
@@ -256,7 +257,8 @@ class PromptBuilder:
                 reply_style2=reply_style2_chosen,
                 keywords_reaction_prompt=keywords_reaction_prompt,
                 prompt_ger=prompt_ger,
-                moderation_prompt=await global_prompt_manager.get_prompt_async("moderation_prompt"),
+                # moderation_prompt=await global_prompt_manager.get_prompt_async("moderation_prompt"),
+                moderation_prompt="",
             )
         # --- End choosing template ---
 

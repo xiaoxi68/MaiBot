@@ -15,6 +15,8 @@ from ..models.utils_model import LLMRequest
 from .typo_generator import ChineseTypoGenerator
 from ...common.database.database import db
 from ...config.config import global_config
+from ...common.database.database_model import Messages
+from ...common.message_repository import find_messages, count_messages
 
 logger = get_module_logger("chat_utils")
 
@@ -108,20 +110,12 @@ async def get_embedding(text, request_type="embedding"):
 
 
 def get_recent_group_detailed_plain_text(chat_stream_id: str, limit: int = 12, combine=False):
-    recent_messages = list(
-        db.messages.find(
-            {"chat_id": chat_stream_id},
-            {
-                "time": 1,  # 返回时间字段
-                "chat_id": 1,
-                "chat_info": 1,
-                "user_info": 1,
-                "message_id": 1,  # 返回消息ID字段
-                "detailed_plain_text": 1,  # 返回处理后的文本字段
-            },
-        )
-        .sort("time", -1)
-        .limit(limit)
+    filter_query = {"chat_id": chat_stream_id}
+    sort_order = [("time", -1)]
+    recent_messages = find_messages(
+        message_filter=filter_query,
+        sort=sort_order,
+        limit=limit
     )
 
     if not recent_messages:
@@ -143,17 +137,14 @@ def get_recent_group_detailed_plain_text(chat_stream_id: str, limit: int = 12, c
         return message_detailed_plain_text_list
 
 
-def get_recent_group_speaker(chat_stream_id: int, sender, limit: int = 12) -> list:
+def get_recent_group_speaker(chat_stream_id: str, sender, limit: int = 12) -> list:
     # 获取当前群聊记录内发言的人
-    recent_messages = list(
-        db.messages.find(
-            {"chat_id": chat_stream_id},
-            {
-                "user_info": 1,
-            },
-        )
-        .sort("time", -1)
-        .limit(limit)
+    filter_query = {"chat_id": chat_stream_id}
+    sort_order = [("time", -1)]
+    recent_messages = find_messages(
+        message_filter=filter_query,
+        sort=sort_order,
+        limit=limit
     )
 
     if not recent_messages:
@@ -161,7 +152,12 @@ def get_recent_group_speaker(chat_stream_id: int, sender, limit: int = 12) -> li
 
     who_chat_in_group = []
     for msg_db_data in recent_messages:
-        user_info = UserInfo.from_dict(msg_db_data["user_info"])
+        user_info = UserInfo.from_dict({
+            "platform": msg_db_data["user_platform"],
+            "user_id": msg_db_data["user_id"],
+            "user_nickname": msg_db_data["user_nickname"],
+            "user_cardname": msg_db_data.get("user_cardname", "")
+        })
         if (
             (user_info.platform, user_info.user_id) != sender
             and user_info.user_id != global_config.bot.qq_account
@@ -581,26 +577,23 @@ def count_messages_between(start_time: float, end_time: float, stream_id: str) -
         logger.error("stream_id 不能为空")
         return 0, 0
 
-    # 直接查询时间范围内的消息
-    # time > start_time AND time <= end_time
-    query = {"chat_id": stream_id, "time": {"$gt": start_time, "$lte": end_time}}
+    # 使用message_repository中的count_messages和find_messages函数
+
+
+    # 构建查询条件
+    filter_query = {"chat_id": stream_id, "time": {"$gt": start_time, "$lte": end_time}}
 
     try:
-        # 执行查询
-        messages_cursor = db.messages.find(query)
+        # 先获取消息数量
+        count = count_messages(filter_query)
+        
+        # 获取消息内容计算总长度
+        messages = find_messages(message_filter=filter_query)
+        total_length = sum(len(msg.get("processed_plain_text", "")) for msg in messages)
 
-        # 遍历结果计算数量和长度
-        for msg in messages_cursor:
-            count += 1
-            total_length += len(msg.get("processed_plain_text", ""))
-
-        # logger.debug(f"查询范围 ({start_time}, {end_time}] 内找到 {count} 条消息，总长度 {total_length}")
         return count, total_length
 
-    except PyMongoError as e:
-        logger.error(f"查询 stream_id={stream_id} 在 ({start_time}, {end_time}] 范围内的消息时出错: {e}")
-        return 0, 0
-    except Exception as e:  # 保留一个通用异常捕获以防万一
+    except Exception as e:
         logger.error(f"计算消息数量时发生意外错误: {e}")
         return 0, 0
 

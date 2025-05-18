@@ -89,6 +89,14 @@ class SubHeartflow:
         await self.interest_chatting.initialize()
         logger.debug(f"{self.log_prefix} InterestChatting 实例已初始化。")
 
+        # 创建并初始化 normal_chat_instance
+        chat_stream = chat_manager.get_stream(self.chat_id)
+        if chat_stream:
+            self.normal_chat_instance = NormalChat(chat_stream=chat_stream,interest_dict=self.get_interest_dict())
+            await self.normal_chat_instance.initialize()
+            await self.normal_chat_instance.start_chat()
+            logger.info(f"{self.log_prefix} NormalChat 实例已创建并启动。")
+
     def update_last_chat_state_time(self):
         self.chat_state_last_time = time.time() - self.chat_state_changed_time
 
@@ -181,8 +189,7 @@ class SubHeartflow:
             # 创建 HeartFChatting 实例，并传递 从构造函数传入的 回调函数
             self.heart_fc_instance = HeartFChatting(
                 chat_id=self.subheartflow_id,
-                observations=self.observations,  # 传递所有观察者
-                on_consecutive_no_reply_callback=self.hfc_no_reply_callback,  # <-- Use stored callback
+                observations=self.observations, 
             )
 
             # 初始化并启动 HeartFChatting
@@ -200,55 +207,41 @@ class SubHeartflow:
             self.heart_fc_instance = None  # 创建或初始化异常，清理实例
             return False
 
-    async def change_chat_state(self, new_state: "ChatState"):
-        """更新sub_heartflow的聊天状态，并管理 HeartFChatting 和 NormalChat 实例及任务"""
+    async def change_chat_state(self, new_state: ChatState) -> None:
+        """
+        改变聊天状态。
+        如果转换到CHAT或FOCUSED状态时超过限制，会保持当前状态。
+        """
         current_state = self.chat_state.chat_status
+        state_changed = False
+        log_prefix = f"[{self.log_prefix}]"
 
-        if current_state == new_state:
-            return
-
-        log_prefix = self.log_prefix
-        state_changed = False  # 标记状态是否实际发生改变
-
-        # --- 状态转换逻辑 ---
         if new_state == ChatState.CHAT:
-            # 移除限额检查逻辑
-            logger.debug(f"{log_prefix} 准备进入或保持 聊天 状态")
-            if current_state == ChatState.FOCUSED:
-                if await self._start_normal_chat(rewind=False):
-                    # logger.info(f"{log_prefix} 成功进入或保持 NormalChat 状态。")
-                    state_changed = True
-                else:
-                    logger.error(f"{log_prefix} 从FOCUSED状态启动 NormalChat 失败，无法进入 CHAT 状态。")
-                    # 考虑是否需要回滚状态或采取其他措施
-                    return  # 启动失败，不改变状态
+            logger.debug(f"{log_prefix} 准备进入或保持 普通聊天 状态")
+            if await self._start_normal_chat():
+                logger.debug(f"{log_prefix} 成功进入或保持 NormalChat 状态。")
+                state_changed = True
             else:
-                if await self._start_normal_chat(rewind=True):
-                    # logger.info(f"{log_prefix} 成功进入或保持 NormalChat 状态。")
-                    state_changed = True
-                else:
-                    logger.error(f"{log_prefix} 从ABSENT状态启动 NormalChat 失败，无法进入 CHAT 状态。")
-                    # 考虑是否需要回滚状态或采取其他措施
-                    return  # 启动失败，不改变状态
+                logger.error(f"{log_prefix} 启动 NormalChat 失败，无法进入 CHAT 状态。")
+                # 启动失败时，保持当前状态
+                return
 
         elif new_state == ChatState.FOCUSED:
-            # 移除限额检查逻辑
             logger.debug(f"{log_prefix} 准备进入或保持 专注聊天 状态")
             if await self._start_heart_fc_chat():
                 logger.debug(f"{log_prefix} 成功进入或保持 HeartFChatting 状态。")
                 state_changed = True
             else:
                 logger.error(f"{log_prefix} 启动 HeartFChatting 失败，无法进入 FOCUSED 状态。")
-                # 启动失败，状态回滚到之前的状态或ABSENT？这里保持不改变
-                return  # 启动失败，不改变状态
+                # 启动失败时，保持当前状态
+                return
 
         elif new_state == ChatState.ABSENT:
             logger.info(f"{log_prefix} 进入 ABSENT 状态，停止所有聊天活动...")
             self.clear_interest_dict()
-
             await self._stop_normal_chat()
             await self._stop_heart_fc_chat()
-            state_changed = True  # 总是可以成功转换到 ABSENT
+            state_changed = True
 
         # --- 更新状态和最后活动时间 ---
         if state_changed:
@@ -263,7 +256,6 @@ class SubHeartflow:
             self.chat_state_last_time = 0
             self.chat_state_changed_time = time.time()
         else:
-            # 如果因为某些原因（如启动失败）没有成功改变状态，记录一下
             logger.debug(
                 f"{log_prefix} 尝试将状态从 {current_state.value} 变为 {new_state.value}，但未成功或未执行更改。"
             )

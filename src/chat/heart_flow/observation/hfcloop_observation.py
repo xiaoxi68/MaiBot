@@ -17,7 +17,9 @@ class HFCloopObservation:
         self.observe_id = observe_id
         self.last_observe_time = datetime.now().timestamp()  # 初始化为当前时间
         self.history_loop: List[CycleDetail] = []
-        self.action_manager = ActionManager()
+        self.action_manager: ActionManager = None
+        
+        self.all_actions = {}
 
     def get_observe_info(self):
         return self.observe_info
@@ -27,6 +29,7 @@ class HFCloopObservation:
 
     def set_action_manager(self, action_manager: ActionManager):
         self.action_manager = action_manager
+        self.all_actions = self.action_manager.get_registered_actions()
 
     async def observe(self):
         recent_active_cycles: List[CycleDetail] = []

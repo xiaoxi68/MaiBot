@@ -276,6 +276,40 @@ CHAT_STYLE_CONFIG = {
     },
 }
 
+# Topic日志样式配置
+NORMAL_CHAT_STYLE_CONFIG = {
+    "advanced": {
+        "console_format": (
+            "<white>{time:YYYY-MM-DD HH:mm:ss}</white> | "
+            "<level>{level: <8}</level> | "
+            "<green>一般水群</green> | "
+            "<level>{message}</level>"
+        ),
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 一般水群 | {message}",
+    },
+    "simple": {
+        "console_format": "<level>{time:HH:mm:ss}</level> | <green>一般水群</green> | <green>{message}</green>",  # noqa: E501
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 一般水群 | {message}",
+    },
+}
+
+# Topic日志样式配置
+FOCUS_CHAT_STYLE_CONFIG = {
+    "advanced": {
+        "console_format": (
+            "<white>{time:YYYY-MM-DD HH:mm:ss}</white> | "
+            "<level>{level: <8}</level> | "
+            "<green>专注水群</green> | "
+            "<level>{message}</level>"
+        ),
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 专注水群 | {message}",
+    },
+    "simple": {
+        "console_format": "<level>{time:HH:mm:ss}</level> | <green>专注水群</green> | <green>{message}</green>",  # noqa: E501
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 专注水群 | {message}",
+    },
+}
+
 REMOTE_STYLE_CONFIG = {
     "advanced": {
         "console_format": (
@@ -915,6 +949,8 @@ API_SERVER_STYLE_CONFIG = API_SERVER_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT els
 INTEREST_CHAT_STYLE_CONFIG = (
     INTEREST_CHAT_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else INTEREST_CHAT_STYLE_CONFIG["advanced"]
 )
+NORMAL_CHAT_STYLE_CONFIG = NORMAL_CHAT_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else NORMAL_CHAT_STYLE_CONFIG["advanced"]
+FOCUS_CHAT_STYLE_CONFIG = FOCUS_CHAT_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else FOCUS_CHAT_STYLE_CONFIG["advanced"]
 
 
 def is_registered_module(record: dict) -> bool:

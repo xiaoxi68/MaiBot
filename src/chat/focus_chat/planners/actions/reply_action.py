@@ -6,7 +6,6 @@ from typing import Tuple, List
 from src.chat.heart_flow.observation.observation import Observation
 from src.chat.focus_chat.expressors.default_expressor import DefaultExpressor
 from src.chat.message_receive.chat_stream import ChatStream
-from src.chat.focus_chat.heartFC_Cycleinfo import CycleDetail
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 from src.chat.focus_chat.hfc_utils import create_empty_anchor_message
 
@@ -41,7 +40,6 @@ class ReplyAction(BaseAction):
 
     def __init__(
         self,
-        action_name: str,
         action_data: dict,
         reasoning: str,
         cycle_timers: dict,
@@ -49,7 +47,6 @@ class ReplyAction(BaseAction):
         observations: List[Observation],
         expressor: DefaultExpressor,
         chat_stream: ChatStream,
-        current_cycle: CycleDetail,
         log_prefix: str,
         **kwargs,
     ):
@@ -64,14 +61,12 @@ class ReplyAction(BaseAction):
             observations: 观察列表
             expressor: 表达器
             chat_stream: 聊天流
-            current_cycle: 当前循环信息
             log_prefix: 日志前缀
         """
         super().__init__(action_data, reasoning, cycle_timers, thinking_id)
         self.observations = observations
         self.expressor = expressor
         self.chat_stream = chat_stream
-        self._current_cycle = current_cycle
         self.log_prefix = log_prefix
 
     async def handle_action(self) -> Tuple[bool, str]:

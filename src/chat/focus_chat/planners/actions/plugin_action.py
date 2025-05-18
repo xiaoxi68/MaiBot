@@ -30,8 +30,6 @@ class PluginAction(BaseAction):
             self._services["expressor"] = kwargs["expressor"]
         if "chat_stream" in kwargs:
             self._services["chat_stream"] = kwargs["chat_stream"]
-        if "current_cycle" in kwargs:
-            self._services["current_cycle"] = kwargs["current_cycle"]
 
         self.log_prefix = kwargs.get("log_prefix", "")
 

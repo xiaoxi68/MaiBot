@@ -1,13 +1,9 @@
 import asyncio
 import traceback
 from typing import Optional, Coroutine, Callable, Any, List
-
 from src.common.logger_manager import get_logger
-
-# Need manager types for dependency injection
 from src.chat.heart_flow.mai_state_manager import MaiStateManager, MaiStateInfo
 from src.chat.heart_flow.subheartflow_manager import SubHeartflowManager
-from src.chat.heart_flow.interest_logger import InterestLogger
 
 
 logger = get_logger("background_tasks")
@@ -62,23 +58,18 @@ class BackgroundTaskManager:
         mai_state_info: MaiStateInfo,  # Needs current state info
         mai_state_manager: MaiStateManager,
         subheartflow_manager: SubHeartflowManager,
-        interest_logger: InterestLogger,
     ):
         self.mai_state_info = mai_state_info
         self.mai_state_manager = mai_state_manager
         self.subheartflow_manager = subheartflow_manager
-        self.interest_logger = interest_logger
 
         # Task references
         self._state_update_task: Optional[asyncio.Task] = None
         self._cleanup_task: Optional[asyncio.Task] = None
-        self._logging_task: Optional[asyncio.Task] = None
-        self._normal_chat_timeout_check_task: Optional[asyncio.Task] = None
         self._hf_judge_state_update_task: Optional[asyncio.Task] = None
         self._into_focus_task: Optional[asyncio.Task] = None
         self._private_chat_activation_task: Optional[asyncio.Task] = None  # 新增私聊激活任务引用
         self._tasks: List[Optional[asyncio.Task]] = []  # Keep track of all tasks
-        self._detect_command_from_gui_task: Optional[asyncio.Task] = None  # 新增GUI命令检测任务引用
 
     async def start_tasks(self):
         """启动所有后台任务
@@ -98,28 +89,10 @@ class BackgroundTaskManager:
                 "_state_update_task",
             ),
             (
-                lambda: self._run_normal_chat_timeout_check_cycle(NORMAL_CHAT_TIMEOUT_CHECK_INTERVAL_SECONDS),
-                "debug",
-                f"聊天超时检查任务已启动 间隔:{NORMAL_CHAT_TIMEOUT_CHECK_INTERVAL_SECONDS}s",
-                "_normal_chat_timeout_check_task",
-            ),
-            (
-                lambda: self._run_absent_into_chat(HF_JUDGE_STATE_UPDATE_INTERVAL_SECONDS),
-                "debug",
-                f"状态评估任务已启动 间隔:{HF_JUDGE_STATE_UPDATE_INTERVAL_SECONDS}s",
-                "_hf_judge_state_update_task",
-            ),
-            (
                 self._run_cleanup_cycle,
                 "info",
                 f"清理任务已启动 间隔:{CLEANUP_INTERVAL_SECONDS}s",
                 "_cleanup_task",
-            ),
-            (
-                self._run_logging_cycle,
-                "info",
-                f"日志任务已启动 间隔:{LOG_INTERVAL_SECONDS}s",
-                "_logging_task",
             ),
             # 新增兴趣评估任务配置
             (
@@ -136,13 +109,6 @@ class BackgroundTaskManager:
                 f"私聊激活检查任务已启动 间隔:{PRIVATE_CHAT_ACTIVATION_CHECK_INTERVAL_SECONDS}s",
                 "_private_chat_activation_task",
             ),
-            # 新增GUI命令检测任务配置
-            # (
-            #     lambda: self._run_detect_command_from_gui_cycle(3),
-            #     "debug",
-            #     f"GUI命令检测任务已启动 间隔:{3}s",
-            #     "_detect_command_from_gui_task",
-            # ),
         ]
 
         # 统一启动所有任务
@@ -207,7 +173,6 @@ class BackgroundTaskManager:
 
         if state_changed:
             current_state = self.mai_state_info.get_current_state()
-            await self.subheartflow_manager.enforce_subheartflow_limits()
 
             # 状态转换处理
 
@@ -218,15 +183,6 @@ class BackgroundTaskManager:
                 logger.info("检测到离线，停用所有子心流")
                 await self.subheartflow_manager.deactivate_all_subflows()
 
-    async def _perform_absent_into_chat(self):
-        """调用llm检测是否转换ABSENT-CHAT状态"""
-        logger.debug("[状态评估任务] 开始基于LLM评估子心流状态...")
-        await self.subheartflow_manager.sbhf_absent_into_chat()
-
-    async def _normal_chat_timeout_check_work(self):
-        """检查处于CHAT状态的子心流是否因长时间未发言而超时，并将其转为ABSENT"""
-        logger.debug("[聊天超时检查] 开始检查处于CHAT状态的子心流...")
-        await self.subheartflow_manager.sbhf_chat_into_absent()
 
     async def _perform_cleanup_work(self):
         """执行子心流清理任务
@@ -253,40 +209,21 @@ class BackgroundTaskManager:
         # 记录最终清理结果
         logger.info(f"[清理任务] 清理完成, 共停止 {stopped_count}/{len(flows_to_stop)} 个子心流")
 
-    async def _perform_logging_work(self):
-        """执行一轮状态日志记录。"""
-        await self.interest_logger.log_all_states()
 
     # --- 新增兴趣评估工作函数 ---
     async def _perform_into_focus_work(self):
         """执行一轮子心流兴趣评估与提升检查。"""
         # 直接调用 subheartflow_manager 的方法，并传递当前状态信息
         await self.subheartflow_manager.sbhf_absent_into_focus()
-
-    # --- 结束新增 ---
-
-    # --- 结束新增 ---
-
-    # --- Specific Task Runners --- #
+        
     async def _run_state_update_cycle(self, interval: int):
         await _run_periodic_loop(task_name="State Update", interval=interval, task_func=self._perform_state_update_work)
 
-    async def _run_absent_into_chat(self, interval: int):
-        await _run_periodic_loop(task_name="Into Chat", interval=interval, task_func=self._perform_absent_into_chat)
 
-    async def _run_normal_chat_timeout_check_cycle(self, interval: int):
-        await _run_periodic_loop(
-            task_name="Normal Chat Timeout Check", interval=interval, task_func=self._normal_chat_timeout_check_work
-        )
 
     async def _run_cleanup_cycle(self):
         await _run_periodic_loop(
             task_name="Subflow Cleanup", interval=CLEANUP_INTERVAL_SECONDS, task_func=self._perform_cleanup_work
-        )
-
-    async def _run_logging_cycle(self):
-        await _run_periodic_loop(
-            task_name="State Logging", interval=LOG_INTERVAL_SECONDS, task_func=self._perform_logging_work
         )
 
     # --- 新增兴趣评估任务运行器 ---
@@ -304,11 +241,3 @@ class BackgroundTaskManager:
             interval=interval,
             task_func=self.subheartflow_manager.sbhf_absent_private_into_focus,
         )
-
-    # # 有api之后删除
-    # async def _run_detect_command_from_gui_cycle(self, interval: int):
-    #     await _run_periodic_loop(
-    #         task_name="Detect Command from GUI",
-    #         interval=interval,
-    #         task_func=self.subheartflow_manager.detect_command_from_gui,
-    #     )

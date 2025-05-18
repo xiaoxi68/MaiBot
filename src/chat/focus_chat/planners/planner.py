@@ -8,12 +8,12 @@ from src.chat.focus_chat.info.info_base import InfoBase
 from src.chat.focus_chat.info.obs_info import ObsInfo
 from src.chat.focus_chat.info.cycle_info import CycleInfo
 from src.chat.focus_chat.info.mind_info import MindInfo
+from src.chat.focus_chat.info.action_info import ActionInfo
 from src.chat.focus_chat.info.structured_info import StructuredInfo
 from src.common.logger_manager import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.individuality.individuality import Individuality
 from src.chat.focus_chat.planners.action_manager import ActionManager
-from src.chat.focus_chat.planners.action_manager import ActionInfo
 
 logger = get_logger("planner")
 
@@ -87,34 +87,68 @@ class ActionPlanner:
 
         action = "no_reply"  # 默认动作
         reasoning = "规划器初始化默认"
+        action_data = {}
 
         try:
             # 获取观察信息
             extra_info: list[str] = []
+            
+            # 首先处理动作变更
+            for info in all_plan_info:
+                if isinstance(info, ActionInfo) and info.has_changes():
+                    add_actions = info.get_add_actions()
+                    remove_actions = info.get_remove_actions()
+                    reason = info.get_reason()
+                    
+                    # 处理动作的增加
+                    for action_name in add_actions:
+                        if action_name in self.action_manager.get_registered_actions():
+                            self.action_manager.add_action_to_using(action_name)
+                            logger.debug(f"{self.log_prefix}添加动作: {action_name}, 原因: {reason}")
+                            
+                    # 处理动作的移除
+                    for action_name in remove_actions:
+                        self.action_manager.remove_action_from_using(action_name)
+                        logger.debug(f"{self.log_prefix}移除动作: {action_name}, 原因: {reason}")
+                        
+                    # 如果当前选择的动作被移除了，更新为no_reply
+                    if action in remove_actions:
+                        action = "no_reply"
+                        reasoning = f"之前选择的动作{action}已被移除，原因: {reason}"
+            
+            # 继续处理其他信息
             for info in all_plan_info:
                 if isinstance(info, ObsInfo):
-                    # logger.debug(f"{self.log_prefix} 观察信息: {info}")
                     observed_messages = info.get_talking_message()
                     observed_messages_str = info.get_talking_message_str_truncate()
                     chat_type = info.get_chat_type()
-                    if chat_type == "group":
-                        is_group_chat = True
-                    else:
-                        is_group_chat = False
+                    is_group_chat = (chat_type == "group")
                 elif isinstance(info, MindInfo):
-                    # logger.debug(f"{self.log_prefix} 思维信息: {info}")
                     current_mind = info.get_current_mind()
                 elif isinstance(info, CycleInfo):
-                    # logger.debug(f"{self.log_prefix} 循环信息: {info}")
                     cycle_info = info.get_observe_info()
                 elif isinstance(info, StructuredInfo):
-                    # logger.debug(f"{self.log_prefix} 结构化信息: {info}")
                     _structured_info = info.get_data()
-                else:
-                    logger.debug(f"{self.log_prefix} 其他信息: {info}")
+                elif not isinstance(info, ActionInfo):  # 跳过已处理的ActionInfo
                     extra_info.append(info.get_processed_info())
 
+            # 获取当前可用的动作
             current_available_actions = self.action_manager.get_using_actions()
+            
+            # 如果没有可用动作，直接返回no_reply
+            if not current_available_actions:
+                logger.warning(f"{self.log_prefix}没有可用的动作，将使用no_reply")
+                action = "no_reply"
+                reasoning = "没有可用的动作"
+                return {
+                    "action_result": {
+                        "action_type": action,
+                        "action_data": action_data,
+                        "reasoning": reasoning
+                    },
+                    "current_mind": current_mind,
+                    "observed_messages": observed_messages
+                }
 
             # --- 构建提示词 (调用修改后的 PromptBuilder 方法) ---
             prompt = await self.build_planner_prompt(
@@ -181,7 +215,7 @@ class ActionPlanner:
         except Exception as outer_e:
             logger.error(f"{self.log_prefix}Planner 处理过程中发生意外错误，规划失败，将执行 no_reply: {outer_e}")
             traceback.print_exc()
-            action = "no_reply"  # 发生未知错误，标记为 error 动作
+            action = "no_reply"
             reasoning = f"Planner 内部处理错误: {outer_e}"
 
         logger.debug(
@@ -202,7 +236,6 @@ class ActionPlanner:
             "observed_messages": observed_messages,
         }
 
-        # 返回结果字典
         return plan_result
 
     async def build_planner_prompt(
