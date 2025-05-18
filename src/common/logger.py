@@ -277,6 +277,22 @@ CHAT_STYLE_CONFIG = {
     },
 }
 
+NORMAL_CHAT_STYLE_CONFIG = {
+    "advanced": {
+        "console_format": (
+            "<white>{time:YYYY-MM-DD HH:mm:ss}</white> | "
+            "<level>{level: <8}</level> | "
+            "<light-yellow>普通水群</light-yellow> | "
+            "<level>{message}</level>"
+        ),
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 普通水群 | {message}",
+    },
+    "simple": {
+        "console_format": "<level>{time:MM-DD HH:mm}</level> | <fg #55DDFF>普通水群 | {message}</fg #55DDFF>",
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 普通水群 | {message}",
+    },
+}
+
 REMOTE_STYLE_CONFIG = {
     "advanced": {
         "console_format": (
@@ -347,14 +363,14 @@ SUBHEARTFLOW_MANAGER_STYLE_CONFIG = {
         "console_format": (
             "<white>{time:YYYY-MM-DD HH:mm:ss}</white> | "
             "<level>{level: <8}</level> | "
-            "<light-blue>麦麦水群[管理]</light-blue> | "
+            "<light-blue>聊天管理</light-blue> | "
             "<level>{message}</level>"
         ),
-        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 麦麦水群[管理] | {message}",
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 聊天管理 | {message}",
     },
     "simple": {
-        "console_format": "<level>{time:MM-DD HH:mm}</level> | <fg #005BA2>麦麦水群[管理] | {message}</fg #005BA2>",  # noqa: E501
-        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 麦麦水群[管理] | {message}",
+        "console_format": "<level>{time:MM-DD HH:mm}</level> | <fg #005BA2>聊天管理 | {message}</fg #005BA2>",  # noqa: E501
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 聊天管理 | {message}",
     },
 }
 
@@ -595,14 +611,14 @@ HFC_STYLE_CONFIG = {
         "console_format": (
             "<white>{time:YYYY-MM-DD HH:mm:ss}</white> | "
             "<level>{level: <8}</level> | "
-            "<light-green>专注聊天</light-green> | "
+            "<light-green>专注水群</light-green> | "
             "<level>{message}</level>"
         ),
-        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 专注聊天 | {message}",
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 专注水群 | {message}",
     },
     "simple": {
-        "console_format": "<level>{time:MM-DD HH:mm}</level> | <light-green>专注聊天 | {message}</light-green>",
-        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 专注聊天 | {message}",
+        "console_format": "<level>{time:MM-DD HH:mm}</level> | <light-green>专注水群 | {message}</light-green>",
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 专注水群 | {message}",
     },
 }
 
@@ -866,6 +882,7 @@ API_SERVER_STYLE_CONFIG = API_SERVER_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT els
 INTEREST_CHAT_STYLE_CONFIG = (
     INTEREST_CHAT_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else INTEREST_CHAT_STYLE_CONFIG["advanced"]
 )
+NORMAL_CHAT_STYLE_CONFIG = NORMAL_CHAT_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else NORMAL_CHAT_STYLE_CONFIG["advanced"]
 
 
 def is_registered_module(record: dict) -> bool:

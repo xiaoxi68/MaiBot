@@ -24,14 +24,13 @@ class Mind:
         self.llm_model = llm_model
         self.individuality = Individuality.get_instance()
 
-    async def do_a_thinking(self, current_main_mind: str, mai_state_info: "MaiStateInfo", schedule_info: str):
+    async def do_a_thinking(self, current_main_mind: str, mai_state_info: "MaiStateInfo"):
         """
         执行一次主心流思考过程，生成新的内心独白。
 
         Args:
             current_main_mind: 当前的主心流想法。
             mai_state_info: 当前的 Mai 状态信息 (用于获取 mood)。
-            schedule_info: 当前的日程信息。
 
         Returns:
             str: 生成的新的内心独白，如果出错则返回提示信息。
@@ -58,7 +57,6 @@ class Mind:
         # Format prompt
         try:
             prompt = (await global_prompt_manager.get_prompt_async("thinking_prompt")).format(
-                schedule_info=schedule_info,
                 personality_info=personality_info,
                 related_memory_info=related_memory_info,
                 current_thinking_info=current_main_mind,  # Use passed current mind

@@ -2,7 +2,6 @@ import asyncio
 import time
 from .plugins.utils.statistic import LLMStatistics
 from .plugins.moods.moods import MoodManager
-from .plugins.schedule.schedule_generator import bot_schedule
 from .plugins.emoji_system.emoji_manager import emoji_manager
 from .plugins.person_info.person_info import person_info_manager
 from .plugins.willing.willing_manager import willing_manager
@@ -81,14 +80,7 @@ class MainSystem:
         self.hippocampus_manager.initialize(global_config=global_config)
         # await asyncio.sleep(0.5) #防止logger输出飞了
 
-        # 初始化日程
-        bot_schedule.initialize(
-            name=global_config.BOT_NICKNAME,
-            personality=global_config.personality_core,
-            behavior=global_config.PROMPT_SCHEDULE_GEN,
-            interval=global_config.SCHEDULE_DOING_UPDATE_INTERVAL,
-        )
-        asyncio.create_task(bot_schedule.mai_schedule_start())
+
 
         # 将bot.py中的chat_bot.message_process消息处理函数注册到api.py的消息处理基类中
         self.app.register_message_handler(chat_bot.message_process)

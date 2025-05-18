@@ -22,7 +22,7 @@ from src.plugins.utils.timer_calculator import Timer
 from src.heart_flow.utils_chat import get_chat_type_and_target_info
 
 
-logger = get_logger("chat")
+logger = get_logger("normal_chat")
 
 
 class NormalChat:
@@ -201,12 +201,10 @@ class NormalChat:
                 break
 
             # 获取待处理消息列表
-            if self.interest_dict:
-                items_to_process = list(self.interest_dict.items())
-                if not items_to_process:
-                    continue
-            else:
-                return
+
+            items_to_process = list(self.interest_dict.items())
+            if not items_to_process:
+                continue
 
             # 处理每条兴趣消息
             for msg_id, (message, interest_value, is_mentioned) in items_to_process:
@@ -489,7 +487,7 @@ class NormalChat:
         finally:
             if self._chat_task is task:
                 self._chat_task = None
-                logger.debug(f"[{self.stream_name}] 任务清理完成")
+                logger.debug(f"[{self.stream_name}] Normal_chat 结束")
 
     # 改为实例方法, 移除 stream_id 参数
     async def stop_chat(self):

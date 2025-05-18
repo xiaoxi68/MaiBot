@@ -1,6 +1,6 @@
 # HeartFChatting 逻辑详解
 
-`HeartFChatting` 类是心流系统（Heart Flow System）中实现**专注聊天**（`ChatState.FOCUSED`）功能的核心。顾名思义，其职责乃是在特定聊天流（`stream_id`）中，模拟更为连贯深入之对话。此非凭空臆造，而是依赖一个持续不断的 **思考(Think)-规划(Plan)-执行(Execute)** 循环。当其所系的 `SubHeartflow` 进入 `FOCUSED` 状态时，便会创建并启动 `HeartFChatting` 实例；若状态转为他途（譬如 `CHAT` 或 `ABSENT`），则会将其关闭。
+`HeartFChatting` 类是心流系统（Heart Flow System）中实现**专注水群**（`ChatState.FOCUSED`）功能的核心。顾名思义，其职责乃是在特定聊天流（`stream_id`）中，模拟更为连贯深入之对话。此非凭空臆造，而是依赖一个持续不断的 **思考(Think)-规划(Plan)-执行(Execute)** 循环。当其所系的 `SubHeartflow` 进入 `FOCUSED` 状态时，便会创建并启动 `HeartFChatting` 实例；若状态转为他途（譬如 `CHAT` 或 `ABSENT`），则会将其关闭。
 
 ## 1. 初始化简述 (`__init__`, `_initialize`)
 
@@ -89,4 +89,4 @@
 
 ## 总结
 
-`HeartFChatting` 通过 **观察 -> 思考（含工具）-> 规划 -> 执行** 的闭环，并利用 `CycleInfo` 进行上下文传递，实现了更加智能和连贯的专注聊天行为。其核心在于利用 `SubMind` 进行深度思考和信息收集，再通过 LLM 规划器进行决策，最后由 `HeartFCSender` 可靠地执行消息发送任务。
+`HeartFChatting` 通过 **观察 -> 思考（含工具）-> 规划 -> 执行** 的闭环，并利用 `CycleInfo` 进行上下文传递，实现了更加智能和连贯的专注水群行为。其核心在于利用 `SubMind` 进行深度思考和信息收集，再通过 LLM 规划器进行决策，最后由 `HeartFCSender` 可靠地执行消息发送任务。

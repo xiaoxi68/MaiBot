@@ -12,7 +12,6 @@ from ...common.database import db
 from ..chat.utils import get_recent_group_speaker
 from ..moods.moods import MoodManager
 from ..memory_system.Hippocampus import HippocampusManager
-from ..schedule.schedule_generator import bot_schedule
 from ..knowledge.knowledge_lib import qa_manager
 import traceback
 from .heartFC_Cycleinfo import CycleInfo
@@ -117,7 +116,6 @@ JSON 结构如下，包含三个字段 "action", "reasoning", "emoji_query":
 {memory_prompt}
 {relation_prompt}
 {prompt_info}
-{schedule_prompt}
 {chat_target}
 {chat_talking_prompt}
 现在"{sender_name}"说的:{message_txt}。引起了你的注意，你想要在群里发言或者回复这条消息。\n
@@ -135,7 +133,6 @@ JSON 结构如下，包含三个字段 "action", "reasoning", "emoji_query":
         "你回忆起：{related_memory_info}。\n以上是你的回忆，不一定是目前聊天里的人说的，也不一定是现在发生的事情，请记住。\n",
         "memory_prompt",
     )
-    Prompt("你现在正在做的事情是：{schedule_info}", "schedule_prompt")
     Prompt("\n你有以下这些**知识**：\n{prompt_info}\n请你**记住上面的知识**，之后可能会用到。\n", "knowledge_prompt")
 
     # --- Template for HeartFChatting (FOCUSED mode) ---
@@ -166,7 +163,6 @@ JSON 结构如下，包含三个字段 "action", "reasoning", "emoji_query":
 {memory_prompt}
 {relation_prompt}
 {prompt_info}
-{schedule_prompt}
 你正在和 {sender_name} 私聊。
 聊天记录如下：
 {chat_talking_prompt}
@@ -426,13 +422,6 @@ class PromptBuilder:
         end_time = time.time()
         logger.debug(f"知识检索耗时: {(end_time - start_time):.3f}秒")
 
-        if global_config.ENABLE_SCHEDULE_GEN:
-            schedule_prompt = await global_prompt_manager.format_prompt(
-                "schedule_prompt", schedule_info=bot_schedule.get_current_num_task(num=1, time_info=False)
-            )
-        else:
-            schedule_prompt = ""
-
         logger.debug("开始构建 normal prompt")
 
         # --- Choose template and format based on chat type ---
@@ -448,7 +437,6 @@ class PromptBuilder:
                 sender_name=effective_sender_name,
                 memory_prompt=memory_prompt,
                 prompt_info=prompt_info,
-                schedule_prompt=schedule_prompt,
                 chat_target=chat_target_1,
                 chat_target_2=chat_target_2,
                 chat_talking_prompt=chat_talking_prompt,
@@ -473,7 +461,6 @@ class PromptBuilder:
                 sender_name=effective_sender_name,
                 memory_prompt=memory_prompt,
                 prompt_info=prompt_info,
-                schedule_prompt=schedule_prompt,
                 chat_talking_prompt=chat_talking_prompt,
                 message_txt=message_txt,
                 bot_name=global_config.BOT_NICKNAME,

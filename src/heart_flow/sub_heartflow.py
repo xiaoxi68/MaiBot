@@ -94,6 +94,9 @@ class SubHeartflow:
         await self.interest_chatting.initialize()
         logger.debug(f"{self.log_prefix} InterestChatting 实例已初始化。")
 
+        # 确保普通聊天已启动
+        await self._start_normal_chat(rewind=True)
+
     def update_last_chat_state_time(self):
         self.chat_state_last_time = time.time() - self.chat_state_changed_time
 
@@ -103,7 +106,7 @@ class SubHeartflow:
         切出 CHAT 状态时使用
         """
         if self.normal_chat_instance:
-            logger.info(f"{self.log_prefix} 离开CHAT模式，结束 随便水群")
+            logger.info(f"{self.log_prefix} 结束随便水群")
             try:
                 await self.normal_chat_instance.stop_chat()  # 调用 stop_chat
             except Exception as e:
@@ -116,7 +119,7 @@ class SubHeartflow:
         进入 CHAT 状态时使用。
         确保 HeartFChatting 已停止。
         """
-        await self._stop_heart_fc_chat()  # 确保 专注聊天已停止
+        await self._stop_heart_fc_chat()  # 确保 专注水群已停止
 
         log_prefix = self.log_prefix
         try:
@@ -128,7 +131,8 @@ class SubHeartflow:
             if rewind:
                 self.normal_chat_instance = NormalChat(chat_stream=chat_stream, interest_dict=self.get_interest_dict())
             else:
-                self.normal_chat_instance = NormalChat(chat_stream=chat_stream)
+                self.clear_interest_dict()
+                self.normal_chat_instance = NormalChat(chat_stream=chat_stream, interest_dict=self.get_interest_dict())
 
             # 进行异步初始化
             await self.normal_chat_instance.initialize()
@@ -146,7 +150,7 @@ class SubHeartflow:
     async def _stop_heart_fc_chat(self):
         """停止并清理 HeartFChatting 实例"""
         if self.heart_fc_instance:
-            logger.debug(f"{self.log_prefix} 结束专注聊天...")
+            logger.debug(f"{self.log_prefix} 结束专注水群...")
             try:
                 await self.heart_fc_instance.shutdown()
             except Exception as e:
@@ -159,7 +163,7 @@ class SubHeartflow:
     async def _start_heart_fc_chat(self) -> bool:
         """启动 HeartFChatting 实例，确保 NormalChat 已停止"""
         await self._stop_normal_chat()  # 确保普通聊天监控已停止
-        self.clear_interest_dict()  # 清理兴趣字典，准备专注聊天
+        self.clear_interest_dict()  # 清理兴趣字典，准备专注水群
 
         log_prefix = self.log_prefix
         # 如果实例已存在，检查其循环任务状态
@@ -181,7 +185,7 @@ class SubHeartflow:
                 return True  # 已经在运行
 
         # 如果实例不存在，则创建并启动
-        logger.info(f"{log_prefix} 麦麦准备开始专注聊天...")
+        logger.info(f"{log_prefix} 麦麦准备开始专注水群...")
         try:
             # 创建 HeartFChatting 实例，并传递 从构造函数传入的 回调函数
             self.heart_fc_instance = HeartFChatting(
@@ -194,7 +198,7 @@ class SubHeartflow:
             # 初始化并启动 HeartFChatting
             if await self.heart_fc_instance._initialize():
                 await self.heart_fc_instance.start()
-                logger.debug(f"{log_prefix} 麦麦已成功进入专注聊天模式 (新实例已启动)。")
+                logger.debug(f"{log_prefix} 麦麦已成功进入专注水群模式 (新实例已启动)。")
                 return True
             else:
                 logger.error(f"{log_prefix} HeartFChatting 初始化失败，无法进入专注模式。")
@@ -218,43 +222,29 @@ class SubHeartflow:
 
         # --- 状态转换逻辑 ---
         if new_state == ChatState.CHAT:
-            # 移除限额检查逻辑
             logger.debug(f"{log_prefix} 准备进入或保持 聊天 状态")
             if current_state == ChatState.FOCUSED:
                 if await self._start_normal_chat(rewind=False):
-                    # logger.info(f"{log_prefix} 成功进入或保持 NormalChat 状态。")
                     state_changed = True
                 else:
                     logger.error(f"{log_prefix} 从FOCUSED状态启动 NormalChat 失败，无法进入 CHAT 状态。")
-                    # 考虑是否需要回滚状态或采取其他措施
                     return  # 启动失败，不改变状态
             else:
+                # 这个分支不应该再被进入，因为已没有ABSENT状态
                 if await self._start_normal_chat(rewind=True):
-                    # logger.info(f"{log_prefix} 成功进入或保持 NormalChat 状态。")
                     state_changed = True
                 else:
-                    logger.error(f"{log_prefix} 从ABSENT状态启动 NormalChat 失败，无法进入 CHAT 状态。")
-                    # 考虑是否需要回滚状态或采取其他措施
+                    logger.error(f"{log_prefix} 启动 NormalChat 失败，无法进入 CHAT 状态。")
                     return  # 启动失败，不改变状态
 
         elif new_state == ChatState.FOCUSED:
-            # 移除限额检查逻辑
-            logger.debug(f"{log_prefix} 准备进入或保持 专注聊天 状态")
+            logger.debug(f"{log_prefix} 准备进入或保持 专注水群 状态")
             if await self._start_heart_fc_chat():
                 logger.debug(f"{log_prefix} 成功进入或保持 HeartFChatting 状态。")
                 state_changed = True
             else:
                 logger.error(f"{log_prefix} 启动 HeartFChatting 失败，无法进入 FOCUSED 状态。")
-                # 启动失败，状态回滚到之前的状态或ABSENT？这里保持不改变
                 return  # 启动失败，不改变状态
-
-        elif new_state == ChatState.ABSENT:
-            logger.info(f"{log_prefix} 进入 ABSENT 状态，停止所有聊天活动...")
-            await self.clear_interest_dict()
-
-            await self._stop_normal_chat()
-            await self._stop_heart_fc_chat()
-            state_changed = True  # 总是可以成功转换到 ABSENT
 
         # --- 更新状态和最后活动时间 ---
         if state_changed:
@@ -369,6 +359,6 @@ class SubHeartflow:
                 logger.error(f"{self.log_prefix} 等待子心流主任务取消时发生错误 (Shutdown): {e}")
 
         self.task = None  # 清理任务引用
-        self.chat_state.chat_status = ChatState.ABSENT  # 状态重置为不参与
+        self.chat_state.chat_status = ChatState.CHAT  # 状态重置为随便水群而不是不参与
 
         logger.info(f"{self.log_prefix} 子心流关闭完成。")

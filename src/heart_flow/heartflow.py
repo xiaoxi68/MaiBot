@@ -1,7 +1,6 @@
 from src.heart_flow.sub_heartflow import SubHeartflow, ChatState
 from src.plugins.models.utils_model import LLMRequest
 from src.config.config import global_config
-from src.plugins.schedule.schedule_generator import bot_schedule
 from src.common.logger_manager import get_logger
 from typing import Any, Optional
 from src.do_tool.tool_use import ToolUser
@@ -96,17 +95,6 @@ class Heartflow:
         await self.background_task_manager.stop_tasks()
         await self.subheartflow_manager.deactivate_all_subflows()
         logger.info("[Heartflow] 所有任务和子心流已停止")
-
-    async def do_a_thinking(self):
-        """执行一次主心流思考过程"""
-        schedule_info = bot_schedule.get_current_num_task(num=4, time_info=True)
-        new_mind = await self.mind.do_a_thinking(
-            current_main_mind=self.current_mind, mai_state_info=self.current_state, schedule_info=schedule_info
-        )
-        self.past_mind.append(self.current_mind)
-        self.current_mind = new_mind
-        logger.info(f"麦麦的总体脑内状态更新为：{self.current_mind[:100]}...")
-        self.mind.update_subflows_with_main_mind(new_mind)
 
 
 heartflow = Heartflow()

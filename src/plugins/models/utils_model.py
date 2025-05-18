@@ -157,7 +157,7 @@ class LLMRequest:
             completion_tokens: 输出token数
             total_tokens: 总token数
             user_id: 用户ID，默认为system
-            request_type: 请求类型(chat/embedding/image/topic/schedule)
+            request_type: 请求类型
             endpoint: API端点
         """
         # 如果 request_type 为 None，则使用实例变量中的值

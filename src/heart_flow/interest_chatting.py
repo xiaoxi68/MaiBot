@@ -145,7 +145,7 @@ class InterestChatting:
         }
 
     # --- 新增后台更新任务相关方法 ---
-    async def _run_update_loop(self, update_interval: float = 1.0):
+    async def _run_update_loop(self, update_interval: float = 0.5):
         """后台循环，定期更新兴趣和回复概率。"""
         try:
             while not self._stop_event.is_set():

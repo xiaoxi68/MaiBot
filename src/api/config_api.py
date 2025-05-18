@@ -33,13 +33,7 @@ class APIBotConfig:
     gender: str  # 性别
     appearance: str  # 外貌特征描述
 
-    # schedule
-    ENABLE_SCHEDULE_GEN: bool  # 是否启用日程生成
-    ENABLE_SCHEDULE_INTERACTION: bool  # 是否启用日程交互
-    PROMPT_SCHEDULE_GEN: str  # 日程生成提示词
-    SCHEDULE_DOING_UPDATE_INTERVAL: int  # 日程进行中更新间隔
-    SCHEDULE_TEMPERATURE: float  # 日程生成温度
-    TIME_ZONE: str  # 时区
+  
 
     # platforms
     platforms: Dict[str, str]  # 平台信息
@@ -47,7 +41,7 @@ class APIBotConfig:
     # chat
     allow_focus_mode: bool  # 是否允许专注模式
     base_normal_chat_num: int  # 基础普通聊天次数
-    base_focused_chat_num: int  # 基础专注聊天次数
+    base_focused_chat_num: int  # 基础专注水群次数
     observation_context_size: int  # 观察上下文大小
     message_buffer: bool  # 是否启用消息缓冲
     ban_words: List[str]  # 禁止词列表

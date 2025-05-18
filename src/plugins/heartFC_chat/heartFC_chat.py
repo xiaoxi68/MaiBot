@@ -32,7 +32,7 @@ from rich.traceback import install
 install(extra_lines=3)
 
 
-WAITING_TIME_THRESHOLD = 300  # 等待新消息时间阈值，单位秒
+WAITING_TIME_THRESHOLD = 200  # 等待新消息时间阈值，单位秒
 
 EMOJI_SEND_PRO = 0.3  # 设置一个概率，比如 30% 才真的发
 
@@ -667,7 +667,7 @@ class HeartFChatting:
                 )
 
                 # 检查是否同时达到次数和时间阈值
-                time_threshold = 0.66 * WAITING_TIME_THRESHOLD * CONSECUTIVE_NO_REPLY_THRESHOLD
+                time_threshold = 0.5 * WAITING_TIME_THRESHOLD * CONSECUTIVE_NO_REPLY_THRESHOLD
                 if (
                     self._lian_xu_bu_hui_fu_ci_shu >= CONSECUTIVE_NO_REPLY_THRESHOLD
                     and self._lian_xu_deng_dai_shi_jian >= time_threshold

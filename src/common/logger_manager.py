@@ -25,6 +25,7 @@ from src.common.logger import (
     LPMM_STYLE_CONFIG,
     HFC_STYLE_CONFIG,
     TIANYI_STYLE_CONFIG,
+    NORMAL_CHAT_STYLE_CONFIG,
     REMOTE_STYLE_CONFIG,
     TOPIC_STYLE_CONFIG,
     SENDER_STYLE_CONFIG,
@@ -62,7 +63,7 @@ MODULE_LOGGER_CONFIGS = {
     "emoji": EMOJI_STYLE_CONFIG,  # 表情包
     "sub_heartflow": SUB_HEARTFLOW_STYLE_CONFIG,  # 麦麦水群
     "sub_heartflow_mind": SUB_HEARTFLOW_MIND_STYLE_CONFIG,  # 麦麦小脑袋
-    "subheartflow_manager": SUBHEARTFLOW_MANAGER_STYLE_CONFIG,  # 麦麦水群[管理]
+    "subheartflow_manager": SUBHEARTFLOW_MANAGER_STYLE_CONFIG,  # 聊天管理
     "base_tool": BASE_TOOL_STYLE_CONFIG,  # 工具使用
     "chat_stream": CHAT_STREAM_STYLE_CONFIG,  # 聊天流
     "person_info": PERSON_INFO_STYLE_CONFIG,  # 人物信息
@@ -73,6 +74,7 @@ MODULE_LOGGER_CONFIGS = {
     "hfc": HFC_STYLE_CONFIG,  # HFC
     "tianyi": TIANYI_STYLE_CONFIG,  # 天依
     "remote": REMOTE_STYLE_CONFIG,  # 远程
+    "normal_chat": NORMAL_CHAT_STYLE_CONFIG,  # 普通水群
     "topic": TOPIC_STYLE_CONFIG,  # 话题
     "sender": SENDER_STYLE_CONFIG,  # 消息发送
     "confirm": CONFIRM_STYLE_CONFIG,  # EULA与PRIVACY确认
