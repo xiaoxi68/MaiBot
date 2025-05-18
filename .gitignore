@@ -301,3 +301,5 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
+src/chat/focus_chat/working_memory/test/test1.txt
+src/chat/focus_chat/working_memory/test/test4.txt

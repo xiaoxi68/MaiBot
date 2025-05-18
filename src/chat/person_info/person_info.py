@@ -1,5 +1,6 @@
 from src.common.logger_manager import get_logger
-from ...common.database import db
+from ...common.database.database import db
+from ...common.database.database_model import PersonInfo  # 新增导入
 import copy
 import hashlib
 from typing import Any, Callable, Dict
@@ -16,7 +17,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from pathlib import Path
 import pandas as pd
-import json
+import json  # 新增导入
 import re
 
 
@@ -38,47 +39,49 @@ logger = get_logger("person_info")
 
 person_info_default = {
     "person_id": None,
-    "person_name": None,
+    "person_name": None,  # 模型中已设为 null=True，此默认值OK
     "name_reason": None,
-    "platform": None,
-    "user_id": None,
-    "nickname": None,
-    # "age" : 0,
+    "platform": "unknown",  # 提供非None的默认值
+    "user_id": "unknown",  # 提供非None的默认值
+    "nickname": "Unknown",  # 提供非None的默认值
     "relationship_value": 0,
-    # "saved" : True,
-    # "impression" : None,
-    # "gender" : Unkown,
-    "konw_time": 0,
+    "know_time": 0,  # 修正拼写：konw_time -> know_time
     "msg_interval": 2000,
-    "msg_interval_list": [],
-    "user_cardname": None,  # 添加群名片
-    "user_avatar": None,  # 添加头像信息（例如URL或标识符）
-}  # 个人信息的各项与默认值在此定义，以下处理会自动创建/补全每一项
+    "msg_interval_list": [],  # 将作为 JSON 字符串存储在 Peewee 的 TextField
+    "user_cardname": None,  # 注意：此字段不在 PersonInfo Peewee 模型中
+    "user_avatar": None,  # 注意：此字段不在 PersonInfo Peewee 模型中
+}
 
 
 class PersonInfoManager:
     def __init__(self):
         self.person_name_list = {}
+        # TODO: API-Adapter修改标记
         self.qv_name_llm = LLMRequest(
-            model=global_config.llm_normal,
+            model=global_config.model.normal,
             max_tokens=256,
             request_type="qv_name",
         )
-        if "person_info" not in db.list_collection_names():
-            db.create_collection("person_info")
-            db.person_info.create_index("person_id", unique=True)
+        try:
+            db.connect(reuse_if_open=True)
+            db.create_tables([PersonInfo], safe=True)
+        except Exception as e:
+            logger.error(f"数据库连接或 PersonInfo 表创建失败: {e}")
 
         # 初始化时读取所有person_name
-        cursor = db.person_info.find({"person_name": {"$exists": True}}, {"person_id": 1, "person_name": 1, "_id": 0})
-        for doc in cursor:
-            if doc.get("person_name"):
-                self.person_name_list[doc["person_id"]] = doc["person_name"]
-        logger.debug(f"已加载 {len(self.person_name_list)} 个用户名称")
+        try:
+            for record in PersonInfo.select(PersonInfo.person_id, PersonInfo.person_name).where(
+                PersonInfo.person_name.is_null(False)
+            ):
+                if record.person_name:
+                    self.person_name_list[record.person_id] = record.person_name
+            logger.debug(f"已加载 {len(self.person_name_list)} 个用户名称 (Peewee)")
+        except Exception as e:
+            logger.error(f"从 Peewee 加载 person_name_list 失败: {e}")
 
     @staticmethod
     def get_person_id(platform: str, user_id: int):
         """获取唯一id"""
-        # 如果platform中存在-，就截取-后面的部分
         if "-" in platform:
             platform = platform.split("-")[1]
 
@@ -86,14 +89,26 @@ class PersonInfoManager:
         key = "_".join(components)
         return hashlib.md5(key.encode()).hexdigest()
 
-    def is_person_known(self, platform: str, user_id: int):
+    async def is_person_known(self, platform: str, user_id: int):
         """判断是否认识某人"""
         person_id = self.get_person_id(platform, user_id)
-        document = db.person_info.find_one({"person_id": person_id})
-        if document:
-            return True
-        else:
+
+        def _db_check_known_sync(p_id: str):
+            return PersonInfo.get_or_none(PersonInfo.person_id == p_id) is not None
+
+        try:
+            return await asyncio.to_thread(_db_check_known_sync, person_id)
+        except Exception as e:
+            logger.error(f"检查用户 {person_id} 是否已知时出错 (Peewee): {e}")
             return False
+
+    def get_person_id_by_person_name(self, person_name: str):
+        """根据用户名获取用户ID"""
+        document = db.person_info.find_one({"person_name": person_name})
+        if document:
+            return document["person_id"]
+        else:
+            return ""
 
     @staticmethod
     async def create_person_info(person_id: str, data: dict = None):
@@ -103,73 +118,111 @@ class PersonInfoManager:
             return
 
         _person_info_default = copy.deepcopy(person_info_default)
-        _person_info_default["person_id"] = person_id
+        model_fields = PersonInfo._meta.fields.keys()
+
+        final_data = {"person_id": person_id}
 
         if data:
-            for key in _person_info_default:
-                if key != "person_id" and key in data:
-                    _person_info_default[key] = data[key]
+            for key, value in data.items():
+                if key in model_fields:
+                    final_data[key] = value
 
-        db.person_info.insert_one(_person_info_default)
+        for key, default_value in _person_info_default.items():
+            if key in model_fields and key not in final_data:
+                final_data[key] = default_value
+
+        if "msg_interval_list" in final_data and isinstance(final_data["msg_interval_list"], list):
+            final_data["msg_interval_list"] = json.dumps(final_data["msg_interval_list"])
+        elif "msg_interval_list" not in final_data and "msg_interval_list" in model_fields:
+            final_data["msg_interval_list"] = json.dumps([])
+
+        def _db_create_sync(p_data: dict):
+            try:
+                PersonInfo.create(**p_data)
+                return True
+            except Exception as e:
+                logger.error(f"创建 PersonInfo 记录 {p_data.get('person_id')} 失败 (Peewee): {e}")
+                return False
+
+        await asyncio.to_thread(_db_create_sync, final_data)
 
     async def update_one_field(self, person_id: str, field_name: str, value, data: dict = None):
         """更新某一个字段，会补全"""
-        if field_name not in person_info_default.keys():
-            logger.debug(f"更新'{field_name}'失败，未定义的字段")
+        if field_name not in PersonInfo._meta.fields:
+            if field_name in person_info_default:
+                logger.debug(f"更新'{field_name}'跳过，字段存在于默认配置但不在 PersonInfo Peewee 模型中。")
+                return
+            logger.debug(f"更新'{field_name}'失败，未在 PersonInfo Peewee 模型中定义的字段。")
             return
 
-        document = db.person_info.find_one({"person_id": person_id})
+        def _db_update_sync(p_id: str, f_name: str, val):
+            record = PersonInfo.get_or_none(PersonInfo.person_id == p_id)
+            if record:
+                if f_name == "msg_interval_list" and isinstance(val, list):
+                    setattr(record, f_name, json.dumps(val))
+                else:
+                    setattr(record, f_name, val)
+                record.save()
+                return True, False
+            return False, True
 
-        if document:
-            db.person_info.update_one({"person_id": person_id}, {"$set": {field_name: value}})
-        else:
-            data[field_name] = value
-            logger.debug(f"更新时{person_id}不存在，已新建")
-            await self.create_person_info(person_id, data)
+        found, needs_creation = await asyncio.to_thread(_db_update_sync, person_id, field_name, value)
+
+        if needs_creation:
+            logger.debug(f"更新时 {person_id} 不存在，将新建。")
+            creation_data = data if data is not None else {}
+            creation_data[field_name] = value
+            if "platform" not in creation_data or "user_id" not in creation_data:
+                logger.warning(f"为 {person_id} 创建记录时，platform/user_id 可能缺失。")
+
+            await self.create_person_info(person_id, creation_data)
 
     @staticmethod
     async def has_one_field(person_id: str, field_name: str):
         """判断是否存在某一个字段"""
-        document = db.person_info.find_one({"person_id": person_id}, {field_name: 1})
-        if document:
-            return True
-        else:
+        if field_name not in PersonInfo._meta.fields:
+            logger.debug(f"检查字段'{field_name}'失败，未在 PersonInfo Peewee 模型中定义。")
+            return False
+
+        def _db_has_field_sync(p_id: str, f_name: str):
+            record = PersonInfo.get_or_none(PersonInfo.person_id == p_id)
+            if record:
+                return True
+            return False
+
+        try:
+            return await asyncio.to_thread(_db_has_field_sync, person_id, field_name)
+        except Exception as e:
+            logger.error(f"检查字段 {field_name} for {person_id} 时出错 (Peewee): {e}")
             return False
 
     @staticmethod
     def _extract_json_from_text(text: str) -> dict:
         """从文本中提取JSON数据的高容错方法"""
         try:
-            # 尝试直接解析
             parsed_json = json.loads(text)
-            # 如果解析结果是列表，尝试取第一个元素
             if isinstance(parsed_json, list):
-                if parsed_json:  # 检查列表是否为空
+                if parsed_json:
                     parsed_json = parsed_json[0]
-                else:  # 如果列表为空，重置为 None，走后续逻辑
+                else:
                     parsed_json = None
-            # 确保解析结果是字典
             if isinstance(parsed_json, dict):
                 return parsed_json
 
         except json.JSONDecodeError:
-            # 解析失败，继续尝试其他方法
             pass
         except Exception as e:
             logger.warning(f"尝试直接解析JSON时发生意外错误: {e}")
-            pass  # 继续尝试其他方法
+            pass
 
-        # 如果直接解析失败或结果不是字典
         try:
-            # 尝试找到JSON对象格式的部分
             json_pattern = r"\{[^{}]*\}"
             matches = re.findall(json_pattern, text)
             if matches:
                 parsed_obj = json.loads(matches[0])
-                if isinstance(parsed_obj, dict):  # 确保是字典
+                if isinstance(parsed_obj, dict):
                     return parsed_obj
 
-            # 如果上面都失败了，尝试提取键值对
             nickname_pattern = r'"nickname"[:\s]+"([^"]+)"'
             reason_pattern = r'"reason"[:\s]+"([^"]+)"'
 
@@ -184,7 +237,6 @@ class PersonInfoManager:
         except Exception as e:
             logger.error(f"后备JSON提取失败: {str(e)}")
 
-        # 如果所有方法都失败了，返回默认字典
         logger.warning(f"无法从文本中提取有效的JSON字典: {text}")
         return {"nickname": "", "reason": ""}
 
@@ -199,9 +251,11 @@ class PersonInfoManager:
         old_name = await self.get_value(person_id, "person_name")
         old_reason = await self.get_value(person_id, "name_reason")
 
-        max_retries = 5  # 最大重试次数
+        max_retries = 5
         current_try = 0
-        existing_names = ""
+        existing_names_str = ""
+        current_name_set = set(self.person_name_list.values())
+
         while current_try < max_retries:
             individuality = Individuality.get_instance()
             prompt_personality = individuality.get_prompt(x_person=2, level=1)
@@ -216,45 +270,58 @@ class PersonInfoManager:
                 qv_name_prompt += f"你之前叫他{old_name}，是因为{old_reason}，"
 
             qv_name_prompt += f"\n其他取名的要求是：{request}，不要太浮夸"
-
             qv_name_prompt += (
                 "\n请根据以上用户信息，想想你叫他什么比较好，不要太浮夸，请最好使用用户的qq昵称，可以稍作修改"
             )
-            if existing_names:
-                qv_name_prompt += f"\n请注意，以下名称已被使用，不要使用以下昵称：{existing_names}。\n"
+
+            if existing_names_str:
+                qv_name_prompt += f"\n请注意，以下名称已被你尝试过或已知存在，请避免：{existing_names_str}。\n"
+
+            if len(current_name_set) < 50 and current_name_set:
+                qv_name_prompt += f"已知的其他昵称有: {', '.join(list(current_name_set)[:10])}等。\n"
+
             qv_name_prompt += "请用json给出你的想法，并给出理由，示例如下："
             qv_name_prompt += """{
                 "nickname": "昵称",
                 "reason": "理由"
             }"""
-            # logger.debug(f"取名提示词：{qv_name_prompt}")
             response = await self.qv_name_llm.generate_response(qv_name_prompt)
             logger.trace(f"取名提示词：{qv_name_prompt}\n取名回复：{response}")
             result = self._extract_json_from_text(response[0])
 
-            if not result["nickname"]:
-                logger.error("生成的昵称为空，重试中...")
+            if not result or not result.get("nickname"):
+                logger.error("生成的昵称为空或结果格式不正确，重试中...")
                 current_try += 1
                 continue
 
-            # 检查生成的昵称是否已存在
-            if result["nickname"] not in self.person_name_list.values():
-                # 更新数据库和内存中的列表
-                await self.update_one_field(person_id, "person_name", result["nickname"])
-                # await self.update_one_field(person_id, "nickname", user_nickname)
-                # await self.update_one_field(person_id, "avatar", user_avatar)
-                await self.update_one_field(person_id, "name_reason", result["reason"])
+            generated_nickname = result["nickname"]
 
-                self.person_name_list[person_id] = result["nickname"]
-                # logger.debug(f"用户 {person_id} 的名称已更新为 {result['nickname']}，原因：{result['reason']}")
+            is_duplicate = False
+            if generated_nickname in current_name_set:
+                is_duplicate = True
+            else:
+
+                def _db_check_name_exists_sync(name_to_check):
+                    return PersonInfo.select().where(PersonInfo.person_name == name_to_check).exists()
+
+                if await asyncio.to_thread(_db_check_name_exists_sync, generated_nickname):
+                    is_duplicate = True
+                    current_name_set.add(generated_nickname)
+
+            if not is_duplicate:
+                await self.update_one_field(person_id, "person_name", generated_nickname)
+                await self.update_one_field(person_id, "name_reason", result.get("reason", "未提供理由"))
+
+                self.person_name_list[person_id] = generated_nickname
                 return result
             else:
-                existing_names += f"{result['nickname']}、"
+                if existing_names_str:
+                    existing_names_str += "、"
+                existing_names_str += generated_nickname
+                logger.debug(f"生成的昵称 {generated_nickname} 已存在，重试中...")
+                current_try += 1
 
-            logger.debug(f"生成的昵称 {result['nickname']} 已存在，重试中...")
-            current_try += 1
-
-        logger.error(f"在{max_retries}次尝试后仍未能生成唯一昵称")
+        logger.error(f"在{max_retries}次尝试后仍未能生成唯一昵称 for {person_id}")
         return None
 
     @staticmethod
@@ -264,30 +331,56 @@ class PersonInfoManager:
             logger.debug("删除失败：person_id 不能为空")
             return
 
-        result = db.person_info.delete_one({"person_id": person_id})
-        if result.deleted_count > 0:
-            logger.debug(f"删除成功：person_id={person_id}")
+        def _db_delete_sync(p_id: str):
+            try:
+                query = PersonInfo.delete().where(PersonInfo.person_id == p_id)
+                deleted_count = query.execute()
+                return deleted_count
+            except Exception as e:
+                logger.error(f"删除 PersonInfo {p_id} 失败 (Peewee): {e}")
+                return 0
+
+        deleted_count = await asyncio.to_thread(_db_delete_sync, person_id)
+
+        if deleted_count > 0:
+            logger.debug(f"删除成功：person_id={person_id} (Peewee)")
         else:
-            logger.debug(f"删除失败：未找到 person_id={person_id}")
+            logger.debug(f"删除失败：未找到 person_id={person_id} 或删除未影响行 (Peewee)")
 
     @staticmethod
     async def get_value(person_id: str, field_name: str):
         """获取指定person_id文档的字段值，若不存在该字段，则返回该字段的全局默认值"""
         if not person_id:
             logger.debug("get_value获取失败：person_id不能为空")
+            return person_info_default.get(field_name)
+
+        if field_name not in PersonInfo._meta.fields:
+            if field_name in person_info_default:
+                logger.trace(f"字段'{field_name}'不在Peewee模型中，但存在于默认配置中。返回配置默认值。")
+                return copy.deepcopy(person_info_default[field_name])
+            logger.debug(f"get_value获取失败：字段'{field_name}'未在Peewee模型和默认配置中定义。")
             return None
 
-        if field_name not in person_info_default:
-            logger.debug(f"get_value获取失败：字段'{field_name}'未定义")
+        def _db_get_value_sync(p_id: str, f_name: str):
+            record = PersonInfo.get_or_none(PersonInfo.person_id == p_id)
+            if record:
+                val = getattr(record, f_name)
+                if f_name == "msg_interval_list" and isinstance(val, str):
+                    try:
+                        return json.loads(val)
+                    except json.JSONDecodeError:
+                        logger.warning(f"无法解析 {p_id} 的 msg_interval_list JSON: {val}")
+                        return copy.deepcopy(person_info_default.get(f_name, []))
+                return val
             return None
 
-        document = db.person_info.find_one({"person_id": person_id}, {field_name: 1})
+        value = await asyncio.to_thread(_db_get_value_sync, person_id, field_name)
 
-        if document and field_name in document:
-            return document[field_name]
+        if value is not None:
+            return value
         else:
-            default_value = copy.deepcopy(person_info_default[field_name])
-            logger.trace(f"获取{person_id}的{field_name}失败，已返回默认值{default_value}")
+            default_value = copy.deepcopy(person_info_default.get(field_name))
+            logger.trace(f"获取{person_id}的{field_name}失败或值为None，已返回默认值{default_value} (Peewee)")
             return default_value
 
     @staticmethod
@@ -297,93 +390,84 @@ class PersonInfoManager:
             logger.debug("get_values获取失败：person_id不能为空")
             return {}
 
-        # 检查所有字段是否有效
-        for field in field_names:
-            if field not in person_info_default:
-                logger.debug(f"get_values获取失败：字段'{field}'未定义")
-                return {}
-
-        # 构建查询投影（所有字段都有效才会执行到这里）
-        projection = {field: 1 for field in field_names}
-
-        document = db.person_info.find_one({"person_id": person_id}, projection)
-
         result = {}
-        for field in field_names:
-            result[field] = copy.deepcopy(
-                document.get(field, person_info_default[field]) if document else person_info_default[field]
-            )
+
+        def _db_get_record_sync(p_id: str):
+            return PersonInfo.get_or_none(PersonInfo.person_id == p_id)
+
+        record = await asyncio.to_thread(_db_get_record_sync, person_id)
+
+        for field_name in field_names:
+            if field_name not in PersonInfo._meta.fields:
+                if field_name in person_info_default:
+                    result[field_name] = copy.deepcopy(person_info_default[field_name])
+                    logger.trace(f"字段'{field_name}'不在Peewee模型中，使用默认配置值。")
+                else:
+                    logger.debug(f"get_values查询失败：字段'{field_name}'未在Peewee模型和默认配置中定义。")
+                    result[field_name] = None
+                continue
+
+            if record:
+                value = getattr(record, field_name)
+                if field_name == "msg_interval_list" and isinstance(value, str):
+                    try:
+                        result[field_name] = json.loads(value)
+                    except json.JSONDecodeError:
+                        logger.warning(f"无法解析 {person_id} 的 msg_interval_list JSON: {value}")
+                        result[field_name] = copy.deepcopy(person_info_default.get(field_name, []))
+                elif value is not None:
+                    result[field_name] = value
+                else:
+                    result[field_name] = copy.deepcopy(person_info_default.get(field_name))
+            else:
+                result[field_name] = copy.deepcopy(person_info_default.get(field_name))
 
         return result
 
     @staticmethod
     async def del_all_undefined_field():
-        """删除所有项里的未定义字段"""
-        # 获取所有已定义的字段名
-        defined_fields = set(person_info_default.keys())
-
-        try:
-            # 遍历集合中的所有文档
-            for document in db.person_info.find({}):
-                # 找出文档中未定义的字段
-                undefined_fields = set(document.keys()) - defined_fields - {"_id"}
-
-                if undefined_fields:
-                    # 构建更新操作，使用$unset删除未定义字段
-                    update_result = db.person_info.update_one(
-                        {"_id": document["_id"]}, {"$unset": {field: 1 for field in undefined_fields}}
-                    )
-
-                    if update_result.modified_count > 0:
-                        logger.debug(f"已清理文档 {document['_id']} 的未定义字段: {undefined_fields}")
-
-            return
-
-        except Exception as e:
-            logger.error(f"清理未定义字段时出错: {e}")
-            return
+        """删除所有项里的未定义字段 - 对于Peewee (SQL)，此操作通常不适用，因为模式是固定的。"""
+        logger.info(
+            "del_all_undefined_field: 对于使用Peewee的SQL数据库，此操作通常不适用或不需要，因为表结构是预定义的。"
+        )
+        return
 
     @staticmethod
     async def get_specific_value_list(
         field_name: str,
-        way: Callable[[Any], bool],  # 接受任意类型值
+        way: Callable[[Any], bool],
     ) -> Dict[str, Any]:
         """
         获取满足条件的字段值字典
-
-        Args:
-            field_name: 目标字段名
-            way: 判断函数 (value: Any) -> bool
-
-        Returns:
-            {person_id: value} | {}
-
-        Example:
-            # 查找所有nickname包含"admin"的用户
-            result = manager.specific_value_list(
-                "nickname",
-                lambda x: "admin" in x.lower()
-            )
         """
-        if field_name not in person_info_default:
-            logger.error(f"字段检查失败：'{field_name}'未定义")
+        if field_name not in PersonInfo._meta.fields:
+            logger.error(f"字段检查失败：'{field_name}'未在 PersonInfo Peewee 模型中定义")
             return {}
 
+        def _db_get_specific_sync(f_name: str):
+            found_results = {}
+            try:
+                for record in PersonInfo.select(PersonInfo.person_id, getattr(PersonInfo, f_name)):
+                    value = getattr(record, f_name)
+                    if f_name == "msg_interval_list" and isinstance(value, str):
+                        try:
+                            processed_value = json.loads(value)
+                        except json.JSONDecodeError:
+                            logger.warning(f"跳过记录 {record.person_id}，无法解析 msg_interval_list: {value}")
+                            continue
+                    else:
+                        processed_value = value
+
+                    if way(processed_value):
+                        found_results[record.person_id] = processed_value
+            except Exception as e_query:
+                logger.error(f"数据库查询失败 (Peewee specific_value_list for {f_name}): {str(e_query)}", exc_info=True)
+            return found_results
+
         try:
-            result = {}
-            for doc in db.person_info.find({field_name: {"$exists": True}}, {"person_id": 1, field_name: 1, "_id": 0}):
-                try:
-                    value = doc[field_name]
-                    if way(value):
-                        result[doc["person_id"]] = value
-                except (KeyError, TypeError, ValueError) as e:
-                    logger.debug(f"记录{doc.get('person_id')}处理失败: {str(e)}")
-                    continue
-
-            return result
-
+            return await asyncio.to_thread(_db_get_specific_sync, field_name)
         except Exception as e:
-            logger.error(f"数据库查询失败: {str(e)}", exc_info=True)
+            logger.error(f"执行 get_specific_value_list 线程时出错: {str(e)}", exc_info=True)
             return {}
 
     async def personal_habit_deduction(self):
@@ -391,35 +475,31 @@ class PersonInfoManager:
         try:
             while 1:
                 await asyncio.sleep(600)
-                current_time = datetime.datetime.now()
-                logger.info(f"个人信息推断启动: {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
+                current_time_dt = datetime.datetime.now()
+                logger.info(f"个人信息推断启动: {current_time_dt.strftime('%Y-%m-%d %H:%M:%S')}")
 
-                # "msg_interval"推断
-                msg_interval_map = False
-                msg_interval_lists = await self.get_specific_value_list(
+                msg_interval_map_generated = False
+                msg_interval_lists_map = await self.get_specific_value_list(
                     "msg_interval_list", lambda x: isinstance(x, list) and len(x) >= 100
                 )
-                for person_id, msg_interval_list_ in msg_interval_lists.items():
+
+                for person_id, actual_msg_interval_list in msg_interval_lists_map.items():
                     await asyncio.sleep(0.3)
                     try:
                         time_interval = []
-                        for t1, t2 in zip(msg_interval_list_, msg_interval_list_[1:]):
+                        for t1, t2 in zip(actual_msg_interval_list, actual_msg_interval_list[1:]):
                             delta = t2 - t1
                             if delta > 0:
                                 time_interval.append(delta)
 
                         time_interval = [t for t in time_interval if 200 <= t <= 8000]
-                        # --- 修改后的逻辑 ---
-                        # 数据量检查 (至少需要 30 条有效间隔，并且足够进行头尾截断)
-                        if len(time_interval) >= 30 + 10:  # 至少30条有效+头尾各5条
-                            time_interval.sort()
 
-                            # 画图(log) - 这部分保留
-                            msg_interval_map = True
+                        if len(time_interval) >= 30 + 10:
+                            time_interval.sort()
+                            msg_interval_map_generated = True
                             log_dir = Path("logs/person_info")
                             log_dir.mkdir(parents=True, exist_ok=True)
                             plt.figure(figsize=(10, 6))
-                            # 使用截断前的数据画图，更能反映原始分布
                             time_series_original = pd.Series(time_interval)
                             plt.hist(
                                 time_series_original,
@@ -441,34 +521,29 @@ class PersonInfoManager:
                             img_path = log_dir / f"interval_distribution_{person_id[:8]}.png"
                             plt.savefig(img_path)
                             plt.close()
-                            # 画图结束
 
-                            # 去掉头尾各 5 个数据点
                             trimmed_interval = time_interval[5:-5]
-
-                            # 计算截断后数据的 37% 分位数
-                            if trimmed_interval:  # 确保截断后列表不为空
-                                msg_interval = int(round(np.percentile(trimmed_interval, 37)))
-                                # 更新数据库
-                                await self.update_one_field(person_id, "msg_interval", msg_interval)
-                                logger.trace(f"用户{person_id}的msg_interval通过头尾截断和37分位数更新为{msg_interval}")
+                            if trimmed_interval:
+                                msg_interval_val = int(round(np.percentile(trimmed_interval, 37)))
+                                await self.update_one_field(person_id, "msg_interval", msg_interval_val)
+                                logger.trace(
+                                    f"用户{person_id}的msg_interval通过头尾截断和37分位数更新为{msg_interval_val}"
+                                )
                             else:
                                 logger.trace(f"用户{person_id}截断后数据为空，无法计算msg_interval")
                         else:
                             logger.trace(
                                 f"用户{person_id}有效消息间隔数量 ({len(time_interval)}) 不足进行推断 (需要至少 {30 + 10} 条)"
                             )
-                        # --- 修改结束 ---
-                    except Exception as e:
-                        logger.trace(f"用户{person_id}消息间隔计算失败: {type(e).__name__}: {str(e)}")
+                    except Exception as e_inner:
+                        logger.trace(f"用户{person_id}消息间隔计算失败: {type(e_inner).__name__}: {str(e_inner)}")
                         continue
 
-                # 其他...
-
-                if msg_interval_map:
+                if msg_interval_map_generated:
                     logger.trace("已保存分布图到: logs/person_info")
-                current_time = datetime.datetime.now()
-                logger.trace(f"个人信息推断结束: {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
+
+                current_time_dt_end = datetime.datetime.now()
+                logger.trace(f"个人信息推断结束: {current_time_dt_end.strftime('%Y-%m-%d %H:%M:%S')}")
                 await asyncio.sleep(86400)
 
         except Exception as e:
@@ -481,41 +556,27 @@ class PersonInfoManager:
         """
         根据 platform 和 user_id 获取 person_id。
         如果对应的用户不存在，则使用提供的可选信息创建新用户。
-
-        Args:
-            platform: 平台标识
-            user_id: 用户在该平台上的ID
-            nickname: 用户的昵称 (可选，用于创建新用户)
-            user_cardname: 用户的群名片 (可选，用于创建新用户)
-            user_avatar: 用户的头像信息 (可选，用于创建新用户)
-
-        Returns:
-            对应的 person_id。
         """
         person_id = self.get_person_id(platform, user_id)
 
-        # 检查用户是否已存在
-        # 使用静态方法 get_person_id，因此可以直接调用 db
-        document = db.person_info.find_one({"person_id": person_id})
+        def _db_check_exists_sync(p_id: str):
+            return PersonInfo.get_or_none(PersonInfo.person_id == p_id)
 
-        if document is None:
-            logger.info(f"用户 {platform}:{user_id} (person_id: {person_id}) 不存在，将创建新记录。")
+        record = await asyncio.to_thread(_db_check_exists_sync, person_id)
+
+        if record is None:
+            logger.info(f"用户 {platform}:{user_id} (person_id: {person_id}) 不存在，将创建新记录 (Peewee)。")
             initial_data = {
                 "platform": platform,
-                "user_id": user_id,
+                "user_id": str(user_id),
                 "nickname": nickname,
-                "konw_time": int(datetime.datetime.now().timestamp()),  # 添加初次认识时间
-                # 注意：这里没有添加 user_cardname 和 user_avatar，因为它们不在 person_info_default 中
-                # 如果需要存储它们，需要先在 person_info_default 中定义
+                "know_time": int(datetime.datetime.now().timestamp()),  # 修正拼写：konw_time -> know_time
             }
-            # 过滤掉值为 None 的初始数据
-            initial_data = {k: v for k, v in initial_data.items() if v is not None}
+            model_fields = PersonInfo._meta.fields.keys()
+            filtered_initial_data = {k: v for k, v in initial_data.items() if v is not None and k in model_fields}
 
-            # 注意：create_person_info 是静态方法
-            await PersonInfoManager.create_person_info(person_id, data=initial_data)
-            # 创建后，可以考虑立即为其取名，但这可能会增加延迟
-            # await self.qv_person_name(person_id, nickname, user_cardname, user_avatar)
-            logger.debug(f"已为 {person_id} 创建新记录，初始数据: {initial_data}")
+            await self.create_person_info(person_id, data=filtered_initial_data)
+            logger.debug(f"已为 {person_id} 创建新记录，初始数据 (filtered for model): {filtered_initial_data}")
 
         return person_id
 
@@ -525,35 +586,55 @@ class PersonInfoManager:
             logger.debug("get_person_info_by_name 获取失败：person_name 不能为空")
             return None
 
-        # 优先从内存缓存查找 person_id
         found_person_id = None
-        for pid, name in self.person_name_list.items():
-            if name == person_name:
+        for pid, name_in_cache in self.person_name_list.items():
+            if name_in_cache == person_name:
                 found_person_id = pid
-                break  # 找到第一个匹配就停止
+                break
 
         if not found_person_id:
-            # 如果内存没有，尝试数据库查询（可能内存未及时更新或启动时未加载）
-            document = db.person_info.find_one({"person_name": person_name})
-            if document:
-                found_person_id = document.get("person_id")
-            else:
-                logger.debug(f"数据库中也未找到名为 '{person_name}' 的用户")
-                return None  # 数据库也找不到
 
-        # 根据找到的 person_id 获取所需信息
-        if found_person_id:
-            required_fields = ["person_id", "platform", "user_id", "nickname", "user_cardname", "user_avatar"]
-            person_data = await self.get_values(found_person_id, required_fields)
-            if person_data:  # 确保 get_values 成功返回
-                return person_data
+            def _db_find_by_name_sync(p_name_to_find: str):
+                return PersonInfo.get_or_none(PersonInfo.person_name == p_name_to_find)
+
+            record = await asyncio.to_thread(_db_find_by_name_sync, person_name)
+            if record:
+                found_person_id = record.person_id
+                if (
+                    found_person_id not in self.person_name_list
+                    or self.person_name_list[found_person_id] != person_name
+                ):
+                    self.person_name_list[found_person_id] = person_name
             else:
-                logger.warning(f"找到了 person_id '{found_person_id}' 但获取详细信息失败")
+                logger.debug(f"数据库中也未找到名为 '{person_name}' 的用户 (Peewee)")
                 return None
-        else:
-            # 这理论上不应该发生，因为上面已经处理了找不到的情况
-            logger.error(f"逻辑错误：未能为 '{person_name}' 确定 person_id")
-            return None
+
+        if found_person_id:
+            required_fields = [
+                "person_id",
+                "platform",
+                "user_id",
+                "nickname",
+                "user_cardname",
+                "user_avatar",
+                "person_name",
+                "name_reason",
+            ]
+            valid_fields_to_get = [
+                f for f in required_fields if f in PersonInfo._meta.fields or f in person_info_default
+            ]
+
+            person_data = await self.get_values(found_person_id, valid_fields_to_get)
+
+            if person_data:
+                final_result = {key: person_data.get(key) for key in required_fields}
+                return final_result
+            else:
+                logger.warning(f"找到了 person_id '{found_person_id}' 但 get_values 返回空 (Peewee)")
+                return None
+
+        logger.error(f"逻辑错误：未能为 '{person_name}' 确定 person_id (Peewee)")
+        return None
 
 
 person_info_manager = PersonInfoManager()

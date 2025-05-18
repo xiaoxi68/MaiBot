@@ -276,6 +276,40 @@ CHAT_STYLE_CONFIG = {
     },
 }
 
+# Topic日志样式配置
+NORMAL_CHAT_STYLE_CONFIG = {
+    "advanced": {
+        "console_format": (
+            "<white>{time:YYYY-MM-DD HH:mm:ss}</white> | "
+            "<level>{level: <8}</level> | "
+            "<green>一般水群</green> | "
+            "<level>{message}</level>"
+        ),
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 一般水群 | {message}",
+    },
+    "simple": {
+        "console_format": "<level>{time:HH:mm:ss}</level> | <green>一般水群</green> | <green>{message}</green>",  # noqa: E501
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 一般水群 | {message}",
+    },
+}
+
+# Topic日志样式配置
+FOCUS_CHAT_STYLE_CONFIG = {
+    "advanced": {
+        "console_format": (
+            "<white>{time:YYYY-MM-DD HH:mm:ss}</white> | "
+            "<level>{level: <8}</level> | "
+            "<green>专注水群</green> | "
+            "<level>{message}</level>"
+        ),
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 专注水群 | {message}",
+    },
+    "simple": {
+        "console_format": "<level>{time:HH:mm:ss}</level> | <green>专注水群</green> | <green>{message}</green>",  # noqa: E501
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 专注水群 | {message}",
+    },
+}
+
 REMOTE_STYLE_CONFIG = {
     "advanced": {
         "console_format": (
@@ -629,22 +663,22 @@ PROCESSOR_STYLE_CONFIG = {
 
 PLANNER_STYLE_CONFIG = {
     "advanced": {
-        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #36DEFF>规划器</fg #36DEFF> | <fg #36DEFF>{message}</fg #36DEFF>",
+        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #4DCDFF>规划器</fg #4DCDFF> | <fg #4DCDFF>{message}</fg #4DCDFF>",
         "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 规划器 | {message}",
     },
     "simple": {
-        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #36DEFF>规划器</fg #36DEFF> | <fg #36DEFF>{message}</fg #36DEFF>",
+        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #4DCDFF>规划器</fg #4DCDFF> | <fg #4DCDFF>{message}</fg #4DCDFF>",
         "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 规划器 | {message}",
     },
 }
 
 ACTION_TAKEN_STYLE_CONFIG = {
     "advanced": {
-        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #22DAFF>动作</fg #22DAFF> | <fg #22DAFF>{message}</fg #22DAFF>",
+        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #FFA01F>动作</fg #FFA01F> | <fg #FFA01F>{message}</fg #FFA01F>",
         "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 动作 | {message}",
     },
     "simple": {
-        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #22DAFF>动作</fg #22DAFF> | <fg #22DAFF>{message}</fg #22DAFF>",
+        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #FFA01F>动作</fg #FFA01F> | <fg #FFA01F>{message}</fg #FFA01F>",
         "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 动作 | {message}",
     },
 }
@@ -935,6 +969,8 @@ MAIM_MESSAGE_STYLE_CONFIG = (
 INTEREST_CHAT_STYLE_CONFIG = (
     INTEREST_CHAT_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else INTEREST_CHAT_STYLE_CONFIG["advanced"]
 )
+NORMAL_CHAT_STYLE_CONFIG = NORMAL_CHAT_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else NORMAL_CHAT_STYLE_CONFIG["advanced"]
+FOCUS_CHAT_STYLE_CONFIG = FOCUS_CHAT_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else FOCUS_CHAT_STYLE_CONFIG["advanced"]
 
 
 def is_registered_module(record: dict) -> bool:

@@ -6,14 +6,12 @@ from src.chat.focus_chat.planners.actions.base_action import BaseAction, registe
 from typing import Tuple, List, Callable, Coroutine
 from src.chat.heart_flow.observation.observation import Observation
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
-from src.chat.focus_chat.heartFC_Cycleinfo import CycleDetail
 from src.chat.focus_chat.hfc_utils import parse_thinking_id_to_timestamp
 
 logger = get_logger("action_taken")
 
 # 常量定义
 WAITING_TIME_THRESHOLD = 300  # 等待新消息时间阈值，单位秒
-CONSECUTIVE_NO_REPLY_THRESHOLD = 3  # 连续不回复的阈值
 
 
 @register_action
@@ -29,7 +27,7 @@ class NoReplyAction(BaseAction):
     action_require = [
         "话题无关/无聊/不感兴趣/不懂",
         "最后一条消息是你自己发的且无人回应你",
-        "你发送了太多消息，且无人回复"
+        "你发送了太多消息，且无人回复",
     ]
     default = True
 
@@ -40,13 +38,9 @@ class NoReplyAction(BaseAction):
         cycle_timers: dict,
         thinking_id: str,
         observations: List[Observation],
-        on_consecutive_no_reply_callback: Callable[[], Coroutine[None, None, None]],
-        current_cycle: CycleDetail,
         log_prefix: str,
-        total_no_reply_count: int = 0,
-        total_waiting_time: float = 0.0,
         shutting_down: bool = False,
-        **kwargs
+        **kwargs,
     ):
         """初始化不回复动作处理器
 
@@ -57,20 +51,12 @@ class NoReplyAction(BaseAction):
             cycle_timers: 计时器字典
             thinking_id: 思考ID
             observations: 观察列表
-            on_consecutive_no_reply_callback: 连续不回复达到阈值时调用的回调函数
-            current_cycle: 当前循环信息
             log_prefix: 日志前缀
-            total_no_reply_count: 连续不回复计数
-            total_waiting_time: 累计等待时间
             shutting_down: 是否正在关闭
         """
         super().__init__(action_data, reasoning, cycle_timers, thinking_id)
         self.observations = observations
-        self.on_consecutive_no_reply_callback = on_consecutive_no_reply_callback
-        self._current_cycle = current_cycle
         self.log_prefix = log_prefix
-        self.total_no_reply_count = total_no_reply_count
-        self.total_waiting_time = total_waiting_time
         self._shutting_down = shutting_down
 
     async def handle_action(self) -> Tuple[bool, str]:
@@ -93,37 +79,6 @@ class NoReplyAction(BaseAction):
             with Timer("等待新消息", self.cycle_timers):
                 # 等待新消息、超时或关闭信号，并获取结果
                 await self._wait_for_new_message(observation, self.thinking_id, self.log_prefix)
-            # 从计时器获取实际等待时间
-            current_waiting = self.cycle_timers.get("等待新消息", 0.0)
-
-            if not self._shutting_down:
-                self.total_no_reply_count += 1
-                self.total_waiting_time += current_waiting  # 累加等待时间
-                logger.debug(
-                    f"{self.log_prefix} 连续不回复计数增加: {self.total_no_reply_count}/{CONSECUTIVE_NO_REPLY_THRESHOLD}, "
-                    f"本次等待: {current_waiting:.2f}秒, 累计等待: {self.total_waiting_time:.2f}秒"
-                )
-
-                # 检查是否同时达到次数和时间阈值
-                time_threshold = 0.66 * WAITING_TIME_THRESHOLD * CONSECUTIVE_NO_REPLY_THRESHOLD
-                if (
-                    self.total_no_reply_count >= CONSECUTIVE_NO_REPLY_THRESHOLD
-                    and self.total_waiting_time >= time_threshold
-                ):
-                    logger.info(
-                        f"{self.log_prefix} 连续不回复达到阈值 ({self.total_no_reply_count}次) "
-                        f"且累计等待时间达到 {self.total_waiting_time:.2f}秒 (阈值 {time_threshold}秒)，"
-                        f"调用回调请求状态转换"
-                    )
-                    # 调用回调。注意：这里不重置计数器和时间，依赖回调函数成功改变状态来隐式重置上下文。
-                    await self.on_consecutive_no_reply_callback()
-                elif self.total_no_reply_count >= CONSECUTIVE_NO_REPLY_THRESHOLD:
-                    # 仅次数达到阈值，但时间未达到
-                    logger.debug(
-                        f"{self.log_prefix} 连续不回复次数达到阈值 ({self.total_no_reply_count}次) "
-                        f"但累计等待时间 {self.total_waiting_time:.2f}秒 未达到时间阈值 ({time_threshold}秒)，暂不调用回调"
-                    )
-                # else: 次数和时间都未达到阈值，不做处理
 
             return True, ""  # 不回复动作没有回复文本
 

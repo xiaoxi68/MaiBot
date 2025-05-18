@@ -12,7 +12,8 @@ import base64
 from PIL import Image
 import io
 import os
-from ...common.database import db
+from src.common.database.database import db  # 确保 db 被导入用于 create_tables
+from src.common.database.database_model import LLMUsage  # 导入 LLMUsage 模型
 from ...config.config import global_config
 from rich.traceback import install
 
@@ -85,8 +86,6 @@ async def _safely_record(request_content: Dict[str, Any], payload: Dict[str, Any
                     f"data:image/{image_format.lower() if image_format else 'jpeg'};base64,"
                     f"{image_base64[:10]}...{image_base64[-10:]}"
                 )
-            # if isinstance(content, str) and len(content) > 100:
-            #     payload["messages"][0]["content"] = content[:100]
     return payload
 
 
@@ -111,8 +110,8 @@ class LLMRequest:
     def __init__(self, model: dict, **kwargs):
         # 将大写的配置键转换为小写并从config中获取实际值
         try:
-            self.api_key = os.environ[model["key"]]
-            self.base_url = os.environ[model["base_url"]]
+            self.api_key = os.environ[f"{model['provider']}_KEY"]
+            self.base_url = os.environ[f"{model['provider']}_BASE_URL"]
         except AttributeError as e:
             logger.error(f"原始 model dict 信息：{model}")
             logger.error(f"配置错误：找不到对应的配置项 - {str(e)}")
@@ -134,13 +133,11 @@ class LLMRequest:
     def _init_database():
         """初始化数据库集合"""
         try:
-            # 创建llm_usage集合的索引
-            db.llm_usage.create_index([("timestamp", 1)])
-            db.llm_usage.create_index([("model_name", 1)])
-            db.llm_usage.create_index([("user_id", 1)])
-            db.llm_usage.create_index([("request_type", 1)])
+            # 使用 Peewee 创建表，safe=True 表示如果表已存在则不会抛出错误
+            db.create_tables([LLMUsage], safe=True)
+            logger.debug("LLMUsage 表已初始化/确保存在。")
         except Exception as e:
-            logger.error(f"创建数据库索引失败: {str(e)}")
+            logger.error(f"创建 LLMUsage 表失败: {str(e)}")
 
     def _record_usage(
         self,
@@ -165,19 +162,19 @@ class LLMRequest:
             request_type = self.request_type
 
         try:
-            usage_data = {
-                "model_name": self.model_name,
-                "user_id": user_id,
-                "request_type": request_type,
-                "endpoint": endpoint,
-                "prompt_tokens": prompt_tokens,
-                "completion_tokens": completion_tokens,
-                "total_tokens": total_tokens,
-                "cost": self._calculate_cost(prompt_tokens, completion_tokens),
-                "status": "success",
-                "timestamp": datetime.now(),
-            }
-            db.llm_usage.insert_one(usage_data)
+            # 使用 Peewee 模型创建记录
+            LLMUsage.create(
+                model_name=self.model_name,
+                user_id=user_id,
+                request_type=request_type,
+                endpoint=endpoint,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                total_tokens=total_tokens,
+                cost=self._calculate_cost(prompt_tokens, completion_tokens),
+                status="success",
+                timestamp=datetime.now(),  # Peewee 会处理 DateTimeField
+            )
             logger.trace(
                 f"Token使用情况 - 模型: {self.model_name}, "
                 f"用户: {user_id}, 类型: {request_type}, "
@@ -500,11 +497,11 @@ class LLMRequest:
                 logger.warning(f"检测到403错误，模型从 {old_model_name} 降级为 {self.model_name}")
 
                 # 对全局配置进行更新
-                if global_config.llm_normal.get("name") == old_model_name:
-                    global_config.llm_normal["name"] = self.model_name
+                if global_config.model.normal.get("name") == old_model_name:
+                    global_config.model.normal["name"] = self.model_name
                     logger.warning(f"将全局配置中的 llm_normal 模型临时降级至{self.model_name}")
-                if global_config.llm_reasoning.get("name") == old_model_name:
-                    global_config.llm_reasoning["name"] = self.model_name
+                if global_config.model.reasoning.get("name") == old_model_name:
+                    global_config.model.reasoning["name"] = self.model_name
                     logger.warning(f"将全局配置中的 llm_reasoning 模型临时降级至{self.model_name}")
 
                 if payload and "model" in payload:
@@ -636,7 +633,7 @@ class LLMRequest:
             **params_copy,
         }
         if "max_tokens" not in payload and "max_completion_tokens" not in payload:
-            payload["max_tokens"] = global_config.model_max_output_length
+            payload["max_tokens"] = global_config.model.model_max_output_length
         # 如果 payload 中依然存在 max_tokens 且需要转换，在这里进行再次检查
         if self.model_name.lower() in self.MODELS_NEEDING_TRANSFORMATION and "max_tokens" in payload:
             payload["max_completion_tokens"] = payload.pop("max_tokens")

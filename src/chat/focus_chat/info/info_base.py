@@ -17,6 +17,7 @@ class InfoBase:
 
     type: str = "base"
     data: Dict[str, Any] = field(default_factory=dict)
+    processed_info: str = ""
 
     def get_type(self) -> str:
         """获取信息类型
@@ -58,3 +59,11 @@ class InfoBase:
         if isinstance(value, list):
             return value
         return []
+
+    def get_processed_info(self) -> str:
+        """获取处理后的信息
+
+        Returns:
+            str: 处理后的信息字符串
+        """
+        return self.processed_info

@@ -13,8 +13,10 @@ from src.manager.mood_manager import mood_manager
 from ..message_receive.message import MessageRecv
 from ..models.utils_model import LLMRequest
 from .typo_generator import ChineseTypoGenerator
-from ...common.database import db
+from ...common.database.database import db
 from ...config.config import global_config
+from ...common.database.database_model import Messages
+from ...common.message_repository import find_messages, count_messages
 
 logger = get_module_logger("chat_utils")
 
@@ -43,8 +45,8 @@ def db_message_to_str(message_dict: dict) -> str:
 
 def is_mentioned_bot_in_message(message: MessageRecv) -> tuple[bool, float]:
     """检查消息是否提到了机器人"""
-    keywords = [global_config.BOT_NICKNAME]
-    nicknames = global_config.BOT_ALIAS_NAMES
+    keywords = [global_config.bot.nickname]
+    nicknames = global_config.bot.alias_names
     reply_probability = 0.0
     is_at = False
     is_mentioned = False
@@ -64,18 +66,18 @@ def is_mentioned_bot_in_message(message: MessageRecv) -> tuple[bool, float]:
             )
 
     # 判断是否被@
-    if re.search(f"@[\s\S]*?（id:{global_config.BOT_QQ}）", message.processed_plain_text):
+    if re.search(f"@[\s\S]*?（id:{global_config.bot.qq_account}）", message.processed_plain_text):
         is_at = True
         is_mentioned = True
 
-    if is_at and global_config.at_bot_inevitable_reply:
+    if is_at and global_config.normal_chat.at_bot_inevitable_reply:
         reply_probability = 1.0
         logger.info("被@，回复概率设置为100%")
     else:
         if not is_mentioned:
             # 判断是否被回复
             if re.match(
-                f"\[回复 [\s\S]*?\({str(global_config.BOT_QQ)}\)：[\s\S]*?]，说：", message.processed_plain_text
+                f"\[回复 [\s\S]*?\({str(global_config.bot.qq_account)}\)：[\s\S]*?]，说：", message.processed_plain_text
             ):
                 is_mentioned = True
             else:
@@ -88,7 +90,7 @@ def is_mentioned_bot_in_message(message: MessageRecv) -> tuple[bool, float]:
                 for nickname in nicknames:
                     if nickname in message_content:
                         is_mentioned = True
-        if is_mentioned and global_config.mentioned_bot_inevitable_reply:
+        if is_mentioned and global_config.normal_chat.mentioned_bot_inevitable_reply:
             reply_probability = 1.0
             logger.info("被提及，回复概率设置为100%")
     return is_mentioned, reply_probability
@@ -96,7 +98,8 @@ def is_mentioned_bot_in_message(message: MessageRecv) -> tuple[bool, float]:
 
 async def get_embedding(text, request_type="embedding"):
     """获取文本的embedding向量"""
-    llm = LLMRequest(model=global_config.embedding, request_type=request_type)
+    # TODO: API-Adapter修改标记
+    llm = LLMRequest(model=global_config.model.embedding, request_type=request_type)
     # return llm.get_embedding_sync(text)
     try:
         embedding = await llm.get_embedding(text)
@@ -107,20 +110,12 @@ async def get_embedding(text, request_type="embedding"):
 
 
 def get_recent_group_detailed_plain_text(chat_stream_id: str, limit: int = 12, combine=False):
-    recent_messages = list(
-        db.messages.find(
-            {"chat_id": chat_stream_id},
-            {
-                "time": 1,  # 返回时间字段
-                "chat_id": 1,
-                "chat_info": 1,
-                "user_info": 1,
-                "message_id": 1,  # 返回消息ID字段
-                "detailed_plain_text": 1,  # 返回处理后的文本字段
-            },
-        )
-        .sort("time", -1)
-        .limit(limit)
+    filter_query = {"chat_id": chat_stream_id}
+    sort_order = [("time", -1)]
+    recent_messages = find_messages(
+        message_filter=filter_query,
+        sort=sort_order,
+        limit=limit
     )
 
     if not recent_messages:
@@ -142,17 +137,14 @@ def get_recent_group_detailed_plain_text(chat_stream_id: str, limit: int = 12, c
         return message_detailed_plain_text_list
 
 
-def get_recent_group_speaker(chat_stream_id: int, sender, limit: int = 12) -> list:
+def get_recent_group_speaker(chat_stream_id: str, sender, limit: int = 12) -> list:
     # 获取当前群聊记录内发言的人
-    recent_messages = list(
-        db.messages.find(
-            {"chat_id": chat_stream_id},
-            {
-                "user_info": 1,
-            },
-        )
-        .sort("time", -1)
-        .limit(limit)
+    filter_query = {"chat_id": chat_stream_id}
+    sort_order = [("time", -1)]
+    recent_messages = find_messages(
+        message_filter=filter_query,
+        sort=sort_order,
+        limit=limit
     )
 
     if not recent_messages:
@@ -160,10 +152,15 @@ def get_recent_group_speaker(chat_stream_id: int, sender, limit: int = 12) -> li
 
     who_chat_in_group = []
     for msg_db_data in recent_messages:
-        user_info = UserInfo.from_dict(msg_db_data["user_info"])
+        user_info = UserInfo.from_dict({
+            "platform": msg_db_data["user_platform"],
+            "user_id": msg_db_data["user_id"],
+            "user_nickname": msg_db_data["user_nickname"],
+            "user_cardname": msg_db_data.get("user_cardname", "")
+        })
         if (
             (user_info.platform, user_info.user_id) != sender
-            and user_info.user_id != global_config.BOT_QQ
+            and user_info.user_id != global_config.bot.qq_account
             and (user_info.platform, user_info.user_id, user_info.user_nickname) not in who_chat_in_group
             and len(who_chat_in_group) < 5
         ):  # 排除重复，排除消息发送者，排除bot，限制加载的关系数目
@@ -321,7 +318,7 @@ def random_remove_punctuation(text: str) -> str:
 
 def process_llm_response(text: str) -> list[str]:
     # 先保护颜文字
-    if global_config.enable_kaomoji_protection:
+    if global_config.response_splitter.enable_kaomoji_protection:
         protected_text, kaomoji_mapping = protect_kaomoji(text)
         logger.trace(f"保护颜文字后的文本: {protected_text}")
     else:
@@ -340,8 +337,8 @@ def process_llm_response(text: str) -> list[str]:
     logger.debug(f"{text}去除括号处理后的文本: {cleaned_text}")
 
     # 对清理后的文本进行进一步处理
-    max_length = global_config.response_max_length * 2
-    max_sentence_num = global_config.response_max_sentence_num
+    max_length = global_config.response_splitter.max_length * 2
+    max_sentence_num = global_config.response_splitter.max_sentence_num
     # 如果基本上是中文，则进行长度过滤
     if get_western_ratio(cleaned_text) < 0.1:
         if len(cleaned_text) > max_length:
@@ -349,20 +346,20 @@ def process_llm_response(text: str) -> list[str]:
             return ["懒得说"]
 
     typo_generator = ChineseTypoGenerator(
-        error_rate=global_config.chinese_typo_error_rate,
-        min_freq=global_config.chinese_typo_min_freq,
-        tone_error_rate=global_config.chinese_typo_tone_error_rate,
-        word_replace_rate=global_config.chinese_typo_word_replace_rate,
+        error_rate=global_config.chinese_typo.error_rate,
+        min_freq=global_config.chinese_typo.min_freq,
+        tone_error_rate=global_config.chinese_typo.tone_error_rate,
+        word_replace_rate=global_config.chinese_typo.word_replace_rate,
     )
 
-    if global_config.enable_response_splitter:
+    if global_config.response_splitter.enable:
         split_sentences = split_into_sentences_w_remove_punctuation(cleaned_text)
     else:
         split_sentences = [cleaned_text]
 
     sentences = []
     for sentence in split_sentences:
-        if global_config.chinese_typo_enable:
+        if global_config.chinese_typo.enable:
             typoed_text, typo_corrections = typo_generator.create_typo_sentence(sentence)
             sentences.append(typoed_text)
             if typo_corrections:
@@ -372,14 +369,14 @@ def process_llm_response(text: str) -> list[str]:
 
     if len(sentences) > max_sentence_num:
         logger.warning(f"分割后消息数量过多 ({len(sentences)} 条)，返回默认回复")
-        return [f"{global_config.BOT_NICKNAME}不知道哦"]
+        return [f"{global_config.bot.nickname}不知道哦"]
 
     # if extracted_contents:
     #     for content in extracted_contents:
     #         sentences.append(content)
 
     # 在所有句子处理完毕后，对包含占位符的列表进行恢复
-    if global_config.enable_kaomoji_protection:
+    if global_config.response_splitter.enable_kaomoji_protection:
         sentences = recover_kaomoji(sentences, kaomoji_mapping)
 
     return sentences
@@ -580,26 +577,23 @@ def count_messages_between(start_time: float, end_time: float, stream_id: str) -
         logger.error("stream_id 不能为空")
         return 0, 0
 
-    # 直接查询时间范围内的消息
-    # time > start_time AND time <= end_time
-    query = {"chat_id": stream_id, "time": {"$gt": start_time, "$lte": end_time}}
+    # 使用message_repository中的count_messages和find_messages函数
+
+
+    # 构建查询条件
+    filter_query = {"chat_id": stream_id, "time": {"$gt": start_time, "$lte": end_time}}
 
     try:
-        # 执行查询
-        messages_cursor = db.messages.find(query)
+        # 先获取消息数量
+        count = count_messages(filter_query)
+        
+        # 获取消息内容计算总长度
+        messages = find_messages(message_filter=filter_query)
+        total_length = sum(len(msg.get("processed_plain_text", "")) for msg in messages)
 
-        # 遍历结果计算数量和长度
-        for msg in messages_cursor:
-            count += 1
-            total_length += len(msg.get("processed_plain_text", ""))
-
-        # logger.debug(f"查询范围 ({start_time}, {end_time}] 内找到 {count} 条消息，总长度 {total_length}")
         return count, total_length
 
-    except PyMongoError as e:
-        logger.error(f"查询 stream_id={stream_id} 在 ({start_time}, {end_time}] 范围内的消息时出错: {e}")
-        return 0, 0
-    except Exception as e:  # 保留一个通用异常捕获以防万一
+    except Exception as e:
         logger.error(f"计算消息数量时发生意外错误: {e}")
         return 0, 0
 

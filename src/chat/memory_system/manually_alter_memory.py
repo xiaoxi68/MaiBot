@@ -34,7 +34,7 @@ root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 sys.path.append(root_path)
 
 from src.common.logger import get_module_logger  # noqa E402
-from src.common.database import db  # noqa E402
+from common.database.database import db  # noqa E402
 
 logger = get_module_logger("mem_alter")
 console = Console()

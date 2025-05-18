@@ -174,6 +174,16 @@ async def _build_readable_messages_internal(
 
     # 1 & 2: 获取发送者信息并提取消息组件
     for msg in messages:
+        # 检查并修复缺少的user_info字段
+        if "user_info" not in msg:
+            # 创建user_info字段
+            msg["user_info"] = {
+                "platform": msg.get("user_platform", ""),
+                "user_id": msg.get("user_id", ""),
+                "user_nickname": msg.get("user_nickname", ""),
+                "user_cardname": msg.get("user_cardname", ""),
+            }
+
         user_info = msg.get("user_info", {})
         platform = user_info.get("platform")
         user_id = user_info.get("user_id")
@@ -190,8 +200,8 @@ async def _build_readable_messages_internal(
 
         person_id = person_info_manager.get_person_id(platform, user_id)
         # 根据 replace_bot_name 参数决定是否替换机器人名称
-        if replace_bot_name and user_id == global_config.BOT_QQ:
-            person_name = f"{global_config.BOT_NICKNAME}(你)"
+        if replace_bot_name and user_id == global_config.bot.qq_account:
+            person_name = f"{global_config.bot.nickname}(你)"
         else:
             person_name = await person_info_manager.get_value(person_id, "person_name")
 
@@ -427,7 +437,7 @@ async def build_anonymous_messages(messages: List[Dict[str, Any]]) -> str:
     output_lines = []
 
     def get_anon_name(platform, user_id):
-        if user_id == global_config.BOT_QQ:
+        if user_id == global_config.bot.qq_account:
             return "SELF"
         person_id = person_info_manager.get_person_id(platform, user_id)
         if person_id not in person_map:
@@ -451,10 +461,10 @@ async def build_anonymous_messages(messages: List[Dict[str, Any]]) -> str:
         # 处理 回复<aaa:bbb>
         reply_pattern = r"回复<([^:<>]+):([^:<>]+)>"
 
-        def reply_replacer(match):
+        def reply_replacer(match, platform=platform):
             # aaa = match.group(1)
             bbb = match.group(2)
-            anon_reply = get_anon_name(platform, bbb)
+            anon_reply = get_anon_name(platform, bbb)  # noqa
             return f"回复 {anon_reply}"
 
         content = re.sub(reply_pattern, reply_replacer, content, count=1)
@@ -462,10 +472,10 @@ async def build_anonymous_messages(messages: List[Dict[str, Any]]) -> str:
         # 处理 @<aaa:bbb>
         at_pattern = r"@<([^:<>]+):([^:<>]+)>"
 
-        def at_replacer(match):
+        def at_replacer(match, platform=platform):
             # aaa = match.group(1)
             bbb = match.group(2)
-            anon_at = get_anon_name(platform, bbb)
+            anon_at = get_anon_name(platform, bbb)  # noqa
             return f"@{anon_at}"
 
         content = re.sub(at_pattern, at_replacer, content)
@@ -501,7 +511,7 @@ async def get_person_id_list(messages: List[Dict[str, Any]]) -> List[str]:
         user_id = user_info.get("user_id")
 
         # 检查必要信息是否存在 且 不是机器人自己
-        if not all([platform, user_id]) or user_id == global_config.BOT_QQ:
+        if not all([platform, user_id]) or user_id == global_config.bot.qq_account:
             continue
 
         person_id = person_info_manager.get_person_id(platform, user_id)

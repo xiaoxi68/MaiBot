@@ -10,7 +10,7 @@ from src.experimental.PFC.chat_states import (
     create_new_message_notification,
     create_cold_chat_notification,
 )
-from src.experimental.PFC.message_storage import MongoDBMessageStorage
+from src.experimental.PFC.message_storage import PeeweeMessageStorage
 from rich.traceback import install
 
 install(extra_lines=3)
@@ -53,7 +53,7 @@ class ChatObserver:
 
         self.stream_id = stream_id
         self.private_name = private_name
-        self.message_storage = MongoDBMessageStorage()
+        self.message_storage = PeeweeMessageStorage()
 
         # self.last_user_speak_time: Optional[float] = None  # 对方上次发言时间
         # self.last_bot_speak_time: Optional[float] = None  # 机器人上次发言时间
@@ -323,7 +323,7 @@ class ChatObserver:
         for msg in messages:
             try:
                 user_info = UserInfo.from_dict(msg.get("user_info", {}))
-                if user_info.user_id == global_config.BOT_QQ:
+                if user_info.user_id == global_config.bot.qq_account:
                     self.update_bot_speak_time(msg["time"])
                 else:
                     self.update_user_speak_time(msg["time"])

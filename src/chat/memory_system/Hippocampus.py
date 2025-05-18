@@ -4,13 +4,14 @@ import math
 import random
 import time
 import re
+import json
 from itertools import combinations
 
 import jieba
 import networkx as nx
 import numpy as np
 from collections import Counter
-from ...common.database import db
+from ...common.database.database import memory_db as db
 from ...chat.models.utils_model import LLMRequest
 from src.common.logger_manager import get_logger
 from src.chat.memory_system.sample_distribution import MemoryBuildScheduler  # 分布生成器
@@ -19,8 +20,10 @@ from ..utils.chat_message_builder import (
     build_readable_messages,
 )  # 导入 build_readable_messages
 from ..utils.utils import translate_timestamp_to_human_readable
-from .memory_config import MemoryConfig
 from rich.traceback import install
+
+from ...config.config import global_config
+from src.common.database.database_model import Messages, GraphNodes, GraphEdges  # Peewee Models导入
 
 install(extra_lines=3)
 
@@ -192,21 +195,19 @@ class Hippocampus:
     def __init__(self):
         self.memory_graph = MemoryGraph()
         self.llm_topic_judge = None
-        self.llm_summary = None
+        self.model_summary = None
         self.entorhinal_cortex = None
         self.parahippocampal_gyrus = None
-        self.config = None
 
-    def initialize(self, global_config):
-        # 使用导入的 MemoryConfig dataclass 和其 from_global_config 方法
-        self.config = MemoryConfig.from_global_config(global_config)
+    def initialize(self):
         # 初始化子组件
         self.entorhinal_cortex = EntorhinalCortex(self)
         self.parahippocampal_gyrus = ParahippocampalGyrus(self)
         # 从数据库加载记忆图
         self.entorhinal_cortex.sync_memory_from_db()
-        self.llm_topic_judge = LLMRequest(self.config.llm_topic_judge, request_type="memory")
-        self.llm_summary = LLMRequest(self.config.llm_summary, request_type="memory")
+        # TODO: API-Adapter修改标记
+        self.llm_topic_judge = LLMRequest(global_config.model.topic_judge, request_type="memory")
+        self.model_summary = LLMRequest(global_config.model.summary, request_type="memory")
 
     def get_all_node_names(self) -> list:
         """获取记忆图中所有节点的名字列表"""
@@ -792,7 +793,6 @@ class EntorhinalCortex:
     def __init__(self, hippocampus: Hippocampus):
         self.hippocampus = hippocampus
         self.memory_graph = hippocampus.memory_graph
-        self.config = hippocampus.config
 
     def get_memory_sample(self):
         """从数据库获取记忆样本"""
@@ -801,13 +801,13 @@ class EntorhinalCortex:
 
         # 创建双峰分布的记忆调度器
         sample_scheduler = MemoryBuildScheduler(
-            n_hours1=self.config.memory_build_distribution[0],
-            std_hours1=self.config.memory_build_distribution[1],
-            weight1=self.config.memory_build_distribution[2],
-            n_hours2=self.config.memory_build_distribution[3],
-            std_hours2=self.config.memory_build_distribution[4],
-            weight2=self.config.memory_build_distribution[5],
-            total_samples=self.config.build_memory_sample_num,
+            n_hours1=global_config.memory.memory_build_distribution[0],
+            std_hours1=global_config.memory.memory_build_distribution[1],
+            weight1=global_config.memory.memory_build_distribution[2],
+            n_hours2=global_config.memory.memory_build_distribution[3],
+            std_hours2=global_config.memory.memory_build_distribution[4],
+            weight2=global_config.memory.memory_build_distribution[5],
+            total_samples=global_config.memory.memory_build_sample_num,
         )
 
         timestamps = sample_scheduler.get_timestamp_array()
@@ -818,7 +818,7 @@ class EntorhinalCortex:
         for timestamp in timestamps:
             # 调用修改后的 random_get_msg_snippet
             messages = self.random_get_msg_snippet(
-                timestamp, self.config.build_memory_sample_length, max_memorized_time_per_msg
+                timestamp, global_config.memory.memory_build_sample_length, max_memorized_time_per_msg
             )
             if messages:
                 time_diff = (datetime.datetime.now().timestamp() - timestamp) / 3600
@@ -858,11 +858,12 @@ class EntorhinalCortex:
                 if all_valid:
                     # 更新数据库中的记忆次数
                     for message in messages:
-                        # 确保在更新前获取最新的 memorized_times，以防万一
+                        # 确保在更新前获取最新的 memorized_times
                         current_memorized_times = message.get("memorized_times", 0)
-                        db.messages.update_one(
-                            {"_id": message["_id"]}, {"$set": {"memorized_times": current_memorized_times + 1}}
-                        )
+                        # 使用 Peewee 更新记录
+                        Messages.update(memorized_times=current_memorized_times + 1).where(
+                            Messages.message_id == message["message_id"]
+                        ).execute()
                     return messages  # 直接返回原始的消息列表
 
             # 如果获取失败或消息无效，增加尝试次数
@@ -875,11 +876,8 @@ class EntorhinalCortex:
     async def sync_memory_to_db(self):
         """将记忆图同步到数据库"""
         # 获取数据库中所有节点和内存中所有节点
-        db_nodes = list(db.graph_data.nodes.find())
+        db_nodes = {node.concept: node for node in GraphNodes.select()}
         memory_nodes = list(self.memory_graph.G.nodes(data=True))
-
-        # 转换数据库节点为字典格式,方便查找
-        db_nodes_dict = {node["concept"]: node for node in db_nodes}
 
         # 检查并更新节点
         for concept, data in memory_nodes:
@@ -894,44 +892,39 @@ class EntorhinalCortex:
             created_time = data.get("created_time", datetime.datetime.now().timestamp())
             last_modified = data.get("last_modified", datetime.datetime.now().timestamp())
 
-            if concept not in db_nodes_dict:
+            # 将memory_items转换为JSON字符串
+            memory_items_json = json.dumps(memory_items, ensure_ascii=False)
+
+            if concept not in db_nodes:
                 # 数据库中缺少的节点,添加
-                node_data = {
-                    "concept": concept,
-                    "memory_items": memory_items,
-                    "hash": memory_hash,
-                    "created_time": created_time,
-                    "last_modified": last_modified,
-                }
-                db.graph_data.nodes.insert_one(node_data)
+                GraphNodes.create(
+                    concept=concept,
+                    memory_items=memory_items_json,
+                    hash=memory_hash,
+                    created_time=created_time,
+                    last_modified=last_modified,
+                )
             else:
                 # 获取数据库中节点的特征值
-                db_node = db_nodes_dict[concept]
-                db_hash = db_node.get("hash", None)
+                db_node = db_nodes[concept]
+                db_hash = db_node.hash
 
                 # 如果特征值不同,则更新节点
                 if db_hash != memory_hash:
-                    db.graph_data.nodes.update_one(
-                        {"concept": concept},
-                        {
-                            "$set": {
-                                "memory_items": memory_items,
-                                "hash": memory_hash,
-                                "created_time": created_time,
-                                "last_modified": last_modified,
-                            }
-                        },
-                    )
+                    db_node.memory_items = memory_items_json
+                    db_node.hash = memory_hash
+                    db_node.last_modified = last_modified
+                    db_node.save()
 
         # 处理边的信息
-        db_edges = list(db.graph_data.edges.find())
+        db_edges = list(GraphEdges.select())
         memory_edges = list(self.memory_graph.G.edges(data=True))
 
         # 创建边的哈希值字典
         db_edge_dict = {}
         for edge in db_edges:
-            edge_hash = self.hippocampus.calculate_edge_hash(edge["source"], edge["target"])
-            db_edge_dict[(edge["source"], edge["target"])] = {"hash": edge_hash, "strength": edge.get("strength", 1)}
+            edge_hash = self.hippocampus.calculate_edge_hash(edge.source, edge.target)
+            db_edge_dict[(edge.source, edge.target)] = {"hash": edge_hash, "strength": edge.strength}
 
         # 检查并更新边
         for source, target, data in memory_edges:
@@ -945,29 +938,22 @@ class EntorhinalCortex:
 
             if edge_key not in db_edge_dict:
                 # 添加新边
-                edge_data = {
-                    "source": source,
-                    "target": target,
-                    "strength": strength,
-                    "hash": edge_hash,
-                    "created_time": created_time,
-                    "last_modified": last_modified,
-                }
-                db.graph_data.edges.insert_one(edge_data)
+                GraphEdges.create(
+                    source=source,
+                    target=target,
+                    strength=strength,
+                    hash=edge_hash,
+                    created_time=created_time,
+                    last_modified=last_modified,
+                )
             else:
                 # 检查边的特征值是否变化
                 if db_edge_dict[edge_key]["hash"] != edge_hash:
-                    db.graph_data.edges.update_one(
-                        {"source": source, "target": target},
-                        {
-                            "$set": {
-                                "hash": edge_hash,
-                                "strength": strength,
-                                "created_time": created_time,
-                                "last_modified": last_modified,
-                            }
-                        },
-                    )
+                    edge = GraphEdges.get(GraphEdges.source == source, GraphEdges.target == target)
+                    edge.hash = edge_hash
+                    edge.strength = strength
+                    edge.last_modified = last_modified
+                    edge.save()
 
     def sync_memory_from_db(self):
         """从数据库同步数据到内存中的图结构"""
@@ -978,29 +964,29 @@ class EntorhinalCortex:
         self.memory_graph.G.clear()
 
         # 从数据库加载所有节点
-        nodes = list(db.graph_data.nodes.find())
+        nodes = list(GraphNodes.select())
         for node in nodes:
-            concept = node["concept"]
-            memory_items = node.get("memory_items", [])
+            concept = node.concept
+            memory_items = json.loads(node.memory_items)
             if not isinstance(memory_items, list):
                 memory_items = [memory_items] if memory_items else []
 
             # 检查时间字段是否存在
-            if "created_time" not in node or "last_modified" not in node:
+            if not node.created_time or not node.last_modified:
                 need_update = True
                 # 更新数据库中的节点
                 update_data = {}
-                if "created_time" not in node:
+                if not node.created_time:
                     update_data["created_time"] = current_time
-                if "last_modified" not in node:
+                if not node.last_modified:
                     update_data["last_modified"] = current_time
 
-                db.graph_data.nodes.update_one({"concept": concept}, {"$set": update_data})
+                GraphNodes.update(**update_data).where(GraphNodes.concept == concept).execute()
                 logger.info(f"[时间更新] 节点 {concept} 添加缺失的时间字段")
 
             # 获取时间信息(如果不存在则使用当前时间)
-            created_time = node.get("created_time", current_time)
-            last_modified = node.get("last_modified", current_time)
+            created_time = node.created_time or current_time
+            last_modified = node.last_modified or current_time
 
             # 添加节点到图中
             self.memory_graph.G.add_node(
@@ -1008,28 +994,30 @@ class EntorhinalCortex:
             )
 
         # 从数据库加载所有边
-        edges = list(db.graph_data.edges.find())
+        edges = list(GraphEdges.select())
         for edge in edges:
-            source = edge["source"]
-            target = edge["target"]
-            strength = edge.get("strength", 1)
+            source = edge.source
+            target = edge.target
+            strength = edge.strength
 
             # 检查时间字段是否存在
-            if "created_time" not in edge or "last_modified" not in edge:
+            if not edge.created_time or not edge.last_modified:
                 need_update = True
                 # 更新数据库中的边
                 update_data = {}
-                if "created_time" not in edge:
+                if not edge.created_time:
                     update_data["created_time"] = current_time
-                if "last_modified" not in edge:
+                if not edge.last_modified:
                     update_data["last_modified"] = current_time
 
-                db.graph_data.edges.update_one({"source": source, "target": target}, {"$set": update_data})
+                GraphEdges.update(**update_data).where(
+                    (GraphEdges.source == source) & (GraphEdges.target == target)
+                ).execute()
                 logger.info(f"[时间更新] 边 {source} - {target} 添加缺失的时间字段")
 
             # 获取时间信息(如果不存在则使用当前时间)
-            created_time = edge.get("created_time", current_time)
-            last_modified = edge.get("last_modified", current_time)
+            created_time = edge.created_time or current_time
+            last_modified = edge.last_modified or current_time
 
             # 只有当源节点和目标节点都存在时才添加边
             if source in self.memory_graph.G and target in self.memory_graph.G:
@@ -1047,8 +1035,8 @@ class EntorhinalCortex:
 
         # 清空数据库
         clear_start = time.time()
-        db.graph_data.nodes.delete_many({})
-        db.graph_data.edges.delete_many({})
+        GraphNodes.delete().execute()
+        GraphEdges.delete().execute()
         clear_end = time.time()
         logger.info(f"[数据库] 清空数据库耗时: {clear_end - clear_start:.2f}秒")
 
@@ -1063,29 +1051,27 @@ class EntorhinalCortex:
             if not isinstance(memory_items, list):
                 memory_items = [memory_items] if memory_items else []
 
-            node_data = {
-                "concept": concept,
-                "memory_items": memory_items,
-                "hash": self.hippocampus.calculate_node_hash(concept, memory_items),
-                "created_time": data.get("created_time", datetime.datetime.now().timestamp()),
-                "last_modified": data.get("last_modified", datetime.datetime.now().timestamp()),
-            }
-            db.graph_data.nodes.insert_one(node_data)
+            GraphNodes.create(
+                concept=concept,
+                memory_items=json.dumps(memory_items),
+                hash=self.hippocampus.calculate_node_hash(concept, memory_items),
+                created_time=data.get("created_time", datetime.datetime.now().timestamp()),
+                last_modified=data.get("last_modified", datetime.datetime.now().timestamp()),
+            )
         node_end = time.time()
         logger.info(f"[数据库] 写入 {len(memory_nodes)} 个节点耗时: {node_end - node_start:.2f}秒")
 
         # 重新写入边
         edge_start = time.time()
         for source, target, data in memory_edges:
-            edge_data = {
-                "source": source,
-                "target": target,
-                "strength": data.get("strength", 1),
-                "hash": self.hippocampus.calculate_edge_hash(source, target),
-                "created_time": data.get("created_time", datetime.datetime.now().timestamp()),
-                "last_modified": data.get("last_modified", datetime.datetime.now().timestamp()),
-            }
-            db.graph_data.edges.insert_one(edge_data)
+            GraphEdges.create(
+                source=source,
+                target=target,
+                strength=data.get("strength", 1),
+                hash=self.hippocampus.calculate_edge_hash(source, target),
+                created_time=data.get("created_time", datetime.datetime.now().timestamp()),
+                last_modified=data.get("last_modified", datetime.datetime.now().timestamp()),
+            )
         edge_end = time.time()
         logger.info(f"[数据库] 写入 {len(memory_edges)} 条边耗时: {edge_end - edge_start:.2f}秒")
 
@@ -1099,7 +1085,6 @@ class ParahippocampalGyrus:
     def __init__(self, hippocampus: Hippocampus):
         self.hippocampus = hippocampus
         self.memory_graph = hippocampus.memory_graph
-        self.config = hippocampus.config
 
     async def memory_compress(self, messages: list, compress_rate=0.1):
         """压缩和总结消息内容，生成记忆主题和摘要。
@@ -1159,7 +1144,7 @@ class ParahippocampalGyrus:
 
         # 3. 过滤掉包含禁用关键词的topic
         filtered_topics = [
-            topic for topic in topics if not any(keyword in topic for keyword in self.config.memory_ban_words)
+            topic for topic in topics if not any(keyword in topic for keyword in global_config.memory.memory_ban_words)
         ]
 
         logger.debug(f"过滤后话题: {filtered_topics}")
@@ -1170,7 +1155,7 @@ class ParahippocampalGyrus:
             # 调用修改后的 topic_what，不再需要 time_info
             topic_what_prompt = self.hippocampus.topic_what(input_text, topic)
             try:
-                task = self.hippocampus.llm_summary.generate_response_async(topic_what_prompt)
+                task = self.hippocampus.model_summary.generate_response_async(topic_what_prompt)
                 tasks.append((topic.strip(), task))
             except Exception as e:
                 logger.error(f"生成话题 '{topic}' 的摘要时发生错误: {e}")
@@ -1222,7 +1207,7 @@ class ParahippocampalGyrus:
             bar = "█" * filled_length + "-" * (bar_length - filled_length)
             logger.debug(f"进度: [{bar}] {progress:.1f}% ({i}/{len(memory_samples)})")
 
-            compress_rate = self.config.memory_compress_rate
+            compress_rate = global_config.memory.memory_compress_rate
             try:
                 compressed_memory, similar_topics_dict = await self.memory_compress(messages, compress_rate)
             except Exception as e:
@@ -1322,7 +1307,7 @@ class ParahippocampalGyrus:
             edge_data = self.memory_graph.G[source][target]
             last_modified = edge_data.get("last_modified")
 
-            if current_time - last_modified > 3600 * self.config.memory_forget_time:
+            if current_time - last_modified > 3600 * global_config.memory.memory_forget_time:
                 current_strength = edge_data.get("strength", 1)
                 new_strength = current_strength - 1
 
@@ -1430,8 +1415,8 @@ class ParahippocampalGyrus:
     async def operation_consolidate_memory(self):
         """整合记忆：合并节点内相似的记忆项"""
         start_time = time.time()
-        percentage = self.config.consolidate_memory_percentage
-        similarity_threshold = self.config.consolidation_similarity_threshold
+        percentage = global_config.memory.consolidate_memory_percentage
+        similarity_threshold = global_config.memory.consolidation_similarity_threshold
         logger.info(f"[整合] 开始检查记忆节点... 检查比例: {percentage:.2%}, 合并阈值: {similarity_threshold}")
 
         # 获取所有至少有2条记忆项的节点
@@ -1544,7 +1529,6 @@ class ParahippocampalGyrus:
 class HippocampusManager:
     _instance = None
     _hippocampus = None
-    _global_config = None
     _initialized = False
 
     @classmethod
@@ -1559,18 +1543,14 @@ class HippocampusManager:
             raise RuntimeError("HippocampusManager 尚未初始化，请先调用 initialize 方法")
         return cls._hippocampus
 
-    def initialize(self, global_config):
+    def initialize(self):
         """初始化海马体实例"""
         if self._initialized:
             return self._hippocampus
 
-        self._global_config = global_config
         self._hippocampus = Hippocampus()
-        self._hippocampus.initialize(global_config)
+        self._hippocampus.initialize()
         self._initialized = True
-
-        # 输出记忆系统参数信息
-        config = self._hippocampus.config
 
         # 输出记忆图统计信息
         memory_graph = self._hippocampus.memory_graph.G
@@ -1579,9 +1559,9 @@ class HippocampusManager:
 
         logger.success(f"""--------------------------------
                     记忆系统参数配置:
-                    构建间隔: {global_config.build_memory_interval}秒|样本数: {config.build_memory_sample_num},长度: {config.build_memory_sample_length}|压缩率: {config.memory_compress_rate}
-                    记忆构建分布: {config.memory_build_distribution}
-                    遗忘间隔: {global_config.forget_memory_interval}秒|遗忘比例: {global_config.memory_forget_percentage}|遗忘: {config.memory_forget_time}小时之后
+                    构建间隔: {global_config.memory.memory_build_interval}秒|样本数: {global_config.memory.memory_build_sample_num},长度: {global_config.memory.memory_build_sample_length}|压缩率: {global_config.memory.memory_compress_rate}
+                    记忆构建分布: {global_config.memory.memory_build_distribution}
+                    遗忘间隔: {global_config.memory.forget_memory_interval}秒|遗忘比例: {global_config.memory.memory_forget_percentage}|遗忘: {global_config.memory.memory_forget_time}小时之后
                     记忆图统计信息: 节点数量: {node_count}, 连接数量: {edge_count}
                     --------------------------------""")  # noqa: E501
 

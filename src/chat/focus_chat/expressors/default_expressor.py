@@ -10,7 +10,6 @@ from src.config.config import global_config
 from src.chat.utils.utils_image import image_path_to_base64  # Local import needed after move
 from src.chat.utils.timer_calculator import Timer  # <--- Import Timer
 from src.chat.emoji_system.emoji_manager import emoji_manager
-from src.chat.focus_chat.heartflow_prompt_builder import prompt_builder
 from src.chat.focus_chat.heartFC_sender import HeartFCSender
 from src.chat.utils.utils import process_llm_response
 from src.chat.utils.info_catcher import info_catcher_manager
@@ -18,16 +17,69 @@ from src.manager.mood_manager import mood_manager
 from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
 from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.focus_chat.hfc_utils import parse_thinking_id_to_timestamp
+from src.individuality.individuality import Individuality
+from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
+from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_before_timestamp_with_chat
+import time
+from src.chat.focus_chat.expressors.exprssion_learner import expression_learner
+import random
 
 logger = get_logger("expressor")
+
+
+def init_prompt():
+    Prompt(
+        """
+你可以参考以下的语言习惯，如果情景合适就使用，不要盲目使用,不要生硬使用，而是结合到表达中：
+{style_habbits}
+
+你现在正在群里聊天，以下是群里正在进行的聊天内容：
+{chat_info}
+
+以上是聊天内容，你需要了解聊天记录中的内容
+
+{chat_target}
+你的名字是{bot_name}，{prompt_personality}，在这聊天中，"{target_message}"引起了你的注意，对这句话，你想表达：{in_mind_reply},原因是：{reason}。你现在要思考怎么回复
+你需要使用合适的语法和句法，参考聊天内容，组织一条日常且口语化的回复。
+请你根据情景使用以下句法：
+{grammar_habbits}
+回复尽量简短一些。可以参考贴吧，知乎和微博的回复风格，你可以完全重组回复，保留最基本的表达含义就好，但注意回复要简短，但重组后保持语意通顺。
+回复不要浮夸，不要用夸张修辞，平淡一些。不要输出多余内容(包括前后缀，冒号和引号，括号，表情包，at或 @等 )，只输出一条回复就好。
+现在，你说：
+""",
+        "default_expressor_prompt",
+    )
+
+    Prompt(
+        """
+你可以参考以下的语言习惯，如果情景合适就使用，不要盲目使用,不要生硬使用，而是结合到表达中：
+{style_habbits}
+
+你现在正在群里聊天，以下是群里正在进行的聊天内容：
+{chat_info}
+
+以上是聊天内容，你需要了解聊天记录中的内容
+
+{chat_target}
+你的名字是{bot_name}，{prompt_personality}，在这聊天中，"{target_message}"引起了你的注意，对这句话，你想表达：{in_mind_reply},原因是：{reason}。你现在要思考怎么回复
+你需要使用合适的语法和句法，参考聊天内容，组织一条日常且口语化的回复。
+请你根据情景使用以下句法：
+{grammar_habbits}
+回复尽量简短一些。可以参考贴吧，知乎和微博的回复风格，你可以完全重组回复，保留最基本的表达含义就好，但注意回复要简短，但重组后保持语意通顺。
+回复不要浮夸，不要用夸张修辞，平淡一些。不要输出多余内容(包括前后缀，冒号和引号，括号，表情包，at或 @等 )，只输出一条回复就好。
+现在，你说：
+""",
+        "default_expressor_private_prompt",  # New template for private FOCUSED chat
+    )
 
 
 class DefaultExpressor:
     def __init__(self, chat_id: str):
         self.log_prefix = "expressor"
+        # TODO: API-Adapter修改标记
         self.express_model = LLMRequest(
-            model=global_config.llm_normal,
-            temperature=global_config.llm_normal["temp"],
+            model=global_config.model.normal,
+            temperature=global_config.model.normal["temp"],
             max_tokens=256,
             request_type="response_heartflow",
         )
@@ -51,8 +103,8 @@ class DefaultExpressor:
         messageinfo = anchor_message.message_info
         thinking_time_point = parse_thinking_id_to_timestamp(thinking_id)
         bot_user_info = UserInfo(
-            user_id=global_config.BOT_QQ,
-            user_nickname=global_config.BOT_NICKNAME,
+            user_id=global_config.bot.qq_account,
+            user_nickname=global_config.bot.nickname,
             platform=messageinfo.platform,
         )
         # logger.debug(f"创建思考消息：{anchor_message}")
@@ -66,7 +118,7 @@ class DefaultExpressor:
             reply=anchor_message,  # 回复的是锚点消息
             thinking_start_time=thinking_time_point,
         )
-        logger.debug(f"创建思考消息thinking_message：{thinking_message}")
+        # logger.debug(f"创建思考消息thinking_message：{thinking_message}")
 
         await self.heart_fc_sender.register_thinking(thinking_message)
 
@@ -106,7 +158,7 @@ class DefaultExpressor:
 
                 if reply:
                     with Timer("发送消息", cycle_timers):
-                        sent_msg_list = await self._send_response_messages(
+                        sent_msg_list = await self.send_response_messages(
                             anchor_message=anchor_message,
                             thinking_id=thinking_id,
                             response_set=reply,
@@ -141,7 +193,7 @@ class DefaultExpressor:
         try:
             # 1. 获取情绪影响因子并调整模型温度
             arousal_multiplier = mood_manager.get_arousal_multiplier()
-            current_temp = float(global_config.llm_normal["temp"]) * arousal_multiplier
+            current_temp = float(global_config.model.normal["temp"]) * arousal_multiplier
             self.express_model.params["temperature"] = current_temp  # 动态调整温度
 
             # 2. 获取信息捕捉器
@@ -162,13 +214,10 @@ class DefaultExpressor:
 
             # 3. 构建 Prompt
             with Timer("构建Prompt", {}):  # 内部计时器，可选保留
-                prompt = await prompt_builder.build_prompt(
-                    build_mode="focus",
+                prompt = await self.build_prompt_focus(
                     chat_stream=self.chat_stream,  # Pass the stream object
                     in_mind_reply=in_mind_reply,
                     reason=reason,
-                    current_mind_info="",
-                    structured_info="",
                     sender_name=sender_name_for_prompt,  # Pass determined name
                     target_message=target_message,
                 )
@@ -183,10 +232,11 @@ class DefaultExpressor:
 
             try:
                 with Timer("LLM生成", {}):  # 内部计时器，可选保留
+                    # TODO: API-Adapter修改标记
                     # logger.info(f"{self.log_prefix}[Replier-{thinking_id}]\nPrompt:\n{prompt}\n")
                     content, reasoning_content, model_name = await self.express_model.generate_response(prompt)
 
-                    logger.info(f"{self.log_prefix}\nPrompt:\n{prompt}\n---------------------------\n")
+                    # logger.info(f"{self.log_prefix}\nPrompt:\n{prompt}\n---------------------------\n")
 
                     logger.info(f"想要表达：{in_mind_reply}")
                     logger.info(f"理由：{reason}")
@@ -223,10 +273,108 @@ class DefaultExpressor:
             traceback.print_exc()
             return None
 
+    async def build_prompt_focus(
+        self,
+        reason,
+        chat_stream,
+        sender_name,
+        in_mind_reply,
+        target_message,
+    ) -> str:
+        individuality = Individuality.get_instance()
+        prompt_personality = individuality.get_prompt(x_person=0, level=2)
+
+        # Determine if it's a group chat
+        is_group_chat = bool(chat_stream.group_info)
+
+        # Use sender_name passed from caller for private chat, otherwise use a default for group
+        # Default sender_name for group chat isn't used in the group prompt template, but set for consistency
+        effective_sender_name = sender_name if not is_group_chat else "某人"
+
+        message_list_before_now = get_raw_msg_before_timestamp_with_chat(
+            chat_id=chat_stream.stream_id,
+            timestamp=time.time(),
+            limit=global_config.chat.observation_context_size,
+        )
+        chat_talking_prompt = await build_readable_messages(
+            message_list_before_now,
+            replace_bot_name=True,
+            merge_messages=True,
+            timestamp_mode="relative",
+            read_mark=0.0,
+            truncate=True,
+        )
+
+        (
+            learnt_style_expressions,
+            learnt_grammar_expressions,
+            personality_expressions,
+        ) = await expression_learner.get_expression_by_chat_id(chat_stream.stream_id)
+
+        style_habbits = []
+        grammar_habbits = []
+        # 1. learnt_expressions加权随机选3条
+        if learnt_style_expressions:
+            weights = [expr["count"] for expr in learnt_style_expressions]
+            selected_learnt = weighted_sample_no_replacement(learnt_style_expressions, weights, 3)
+            for expr in selected_learnt:
+                if isinstance(expr, dict) and "situation" in expr and "style" in expr:
+                    style_habbits.append(f"当{expr['situation']}时，使用 {expr['style']}")
+        # 2. learnt_grammar_expressions加权随机选3条
+        if learnt_grammar_expressions:
+            weights = [expr["count"] for expr in learnt_grammar_expressions]
+            selected_learnt = weighted_sample_no_replacement(learnt_grammar_expressions, weights, 3)
+            for expr in selected_learnt:
+                if isinstance(expr, dict) and "situation" in expr and "style" in expr:
+                    grammar_habbits.append(f"当{expr['situation']}时，使用 {expr['style']}")
+        # 3. personality_expressions随机选1条
+        if personality_expressions:
+            expr = random.choice(personality_expressions)
+            if isinstance(expr, dict) and "situation" in expr and "style" in expr:
+                style_habbits.append(f"当{expr['situation']}时，使用 {expr['style']}")
+
+        style_habbits_str = "\n".join(style_habbits)
+        grammar_habbits_str = "\n".join(grammar_habbits)
+
+        logger.debug("开始构建 focus prompt")
+
+        # --- Choose template based on chat type ---
+        if is_group_chat:
+            template_name = "default_expressor_prompt"
+            # Group specific formatting variables (already fetched or default)
+            chat_target_1 = await global_prompt_manager.get_prompt_async("chat_target_group1")
+            # chat_target_2 = await global_prompt_manager.get_prompt_async("chat_target_group2")
+
+            prompt = await global_prompt_manager.format_prompt(
+                template_name,
+                style_habbits=style_habbits_str,
+                grammar_habbits=grammar_habbits_str,
+                chat_target=chat_target_1,
+                chat_info=chat_talking_prompt,
+                bot_name=global_config.bot.nickname,
+                prompt_personality="",
+                reason=reason,
+                in_mind_reply=in_mind_reply,
+                target_message=target_message,
+            )
+        else:  # Private chat
+            template_name = "default_expressor_private_prompt"
+            prompt = await global_prompt_manager.format_prompt(
+                template_name,
+                sender_name=effective_sender_name,  # Used in private template
+                chat_talking_prompt=chat_talking_prompt,
+                bot_name=global_config.bot.nickname,
+                prompt_personality=prompt_personality,
+                reason=reason,
+                moderation_prompt=await global_prompt_manager.get_prompt_async("moderation_prompt"),
+            )
+
+        return prompt
+
         # --- 发送器 (Sender) --- #
 
-    async def _send_response_messages(
-        self, anchor_message: Optional[MessageRecv], response_set: List[Tuple[str, str]], thinking_id: str
+    async def send_response_messages(
+        self, anchor_message: Optional[MessageRecv], response_set: List[Tuple[str, str]], thinking_id: str = ""
     ) -> Optional[MessageSending]:
         """发送回复消息 (尝试锚定到 anchor_message)，使用 HeartFCSender"""
         chat = self.chat_stream
@@ -241,7 +389,11 @@ class DefaultExpressor:
         stream_name = chat_manager.get_stream_name(chat_id) or chat_id  # 获取流名称用于日志
 
         # 检查思考过程是否仍在进行，并获取开始时间
-        thinking_start_time = await self.heart_fc_sender.get_thinking_start_time(chat_id, thinking_id)
+        if thinking_id:
+            thinking_start_time = await self.heart_fc_sender.get_thinking_start_time(chat_id, thinking_id)
+        else:
+            thinking_id = "ds" + str(round(time.time(), 2))
+            thinking_start_time = time.time()
 
         if thinking_start_time is None:
             logger.error(f"[{stream_name}]思考过程未找到或已结束，无法发送回复。")
@@ -274,6 +426,7 @@ class DefaultExpressor:
                 reply_to=reply_to,
                 is_emoji=is_emoji,
                 thinking_id=thinking_id,
+                thinking_start_time=thinking_start_time,
             )
 
             try:
@@ -295,6 +448,7 @@ class DefaultExpressor:
 
             except Exception as e:
                 logger.error(f"{self.log_prefix}发送回复片段 {i} ({part_message_id}) 时失败: {e}")
+                traceback.print_exc()
                 # 这里可以选择是继续发送下一个片段还是中止
 
         # 在尝试发送完所有片段后，完成原始的 thinking_id 状态
@@ -325,13 +479,13 @@ class DefaultExpressor:
         reply_to: bool,
         is_emoji: bool,
         thinking_id: str,
+        thinking_start_time: float,
     ) -> MessageSending:
         """构建单个发送消息"""
 
-        thinking_start_time = await self.heart_fc_sender.get_thinking_start_time(self.chat_id, thinking_id)
         bot_user_info = UserInfo(
-            user_id=global_config.BOT_QQ,
-            user_nickname=global_config.BOT_NICKNAME,
+            user_id=global_config.bot.qq_account,
+            user_nickname=global_config.bot.nickname,
             platform=self.chat_stream.platform,
         )
 
@@ -348,3 +502,40 @@ class DefaultExpressor:
         )
 
         return bot_message
+
+
+def weighted_sample_no_replacement(items, weights, k) -> list:
+    """
+    加权且不放回地随机抽取k个元素。
+
+    参数：
+        items: 待抽取的元素列表
+        weights: 每个元素对应的权重（与items等长，且为正数）
+        k: 需要抽取的元素个数
+    返回：
+        selected: 按权重加权且不重复抽取的k个元素组成的列表
+
+        如果 items 中的元素不足 k 个，就只会返回所有可用的元素
+
+    实现思路：
+        每次从当前池中按权重加权随机选出一个元素，选中后将其从池中移除，重复k次。
+        这样保证了：
+        1. count越大被选中概率越高
+        2. 不会重复选中同一个元素
+    """
+    selected = []
+    pool = list(zip(items, weights))
+    for _ in range(min(k, len(pool))):
+        total = sum(w for _, w in pool)
+        r = random.uniform(0, total)
+        upto = 0
+        for idx, (item, weight) in enumerate(pool):
+            upto += weight
+            if upto >= r:
+                selected.append(item)
+                pool.pop(idx)
+                break
+    return selected
+
+
+init_prompt()

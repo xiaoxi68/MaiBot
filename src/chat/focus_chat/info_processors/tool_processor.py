@@ -11,8 +11,8 @@ from src.chat.person_info.relationship_manager import relationship_manager
 from .base_processor import BaseProcessor
 from typing import List, Optional, Dict
 from src.chat.heart_flow.observation.observation import Observation
-from src.chat.heart_flow.observation.working_observation import WorkingObservation
 from src.chat.focus_chat.info.structured_info import StructuredInfo
+from src.chat.heart_flow.observation.structure_observation import StructureObservation
 
 logger = get_logger("processor")
 
@@ -23,9 +23,6 @@ def init_prompt():
     # 添加工具执行器提示词
     tool_executor_prompt = """
 你是一个专门执行工具的助手。你的名字是{bot_name}。现在是{time_now}。
-
-你要在群聊中扮演以下角色：
-{prompt_personality}
 
 你当前的额外信息：
 {memory_str}
@@ -52,7 +49,7 @@ class ToolProcessor(BaseProcessor):
         self.subheartflow_id = subheartflow_id
         self.log_prefix = f"[{subheartflow_id}:ToolExecutor] "
         self.llm_model = LLMRequest(
-            model=global_config.llm_tool_use,
+            model=global_config.model.tool_use,
             max_tokens=500,
             request_type="tool_execution",
         )
@@ -70,6 +67,8 @@ class ToolProcessor(BaseProcessor):
             list: 处理后的结构化信息列表
         """
 
+        working_infos = []
+
         if observations:
             for observation in observations:
                 if isinstance(observation, ChattingObservation):
@@ -77,7 +76,7 @@ class ToolProcessor(BaseProcessor):
 
             # 更新WorkingObservation中的结构化信息
             for observation in observations:
-                if isinstance(observation, WorkingObservation):
+                if isinstance(observation, StructureObservation):
                     for structured_info in result:
                         logger.debug(f"{self.log_prefix} 更新WorkingObservation中的结构化信息: {structured_info}")
                         observation.add_structured_info(structured_info)
@@ -86,8 +85,9 @@ class ToolProcessor(BaseProcessor):
                     logger.debug(f"{self.log_prefix} 获取更新后WorkingObservation中的结构化信息: {working_infos}")
 
         structured_info = StructuredInfo()
-        for working_info in working_infos:
-            structured_info.set_info(working_info.get("type"), working_info.get("content"))
+        if working_infos:
+            for working_info in working_infos:
+                structured_info.set_info(working_info.get("type"), working_info.get("content"))
 
         return [structured_info]
 
@@ -134,7 +134,7 @@ class ToolProcessor(BaseProcessor):
 
         # 获取个性信息
         individuality = Individuality.get_instance()
-        prompt_personality = individuality.get_prompt(x_person=2, level=2)
+        # prompt_personality = individuality.get_prompt(x_person=2, level=2)
 
         # 获取时间信息
         time_now = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
@@ -148,14 +148,14 @@ class ToolProcessor(BaseProcessor):
             # chat_target_name=chat_target_name,
             is_group_chat=is_group_chat,
             # relation_prompt=relation_prompt,
-            prompt_personality=prompt_personality,
+            # prompt_personality=prompt_personality,
             # mood_info=mood_info,
             bot_name=individuality.name,
             time_now=time_now,
         )
 
         # 调用LLM，专注于工具使用
-        logger.debug(f"开始执行工具调用{prompt}")
+        # logger.debug(f"开始执行工具调用{prompt}")
         response, _, tool_calls = await self.llm_model.generate_response_tool_async(prompt=prompt, tools=tools)
 
         logger.debug(f"获取到工具原始输出:\n{tool_calls}")

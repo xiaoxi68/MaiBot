@@ -21,6 +21,8 @@ from src.common.logger import (
     WILLING_STYLE_CONFIG,
     PFC_ACTION_PLANNER_STYLE_CONFIG,
     MAI_STATE_CONFIG,
+    NORMAL_CHAT_STYLE_CONFIG,
+    FOCUS_CHAT_STYLE_CONFIG,
     LPMM_STYLE_CONFIG,
     HFC_STYLE_CONFIG,
     OBSERVATION_STYLE_CONFIG,
@@ -95,7 +97,8 @@ MODULE_LOGGER_CONFIGS = {
     "init": INIT_STYLE_CONFIG,  # 初始化
     "interest_chat": INTEREST_CHAT_STYLE_CONFIG,  # 兴趣
     "api": API_SERVER_STYLE_CONFIG,  # API服务器
-    "maim_message": MAIM_MESSAGE_STYLE_CONFIG,  # 消息服务
+    "normal_chat": NORMAL_CHAT_STYLE_CONFIG,  # 一般水群
+    "focus_chat": FOCUS_CHAT_STYLE_CONFIG,  # 专注水群
     # ...如有更多模块，继续添加...
 }
 

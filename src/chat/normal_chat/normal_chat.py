@@ -22,11 +22,11 @@ from src.chat.emoji_system.emoji_manager import emoji_manager
 from src.chat.normal_chat.willing.willing_manager import willing_manager
 from src.config.config import global_config
 
-logger = get_logger("chat")
+logger = get_logger("normal_chat")
 
 
 class NormalChat:
-    def __init__(self, chat_stream: ChatStream, interest_dict: dict = None):
+    def __init__(self, chat_stream: ChatStream, interest_dict: dict = {}):
         """初始化 NormalChat 实例。只进行同步操作。"""
 
         # Basic info from chat_stream (sync)
@@ -73,8 +73,8 @@ class NormalChat:
         messageinfo = message.message_info
 
         bot_user_info = UserInfo(
-            user_id=global_config.BOT_QQ,
-            user_nickname=global_config.BOT_NICKNAME,
+            user_id=global_config.bot.qq_account,
+            user_nickname=global_config.bot.nickname,
             platform=messageinfo.platform,
         )
 
@@ -121,8 +121,8 @@ class NormalChat:
                 message_id=thinking_id,
                 chat_stream=self.chat_stream,  # 使用 self.chat_stream
                 bot_user_info=UserInfo(
-                    user_id=global_config.BOT_QQ,
-                    user_nickname=global_config.BOT_NICKNAME,
+                    user_id=global_config.bot.qq_account,
+                    user_nickname=global_config.bot.nickname,
                     platform=message.message_info.platform,
                 ),
                 sender_info=message.message_info.user_info,
@@ -147,7 +147,7 @@ class NormalChat:
     # 改为实例方法
     async def _handle_emoji(self, message: MessageRecv, response: str):
         """处理表情包"""
-        if random() < global_config.emoji_chance:
+        if random() < global_config.normal_chat.emoji_chance:
             emoji_raw = await emoji_manager.get_emoji_for_text(response)
             if emoji_raw:
                 emoji_path, description = emoji_raw
@@ -160,8 +160,8 @@ class NormalChat:
                     message_id="mt" + str(thinking_time_point),
                     chat_stream=self.chat_stream,  # 使用 self.chat_stream
                     bot_user_info=UserInfo(
-                        user_id=global_config.BOT_QQ,
-                        user_nickname=global_config.BOT_NICKNAME,
+                        user_id=global_config.bot.qq_account,
+                        user_nickname=global_config.bot.nickname,
                         platform=message.message_info.platform,
                     ),
                     sender_info=message.message_info.user_info,
@@ -186,7 +186,7 @@ class NormalChat:
             label=emotion,
             stance=stance,  # 使用 self.chat_stream
         )
-        self.mood_manager.update_mood_from_emotion(emotion, global_config.mood_intensity_factor)
+        self.mood_manager.update_mood_from_emotion(emotion, global_config.mood.mood_intensity_factor)
 
     async def _reply_interested_message(self) -> None:
         """
@@ -200,7 +200,7 @@ class NormalChat:
                 logger.info(f"[{self.stream_name}] 兴趣监控任务被取消或置空，退出")
                 break
 
-            # 获取待处理消息列表
+
             items_to_process = list(self.interest_dict.items())
             if not items_to_process:
                 continue
@@ -430,7 +430,7 @@ class NormalChat:
     def _check_ban_words(text: str, chat: ChatStream, userinfo: UserInfo) -> bool:
         """检查消息中是否包含过滤词"""
         stream_name = chat_manager.get_stream_name(chat.stream_id) or chat.stream_id
-        for word in global_config.ban_words:
+        for word in global_config.chat.ban_words:
             if word in text:
                 logger.info(
                     f"[{stream_name}][{chat.group_info.group_name if chat.group_info else '私聊'}]"
@@ -445,7 +445,7 @@ class NormalChat:
     def _check_ban_regex(text: str, chat: ChatStream, userinfo: UserInfo) -> bool:
         """检查消息是否匹配过滤正则表达式"""
         stream_name = chat_manager.get_stream_name(chat.stream_id) or chat.stream_id
-        for pattern in global_config.ban_msgs_regex:
+        for pattern in global_config.chat.ban_msgs_regex:
             if pattern.search(text):
                 logger.info(
                     f"[{stream_name}][{chat.group_info.group_name if chat.group_info else '私聊'}]"
@@ -481,7 +481,7 @@ class NormalChat:
         try:
             if exc := task.exception():
                 logger.error(f"[{self.stream_name}] 任务异常: {exc}")
-                logger.error(traceback.format_exc())
+                traceback.print_exc()
         except asyncio.CancelledError:
             logger.debug(f"[{self.stream_name}] 任务已取消")
         except Exception as e:
@@ -522,4 +522,4 @@ class NormalChat:
                     logger.info(f"[{self.stream_name}] 清理了 {len(thinking_messages)} 条未处理的思考消息。")
         except Exception as e:
             logger.error(f"[{self.stream_name}] 清理思考消息时出错: {e}")
-            logger.error(traceback.format_exc())
+            traceback.print_exc()
