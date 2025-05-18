@@ -161,9 +161,7 @@ class BackgroundTaskManager:
 
     # --- Specific Task Runners --- #
     async def _run_focus_chat_check_cycle(self, interval: int):
-        await _run_periodic_loop(
-            task_name="Focus Chat Check", interval=interval, task_func=self._focus_chat_check_work
-        )
+        await _run_periodic_loop(task_name="Focus Chat Check", interval=interval, task_func=self._focus_chat_check_work)
 
     async def _run_logging_cycle(self):
         await _run_periodic_loop(

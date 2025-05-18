@@ -33,8 +33,6 @@ class APIBotConfig:
     gender: str  # 性别
     appearance: str  # 外貌特征描述
 
-  
-
     # platforms
     platforms: Dict[str, str]  # 平台信息
 

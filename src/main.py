@@ -80,8 +80,6 @@ class MainSystem:
         self.hippocampus_manager.initialize(global_config=global_config)
         # await asyncio.sleep(0.5) #防止logger输出飞了
 
-
-
         # 将bot.py中的chat_bot.message_process消息处理函数注册到api.py的消息处理基类中
         self.app.register_message_handler(chat_bot.message_process)
 

@@ -193,8 +193,7 @@ class SubHeartflowManager:
         async with self._lock:
             # 筛选出所有FOCUSED状态的子心流
             focused_subflows = [
-                hf for hf in self.subheartflows.values() 
-                if hf.chat_state.chat_status == ChatState.FOCUSED
+                hf for hf in self.subheartflows.values() if hf.chat_state.chat_status == ChatState.FOCUSED
             ]
 
             if not focused_subflows:
@@ -211,7 +210,9 @@ class SubHeartflowManager:
 
                 # 10%概率随机转回CHAT，或者超过时间限制
                 if time_in_state > focus_time_limit or random.random() < 0.2:
-                    logger.info(f"{log_prefix} {'超过时间限制' if time_in_state > focus_time_limit else '随机'}从专注水群转为普通聊天")
+                    logger.info(
+                        f"{log_prefix} {'超过时间限制' if time_in_state > focus_time_limit else '随机'}从专注水群转为普通聊天"
+                    )
                     await sub_hf.change_chat_state(ChatState.CHAT)
 
     # --- 新增：处理 HFC 无回复回调的专用方法 --- #
@@ -246,9 +247,7 @@ class SubHeartflowManager:
                             f"[状态转换请求] 尝试将 {stream_name} 转换为 CHAT 后，状态实际为 {final_state.value}"
                         )
                 except Exception as e:
-                    logger.error(
-                        f"[状态转换请求] 转换 {stream_name} 到 CHAT 时出错: {e}", exc_info=True
-                    )
+                    logger.error(f"[状态转换请求] 转换 {stream_name} 到 CHAT 时出错: {e}", exc_info=True)
             else:
                 logger.debug(f"[状态转换请求] {stream_name} 已处于 CHAT 状态，无需转换")
 
