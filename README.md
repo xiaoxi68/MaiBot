@@ -1,4 +1,4 @@
-# 麦麦！MaiCore-MaiMBot (编辑中)
+# 麦麦！MaiCore-MaiMBot
 <br />
 <div style="text-align: center">
 
@@ -62,7 +62,7 @@
 
 ### 📢 版本信息
 
-**最新版本: v0.6.3** ([查看更新日志](changelogs/changelog.md))
+**最新版本: v0.6.3-fix-4** ([查看更新日志](changelogs/changelog.md))
 > [!WARNING]
 > 请阅读教程后更新！！！！！！！
 > 请阅读教程后更新！！！！！！！
