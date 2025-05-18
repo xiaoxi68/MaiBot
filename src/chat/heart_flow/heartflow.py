@@ -4,10 +4,8 @@ from src.config.config import global_config
 from src.common.logger_manager import get_logger
 from typing import Any, Optional
 from src.tools.tool_use import ToolUser
-from src.chat.person_info.relationship_manager import relationship_manager  # Module instance
 from src.chat.heart_flow.mai_state_manager import MaiStateInfo, MaiStateManager
 from src.chat.heart_flow.subheartflow_manager import SubHeartflowManager
-from src.chat.heart_flow.interest_logger import InterestLogger  # Import InterestLogger
 from src.chat.heart_flow.background_tasks import BackgroundTaskManager  # Import BackgroundTaskManager
 
 logger = get_logger("heartflow")
@@ -17,16 +15,10 @@ class Heartflow:
     """主心流协调器，负责初始化并协调各个子系统:
     - 状态管理 (MaiState)
     - 子心流管理 (SubHeartflow)
-    - 思考过程 (Mind)
-    - 日志记录 (InterestLogger)
     - 后台任务 (BackgroundTaskManager)
     """
 
     def __init__(self):
-        # 核心状态
-        self.current_mind = "什么也没想"  # 当前主心流想法
-        self.past_mind = []  # 历史想法记录
-
         # 状态管理相关
         self.current_state: MaiStateInfo = MaiStateInfo()  # 当前状态信息
         self.mai_state_manager: MaiStateManager = MaiStateManager()  # 状态决策管理器
@@ -34,24 +26,11 @@ class Heartflow:
         # 子心流管理 (在初始化时传入 current_state)
         self.subheartflow_manager: SubHeartflowManager = SubHeartflowManager(self.current_state)
 
-        # LLM模型配置
-        # TODO: API-Adapter修改标记
-        self.llm_model = LLMRequest(
-            model=global_config.model.heartflow, temperature=0.6, max_tokens=1000, request_type="heart_flow"
-        )
-
-        # 外部依赖模块
-        self.tool_user_instance = ToolUser()  # 工具使用模块
-        self.relationship_manager_instance = relationship_manager  # 关系管理模块
-
-        self.interest_logger: InterestLogger = InterestLogger(self.subheartflow_manager, self)  # 兴趣日志记录器
-
         # 后台任务管理器 (整合所有定时任务)
         self.background_task_manager: BackgroundTaskManager = BackgroundTaskManager(
             mai_state_info=self.current_state,
             mai_state_manager=self.mai_state_manager,
             subheartflow_manager=self.subheartflow_manager,
-            interest_logger=self.interest_logger,
         )
 
     async def get_or_create_subheartflow(self, subheartflow_id: Any) -> Optional["SubHeartflow"]:
