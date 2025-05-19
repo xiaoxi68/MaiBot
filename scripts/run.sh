@@ -479,7 +479,7 @@ run_installation() {
     cat > /etc/systemd/system/${SERVICE_NAME}.service <<EOF
 [Unit]
 Description=MaiCore
-After=network.target mongod.service ${SERVICE_NAME_NBADAPTER}.service
+After=network.target ${SERVICE_NAME_NBADAPTER}.service
 
 [Service]
 Type=simple
@@ -492,21 +492,21 @@ RestartSec=10s
 WantedBy=multi-user.target
 EOF
 
-    cat > /etc/systemd/system/${SERVICE_NAME_WEB}.service <<EOF
-[Unit]
-Description=MaiCore WebUI
-After=network.target mongod.service ${SERVICE_NAME}.service
+#     cat > /etc/systemd/system/${SERVICE_NAME_WEB}.service <<EOF
+# [Unit]
+# Description=MaiCore WebUI
+# After=network.target ${SERVICE_NAME}.service
 
-[Service]
-Type=simple
-WorkingDirectory=${INSTALL_DIR}/MaiBot
-ExecStart=$INSTALL_DIR/venv/bin/python3 webui.py
-Restart=always
-RestartSec=10s
+# [Service]
+# Type=simple
+# WorkingDirectory=${INSTALL_DIR}/MaiBot
+# ExecStart=$INSTALL_DIR/venv/bin/python3 webui.py
+# Restart=always
+# RestartSec=10s
 
-[Install]
-WantedBy=multi-user.target
-EOF
+# [Install]
+# WantedBy=multi-user.target
+# EOF
 
     cat > /etc/systemd/system/${SERVICE_NAME_NBADAPTER}.service <<EOF
 [Unit]
