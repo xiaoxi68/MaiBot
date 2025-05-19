@@ -324,7 +324,7 @@ def process_llm_response(text: str) -> list[str]:
     else:
         protected_text = text
         kaomoji_mapping = {}
-    # 提取被 () 或 [] 包裹且包含中文的内容
+    # 提取被 () 或 [] 或 （）包裹且包含中文的内容
     pattern = re.compile(r"[(\[（](?=.*[一-鿿]).*?[)\]）]")
     # _extracted_contents = pattern.findall(text)
     _extracted_contents = pattern.findall(protected_text)  # 在保护后的文本上查找
