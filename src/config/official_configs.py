@@ -64,7 +64,7 @@ class IdentityConfig(ConfigBase):
     height: int = 170
     """身高（单位：厘米）"""
 
-    weight: float = 50
+    weight: int = 50
     """体重（单位：千克）"""
 
     age: int = 18
