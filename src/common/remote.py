@@ -11,7 +11,7 @@ from src.manager.local_store_manager import local_storage
 
 logger = get_logger("remote")
 
-TELEMETRY_SERVER_URL = "http://localhost:8080"
+TELEMETRY_SERVER_URL = "http://hyybuth.xyz:10058"
 """遥测服务地址"""
 
 
@@ -70,6 +70,12 @@ class TelemetryHeartBeatTask(AsyncTask):
                     json={"deploy_time": local_storage["deploy_time"]},
                 )
 
+                logger.debug(f"{TELEMETRY_SERVER_URL}/stat/reg_client")
+                
+                logger.debug(local_storage["deploy_time"])
+                
+                logger.debug(response)
+
                 if response.status_code == 200:
                     data = response.json()
                     client_id = data.get("mmc_uuid")
@@ -105,12 +111,16 @@ class TelemetryHeartBeatTask(AsyncTask):
             }
 
             logger.debug(f"正在发送心跳到服务器: {self.server_url}")
+            
+            logger.debug(headers)
 
             response = requests.post(
                 f"{self.server_url}/stat/client_heartbeat",
                 headers=headers,
                 json=self.info_dict,
             )
+            
+            logger.debug(response)
 
             # 处理响应
             if 200 <= response.status_code < 300:
