@@ -160,6 +160,7 @@ class FocusChatConfig(ConfigBase):
     working_memory_processor: bool = True
     """是否启用工作记忆处理器"""
 
+
 @dataclass
 class ExpressionConfig(ConfigBase):
     """表达配置类"""

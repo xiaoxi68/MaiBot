@@ -49,8 +49,6 @@ class NormalChat:
         self._chat_task: Optional[asyncio.Task] = None
         self._initialized = False  # Track initialization status
 
-
-
     async def initialize(self):
         """异步初始化，获取聊天类型和目标信息。"""
         if self._initialized:

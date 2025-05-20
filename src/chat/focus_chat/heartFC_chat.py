@@ -258,7 +258,7 @@ class HeartFChatting:
                     f"动作: {self._current_cycle.loop_plan_info['action_result']['action_type']}"
                     + (f"\n详情: {'; '.join(timer_strings)}" if timer_strings else "")
                 )
-                
+
                 await asyncio.sleep(global_config.focus_chat.think_interval)
 
         except asyncio.CancelledError:

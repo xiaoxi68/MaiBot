@@ -5,12 +5,14 @@ from src.common.logger_manager import get_logger
 from src.tools.tool_can_use import get_all_tool_definitions, get_tool_instance
 
 logger = get_logger("tool_use")
+
+
 class ToolUser:
     def __init__(self):
         self.llm_model_tool = LLMRequest(
             model=global_config.model.tool_use, temperature=0.2, max_tokens=1000, request_type="tool_use"
         )
-        
+
     @staticmethod
     def _define_tools():
         """获取所有已注册工具的定义
