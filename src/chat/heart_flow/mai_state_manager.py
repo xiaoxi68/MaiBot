@@ -4,19 +4,8 @@ import random
 from typing import List, Tuple, Optional
 from src.common.logger_manager import get_logger
 from src.manager.mood_manager import mood_manager
-from src.config.config import global_config
 
 logger = get_logger("mai_state")
-
-
-# -- 状态相关的可配置参数 (可以从 glocal_config 加载) --
-# The line `enable_unlimited_hfc_chat = False` is setting a configuration parameter that controls
-# whether a specific debugging feature is enabled or not. When `enable_unlimited_hfc_chat` is set to
-# `False`, it means that the debugging feature for unlimited focused chatting is disabled.
-# enable_unlimited_hfc_chat = True  # 调试用：无限专注聊天
-enable_unlimited_hfc_chat = False
-prevent_offline_state = True
-# 目前默认不启用OFFLINE状
 
 
 class MaiState(enum.Enum):
@@ -97,7 +86,6 @@ class MaiStateManager:
         current_time = time.time()
         current_status = current_state_info.mai_status
         time_in_current_status = current_time - current_state_info.last_status_change_time
-        _time_since_last_min_check = current_time - current_state_info.last_min_check_time
         next_state: Optional[MaiState] = None
 
         def _resolve_offline(candidate_state: MaiState) -> MaiState:
@@ -140,10 +128,6 @@ class MaiStateManager:
                     f"规则{rule_id}：时间到，切换到 {next_state_candidate.value}，resolve 为 {resolved_candidate.value}"
                 )
                 next_state = resolved_candidate
-
-            if enable_unlimited_hfc_chat:
-                logger.debug("调试用：开挂了，强制切换到专注聊天")
-                next_state = MaiState.FOCUSED_CHAT
 
         if next_state is not None and next_state != current_status:
             return next_state

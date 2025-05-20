@@ -26,7 +26,7 @@ logger = get_logger("normal_chat")
 
 
 class NormalChat:
-    def __init__(self, chat_stream: ChatStream, interest_dict: dict = {}):
+    def __init__(self, chat_stream: ChatStream, interest_dict: dict = None):
         """初始化 NormalChat 实例。只进行同步操作。"""
 
         # Basic info from chat_stream (sync)
@@ -38,10 +38,8 @@ class NormalChat:
         # Interest dict
         self.interest_dict = interest_dict
 
-        # --- Initialize attributes (defaults) ---
         self.is_group_chat: bool = False
         self.chat_target_info: Optional[dict] = None
-        # --- End Initialization ---
 
         # Other sync initializations
         self.gpt = NormalChatGenerator()
@@ -50,9 +48,6 @@ class NormalChat:
         self.last_speak_time = 0
         self._chat_task: Optional[asyncio.Task] = None
         self._initialized = False  # Track initialization status
-
-        # logger.info(f"[{self.stream_name}] NormalChat 实例 __init__ 完成 (同步部分)。")
-        # Avoid logging here as stream_name might not be final
 
     async def initialize(self):
         """异步初始化，获取聊天类型和目标信息。"""
@@ -199,7 +194,6 @@ class NormalChat:
             if self._chat_task is None or self._chat_task.cancelled():
                 logger.info(f"[{self.stream_name}] 兴趣监控任务被取消或置空，退出")
                 break
-
 
             items_to_process = list(self.interest_dict.items())
             if not items_to_process:
@@ -463,10 +457,11 @@ class NormalChat:
             await self.initialize()  # Ensure initialized before starting tasks
 
         if self._chat_task is None or self._chat_task.done():
-            logger.info(f"[{self.stream_name}] 开始后台处理初始兴趣消息和轮询任务...")
+            logger.info(f"[{self.stream_name}] 开始回顾消息...")
             # Process initial messages first
             await self._process_initial_interest_messages()
             # Then start polling task
+            logger.info(f"[{self.stream_name}] 开始处理兴趣消息...")
             polling_task = asyncio.create_task(self._reply_interested_message())
             polling_task.add_done_callback(lambda t: self._handle_task_completion(t))
             self._chat_task = polling_task

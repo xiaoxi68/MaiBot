@@ -9,7 +9,7 @@ import asyncio
 import numpy as np
 from src.chat.models.utils_model import LLMRequest
 from src.config.config import global_config
-from src.individuality.individuality import Individuality
+from src.individuality.individuality import individuality
 
 import matplotlib
 
@@ -257,7 +257,6 @@ class PersonInfoManager:
         current_name_set = set(self.person_name_list.values())
 
         while current_try < max_retries:
-            individuality = Individuality.get_instance()
             prompt_personality = individuality.get_prompt(x_person=2, level=1)
             bot_name = individuality.personality.bot_nickname
 

@@ -2,13 +2,11 @@ import asyncio
 import time
 import random
 from typing import Dict, Any, Optional, List
-import functools
 from src.common.logger_manager import get_logger
 from src.chat.message_receive.chat_stream import chat_manager
 from src.chat.heart_flow.sub_heartflow import SubHeartflow, ChatState
 from src.chat.heart_flow.mai_state_manager import MaiStateInfo
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
-from src.config.config import global_config
 
 
 # 初始化日志记录器
@@ -62,7 +60,6 @@ class SubHeartflowManager:
         self._lock = asyncio.Lock()  # 用于保护 self.subheartflows 的访问
         self.mai_state_info: MaiStateInfo = mai_state_info  # 存储传入的 MaiStateInfo 实例
 
-
     async def force_change_state(self, subflow_id: Any, target_state: ChatState) -> bool:
         """强制改变指定子心流的状态"""
         async with self._lock:
@@ -101,34 +98,24 @@ class SubHeartflowManager:
                 return subflow
 
             try:
-                # --- 使用 functools.partial 创建 HFC 回调 --- #
-                # 将 manager 的 _handle_hfc_no_reply 方法与当前的 subheartflow_id 绑定
-                hfc_callback = functools.partial(self._handle_hfc_no_reply, subheartflow_id)
-                # --- 结束创建回调 --- #
-
-                # 初始化子心流, 传入 mai_state_info 和 partial 创建的回调
+                # 初始化子心流, 传入 mai_state_info
                 new_subflow = SubHeartflow(
                     subheartflow_id,
                     self.mai_state_info,
-                    hfc_callback,  # <-- 传递 partial 创建的回调
                 )
 
-                # 异步初始化
-                await new_subflow.initialize()
-
-                # 添加聊天观察者
+                # 首先创建并添加聊天观察者
                 observation = ChattingObservation(chat_id=subheartflow_id)
                 await observation.initialize()
-
                 new_subflow.add_observation(observation)
+
+                # 然后再进行异步初始化，此时 SubHeartflow 内部若需启动 HeartFChatting，就能拿到 observation
+                await new_subflow.initialize()
 
                 # 注册子心流
                 self.subheartflows[subheartflow_id] = new_subflow
                 heartflow_name = chat_manager.get_stream_name(subheartflow_id) or subheartflow_id
                 logger.info(f"[{heartflow_name}] 开始接收消息")
-
-                # 启动后台任务
-                asyncio.create_task(new_subflow.subheartflow_start_working())
 
                 return new_subflow
             except Exception as e:
@@ -199,22 +186,14 @@ class SubHeartflowManager:
             f"{log_prefix} 完成，共处理 {processed_count} 个子心流，成功将 {changed_count} 个非 ABSENT 子心流的状态更改为 ABSENT。"
         )
 
-    async def sbhf_absent_into_focus(self):
+    async def sbhf_normal_into_focus(self):
         """评估子心流兴趣度，满足条件则提升到FOCUSED状态（基于start_hfc_probability）"""
         try:
-            current_state = self.mai_state_info.get_current_state()
-
-            # 检查是否允许进入 FOCUS 模式
-            if not global_config.chat.allow_focus_mode:
-                if int(time.time()) % 60 == 0:  # 每60秒输出一次日志避免刷屏
-                    logger.trace("未开启 FOCUSED 状态 (allow_focus_mode=False)")
-                return
-
             for sub_hf in list(self.subheartflows.values()):
                 flow_id = sub_hf.subheartflow_id
                 stream_name = chat_manager.get_stream_name(flow_id) or flow_id
 
-                # 跳过非CHAT状态或已经是FOCUSED状态的子心流
+                # 跳过已经是FOCUSED状态的子心流
                 if sub_hf.chat_state.chat_status == ChatState.FOCUSED:
                     continue
 
@@ -224,13 +203,6 @@ class SubHeartflowManager:
                     logger.debug(
                         f"{stream_name}，现在状态: {sub_hf.chat_state.chat_status.value}，进入专注概率: {sub_hf.interest_chatting.start_hfc_probability}"
                     )
-
-                # 调试用
-                from .mai_state_manager import enable_unlimited_hfc_chat
-
-                if not enable_unlimited_hfc_chat:
-                    if sub_hf.chat_state.chat_status != ChatState.CHAT:
-                        continue
 
                 if random.random() >= sub_hf.interest_chatting.start_hfc_probability:
                     continue
@@ -250,12 +222,11 @@ class SubHeartflowManager:
         except Exception as e:
             logger.error(f"启动HFC 兴趣评估失败: {e}", exc_info=True)
 
-
-    async def sbhf_focus_into_absent_or_chat(self, subflow_id: Any):
+    async def sbhf_focus_into_normal(self, subflow_id: Any):
         """
-        接收来自 HeartFChatting 的请求，将特定子心流的状态转换为 CHAT。
+        接收来自 HeartFChatting 的请求，将特定子心流的状态转换为 NORMAL。
         通常在连续多次 "no_reply" 后被调用。
-        对于私聊和群聊，都转换为 CHAT。
+        对于私聊和群聊，都转换为 NORMAL。
 
         Args:
             subflow_id: 需要转换状态的子心流 ID。
@@ -263,15 +234,15 @@ class SubHeartflowManager:
         async with self._lock:
             subflow = self.subheartflows.get(subflow_id)
             if not subflow:
-                logger.warning(f"[状态转换请求] 尝试转换不存在的子心流 {subflow_id} 到 CHAT")
+                logger.warning(f"[状态转换请求] 尝试转换不存在的子心流 {subflow_id} 到 NORMAL")
                 return
 
             stream_name = chat_manager.get_stream_name(subflow_id) or subflow_id
             current_state = subflow.chat_state.chat_status
 
             if current_state == ChatState.FOCUSED:
-                target_state = ChatState.CHAT
-                log_reason = "转为CHAT"
+                target_state = ChatState.NORMAL
+                log_reason = "转为NORMAL"
 
                 logger.info(
                     f"[状态转换请求] 接收到请求，将 {stream_name} (当前: {current_state.value}) 尝试转换为 {target_state.value} ({log_reason})"
@@ -292,34 +263,10 @@ class SubHeartflowManager:
                         f"[状态转换请求] 转换 {stream_name} 到 {target_state.value} 时出错: {e}", exc_info=True
                     )
             elif current_state == ChatState.ABSENT:
-                logger.debug(f"[状态转换请求] {stream_name} 处于 ABSENT 状态，尝试转为 CHAT")
-                await subflow.change_chat_state(ChatState.CHAT)
+                logger.debug(f"[状态转换请求] {stream_name} 处于 ABSENT 状态，尝试转为 NORMAL")
+                await subflow.change_chat_state(ChatState.NORMAL)
             else:
-                logger.debug(
-                    f"[状态转换请求] {stream_name} 当前状态为 {current_state.value}，无需转换"
-                )
-
-    def count_subflows_by_state(self, state: ChatState) -> int:
-        """统计指定状态的子心流数量"""
-        count = 0
-        # 遍历所有子心流实例
-        for subheartflow in self.subheartflows.values():
-            # 检查子心流状态是否匹配
-            if subheartflow.chat_state.chat_status == state:
-                count += 1
-        return count
-
-    def count_subflows_by_state_nolock(self, state: ChatState) -> int:
-        """
-        统计指定状态的子心流数量 (不上锁版本)。
-        警告：仅应在已持有 self._lock 的上下文中使用此方法。
-        """
-        count = 0
-        for subheartflow in self.subheartflows.values():
-            if subheartflow.chat_state.chat_status == state:
-                count += 1
-        return count
-
+                logger.debug(f"[状态转换请求] {stream_name} 当前状态为 {current_state.value}，无需转换")
 
     async def delete_subflow(self, subheartflow_id: Any):
         """删除指定的子心流。"""
@@ -336,28 +283,14 @@ class SubHeartflowManager:
             else:
                 logger.warning(f"尝试删除不存在的 SubHeartflow: {subheartflow_id}")
 
-
-    async def _handle_hfc_no_reply(self, subheartflow_id: Any):
-        """处理来自 HeartFChatting 的连续无回复信号 (通过 partial 绑定 ID)"""
-        # 注意：这里不需要再获取锁，因为 sbhf_focus_into_absent_or_chat 内部会处理锁
-        logger.debug(f"[管理器 HFC 处理器] 接收到来自 {subheartflow_id} 的 HFC 无回复信号")
-        await self.sbhf_focus_into_absent_or_chat(subheartflow_id)
-
     # --- 新增：处理私聊从 ABSENT 直接到 FOCUSED 的逻辑 --- #
     async def sbhf_absent_private_into_focus(self):
-        """检查 ABSENT 状态的私聊子心流是否有新活动，若有且未达 FOCUSED 上限，则直接转换为 FOCUSED。"""
+        """检查 ABSENT 状态的私聊子心流是否有新活动，若有则直接转换为 FOCUSED。"""
         log_prefix_task = "[私聊激活检查]"
         transitioned_count = 0
         checked_count = 0
 
-        # --- 检查是否允许 FOCUS 模式 --- #
-        if not global_config.chat.allow_focus_mode:
-            return
-
         async with self._lock:
-            # --- 获取当前 FOCUSED 计数 (不上锁版本) --- #
-            current_focused_count = self.count_subflows_by_state_nolock(ChatState.FOCUSED)
-
             # --- 筛选出所有 ABSENT 状态的私聊子心流 --- #
             eligible_subflows = [
                 hf
@@ -372,7 +305,6 @@ class SubHeartflowManager:
 
             # --- 遍历评估每个符合条件的私聊 --- #
             for sub_hf in eligible_subflows:
-
                 flow_id = sub_hf.subheartflow_id
                 stream_name = chat_manager.get_stream_name(flow_id) or flow_id
                 log_prefix = f"[{stream_name}]({log_prefix_task})"
@@ -393,13 +325,12 @@ class SubHeartflowManager:
                     else:
                         logger.warning(f"{log_prefix} 无法获取主要观察者来检查活动状态。")
 
-                    # --- 如果活跃且未达上限，则尝试转换 --- #
+                    # --- 如果活跃，则尝试转换 --- #
                     if is_active:
                         await sub_hf.change_chat_state(ChatState.FOCUSED)
                         # 确认转换成功
                         if sub_hf.chat_state.chat_status == ChatState.FOCUSED:
                             transitioned_count += 1
-                            current_focused_count += 1  # 更新计数器以供本轮后续检查
                             logger.info(f"{log_prefix} 成功进入 FOCUSED 状态。")
                         else:
                             logger.warning(

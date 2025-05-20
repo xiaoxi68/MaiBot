@@ -3,7 +3,7 @@ import traceback
 from src.common.logger_manager import get_logger
 from src.chat.utils.timer_calculator import Timer
 from src.chat.focus_chat.planners.actions.base_action import BaseAction, register_action
-from typing import Tuple, List, Callable, Coroutine
+from typing import Tuple, List
 from src.chat.heart_flow.observation.observation import Observation
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 from src.chat.focus_chat.hfc_utils import parse_thinking_id_to_timestamp

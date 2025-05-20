@@ -41,7 +41,7 @@ class APIBotConfig:
     allow_focus_mode: bool  # 是否允许专注聊天状态
     base_normal_chat_num: int  # 最多允许多少个群进行普通聊天
     base_focused_chat_num: int  # 最多允许多少个群进行专注聊天
-    chat.observation_context_size: int  # 观察到的最长上下文大小
+    observation_context_size: int  # 观察到的最长上下文大小
     message_buffer: bool  # 是否启用消息缓冲
     ban_words: List[str]  # 禁止词列表
     ban_msgs_regex: List[str]  # 禁止消息的正则表达式列表
@@ -128,7 +128,7 @@ class APIBotConfig:
     llm_reasoning: Dict[str, Any]  # 推理模型配置
     llm_normal: Dict[str, Any]  # 普通模型配置
     llm_topic_judge: Dict[str, Any]  # 主题判断模型配置
-    model.summary: Dict[str, Any]  # 总结模型配置
+    summary: Dict[str, Any]  # 总结模型配置
     vlm: Dict[str, Any]  # VLM模型配置
     llm_heartflow: Dict[str, Any]  # 心流模型配置
     llm_observation: Dict[str, Any]  # 观察模型配置
@@ -203,7 +203,7 @@ class APIBotConfig:
             "llm_reasoning",
             "llm_normal",
             "llm_topic_judge",
-            "model.summary",
+            "summary",
             "vlm",
             "llm_heartflow",
             "llm_observation",

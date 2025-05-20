@@ -2,7 +2,7 @@ from .observation.observation import Observation
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 import asyncio
 import time
-from typing import Optional, List, Dict, Tuple, Callable, Coroutine
+from typing import Optional, List, Dict, Tuple
 import traceback
 from src.common.logger_manager import get_logger
 from src.chat.message_receive.message import MessageRecv
@@ -13,6 +13,7 @@ from src.chat.heart_flow.mai_state_manager import MaiStateInfo
 from src.chat.heart_flow.chat_state_info import ChatState, ChatStateInfo
 from .utils_chat import get_chat_type_and_target_info
 from .interest_chatting import InterestChatting
+from src.config.config import global_config
 
 
 logger = get_logger("sub_heartflow")
@@ -23,7 +24,6 @@ class SubHeartflow:
         self,
         subheartflow_id,
         mai_states: MaiStateInfo,
-        hfc_no_reply_callback: Callable[[], Coroutine[None, None, None]],
     ):
         """子心流初始化函数
 
@@ -35,7 +35,6 @@ class SubHeartflow:
         # 基础属性，两个值是一样的
         self.subheartflow_id = subheartflow_id
         self.chat_id = subheartflow_id
-        self.hfc_no_reply_callback = hfc_no_reply_callback
 
         # 麦麦的状态
         self.mai_states = mai_states
@@ -89,13 +88,13 @@ class SubHeartflow:
         await self.interest_chatting.initialize()
         logger.debug(f"{self.log_prefix} InterestChatting 实例已初始化。")
 
-        # 创建并初始化 normal_chat_instance
-        chat_stream = chat_manager.get_stream(self.chat_id)
-        if chat_stream:
-            self.normal_chat_instance = NormalChat(chat_stream=chat_stream,interest_dict=self.get_interest_dict())
-            await self.normal_chat_instance.initialize()
-            await self.normal_chat_instance.start_chat()
-            logger.info(f"{self.log_prefix} NormalChat 实例已创建并启动。")
+        # 根据配置决定初始状态
+        if global_config.chat.chat_mode == "focus":
+            logger.info(f"{self.log_prefix} 配置为 focus 模式，将直接尝试进入 FOCUSED 状态。")
+            await self.change_chat_state(ChatState.FOCUSED)
+        else:  # "auto" 或其他模式保持原有逻辑或默认为 NORMAL
+            logger.info(f"{self.log_prefix} 配置为 auto 或其他模式，将尝试进入 NORMAL 状态。")
+            await self.change_chat_state(ChatState.NORMAL)
 
     def update_last_chat_state_time(self):
         self.chat_state_last_time = time.time() - self.chat_state_changed_time
@@ -128,10 +127,9 @@ class SubHeartflow:
             if not chat_stream:
                 logger.error(f"{log_prefix} 无法获取 chat_stream，无法启动 NormalChat。")
                 return False
-            if rewind:
+            # 在 rewind 为 True 或 NormalChat 实例尚未创建时，创建新实例
+            if rewind or not self.normal_chat_instance:
                 self.normal_chat_instance = NormalChat(chat_stream=chat_stream, interest_dict=self.get_interest_dict())
-            else:
-                self.normal_chat_instance = NormalChat(chat_stream=chat_stream)
 
             # 进行异步初始化
             await self.normal_chat_instance.initialize()
@@ -187,9 +185,10 @@ class SubHeartflow:
         logger.info(f"{log_prefix} 麦麦准备开始专注聊天...")
         try:
             # 创建 HeartFChatting 实例，并传递 从构造函数传入的 回调函数
+
             self.heart_fc_instance = HeartFChatting(
                 chat_id=self.subheartflow_id,
-                observations=self.observations, 
+                observations=self.observations,
             )
 
             # 初始化并启动 HeartFChatting
@@ -216,7 +215,7 @@ class SubHeartflow:
         state_changed = False
         log_prefix = f"[{self.log_prefix}]"
 
-        if new_state == ChatState.CHAT:
+        if new_state == ChatState.NORMAL:
             logger.debug(f"{log_prefix} 准备进入或保持 普通聊天 状态")
             if await self._start_normal_chat():
                 logger.debug(f"{log_prefix} 成功进入或保持 NormalChat 状态。")
@@ -259,20 +258,6 @@ class SubHeartflow:
             logger.debug(
                 f"{log_prefix} 尝试将状态从 {current_state.value} 变为 {new_state.value}，但未成功或未执行更改。"
             )
-
-    async def subheartflow_start_working(self):
-        """启动子心流的后台任务
-
-        功能说明:
-        - 负责子心流的主要后台循环
-        - 每30秒检查一次停止标志
-        """
-        logger.trace(f"{self.log_prefix} 子心流开始工作...")
-
-        while not self.should_stop:
-            await asyncio.sleep(30)  # 30秒检查一次停止标志
-
-        logger.info(f"{self.log_prefix} 子心流后台任务已停止。")
 
     def add_observation(self, observation: Observation):
         for existing_obs in self.observations:

@@ -36,24 +36,6 @@ def init_prompt() -> None:
 """
     Prompt(learn_style_prompt, "learn_style_prompt")
 
-    personality_expression_prompt = """
-{personality}
-
-请从以上人设中总结出这个角色可能的语言风格
-思考回复的特殊内容和情感
-思考有没有特殊的梗，一并总结成语言风格
-总结成如下格式的规律，总结的内容要详细，但具有概括性：
-当"xxx"时，可以"xxx", xxx不超过10个字
-
-例如：
-当"表示十分惊叹"时，使用"我嘞个xxxx"
-当"表示讽刺的赞同，不想讲道理"时，使用"对对对"
-当"想说明某个观点，但懒得明说"，使用"懂的都懂"
-
-现在请你概括
-"""
-    Prompt(personality_expression_prompt, "personality_expression_prompt")
-
     learn_grammar_prompt = """
 {chat_str}
 
@@ -277,44 +259,6 @@ class ExpressionLearner:
             style = line[idx_quote3 + 1 : idx_quote4]
             expressions.append((chat_id, situation, style))
         return expressions
-
-    async def extract_and_store_personality_expressions(self):
-        """
-        检查data/expression/personality目录，不存在则创建。
-        用peronality变量作为chat_str，调用LLM生成表达风格，解析后count=100，存储到expressions.json。
-        """
-        dir_path = os.path.join("data", "expression", "personality")
-        os.makedirs(dir_path, exist_ok=True)
-        file_path = os.path.join(dir_path, "expressions.json")
-
-        # 构建prompt
-        prompt = await global_prompt_manager.format_prompt(
-            "personality_expression_prompt",
-            personality=global_config.personality.expression_style,
-        )
-        # logger.info(f"个性表达方式提取prompt: {prompt}")
-
-        try:
-            response, _ = await self.express_learn_model.generate_response_async(prompt)
-        except Exception as e:
-            logger.error(f"个性表达方式提取失败: {e}")
-            return
-
-        logger.info(f"个性表达方式提取response: {response}")
-        # chat_id用personality
-        expressions = self.parse_expression_response(response, "personality")
-        # 转为dict并count=100
-        result = []
-        for _, situation, style in expressions:
-            result.append({"situation": situation, "style": style, "count": 100})
-        # 超过50条时随机删除多余的，只保留50条
-        if len(result) > 50:
-            remove_count = len(result) - 50
-            remove_indices = set(random.sample(range(len(result)), remove_count))
-            result = [item for idx, item in enumerate(result) if idx not in remove_indices]
-        with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(result, f, ensure_ascii=False, indent=2)
-        logger.info(f"已写入{len(result)}条表达到{file_path}")
 
 
 init_prompt()

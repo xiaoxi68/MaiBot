@@ -113,7 +113,7 @@ c HeartFChatting工作方式
 ### 1.5. 消息处理与回复流程 (Message Processing vs. Replying Flow)
 - **关注点分离**: 系统严格区分了接收和处理传入消息的流程与决定和生成回复的流程。
     - **消息处理 (Processing)**: 
-        - 由一个独立的处理器（例如 `HeartFCProcessor`）负责接收原始消息数据。
+        - 由一个独立的处理器（例如 `HeartFCMessageReceiver`）负责接收原始消息数据。
         - 职责包括：消息解析 (`MessageRecv`)、过滤（屏蔽词、正则表达式）、基于记忆系统的初步兴趣计算 (`HippocampusManager`)、消息存储 (`MessageStorage`) 以及用户关系更新 (`RelationshipManager`)。
         - 处理后的消息信息（如计算出的兴趣度）会传递给对应的 `SubHeartflow`。
     - **回复决策与生成 (Replying)**:
@@ -121,7 +121,7 @@ c HeartFChatting工作方式
         - 基于其内部状态 (`ChatState`、`SubMind` 的思考结果)、观察到的信息 (`Observation` 提供的内容) 以及 `InterestChatting` 的状态来决定是否回复、何时回复以及如何回复。
 - **消息缓冲 (Message Caching)**:
     - `message_buffer` 模块会对某些传入消息进行临时缓存，尤其是在处理连续的多部分消息（如多张图片）时。
-    - 这个缓冲机制发生在 `HeartFCProcessor` 处理流程中，确保消息的完整性，然后才进行后续的存储和兴趣计算。
+    - 这个缓冲机制发生在 `HeartFCMessageReceiver` 处理流程中，确保消息的完整性，然后才进行后续的存储和兴趣计算。
     - 缓存的消息最终仍会流向对应的 `ChatStream`（与 `SubHeartflow` 关联），但核心的消息处理与回复决策仍然是分离的步骤。
 
 ## 2. 核心控制与状态管理 (Core Control and State Management)
@@ -148,7 +148,7 @@ c HeartFChatting工作方式
 - **管理对象**: 每个 `SubHeartflow` 实例内部维护其 `ChatStateInfo`，包含当前的 `ChatState`。
 - **状态及含义**:
     - `ChatState.ABSENT` (不参与/没在看): 初始或停用状态。子心流不观察新信息，不进行思考，也不回复。
-    - `ChatState.CHAT` (随便看看/水群): 普通聊天模式。激活 `NormalChatInstance`。
+    - `ChatState.NORMAL` (随便看看/水群): 普通聊天模式。激活 `NormalChatInstance`。
     *   `ChatState.FOCUSED` (专注/认真聊天): 专注聊天模式。激活 `HeartFlowChatInstance`。
 - **选择**: 子心流可以根据外部指令（来自 `SubHeartflowManager`）或内部逻辑（未来的扩展）选择进入 `ABSENT` 状态（不回复不观察），或进入 `CHAT` / `FOCUSED` 中的一种回复模式。
 - **状态转换机制** (由 `SubHeartflowManager` 驱动，更细致的说明):
@@ -156,7 +156,7 @@ c HeartFChatting工作方式
     - **`ABSENT` -> `CHAT` (激活闲聊)**:
         - **触发条件**: `Heartflow` 的主状态 (`MaiState`) 允许 `CHAT` 模式，且当前 `CHAT` 状态的子心流数量未达上限。
         - **判定机制**: `SubHeartflowManager` 中的 `sbhf_absent_into_chat` 方法调用大模型(LLM)。LLM 读取该群聊的近期内容和结合自身个性信息，判断是否"想"在该群开始聊天。
-        - **执行**: 若 LLM 判断为是，且名额未满，`SubHeartflowManager` 调用 `change_chat_state(ChatState.CHAT)`。
+        - **执行**: 若 LLM 判断为是，且名额未满，`SubHeartflowManager` 调用 `change_chat_state(ChatState.NORMAL)`。
     - **`CHAT` -> `FOCUSED` (激活专注)**:
         - **触发条件**: 子心流处于 `CHAT` 状态，其内部维护的"开屎热聊"概率 (`InterestChatting.start_hfc_probability`) 达到预设阈值（表示对当前聊天兴趣浓厚），同时 `Heartflow` 的主状态允许 `FOCUSED` 模式，且 `FOCUSED` 名额未满。
         - **判定机制**: `SubHeartflowManager` 中的 `sbhf_absent_into_focus` 方法定期检查满足条件的 `CHAT` 子心流。

@@ -121,5 +121,5 @@ class QAManager:
                 found_knowledge = found_knowledge[:MAX_KNOWLEDGE_LENGTH] + "\n"
             return found_knowledge
         else:
-            logger.info("LPMM知识库并未初始化，使用旧版数据库进行检索")
+            logger.info("LPMM知识库并未初始化，可能是从未导入过知识...")
             return None

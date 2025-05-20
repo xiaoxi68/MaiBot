@@ -4,7 +4,7 @@ from src.chat.models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.experimental.PFC.chat_observer import ChatObserver
 from src.experimental.PFC.reply_checker import ReplyChecker
-from src.individuality.individuality import Individuality
+from src.individuality.individuality import individuality
 from .observation_info import ObservationInfo
 from .conversation_info import ConversationInfo
 from src.chat.utils.chat_message_builder import build_readable_messages
@@ -92,7 +92,7 @@ class ReplyGenerator:
             max_tokens=300,
             request_type="reply_generation",
         )
-        self.personality_info = Individuality.get_instance().get_prompt(x_person=2, level=3)
+        self.personality_info = individuality.get_prompt(x_person=2, level=3)
         self.name = global_config.bot.nickname
         self.private_name = private_name
         self.chat_observer = ChatObserver.get_instance(stream_id, private_name)

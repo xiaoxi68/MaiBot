@@ -5,7 +5,7 @@ from src.chat.models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.experimental.PFC.chat_observer import ChatObserver
 from src.experimental.PFC.pfc_utils import get_items_from_json
-from src.individuality.individuality import Individuality
+from src.individuality.individuality import individuality
 from src.experimental.PFC.observation_info import ObservationInfo
 from src.experimental.PFC.conversation_info import ConversationInfo
 from src.chat.utils.chat_message_builder import build_readable_messages
@@ -113,7 +113,7 @@ class ActionPlanner:
             max_tokens=1500,
             request_type="action_planning",
         )
-        self.personality_info = Individuality.get_instance().get_prompt(x_person=2, level=3)
+        self.personality_info = individuality.get_prompt(x_person=2, level=3)
         self.name = global_config.bot.nickname
         self.private_name = private_name
         self.chat_observer = ChatObserver.get_instance(stream_id, private_name)

@@ -71,9 +71,9 @@ class TelemetryHeartBeatTask(AsyncTask):
                 )
 
                 logger.debug(f"{TELEMETRY_SERVER_URL}/stat/reg_client")
-                
+
                 logger.debug(local_storage["deploy_time"])
-                
+
                 logger.debug(response)
 
                 if response.status_code == 200:
@@ -111,7 +111,7 @@ class TelemetryHeartBeatTask(AsyncTask):
             }
 
             logger.debug(f"正在发送心跳到服务器: {self.server_url}")
-            
+
             logger.debug(headers)
 
             response = requests.post(
@@ -119,7 +119,7 @@ class TelemetryHeartBeatTask(AsyncTask):
                 headers=headers,
                 json=self.info_dict,
             )
-            
+
             logger.debug(response)
 
             # 处理响应
