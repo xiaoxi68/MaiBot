@@ -46,7 +46,7 @@ class Individuality:
         personality_sides: list,
         identity_detail: list,
         height: int,
-        weight: int,
+        weight: float,
         age: int,
         gender: str,
         appearance: str,
