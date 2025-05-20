@@ -1,4 +1,6 @@
 from typing import Optional
+
+from numpy import double
 from .personality import Personality
 from .identity import Identity
 import random
@@ -46,7 +48,7 @@ class Individuality:
         personality_sides: list,
         identity_detail: list,
         height: int,
-        weight: int,
+        weight: double,
         age: int,
         gender: str,
         appearance: str,
