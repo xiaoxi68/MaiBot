@@ -86,7 +86,6 @@ class MaiStateManager:
         current_time = time.time()
         current_status = current_state_info.mai_status
         time_in_current_status = current_time - current_state_info.last_status_change_time
-        _time_since_last_min_check = current_time - current_state_info.last_min_check_time
         next_state: Optional[MaiState] = None
 
         def _resolve_offline(candidate_state: MaiState) -> MaiState:

@@ -148,6 +148,17 @@ class FocusChatConfig(ConfigBase):
     compress_length_limit: int = 5
     """最多压缩份数，超过该数值的压缩上下文会被删除"""
 
+    think_interval: int = 1
+    """思考间隔（秒）"""
+
+    self_identify_processor: bool = True
+    """是否启用自我识别处理器"""
+
+    tool_use_processor: bool = True
+    """是否启用工具使用处理器"""
+
+    working_memory_processor: bool = True
+    """是否启用工作记忆处理器"""
 
 @dataclass
 class ExpressionConfig(ConfigBase):

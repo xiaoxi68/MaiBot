@@ -38,10 +38,8 @@ class NormalChat:
         # Interest dict
         self.interest_dict = interest_dict or {}
 
-        # --- Initialize attributes (defaults) ---
         self.is_group_chat: bool = False
         self.chat_target_info: Optional[dict] = None
-        # --- End Initialization ---
 
         # Other sync initializations
         self.gpt = NormalChatGenerator()
@@ -51,8 +49,7 @@ class NormalChat:
         self._chat_task: Optional[asyncio.Task] = None
         self._initialized = False  # Track initialization status
 
-        # logger.info(f"[{self.stream_name}] NormalChat 实例 __init__ 完成 (同步部分)。")
-        # Avoid logging here as stream_name might not be final
+
 
     async def initialize(self):
         """异步初始化，获取聊天类型和目标信息。"""

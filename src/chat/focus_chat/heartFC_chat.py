@@ -25,6 +25,7 @@ from src.chat.focus_chat.info_processors.self_processor import SelfProcessor
 from src.chat.focus_chat.planners.planner import ActionPlanner
 from src.chat.focus_chat.planners.action_manager import ActionManager
 from src.chat.focus_chat.working_memory.working_memory import WorkingMemory
+from src.config.config import global_config
 
 install(extra_lines=3)
 
@@ -257,6 +258,8 @@ class HeartFChatting:
                     f"动作: {self._current_cycle.loop_plan_info['action_result']['action_type']}"
                     + (f"\n详情: {'; '.join(timer_strings)}" if timer_strings else "")
                 )
+                
+                await asyncio.sleep(global_config.focus_chat.think_interval)
 
         except asyncio.CancelledError:
             # 设置了关闭标志位后被取消是正常流程
