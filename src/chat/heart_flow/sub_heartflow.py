@@ -92,7 +92,7 @@ class SubHeartflow:
         if global_config.chat.chat_mode == "focus":
             logger.info(f"{self.log_prefix} 配置为 focus 模式，将直接尝试进入 FOCUSED 状态。")
             await self.change_chat_state(ChatState.FOCUSED)
-        else: # "auto" 或其他模式保持原有逻辑或默认为 NORMAL
+        else:  # "auto" 或其他模式保持原有逻辑或默认为 NORMAL
             logger.info(f"{self.log_prefix} 配置为 auto 或其他模式，将尝试进入 NORMAL 状态。")
             await self.change_chat_state(ChatState.NORMAL)
 
@@ -185,12 +185,10 @@ class SubHeartflow:
         logger.info(f"{log_prefix} 麦麦准备开始专注聊天...")
         try:
             # 创建 HeartFChatting 实例，并传递 从构造函数传入的 回调函数
-            
-            
+
             self.heart_fc_instance = HeartFChatting(
                 chat_id=self.subheartflow_id,
                 observations=self.observations,
-                
             )
 
             # 初始化并启动 HeartFChatting

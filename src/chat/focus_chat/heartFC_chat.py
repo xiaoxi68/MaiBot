@@ -107,7 +107,7 @@ class HeartFChatting:
             "WorkingMemoryProcessor": "working_memory_processor",
         }
         self.enabled_processor_names: List[str] = []
-        config_processor_settings = global_config.focus_chat_processor # 获取处理器配置，若不存在则为空字典
+        config_processor_settings = global_config.focus_chat_processor  # 获取处理器配置，若不存在则为空字典
 
         for proc_name in PROCESSOR_CLASSES.keys():
             config_key = PROCESSOR_NAME_TO_CONFIG_KEY_MAP.get(proc_name)
@@ -115,14 +115,13 @@ class HeartFChatting:
                 # 此处理器可通过配置控制
                 # getattr(config_processor_settings, config_key, True)
                 # 如果config_processor_settings是字典，则用 config_processor_settings.get(config_key, True)
-                if getattr(config_processor_settings, config_key, True): # 默认启用，如果配置中未指定
+                if getattr(config_processor_settings, config_key, True):  # 默认启用，如果配置中未指定
                     self.enabled_processor_names.append(proc_name)
             else:
                 # 此处理器不在配置映射中，默认启用
                 self.enabled_processor_names.append(proc_name)
-        
-        logger.info(f"{self.log_prefix} 将启用的处理器: {self.enabled_processor_names}")
 
+        logger.info(f"{self.log_prefix} 将启用的处理器: {self.enabled_processor_names}")
 
         self.expressor = DefaultExpressor(chat_id=self.stream_id)
         self.action_manager = ActionManager()
@@ -185,10 +184,10 @@ class HeartFChatting:
 
     def _register_default_processors(self):
         """根据 self.enabled_processor_names 注册信息处理器"""
-        self.processors = [] # 清空已有的
+        self.processors = []  # 清空已有的
 
         # self.enabled_processor_names 由 __init__ 保证是一个列表
-        for name in self.enabled_processor_names: # 'name' is "ChattingInfoProcessor", etc.
+        for name in self.enabled_processor_names:  # 'name' is "ChattingInfoProcessor", etc.
             processor_class = PROCESSOR_CLASSES.get(name)
             if processor_class:
                 # 根据处理器类名判断是否需要 subheartflow_id
@@ -199,16 +198,20 @@ class HeartFChatting:
                 else:
                     # 对于PROCESSOR_CLASSES中定义但此处未明确处理构造的处理器
                     try:
-                        self.processors.append(processor_class()) # 尝试无参构造
+                        self.processors.append(processor_class())  # 尝试无参构造
                         logger.debug(f"{self.log_prefix} 注册处理器 {name} (尝试无参构造).")
                     except TypeError:
-                        logger.error(f"{self.log_prefix} 处理器 {name} 构造失败。它可能需要参数（如 subheartflow_id）但未在注册逻辑中明确处理。")
+                        logger.error(
+                            f"{self.log_prefix} 处理器 {name} 构造失败。它可能需要参数（如 subheartflow_id）但未在注册逻辑中明确处理。"
+                        )
             else:
                 # 这理论上不应该发生，因为 enabled_processor_names 是从 PROCESSOR_CLASSES 的键生成的
                 logger.warning(f"{self.log_prefix} 在 PROCESSOR_CLASSES 中未找到名为 '{name}' 的处理器，将跳过注册。")
-        
+
         if self.processors:
-            logger.info(f"{self.log_prefix} 已根据配置和默认规则注册处理器: {[p.__class__.__name__ for p in self.processors]}")
+            logger.info(
+                f"{self.log_prefix} 已根据配置和默认规则注册处理器: {[p.__class__.__name__ for p in self.processors]}"
+            )
         else:
             logger.warning(f"{self.log_prefix} 没有注册任何处理器。这可能是由于配置错误或所有处理器都被禁用了。")
 
