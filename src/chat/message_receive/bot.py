@@ -7,7 +7,7 @@ from src.chat.message_receive.chat_stream import chat_manager
 from src.chat.message_receive.message import MessageRecv
 from src.experimental.only_message_process import MessageProcessor
 from src.experimental.PFC.pfc_manager import PFCManager
-from src.chat.focus_chat.heartflow_processor import HeartFCProcessor
+from src.chat.focus_chat.heartflow_message_revceiver import HeartFCMessageReceiver
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.config.config import global_config
 
@@ -23,7 +23,7 @@ class ChatBot:
         self.bot = None  # bot 实例引用
         self._started = False
         self.mood_manager = mood_manager  # 获取情绪管理器单例
-        self.heartflow_processor = HeartFCProcessor()  # 新增
+        self.heartflow_message_receiver = HeartFCMessageReceiver()  # 新增
 
         # 创建初始化PFC管理器的任务，会在_ensure_started时执行
         self.only_process_chat = MessageProcessor()
@@ -110,11 +110,11 @@ class ChatBot:
                     # 禁止PFC，进入普通的心流消息处理逻辑
                     else:
                         logger.trace("进入普通心流私聊处理")
-                        await self.heartflow_processor.process_message(message_data)
+                        await self.heartflow_message_receiver.process_message(message_data)
                 # 群聊默认进入心流消息处理逻辑
                 else:
                     logger.trace(f"检测到群聊消息，群ID: {group_info.group_id}")
-                    await self.heartflow_processor.process_message(message_data)
+                    await self.heartflow_message_receiver.process_message(message_data)
 
             if template_group_name:
                 async with global_prompt_manager.async_message_scope(template_group_name):

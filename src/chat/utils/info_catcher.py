@@ -127,7 +127,7 @@ class InfoCatcher:
             Messages.select()
             .where((Messages.chat_id == chat_id_val) & (Messages.message_id < message_id_val))
             .order_by(Messages.time.desc())
-            .limit(global_config.chat.observation_context_size * 3)
+            .limit(global_config.focus_chat.observation_context_size * 3)
         )
 
         return list(messages_before_query)

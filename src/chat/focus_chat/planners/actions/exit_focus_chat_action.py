@@ -1,12 +1,9 @@
 import asyncio
 import traceback
 from src.common.logger_manager import get_logger
-from src.chat.utils.timer_calculator import Timer
 from src.chat.focus_chat.planners.actions.base_action import BaseAction, register_action
-from typing import Tuple, List, Callable, Coroutine
+from typing import Tuple, List
 from src.chat.heart_flow.observation.observation import Observation
-from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
-from src.chat.heart_flow.sub_heartflow import SubHeartFlow
 from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.heart_flow.heartflow import heartflow
 from src.chat.heart_flow.sub_heartflow import ChatState
@@ -61,8 +58,6 @@ class ExitFocusChatAction(BaseAction):
         self._shutting_down = shutting_down
         self.chat_id = chat_stream.stream_id
 
-        
-
     async def handle_action(self) -> Tuple[bool, str]:
         """
         处理退出专注聊天的情况
@@ -94,7 +89,6 @@ class ExitFocusChatAction(BaseAction):
                 warning_msg = "未找到有效的sub heartflow实例，无法切换状态"
                 logger.warning(f"{self.log_prefix} {warning_msg}")
                 return False, warning_msg
-
 
             return True, status_message
 

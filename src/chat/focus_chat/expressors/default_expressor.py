@@ -17,7 +17,7 @@ from src.manager.mood_manager import mood_manager
 from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
 from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.focus_chat.hfc_utils import parse_thinking_id_to_timestamp
-from src.individuality.individuality import Individuality
+from src.individuality.individuality import individuality
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_before_timestamp_with_chat
 import time
@@ -281,7 +281,6 @@ class DefaultExpressor:
         in_mind_reply,
         target_message,
     ) -> str:
-        individuality = Individuality.get_instance()
         prompt_personality = individuality.get_prompt(x_person=0, level=2)
 
         # Determine if it's a group chat
@@ -294,7 +293,7 @@ class DefaultExpressor:
         message_list_before_now = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_stream.stream_id,
             timestamp=time.time(),
-            limit=global_config.chat.observation_context_size,
+            limit=global_config.focus_chat.observation_context_size,
         )
         chat_talking_prompt = await build_readable_messages(
             message_list_before_now,

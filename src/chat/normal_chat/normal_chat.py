@@ -26,7 +26,7 @@ logger = get_logger("normal_chat")
 
 
 class NormalChat:
-    def __init__(self, chat_stream: ChatStream, interest_dict: dict = {}):
+    def __init__(self, chat_stream: ChatStream, interest_dict: dict = None):
         """初始化 NormalChat 实例。只进行同步操作。"""
 
         # Basic info from chat_stream (sync)
@@ -36,7 +36,7 @@ class NormalChat:
         self.stream_name = chat_manager.get_stream_name(self.stream_id) or self.stream_id
 
         # Interest dict
-        self.interest_dict = interest_dict
+        self.interest_dict = interest_dict or {}
 
         # --- Initialize attributes (defaults) ---
         self.is_group_chat: bool = False
@@ -199,7 +199,6 @@ class NormalChat:
             if self._chat_task is None or self._chat_task.cancelled():
                 logger.info(f"[{self.stream_name}] 兴趣监控任务被取消或置空，退出")
                 break
-
 
             items_to_process = list(self.interest_dict.items())
             if not items_to_process:

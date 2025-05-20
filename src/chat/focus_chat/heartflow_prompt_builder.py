@@ -1,6 +1,6 @@
 from src.config.config import global_config
 from src.common.logger_manager import get_logger
-from src.individuality.individuality import Individuality
+from src.individuality.individuality import individuality
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_before_timestamp_with_chat
 from src.chat.person_info.relationship_manager import relationship_manager
@@ -103,7 +103,6 @@ class PromptBuilder:
         return None
 
     async def _build_prompt_normal(self, chat_stream, message_txt: str, sender_name: str = "某人") -> str:
-        individuality = Individuality.get_instance()
         prompt_personality = individuality.get_prompt(x_person=2, level=2)
         is_group_chat = bool(chat_stream.group_info)
 
@@ -112,7 +111,7 @@ class PromptBuilder:
             who_chat_in_group = get_recent_group_speaker(
                 chat_stream.stream_id,
                 (chat_stream.user_info.platform, chat_stream.user_info.user_id) if chat_stream.user_info else None,
-                limit=global_config.chat.observation_context_size,
+                limit=global_config.focus_chat.observation_context_size,
             )
         elif chat_stream.user_info:
             who_chat_in_group.append(
@@ -160,7 +159,7 @@ class PromptBuilder:
         message_list_before_now = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_stream.stream_id,
             timestamp=time.time(),
-            limit=global_config.chat.observation_context_size,
+            limit=global_config.focus_chat.observation_context_size,
         )
         chat_talking_prompt = await build_readable_messages(
             message_list_before_now,

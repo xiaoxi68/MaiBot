@@ -49,7 +49,7 @@ class ClassicalWillingManager(BaseWillingManager):
         # 检查群组权限（如果是群聊）
         if (
             willing_info.group_info
-            and willing_info.group_info.group_id in global_config.chat_target.talk_frequency_down_groups
+            and willing_info.group_info.group_id in global_config.normal_chat.talk_frequency_down_groups
         ):
             reply_probability = reply_probability / global_config.normal_chat.down_frequency_rate
 

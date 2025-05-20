@@ -7,7 +7,7 @@ from typing import Dict, Tuple
 from ..config.config import global_config
 from ..common.logger_manager import get_logger
 from ..manager.async_task_manager import AsyncTask
-from ..individuality.individuality import Individuality
+from ..individuality.individuality import individuality
 
 logger = get_logger("mood")
 
@@ -54,7 +54,7 @@ class MoodUpdateTask(AsyncTask):
         agreeableness_bias = 0  # 宜人性偏置
         neuroticism_factor = 0.5  # 神经质系数
         # 获取人格特质
-        personality = Individuality.get_instance().personality
+        personality = individuality.personality
         if personality:
             # 神经质：影响情绪变化速度
             neuroticism_factor = 1 + (personality.neuroticism - 0.5) * 0.4

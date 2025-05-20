@@ -9,8 +9,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from src.common.message_repository import find_messages
 from src.chat.utils.chat_message_builder import get_raw_msg_by_timestamp_with_chat
-from peewee import SqliteDatabase
-from src.common.database.database import db  # 导入实际的数据库连接
 
 
 class TestExtractMessages(unittest.TestCase):

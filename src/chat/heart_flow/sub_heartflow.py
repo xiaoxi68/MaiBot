@@ -2,7 +2,7 @@ from .observation.observation import Observation
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 import asyncio
 import time
-from typing import Optional, List, Dict, Tuple, Callable, Coroutine
+from typing import Optional, List, Dict, Tuple
 import traceback
 from src.common.logger_manager import get_logger
 from src.chat.message_receive.message import MessageRecv
@@ -23,7 +23,6 @@ class SubHeartflow:
         self,
         subheartflow_id,
         mai_states: MaiStateInfo,
-        hfc_no_reply_callback: Callable[[], Coroutine[None, None, None]],
     ):
         """子心流初始化函数
 
@@ -35,7 +34,6 @@ class SubHeartflow:
         # 基础属性，两个值是一样的
         self.subheartflow_id = subheartflow_id
         self.chat_id = subheartflow_id
-        self.hfc_no_reply_callback = hfc_no_reply_callback
 
         # 麦麦的状态
         self.mai_states = mai_states
@@ -92,7 +90,7 @@ class SubHeartflow:
         # 创建并初始化 normal_chat_instance
         chat_stream = chat_manager.get_stream(self.chat_id)
         if chat_stream:
-            self.normal_chat_instance = NormalChat(chat_stream=chat_stream,interest_dict=self.get_interest_dict())
+            self.normal_chat_instance = NormalChat(chat_stream=chat_stream, interest_dict=self.get_interest_dict())
             await self.normal_chat_instance.initialize()
             await self.normal_chat_instance.start_chat()
             logger.info(f"{self.log_prefix} NormalChat 实例已创建并启动。")
@@ -189,7 +187,7 @@ class SubHeartflow:
             # 创建 HeartFChatting 实例，并传递 从构造函数传入的 回调函数
             self.heart_fc_instance = HeartFChatting(
                 chat_id=self.subheartflow_id,
-                observations=self.observations, 
+                observations=self.observations,
             )
 
             # 初始化并启动 HeartFChatting
@@ -216,7 +214,7 @@ class SubHeartflow:
         state_changed = False
         log_prefix = f"[{self.log_prefix}]"
 
-        if new_state == ChatState.CHAT:
+        if new_state == ChatState.NORMAL:
             logger.debug(f"{log_prefix} 准备进入或保持 普通聊天 状态")
             if await self._start_normal_chat():
                 logger.debug(f"{log_prefix} 成功进入或保持 NormalChat 状态。")

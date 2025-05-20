@@ -3,7 +3,7 @@ import contextlib
 import time
 import traceback
 from collections import deque
-from typing import List, Optional, Dict, Any, Deque, Callable, Coroutine
+from typing import List, Optional, Dict, Any, Deque
 from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.message_receive.chat_stream import chat_manager
 from rich.traceback import install
