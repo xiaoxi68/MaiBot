@@ -261,20 +261,6 @@ class SubHeartflow:
                 f"{log_prefix} 尝试将状态从 {current_state.value} 变为 {new_state.value}，但未成功或未执行更改。"
             )
 
-    async def subheartflow_start_working(self):
-        """启动子心流的后台任务
-
-        功能说明:
-        - 负责子心流的主要后台循环
-        - 每30秒检查一次停止标志
-        """
-        logger.trace(f"{self.log_prefix} 子心流开始工作...")
-
-        while not self.should_stop:
-            await asyncio.sleep(30)  # 30秒检查一次停止标志
-
-        logger.info(f"{self.log_prefix} 子心流后台任务已停止。")
-
     def add_observation(self, observation: Observation):
         for existing_obs in self.observations:
             if existing_obs.observe_id == observation.observe_id:

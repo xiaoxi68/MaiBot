@@ -36,7 +36,7 @@ class NormalChat:
         self.stream_name = chat_manager.get_stream_name(self.stream_id) or self.stream_id
 
         # Interest dict
-        self.interest_dict = interest_dict or {}
+        self.interest_dict = interest_dict
 
         self.is_group_chat: bool = False
         self.chat_target_info: Optional[dict] = None
@@ -457,10 +457,11 @@ class NormalChat:
             await self.initialize()  # Ensure initialized before starting tasks
 
         if self._chat_task is None or self._chat_task.done():
-            logger.info(f"[{self.stream_name}] 开始后台处理初始兴趣消息和轮询任务...")
+            logger.info(f"[{self.stream_name}] 开始回顾消息...")
             # Process initial messages first
             await self._process_initial_interest_messages()
             # Then start polling task
+            logger.info(f"[{self.stream_name}] 开始处理兴趣消息...")
             polling_task = asyncio.create_task(self._reply_interested_message())
             polling_task.add_done_callback(lambda t: self._handle_task_completion(t))
             self._chat_task = polling_task

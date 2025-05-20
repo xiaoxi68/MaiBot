@@ -117,9 +117,6 @@ class SubHeartflowManager:
                 heartflow_name = chat_manager.get_stream_name(subheartflow_id) or subheartflow_id
                 logger.info(f"[{heartflow_name}] 开始接收消息")
 
-                # 启动后台任务
-                asyncio.create_task(new_subflow.subheartflow_start_working())
-
                 return new_subflow
             except Exception as e:
                 logger.error(f"创建子心流 {subheartflow_id} 失败: {e}", exc_info=True)
