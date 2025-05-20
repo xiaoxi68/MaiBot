@@ -151,6 +151,11 @@ class FocusChatConfig(ConfigBase):
     think_interval: int = 1
     """思考间隔（秒）"""
 
+
+@dataclass
+class FocusChatProcessorConfig(ConfigBase):
+    """专注聊天处理器配置类"""
+
     self_identify_processor: bool = True
     """是否启用自我识别处理器"""
 

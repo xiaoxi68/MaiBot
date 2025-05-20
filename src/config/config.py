@@ -29,6 +29,7 @@ from src.config.official_configs import (
     TelemetryConfig,
     ExperimentalConfig,
     ModelConfig,
+    FocusChatProcessorConfig,
     MessageReceiveConfig,
 )
 
@@ -145,6 +146,7 @@ class Config(ConfigBase):
     message_receive: MessageReceiveConfig
     normal_chat: NormalChatConfig
     focus_chat: FocusChatConfig
+    focus_chat_processor: FocusChatProcessorConfig
     emoji: EmojiConfig
     expression: ExpressionConfig
     memory: MemoryConfig

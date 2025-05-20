@@ -30,6 +30,16 @@ from src.config.config import global_config
 install(extra_lines=3)
 
 
+# 定义处理器映射
+PROCESSOR_CLASSES = {
+    "ChattingInfoProcessor": ChattingInfoProcessor,
+    "MindProcessor": MindProcessor,
+    "ToolProcessor": ToolProcessor,
+    "WorkingMemoryProcessor": WorkingMemoryProcessor,
+    "SelfProcessor": SelfProcessor,
+}
+
+
 WAITING_TIME_THRESHOLD = 300  # 等待新消息时间阈值，单位秒
 
 EMOJI_SEND_PRO = 0.3  # 设置一个概率，比如 30% 才真的发
@@ -89,6 +99,30 @@ class HeartFChatting:
         self.working_observation = WorkingMemoryObservation(
             observe_id=self.stream_id, working_memory=self.working_memory
         )
+
+        # 根据配置文件和默认规则确定启用的处理器
+        PROCESSOR_NAME_TO_CONFIG_KEY_MAP = {
+            "SelfProcessor": "self_identify_processor",
+            "ToolProcessor": "tool_use_processor",
+            "WorkingMemoryProcessor": "working_memory_processor",
+        }
+        self.enabled_processor_names: List[str] = []
+        config_processor_settings = global_config.focus_chat_processor # 获取处理器配置，若不存在则为空字典
+
+        for proc_name in PROCESSOR_CLASSES.keys():
+            config_key = PROCESSOR_NAME_TO_CONFIG_KEY_MAP.get(proc_name)
+            if config_key:
+                # 此处理器可通过配置控制
+                # getattr(config_processor_settings, config_key, True)
+                # 如果config_processor_settings是字典，则用 config_processor_settings.get(config_key, True)
+                if getattr(config_processor_settings, config_key, True): # 默认启用，如果配置中未指定
+                    self.enabled_processor_names.append(proc_name)
+            else:
+                # 此处理器不在配置映射中，默认启用
+                self.enabled_processor_names.append(proc_name)
+        
+        logger.info(f"{self.log_prefix} 将启用的处理器: {self.enabled_processor_names}")
+
 
         self.expressor = DefaultExpressor(chat_id=self.stream_id)
         self.action_manager = ActionManager()
@@ -150,13 +184,33 @@ class HeartFChatting:
         return True
 
     def _register_default_processors(self):
-        """注册默认的信息处理器"""
-        self.processors.append(ChattingInfoProcessor())
-        self.processors.append(MindProcessor(subheartflow_id=self.stream_id))
-        self.processors.append(ToolProcessor(subheartflow_id=self.stream_id))
-        self.processors.append(WorkingMemoryProcessor(subheartflow_id=self.stream_id))
-        self.processors.append(SelfProcessor(subheartflow_id=self.stream_id))
-        logger.info(f"{self.log_prefix} 已注册默认处理器: {[p.__class__.__name__ for p in self.processors]}")
+        """根据 self.enabled_processor_names 注册信息处理器"""
+        self.processors = [] # 清空已有的
+
+        # self.enabled_processor_names 由 __init__ 保证是一个列表
+        for name in self.enabled_processor_names: # 'name' is "ChattingInfoProcessor", etc.
+            processor_class = PROCESSOR_CLASSES.get(name)
+            if processor_class:
+                # 根据处理器类名判断是否需要 subheartflow_id
+                if name in ["MindProcessor", "ToolProcessor", "WorkingMemoryProcessor", "SelfProcessor"]:
+                    self.processors.append(processor_class(subheartflow_id=self.stream_id))
+                elif name == "ChattingInfoProcessor":
+                    self.processors.append(processor_class())
+                else:
+                    # 对于PROCESSOR_CLASSES中定义但此处未明确处理构造的处理器
+                    try:
+                        self.processors.append(processor_class()) # 尝试无参构造
+                        logger.debug(f"{self.log_prefix} 注册处理器 {name} (尝试无参构造).")
+                    except TypeError:
+                        logger.error(f"{self.log_prefix} 处理器 {name} 构造失败。它可能需要参数（如 subheartflow_id）但未在注册逻辑中明确处理。")
+            else:
+                # 这理论上不应该发生，因为 enabled_processor_names 是从 PROCESSOR_CLASSES 的键生成的
+                logger.warning(f"{self.log_prefix} 在 PROCESSOR_CLASSES 中未找到名为 '{name}' 的处理器，将跳过注册。")
+        
+        if self.processors:
+            logger.info(f"{self.log_prefix} 已根据配置和默认规则注册处理器: {[p.__class__.__name__ for p in self.processors]}")
+        else:
+            logger.warning(f"{self.log_prefix} 没有注册任何处理器。这可能是由于配置错误或所有处理器都被禁用了。")
 
     async def start(self):
         """
