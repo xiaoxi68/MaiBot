@@ -22,12 +22,20 @@ class LocalStoreManager:
 
     def __getitem__(self, item: str) -> str | list | dict | int | float | bool | None:
         """获取本地存储数据"""
-        return self.store.get(item, None)
+        return self.store.get(item)
 
     def __setitem__(self, key: str, value: str | list | dict | int | float | bool):
         """设置本地存储数据"""
         self.store[key] = value
         self.save_local_store()
+
+    def __delitem__(self, key: str):
+        """删除本地存储数据"""
+        if key in self.store:
+            del self.store[key]
+            self.save_local_store()
+        else:
+            logger.warning(f"尝试删除不存在的键: {key}")
 
     def __contains__(self, item: str) -> bool:
         """检查本地存储数据是否存在"""
