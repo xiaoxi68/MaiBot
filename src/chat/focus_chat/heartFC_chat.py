@@ -105,7 +105,7 @@ class HeartFChatting:
         self.enabled_processor_names: List[str] = []
         config_processor_settings = global_config.focus_chat_processor
 
-        for proc_name, (proc_class, config_key) in PROCESSOR_CLASSES.items():
+        for proc_name, (_proc_class, config_key) in PROCESSOR_CLASSES.items():
             if config_key: # 此处理器可通过配置控制
                 if getattr(config_processor_settings, config_key, True):  # 默认启用 (如果配置中未指定该键)
                     self.enabled_processor_names.append(proc_name)
