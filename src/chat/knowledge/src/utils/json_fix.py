@@ -1,6 +1,7 @@
 import json
 from json_repair import repair_json
 
+
 def _find_unclosed(json_str):
     """
     Identifies the unclosed braces and brackets in the JSON string.
