@@ -8,7 +8,7 @@ class Identity:
 
     identity_detail: List[str]  # 身份细节描述
     height: int  # 身高（厘米）
-    weight: int  # 体重（千克）
+    weight: float  # 体重（千克）
     age: int  # 年龄
     gender: str  # 性别
     appearance: str  # 外貌特征
@@ -24,7 +24,7 @@ class Identity:
         self,
         identity_detail: List[str] = None,
         height: int = 0,
-        weight: int = 0,
+        weight: float = 0,
         age: int = 0,
         gender: str = "",
         appearance: str = "",
@@ -61,7 +61,7 @@ class Identity:
 
     @classmethod
     def initialize(
-        cls, identity_detail: List[str], height: int, weight: int, age: int, gender: str, appearance: str
+        cls, identity_detail: List[str], height: int, weight: float, age: int, gender: str, appearance: str
     ) -> "Identity":
         """初始化身份特征
 
