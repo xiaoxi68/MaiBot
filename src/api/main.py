@@ -27,8 +27,6 @@ router = APIRouter()
 
 logger = get_logger("api")
 
-# maiapi = FastAPI()
-logger.info("麦麦API服务器已启动")
 graphql_router = GraphQLRouter(schema=None, path="/")  # Replace `None` with your actual schema
 
 router.include_router(graphql_router, prefix="/graphql", tags=["GraphQL"])
@@ -110,6 +108,6 @@ async def get_system_basic_info():
         return {"status": "failed", "reason": str(e)}
 
 
-def start_api_server():
-    """启动API服务器"""
+def register_api_router():
+    """注册API路由"""
     global_server.register_router(router, prefix="/api/v1")

@@ -7,7 +7,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from peewee import SqliteDatabase
-from src.common.database.database_model import Messages, BaseModel
+from src.common.database.database_model import Message, BaseModel
 from src.common.message_repository import find_messages
 
 
@@ -18,10 +18,10 @@ class TestMessageRepository(unittest.TestCase):
 
         # 覆盖原有数据库连接
         BaseModel._meta.database = self.test_db
-        Messages._meta.database = self.test_db
+        Message._meta.database = self.test_db
 
         # 创建表
-        self.test_db.create_tables([Messages])
+        self.test_db.create_tables([Message])
 
         # 添加测试数据
         current_time = datetime.datetime.now().timestamp()
@@ -98,7 +98,7 @@ class TestMessageRepository(unittest.TestCase):
         ]
 
         for msg_data in self.test_messages:
-            Messages.create(**msg_data)
+            Message.create(**msg_data)
 
     def tearDown(self):
         # 关闭测试数据库连接

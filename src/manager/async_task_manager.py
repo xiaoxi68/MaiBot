@@ -109,12 +109,12 @@ class AsyncTaskManager:
         """
         获取所有任务的状态
         """
-        tasks_status = {}
-        for task_name, task in self.tasks.items():
-            tasks_status[task_name] = {
-                "status": "running" if not task.done() else "done",
+        return {
+            task_name: {
+                "status": "done" if task.done() else "running",
             }
-        return tasks_status
+            for task_name, task in self.tasks.items()
+        }
 
     async def stop_and_wait_all_tasks(self):
         """

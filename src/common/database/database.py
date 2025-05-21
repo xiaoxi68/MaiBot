@@ -1,72 +1,77 @@
-import os
-from pymongo import MongoClient
-from peewee import SqliteDatabase
-from pymongo.database import Database
+from pathlib import Path
+
 from rich.traceback import install
+from sqlmodel import StaticPool, create_engine, Session
+
+from src.common.logger_manager import get_logger
+from src.config.config import global_config
+from src.common.database.database_model import create_database
 
 install(extra_lines=3)
 
-_client = None
-_db = None
-
-
-def __create_database_instance():
-    uri = os.getenv("MONGODB_URI")
-    host = os.getenv("MONGODB_HOST", "127.0.0.1")
-    port = int(os.getenv("MONGODB_PORT", "27017"))
-    # db_name 变量在创建连接时不需要，在获取数据库实例时才使用
-    username = os.getenv("MONGODB_USERNAME")
-    password = os.getenv("MONGODB_PASSWORD")
-    auth_source = os.getenv("MONGODB_AUTH_SOURCE")
-
-    if uri:
-        # 支持标准mongodb://和mongodb+srv://连接字符串
-        if uri.startswith(("mongodb://", "mongodb+srv://")):
-            return MongoClient(uri)
-        else:
-            raise ValueError(
-                "Invalid MongoDB URI format. URI must start with 'mongodb://' or 'mongodb+srv://'. "
-                "For MongoDB Atlas, use 'mongodb+srv://' format. "
-                "See: https://www.mongodb.com/docs/manual/reference/connection-string/"
-            )
-
-    if username and password:
-        # 如果有用户名和密码，使用认证连接
-        return MongoClient(host, port, username=username, password=password, authSource=auth_source)
-
-    # 否则使用无认证连接
-    return MongoClient(host, port)
-
-
-def get_db():
-    """获取数据库连接实例，延迟初始化。"""
-    global _client, _db
-    if _client is None:
-        _client = __create_database_instance()
-        _db = _client[os.getenv("DATABASE_NAME", "MegBot")]
-    return _db
-
-
-class DBWrapper:
-    """数据库代理类，保持接口兼容性同时实现懒加载。"""
-
-    def __getattr__(self, name):
-        return getattr(get_db(), name)
-
-    def __getitem__(self, key):
-        return get_db()[key]
-
-
-# 全局数据库访问点
-memory_db: Database = DBWrapper()
+logger = get_logger("database")
 
 # 定义数据库文件路径
-ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-_DB_DIR = os.path.join(ROOT_PATH, "data")
-_DB_FILE = os.path.join(_DB_DIR, "MaiBot.db")
+_DATA_DIR = Path(global_config.storage.data_path)
+_DB_FILE = _DATA_DIR / "MaiBot.db"
+
+logger.info("正在初始化数据库组件...")
 
 # 确保数据库目录存在
-os.makedirs(_DB_DIR, exist_ok=True)
+_DB_FILE.mkdir(parents=True, exist_ok=True)
 
-# 全局 Peewee SQLite 数据库访问点
-db = SqliteDatabase(_DB_FILE)
+
+_SQLITE_URL = f"sqlite:///{_DB_FILE}"
+# TODO: 支持更多的数据库类型
+
+db_engine = create_engine(
+    _SQLITE_URL,
+    echo=True,  # echo=True  # 设置为True以启用SQLAlchemy的调试输出
+    poolclass=StaticPool,  # 使用静态连接池
+    connect_args={
+        "check_same_thread": False,  # SQLite不支持多线程访问
+        "timeout": 30,  # 连接超时时间
+    },
+)
+"""全局的数据库引擎对象"""
+
+"""
+其它数据库的配置示例：
+# PostgreSQL
+engine = create_engine(
+    "postgresql://user:password@localhost/dbname",
+    poolclass=QueuePool,
+    pool_size=10,
+    max_overflow=20,
+    pool_recycle=1800
+)
+
+# MySQL
+engine = create_engine(
+    "mysql+pymysql://user:password@localhost/dbname",
+    poolclass=QueuePool,
+    pool_size=5,
+    pool_pre_ping=True  # MySQL推荐启用
+)
+"""
+
+create_database(db_engine)  # 创建数据库表
+
+logger.success("数据库组件初始化完成")
+
+
+class DBSession:
+    """
+    数据库会话类
+    """
+
+    def __init__(self):
+        self.session = None
+
+    def __enter__(self):
+        self.session = Session(db_engine)
+        return self.session
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.session:
+            self.session.close()

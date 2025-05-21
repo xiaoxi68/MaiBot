@@ -1,11 +1,13 @@
 import asyncio
 import time
 from maim_message import MessageServer
+
+from src.manager.cache_manager import CacheCleanerTask
 from .common.remote import TelemetryHeartBeatTask
 from .manager.async_task_manager import async_task_manager
 from .chat.utils.statistic import OnlineTimeRecordTask, StatisticOutputTask
 from .manager.mood_manager import MoodPrintTask, MoodUpdateTask
-from .chat.emoji_system.emoji_manager import emoji_manager
+from src.chat.utils.emoji_manager import emoji_manager
 from .chat.person_info.person_info import person_info_manager
 from .chat.normal_chat.willing.willing_manager import willing_manager
 from .chat.message_receive.chat_stream import chat_manager
@@ -17,10 +19,10 @@ from .config.config import global_config
 from .chat.message_receive.bot import chat_bot
 from .common.logger_manager import get_logger
 from .individuality.individuality import individuality, Individuality
-from .common.server import global_server, Server
+from .common.server import global_server, Server, NetServerTask
 from rich.traceback import install
 from .chat.focus_chat.expressors.exprssion_learner import expression_learner
-from .api.main import start_api_server
+from .api.main import register_api_router
 
 install(extra_lines=3)
 
@@ -51,6 +53,9 @@ class MainSystem:
         """初始化其他组件"""
         init_start_time = time.time()
 
+        # 添加缓存定时清理任务
+        await async_task_manager.add_task(CacheCleanerTask())
+
         # 添加在线时间统计任务
         await async_task_manager.add_task(OnlineTimeRecordTask())
 
@@ -60,9 +65,12 @@ class MainSystem:
         # 添加遥测心跳任务
         await async_task_manager.add_task(TelemetryHeartBeatTask())
 
-        # 启动API服务器
-        start_api_server()
-        logger.success("API服务器启动成功")
+        # 启动网络服务
+        await async_task_manager.add_task(NetServerTask())
+
+        # 注册API路由
+        register_api_router()
+
         # 初始化表情管理器
         emoji_manager.initialize()
         logger.success("表情包管理器初始化成功")
@@ -130,7 +138,6 @@ class MainSystem:
                 self.remove_recalled_message_task(),
                 emoji_manager.start_periodic_check_register(),
                 self.app.run(),
-                self.server.run(),
             ]
             await asyncio.gather(*tasks)
 

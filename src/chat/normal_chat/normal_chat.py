@@ -18,7 +18,7 @@ from .normal_chat_generator import NormalChatGenerator
 from ..message_receive.message import MessageSending, MessageRecv, MessageThinking, MessageSet
 from src.chat.message_receive.message_sender import message_manager
 from src.chat.utils.utils_image import image_path_to_base64
-from src.chat.emoji_system.emoji_manager import emoji_manager
+from src.chat.utils.emoji_manager import emoji_manager
 from src.chat.normal_chat.willing.willing_manager import willing_manager
 from src.config.config import global_config
 
@@ -312,8 +312,6 @@ class NormalChat:
                 info_catcher.catch_after_response(timing_results["消息发送"], response_set, first_bot_msg)
             else:
                 logger.warning(f"[{self.stream_name}] 思考消息 {thinking_id} 在发送前丢失，无法记录 info_catcher")
-
-            info_catcher.done_catch()
 
             # 处理表情包 (不再需要传入 chat)
             with Timer("处理表情包", timing_results):

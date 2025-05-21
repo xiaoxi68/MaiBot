@@ -13,6 +13,17 @@ from src.config.config_base import ConfigBase
 
 
 @dataclass
+class StorageConfig(ConfigBase):
+    """存储配置类"""
+
+    data_path: str = "data"
+    """运行数据存储路径"""
+
+    log_path: str = "logs"
+    """日志存储路径（暂未启用该配置）"""
+
+
+@dataclass
 class BotConfig(ConfigBase):
     """QQ机器人配置类"""
 

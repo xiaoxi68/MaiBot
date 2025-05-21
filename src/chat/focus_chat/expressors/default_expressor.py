@@ -9,7 +9,7 @@ from src.chat.models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.chat.utils.utils_image import image_path_to_base64  # Local import needed after move
 from src.chat.utils.timer_calculator import Timer  # <--- Import Timer
-from src.chat.emoji_system.emoji_manager import emoji_manager
+from src.chat.utils.emoji_manager import emoji_manager
 from src.chat.focus_chat.heartFC_sender import HeartFCSender
 from src.chat.utils.utils import process_llm_response
 from src.chat.utils.info_catcher import info_catcher_manager

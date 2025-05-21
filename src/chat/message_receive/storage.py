@@ -4,7 +4,7 @@ from typing import Union
 # from ...common.database.database import db  # db is now Peewee's SqliteDatabase instance
 from .message import MessageSending, MessageRecv
 from .chat_stream import ChatStream
-from ...common.database.database_model import Messages, RecalledMessages  # Import Peewee models
+from ...common.database.database_model import Message, RecalledMessages  # Import Peewee models
 from src.common.logger import get_module_logger
 
 logger = get_module_logger("message_storage")
@@ -41,7 +41,7 @@ class MessageStorage:
             # 安全地获取 user_info, 如果为 None 则视为空字典 (以防万一)
             user_info_from_chat = chat_info_dict.get("user_info") or {}
 
-            Messages.create(
+            Message.create(
                 message_id=msg_id,
                 time=float(message.message_info.time),
                 chat_id=chat_stream.stream_id,

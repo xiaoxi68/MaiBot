@@ -1,29 +1,54 @@
+from asyncio import CancelledError
+
 from fastapi import FastAPI, APIRouter
-from fastapi.middleware.cors import CORSMiddleware  # 新增导入
+from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 from uvicorn import Config, Server as UvicornServer
 import os
 from rich.traceback import install
 
+from src.common.logger_manager import get_logger
+from src.manager.async_task_manager import AsyncTask
+
 install(extra_lines=3)
+
+logger = get_logger("net_server")
+
+
+class NetServerTask(AsyncTask):
+    def __init__(self):
+        super().__init__(task_name="Net Server Task")
+
+    async def run(self):
+        """运行服务器"""
+        try:
+            await global_server.run()
+        except CancelledError:
+            pass  # 捕获取消事件，不做处理，直接结束
+        except Exception as e:
+            logger.error(f"网络服务在运行时发生异常: {e}")
+        finally:
+            await global_server.shutdown()
 
 
 class Server:
     def __init__(self, host: Optional[str] = None, port: Optional[int] = None, app_name: str = "MaiMCore"):
-        self.app = FastAPI(title=app_name)
-        self._host: str = "127.0.0.1"
-        self._port: int = 8080
+        self._app = FastAPI(title=app_name)
+
+        self.host: str = host or "127.0.0.1"
+        self.port: int = port or 8080
+
         self._server: Optional[UvicornServer] = None
-        self.set_address(host, port)
 
         # 配置 CORS
+        # TODO: 建议在配置中添加相关配置项，而非硬编码
         origins = [
             "http://localhost:3000",  # 允许的前端源
             "http://127.0.0.1:3000",
             # 在生产环境中，您应该添加实际的前端域名
         ]
 
-        self.app.add_middleware(
+        self._app.add_middleware(
             CORSMiddleware,
             allow_origins=origins,
             allow_credentials=True,  # 是否支持 cookie
@@ -53,41 +78,27 @@ class Server:
             # 注册路由，添加前缀 "/api/v1"
             server.register_router(router, prefix="/api/v1")
         """
-        self.app.include_router(router, prefix=prefix)
-
-    def set_address(self, host: Optional[str] = None, port: Optional[int] = None):
-        """设置服务器地址和端口"""
-        if host:
-            self._host = host
-        if port:
-            self._port = port
+        self._app.include_router(router, prefix=prefix)
 
     async def run(self):
         """启动服务器"""
         # 禁用 uvicorn 默认日志和访问日志
-        config = Config(app=self.app, host=self._host, port=self._port, log_config=None, access_log=False)
+        config = Config(app=self._app, host=self.host, port=self.port, log_config=None, access_log=False)
         self._server = UvicornServer(config=config)
-        try:
-            await self._server.serve()
-        except KeyboardInterrupt:
-            await self.shutdown()
-            raise
-        except Exception as e:
-            await self.shutdown()
-            raise RuntimeError(f"服务器运行错误: {str(e)}") from e
-        finally:
-            await self.shutdown()
+
+        # 启动服务器
+        logger.info("启动网络服务...")
+        await self._server.serve()
 
     async def shutdown(self):
         """安全关闭服务器"""
         if self._server:
-            self._server.should_exit = True
             await self._server.shutdown()
-            self._server = None
+            logger.info("网络服务已安全关闭")
 
     def get_app(self) -> FastAPI:
         """获取 FastAPI 实例"""
-        return self.app
+        return self._app
 
 
 global_server = Server(host=os.environ["HOST"], port=int(os.environ["PORT"]))

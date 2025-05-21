@@ -1,0 +1,113 @@
+[inner]
+version = "0.1.0"
+
+# 配置文件版本号迭代规则同bot_config.toml
+
+[request_conf] # 请求配置（此配置项数值均为默认值，如想修改，请取消对应条目的注释）
+#max_retry = 2 # 最大重试次数（单个模型API调用失败，最多重试的次数）
+#timeout = 10 # API调用的超时时长（超过这个时长，本次请求将被视为“请求超时”，单位：秒）
+#retry_interval = 10 # 重试间隔（如果API调用失败，重试的间隔时间，单位：秒）
+#default_temperature = 0.7 # 默认的温度（如果bot_config.toml中没有设置temperature参数，默认使用这个值）
+#default_max_tokens = 1024 # 默认的最大输出token数（如果bot_config.toml中没有设置max_tokens参数，默认使用这个值）
+
+
+[[api_providers]] # API服务提供商（可以配置多个）
+name = "DeepSeek"                        # API服务商名称（可随意命名，在models的api-provider中需使用这个命名）
+base_url = "https://api.deepseek.com/v1" # API服务商的BaseURL
+key = "******"                           # API Key （可选，默认为None）
+
+[[api_providers]]
+name = "SiliconFlow"
+base_url = "https://api.siliconflow.cn/v1/"
+key = "******"
+
+#[[api_providers]] # 特殊：Google的Gimini使用特殊API，与OpenAI格式不兼容，需要配置client为"google"
+#name = "Google"
+#base_url = "https://api.google.com"
+#key = "******"
+#
+#[[api_providers]]
+#name = "LocalHost"
+#base_url = "https://localhost:8888"
+#key = "lm-studio"
+
+
+[[models]] # 模型（可以配置多个）
+# 模型标识符（API服务商提供的模型标识符）
+model_identifier = "Pro/deepseek-ai/DeepSeek-R1"
+# 模型名称（可随意命名，在task_model_usage的配置中需使用这个命名）
+#（可选，若无该字段，则将自动使用model_identifier填充）
+name = "deepseek-r1"
+# API服务商名称（对应在api_providers中配置的服务商名称）
+api_provider = "SiliconFlow"
+# 输入价格（用于API调用统计，单位：元/兆token）（可选，若无该字段，默认值为0）
+price_in = 4.0
+# 输出价格（用于API调用统计，单位：元/兆token）（可选，若无该字段，默认值为0）
+price_out = 16.0
+# 强制流式输出模式（若模型不支持非流式输出，请取消该注释，启用强制流式输出）
+#（可选，若无该字段，默认值为false）
+#force_stream_mode = true
+
+[[models]]
+model_identifier = "Pro/deepseek-ai/DeepSeek-V3"
+name = "deepseek-v3"
+api_provider = "SiliconFlow"
+price_in = 2.0
+price_out = 8.0
+
+[[models]]
+model_identifier = "Qwen/Qwen3-8B"
+name = "Qwen3-8B-Free"
+api_provider = "SiliconFlow"
+price_in = 0
+price_out = 0
+
+[[models]]
+model_identifier = "Qwen/Qwen2.5-7B-Instruct"
+name = "Qwen2.5-7B-Instruct-Free"
+api_provider = "SiliconFlow"
+price_in = 0
+price_out = 0
+
+[[models]]
+model_identifier = "Qwen/Qwen2.5-32B-Instruct"
+name = "Qwen2.5-32B-Instruct"
+api_provider = "SiliconFlow"
+price_in = 1.26
+price_out = 1.26
+
+[[models]]
+model_identifier = "Pro/Qwen/Qwen2.5-VL-7B-Instruct"
+name = "Qwen2.5-VL-7B-Instruct"
+api_provider = "SiliconFlow"
+price_in = 0.35
+price_out = 0.35
+
+[[models]]
+model_identifier = "BAAI/bge-m3"
+name = "siliconflow-bge-m3"
+api_provider = "SiliconFlow"
+price_in = 0
+price_out = 0
+
+
+[task_model_usage]
+llm_reasoning = "deepseek-r1" # 一般聊天模式的推理回复模型
+llm_normal = { model = "deepseek-v3", temperature = 0.2 } # V3 回复模型 专注和一般聊天模式共用的回复模型
+llm_topic_judge = [
+    "Qwen3-8B-Free",
+    "Qwen2.5-7B-Instruct-Free",
+] # 主题判断模型：建议使用qwen2.5 7b
+vlm = "Qwen2.5-VL-7B-Instruct" # 图像识别模型
+llm_summary = "Qwen2.5-32B-Instruct" # 概括模型，建议使用qwen2.5 32b 及以上
+llm_heartflow = "Qwen2.5-32B-Instruct" # 用于控制麦麦是否参与聊天的模型
+llm_observation = [
+    "Qwen3-8B-Free",
+    "Qwen2.5-7B-Instruct-Free",
+] # 观察模型，压缩聊天内容，建议用免费的
+llm_sub_heartflow = { model = "deepseek-v3", temperature = 0.3 } # 心流：认真水群时,生成麦麦的内心想法，必须使用具有工具调用能力的模型
+llm_plan = "deepseek-v3" # 决策：认真水群时,负责决定麦麦该做什么
+embedding = "siliconflow-bge-m3" # 嵌入模型
+llm_PFC_action_planner = { model = "deepseek-v3", temperature = 0.3 } # PFC决策模型
+llm_PFC_chat = { model = "deepseek-v3", temperature = 0.3 } # PFC聊天模型
+llm_PFC_reply_checker = "deepseek-v3" # PFC观察模型

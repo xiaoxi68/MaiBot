@@ -7,7 +7,7 @@ from src.common.logger import get_module_logger
 from src.manager.async_task_manager import AsyncTask
 
 from ...common.database.database import db  # This db is the Peewee database instance
-from ...common.database.database_model import OnlineTime, LLMUsage, Messages  # Import the Peewee model
+from ...common.database.database_model import OnlineTimeRecord, LLMUsage, Message  # Import the Peewee model
 from src.manager.local_store_manager import local_storage
 
 logger = get_module_logger("maibot_statistic")
@@ -50,7 +50,9 @@ class OnlineTimeRecordTask(AsyncTask):
     def _init_database():
         """初始化数据库"""
         with db.atomic():  # Use atomic operations for schema changes
-            OnlineTime.create_table(safe=True)  # Creates table if it doesn't exist, Peewee handles indexes from model
+            OnlineTimeRecord.create_table(
+                safe=True
+            )  # Creates table if it doesn't exist, Peewee handles indexes from model
 
     async def run(self):
         try:
@@ -59,7 +61,9 @@ class OnlineTimeRecordTask(AsyncTask):
 
             if self.record_id:
                 # 如果有记录，则更新结束时间
-                query = OnlineTime.update(end_timestamp=extended_end_time).where(OnlineTime.id == self.record_id)
+                query = OnlineTimeRecord.update(end_timestamp=extended_end_time).where(
+                    OnlineTimeRecord.id == self.record_id
+                )
                 updated_rows = query.execute()
                 if updated_rows == 0:
                     # Record might have been deleted or ID is stale, try to find/create
@@ -69,9 +73,9 @@ class OnlineTimeRecordTask(AsyncTask):
                 # 如果没有记录，检查一分钟以内是否已有记录
                 # Look for a record whose end_timestamp is recent enough to be considered ongoing
                 recent_record = (
-                    OnlineTime.select()
-                    .where(OnlineTime.end_timestamp >= (current_time - timedelta(minutes=1)))
-                    .order_by(OnlineTime.end_timestamp.desc())
+                    OnlineTimeRecord.select()
+                    .where(OnlineTimeRecord.end_timestamp >= (current_time - timedelta(minutes=1)))
+                    .order_by(OnlineTimeRecord.end_timestamp.desc())
                     .first()
                 )
 
@@ -82,7 +86,7 @@ class OnlineTimeRecordTask(AsyncTask):
                     recent_record.save()
                 else:
                     # 若没有记录，则插入新的在线时间记录
-                    new_record = OnlineTime.create(
+                    new_record = OnlineTimeRecord.create(
                         timestamp=current_time.timestamp(),  # 添加此行
                         start_timestamp=current_time,
                         end_timestamp=extended_end_time,
@@ -292,7 +296,7 @@ class StatisticOutputTask(AsyncTask):
 
         query_start_time = collect_period[-1][1]
         # Assuming OnlineTime.end_timestamp is a DateTimeField
-        for record in OnlineTime.select().where(OnlineTime.end_timestamp >= query_start_time):
+        for record in OnlineTimeRecord.select().where(OnlineTimeRecord.end_timestamp >= query_start_time):
             # record.end_timestamp and record.start_timestamp are datetime objects
             record_end_timestamp = record.end_timestamp
             record_start_timestamp = record.start_timestamp
@@ -332,7 +336,7 @@ class StatisticOutputTask(AsyncTask):
         }
 
         query_start_timestamp = collect_period[-1][1].timestamp()  # Messages.time is a DoubleField (timestamp)
-        for message in Messages.select().where(Messages.time >= query_start_timestamp):
+        for message in Message.select().where(Message.time >= query_start_timestamp):
             message_time_ts = message.time  # This is a float timestamp
 
             chat_id = None

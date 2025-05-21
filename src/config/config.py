@@ -31,6 +31,7 @@ from src.config.official_configs import (
     ModelConfig,
     FocusChatProcessorConfig,
     MessageReceiveConfig,
+    StorageConfig,
 )
 
 install(extra_lines=3)
@@ -139,6 +140,7 @@ class Config(ConfigBase):
 
     MMC_VERSION: str = field(default=MMC_VERSION, repr=False, init=False)  # 硬编码的版本信息
 
+    storage: StorageConfig
     bot: BotConfig
     personality: PersonalityConfig
     identity: IdentityConfig

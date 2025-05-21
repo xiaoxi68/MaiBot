@@ -1,22 +1,26 @@
 import json
-import os
+from pathlib import Path
 
 from src.common.logger_manager import get_logger
+from src.config.config import global_config
 
-LOCAL_STORE_FILE_PATH = "data/local_store.json"
 
 logger = get_logger("local_storage")
 
+# 本地存储文件路径
+_DATA_DIR = Path(global_config.storage.data_path)
+_LOCAL_STORE_FILE = _DATA_DIR / "local_store.json"
+
 
 class LocalStoreManager:
-    file_path: str
+    file_path: Path
     """本地存储路径"""
 
     store: dict[str, str | list | dict | int | float | bool]
     """本地存储数据"""
 
-    def __init__(self, local_store_path: str | None = None):
-        self.file_path = local_store_path or LOCAL_STORE_FILE_PATH
+    def __init__(self, local_store_path: Path):
+        self.file_path = local_store_path
         self.store = {}
         self.load_local_store()
 
@@ -43,7 +47,7 @@ class LocalStoreManager:
 
     def load_local_store(self):
         """加载本地存储数据"""
-        if os.path.exists(self.file_path):
+        if self.file_path.exists():
             # 存在本地存储文件，加载数据
             logger.info("正在阅读记事本......我在看，我真的在看！")
             logger.debug(f"加载本地存储数据: {self.file_path}")
@@ -60,7 +64,7 @@ class LocalStoreManager:
         else:
             # 不存在本地存储文件，创建新的目录和文件
             logger.warning("啊咧？记事本不存在，正在创建新的记事本......")
-            os.makedirs(os.path.dirname(self.file_path), exist_ok=True)
+            self.file_path.mkdir(parents=True, exist_ok=True)
             with open(self.file_path, "w", encoding="utf-8") as f:
                 json.dump({}, f, ensure_ascii=False, indent=4)
             logger.success("记事本创建成功！")
@@ -72,4 +76,4 @@ class LocalStoreManager:
             json.dump(self.store, f, ensure_ascii=False, indent=4)
 
 
-local_storage = LocalStoreManager("data/local_store.json")  # 全局单例化
+local_storage = LocalStoreManager(_LOCAL_STORE_FILE)  # 全局单例化

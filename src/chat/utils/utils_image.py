@@ -8,8 +8,7 @@ import io
 import numpy as np
 
 
-from ...common.database.database import db
-from ...common.database.database_model import Images, ImageDescriptions
+from ...common.database.database_model import Image
 from ...config.config import global_config
 from ..models.utils_model import LLMRequest
 
@@ -40,7 +39,7 @@ class ImageManager:
 
             try:
                 db.connect(reuse_if_open=True)
-                db.create_tables([Images, ImageDescriptions], safe=True)
+                db.create_tables([Image, ImageDescriptions], safe=True)
             except Exception as e:
                 logger.error(f"数据库连接或表创建失败: {e}")
 
@@ -143,13 +142,13 @@ class ImageManager:
 
                     # 保存到数据库 (Images表)
                     try:
-                        img_obj = Images.get((Images.emoji_hash == image_hash) & (Images.type == "emoji"))
+                        img_obj = Image.get((Image.emoji_hash == image_hash) & (Image.type == "emoji"))
                         img_obj.path = file_path
                         img_obj.description = description
                         img_obj.timestamp = current_timestamp
                         img_obj.save()
-                    except Images.DoesNotExist:
-                        Images.create(
+                    except Image.DoesNotExist:
+                        Image.create(
                             hash=image_hash,
                             path=file_path,
                             type="emoji",
@@ -216,13 +215,13 @@ class ImageManager:
 
                     # 保存到数据库 (Images表)
                     try:
-                        img_obj = Images.get((Images.emoji_hash == image_hash) & (Images.type == "image"))
+                        img_obj = Image.get((Image.emoji_hash == image_hash) & (Image.type == "image"))
                         img_obj.path = file_path
                         img_obj.description = description
                         img_obj.timestamp = current_timestamp
                         img_obj.save()
-                    except Images.DoesNotExist:
-                        Images.create(
+                    except Image.DoesNotExist:
+                        Image.create(
                             hash=image_hash,
                             path=file_path,
                             type="image",

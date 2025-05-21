@@ -22,7 +22,7 @@ from ..utils.utils import translate_timestamp_to_human_readable
 from rich.traceback import install
 
 from ...config.config import global_config
-from src.common.database.database_model import Messages, GraphNodes, GraphEdges  # Peewee Models导入
+from src.common.database.database_model import Message, GraphNodes, GraphEdges  # Peewee Models导入
 
 install(extra_lines=3)
 
@@ -860,8 +860,8 @@ class EntorhinalCortex:
                         # 确保在更新前获取最新的 memorized_times
                         current_memorized_times = message.get("memorized_times", 0)
                         # 使用 Peewee 更新记录
-                        Messages.update(memorized_times=current_memorized_times + 1).where(
-                            Messages.message_id == message["message_id"]
+                        Message.update(memorized_times=current_memorized_times + 1).where(
+                            Message.message_id == message["message_id"]
                         ).execute()
                     return messages  # 直接返回原始的消息列表
 

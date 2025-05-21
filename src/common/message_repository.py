@@ -1,4 +1,4 @@
-from src.common.database.database_model import Messages  # 更改导入
+from src.common.database.database_model import Message  # 更改导入
 from src.common.logger import get_module_logger
 import traceback
 from typing import List, Any, Optional
@@ -33,14 +33,14 @@ def find_messages(
         消息字典列表，如果出错则返回空列表。
     """
     try:
-        query = Messages.select()
+        query = Message.select()
 
         # 应用过滤器
         if message_filter:
             conditions = []
             for key, value in message_filter.items():
-                if hasattr(Messages, key):
-                    field = getattr(Messages, key)
+                if hasattr(Message, key):
+                    field = getattr(Message, key)
                     if isinstance(value, dict):
                         # 处理 MongoDB 风格的操作符
                         for op, op_value in value.items():
@@ -71,11 +71,11 @@ def find_messages(
         if limit > 0:
             if limit_mode == "earliest":
                 # 获取时间最早的 limit 条记录，已经是正序
-                query = query.order_by(Messages.time.asc()).limit(limit)
+                query = query.order_by(Message.time.asc()).limit(limit)
                 peewee_results = list(query)
             else:  # 默认为 'latest'
                 # 获取时间最晚的 limit 条记录
-                query = query.order_by(Messages.time.desc()).limit(limit)
+                query = query.order_by(Message.time.desc()).limit(limit)
                 latest_results_peewee = list(query)
                 # 将结果按时间正序排列
                 peewee_results = sorted(latest_results_peewee, key=lambda msg: msg.time)
@@ -84,8 +84,8 @@ def find_messages(
             if sort:
                 peewee_sort_terms = []
                 for field_name, direction in sort:
-                    if hasattr(Messages, field_name):
-                        field = getattr(Messages, field_name)
+                    if hasattr(Message, field_name):
+                        field = getattr(Message, field_name)
                         if direction == 1:  # ASC
                             peewee_sort_terms.append(field.asc())
                         elif direction == -1:  # DESC
@@ -119,14 +119,14 @@ def count_messages(message_filter: dict[str, Any]) -> int:
         符合条件的消息数量，如果出错则返回 0。
     """
     try:
-        query = Messages.select()
+        query = Message.select()
 
         # 应用过滤器
         if message_filter:
             conditions = []
             for key, value in message_filter.items():
-                if hasattr(Messages, key):
-                    field = getattr(Messages, key)
+                if hasattr(Message, key):
+                    field = getattr(Message, key)
                     if isinstance(value, dict):
                         # 处理 MongoDB 风格的操作符
                         for op, op_value in value.items():

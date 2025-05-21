@@ -2,11 +2,12 @@ import asyncio
 import hashlib
 import time
 import copy
-from typing import Dict, Optional
+from typing import Optional
 
+from sqlmodel import select
 
-from ...common.database.database import db
-from ...common.database.database_model import ChatStreams  # 新增导入
+from ...common.database.database import DBSession
+from ...common.database.database_model import ChatStream  # 新增导入
 from maim_message import GroupInfo, UserInfo
 
 from src.common.logger_manager import get_logger
@@ -69,31 +70,19 @@ class ChatStream:
 
 
 class ChatManager:
-    """聊天管理器，管理所有聊天流"""
-
-    _instance = None
-    _initialized = False
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-
     def __init__(self):
-        if not self._initialized:
-            self.streams: Dict[str, ChatStream] = {}  # stream_id -> ChatStream
-            try:
-                db.connect(reuse_if_open=True)
-                # 确保 ChatStreams 表存在
-                db.create_tables([ChatStreams], safe=True)
-            except Exception as e:
-                logger.error(f"数据库连接或 ChatStreams 表创建失败: {e}")
+        self.streams: dict[str, ChatStream] = {}
+        """所有聊天流"""
 
-            self._initialized = True
-            # 在事件循环中启动初始化
-            # asyncio.create_task(self._initialize())
-            # # 启动自动保存任务
-            # asyncio.create_task(self._auto_save_task())
+    def _load_streams_from_db(self):
+        """从数据库加载聊天流"""
+        with DBSession() as session:
+            query = select(ChatStream)
+            results = session.exec(query)
+
+            for stream in results:
+                stream.
+
 
     async def _initialize(self):
         """异步初始化"""
@@ -156,7 +145,7 @@ class ChatManager:
 
             # 检查数据库中是否存在
             def _db_find_stream_sync(s_id: str):
-                return ChatStreams.get_or_none(ChatStreams.stream_id == s_id)
+                return ChatStream.get_or_none(ChatStream.stream_id == s_id)
 
             model_instance = await asyncio.to_thread(_db_find_stream_sync, stream_id)
 
@@ -182,7 +171,7 @@ class ChatManager:
                     "user_info": user_info_data,
                     "group_info": group_info_data,
                     "create_time": model_instance.create_time,
-                    "last_active_time": model_instance.last_active_time,
+                    "last_active_time": model_instance.last_active_at,
                 }
                 stream = ChatStream.from_dict(data_for_from_dict)
                 # 更新用户信息和群组信息
@@ -255,7 +244,7 @@ class ChatManager:
                 "group_name": group_info_d["group_name"] if group_info_d else "",
             }
 
-            ChatStreams.replace(stream_id=s_data_dict["stream_id"], **fields_to_save).execute()
+            ChatStream.replace(stream_id=s_data_dict["stream_id"], **fields_to_save).execute()
 
         try:
             await asyncio.to_thread(_db_save_stream_sync, stream_data_dict)
@@ -273,7 +262,7 @@ class ChatManager:
 
         def _db_load_all_streams_sync():
             loaded_streams_data = []
-            for model_instance in ChatStreams.select():
+            for model_instance in ChatStream.select():
                 user_info_data = {
                     "platform": model_instance.user_platform,
                     "user_id": model_instance.user_id,
@@ -294,7 +283,7 @@ class ChatManager:
                     "user_info": user_info_data,
                     "group_info": group_info_data,
                     "create_time": model_instance.create_time,
-                    "last_active_time": model_instance.last_active_time,
+                    "last_active_time": model_instance.last_active_at,
                 }
                 loaded_streams_data.append(data_for_from_dict)
             return loaded_streams_data

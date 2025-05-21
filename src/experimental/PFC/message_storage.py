@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import List, Dict, Any
 
 # from src.common.database.database import db  # Peewee db 导入
-from src.common.database.database_model import Messages  # Peewee Messages 模型导入
+from src.common.database.database_model import Message  # Peewee Messages 模型导入
 from playhouse.shortcuts import model_to_dict  # 用于将模型实例转换为字典
 
 
@@ -55,9 +55,9 @@ class PeeweeMessageStorage(MessageStorage):
 
     async def get_messages_after(self, chat_id: str, message_time: float) -> List[Dict[str, Any]]:
         query = (
-            Messages.select()
-            .where((Messages.chat_id == chat_id) & (Messages.time > message_time))
-            .order_by(Messages.time.asc())
+            Message.select()
+            .where((Message.chat_stream_id == chat_id) & (Message.time > message_time))
+            .order_by(Message.time.asc())
         )
 
         # print(f"storage_check_message: {message_time}")
@@ -66,9 +66,9 @@ class PeeweeMessageStorage(MessageStorage):
 
     async def get_messages_before(self, chat_id: str, time_point: float, limit: int = 5) -> List[Dict[str, Any]]:
         query = (
-            Messages.select()
-            .where((Messages.chat_id == chat_id) & (Messages.time < time_point))
-            .order_by(Messages.time.desc())
+            Message.select()
+            .where((Message.chat_stream_id == chat_id) & (Message.time < time_point))
+            .order_by(Message.time.desc())
             .limit(limit)
         )
 
@@ -78,7 +78,7 @@ class PeeweeMessageStorage(MessageStorage):
         return [model_to_dict(msg) for msg in messages_models]
 
     async def has_new_messages(self, chat_id: str, after_time: float) -> bool:
-        return Messages.select().where((Messages.chat_id == chat_id) & (Messages.time > after_time)).exists()
+        return Message.select().where((Message.chat_stream_id == chat_id) & (Message.time > after_time)).exists()
 
 
 # # 创建一个内存消息存储实现，用于测试

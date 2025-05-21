@@ -1,10 +1,9 @@
 from src.config.config import global_config
 from src.chat.message_receive.message import MessageRecv, MessageSending, Message
-from src.common.database.database_model import Messages, ThinkingLog
+from src.common.database.database_model import Message
 import time
 import traceback
 from typing import List
-import json
 
 
 class InfoCatcher:
@@ -103,9 +102,9 @@ class InfoCatcher:
             print(f"查询参数: time_start={time_start}, time_end={time_end}, chat_id={chat_id}")
 
             messages_between_query = (
-                Messages.select()
-                .where((Messages.chat_id == chat_id) & (Messages.time > time_start) & (Messages.time < time_end))
-                .order_by(Messages.time.desc())
+                Message.select()
+                .where((Message.chat_stream_id == chat_id) & (Message.time > time_start) & (Message.time < time_end))
+                .order_by(Message.time.desc())
             )
 
             result = list(messages_between_query)
@@ -124,9 +123,9 @@ class InfoCatcher:
         chat_id_val = message.chat_stream.stream_id
 
         messages_before_query = (
-            Messages.select()
-            .where((Messages.chat_id == chat_id_val) & (Messages.message_id < message_id_val))
-            .order_by(Messages.time.desc())
+            Message.select()
+            .where((Message.chat_stream_id == chat_id_val) & (Message.message_id < message_id_val))
+            .order_by(Message.time.desc())
             .limit(global_config.focus_chat.observation_context_size * 3)
         )
 
@@ -157,7 +156,7 @@ class InfoCatcher:
         if isinstance(msg_obj, dict):
             return msg_obj
 
-        if isinstance(msg_obj, Messages):
+        if isinstance(msg_obj, Message):
             return {
                 "time": msg_obj.time,
                 "user_id": msg_obj.user_id,
@@ -175,39 +174,6 @@ class InfoCatcher:
 
         print(f"Warning: message_to_dict received an unhandled type: {type(msg_obj)}")
         return {}
-
-    def done_catch(self):
-        """将收集到的信息存储到数据库的 thinking_log 表中喵~"""
-        try:
-            trigger_info_dict = self.message_to_dict(self.trigger_response_message)
-            response_info_dict = {
-                "time": self.response_time,
-                "message": self.response_messages,
-            }
-            chat_history_list = self.message_list_to_dict(self.chat_history)
-            chat_history_in_thinking_list = self.message_list_to_dict(self.chat_history_in_thinking)
-            chat_history_after_response_list = self.message_list_to_dict(self.chat_history_after_response)
-
-            log_entry = ThinkingLog(
-                chat_id=self.chat_id,
-                trigger_text=self.trigger_response_text,
-                response_text=self.response_text,
-                trigger_info_json=json.dumps(trigger_info_dict) if trigger_info_dict else None,
-                response_info_json=json.dumps(response_info_dict),
-                timing_results_json=json.dumps(self.timing_results),
-                chat_history_json=json.dumps(chat_history_list),
-                chat_history_in_thinking_json=json.dumps(chat_history_in_thinking_list),
-                chat_history_after_response_json=json.dumps(chat_history_after_response_list),
-                heartflow_data_json=json.dumps(self.heartflow_data),
-                reasoning_data_json=json.dumps(self.reasoning_data),
-            )
-            log_entry.save()
-
-            return True
-        except Exception as e:
-            print(f"存储思考日志时出错: {str(e)} 喵~")
-            print(traceback.format_exc())
-            return False
 
 
 class InfoCatcherManager:
