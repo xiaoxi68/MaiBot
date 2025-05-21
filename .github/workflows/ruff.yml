@@ -1,5 +1,12 @@
 name: Ruff
-on: [ push ]
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+      - dev-refactor # 例如：匹配所有以 feature/ 开头的分支
+      # 添加你希望触发此 workflow 的其他分支
 
 permissions:
   contents: write
@@ -7,6 +14,10 @@ permissions:
 jobs:
   ruff:
     runs-on: ubuntu-latest
+    # 关键修改：添加条件判断
+    # 确保只有在 event_name 是 'push' 且不是由 Pull Request 引起的 push 时才运行
+    if: github.event_name == 'push' && !startsWith(github.ref, 'refs/pull/')
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -26,4 +37,3 @@ jobs:
           git add -A
           git diff --quiet && git diff --staged --quiet || git commit -m "🤖 自动格式化代码 [skip ci]"
           git push
-
