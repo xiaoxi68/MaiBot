@@ -106,10 +106,10 @@ class HeartFChatting:
         config_processor_settings = global_config.focus_chat_processor
 
         for proc_name, (_proc_class, config_key) in PROCESSOR_CLASSES.items():
-            if config_key: # 此处理器可通过配置控制
+            if config_key:  # 此处理器可通过配置控制
                 if getattr(config_processor_settings, config_key, True):  # 默认启用 (如果配置中未指定该键)
                     self.enabled_processor_names.append(proc_name)
-            else: # 此处理器不在配置映射中 (config_key is None)，默认启用
+            else:  # 此处理器不在配置映射中 (config_key is None)，默认启用
                 self.enabled_processor_names.append(proc_name)
 
         logger.info(f"{self.log_prefix} 将启用的处理器: {self.enabled_processor_names}")
@@ -123,7 +123,6 @@ class HeartFChatting:
         self.hfcloop_observation.set_action_manager(self.action_manager)
 
         self.all_observations = observations
-
 
         # 初始化状态控制
         self._initialized = False
@@ -178,9 +177,9 @@ class HeartFChatting:
         self.processors = []  # 清空已有的
 
         for name in self.enabled_processor_names:  # 'name' is "ChattingInfoProcessor", etc.
-            processor_info = PROCESSOR_CLASSES.get(name) # processor_info is (ProcessorClass, config_key)
+            processor_info = PROCESSOR_CLASSES.get(name)  # processor_info is (ProcessorClass, config_key)
             if processor_info:
-                processor_actual_class = processor_info[0] # 获取实际的类定义
+                processor_actual_class = processor_info[0]  # 获取实际的类定义
                 # 根据处理器类名判断是否需要 subheartflow_id
                 if name in ["MindProcessor", "ToolProcessor", "WorkingMemoryProcessor", "SelfProcessor"]:
                     self.processors.append(processor_actual_class(subheartflow_id=self.stream_id))
@@ -198,7 +197,9 @@ class HeartFChatting:
                         )
             else:
                 # 这理论上不应该发生，因为 enabled_processor_names 是从 PROCESSOR_CLASSES 的键生成的
-                logger.warning(f"{self.log_prefix} 在 PROCESSOR_CLASSES 中未找到名为 '{name}' 的处理器定义，将跳过注册。")
+                logger.warning(
+                    f"{self.log_prefix} 在 PROCESSOR_CLASSES 中未找到名为 '{name}' 的处理器定义，将跳过注册。"
+                )
 
         if self.processors:
             logger.info(
