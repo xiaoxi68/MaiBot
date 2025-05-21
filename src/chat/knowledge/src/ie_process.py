@@ -6,7 +6,7 @@ from .global_logger import logger
 from . import prompt_template
 from .lpmmconfig import global_config, INVALID_ENTITY
 from .llm_client import LLMClient
-from .utils.json_fix import fix_broken_generated_json
+from .utils.json_fix import new_fix_broken_generated_json
 
 
 def _entity_extract(llm_client: LLMClient, paragraph: str) -> List[str]:
@@ -24,7 +24,7 @@ def _entity_extract(llm_client: LLMClient, paragraph: str) -> List[str]:
     if "]" in request_result:
         request_result = request_result[: request_result.rindex("]") + 1]
 
-    entity_extract_result = json.loads(fix_broken_generated_json(request_result))
+    entity_extract_result = json.loads(new_fix_broken_generated_json(request_result))
 
     entity_extract_result = [
         entity
@@ -53,7 +53,7 @@ def _rdf_triple_extract(llm_client: LLMClient, paragraph: str, entities: list) -
     if "]" in request_result:
         request_result = request_result[: request_result.rindex("]") + 1]
 
-    entity_extract_result = json.loads(fix_broken_generated_json(request_result))
+    entity_extract_result = json.loads(new_fix_broken_generated_json(request_result))
 
     for triple in entity_extract_result:
         if len(triple) != 3 or (triple[0] is None or triple[1] is None or triple[2] is None) or "" in triple:

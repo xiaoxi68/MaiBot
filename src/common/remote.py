@@ -68,29 +68,29 @@ class TelemetryHeartBeatTask(AsyncTask):
                 response = requests.post(
                     f"{TELEMETRY_SERVER_URL}/stat/reg_client",
                     json={"deploy_time": local_storage["deploy_time"]},
+                    timeout=5,  # 设置超时时间为5秒
                 )
-
-                logger.debug(f"{TELEMETRY_SERVER_URL}/stat/reg_client")
-
-                logger.debug(local_storage["deploy_time"])
-
-                logger.debug(response)
-
-                if response.status_code == 200:
-                    data = response.json()
-                    client_id = data.get("mmc_uuid")
-                    if client_id:
-                        # 将UUID存储到本地
-                        local_storage["mmc_uuid"] = client_id
-                        self.client_uuid = client_id
-                        logger.info(f"成功获取UUID: {self.client_uuid}")
-                        return True  # 成功获取UUID，返回True
-                    else:
-                        logger.error("无效的服务端响应")
-                else:
-                    logger.error(f"请求UUID失败，状态码: {response.status_code}, 响应内容: {response.text}")
-            except requests.RequestException as e:
+            except Exception as e:
                 logger.error(f"请求UUID时出错: {e}")  # 可能是网络问题
+
+            logger.debug(f"{TELEMETRY_SERVER_URL}/stat/reg_client")
+
+            logger.debug(local_storage["deploy_time"])
+
+            logger.debug(response)
+
+            if response.status_code == 200:
+                data = response.json()
+                if client_id := data.get("mmc_uuid"):
+                    # 将UUID存储到本地
+                    local_storage["mmc_uuid"] = client_id
+                    self.client_uuid = client_id
+                    logger.info(f"成功获取UUID: {self.client_uuid}")
+                    return True  # 成功获取UUID，返回True
+                else:
+                    logger.error("无效的服务端响应")
+            else:
+                logger.error(f"请求UUID失败，状态码: {response.status_code}, 响应内容: {response.text}")
 
             # 请求失败，重试次数+1
             try_count += 1
@@ -100,46 +100,47 @@ class TelemetryHeartBeatTask(AsyncTask):
                 return False
             else:
                 # 如果可以重试，等待后继续（指数退避）
+                logger.info(f"获取UUID失败，将于 {4**try_count} 秒后重试...")
                 await asyncio.sleep(4**try_count)
 
     async def _send_heartbeat(self):
         """向服务器发送心跳"""
+        headers = {
+            "Client-UUID": self.client_uuid,
+            "User-Agent": f"HeartbeatClient/{self.client_uuid[:8]}",
+        }
+
+        logger.debug(f"正在发送心跳到服务器: {self.server_url}")
+
+        logger.debug(headers)
+
         try:
-            headers = {
-                "Client-UUID": self.client_uuid,
-                "User-Agent": f"HeartbeatClient/{self.client_uuid[:8]}",
-            }
-
-            logger.debug(f"正在发送心跳到服务器: {self.server_url}")
-
-            logger.debug(headers)
-
             response = requests.post(
                 f"{self.server_url}/stat/client_heartbeat",
                 headers=headers,
                 json=self.info_dict,
+                timeout=5,  # 设置超时时间为5秒
             )
-
-            logger.debug(response)
-
-            # 处理响应
-            if 200 <= response.status_code < 300:
-                # 成功
-                logger.debug(f"心跳发送成功，状态码: {response.status_code}")
-            elif response.status_code == 403:
-                # 403 Forbidden
-                logger.error(
-                    "心跳发送失败，403 Forbidden: 可能是UUID无效或未注册。"
-                    "处理措施：重置UUID，下次发送心跳时将尝试重新注册。"
-                )
-                self.client_uuid = None
-                del local_storage["mmc_uuid"]  # 删除本地存储的UUID
-            else:
-                # 其他错误
-                logger.error(f"心跳发送失败，状态码: {response.status_code}, 响应内容: {response.text}")
-
-        except requests.RequestException as e:
+        except Exception as e:
             logger.error(f"心跳发送失败: {e}")
+
+        logger.debug(response)
+
+        # 处理响应
+        if 200 <= response.status_code < 300:
+            # 成功
+            logger.debug(f"心跳发送成功，状态码: {response.status_code}")
+        elif response.status_code == 403:
+            # 403 Forbidden
+            logger.error(
+                "心跳发送失败，403 Forbidden: 可能是UUID无效或未注册。"
+                "处理措施：重置UUID，下次发送心跳时将尝试重新注册。"
+            )
+            self.client_uuid = None
+            del local_storage["mmc_uuid"]  # 删除本地存储的UUID
+        else:
+            # 其他错误
+            logger.error(f"心跳发送失败，状态码: {response.status_code}, 响应内容: {response.text}")
 
     async def run(self):
         # 发送心跳
