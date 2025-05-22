@@ -25,7 +25,7 @@ class CacheItem:
         """
 
         self._expiration_time: Optional[datetime] = (
-            (now + datetime.timedelta(seconds=ttl)) if ttl != int("inf") else None
+            (now + timedelta(seconds=ttl)) if ttl != int("inf") else None
         )
         """缓存过期时间（在ttl不为inf时有效）
         None表示永久缓存
