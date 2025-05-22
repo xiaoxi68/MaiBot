@@ -3,7 +3,7 @@
 """
 
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Optional
 
 from src.manager.async_task_manager import AsyncTask
@@ -45,7 +45,7 @@ class CacheItem:
         """
         if self._expiration_time is None:
             return False
-        return self._expiration_time < (now or datetime.datetime.now())
+        return self._expiration_time < (now or datetime.now())
 
     def reset_expiration(self, ttl: Optional[int], now: Optional[datetime] = None):
         """重置缓存过期时间
@@ -61,13 +61,13 @@ class CacheItem:
             self._ttl = ttl
 
         self._expiration_time = (
-            (now or datetime.datetime.now()) + datetime.timedelta(seconds=ttl) if ttl != int("inf") else None
+            (now or datetime.now()) + timedelta(seconds=ttl) if ttl != int("inf") else None
         )
 
     def get_value(self, now: Optional[datetime] = None) -> Any:
         """获取缓存值"""
         self.freq_counter += 1
-        self.last_used_at = now or datetime.datetime.now()
+        self.last_used_at = now or datetime.now()
         return self._value
 
     def decrease_freq_counter(self):
@@ -75,7 +75,7 @@ class CacheItem:
         空闲时间越长，衰减越快
         """
         if self.freq_counter > 0:
-            idle_time = (datetime.datetime.now() - self.last_used_at).total_seconds()
+            idle_time = (datetime.now() - self.last_used_at).total_seconds()
 
             decay_factor = 0.05  # 衰减因子
 
@@ -148,7 +148,7 @@ class CacheManager:
             return None
 
         item = self._cache[key]
-        now = datetime.datetime.now()
+        now = datetime.now()
 
         if item.is_expired(now):
             del self._cache[key]
@@ -189,7 +189,7 @@ class CacheManager:
 
     def cleanup(self):
         """清理过期缓存项"""
-        now = datetime.datetime.now()
+        now = datetime.now()
         expired_keys = [key for key, item in self._cache.items() if item.is_expired(now)]
         for key in expired_keys:
             del self._cache[key]
@@ -221,7 +221,7 @@ class CacheManager:
         rand = random.Random()
 
         for key, item in self._cache.items():
-            if rand.random() < self.RAND_SELECT_FREQ:
+            if rand.random() < self._rand_select_freq:
                 # 添加条件（二选一）：
                 # 1. EVICT池未满
                 # 2. EVICT池中存在一个缓存项Item，使得Item的freq_counter > 当前项的freq_counter
