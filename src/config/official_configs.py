@@ -195,7 +195,7 @@ class ExpressionConfig(ConfigBase):
 class EmojiConfig(ConfigBase):
     """表情包配置类"""
 
-    max_reg_num: int = 200
+    max_emoji_num: int = 200
     """表情包最大注册数量"""
 
     do_replace: bool = True
@@ -204,14 +204,18 @@ class EmojiConfig(ConfigBase):
     check_interval: int = 120
     """表情包检查间隔（分钟）"""
 
-    save_pic: bool = False
-    """是否保存图片"""
-
-    cache_emoji: bool = True
-    """是否缓存表情包"""
-
     steal_emoji: bool = True
-    """是否偷取表情包，让麦麦可以发送她保存的这些表情包"""
+    """是否偷取（保存他人的）表情包"""
+
+    emoji_cache_num: int = 100
+    """表情包缓存数量
+    （仅限制未注册的表情包）
+    """
+
+    emoji_cache_size: int = 100
+    """表情包缓存大小（单位：MB）
+    （仅限制未注册的表情包）
+    """
 
     content_filtration: bool = False
     """是否开启表情包过滤"""

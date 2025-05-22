@@ -20,12 +20,6 @@ class ImageDTO(DTOBase):
     img_hash: Optional[str] = None
     """图像的哈希值（主键）"""
 
-    img_path: Optional[str] = None
-    """图像的存储路径"""
-
-    img_format: Optional[str] = None
-    """图像的格式"""
-
     description: Optional[str] = None
     """图像的描述"""
 
@@ -35,21 +29,18 @@ class ImageDTO(DTOBase):
     last_queried_at: Optional[datetime] = None
     """最后一次查询的时间戳"""
 
-    __orm_create_rule__ = "img_hash & img_path & img_format"
+    __orm_create_rule__ = "img_hash"
 
-    __orm_select_rule__ = "img_hash | img_path"
+    __orm_select_rule__ = "img_hash"
 
-    __orm_update_rule__ = "img_path | img_format | description | query_count | last_queried_at"
+    __orm_update_rule__ = "description | query_count | last_queried_at"
 
     @classmethod
     def from_orm(cls, image: Image) -> "ImageDTO":
         """从ORM对象创建DTO对象。"""
         return cls(
-            id=image.id,
             created_at=image.created_at,
             img_hash=image.img_hash,
-            img_path=image.img_path,
-            img_format=image.img_format,
             description=image.description,
             query_count=image.query_count,
             last_queried_at=image.last_queried_at,
@@ -59,11 +50,6 @@ class ImageDTO(DTOBase):
 def _pk(img_hash: str):
     """构造缓存哈希键"""
     return f"image:pk:{img_hash}"
-
-
-def _path_key(img_path: str):
-    """构造缓存路径键"""
-    return f"image:path:{img_path}"
 
 
 class ImageManager:
@@ -82,8 +68,6 @@ class ImageManager:
             image = Image(
                 created_at=now,
                 img_hash=dto.img_hash,
-                img_path=dto.img_path,
-                img_format=dto.img_format,
                 description=dto.description,
                 last_queried_at=now,
             )
@@ -98,7 +82,6 @@ class ImageManager:
 
         # 刷新缓存
         global_cache[_pk(dto.img_hash)] = dto
-        global_cache[_path_key(dto.img_path)] = dto.img_hash
 
         return dto
 
@@ -108,17 +91,10 @@ class ImageManager:
         if dto.create_entity_check() is False:
             raise ValueError("Invalid DTO object for get.")
 
-        def _get_by_pk(hash: str) -> Optional[ImageDTO]:
-            """通过主键获取图像"""
-            return image if (image := global_cache[_pk(hash)]) else cls._get_image_by_hash(hash)
-
-        if dto.img_hash:
-            return _get_by_pk(dto.img_hash)
-        elif dto.img_path:
-            if image_hash := global_cache[_path_key(dto.img_path)]:
-                return _get_by_pk(image_hash)
-            else:
-                return cls._get_image_by_path(dto.img_path)
+        if image := global_cache[_pk(hash)]:
+            return image
+        else:
+            return cls._get_image_by_hash(hash)
 
     @classmethod
     def _get_image_by_hash(cls, image_hash: str) -> Optional[ImageDTO]:
@@ -133,24 +109,6 @@ class ImageManager:
 
         # 如果查询到结果，则将其存入缓存
         global_cache[_pk(dto.img_hash)] = dto
-        global_cache[_path_key(dto.img_path)] = dto.img_hash
-
-        return dto
-
-    @classmethod
-    def _get_image_by_path(cls, image_path: str) -> Optional[ImageDTO]:
-        """数据库操作：通过路径获取图像"""
-        with DBSession() as session:
-            statement = select(Image).where(Image.img_path == image_path)
-
-            if result := session.exec(statement).first():
-                dto = ImageDTO.from_orm(result)
-            else:
-                return None
-
-        # 如果查询到结果，则将其存入缓存
-        global_cache[_pk(dto.img_hash)] = dto
-        global_cache[_path_key(dto.img_path)] = dto.img_hash
 
         return dto
 
@@ -173,8 +131,6 @@ class ImageManager:
                 raise ValueError(f"Image '{dto.img_hash}' does not exist.")
 
             # 更新图像信息
-            image.img_path = dto.img_path
-            image.img_format = dto.img_format
             image.description = dto.description
             image.query_count = dto.query_count
             image.last_queried_at = dto.last_queried_at
@@ -186,6 +142,5 @@ class ImageManager:
 
         # 刷新缓存
         global_cache[_pk(dto.img_hash)] = dto
-        global_cache[_path_key(dto.img_path)] = dto.img_hash
 
         return dto

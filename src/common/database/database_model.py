@@ -274,12 +274,6 @@ class Image(SQLModel, table=True):
     img_hash: str = Field(unique=True, primary_key=True)
     """图像的哈希值（主键）"""
 
-    img_path: str = Field(unique=True, index=True)
-    """图像的存储路径"""
-
-    img_format: str
-    """图像的格式"""
-
     description: Optional[str] = Field(default=None)
     """图像的描述（可能为空，表示尚未获取到描述）"""
 
@@ -305,6 +299,9 @@ class Emoji(SQLModel, table=True):
     """图像的哈希值（主键）
     （外键，指向 Images 表）
     """
+
+    file_path: str = Field(unique=True, index=True)
+    """图像文件的路径"""
 
     is_banned: bool = Field(default=False)
     """是否被禁止使用/注册（默认为 False）"""

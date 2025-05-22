@@ -23,6 +23,9 @@ class EmojiDTO(DTOBase):
     （外键，指向 Images 表）
     """
 
+    file_path: Optional[str] = None
+    """图像文件的路径"""
+
     is_banned: Optional[bool] = None
     """是否被禁止使用/注册（默认为 False）"""
 
@@ -38,11 +41,11 @@ class EmojiDTO(DTOBase):
     last_used_at: Optional[datetime] = None
     """最后一次使用的时间戳（如果未使用，则为 None）"""
 
-    __orm_create_rule__ = "img_hash"
+    __orm_create_rule__ = "img_hash | file_path"
 
-    __orm_select_rule__ = "img_hash"
+    __orm_select_rule__ = "img_hash | file_path"
 
-    __orm_update_rule__ = "is_banned | registered_at | emotions | usage_count | last_used_at"
+    __orm_update_rule__ = "file_path | is_banned | registered_at | emotions | usage_count | last_used_at"
 
     @classmethod
     def from_orm(cls, emoji: Emoji) -> "EmojiDTO":
@@ -50,6 +53,7 @@ class EmojiDTO(DTOBase):
         return cls(
             created_at=emoji.created_at,
             img_hash=emoji.img_hash,
+            file_path=emoji.file_path,
             is_banned=emoji.is_banned,
             registered_at=emoji.registered_at,
             emotions=emoji.emotions,
@@ -61,6 +65,11 @@ class EmojiDTO(DTOBase):
 def _pk(img_hash: str):
     """构造缓存主键"""
     return f"emoji:pk:{img_hash}"
+
+
+def _file_path_key(file_path: str):
+    """构造缓存文件路径键"""
+    return f"emoji:file_path:{file_path}"
 
 
 class EmojiManager:
@@ -84,6 +93,7 @@ class EmojiManager:
             emoji = Emoji(
                 created_at=datetime.now(),
                 img_hash=dto.img_hash,
+                file_path=dto.file_path,
                 is_banned=dto.is_banned,
                 registered_at=dto.registered_at,
                 emotions=dto.emotions,
@@ -113,10 +123,21 @@ class EmojiManager:
         if dto.select_entity_check() is False:
             raise ValueError("Invalid DTO object for select.")
 
-        if emoji := global_cache.get(_pk(dto.img_hash)):
-            return emoji
-        else:
-            return cls._get_emoji_by_hash(dto.img_hash)
+        def _get_by_pk(hash: str):
+            """通过主键获取表情包"""
+            if emoji := global_cache.get(_pk(hash)):
+                return emoji
+            else:
+                return cls._get_emoji_by_hash(hash)
+
+        if dto.img_hash:
+            _get_by_pk(dto.img_hash)
+        elif dto.file_path:
+            # 通过文件路径获取表情包
+            if hash := global_cache.get(_file_path_key(dto.file_path)):
+                return _get_by_pk(hash)
+            else:
+                cls._get_emoji_by_file_path(dto.file_path)
 
     @classmethod
     def _get_emoji_by_hash(cls, img_hash: str) -> Optional[EmojiDTO]:
@@ -131,6 +152,23 @@ class EmojiManager:
 
         # 缓存结果
         global_cache[_pk(dto.img_hash)] = dto
+
+        return dto
+
+    @classmethod
+    def _get_emoji_by_file_path(cls, file_path: str) -> Optional[EmojiDTO]:
+        """数据库操作：通过文件路径获取表情包信息"""
+        with DBSession() as session:
+            statement = select(Emoji).where(Emoji.file_path == file_path)
+
+            if emoji := session.exec(statement).first():
+                dto = EmojiDTO.from_orm(emoji)
+            else:
+                return None
+
+        # 缓存结果
+        global_cache[_pk(dto.img_hash)] = dto
+        global_cache[_file_path_key(file_path)] = dto.img_hash
 
         return dto
 
@@ -152,6 +190,8 @@ class EmojiManager:
             if emoji is None:
                 raise ValueError(f"Emoji '{dto.img_hash}' does not exist.")
 
+            # 更新表情包信息
+            emoji.file_path = dto.file_path or emoji.file_path
             emoji.is_banned = dto.is_banned or emoji.is_banned
             emoji.registered_at = dto.registered_at or emoji.registered_at
             emoji.emotions = dto.emotions or emoji.emotions
