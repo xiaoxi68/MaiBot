@@ -25,7 +25,7 @@ class MuteAction(PluginAction):
         "当千石可乐或可乐酱要求你禁言时使用",
         "当你想回避某个话题时使用",
     ]
-    default = True  # 不是默认动作，需要手动添加到使用集
+    default = False  # 不是默认动作，需要手动添加到使用集
 
     async def process(self) -> Tuple[bool, str]:
         """处理测试动作"""
