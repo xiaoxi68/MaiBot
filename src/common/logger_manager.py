@@ -47,7 +47,6 @@ from src.common.logger import (
     INIT_STYLE_CONFIG,
     INTEREST_CHAT_STYLE_CONFIG,
     API_SERVER_STYLE_CONFIG,
-    MAIM_MESSAGE_STYLE_CONFIG,
 )
 
 # 可根据实际需要补充更多模块配置
