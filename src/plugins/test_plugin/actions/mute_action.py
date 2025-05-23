@@ -25,7 +25,7 @@ class MuteAction(PluginAction):
         "当千石可乐或可乐酱要求你禁言时使用",
         "当你想回避某个话题时使用",
     ]
-    default = True  # 不是默认动作，需要手动添加到使用集
+    default = False  # 不是默认动作，需要手动添加到使用集
 
     async def process(self) -> Tuple[bool, str]:
         """处理测试动作"""
@@ -40,7 +40,11 @@ class MuteAction(PluginAction):
         await self.send_message_by_expressor(f"我要禁言{target}，{platform},时长{duration}秒，理由{reason}，表达情绪")
 
         try:
-            await self.send_message(f"[command]mute,{user_id},{duration}")
+            await self.send_message(
+                type="text",
+                data=f"[command]mute,{user_id},{duration}",
+                # target = target
+            )
 
         except Exception as e:
             logger.error(f"{self.log_prefix} 执行mute动作时出错: {e}")

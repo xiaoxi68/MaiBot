@@ -78,7 +78,7 @@ class ExitFocusChatAction(BaseAction):
             if self.sub_heartflow:
                 try:
                     # 转换为normal_chat状态
-                    await self.sub_heartflow.change_chat_state(ChatState.NORMAL_CHAT)
+                    await self.sub_heartflow.change_chat_state(ChatState.CHAT)
                     status_message = "已成功切换到普通聊天模式"
                     logger.info(f"{self.log_prefix} {status_message}")
                 except Exception as e:
