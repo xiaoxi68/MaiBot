@@ -1,4 +1,4 @@
-from src.chat.models.utils_model import LLMRequest
+from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 import json
 from src.common.logger_manager import get_logger

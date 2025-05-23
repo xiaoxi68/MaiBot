@@ -1,6 +1,6 @@
 import random
 from src.common.logger_manager import get_logger
-from src.chat.models.utils_model import LLMRequest
+from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from typing import List, Tuple

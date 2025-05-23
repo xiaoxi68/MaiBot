@@ -1,6 +1,6 @@
 from typing import List, Tuple, TYPE_CHECKING
 from src.common.logger import get_module_logger
-from src.chat.models.utils_model import LLMRequest
+from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.experimental.PFC.chat_observer import ChatObserver
 from src.experimental.PFC.pfc_utils import get_items_from_json

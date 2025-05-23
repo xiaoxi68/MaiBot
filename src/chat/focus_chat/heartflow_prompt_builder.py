@@ -3,7 +3,7 @@ from src.common.logger_manager import get_logger
 from src.individuality.individuality import individuality
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_before_timestamp_with_chat
-from src.chat.person_info.relationship_manager import relationship_manager
+from src.person_info.relationship_manager import relationship_manager
 import time
 from typing import Optional
 from src.chat.utils.utils import get_recent_group_speaker

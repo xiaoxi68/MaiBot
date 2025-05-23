@@ -9,7 +9,7 @@ from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservati
 from src.chat.focus_chat.info.cycle_info import CycleInfo
 from datetime import datetime
 from typing import Dict
-from src.chat.models.utils_model import LLMRequest
+from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 
 logger = get_logger("processor")

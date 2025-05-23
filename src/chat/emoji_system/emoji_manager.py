@@ -12,11 +12,11 @@ import re
 
 # from gradio_client import file
 
-from ...common.database.database_model import Emoji
-from ...common.database.database import db as peewee_db
-from ...config.config import global_config
-from ..utils.utils_image import image_path_to_base64, image_manager
-from ..models.utils_model import LLMRequest
+from src.common.database.database_model import Emoji
+from src.common.database.database import db as peewee_db
+from src.config.config import global_config
+from src.chat.utils.utils_image import image_path_to_base64, image_manager
+from src.llm_models.utils_model import LLMRequest
 from src.common.logger_manager import get_logger
 from rich.traceback import install
 

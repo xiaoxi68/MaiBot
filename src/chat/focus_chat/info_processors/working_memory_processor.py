@@ -1,6 +1,6 @@
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 from src.chat.heart_flow.observation.observation import Observation
-from src.chat.models.utils_model import LLMRequest
+from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 import time
 import traceback

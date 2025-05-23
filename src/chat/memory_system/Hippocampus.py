@@ -11,7 +11,7 @@ import jieba
 import networkx as nx
 import numpy as np
 from collections import Counter
-from ...chat.models.utils_model import LLMRequest
+from ...llm_models.utils_model import LLMRequest
 from src.common.logger_manager import get_logger
 from src.chat.memory_system.sample_distribution import MemoryBuildScheduler  # 分布生成器
 from ..utils.chat_message_builder import (

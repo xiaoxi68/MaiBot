@@ -6,7 +6,7 @@ from .base_processor import BaseProcessor
 from src.common.logger_manager import get_logger
 from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
 from typing import Dict
-from src.chat.models.utils_model import LLMRequest
+from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 import random
 

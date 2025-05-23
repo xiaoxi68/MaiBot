@@ -3,10 +3,8 @@ import json
 import re
 from datetime import datetime
 from typing import Tuple, Union, Dict, Any
-
 import aiohttp
 from aiohttp.client import ClientResponse
-
 from src.common.logger import get_module_logger
 import base64
 from PIL import Image
@@ -14,7 +12,7 @@ import io
 import os
 from src.common.database.database import db  # 确保 db 被导入用于 create_tables
 from src.common.database.database_model import LLMUsage  # 导入 LLMUsage 模型
-from ...config.config import global_config
+from src.config.config import global_config
 from rich.traceback import install
 
 install(extra_lines=3)

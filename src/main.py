@@ -6,7 +6,7 @@ from .manager.async_task_manager import async_task_manager
 from .chat.utils.statistic import OnlineTimeRecordTask, StatisticOutputTask
 from .manager.mood_manager import MoodPrintTask, MoodUpdateTask
 from .chat.emoji_system.emoji_manager import emoji_manager
-from .chat.person_info.person_info import person_info_manager
+from .person_info.person_info import person_info_manager
 from .chat.normal_chat.willing.willing_manager import willing_manager
 from .chat.message_receive.chat_stream import chat_manager
 from src.chat.heart_flow.heartflow import heartflow

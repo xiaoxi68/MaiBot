@@ -11,7 +11,7 @@ from ..message_receive.chat_stream import chat_manager
 
 # from ..message_receive.message_buffer import message_buffer
 from ..utils.timer_calculator import Timer
-from src.chat.person_info.relationship_manager import relationship_manager
+from src.person_info.relationship_manager import relationship_manager
 from typing import Optional, Tuple, Dict, Any
 
 logger = get_logger("chat")

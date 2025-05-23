@@ -1,6 +1,6 @@
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 from src.chat.heart_flow.observation.observation import Observation
-from src.chat.models.utils_model import LLMRequest
+from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 import time
 import traceback
@@ -8,7 +8,7 @@ from src.common.logger_manager import get_logger
 from src.individuality.individuality import individuality
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.message_receive.chat_stream import chat_manager
-from src.chat.person_info.relationship_manager import relationship_manager
+from src.person_info.relationship_manager import relationship_manager
 from .base_processor import BaseProcessor
 from typing import List, Optional
 from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
