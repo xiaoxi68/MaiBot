@@ -60,8 +60,7 @@ class MemoryActivator:
                     obs_info_text += f"{working_info_item['type']}: {working_info_item['content']}\n"
             elif isinstance(observation, HFCloopObservation):
                 obs_info_text += observation.get_observe_info()
-        
-        
+
         logger.debug(f"回忆待检索内容：obs_info_text: {obs_info_text}")
 
         # prompt = await global_prompt_manager.format_prompt(

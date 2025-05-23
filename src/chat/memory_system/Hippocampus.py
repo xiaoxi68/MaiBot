@@ -339,7 +339,7 @@ class Hippocampus:
             keywords = list(set(keywords))
             # 限制关键词数量
             logger.debug(f"提取关键词: {keywords}")
-            
+
         else:
             # 使用LLM提取关键词
             topic_num = min(5, max(1, int(len(text) * 0.1)))  # 根据文本长度动态调整关键词数量
