@@ -41,7 +41,7 @@ class PluginAction(BaseAction):
         return platform, user_id
 
     # 提供简化的API方法
-    async def send_message(self, text: str, target: Optional[str] = None) -> bool:
+    async def send_message(self, type: str, data: str, target: Optional[str] = "") -> bool:
         """发送消息的简化方法
 
         Args:
@@ -60,7 +60,7 @@ class PluginAction(BaseAction):
                 return False
 
             # 构造简化的动作数据
-            reply_data = {"text": text, "target": target or "", "emojis": []}
+            # reply_data = {"text": text, "target": target or "", "emojis": []}
 
             # 获取锚定消息（如果有）
             observations = self._services.get("observations", [])
@@ -68,7 +68,8 @@ class PluginAction(BaseAction):
             chatting_observation: ChattingObservation = next(
                 obs for obs in observations if isinstance(obs, ChattingObservation)
             )
-            anchor_message = chatting_observation.search_message_by_text(reply_data["target"])
+            
+            anchor_message = chatting_observation.search_message_by_text(target)
 
             # 如果没有找到锚点消息，创建一个占位符
             if not anchor_message:
@@ -80,7 +81,7 @@ class PluginAction(BaseAction):
                 anchor_message.update_chat_stream(chat_stream)
 
             response_set = [
-                ("text", text),
+                (type, data),
             ]
 
             # 调用内部方法发送消息

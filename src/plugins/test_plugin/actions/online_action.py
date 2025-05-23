@@ -17,7 +17,7 @@ class CheckOnlineAction(PluginAction):
         "mode参数为version时查看在线版本状态，默认用这种",
         "mode参数为type时查看在线系统类型分布",
     ]
-    default = True  # 不是默认动作，需要手动添加到使用集
+    default = False  # 不是默认动作，需要手动添加到使用集
 
     async def process(self) -> Tuple[bool, str]:
         """处理测试动作"""
