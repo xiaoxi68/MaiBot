@@ -41,8 +41,8 @@ class MuteAction(PluginAction):
 
         try:
             await self.send_message(
-                type = "text",
-                data = f"[command]mute,{user_id},{duration}",
+                type="text",
+                data=f"[command]mute,{user_id},{duration}",
                 # target = target
             )
 
