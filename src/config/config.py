@@ -31,6 +31,7 @@ from src.config.official_configs import (
     ModelConfig,
     FocusChatProcessorConfig,
     MessageReceiveConfig,
+    MaimMessageConfig,
 )
 
 install(extra_lines=3)
@@ -157,6 +158,7 @@ class Config(ConfigBase):
     telemetry: TelemetryConfig
     experimental: ExperimentalConfig
     model: ModelConfig
+    maim_message: MaimMessageConfig
 
 
 def load_config(config_path: str) -> Config:

@@ -169,6 +169,18 @@ max_length = 256 # 回复允许的最大长度
 max_sentence_num = 4 # 回复允许的最大句子数
 enable_kaomoji_protection = false # 是否启用颜文字保护
 
+[maim_message]
+auth_token = [] # 认证令牌，用于API验证，为空则不启用验证
+# 以下项目若要使用需要打开use_custom，并单独配置maim_message的服务器
+use_custom = false # 是否启用自定义的maim_message服务器，注意这需要设置新的端口，不能与.env重复
+host="127.0.0.1"
+port=8090
+mode="ws" # 支持ws和tcp两种模式
+use_wss = false # 是否使用WSS安全连接，只支持ws模式
+cert_file = "" # SSL证书文件路径，仅在use_wss=true时有效
+key_file = "" # SSL密钥文件路径，仅在use_wss=true时有效
+
+
 [telemetry] #发送统计信息，主要是看全球有多少只麦麦
 enable = true
 
@@ -293,3 +305,4 @@ name = "Qwen/Qwen2.5-32B-Instruct"
 provider = "SILICONFLOW"
 pri_in = 1.26
 pri_out = 1.26
+
