@@ -80,4 +80,4 @@ class ActionInfo(InfoBase):
         Returns:
             bool: 如果有任何动作需要添加或移除则返回True
         """
-        return bool(self.get_add_actions() or self.get_remove_actions()) 
+        return bool(self.get_add_actions() or self.get_remove_actions())

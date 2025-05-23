@@ -1,6 +1,9 @@
 from typing import Optional
+
+from numpy import double
 from .personality import Personality
 from .identity import Identity
+from .expression_style import PersonalityExpression
 import random
 from rich.traceback import install
 
@@ -10,43 +13,22 @@ install(extra_lines=3)
 class Individuality:
     """个体特征管理类"""
 
-    _instance = None
-
     def __init__(self):
-        if Individuality._instance is not None:
-            raise RuntimeError("Individuality 类是单例，请使用 get_instance() 方法获取实例。")
-
         # 正常初始化实例属性
         self.personality: Optional[Personality] = None
         self.identity: Optional[Identity] = None
+        self.express_style: PersonalityExpression = PersonalityExpression()
 
         self.name = ""
 
-    @classmethod
-    def get_instance(cls) -> "Individuality":
-        """获取Individuality单例实例
-
-        Returns:
-            Individuality: 单例实例
-        """
-        if cls._instance is None:
-            # 实例不存在，调用 cls() 创建新实例
-            # cls() 会调用 __init__
-            # 因为此时 cls._instance 仍然是 None，__init__ 会正常执行初始化
-            new_instance = cls()
-            # 将新创建的实例赋值给类变量 _instance
-            cls._instance = new_instance
-        # 返回（新创建的或已存在的）单例实例
-        return cls._instance
-
-    def initialize(
+    async def initialize(
         self,
         bot_nickname: str,
         personality_core: str,
         personality_sides: list,
         identity_detail: list,
         height: int,
-        weight: int,
+        weight: double,
         age: int,
         gender: str,
         appearance: str,
@@ -74,6 +56,8 @@ class Individuality:
             identity_detail=identity_detail, height=height, weight=weight, age=age, gender=gender, appearance=appearance
         )
 
+        await self.express_style.extract_and_store_personality_expressions()
+
         self.name = bot_nickname
 
     def to_dict(self) -> dict:
@@ -86,7 +70,7 @@ class Individuality:
     @classmethod
     def from_dict(cls, data: dict) -> "Individuality":
         """从字典创建个体特征实例"""
-        instance = cls.get_instance()
+        instance = cls()
         if data.get("personality"):
             instance.personality = Personality.from_dict(data["personality"])
         if data.get("identity"):
@@ -174,6 +158,10 @@ class Individuality:
                 identity_parts.append(f"年龄大约{self.identity.age}岁")
             if self.identity.gender:
                 identity_parts.append(f"性别是{self.identity.gender}")
+            if self.identity.height:
+                identity_parts.append(f"身高大约{self.identity.height}厘米")
+            if self.identity.weight:
+                identity_parts.append(f"体重大约{self.identity.weight}千克")
 
         if identity_parts:
             details_str = "，".join(identity_parts)
@@ -250,3 +238,6 @@ class Individuality:
         elif factor == "neuroticism":
             return self.personality.neuroticism
         return None
+
+
+individuality = Individuality()

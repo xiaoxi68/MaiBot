@@ -5,7 +5,7 @@ from src.config.config import global_config
 import time
 import traceback
 from src.common.logger_manager import get_logger
-from src.individuality.individuality import Individuality
+from src.individuality.individuality import individuality
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.utils.json_utils import safe_json_dumps
 from src.chat.message_receive.chat_stream import chat_manager
@@ -194,7 +194,6 @@ class MindProcessor(BaseProcessor):
 
         # ---------- 3. 准备个性化数据 ----------
         # 获取个性化信息
-        individuality = Individuality.get_instance()
 
         relation_prompt = ""
         for person in person_list:

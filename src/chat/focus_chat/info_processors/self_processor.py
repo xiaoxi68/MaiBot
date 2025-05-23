@@ -5,7 +5,7 @@ from src.config.config import global_config
 import time
 import traceback
 from src.common.logger_manager import get_logger
-from src.individuality.individuality import Individuality
+from src.individuality.individuality import individuality
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.message_receive.chat_stream import chat_manager
 from src.chat.person_info.relationship_manager import relationship_manager
@@ -21,8 +21,9 @@ logger = get_logger("processor")
 
 def init_prompt():
     indentify_prompt = """
-你的名字是{bot_name},你是一个AI，但是你伪装成了一个人类，你的人格是，{prompt_personality}。
-你的头像形象是一只橙色的鱼，头上有绿色的树叶。
+{name_block}
+你是一个AI，但是你伪装成了一个人类，你的人格是，{prompt_personality}。
+{indentify_block}
 
 {relation_prompt}
 {memory_str}
@@ -36,8 +37,8 @@ def init_prompt():
 3. 你的自我认同是否有助于你的回答，如果你需要自我相关的信息来帮你参与聊天，请输出，否则请输出十个字以内的简短自我认同
 4. 一般情况下不用输出自我认同，只需要输出十几个字的简短自我认同就好，除非有明显需要自我认同的场景
 
-请回复的平淡一些，简短一些，说中文，不要浮夸，平淡一些。
-请注意不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出内容。
+请思考的平淡一些，简短一些，说中文，不要浮夸，平淡一些。
+请注意不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出自我认同内容。
 
 """
     Prompt(indentify_prompt, "indentify_prompt")
@@ -125,16 +126,22 @@ class SelfProcessor(BaseProcessor):
                 # hfcloop_observe_info = observation.get_observe_info()
                 pass
 
-        individuality = Individuality.get_instance()
-        personality_block = individuality.get_prompt(x_person=2, level=2)
+        nickname_str = ""
+        for nicknames in global_config.bot.alias_names:
+            nickname_str += f"{nicknames},"
+        name_block = f"你的名字是{global_config.bot.nickname},你的昵称有{nickname_str}，有人也会用这些昵称称呼你。"
+
+        personality_block = individuality.get_personality_prompt(x_person=2, level=2)
+        identity_block = individuality.get_identity_prompt(x_person=2, level=2)
 
         relation_prompt = ""
         for person in person_list:
             relation_prompt += await relationship_manager.build_relationship_info(person, is_id=True)
 
         prompt = (await global_prompt_manager.get_prompt_async("indentify_prompt")).format(
-            bot_name=individuality.name,
+            name_block=name_block,
             prompt_personality=personality_block,
+            indentify_block=identity_block,
             memory_str=memory_str,
             relation_prompt=relation_prompt,
             time_now=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),

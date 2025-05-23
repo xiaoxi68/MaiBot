@@ -14,10 +14,9 @@ from rich.traceback import install
 from src.config.config_base import ConfigBase
 from src.config.official_configs import (
     BotConfig,
-    ChatTargetConfig,
     PersonalityConfig,
     IdentityConfig,
-    PlatformsConfig,
+    ExpressionConfig,
     ChatConfig,
     NormalChatConfig,
     FocusChatConfig,
@@ -30,6 +29,8 @@ from src.config.official_configs import (
     TelemetryConfig,
     ExperimentalConfig,
     ModelConfig,
+    FocusChatProcessorConfig,
+    MessageReceiveConfig,
 )
 
 install(extra_lines=3)
@@ -139,14 +140,15 @@ class Config(ConfigBase):
     MMC_VERSION: str = field(default=MMC_VERSION, repr=False, init=False)  # 硬编码的版本信息
 
     bot: BotConfig
-    chat_target: ChatTargetConfig
     personality: PersonalityConfig
     identity: IdentityConfig
-    platforms: PlatformsConfig
     chat: ChatConfig
+    message_receive: MessageReceiveConfig
     normal_chat: NormalChatConfig
     focus_chat: FocusChatConfig
+    focus_chat_processor: FocusChatProcessorConfig
     emoji: EmojiConfig
+    expression: ExpressionConfig
     memory: MemoryConfig
     mood: MoodConfig
     keyword_reaction: KeywordReactionConfig

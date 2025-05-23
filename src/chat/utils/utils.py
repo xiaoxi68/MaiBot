@@ -6,16 +6,13 @@ from collections import Counter
 import jieba
 import numpy as np
 from maim_message import UserInfo
-from pymongo.errors import PyMongoError
 
 from src.common.logger import get_module_logger
 from src.manager.mood_manager import mood_manager
 from ..message_receive.message import MessageRecv
 from ..models.utils_model import LLMRequest
 from .typo_generator import ChineseTypoGenerator
-from ...common.database.database import db
 from ...config.config import global_config
-from ...common.database.database_model import Messages
 from ...common.message_repository import find_messages, count_messages
 
 logger = get_module_logger("chat_utils")
@@ -112,11 +109,7 @@ async def get_embedding(text, request_type="embedding"):
 def get_recent_group_detailed_plain_text(chat_stream_id: str, limit: int = 12, combine=False):
     filter_query = {"chat_id": chat_stream_id}
     sort_order = [("time", -1)]
-    recent_messages = find_messages(
-        message_filter=filter_query,
-        sort=sort_order,
-        limit=limit
-    )
+    recent_messages = find_messages(message_filter=filter_query, sort=sort_order, limit=limit)
 
     if not recent_messages:
         return []
@@ -141,23 +134,21 @@ def get_recent_group_speaker(chat_stream_id: str, sender, limit: int = 12) -> li
     # 获取当前群聊记录内发言的人
     filter_query = {"chat_id": chat_stream_id}
     sort_order = [("time", -1)]
-    recent_messages = find_messages(
-        message_filter=filter_query,
-        sort=sort_order,
-        limit=limit
-    )
+    recent_messages = find_messages(message_filter=filter_query, sort=sort_order, limit=limit)
 
     if not recent_messages:
         return []
 
     who_chat_in_group = []
     for msg_db_data in recent_messages:
-        user_info = UserInfo.from_dict({
-            "platform": msg_db_data["user_platform"],
-            "user_id": msg_db_data["user_id"],
-            "user_nickname": msg_db_data["user_nickname"],
-            "user_cardname": msg_db_data.get("user_cardname", "")
-        })
+        user_info = UserInfo.from_dict(
+            {
+                "platform": msg_db_data["user_platform"],
+                "user_id": msg_db_data["user_id"],
+                "user_nickname": msg_db_data["user_nickname"],
+                "user_cardname": msg_db_data.get("user_cardname", ""),
+            }
+        )
         if (
             (user_info.platform, user_info.user_id) != sender
             and user_info.user_id != global_config.bot.qq_account
@@ -324,7 +315,7 @@ def process_llm_response(text: str) -> list[str]:
     else:
         protected_text = text
         kaomoji_mapping = {}
-    # 提取被 () 或 [] 包裹且包含中文的内容
+    # 提取被 () 或 [] 或 （）包裹且包含中文的内容
     pattern = re.compile(r"[(\[（](?=.*[一-鿿]).*?[)\]）]")
     # _extracted_contents = pattern.findall(text)
     _extracted_contents = pattern.findall(protected_text)  # 在保护后的文本上查找
@@ -579,14 +570,13 @@ def count_messages_between(start_time: float, end_time: float, stream_id: str) -
 
     # 使用message_repository中的count_messages和find_messages函数
 
-
     # 构建查询条件
     filter_query = {"chat_id": stream_id, "time": {"$gt": start_time, "$lte": end_time}}
 
     try:
         # 先获取消息数量
         count = count_messages(filter_query)
-        
+
         # 获取消息内容计算总长度
         messages = find_messages(message_filter=filter_query)
         total_length = sum(len(msg.get("processed_plain_text", "")) for msg in messages)

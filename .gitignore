@@ -40,6 +40,7 @@ config/lpmm_config.toml.bak
 （测试版）麦麦生成人格.bat
 （临时版）麦麦开始学习.bat
 src/plugins/utils/statistic.py
+CLAUDE.md
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -303,3 +304,4 @@ $RECYCLE.BIN/
 *.lnk
 src/chat/focus_chat/working_memory/test/test1.txt
 src/chat/focus_chat/working_memory/test/test4.txt
+run_maiserver.bat

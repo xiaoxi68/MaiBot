@@ -16,7 +16,7 @@ from .chat.message_receive.storage import MessageStorage
 from .config.config import global_config
 from .chat.message_receive.bot import chat_bot
 from .common.logger_manager import get_logger
-from .individuality.individuality import Individuality
+from .individuality.individuality import individuality, Individuality
 from .common.server import global_server, Server
 from rich.traceback import install
 from .chat.focus_chat.expressors.exprssion_learner import expression_learner
@@ -30,7 +30,7 @@ logger = get_logger("main")
 class MainSystem:
     def __init__(self):
         self.hippocampus_manager: HippocampusManager = HippocampusManager.get_instance()
-        self.individuality: Individuality = Individuality.get_instance()
+        self.individuality: Individuality = individuality
 
         # 使用消息API替代直接的FastAPI实例
         from src.common.message import global_api
@@ -91,7 +91,7 @@ class MainSystem:
         self.app.register_message_handler(chat_bot.message_process)
 
         # 初始化个体特征
-        self.individuality.initialize(
+        await self.individuality.initialize(
             bot_nickname=global_config.bot.nickname,
             personality_core=global_config.personality.personality_core,
             personality_sides=global_config.personality.personality_sides,
@@ -103,9 +103,6 @@ class MainSystem:
             appearance=global_config.identity.appearance,
         )
         logger.success("个体特征初始化成功")
-
-        # 初始化表达方式
-        await expression_learner.extract_and_store_personality_expressions()
 
         try:
             # 启动全局消息管理器 (负责消息发送/排队)
@@ -169,7 +166,7 @@ class MainSystem:
     async def learn_and_store_expression_task():
         """学习并存储表达方式任务"""
         while True:
-            await asyncio.sleep(60)
+            await asyncio.sleep(global_config.expression.learning_interval)
             print("\033[1;32m[表达方式学习]\033[0m 开始学习表达方式...")
             await expression_learner.learn_and_store_expression()
             print("\033[1;32m[表达方式学习]\033[0m 表达方式学习完成")

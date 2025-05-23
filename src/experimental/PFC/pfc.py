@@ -4,7 +4,7 @@ from src.chat.models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.experimental.PFC.chat_observer import ChatObserver
 from src.experimental.PFC.pfc_utils import get_items_from_json
-from src.individuality.individuality import Individuality
+from src.individuality.individuality import individuality
 from src.experimental.PFC.conversation_info import ConversationInfo
 from src.experimental.PFC.observation_info import ObservationInfo
 from src.chat.utils.chat_message_builder import build_readable_messages
@@ -47,7 +47,7 @@ class GoalAnalyzer:
             model=global_config.model.normal, temperature=0.7, max_tokens=1000, request_type="conversation_goal"
         )
 
-        self.personality_info = Individuality.get_instance().get_prompt(x_person=2, level=3)
+        self.personality_info = individuality.get_prompt(x_person=2, level=3)
         self.name = global_config.bot.nickname
         self.nick_name = global_config.bot.alias_names
         self.private_name = private_name

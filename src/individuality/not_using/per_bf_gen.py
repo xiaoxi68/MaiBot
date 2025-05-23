@@ -17,9 +17,9 @@ with open(config_path, "r", encoding="utf-8") as f:
     config = toml.load(f)
 
 # 现在可以导入src模块
-from src.individuality.scene import get_scene_by_factor, PERSONALITY_SCENES  # noqa E402
-from src.individuality.questionnaire import FACTOR_DESCRIPTIONS  # noqa E402
-from src.individuality.offline_llm import LLMRequestOff  # noqa E402
+from individuality.not_using.scene import get_scene_by_factor, PERSONALITY_SCENES  # noqa E402
+from individuality.not_using.questionnaire import FACTOR_DESCRIPTIONS  # noqa E402
+from individuality.not_using.offline_llm import LLMRequestOff  # noqa E402
 
 # 加载环境变量
 env_path = os.path.join(root_path, ".env")

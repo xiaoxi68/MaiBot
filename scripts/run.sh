@@ -4,7 +4,7 @@
 # 适用于Arch/Ubuntu 24.10/Debian 12/CentOS 9
 # 请小心使用任何一键脚本！
 
-INSTALLER_VERSION="0.0.4-refactor"
+INSTALLER_VERSION="0.0.5-refactor"
 LANG=C.UTF-8
 
 # 如无法访问GitHub请修改此处镜像地址
@@ -33,7 +33,6 @@ SERVICE_NAME="maicore"
 SERVICE_NAME_WEB="maicore-web"
 SERVICE_NAME_NBADAPTER="maibot-napcat-adapter"
 
-IS_INSTALL_MONGODB=false
 IS_INSTALL_NAPCAT=false
 IS_INSTALL_DEPENDENCIES=false
 
@@ -255,7 +254,6 @@ run_installation() {
                 return
             elif [[ "$ID" == "arch" ]]; then
                 whiptail --title "⚠️ 兼容性警告" --msgbox "NapCat无可用的 Arch Linux 官方安装方法，将无法自动安装NapCat。\n\n您可尝试在AUR中搜索相关包。" 10 60
-                whiptail --title "⚠️ 兼容性警告" --msgbox "MongoDB无可用的 Arch Linux 官方安装方法，将无法自动安装MongoDB。\n\n您可尝试在AUR中搜索相关包。" 10 60
                 return
             else
                 whiptail --title "🚫 不支持的系统" --msgbox "此脚本仅支持 Arch/Debian 12 (Bookworm)/Ubuntu 24.10 (Oracular Oriole)/CentOS9！\n当前系统: $PRETTY_NAME\n安装已终止。" 10 60
@@ -281,16 +279,6 @@ run_installation() {
             PKG_MANAGER="pacman"
             ;;
     esac
-
-    # 检查MongoDB
-    check_mongodb() {
-        if command -v mongod &>/dev/null; then
-            MONGO_INSTALLED=true
-        else
-            MONGO_INSTALLED=false
-        fi
-    }
-    check_mongodb
 
     # 检查NapCat
     check_napcat() {
@@ -330,19 +318,7 @@ run_installation() {
         fi
     }
     install_packages
-
-    # 安装MongoDB
-    install_mongodb() {
-        [[ $MONGO_INSTALLED == true ]] && return
-        whiptail --title "📦 [3/6] 软件包检查" --yesno "检测到未安装MongoDB，是否安装？\n如果您想使用远程数据库，请跳过此步。" 10 60 && {
-            IS_INSTALL_MONGODB=true
-        }
-    }
-
-    # 仅在非Arch系统上安装MongoDB
-    [[ "$ID" != "arch" ]] && install_mongodb
        
-
     # 安装NapCat
     install_napcat() {
         [[ $NAPCAT_INSTALLED == true ]] && return
@@ -413,9 +389,8 @@ run_installation() {
         confirm_msg+="📂 安装MaiCore、NapCat Adapter到: $INSTALL_DIR\n"
         confirm_msg+="🔀 分支: $BRANCH\n"
         [[ $IS_INSTALL_DEPENDENCIES == true ]] && confirm_msg+="📦 安装依赖：${missing_packages[@]}\n"
-        [[ $IS_INSTALL_MONGODB == true || $IS_INSTALL_NAPCAT == true ]] && confirm_msg+="📦 安装额外组件：\n"
-        
-        [[ $IS_INSTALL_MONGODB == true ]] && confirm_msg+="  - MongoDB\n"
+        [[ $IS_INSTALL_NAPCAT == true ]] && confirm_msg+="📦 安装额外组件：\n"
+
         [[ $IS_INSTALL_NAPCAT == true ]] && confirm_msg+="  - NapCat\n"
         confirm_msg+="\n注意：本脚本默认使用ghfast.top为GitHub进行加速，如不想使用请手动修改脚本开头的GITHUB_REPO变量。"
 
@@ -438,39 +413,6 @@ run_installation() {
             pacman -S --noconfirm "${missing_packages[@]}"
             ;;
         esac
-    fi
-
-    if [[ $IS_INSTALL_MONGODB == true ]]; then
-        echo -e "${GREEN}安装 MongoDB...${RESET}"
-        case "$ID" in
-            debian)
-                curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc | gpg -o /usr/share/keyrings/mongodb-server-8.0.gpg --dearmor
-                echo "deb [ signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] http://repo.mongodb.org/apt/debian bookworm/mongodb-org/8.0 main" | tee /etc/apt/sources.list.d/mongodb-org-8.0.list
-                apt update
-                apt install -y mongodb-org
-                systemctl enable --now mongod
-                ;;
-            ubuntu)
-                curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc | gpg -o /usr/share/keyrings/mongodb-server-8.0.gpg --dearmor
-                echo "deb [ signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] http://repo.mongodb.org/apt/debian bookworm/mongodb-org/8.0 main" | tee /etc/apt/sources.list.d/mongodb-org-8.0.list
-                apt update
-                apt install -y mongodb-org
-                systemctl enable --now mongod
-                ;;
-            centos)
-                cat > /etc/yum.repos.d/mongodb-org-8.0.repo <<EOF
-[mongodb-org-8.0]
-name=MongoDB Repository
-baseurl=https://repo.mongodb.org/yum/redhat/9/mongodb-org/8.0/x86_64/
-gpgcheck=1
-enabled=1
-gpgkey=https://pgp.mongodb.com/server-8.0.asc
-EOF
-                yum install -y mongodb-org
-                systemctl enable --now mongod
-                ;;
-        esac
-
     fi
 
     if [[ $IS_INSTALL_NAPCAT == true ]]; then
@@ -537,7 +479,7 @@ EOF
     cat > /etc/systemd/system/${SERVICE_NAME}.service <<EOF
 [Unit]
 Description=MaiCore
-After=network.target mongod.service ${SERVICE_NAME_NBADAPTER}.service
+After=network.target ${SERVICE_NAME_NBADAPTER}.service
 
 [Service]
 Type=simple
@@ -550,21 +492,21 @@ RestartSec=10s
 WantedBy=multi-user.target
 EOF
 
-    cat > /etc/systemd/system/${SERVICE_NAME_WEB}.service <<EOF
-[Unit]
-Description=MaiCore WebUI
-After=network.target mongod.service ${SERVICE_NAME}.service
+#     cat > /etc/systemd/system/${SERVICE_NAME_WEB}.service <<EOF
+# [Unit]
+# Description=MaiCore WebUI
+# After=network.target ${SERVICE_NAME}.service
 
-[Service]
-Type=simple
-WorkingDirectory=${INSTALL_DIR}/MaiBot
-ExecStart=$INSTALL_DIR/venv/bin/python3 webui.py
-Restart=always
-RestartSec=10s
+# [Service]
+# Type=simple
+# WorkingDirectory=${INSTALL_DIR}/MaiBot
+# ExecStart=$INSTALL_DIR/venv/bin/python3 webui.py
+# Restart=always
+# RestartSec=10s
 
-[Install]
-WantedBy=multi-user.target
-EOF
+# [Install]
+# WantedBy=multi-user.target
+# EOF
 
     cat > /etc/systemd/system/${SERVICE_NAME_NBADAPTER}.service <<EOF
 [Unit]

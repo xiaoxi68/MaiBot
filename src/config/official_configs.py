@@ -27,31 +27,11 @@ class BotConfig(ConfigBase):
 
 
 @dataclass
-class ChatTargetConfig(ConfigBase):
-    """
-    聊天目标配置类
-    此类中有聊天的群组和用户配置
-    """
-
-    talk_allowed_groups: set[str] = field(default_factory=lambda: set())
-    """允许聊天的群组列表"""
-
-    talk_frequency_down_groups: set[str] = field(default_factory=lambda: set())
-    """降低聊天频率的群组列表"""
-
-    ban_user_id: set[str] = field(default_factory=lambda: set())
-    """禁止聊天的用户列表"""
-
-
-@dataclass
 class PersonalityConfig(ConfigBase):
     """人格配置类"""
 
     personality_core: str
     """核心人格"""
-
-    expression_style: str
-    """表达风格"""
 
     personality_sides: list[str] = field(default_factory=lambda: [])
     """人格侧写"""
@@ -81,31 +61,16 @@ class IdentityConfig(ConfigBase):
 
 
 @dataclass
-class PlatformsConfig(ConfigBase):
-    """平台配置类"""
-
-    qq: str
-    """QQ适配器连接URL配置"""
-
-
-@dataclass
 class ChatConfig(ConfigBase):
     """聊天配置类"""
 
-    allow_focus_mode: bool = True
-    """是否允许专注聊天状态"""
+    chat_mode: str = "normal"
+    """聊天模式"""
 
-    base_normal_chat_num: int = 3
-    """最多允许多少个群进行普通聊天"""
 
-    base_focused_chat_num: int = 2
-    """最多允许多少个群进行专注聊天"""
-
-    observation_context_size: int = 12
-    """可观察到的最长上下文大小，超过这个值的上下文会被压缩"""
-
-    message_buffer: bool = True
-    """消息缓冲器"""
+@dataclass
+class MessageReceiveConfig(ConfigBase):
+    """消息接收配置类"""
 
     ban_words: set[str] = field(default_factory=lambda: set())
     """过滤词列表"""
@@ -124,6 +89,12 @@ class NormalChatConfig(ConfigBase):
     选择普通模型的概率为 1 - reasoning_normal_model_probability
     """
 
+    max_context_size: int = 15
+    """上下文长度"""
+
+    message_buffer: bool = True
+    """消息缓冲器"""
+
     emoji_chance: float = 0.2
     """发送表情包的基础概率"""
 
@@ -138,6 +109,9 @@ class NormalChatConfig(ConfigBase):
 
     response_interested_rate_amplifier: float = 1.0
     """回复兴趣度放大系数"""
+
+    talk_frequency_down_groups: list[str] = field(default_factory=lambda: [])
+    """降低回复频率的群组"""
 
     down_frequency_rate: float = 3.0
     """降低回复频率的群组回复意愿降低系数"""
@@ -162,6 +136,9 @@ class FocusChatConfig(ConfigBase):
     default_decay_rate_per_second: float = 0.98
     """默认衰减率，越大衰减越快"""
 
+    observation_context_size: int = 12
+    """可观察到的最长上下文大小，超过这个值的上下文会被压缩"""
+
     consecutive_no_reply_threshold: int = 3
     """连续不回复的次数阈值"""
 
@@ -170,6 +147,37 @@ class FocusChatConfig(ConfigBase):
 
     compress_length_limit: int = 5
     """最多压缩份数，超过该数值的压缩上下文会被删除"""
+
+    think_interval: int = 1
+    """思考间隔（秒）"""
+
+
+@dataclass
+class FocusChatProcessorConfig(ConfigBase):
+    """专注聊天处理器配置类"""
+
+    self_identify_processor: bool = True
+    """是否启用自我识别处理器"""
+
+    tool_use_processor: bool = True
+    """是否启用工具使用处理器"""
+
+    working_memory_processor: bool = True
+    """是否启用工作记忆处理器"""
+
+
+@dataclass
+class ExpressionConfig(ConfigBase):
+    """表达配置类"""
+
+    expression_style: str = ""
+    """表达风格"""
+
+    learning_interval: int = 300
+    """学习间隔（秒）"""
+
+    enable_expression_learning: bool = True
+    """是否启用表达学习"""
 
 
 @dataclass
@@ -340,11 +348,8 @@ class TelemetryConfig(ConfigBase):
 class ExperimentalConfig(ConfigBase):
     """实验功能配置类"""
 
-    # enable_friend_chat: bool = False
-    # """是否启用好友聊天"""
-
-    # talk_allowed_private: set[str] = field(default_factory=lambda: set())
-    # """允许聊天的私聊列表"""
+    enable_friend_chat: bool = False
+    """是否启用好友聊天"""
 
     pfc_chatting: bool = False
     """是否启用PFC"""

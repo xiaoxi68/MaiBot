@@ -1,9 +1,6 @@
 from src.chat.heart_flow.sub_heartflow import SubHeartflow, ChatState
-from src.chat.models.utils_model import LLMRequest
-from src.config.config import global_config
 from src.common.logger_manager import get_logger
 from typing import Any, Optional
-from src.tools.tool_use import ToolUser
 from src.chat.heart_flow.mai_state_manager import MaiStateInfo, MaiStateManager
 from src.chat.heart_flow.subheartflow_manager import SubHeartflowManager
 from src.chat.heart_flow.background_tasks import BackgroundTaskManager  # Import BackgroundTaskManager

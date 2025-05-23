@@ -3,7 +3,7 @@ from src.chat.models.utils_model import LLMRequest
 from src.config.config import global_config
 import time
 from src.common.logger_manager import get_logger
-from src.individuality.individuality import Individuality
+from src.individuality.individuality import individuality
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.tools.tool_use import ToolUser
 from src.chat.utils.json_utils import process_llm_tool_calls
@@ -133,7 +133,7 @@ class ToolProcessor(BaseProcessor):
             relation_prompt += await relationship_manager.build_relationship_info(person, is_id=True)
 
         # 获取个性信息
-        individuality = Individuality.get_instance()
+
         # prompt_personality = individuality.get_prompt(x_person=2, level=2)
 
         # 获取时间信息

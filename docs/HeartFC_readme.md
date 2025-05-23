@@ -4,8 +4,8 @@ HeartFC_chat 是一个基于心流理论的聊天系统，通过模拟人类的�
 
 ## 核心工作流程
 
-### 1. 消息处理与存储 (HeartFCProcessor)
-[代码位置: src/plugins/focus_chat/heartflow_processor.py]
+### 1. 消息处理与存储 (HeartFCMessageReceiver)
+[代码位置: src/plugins/focus_chat/heartflow_message_receiver.py]
 
 消息处理器负责接收和预处理消息，主要完成以下工作：
 ```mermaid
@@ -132,7 +132,7 @@ graph TD
 
 ### 关键参数
 - LLM配置：`model_normal` [heartFC_generator.py 行号: 32-37]
-- 过滤规则：`_check_ban_words()`, `_check_ban_regex()` [heartflow_processor.py 行号: 196-215]
+- 过滤规则：`_check_ban_words()`, `_check_ban_regex()` [heartflow_message_receiver.py 行号: 196-215]
 - 状态控制：`INITIAL_DURATION = 60.0` [focus_chat.py 行号: 11]
 
 ### 优化建议

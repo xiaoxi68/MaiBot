@@ -3,7 +3,7 @@ import contextlib
 import time
 import traceback
 from collections import deque
-from typing import List, Optional, Dict, Any, Deque, Callable, Coroutine
+from typing import List, Optional, Dict, Any, Deque
 from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.message_receive.chat_stream import chat_manager
 from rich.traceback import install
@@ -26,8 +26,20 @@ from src.chat.focus_chat.info_processors.self_processor import SelfProcessor
 from src.chat.focus_chat.planners.planner import ActionPlanner
 from src.chat.focus_chat.planners.action_manager import ActionManager
 from src.chat.focus_chat.working_memory.working_memory import WorkingMemory
+from src.config.config import global_config
 
 install(extra_lines=3)
+
+
+# 定义处理器映射：键是处理器名称，值是 (处理器类, 可选的配置键名)
+# 如果配置键名为 None，则该处理器默认启用且不能通过 focus_chat_processor 配置禁用
+PROCESSOR_CLASSES = {
+    "ChattingInfoProcessor": (ChattingInfoProcessor, None),
+    "MindProcessor": (MindProcessor, None),
+    "ToolProcessor": (ToolProcessor, "tool_use_processor"),
+    "WorkingMemoryProcessor": (WorkingMemoryProcessor, "working_memory_processor"),
+    "SelfProcessor": (SelfProcessor, "self_identify_processor"),
+}
 
 
 WAITING_TIME_THRESHOLD = 300  # 等待新消息时间阈值，单位秒
@@ -90,6 +102,21 @@ class HeartFChatting:
             observe_id=self.stream_id, working_memory=self.working_memory
         )
 
+        # 根据配置文件和默认规则确定启用的处理器
+        self.enabled_processor_names: List[str] = []
+        config_processor_settings = global_config.focus_chat_processor
+
+        for proc_name, (_proc_class, config_key) in PROCESSOR_CLASSES.items():
+            if config_key:  # 此处理器可通过配置控制
+                if getattr(config_processor_settings, config_key, True):  # 默认启用 (如果配置中未指定该键)
+                    self.enabled_processor_names.append(proc_name)
+            else:  # 此处理器不在配置映射中 (config_key is None)，默认启用
+                self.enabled_processor_names.append(proc_name)
+
+        logger.info(f"{self.log_prefix} 将启用的处理器: {self.enabled_processor_names}")
+        self.processors: List[BaseProcessor] = []
+        self._register_default_processors()
+
         self.expressor = DefaultExpressor(chat_id=self.stream_id)
         self.action_manager = ActionManager()
         self.action_planner = ActionPlanner(log_prefix=self.log_prefix, action_manager=self.action_manager)
@@ -97,9 +124,6 @@ class HeartFChatting:
         self.hfcloop_observation.set_action_manager(self.action_manager)
 
         self.all_observations = observations
-        # --- 处理器列表 ---
-        self.processors: List[BaseProcessor] = []
-        self._register_default_processors()
 
         # 初始化状态控制
         self._initialized = False
@@ -150,13 +174,40 @@ class HeartFChatting:
         return True
 
     def _register_default_processors(self):
-        """注册默认的信息处理器"""
-        self.processors.append(ChattingInfoProcessor())
-        self.processors.append(MindProcessor(subheartflow_id=self.stream_id))
-        self.processors.append(ToolProcessor(subheartflow_id=self.stream_id))
-        self.processors.append(WorkingMemoryProcessor(subheartflow_id=self.stream_id))
-        self.processors.append(SelfProcessor(subheartflow_id=self.stream_id))
-        logger.info(f"{self.log_prefix} 已注册默认处理器: {[p.__class__.__name__ for p in self.processors]}")
+        """根据 self.enabled_processor_names 注册信息处理器"""
+        self.processors = []  # 清空已有的
+
+        for name in self.enabled_processor_names:  # 'name' is "ChattingInfoProcessor", etc.
+            processor_info = PROCESSOR_CLASSES.get(name)  # processor_info is (ProcessorClass, config_key)
+            if processor_info:
+                processor_actual_class = processor_info[0]  # 获取实际的类定义
+                # 根据处理器类名判断是否需要 subheartflow_id
+                if name in ["MindProcessor", "ToolProcessor", "WorkingMemoryProcessor", "SelfProcessor"]:
+                    self.processors.append(processor_actual_class(subheartflow_id=self.stream_id))
+                elif name == "ChattingInfoProcessor":
+                    self.processors.append(processor_actual_class())
+                else:
+                    # 对于PROCESSOR_CLASSES中定义但此处未明确处理构造的处理器
+                    # (例如, 新增了一个处理器到PROCESSOR_CLASSES, 它不需要id, 也不叫ChattingInfoProcessor)
+                    try:
+                        self.processors.append(processor_actual_class())  # 尝试无参构造
+                        logger.debug(f"{self.log_prefix} 注册处理器 {name} (尝试无参构造).")
+                    except TypeError:
+                        logger.error(
+                            f"{self.log_prefix} 处理器 {name} 构造失败。它可能需要参数（如 subheartflow_id）但未在注册逻辑中明确处理。"
+                        )
+            else:
+                # 这理论上不应该发生，因为 enabled_processor_names 是从 PROCESSOR_CLASSES 的键生成的
+                logger.warning(
+                    f"{self.log_prefix} 在 PROCESSOR_CLASSES 中未找到名为 '{name}' 的处理器定义，将跳过注册。"
+                )
+
+        if self.processors:
+            logger.info(
+                f"{self.log_prefix} 已根据配置和默认规则注册处理器: {[p.__class__.__name__ for p in self.processors]}"
+            )
+        else:
+            logger.warning(f"{self.log_prefix} 没有注册任何处理器。这可能是由于配置错误或所有处理器都被禁用了。")
 
     async def start(self):
         """
@@ -259,6 +310,8 @@ class HeartFChatting:
                     f"动作: {self._current_cycle.loop_plan_info['action_result']['action_type']}"
                     + (f"\n详情: {'; '.join(timer_strings)}" if timer_strings else "")
                 )
+
+                await asyncio.sleep(global_config.focus_chat.think_interval)
 
         except asyncio.CancelledError:
             # 设置了关闭标志位后被取消是正常流程
