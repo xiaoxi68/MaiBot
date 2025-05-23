@@ -37,4 +37,4 @@ class SelfInfo(InfoBase):
         Returns:
             str: 处理后的信息
         """
-        return self.get_self_info()
+        return self.get_self_info() or ""
