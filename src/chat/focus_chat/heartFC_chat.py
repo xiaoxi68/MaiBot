@@ -425,7 +425,10 @@ class HeartFChatting:
                 self.all_observations = observations
 
             with Timer("回忆", cycle_timers):
+                logger.debug(f"{self.log_prefix} 开始回忆")
                 running_memorys = await self.memory_activator.activate_memory(observations)
+                logger.debug(f"{self.log_prefix} 回忆完成")
+                print(running_memorys)
 
             with Timer("执行 信息处理器", cycle_timers):
                 all_plan_info = await self._process_processors(observations, running_memorys, cycle_timers)

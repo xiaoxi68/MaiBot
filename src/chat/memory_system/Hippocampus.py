@@ -338,7 +338,8 @@ class Hippocampus:
             # 去重
             keywords = list(set(keywords))
             # 限制关键词数量
-            keywords = keywords[:5]
+            logger.debug(f"提取关键词: {keywords}")
+            
         else:
             # 使用LLM提取关键词
             topic_num = min(5, max(1, int(len(text) * 0.1)))  # 根据文本长度动态调整关键词数量
@@ -361,7 +362,7 @@ class Hippocampus:
         # 过滤掉不存在于记忆图中的关键词
         valid_keywords = [keyword for keyword in keywords if keyword in self.memory_graph.G]
         if not valid_keywords:
-            # logger.info("没有找到有效的关键词节点")
+            logger.info("没有找到有效的关键词节点")
             return []
 
         logger.debug(f"有效的关键词: {', '.join(valid_keywords)}")
