@@ -122,7 +122,7 @@ class PluginAction(BaseAction):
             chatting_observation: ChattingObservation = next(
                 obs for obs in observations if isinstance(obs, ChattingObservation)
             )
-            
+
             anchor_message = chatting_observation.search_message_by_text(target)
 
             # 如果没有找到锚点消息，创建一个占位符
