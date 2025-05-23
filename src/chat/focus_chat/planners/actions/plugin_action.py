@@ -1,6 +1,6 @@
 import traceback
 from typing import Tuple, Dict, List, Any, Optional
-from src.chat.focus_chat.planners.actions.base_action import BaseAction, register_action
+from src.chat.focus_chat.planners.actions.base_action import BaseAction
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 from src.chat.focus_chat.hfc_utils import create_empty_anchor_message
 from src.common.logger_manager import get_logger
@@ -8,7 +8,6 @@ from src.chat.person_info.person_info import person_info_manager
 from abc import abstractmethod
 import os
 import inspect
-import yaml # 或者 import json 如果你偏好 JSON
 import toml # 导入 toml 库
 
 logger = get_logger("plugin_action")

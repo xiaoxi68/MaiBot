@@ -1,7 +1,7 @@
 import asyncio
-import json # 新增：用于处理JSON数据
-import urllib.request # 新增：用于发起HTTP请求
-import urllib.error   # 新增：用于处理HTTP错误
+import json 
+import urllib.request 
+import urllib.error   
 import base64 # 新增：用于Base64编码
 import traceback # 新增：用于打印堆栈跟踪
 from typing import Tuple
@@ -9,17 +9,11 @@ from src.chat.focus_chat.planners.actions.plugin_action import PluginAction, reg
 from src.common.logger_manager import get_logger
 from .generate_pic_config import generate_config
 
-# 尝试导入 volcenginesdkarkruntime，如果失败则记录错误并在后续处理中提示用户
-# 即使我们现在主要用HTTP，这个检查也可以保留，以防未来需要或其他功能使用
-try:
-    from volcenginesdkarkruntime import Ark
-    VOLCENGINE_SDK_AVAILABLE = True
-except ImportError:
-    VOLCENGINE_SDK_AVAILABLE = False
-    Ark = None # 占位，避免 NameError
-
 logger = get_logger("pic_action")
 
+# 当此模块被加载时，尝试生成配置文件（如果它不存在）
+# 注意：在某些插件加载机制下，这可能会在每次机器人启动或插件重载时执行
+# 考虑是否需要更复杂的逻辑来决定何时运行 (例如，仅在首次安装时)
 generate_config()
 
 
@@ -44,11 +38,6 @@ class PicAction(PluginAction):
 
     def __init__(self, action_data: dict, reasoning: str, cycle_timers: dict, thinking_id: str, global_config: dict = None, **kwargs):
         super().__init__(action_data, reasoning, cycle_timers, thinking_id, global_config, **kwargs)
-        
-        if not VOLCENGINE_SDK_AVAILABLE:
-            logger.warning(f"{self.log_prefix} Volcengine SDK (volcenginesdkarkruntime) 未找到. PicAction将仅依赖HTTP配置.")
-        else:
-            logger.info(f"{self.log_prefix} Volcengine SDK 可用, 但PicAction配置为优先HTTP方式.")
 
         http_base_url = self.config.get("base_url")
         http_api_key = self.config.get("volcano_generate_api_key")
