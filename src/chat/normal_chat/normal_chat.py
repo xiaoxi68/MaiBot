@@ -14,6 +14,7 @@ from src.chat.message_receive.chat_stream import ChatStream, chat_manager
 from src.chat.person_info.relationship_manager import relationship_manager
 from src.chat.utils.info_catcher import info_catcher_manager
 from src.chat.utils.timer_calculator import Timer
+from src.chat.utils.prompt_builder import global_prompt_manager
 from .normal_chat_generator import NormalChatGenerator
 from ..message_receive.message import MessageSending, MessageRecv, MessageThinking, MessageSet
 from src.chat.message_receive.message_sender import message_manager
@@ -194,31 +195,31 @@ class NormalChat:
         通常由start_monitoring_interest()启动
         """
         while True:
-            await asyncio.sleep(0.5)  # 每秒检查一次
-            # 检查任务是否已被取消
-            if self._chat_task is None or self._chat_task.cancelled():
-                logger.info(f"[{self.stream_name}] 兴趣监控任务被取消或置空，退出")
-                break
+            async with global_prompt_manager.async_message_scope(self.chat_stream.context.get_template_name()):
+                await asyncio.sleep(0.5)  # 每秒检查一次
+                # 检查任务是否已被取消
+                if self._chat_task is None or self._chat_task.cancelled():
+                    logger.info(f"[{self.stream_name}] 兴趣监控任务被取消或置空，退出")
+                    break
 
+                items_to_process = list(self.interest_dict.items())
+                if not items_to_process:
+                    continue
 
-            items_to_process = list(self.interest_dict.items())
-            if not items_to_process:
-                continue
-
-            # 处理每条兴趣消息
-            for msg_id, (message, interest_value, is_mentioned) in items_to_process:
-                try:
-                    # 处理消息
-                    await self.normal_response(
-                        message=message,
-                        is_mentioned=is_mentioned,
-                        interested_rate=interest_value,
-                        rewind_response=False,
-                    )
-                except Exception as e:
-                    logger.error(f"[{self.stream_name}] 处理兴趣消息{msg_id}时出错: {e}\n{traceback.format_exc()}")
-                finally:
-                    self.interest_dict.pop(msg_id, None)
+                # 处理每条兴趣消息
+                for msg_id, (message, interest_value, is_mentioned) in items_to_process:
+                    try:
+                        # 处理消息
+                        await self.normal_response(
+                            message=message,
+                            is_mentioned=is_mentioned,
+                            interested_rate=interest_value,
+                            rewind_response=False,
+                        )
+                    except Exception as e:
+                        logger.error(f"[{self.stream_name}] 处理兴趣消息{msg_id}时出错: {e}\n{traceback.format_exc()}")
+                    finally:
+                        self.interest_dict.pop(msg_id, None)
 
     # 改为实例方法, 移除 chat 参数
     async def normal_response(

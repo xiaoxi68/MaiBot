@@ -125,7 +125,6 @@ class PromptBuilder:
                 relation_prompt += await relationship_manager.build_relationship_info(person)
             else:
                 logger.warning(f"Invalid person tuple encountered for relationship prompt: {person}")
-
         mood_prompt = mood_manager.get_mood_prompt()
         reply_styles1 = [
             ("然后给出日常且口语化的回复，平淡一些", 0.4),
@@ -146,9 +145,11 @@ class PromptBuilder:
             [style[0] for style in reply_styles2], weights=[style[1] for style in reply_styles2], k=1
         )[0]
         memory_prompt = ""
+
         related_memory = await HippocampusManager.get_instance().get_memory_from_text(
             text=message_txt, max_memory_num=2, max_memory_length=2, max_depth=3, fast_retrieval=False
         )
+
         related_memory_info = ""
         if related_memory:
             for memory in related_memory:

@@ -7,6 +7,7 @@ from typing import List, Optional, Dict, Any, Deque, Callable, Coroutine
 from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.message_receive.chat_stream import chat_manager
 from rich.traceback import install
+from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.common.logger_manager import get_logger
 from src.chat.utils.timer_calculator import Timer
 from src.chat.heart_flow.observation.observation import Observation
@@ -228,8 +229,9 @@ class HeartFChatting:
                     thinking_id = "tid" + str(round(time.time(), 2))
                     self._current_cycle.set_thinking_id(thinking_id)
                     # 主循环：思考->决策->执行
-
-                    loop_info = await self._observe_process_plan_action_loop(cycle_timers, thinking_id)
+                    async with global_prompt_manager.async_message_scope(self.chat_stream.context.get_template_name()):
+                        logger.debug(f"模板 {self.chat_stream.context.get_template_name()}")
+                        loop_info = await self._observe_process_plan_action_loop(cycle_timers, thinking_id)
 
                     self._current_cycle.set_loop_info(loop_info)
 
