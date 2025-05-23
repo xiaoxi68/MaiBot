@@ -869,6 +869,23 @@ API_SERVER_STYLE_CONFIG = {
     },
 }
 
+# maim_message 消息服务样式配置
+MAIM_MESSAGE_STYLE_CONFIG = {
+    "advanced": {
+        "console_format": (
+            "<white>{time:YYYY-MM-DD HH:mm:ss}</white> | "
+            "<level>{level: <8}</level> | "
+            "<fg #00B2FF>消息服务</fg #00B2FF> | "
+            "<level>{message}</level>"
+        ),
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 消息服务 | {message}",
+    },
+    "simple": {
+        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #00B2FF>消息服务</fg #00B2FF> | {message}",
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 消息服务 | {message}",
+    },
+}
+
 
 # 根据SIMPLE_OUTPUT选择配置
 MAIN_STYLE_CONFIG = MAIN_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else MAIN_STYLE_CONFIG["advanced"]
@@ -946,6 +963,9 @@ CHAT_MESSAGE_STYLE_CONFIG = (
 CHAT_IMAGE_STYLE_CONFIG = CHAT_IMAGE_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else CHAT_IMAGE_STYLE_CONFIG["advanced"]
 INIT_STYLE_CONFIG = INIT_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else INIT_STYLE_CONFIG["advanced"]
 API_SERVER_STYLE_CONFIG = API_SERVER_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else API_SERVER_STYLE_CONFIG["advanced"]
+MAIM_MESSAGE_STYLE_CONFIG = (
+    MAIM_MESSAGE_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else MAIM_MESSAGE_STYLE_CONFIG["advanced"]
+)
 INTEREST_CHAT_STYLE_CONFIG = (
     INTEREST_CHAT_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else INTEREST_CHAT_STYLE_CONFIG["advanced"]
 )

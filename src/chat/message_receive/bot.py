@@ -77,6 +77,7 @@ class ChatBot:
             message = MessageRecv(message_data)
             group_info = message.message_info.group_info
             user_info = message.message_info.user_info
+            chat_manager.register_message(message)
 
             # 确认从接口发来的message是否有自定义的prompt模板信息
             if message.message_info.template_info and not message.message_info.template_info.template_default:
@@ -86,7 +87,7 @@ class ChatBot:
                     if isinstance(template_items, dict):
                         for k in template_items.keys():
                             await Prompt.create_async(template_items[k], k)
-                            print(f"注册{template_items[k]},{k}")
+                            logger.debug(f"注册{template_items[k]},{k}")
             else:
                 template_group_name = None
 
