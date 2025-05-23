@@ -261,6 +261,8 @@ class ChatManager:
     def get_stream(self, stream_id: str) -> Optional[ChatStream]:
         """通过stream_id获取聊天流"""
         stream = self.streams.get(stream_id)
+        if not stream:
+            return None
         if stream_id in self.last_messages:
             stream.set_context(self.last_messages[stream_id])
         return stream
