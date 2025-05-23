@@ -89,7 +89,6 @@ class ToolProcessor(BaseProcessor):
             for working_info in working_infos:
                 structured_info.set_info(working_info.get("type"), working_info.get("content"))
 
-
         return [structured_info]
 
     async def execute_tools(self, observation: ChattingObservation, running_memorys: Optional[List[Dict]] = None):
