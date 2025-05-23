@@ -65,11 +65,11 @@
 
 ## 💬 讨论
 
-- [一群](https://qm.qq.com/q/VQ3XZrWgMs) | 
+- [一群](https://qm.qq.com/q/VQ3XZrWgMs) |
+  [四群](https://qm.qq.com/q/wGePTl1UyY) | 
   [二群](https://qm.qq.com/q/RzmCiRtHEW) | 
-  [五群](https://qm.qq.com/q/JxvHZnxyec) | 
-  [三群](https://qm.qq.com/q/wlH5eT8OmQ)(已满)| 
-  [四群](https://qm.qq.com/q/wGePTl1UyY)(已满)
+  [五群](https://qm.qq.com/q/JxvHZnxyec)(已满) | 
+  [三群](https://qm.qq.com/q/wlH5eT8OmQ)(已满)
 
 ## 📚 文档
 
