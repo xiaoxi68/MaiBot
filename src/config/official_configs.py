@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 from src.config.config_base import ConfigBase
 
@@ -353,6 +353,35 @@ class ExperimentalConfig(ConfigBase):
 
     pfc_chatting: bool = False
     """是否启用PFC"""
+
+
+@dataclass
+class MaimMessageConfig(ConfigBase):
+    """maim_message配置类"""
+
+    use_custom: bool = False
+    """是否使用自定义的maim_message配置"""
+
+    host: str = "127.0.0.1"
+    """主机地址"""
+
+    port: int = 8090
+    """"端口号"""
+
+    mode: Literal["ws", "tcp"] = "ws"
+    """连接模式，支持ws和tcp"""
+
+    use_wss: bool = False
+    """是否使用WSS安全连接"""
+
+    cert_file: str = ""
+    """SSL证书文件路径，仅在use_wss=True时有效"""
+
+    key_file: str = ""
+    """SSL密钥文件路径，仅在use_wss=True时有效"""
+
+    auth_token: list[str] = field(default_factory=lambda: [])
+    """认证令牌，用于API验证，为空则不启用验证"""
 
 
 @dataclass
