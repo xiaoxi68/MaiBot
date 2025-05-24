@@ -368,7 +368,7 @@ class MaimMessageConfig(ConfigBase):
     port: int = 8090
     """"端口号"""
 
-    mode: str = "ws"
+    mode: Literal["ws", "tcp"] = "ws"
     """连接模式，支持ws和tcp"""
 
     use_wss: bool = False
