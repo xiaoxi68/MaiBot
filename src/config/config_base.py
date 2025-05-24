@@ -102,9 +102,9 @@ class ConfigBase:
             return {cls._convert_field(k, key_type): cls._convert_field(v, value_type) for k, v in value.items()}
 
         # 处理基础类型，例如 int, str 等
-        if field_origin_type is type(None) and value is None: #处理Optional类型
+        if field_origin_type is type(None) and value is None:  # 处理Optional类型
             return None
-        
+
         # 处理Literal类型
         if field_origin_type is Literal or get_origin(field_type) is Literal:
             # 获取Literal的允许值
