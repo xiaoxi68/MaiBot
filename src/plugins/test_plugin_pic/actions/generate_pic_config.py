@@ -27,6 +27,7 @@ default_seed = 42
 # custom_parameter = "some_value"
 """
 
+
 def generate_config():
     # 获取当前脚本所在的目录
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -44,5 +45,6 @@ def generate_config():
         print(f"配置文件已存在: {config_file_path}")
         print("未进行任何更改。如果您想重新生成，请先删除或重命名现有文件。")
 
+
 if __name__ == "__main__":
-    generate_config() 
+    generate_config()

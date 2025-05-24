@@ -4,18 +4,15 @@ from datetime import datetime, timedelta
 import io
 import json
 import os
-import time
 import numpy as np
-from watchdog.events import FileSystemEventHandler
 import random
 from typing import Optional
 from chat.models.utils_model import LLMRequest
 from common.logger_manager import get_logger
-from manager.async_task_manager import AsyncTask
 from src.config.config import global_config
 from chat.utils.image_manager import chat_image_manager
 from model_manager.emoji import EmojiDTO, EmojiManager
-from utils.calc_hash import calc_bytes_hash, calc_file_hash
+from utils.calc_hash import calc_bytes_hash
 from PIL import Image
 
 from utils.image import gif2jpg

@@ -24,9 +24,7 @@ class CacheItem:
         None表示永久缓存
         """
 
-        self._expiration_time: Optional[datetime] = (
-            (now + timedelta(seconds=ttl)) if ttl != int("inf") else None
-        )
+        self._expiration_time: Optional[datetime] = (now + timedelta(seconds=ttl)) if ttl != int("inf") else None
         """缓存过期时间（在ttl不为inf时有效）
         None表示永久缓存
         """
@@ -60,9 +58,7 @@ class CacheItem:
 
             self._ttl = ttl
 
-        self._expiration_time = (
-            (now or datetime.now()) + timedelta(seconds=ttl) if ttl != int("inf") else None
-        )
+        self._expiration_time = (now or datetime.now()) + timedelta(seconds=ttl) if ttl != int("inf") else None
 
     def get_value(self, now: Optional[datetime] = None) -> Any:
         """获取缓存值"""

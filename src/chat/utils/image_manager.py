@@ -1,18 +1,14 @@
 import base64
-import os
 import time
-import hashlib
 from typing import Optional
-from PIL import Image
+from PIL import Image as PilImage
 import io
-import numpy as np
 
 from model_manager.image import ImageDTO, ImageManager
 from utils.calc_hash import calc_bytes_hash
 from utils.image import gif2jpg
 
 
-from ...common.database.database_model import Image
 from ...config.config import global_config
 from ..models.utils_model import LLMRequest
 from src.common.logger_manager import get_logger
@@ -42,7 +38,7 @@ class ChatImageManager:
         :return: 图片描述
         （如果是None/空字符串，表示获取失败）
         """
-        image = Image.open(io.BytesIO(image_bytes))
+        image = PilImage.open(io.BytesIO(image_bytes))
         if image.format.lower() == "gif":
             # GIF图像需要转换为拼接JPG图像
             image, cols, rows, n_frames = gif2jpg(image)

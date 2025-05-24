@@ -1,6 +1,6 @@
 import traceback
 from typing import Tuple, Dict, List, Any, Optional
-from src.chat.focus_chat.planners.actions.base_action import BaseAction, register_action
+from src.chat.focus_chat.planners.actions.base_action import BaseAction
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 from src.chat.focus_chat.hfc_utils import create_empty_anchor_message
 from src.common.logger_manager import get_logger
@@ -8,8 +8,7 @@ from src.chat.person_info.person_info import person_info_manager
 from abc import abstractmethod
 import os
 import inspect
-import yaml # 或者 import json 如果你偏好 JSON
-import toml # 导入 toml 库
+import toml  # 导入 toml 库
 
 logger = get_logger("plugin_action")
 
@@ -19,16 +18,25 @@ class PluginAction(BaseAction):
 
     封装了主程序内部依赖，提供简化的API接口给插件开发者
     """
-    action_config_file_name: Optional[str] = None # 插件可以覆盖此属性来指定配置文件名
 
-    def __init__(self, action_data: dict, reasoning: str, cycle_timers: dict, thinking_id: str, global_config: Optional[dict] = None, **kwargs):
+    action_config_file_name: Optional[str] = None  # 插件可以覆盖此属性来指定配置文件名
+
+    def __init__(
+        self,
+        action_data: dict,
+        reasoning: str,
+        cycle_timers: dict,
+        thinking_id: str,
+        global_config: Optional[dict] = None,
+        **kwargs,
+    ):
         """初始化插件动作基类"""
         super().__init__(action_data, reasoning, cycle_timers, thinking_id)
 
         # 存储内部服务和对象引用
         self._services = {}
-        self._global_config = global_config # 存储全局配置的只读引用
-        self.config: Dict[str, Any] = {}    # 用于存储插件自身的配置
+        self._global_config = global_config  # 存储全局配置的只读引用
+        self.config: Dict[str, Any] = {}  # 用于存储插件自身的配置
 
         # 从kwargs提取必要的内部服务
         if "observations" in kwargs:
@@ -39,7 +47,7 @@ class PluginAction(BaseAction):
             self._services["chat_stream"] = kwargs["chat_stream"]
 
         self.log_prefix = kwargs.get("log_prefix", "")
-        self._load_plugin_config() # 初始化时加载插件配置
+        self._load_plugin_config()  # 初始化时加载插件配置
 
     def _load_plugin_config(self):
         """
@@ -50,7 +58,9 @@ class PluginAction(BaseAction):
         仅支持 TOML (.toml) 格式。
         """
         if not self.action_config_file_name:
-            logger.debug(f"{self.log_prefix} 插件 {self.__class__.__name__} 未指定 action_config_file_name，不加载插件配置。")
+            logger.debug(
+                f"{self.log_prefix} 插件 {self.__class__.__name__} 未指定 action_config_file_name，不加载插件配置。"
+            )
             return
 
         try:
@@ -59,23 +69,29 @@ class PluginAction(BaseAction):
             config_file_path = os.path.join(plugin_dir, self.action_config_file_name)
 
             if not os.path.exists(config_file_path):
-                logger.warning(f"{self.log_prefix} 插件 {self.__class__.__name__} 的配置文件 {config_file_path} 不存在。")
+                logger.warning(
+                    f"{self.log_prefix} 插件 {self.__class__.__name__} 的配置文件 {config_file_path} 不存在。"
+                )
                 return
 
             file_ext = os.path.splitext(self.action_config_file_name)[1].lower()
 
-            if file_ext == '.toml':
-                with open(config_file_path, 'r', encoding='utf-8') as f:
+            if file_ext == ".toml":
+                with open(config_file_path, "r", encoding="utf-8") as f:
                     self.config = toml.load(f) or {}
                 logger.info(f"{self.log_prefix} 插件 {self.__class__.__name__} 的配置已从 {config_file_path} 加载。")
             else:
-                logger.warning(f"{self.log_prefix} 不支持的插件配置文件格式: {file_ext}。仅支持 .toml。插件配置未加载。")
-                self.config = {} #确保未加载时为空字典
+                logger.warning(
+                    f"{self.log_prefix} 不支持的插件配置文件格式: {file_ext}。仅支持 .toml。插件配置未加载。"
+                )
+                self.config = {}  # 确保未加载时为空字典
                 return
 
         except Exception as e:
-            logger.error(f"{self.log_prefix} 加载插件 {self.__class__.__name__} 的配置文件 {self.action_config_file_name} 时出错: {e}")
-            self.config = {} # 出错时确保 config 是一个空字典
+            logger.error(
+                f"{self.log_prefix} 加载插件 {self.__class__.__name__} 的配置文件 {self.action_config_file_name} 时出错: {e}"
+            )
+            self.config = {}  # 出错时确保 config 是一个空字典
 
     def get_global_config(self, key: str, default: Any = None) -> Any:
         """
