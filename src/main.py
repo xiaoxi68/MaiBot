@@ -7,7 +7,6 @@ from .common.remote import TelemetryHeartBeatTask
 from .manager.async_task_manager import async_task_manager
 from .chat.utils.statistic import OnlineTimeRecordTask, StatisticOutputTask
 from .manager.mood_manager import MoodPrintTask, MoodUpdateTask
-from src.chat.utils.emoji_manager import emoji_manager
 from .chat.person_info.person_info import person_info_manager
 from .chat.normal_chat.willing.willing_manager import willing_manager
 from .chat.message_receive.chat_stream import chat_manager
@@ -72,8 +71,6 @@ class MainSystem:
         register_api_router()
 
         # 初始化表情管理器
-        emoji_manager.initialize()
-        logger.success("表情包管理器初始化成功")
 
         # 添加情绪衰减任务
         await async_task_manager.add_task(MoodUpdateTask())
@@ -136,7 +133,6 @@ class MainSystem:
                 self.consolidate_memory_task(),
                 self.learn_and_store_expression_task(),
                 self.remove_recalled_message_task(),
-                emoji_manager.start_periodic_check_register(),
                 self.app.run(),
             ]
             await asyncio.gather(*tasks)

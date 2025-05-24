@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import statistics  # 导入 statistics 模块
 import time
 import traceback
@@ -17,8 +18,7 @@ from src.chat.utils.timer_calculator import Timer
 from .normal_chat_generator import NormalChatGenerator
 from ..message_receive.message import MessageSending, MessageRecv, MessageThinking, MessageSet
 from src.chat.message_receive.message_sender import message_manager
-from src.chat.utils.utils_image import image_path_to_base64
-from src.chat.utils.emoji_manager import emoji_manager
+from src.chat.utils.emoji_manager import chat_emoji_manager
 from src.chat.normal_chat.willing.willing_manager import willing_manager
 from src.config.config import global_config
 
@@ -143,10 +143,9 @@ class NormalChat:
     async def _handle_emoji(self, message: MessageRecv, response: str):
         """处理表情包"""
         if random() < global_config.normal_chat.emoji_chance:
-            emoji_raw = await emoji_manager.get_emoji_for_text(response)
-            if emoji_raw:
-                emoji_path, description = emoji_raw
-                emoji_cq = image_path_to_base64(emoji_path)
+            emoji_bytes = chat_emoji_manager.search_emoji_for_text(response)
+            if emoji_bytes:
+                emoji_cq = base64.b64encode(emoji_bytes).decode("utf-8")
 
                 thinking_time_point = round(message.message_info.time, 2)
 

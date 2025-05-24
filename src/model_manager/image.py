@@ -144,3 +144,26 @@ class ImageManager:
         global_cache[_pk(dto.img_hash)] = dto
 
         return dto
+
+    @classmethod
+    def delete_image(cls, dto: ImageDTO) -> None:
+        """删除图像
+
+        :param dto: 图像DTO
+        """
+        if dto.delete_entity_check() is False:
+            raise ValueError("Invalid DTO object for delete.")
+
+        with DBSession() as session:
+            # 删除数据库中的图像
+            statement = select(Image).where(Image.img_hash == dto.img_hash)
+            image = session.exec(statement).first()
+
+            if image is None:
+                raise ValueError(f"Image '{dto.img_hash}' does not exist.")
+
+            session.delete(image)
+            session.commit()
+
+        # 删除缓存
+        del global_cache[_pk(dto.img_hash)]

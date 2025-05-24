@@ -300,16 +300,19 @@ class Emoji(SQLModel, table=True):
     （外键，指向 Images 表）
     """
 
-    file_path: str = Field(unique=True, index=True)
-    """图像文件的路径"""
+    file_name: Optional[str] = Field(default=None)
+    """图像文件的文件名"""
 
     is_banned: bool = Field(default=False)
     """是否被禁止使用/注册（默认为 False）"""
 
-    registered_at: datetime = Field(default_factory=lambda: datetime.fromtimestamp(0), index=True)
-    """注册时间戳（如果未注册，则为 1970-01-01 00:00:00 UTC+0）"""
+    is_registered: bool = Field(default=False)
+    """是否已注册（默认为 False）"""
 
-    emotions: Optional[str] = Field(default=None)
+    last_try_register_at: Optional[datetime] = Field(default=None, index=True)
+    """最后一次尝试注册的时间戳"""
+
+    emotions: str
     """表情包的情感描述（列表序列化为 JSON 字符串）"""
 
     usage_count: int = Field(default=0)

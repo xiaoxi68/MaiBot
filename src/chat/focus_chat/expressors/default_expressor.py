@@ -1,3 +1,4 @@
+import base64
 import traceback
 from typing import List, Optional, Dict, Any, Tuple
 from src.chat.message_receive.message import MessageRecv, MessageThinking, MessageSending
@@ -7,9 +8,8 @@ from src.chat.message_receive.chat_stream import chat_manager
 from src.common.logger_manager import get_logger
 from src.chat.models.utils_model import LLMRequest
 from src.config.config import global_config
-from src.chat.utils.utils_image import image_path_to_base64  # Local import needed after move
 from src.chat.utils.timer_calculator import Timer  # <--- Import Timer
-from src.chat.utils.emoji_manager import emoji_manager
+from src.chat.utils.emoji_manager import chat_emoji_manager
 from src.chat.focus_chat.heartFC_sender import HeartFCSender
 from src.chat.utils.utils import process_llm_response
 from src.chat.utils.info_catcher import info_catcher_manager
@@ -152,7 +152,7 @@ class DefaultExpressor:
 
                 with Timer("选择表情", cycle_timers):
                     emoji_keyword = action_data.get("emojis", [])
-                    emoji_base64 = await self._choose_emoji(emoji_keyword)
+                    emoji_base64 = self._choose_emoji(emoji_keyword)
                     if emoji_base64:
                         reply.append(("emoji", emoji_base64))
 
@@ -459,16 +459,12 @@ class DefaultExpressor:
 
         return sent_msg_list
 
-    async def _choose_emoji(self, send_emoji: str):
+    def _choose_emoji(self, send_emoji: str):
         """
         选择表情，根据send_emoji文本选择表情，返回表情base64
         """
-        emoji_base64 = ""
-        emoji_raw = await emoji_manager.get_emoji_for_text(send_emoji)
-        if emoji_raw:
-            emoji_path, _description = emoji_raw
-            emoji_base64 = image_path_to_base64(emoji_path)
-        return emoji_base64
+        emoji_bytes = chat_emoji_manager.search_emoji_for_text(send_emoji)
+        return base64.b64encode(emoji_bytes).decode("utf-8") if emoji_bytes else ""
 
     async def _build_single_sending_message(
         self,

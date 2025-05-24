@@ -207,17 +207,7 @@ class EmojiConfig(ConfigBase):
     steal_emoji: bool = True
     """是否偷取（保存他人的）表情包"""
 
-    emoji_cache_num: int = 100
-    """表情包缓存数量
-    （仅限制未注册的表情包）
-    """
-
-    emoji_cache_size: int = 100
-    """表情包缓存大小（单位：MB）
-    （仅限制未注册的表情包）
-    """
-
-    content_filtration: bool = False
+    content_filtration: bool = False  # WIP
     """是否开启表情包过滤"""
 
     filtration_prompt: str = "符合公序良俗"
