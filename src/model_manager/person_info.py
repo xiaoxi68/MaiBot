@@ -161,6 +161,18 @@ class PersonInfoManager:
         return dto
 
     @classmethod
+    def count_by_relationship_value(cls, min_relationship_value: float) -> int:
+        """获取关系值大于等于指定值的个体个数
+
+        :param min_relationship_value: 最小关系值
+        :return: 满足条件的个体数量
+        """
+        with DBSession() as session:
+            statement = select(PersonInfo).where(PersonInfo.relationship_value >= min_relationship_value)
+            count = session.exec(statement).count()
+        return count
+
+    @classmethod
     def update_person_info(cls, dto: PersonInfoDTO) -> PersonInfoDTO:
         """更新个体信息
 

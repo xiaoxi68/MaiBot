@@ -9,13 +9,11 @@ from .common.remote import TelemetryHeartBeatTask
 from .manager.async_task_manager import async_task_manager
 from .chat.utils.statistic import OnlineTimeRecordTask, StatisticOutputTask
 from .manager.mood_manager import MoodPrintTask, MoodUpdateTask
-from .chat.person_info.person_identity import person_identity_manager
 from .chat.normal_chat.willing.willing_manager import willing_manager
 from .chat.message_receive.chat_stream import chat_manager
 from src.chat.heart_flow.heartflow import heartflow
 from .chat.memory_system.Hippocampus import HippocampusManager
 from .chat.message_receive.message_sender import message_manager
-from .chat.message_receive.storage import MessageStorage
 from .config.config import global_config
 from .chat.message_receive.bot import chat_bot
 from .common.logger_manager import get_logger

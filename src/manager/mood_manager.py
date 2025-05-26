@@ -112,24 +112,41 @@ class MoodPrintTask(AsyncTask):
         )
 
 
+EMOTION_FACTOR_MAP: Dict[str, Tuple[float, float]] = {
+    "高兴": (0.21, 0.6),
+    "喜爱": (0.3, 0.5),
+    "惊讶": (0.06, 0.7),
+    "中性": (0.03, 0.5),
+    "悲伤": (-0.21, 0.3),
+    "恐惧": (-0.21, 0.7),
+    "愤怒": (-0.24, 0.8),
+    "厌恶": (-0.12, 0.4),
+}
+"""
+情绪词映射表 {mood: (valence, arousal)}
+将情绪描述词映射到愉悦度和唤醒度的元组
+"""
+
+POSITIVE_ATTITUDE = {
+    "喜爱",
+    "高兴",
+    "惊讶",
+}
+"""正面情绪集合"""
+
+NEGATIVE_ATTITUDE = {
+    "悲伤",
+    "恐惧",
+    "愤怒",
+    "厌恶",
+}
+"""负面情绪集合"""
+
+GAIN_COEFFICIENT = [1.0, 1.0, 1.1, 1.2, 1.4, 1.7, 1.9, 2.0]
+
+
 class MoodManager:
     # TODO: 改进，使用具有实验支持的新情绪模型
-
-    EMOTION_FACTOR_MAP: Dict[str, Tuple[float, float]] = {
-        "开心": (0.21, 0.6),
-        "害羞": (0.15, 0.2),
-        "愤怒": (-0.24, 0.8),
-        "恐惧": (-0.21, 0.7),
-        "悲伤": (-0.21, 0.3),
-        "厌恶": (-0.12, 0.4),
-        "惊讶": (0.06, 0.7),
-        "困惑": (0.0, 0.6),
-        "平静": (0.03, 0.5),
-    }
-    """
-    情绪词映射表 {mood: (valence, arousal)}
-    将情绪描述词映射到愉悦度和唤醒度的元组
-    """
 
     EMOTION_POINT_MAP: Dict[Tuple[float, float], str] = {
         # 第一象限：高唤醒，正愉悦
@@ -162,11 +179,8 @@ class MoodManager:
         )
         """当前情绪状态"""
 
-        self.mood_change_history: MoodChangeHistory = MoodChangeHistory(
-            valence_direction_factor=0,
-            arousal_direction_factor=0,
-        )
-        """情绪变化历史"""
+        self.feedback_level = 0
+        """正反馈水平"""
 
         self._lock = asyncio.Lock()
         """异步锁，用于保护线程安全"""
@@ -193,51 +207,6 @@ class MoodManager:
 
         if closest_mood:
             self.current_mood.text = closest_mood
-
-    def update_current_mood(self, valence_delta: float, arousal_delta: float):
-        """
-        根据愉悦度和唤醒度变化量更新当前情绪状态
-        :param valence_delta: 愉悦度变化量
-        :param arousal_delta: 唤醒度变化量
-        """
-        # 计算连续增益/抑制
-        # 规则：多次相同方向的变化会有更大的影响系数，反方向的变化会清零影响系数（系数的正负号由变化方向决定）
-        if valence_delta * self.mood_change_history.valence_direction_factor > 0:
-            # 如果方向相同，则根据变化方向改变系数
-            if valence_delta > 0:
-                self.mood_change_history.valence_direction_factor += 1  # 若为正向，则增加
-            else:
-                self.mood_change_history.valence_direction_factor -= 1  # 若为负向，则减少
-        else:
-            # 如果方向不同，则重置计数
-            self.mood_change_history.valence_direction_factor = 0
-
-        if arousal_delta * self.mood_change_history.arousal_direction_factor > 0:
-            # 如果方向相同，则根据变化方向改变系数
-            if arousal_delta > 0:
-                self.mood_change_history.arousal_direction_factor += 1  # 若为正向，则增加计数
-            else:
-                self.mood_change_history.arousal_direction_factor -= 1  # 若为负向，则减少计数
-        else:
-            # 如果方向不同，则重置计数
-            self.mood_change_history.arousal_direction_factor = 0
-
-        # 计算增益/抑制的结果
-        # 规则：如果当前情绪状态与变化方向相同，则增益；否则抑制
-        if self.current_mood.valence * self.mood_change_history.valence_direction_factor > 0:
-            valence_delta = valence_delta * (1.01 ** abs(self.mood_change_history.valence_direction_factor))
-        else:
-            valence_delta = valence_delta * (0.99 ** abs(self.mood_change_history.valence_direction_factor))
-
-        if self.current_mood.arousal * self.mood_change_history.arousal_direction_factor > 0:
-            arousal_delta = arousal_delta * (1.01 ** abs(self.mood_change_history.arousal_direction_factor))
-        else:
-            arousal_delta = arousal_delta * (0.99 ** abs(self.mood_change_history.arousal_direction_factor))
-
-        self.set_current_mood(
-            new_valence=self.current_mood.valence + valence_delta,
-            new_arousal=self.current_mood.arousal + arousal_delta,
-        )
 
     def get_mood_prompt(self) -> str:
         """
@@ -270,25 +239,57 @@ class MoodManager:
             return multiplier
         return 1.0
 
-    def update_mood_from_emotion(self, emotion: str, intensity: float = 1.0) -> None:
+    def _update_feedback_level(self, attitude_tag: str) -> float:
+        """更新正反馈水平
+        通过正反馈系数增益情绪变化
+        """
+
+        if attitude_tag in POSITIVE_ATTITUDE:
+            # 正面情绪
+            if 0 <= self.feedback_level < 7:
+                self.feedback_level += 1
+            else:
+                self.feedback_level = 0
+        elif attitude_tag in NEGATIVE_ATTITUDE:
+            # 负面情绪
+            if -7 < self.feedback_level <= 0:
+                self.feedback_level -= 1
+            else:
+                self.feedback_level = 0
+
+        if abs(self.feedback_level) >= 1:
+            logger.info(
+                f"正反馈水平: {self.feedback_level}, 当前增益系数：{GAIN_COEFFICIENT[abs(self.feedback_level)]}"
+            )
+
+    def update_mood_from_emotion(self, attitude_tag: str, intensity: float = 1.0) -> None:
         """
         根据情绪词更新心情状态
-        :param emotion: 情绪词（如'开心', '悲伤'等位于self.EMOTION_FACTOR_MAP中的键）
+        :param attitude_tag: 情绪词（如'高兴', '悲伤'等位于self.EMOTION_FACTOR_MAP中的键）
         :param intensity: 情绪强度（0.0-1.0）
         """
-        if emotion not in self.EMOTION_FACTOR_MAP:
-            logger.error(f"[情绪更新] 未知情绪词: {emotion}")
+        if attitude_tag not in self.EMOTION_FACTOR_MAP:
+            logger.error(f"[情绪更新] 未知情绪词: {attitude_tag}")
             return
 
-        valence_change, arousal_change = self.EMOTION_FACTOR_MAP[emotion]
+        valence_change, arousal_change = self.EMOTION_FACTOR_MAP[attitude_tag]
         old_valence = self.current_mood.valence
         old_arousal = self.current_mood.arousal
         old_mood = self.current_mood.text
 
-        self.update_current_mood(valence_change, arousal_change)  # 更新当前情绪状态
+        self._update_feedback_level(attitude_tag)  # 更新正反馈水平
+
+        # 计算连续增益/抑制
+        valence_change *= GAIN_COEFFICIENT[self.feedback_level]
+
+        # 设定新的愉悦度和唤醒度
+        self.set_current_mood(
+            new_valence=self.current_mood.valence + valence_change,
+            new_arousal=self.current_mood.arousal + arousal_change,
+        )
 
         logger.info(
-            f"[情绪变化] {emotion}(强度:{intensity:.2f}) | 愉悦度:{old_valence:.2f}->{self.current_mood.valence:.2f}, 唤醒度:{old_arousal:.2f}->{self.current_mood.arousal:.2f} | 心情:{old_mood}->{self.current_mood.text}"
+            f"[情绪变化] {attitude_tag}(强度:{intensity:.2f}) | 愉悦度:{old_valence:.2f}->{self.current_mood.valence:.2f}, 唤醒度:{old_arousal:.2f}->{self.current_mood.arousal:.2f} | 心情:{old_mood}->{self.current_mood.text}"
         )
 
 

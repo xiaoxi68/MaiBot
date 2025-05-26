@@ -1,6 +1,3 @@
-import os
-from pathlib import Path
-
 from rich.traceback import install
 from sqlmodel import StaticPool, create_engine, Session
 
