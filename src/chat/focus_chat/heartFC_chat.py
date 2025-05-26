@@ -16,6 +16,7 @@ from src.chat.focus_chat.info.info_base import InfoBase
 from src.chat.focus_chat.info_processors.chattinginfo_processor import ChattingInfoProcessor
 from src.chat.focus_chat.info_processors.mind_processor import MindProcessor
 from src.chat.focus_chat.info_processors.working_memory_processor import WorkingMemoryProcessor
+from src.chat.focus_chat.info_processors.action_processor import ActionProcessor
 from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
 from src.chat.heart_flow.observation.working_observation import WorkingMemoryObservation
 from src.chat.focus_chat.info_processors.tool_processor import ToolProcessor
@@ -39,6 +40,7 @@ PROCESSOR_CLASSES = {
     "ToolProcessor": (ToolProcessor, "tool_use_processor"),
     "WorkingMemoryProcessor": (WorkingMemoryProcessor, "working_memory_processor"),
     "SelfProcessor": (SelfProcessor, "self_identify_processor"),
+    "ActionProcessor": (ActionProcessor, "action_processor"),  # 这个处理器不需要配置键名，默认启用
 }
 
 
@@ -425,10 +427,7 @@ class HeartFChatting:
                 self.all_observations = observations
 
             with Timer("回忆", cycle_timers):
-                logger.debug(f"{self.log_prefix} 开始回忆")
                 running_memorys = await self.memory_activator.activate_memory(observations)
-                logger.debug(f"{self.log_prefix} 回忆完成")
-                print(running_memorys)
 
             with Timer("执行 信息处理器", cycle_timers):
                 all_plan_info = await self._process_processors(observations, running_memorys, cycle_timers)

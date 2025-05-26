@@ -54,39 +54,47 @@ class ActionProcessor(BaseProcessor):
         if observations:
             action_info = ActionInfo()
             all_actions = None
+            hfc_obs = None
+            chat_obs = None
             for obs in observations:
                 if isinstance(obs, HFCloopObservation):
-                    # 创建动作信息
-                    all_actions = obs.all_actions
-                    action_changes = await self.analyze_loop_actions(obs)
-                    if action_changes["add"] or action_changes["remove"]:
-                        action_info.set_action_changes(action_changes)
-                        # 设置变更原因
-                        reasons = []
-                        if action_changes["add"]:
-                            reasons.append(f"添加动作{action_changes['add']}因为检测到大量无回复")
-                        if action_changes["remove"]:
-                            reasons.append(f"移除动作{action_changes['remove']}因为检测到连续回复")
-                        action_info.set_reason(" | ".join(reasons))
-                if isinstance(obs, ChattingObservation) and all_actions is not None:
-                    action_changes = {"add": [], "remove": []}
-                    # 检查动作的关联类型
-                    chat_context = chat_manager.get_stream(obs.chat_id).context
-                    for action_name in all_actions.keys():
-                        data = all_actions[action_name]
-                        if data.get("associated_types"):
-                            if not chat_context.check_types(data["associated_types"]):
-                                action_changes["remove"].append(action_name)
-                                logger.debug(f"{self.log_prefix} 动作 {action_name} 关联类型不匹配，移除该动作")
-                    if len(action_changes["remove"]) > 0:
-                        action_info.set_action_changes(action_changes)
-                        # 设置变更原因
-                        reasons = []
-                        if action_info.get_reason():
-                            reasons.append(action_info.get_reason())
-                        if action_changes["remove"]:
-                            reasons.append(f"移除动作{action_changes['remove']}因为关联类型不匹配")
-                        action_info.set_reason(" | ".join(reasons))
+                    hfc_obs = obs
+                if isinstance(obs, ChattingObservation):
+                    chat_obs = obs
+            if hfc_obs:
+                obs = hfc_obs
+                # 创建动作信息
+                all_actions = obs.all_actions
+                action_changes = await self.analyze_loop_actions(obs)
+                if action_changes["add"] or action_changes["remove"]:
+                    action_info.set_action_changes(action_changes)
+                    # 设置变更原因
+                    reasons = []
+                    if action_changes["add"]:
+                        reasons.append(f"添加动作{action_changes['add']}因为检测到大量无回复")
+                    if action_changes["remove"]:
+                        reasons.append(f"移除动作{action_changes['remove']}因为检测到连续回复")
+                    action_info.set_reason(" | ".join(reasons))
+            if chat_obs and all_actions is not None:
+                obs = chat_obs
+                action_changes = {"add": [], "remove": []}
+                # 检查动作的关联类型
+                chat_context = chat_manager.get_stream(obs.chat_id).context
+                for action_name in all_actions.keys():
+                    data = all_actions[action_name]
+                    if data.get("associated_types"):
+                        if not chat_context.check_types(data["associated_types"]):
+                            action_changes["remove"].append(action_name)
+                            logger.debug(f"{self.log_prefix} 动作 {action_name} 关联类型不匹配，移除该动作")
+                if len(action_changes["remove"]) > 0:
+                    action_info.set_action_changes(action_changes)
+                    # 设置变更原因
+                    reasons = []
+                    if action_info.get_reason():
+                        reasons.append(action_info.get_reason())
+                    if action_changes["remove"]:
+                        reasons.append(f"移除动作{action_changes['remove']}因为关联类型不匹配")
+                    action_info.set_reason(" | ".join(reasons))
 
             processed_infos.append(action_info)
 
