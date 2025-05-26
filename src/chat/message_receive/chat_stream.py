@@ -38,6 +38,15 @@ class ChatMessageContext:
         """获取最后一条消息"""
         return self.message
 
+    def check_types(self, types: list) -> bool:
+        """检查消息类型"""
+        if not self.message.message_info.format_info.accept_format:
+            return False
+        for t in types:
+            if t not in self.message.message_info.format_info.accept_format:
+                return False
+        return True
+
 
 class ChatStream:
     """聊天流对象，存储一个完整的聊天上下文"""

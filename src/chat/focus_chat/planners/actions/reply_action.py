@@ -36,6 +36,9 @@ class ReplyAction(BaseAction):
         "避免重复或评价自己的发言,不要和自己聊天",
         "注意：回复尽量简短一些。可以参考贴吧，知乎和微博的回复风格，回复不要浮夸，不要用夸张修辞，平淡一些。不要有额外的符号，尽量简单简短",
     ]
+
+    associated_types: list[str] = ["text", "emoji"]
+
     default = True
 
     def __init__(
