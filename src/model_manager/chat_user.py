@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlmodel import select
-from model_manager.people_relationship import PeopleRelationshipDTO, PeopleRelationshipManager
+from model_manager.person_info import PersonInfoDTO, PersonInfoManager
 from src.common.database.database import DBSession
 from src.common.database.database_model import ChatUser
 from src.manager.cache_manager import global_cache
@@ -32,17 +32,20 @@ class ChatUserDTO(DTOBase):
     platform_spec_info: Optional[str] = None
     """平台特定的信息 (可能为空)"""
 
-    relation_id: Optional[int] = None
-    """人际关系ID
-    （外键，指向 PeopleRelationship 表）
-    当一个新ChatUser对象被创建时，要么同样的创建一个新的Relationship对象，要么将其与一个已经存在的Relationship对象关联
+    msg_interval: Optional[float] = None
+    """消息间隔（秒）"""
+
+    person_id: Optional[int] = None
+    """个体ID
+    （外键，指向 PersonInfo 表）
+    当一个新ChatUser对象被创建时，要么同样的创建一个新的PersonInfo对象，要么将其与一个已经存在的PersonInfo对象关联
     """
 
-    __orm_create_rule__ = "platform & platform_user_id & relation_id"
+    __orm_create_rule__ = "platform & platform_user_id & person_id"
 
     __orm_select_rule__ = "id | (platform & platform_user_id)"
 
-    __orm_update_rule__ = "user_name | platform_spec_info"
+    __orm_update_rule__ = "user_name | platform_spec_info | msg_interval"
 
     @classmethod
     def from_orm(cls, chat_user: ChatUser) -> "ChatUserDTO":
@@ -54,7 +57,8 @@ class ChatUserDTO(DTOBase):
             platform_user_id=chat_user.platform_user_id,
             user_name=chat_user.user_name,
             platform_spec_info=chat_user.platform_spec_info,
-            relation_id=chat_user.relation_id,
+            msg_interval=chat_user.msg_interval,
+            person_id=chat_user.person_id,
         )
 
 
@@ -78,13 +82,13 @@ class ChatUserManager:
             return ValueError("ChatUser already exists.")
 
         # 确保关系对象存在
-        if dto.relation_id:
-            if not PeopleRelationshipManager.get_relationship(PeopleRelationshipDTO(id=dto.relation_id)):
-                raise ValueError(f"PeopleRelationship '{dto.relation_id}' does not exist.")
+        if dto.person_id:
+            if not PersonInfoManager.get_person_info(PersonInfoDTO(id=dto.person_id)):
+                raise ValueError(f"PeopleRelationship '{dto.person_id}' does not exist.")
         else:
             # 未提供关系对象外键，创建新的关系对象
-            relationship_dto = PeopleRelationshipDTO()
-            dto.relation_id = PeopleRelationshipManager.create_relationship(relationship_dto).id
+            relationship_dto = PersonInfoDTO()
+            dto.person_id = PersonInfoManager.create_person_info(relationship_dto).id
 
         with DBSession() as session:
             # 创建新的用户对象
@@ -94,7 +98,7 @@ class ChatUserManager:
                 platform_user_id=dto.platform_user_id,
                 user_name=dto.user_name,
                 platform_spec_info=dto.platform_spec_info,
-                relation_id=dto.relation_id,
+                person_id=dto.person_id,
             )
             session.add(chat_user)
             session.commit()
@@ -127,6 +131,15 @@ class ChatUserManager:
             return group
         else:
             return cls._get_user_by_platform_info(dto.platform, dto.platform_user_id)
+
+    @classmethod
+    def get_all_users(cls) -> list[ChatUserDTO]:
+        """获取所有用户信息"""
+        with DBSession() as session:
+            statement = select(ChatUser)
+            results = session.exec(statement).all()
+
+            return [ChatUserDTO.from_orm(user) for user in results]
 
     @classmethod
     def _get_user_by_id(cls, id: int) -> Optional[ChatUserDTO]:

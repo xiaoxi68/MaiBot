@@ -4,7 +4,7 @@ from src.chat.focus_chat.planners.actions.base_action import BaseAction
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 from src.chat.focus_chat.hfc_utils import create_empty_anchor_message
 from src.common.logger_manager import get_logger
-from src.chat.person_info.person_info import person_info_manager
+from chat.person_info.person_identity import person_identity_manager
 from abc import abstractmethod
 import os
 import inspect
@@ -105,9 +105,9 @@ class PluginAction(BaseAction):
 
     async def get_user_id_by_person_name(self, person_name: str) -> Tuple[str, str]:
         """根据用户名获取用户ID"""
-        person_id = person_info_manager.get_person_id_by_person_name(person_name)
-        user_id = await person_info_manager.get_value(person_id, "user_id")
-        platform = await person_info_manager.get_value(person_id, "platform")
+        person_id = person_identity_manager.get_person_id_by_person_name(person_name)
+        user_id = await person_identity_manager.get_value(person_id, "user_id")
+        platform = await person_identity_manager.get_value(person_id, "platform")
         return platform, user_id
 
     # 提供简化的API方法

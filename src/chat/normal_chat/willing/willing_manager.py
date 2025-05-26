@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from src.config.config import global_config
 from src.chat.message_receive.chat_stream import ChatStream, GroupInfo
 from src.chat.message_receive.message import MessageRecv
-from src.chat.person_info.person_info import person_info_manager, PersonInfoManager
+from chat.person_info.person_identity import person_identity_manager, PersonIdentityManager
 from abc import ABC, abstractmethod
 import importlib
 from typing import Dict, Optional
@@ -59,7 +59,7 @@ class WillingInfo:
 
     message: MessageRecv
     chat: ChatStream
-    person_info_manager: PersonInfoManager
+    person_info_manager: PersonIdentityManager
     chat_id: str
     person_id: str
     group_info: Optional[GroupInfo]
@@ -96,11 +96,11 @@ class BaseWillingManager(ABC):
         self.logger: LoguruLogger = logger
 
     def setup(self, message: MessageRecv, chat: ChatStream, is_mentioned_bot: bool, interested_rate: float):
-        person_id = person_info_manager.get_person_id(chat.platform, chat.user_info.user_id)
+        person_id = person_identity_manager.get_person_id(chat.platform, chat.user_info.user_id)
         self.ongoing_messages[message.message_info.message_id] = WillingInfo(
             message=message,
             chat=chat,
-            person_info_manager=person_info_manager,
+            person_info_manager=person_identity_manager,
             chat_id=chat.stream_id,
             person_id=person_id,
             group_info=chat.group_info,

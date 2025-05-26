@@ -1,13 +1,15 @@
 import asyncio
+import os
 import time
 from maim_message import MessageServer
 
+from chat.person_info.person_msg_interval import PersonMsgIntervalInferTask
 from src.manager.cache_manager import CacheCleanerTask
 from .common.remote import TelemetryHeartBeatTask
 from .manager.async_task_manager import async_task_manager
 from .chat.utils.statistic import OnlineTimeRecordTask, StatisticOutputTask
 from .manager.mood_manager import MoodPrintTask, MoodUpdateTask
-from .chat.person_info.person_info import person_info_manager
+from .chat.person_info.person_identity import person_identity_manager
 from .chat.normal_chat.willing.willing_manager import willing_manager
 from .chat.message_receive.chat_stream import chat_manager
 from src.chat.heart_flow.heartflow import heartflow
@@ -41,7 +43,7 @@ class MainSystem:
 
     async def initialize(self):
         """初始化系统组件"""
-        logger.debug(f"正在唤醒{global_config.bot.nickname}......")
+        logger.info(f"正在唤醒{global_config.bot.nickname}......")
 
         # 其他初始化任务
         await asyncio.gather(self._init_components())
@@ -52,34 +54,56 @@ class MainSystem:
         """初始化其他组件"""
         init_start_time = time.time()
 
+        # 创建数据目录
+        logger.info("开辟数据存储目录...")
+        os.makedirs(global_config.storage.data_path, exist_ok=True)
+
         # 添加缓存定时清理任务
+        logger.info("启动持久化层缓存清理任务...")
         await async_task_manager.add_task(CacheCleanerTask())
 
         # 添加在线时间统计任务
+        logger.info("启动在线时间记录任务...")
         await async_task_manager.add_task(OnlineTimeRecordTask())
 
         # 添加统计信息输出任务
+        logger.info("启动统计信息输出任务...")
         await async_task_manager.add_task(StatisticOutputTask())
 
         # 添加遥测心跳任务
+        logger.info("启动遥测心跳任务...")
         await async_task_manager.add_task(TelemetryHeartBeatTask())
 
         # 启动网络服务
+        logger.info("启动网络服务...")
         await async_task_manager.add_task(NetServerTask())
 
         # 注册API路由
         register_api_router()
 
-        # 初始化表情管理器
-
         # 添加情绪衰减任务
+        logger.info("启动情绪管理任务...")
         await async_task_manager.add_task(MoodUpdateTask())
         # 添加情绪打印任务
         await async_task_manager.add_task(MoodPrintTask())
 
-        # 检查并清除person_info冗余字段，启动个人习惯推断
-        await person_info_manager.del_all_undefined_field()
-        asyncio.create_task(person_info_manager.personal_habit_deduction())
+        # 启动个体习惯推断任务
+        logger.info("启动个人习惯推断任务...")
+        await async_task_manager.add_task(PersonMsgIntervalInferTask())
+
+        # 初始化人设
+        logger.success("正在初始化人设...")
+        await self.individuality.initialize(
+            bot_nickname=global_config.bot.nickname,
+            personality_core=global_config.personality.personality_core,
+            personality_sides=global_config.personality.personality_sides,
+            identity_detail=global_config.identity.identity_detail,
+            height=global_config.identity.height,
+            weight=global_config.identity.weight,
+            age=global_config.identity.age,
+            gender=global_config.identity.gender,
+            appearance=global_config.identity.appearance,
+        )
 
         # 启动愿望管理器
         await willing_manager.async_task_starter()
@@ -94,20 +118,6 @@ class MainSystem:
 
         # 将bot.py中的chat_bot.message_process消息处理函数注册到api.py的消息处理基类中
         self.app.register_message_handler(chat_bot.message_process)
-
-        # 初始化个体特征
-        await self.individuality.initialize(
-            bot_nickname=global_config.bot.nickname,
-            personality_core=global_config.personality.personality_core,
-            personality_sides=global_config.personality.personality_sides,
-            identity_detail=global_config.identity.identity_detail,
-            height=global_config.identity.height,
-            weight=global_config.identity.weight,
-            age=global_config.identity.age,
-            gender=global_config.identity.gender,
-            appearance=global_config.identity.appearance,
-        )
-        logger.success("个体特征初始化成功")
 
         try:
             # 启动全局消息管理器 (负责消息发送/排队)
@@ -132,7 +142,6 @@ class MainSystem:
                 self.forget_memory_task(),
                 self.consolidate_memory_task(),
                 self.learn_and_store_expression_task(),
-                self.remove_recalled_message_task(),
                 self.app.run(),
             ]
             await asyncio.gather(*tasks)
@@ -179,17 +188,6 @@ class MainSystem:
     #     while True:
     #         self.mood_manager.print_mood_status()
     #         await asyncio.sleep(60)
-
-    @staticmethod
-    async def remove_recalled_message_task():
-        """删除撤回消息任务"""
-        while True:
-            try:
-                storage = MessageStorage()
-                await storage.remove_recalled_message(time.time())
-            except Exception:
-                logger.exception("删除撤回消息失败")
-            await asyncio.sleep(3600)
 
 
 async def main():

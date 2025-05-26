@@ -1,4 +1,4 @@
-from ..person_info.person_info import person_info_manager
+from ..person_info.person_identity import person_identity_manager
 from src.common.logger_manager import get_logger
 import asyncio
 from dataclasses import dataclass, field
@@ -39,7 +39,7 @@ class MessageBuffer:
     async def start_caching_messages(self, message: MessageRecv):
         """添加消息，启动缓冲"""
         if not global_config.chat.message_buffer:
-            person_id = person_info_manager.get_person_id(
+            person_id = person_identity_manager.get_person_id(
                 message.message_info.user_info.platform, message.message_info.user_info.user_id
             )
             asyncio.create_task(self.save_message_interval(person_id, message.message_info))
@@ -80,7 +80,7 @@ class MessageBuffer:
             self.buffer_pool[person_id_][message.message_info.message_id] = CacheMessages(message=message)
 
         # 启动3秒缓冲计时器
-        person_id = person_info_manager.get_person_id(
+        person_id = person_identity_manager.get_person_id(
             message.message_info.user_info.platform, message.message_info.user_info.user_id
         )
         asyncio.create_task(self.save_message_interval(person_id, message.message_info))
@@ -88,7 +88,7 @@ class MessageBuffer:
 
     async def _debounce_processor(self, person_id_: str, message_id: str, person_id: str):
         """等待3秒无新消息"""
-        interval_time = await person_info_manager.get_value(person_id, "msg_interval")
+        interval_time = await person_identity_manager.get_value(person_id, "msg_interval")
         if not isinstance(interval_time, (int, str)) or not str(interval_time).isdigit():
             logger.debug("debounce_processor无效的时间")
             return
@@ -197,7 +197,7 @@ class MessageBuffer:
 
     @staticmethod
     async def save_message_interval(person_id: str, message: BaseMessageInfo):
-        message_interval_list = await person_info_manager.get_value(person_id, "msg_interval_list")
+        message_interval_list = await person_identity_manager.get_value(person_id, "msg_interval_list")
         now_time_ms = int(round(time.time() * 1000))
         if len(message_interval_list) < 1000:
             message_interval_list.append(now_time_ms)
@@ -210,7 +210,7 @@ class MessageBuffer:
             "nickname": message.user_info.user_nickname,
             "konw_time": int(time.time()),
         }
-        await person_info_manager.update_one_field(person_id, "msg_interval_list", message_interval_list, data)
+        await person_identity_manager.update_one_field(person_id, "msg_interval_list", message_interval_list, data)
 
 
 message_buffer = MessageBuffer()

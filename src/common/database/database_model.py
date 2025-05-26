@@ -9,7 +9,7 @@ from sqlmodel import SQLModel, Field, UniqueConstraint
 """
 
 
-class PeopleRelationship(SQLModel, table=True):
+class PersonInfo(SQLModel, table=True):
     """
     用于存储人际关系数据的模型。
     """
@@ -23,7 +23,7 @@ class PeopleRelationship(SQLModel, table=True):
     real_name: Optional[str] = Field(default=None)
     """真实姓名（可能为空）"""
 
-    nickname: Optional[str] = Field(default=None)
+    nickname: Optional[str] = Field(default=None, unique=True, index=True)
     """昵称（方便称呼的昵称，可能为空）"""
 
     nickname_reason: Optional[str] = Field(default=None)
@@ -32,12 +32,9 @@ class PeopleRelationship(SQLModel, table=True):
     relationship_value: float = Field(default=0.0)
     """关系值"""
 
-    msg_interval: Optional[float] = Field(default=None)
-    """消息间隔（秒）"""
-
     # -- 以下为ORM关系 --
 
-    chat_users: list["ChatUser"] = Relationship(back_populates="relation_id")
+    chat_users: list["ChatUser"] = Relationship(back_populates="person_id")
     """聊天用户对象（与 ChatUser 关联）"""
 
 
@@ -64,10 +61,13 @@ class ChatUser(SQLModel, table=True):
     platform_spec_info: Optional[str] = Field(default=None)
     """平台特定的信息 (可能为空)"""
 
-    relation_id: int = Field(foreign_key="people_relationship.id")
-    """人际关系ID
-    （外键，指向 PeopleRelationship 表）
-    当一个新ChatUser对象被创建时，要么同样的创建一个新的Relationship对象，要么将其与一个已经存在的Relationship对象关联
+    msg_interval: Optional[float] = Field(default=None)
+    """消息间隔（秒）"""
+
+    person_id: int = Field(foreign_key="person_info.id")
+    """个体ID
+    （外键，指向 PersonInfo 表）
+    当一个新ChatUser对象被创建时，要么同样的创建一个新的PersonInfo对象，要么将其与一个已经存在的PersonInfo对象关联
     """
 
     # -- 以下为ORM关系 --
@@ -78,8 +78,8 @@ class ChatUser(SQLModel, table=True):
     messages: list["Message"] = Relationship(back_populates="sender")
     """消息列表（与 Messages 关联）"""
 
-    relation: "PeopleRelationship" = Relationship(back_populates="chat_users")
-    """人际关系对象（与 PeopleRelationship 关联）"""
+    person_info: "PersonInfo" = Relationship(back_populates="chat_users")
+    """个体信息对象（与 PersonInfo 关联）"""
 
     chat_stream: Optional["ChatStream"] = Relationship(back_populates="user")
     """聊天流对象（与 ChatStream 关联）"""
@@ -372,7 +372,7 @@ __all__ = [
     "ChatUser",
     "ChatGroupUser",
     "Message",
-    "PeopleRelationship",
+    "PersonInfo",
     "Image",
     "Emoji",
     "OnlineTimeRecord",

@@ -2,7 +2,7 @@ from src.common.logger_manager import get_logger
 from ..message_receive.chat_stream import ChatStream
 import math
 from bson.decimal128 import Decimal128
-from .person_info import person_info_manager
+from .person_identity import person_identity_manager
 import time
 import random
 from maim_message import UserInfo
@@ -77,15 +77,15 @@ class RelationshipManager:
     @staticmethod
     async def is_known_some_one(platform, user_id):
         """判断是否认识某人"""
-        is_known = await person_info_manager.is_person_known(platform, user_id)
+        is_known = await person_identity_manager.is_person_known(platform, user_id)
         return is_known
 
     @staticmethod
     async def is_qved_name(platform, user_id):
         """判断是否认识某人"""
-        person_id = person_info_manager.get_person_id(platform, user_id)
-        is_qved = await person_info_manager.has_one_field(person_id, "person_name")
-        old_name = await person_info_manager.get_value(person_id, "person_name")
+        person_id = person_identity_manager.get_person_id(platform, user_id)
+        is_qved = await person_identity_manager.has_one_field(person_id, "person_name")
+        old_name = await person_identity_manager.get_value(person_id, "person_name")
         # print(f"old_name: {old_name}")
         # print(f"is_qved: {is_qved}")
         if is_qved and old_name is not None:
@@ -98,17 +98,17 @@ class RelationshipManager:
         platform: str, user_id: str, user_nickname: str, user_cardname: str, user_avatar: str
     ):
         """判断是否认识某人"""
-        person_id = person_info_manager.get_person_id(platform, user_id)
+        person_id = person_identity_manager.get_person_id(platform, user_id)
         data = {
             "platform": platform,
             "user_id": user_id,
             "nickname": user_nickname,
             "konw_time": int(time.time()),
         }
-        await person_info_manager.update_one_field(
+        await person_identity_manager.update_one_field(
             person_id=person_id, field_name="nickname", value=user_nickname, data=data
         )
-        await person_info_manager.qv_person_name(
+        await person_identity_manager.qv_person_name(
             person_id=person_id, user_nickname=user_nickname, user_cardname=user_cardname, user_avatar=user_avatar
         )
 
@@ -144,14 +144,14 @@ class RelationshipManager:
             "困惑": 0.5,
         }
 
-        person_id = person_info_manager.get_person_id(platform, user_info.user_id)
+        person_id = person_identity_manager.get_person_id(platform, user_info.user_id)
         data = {
             "platform": platform,
             "user_id": user_info.user_id,
             "nickname": user_info.user_nickname,
             "konw_time": int(time.time()),
         }
-        old_value = await person_info_manager.get_value(person_id, "relationship_value")
+        old_value = await person_identity_manager.get_value(person_id, "relationship_value")
         old_value = self.ensure_float(old_value, person_id)
 
         if old_value > 1000:
@@ -164,7 +164,9 @@ class RelationshipManager:
             if valuedict[label] >= 0 and stancedict[stance] != 2:
                 value = value * math.cos(math.pi * old_value / 2000)
                 if old_value > 500:
-                    rdict = await person_info_manager.get_specific_value_list("relationship_value", lambda x: x > 700)
+                    rdict = await person_identity_manager.get_specific_value_list(
+                        "relationship_value", lambda x: x > 700
+                    )
                     high_value_count = len(rdict)
                     if old_value > 700:
                         value *= 3 / (high_value_count + 2)  # 排除自己
@@ -195,7 +197,7 @@ class RelationshipManager:
             f"变更: {value:+.5f}"
         )
 
-        await person_info_manager.update_one_field(person_id, "relationship_value", old_value + value, data)
+        await person_identity_manager.update_one_field(person_id, "relationship_value", old_value + value, data)
 
     async def calculate_update_relationship_value_with_reason(
         self, chat_stream: ChatStream, label: str, stance: str, reason: str
@@ -231,14 +233,14 @@ class RelationshipManager:
             "困惑": 0.5,
         }
 
-        person_id = person_info_manager.get_person_id(chat_stream.user_info.platform, chat_stream.user_info.user_id)
+        person_id = person_identity_manager.get_person_id(chat_stream.user_info.platform, chat_stream.user_info.user_id)
         data = {
             "platform": chat_stream.user_info.platform,
             "user_id": chat_stream.user_info.user_id,
             "nickname": chat_stream.user_info.user_nickname,
             "konw_time": int(time.time()),
         }
-        old_value = await person_info_manager.get_value(person_id, "relationship_value")
+        old_value = await person_identity_manager.get_value(person_id, "relationship_value")
         old_value = self.ensure_float(old_value, person_id)
 
         if old_value > 1000:
@@ -251,7 +253,9 @@ class RelationshipManager:
             if valuedict[label] >= 0 and stancedict[stance] != 2:
                 value = value * math.cos(math.pi * old_value / 2000)
                 if old_value > 500:
-                    rdict = await person_info_manager.get_specific_value_list("relationship_value", lambda x: x > 700)
+                    rdict = await person_identity_manager.get_specific_value_list(
+                        "relationship_value", lambda x: x > 700
+                    )
                     high_value_count = len(rdict)
                     if old_value > 700:
                         value *= 3 / (high_value_count + 2)  # 排除自己
@@ -282,7 +286,7 @@ class RelationshipManager:
             f"变更: {value:+.5f}"
         )
 
-        await person_info_manager.update_one_field(person_id, "relationship_value", old_value + value, data)
+        await person_identity_manager.update_one_field(person_id, "relationship_value", old_value + value, data)
 
         return chat_stream.user_info.user_nickname, value, relationship_level[level_num]
 
@@ -291,10 +295,10 @@ class RelationshipManager:
             person_id = person
         else:
             # print(f"person: {person}")
-            person_id = person_info_manager.get_person_id(person[0], person[1])
-        person_name = await person_info_manager.get_value(person_id, "person_name")
+            person_id = person_identity_manager.get_person_id(person[0], person[1])
+        person_name = await person_identity_manager.get_value(person_id, "person_name")
         # print(f"person_name: {person_name}")
-        relationship_value = await person_info_manager.get_value(person_id, "relationship_value")
+        relationship_value = await person_identity_manager.get_value(person_id, "relationship_value")
         level_num = self.calculate_level_num(relationship_value)
 
         if level_num == 0 or level_num == 5:

@@ -2,7 +2,7 @@ import asyncio
 from typing import Optional, Tuple, Dict
 from src.common.logger_manager import get_logger
 from src.chat.message_receive.chat_stream import chat_manager
-from src.chat.person_info.person_info import person_info_manager
+from chat.person_info.person_identity import person_identity_manager
 
 logger = get_logger("heartflow_utils")
 
@@ -49,11 +49,11 @@ async def get_chat_type_and_target_info(chat_id: str) -> Tuple[bool, Optional[Di
                 # Try to fetch person info
                 try:
                     # Assume get_person_id is sync (as per original code), keep using to_thread
-                    person_id = await asyncio.to_thread(person_info_manager.get_person_id, platform, user_id)
+                    person_id = await asyncio.to_thread(person_identity_manager.get_person_id, platform, user_id)
                     person_name = None
                     if person_id:
                         # get_value is async, so await it directly
-                        person_name = await person_info_manager.get_value(person_id, "person_name")
+                        person_name = await person_identity_manager.get_value(person_id, "person_name")
 
                     target_info["person_id"] = person_id
                     target_info["person_name"] = person_name

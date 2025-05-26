@@ -128,6 +128,56 @@ class MessageManager:
         return dto
 
     @classmethod
+    def get_user_messages(
+        cls,
+        user_id: int,
+        start_time: Optional[datetime] = None,
+        num: Optional[int] = None,
+    ) -> list[MessageDTO]:
+        """获取用户的消息列表
+
+        :param user_id: 用户ID
+        :param start_time: 可选的起始时间戳，用于过滤消息
+        :param num: 可选的消息数量限制
+        :return: 用户的消息列表
+        """
+        with DBSession() as session:
+            statement = select(Message).where(Message.sender_id == user_id)
+            if start_time:
+                statement = statement.where(Message.message_time >= start_time)
+            statement = statement.order_by(Message.message_time.desc())
+            if num:
+                statement = statement.limit(num)
+
+            messages = session.exec(statement).all()
+            return [MessageDTO.from_orm(message) for message in messages]
+
+    @classmethod
+    def get_chat_stream_messages(
+        cls,
+        chat_stream_id: int,
+        start_time: Optional[datetime] = None,
+        num: Optional[int] = None,
+    ) -> list[MessageDTO]:
+        """获取聊天流的消息列表
+
+        :param chat_stream_id: 聊天流ID
+        :param start_time: 可选的起始时间戳，用于过滤消息
+        :param num: 可选的消息数量限制
+        :return: 聊天流的消息列表
+        """
+        with DBSession() as session:
+            statement = select(Message).where(Message.chat_stream_id == chat_stream_id)
+            if start_time:
+                statement = statement.where(Message.message_time >= start_time)
+            statement = statement.order_by(Message.message_time.desc())
+            if num:
+                statement = statement.limit(num)
+
+            messages = session.exec(statement).all()
+            return [MessageDTO.from_orm(message) for message in messages]
+
+    @classmethod
     def update_message(cls, dto: MessageDTO) -> MessageDTO:
         """更新消息
 

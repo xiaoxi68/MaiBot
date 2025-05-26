@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from rich.traceback import install
@@ -12,18 +13,15 @@ install(extra_lines=3)
 logger = get_logger("database")
 
 # 定义数据库文件路径
-_DATA_DIR = Path(global_config.storage.data_path)
-_DB_FILE = _DATA_DIR / "MaiBot.db"
+_DB_FILE = f"{global_config.storage.data_path}/MaiBot.db"
 
 logger.info("正在初始化数据库组件...")
 
-# 确保数据库目录存在
-_DB_FILE.mkdir(parents=True, exist_ok=True)
-
-
 _SQLITE_URL = f"sqlite:///{_DB_FILE}"
+
 # TODO: 支持更多的数据库类型
 
+# 注：SQLite会在创建数据库引擎时创建数据库文件
 db_engine = create_engine(
     _SQLITE_URL,
     echo=True,  # echo=True  # 设置为True以启用SQLAlchemy的调试输出

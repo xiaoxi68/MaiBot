@@ -4,7 +4,7 @@ import time  # 导入 time 模块以获取当前时间
 import random
 import re
 from src.common.message_repository import find_messages, count_messages
-from src.chat.person_info.person_info import person_info_manager
+from chat.person_info.person_identity import person_identity_manager
 from src.chat.utils.utils import translate_timestamp_to_human_readable
 
 
@@ -198,12 +198,12 @@ async def _build_readable_messages_internal(
         if not all([platform, user_id, timestamp is not None]):
             continue
 
-        person_id = person_info_manager.get_person_id(platform, user_id)
+        person_id = person_identity_manager.get_person_id(platform, user_id)
         # 根据 replace_bot_name 参数决定是否替换机器人名称
         if replace_bot_name and user_id == global_config.bot.qq_account:
             person_name = f"{global_config.bot.nickname}(你)"
         else:
-            person_name = await person_info_manager.get_value(person_id, "person_name")
+            person_name = await person_identity_manager.get_value(person_id, "person_name")
 
         # 如果 person_name 未设置，则使用消息中的 nickname 或默认名称
         if not person_name:
@@ -220,8 +220,8 @@ async def _build_readable_messages_internal(
         if match:
             aaa = match.group(1)
             bbb = match.group(2)
-            reply_person_id = person_info_manager.get_person_id(platform, bbb)
-            reply_person_name = await person_info_manager.get_value(reply_person_id, "person_name")
+            reply_person_id = person_identity_manager.get_person_id(platform, bbb)
+            reply_person_name = await person_identity_manager.get_value(reply_person_id, "person_name")
             if not reply_person_name:
                 reply_person_name = aaa
             # 在内容前加上回复信息
@@ -237,8 +237,8 @@ async def _build_readable_messages_internal(
                 new_content += content[last_end : m.start()]
                 aaa = m.group(1)
                 bbb = m.group(2)
-                at_person_id = person_info_manager.get_person_id(platform, bbb)
-                at_person_name = await person_info_manager.get_value(at_person_id, "person_name")
+                at_person_id = person_identity_manager.get_person_id(platform, bbb)
+                at_person_name = await person_identity_manager.get_value(at_person_id, "person_name")
                 if not at_person_name:
                     at_person_name = aaa
                 new_content += f"@{at_person_name}"
@@ -439,7 +439,7 @@ async def build_anonymous_messages(messages: List[Dict[str, Any]]) -> str:
     def get_anon_name(platform, user_id):
         if user_id == global_config.bot.qq_account:
             return "SELF"
-        person_id = person_info_manager.get_person_id(platform, user_id)
+        person_id = person_identity_manager.get_person_id(platform, user_id)
         if person_id not in person_map:
             nonlocal current_char
             person_map[person_id] = chr(current_char)
@@ -514,7 +514,7 @@ async def get_person_id_list(messages: List[Dict[str, Any]]) -> List[str]:
         if not all([platform, user_id]) or user_id == global_config.bot.qq_account:
             continue
 
-        person_id = person_info_manager.get_person_id(platform, user_id)
+        person_id = person_identity_manager.get_person_id(platform, user_id)
 
         # 只有当获取到有效 person_id 时才添加
         if person_id:

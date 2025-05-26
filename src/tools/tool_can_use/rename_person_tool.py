@@ -1,5 +1,5 @@
 from src.tools.tool_can_use.base_tool import BaseTool, register_tool
-from src.chat.person_info.person_info import person_info_manager
+from chat.person_info.person_identity import person_identity_manager
 from src.common.logger_manager import get_logger
 import time
 
@@ -43,7 +43,7 @@ class RenamePersonTool(BaseTool):
         try:
             # 1. 根据昵称查找用户信息
             logger.debug(f"尝试根据昵称 '{person_name_to_find}' 查找用户...")
-            person_info = await person_info_manager.get_person_info_by_name(person_name_to_find)
+            person_info = await person_identity_manager.get_person_info_by_name(person_name_to_find)
 
             if not person_info:
                 logger.info(f"未找到昵称为 '{person_name_to_find}' 的用户。")
@@ -65,7 +65,7 @@ class RenamePersonTool(BaseTool):
             logger.debug(
                 f"为用户 {person_id} (原昵称: {person_name_to_find}) 调用 qv_person_name，请求上下文: '{request_context}'"
             )
-            result = await person_info_manager.qv_person_name(
+            result = await person_identity_manager.qv_person_name(
                 person_id=person_id,
                 user_nickname=user_nickname,
                 user_cardname=user_cardname,
@@ -85,7 +85,7 @@ class RenamePersonTool(BaseTool):
             else:
                 logger.warning(f"为用户 {person_id} 调用 qv_person_name 后未能成功获取新昵称。")
                 # 尝试从内存中获取可能已经更新的名字
-                current_name = await person_info_manager.get_value(person_id, "person_name")
+                current_name = await person_identity_manager.get_value(person_id, "person_name")
                 if current_name and current_name != person_name_to_find:
                     return {
                         "name": self.name,
