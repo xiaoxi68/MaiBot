@@ -5,7 +5,7 @@ from src.chat.message_receive.message import Seg  # Local import needed after mo
 from src.chat.message_receive.message import UserInfo
 from src.chat.message_receive.chat_stream import chat_manager
 from src.common.logger_manager import get_logger
-from src.chat.models.utils_model import LLMRequest
+from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.chat.utils.utils_image import image_path_to_base64  # Local import needed after move
 from src.chat.utils.timer_calculator import Timer  # <--- Import Timer

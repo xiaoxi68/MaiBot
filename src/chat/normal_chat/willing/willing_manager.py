@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from src.config.config import global_config
 from src.chat.message_receive.chat_stream import ChatStream, GroupInfo
 from src.chat.message_receive.message import MessageRecv
-from src.chat.person_info.person_info import person_info_manager, PersonInfoManager
+from src.person_info.person_info import person_info_manager, PersonInfoManager
 from abc import ABC, abstractmethod
 import importlib
 from typing import Dict, Optional

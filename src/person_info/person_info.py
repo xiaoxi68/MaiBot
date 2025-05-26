@@ -1,13 +1,13 @@
 from src.common.logger_manager import get_logger
-from ...common.database.database import db
-from ...common.database.database_model import PersonInfo  # 新增导入
+from src.common.database.database import db
+from src.common.database.database_model import PersonInfo  # 新增导入
 import copy
 import hashlib
 from typing import Any, Callable, Dict
 import datetime
 import asyncio
 import numpy as np
-from src.chat.models.utils_model import LLMRequest
+from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.individuality.individuality import individuality
 

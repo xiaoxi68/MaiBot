@@ -10,7 +10,7 @@ from maim_message import UserInfo
 from src.common.logger import get_module_logger
 from src.manager.mood_manager import mood_manager
 from ..message_receive.message import MessageRecv
-from ..models.utils_model import LLMRequest
+from src.llm_models.utils_model import LLMRequest
 from .typo_generator import ChineseTypoGenerator
 from ...config.config import global_config
 from ...common.message_repository import find_messages, count_messages

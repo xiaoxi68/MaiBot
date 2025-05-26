@@ -26,7 +26,7 @@ class MuteAction(PluginAction):
         "当你想回避某个话题时使用",
     ]
     default = True  # 不是默认动作，需要手动添加到使用集
-    associated_types = ["command",'text']
+    associated_types = ["command", "text"]
 
     async def process(self) -> Tuple[bool, str]:
         """处理测试动作"""

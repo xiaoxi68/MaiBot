@@ -8,7 +8,7 @@ from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservati
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 from src.chat.message_receive.chat_stream import ChatStream, chat_manager
 from typing import Dict
-from src.chat.models.utils_model import LLMRequest
+from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 import random
 

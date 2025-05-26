@@ -1,6 +1,6 @@
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 from src.chat.heart_flow.observation.observation import Observation
-from src.chat.models.utils_model import LLMRequest
+from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 import time
 import traceback
@@ -8,7 +8,7 @@ from src.common.logger_manager import get_logger
 from src.individuality.individuality import individuality
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.message_receive.chat_stream import chat_manager
-from src.chat.person_info.relationship_manager import relationship_manager
+from src.person_info.relationship_manager import relationship_manager
 from .base_processor import BaseProcessor
 from typing import List, Optional
 from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
@@ -33,12 +33,13 @@ def init_prompt():
 
 现在请你根据现有的信息，思考自我认同
 1. 你是一个什么样的人,你和群里的人关系如何
-2. 思考有没有人提到你，或者图片与你有关
-3. 你的自我认同是否有助于你的回答，如果你需要自我相关的信息来帮你参与聊天，请输出，否则请输出十个字以内的简短自我认同
-4. 一般情况下不用输出自我认同，只需要输出十几个字的简短自我认同就好，除非有明显需要自我认同的场景
+2. 你的形象是什么
+3. 思考有没有人提到你，或者图片与你有关
+4. 你的自我认同是否有助于你的回答，如果你需要自我相关的信息来帮你参与聊天，请输出，否则请输出十几个字的简短自我认同
+5. 一般情况下不用输出自我认同，只需要输出十几个字的简短自我认同就好，除非有明显需要自我认同的场景
 
-请思考的平淡一些，简短一些，说中文，不要浮夸，平淡一些。
-请注意不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出自我认同内容。
+输出内容平淡一些，说中文，不要浮夸，平淡一些。
+请注意不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出自我认同内容，记得明确说明这是你的自我认同。
 
 """
     Prompt(indentify_prompt, "indentify_prompt")

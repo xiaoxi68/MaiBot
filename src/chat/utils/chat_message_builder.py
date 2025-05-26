@@ -4,7 +4,7 @@ import time  # 导入 time 模块以获取当前时间
 import random
 import re
 from src.common.message_repository import find_messages, count_messages
-from src.chat.person_info.person_info import person_info_manager
+from src.person_info.person_info import person_info_manager
 from src.chat.utils.utils import translate_timestamp_to_human_readable
 
 

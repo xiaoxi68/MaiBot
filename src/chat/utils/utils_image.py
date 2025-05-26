@@ -8,10 +8,10 @@ import io
 import numpy as np
 
 
-from ...common.database.database import db
-from ...common.database.database_model import Images, ImageDescriptions
-from ...config.config import global_config
-from ..models.utils_model import LLMRequest
+from src.common.database.database import db
+from src.common.database.database_model import Images, ImageDescriptions
+from src.config.config import global_config
+from src.llm_models.utils_model import LLMRequest
 
 from src.common.logger_manager import get_logger
 from rich.traceback import install

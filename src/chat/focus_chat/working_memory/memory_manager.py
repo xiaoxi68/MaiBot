@@ -3,7 +3,7 @@ import traceback
 from json_repair import repair_json
 from rich.traceback import install
 from src.common.logger_manager import get_logger
-from src.chat.models.utils_model import LLMRequest
+from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.chat.focus_chat.working_memory.memory_item import MemoryItem
 import json  # 添加json模块导入

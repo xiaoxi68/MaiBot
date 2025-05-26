@@ -1,7 +1,7 @@
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 from src.chat.heart_flow.observation.structure_observation import StructureObservation
 from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
-from src.chat.models.utils_model import LLMRequest
+from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.common.logger_manager import get_logger
 from src.chat.utils.prompt_builder import Prompt
@@ -61,6 +61,8 @@ class MemoryActivator:
             elif isinstance(observation, HFCloopObservation):
                 obs_info_text += observation.get_observe_info()
 
+        logger.debug(f"回忆待检索内容：obs_info_text: {obs_info_text}")
+
         # prompt = await global_prompt_manager.format_prompt(
         #     "memory_activator_prompt",
         #     obs_info_text=obs_info_text,
@@ -81,7 +83,7 @@ class MemoryActivator:
         #     valid_keywords=keywords, max_memory_num=3, max_memory_length=2, max_depth=3
         # )
         related_memory = await HippocampusManager.get_instance().get_memory_from_text(
-            text=obs_info_text, max_memory_num=3, max_memory_length=2, max_depth=3, fast_retrieval=True
+            text=obs_info_text, max_memory_num=5, max_memory_length=2, max_depth=3, fast_retrieval=True
         )
 
         # logger.debug(f"获取到的记忆: {related_memory}")

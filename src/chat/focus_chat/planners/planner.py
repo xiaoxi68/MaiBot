@@ -2,7 +2,7 @@ import json  # <--- 确保导入 json
 import traceback
 from typing import List, Dict, Any, Optional
 from rich.traceback import install
-from src.chat.models.utils_model import LLMRequest
+from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.chat.focus_chat.info.info_base import InfoBase
 from src.chat.focus_chat.info.obs_info import ObsInfo
@@ -10,6 +10,7 @@ from src.chat.focus_chat.info.cycle_info import CycleInfo
 from src.chat.focus_chat.info.mind_info import MindInfo
 from src.chat.focus_chat.info.action_info import ActionInfo
 from src.chat.focus_chat.info.structured_info import StructuredInfo
+from src.chat.focus_chat.info.self_info import SelfInfo
 from src.common.logger_manager import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.individuality.individuality import individuality
@@ -22,7 +23,11 @@ install(extra_lines=3)
 
 def init_prompt():
     Prompt(
-        """{extra_info_block}
+        """
+你的自我认知是：
+{self_info_block}
+
+{extra_info_block}
 
 你需要基于以下信息决定如何参与对话
 这些信息可能会有冲突，请你整合这些信息，并选择一个最合适的action：
@@ -127,6 +132,8 @@ class ActionPlanner:
                     current_mind = info.get_current_mind()
                 elif isinstance(info, CycleInfo):
                     cycle_info = info.get_observe_info()
+                elif isinstance(info, SelfInfo):
+                    self_info = info.get_processed_info()
                 elif isinstance(info, StructuredInfo):
                     _structured_info = info.get_data()
                 elif not isinstance(info, ActionInfo):  # 跳过已处理的ActionInfo
@@ -148,6 +155,7 @@ class ActionPlanner:
 
             # --- 构建提示词 (调用修改后的 PromptBuilder 方法) ---
             prompt = await self.build_planner_prompt(
+                self_info_block=self_info,
                 is_group_chat=is_group_chat,  # <-- Pass HFC state
                 chat_target_info=None,
                 observed_messages_str=observed_messages_str,  # <-- Pass local variable
@@ -236,6 +244,7 @@ class ActionPlanner:
 
     async def build_planner_prompt(
         self,
+        self_info_block: str,
         is_group_chat: bool,  # Now passed as argument
         chat_target_info: Optional[dict],  # Now passed as argument
         observed_messages_str: str,
@@ -301,7 +310,8 @@ class ActionPlanner:
 
             planner_prompt_template = await global_prompt_manager.get_prompt_async("planner_prompt")
             prompt = planner_prompt_template.format(
-                bot_name=global_config.bot.nickname,
+                self_info_block=self_info_block,
+                # bot_name=global_config.bot.nickname,
                 prompt_personality=personality_block,
                 chat_context_description=chat_context_description,
                 chat_content_block=chat_content_block,
