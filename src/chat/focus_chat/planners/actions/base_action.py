@@ -66,6 +66,8 @@ class BaseAction(ABC):
         self.action_parameters: dict = {}
         self.action_require: list[str] = []
 
+        self.associated_types: list[str] = []
+
         self.default: bool = False
 
         self.action_data = action_data

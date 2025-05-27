@@ -59,6 +59,7 @@ class ActionManager:
                 action_description: str = getattr(action_class, "action_description", "")
                 action_parameters: dict[str:str] = getattr(action_class, "action_parameters", {})
                 action_require: list[str] = getattr(action_class, "action_require", [])
+                associated_types: list[str] = getattr(action_class, "associated_types", [])
                 is_default: bool = getattr(action_class, "default", False)
 
                 if action_name and action_description:
@@ -67,6 +68,7 @@ class ActionManager:
                         "description": action_description,
                         "parameters": action_parameters,
                         "require": action_require,
+                        "associated_types": associated_types,
                     }
 
                     # 添加到所有已注册的动作

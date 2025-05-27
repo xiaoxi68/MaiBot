@@ -25,7 +25,8 @@ class MuteAction(PluginAction):
         "当千石可乐或可乐酱要求你禁言时使用",
         "当你想回避某个话题时使用",
     ]
-    default = False  # 不是默认动作，需要手动添加到使用集
+    default = True  # 不是默认动作，需要手动添加到使用集
+    associated_types = ["command", "text"]
 
     async def process(self) -> Tuple[bool, str]:
         """处理测试动作"""
@@ -41,8 +42,8 @@ class MuteAction(PluginAction):
 
         try:
             await self.send_message(
-                type="text",
-                data=f"[command]mute,{user_id},{duration}",
+                type="command",
+                data={"name": "GROUP_BAN", "args": {"qq_id": f"{user_id}", "duration": f"{duration}"}},
                 # target = target
             )
 

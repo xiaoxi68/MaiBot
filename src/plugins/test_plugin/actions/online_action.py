@@ -18,6 +18,7 @@ class CheckOnlineAction(PluginAction):
         "mode参数为type时查看在线系统类型分布",
     ]
     default = False  # 不是默认动作，需要手动添加到使用集
+    associated_types = ["text"]
 
     async def process(self) -> Tuple[bool, str]:
         """处理测试动作"""
@@ -30,9 +31,9 @@ class CheckOnlineAction(PluginAction):
 
         try:
             if mode == "type":
-                await self.send_message("#online detail")
+                await self.send_message("text", "#online detail")
             elif mode == "version":
-                await self.send_message("#online")
+                await self.send_message("text", "#online")
 
         except Exception as e:
             logger.error(f"{self.log_prefix} 执行online动作时出错: {e}")
