@@ -159,8 +159,8 @@ class ActionManager:
         """
         # 检查动作是否在当前使用的动作集中
         # if action_name not in self._using_actions:
-            # logger.warning(f"当前不可用的动作类型: {action_name}")
-            # return None
+        # logger.warning(f"当前不可用的动作类型: {action_name}")
+        # return None
 
         handler_class = _ACTION_REGISTRY.get(action_name)
         if not handler_class:

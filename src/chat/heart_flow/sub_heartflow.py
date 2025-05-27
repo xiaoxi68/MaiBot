@@ -332,7 +332,7 @@ class SubHeartflow:
         if self.normal_chat_instance:
             return self.normal_chat_instance.get_recent_replies(limit)
         return []
-    
+
     def add_interest_message(self, message: MessageRecv, interest_value: float, is_mentioned: bool):
         self.interest_dict[message.message_info.message_id] = (message, interest_value, is_mentioned)
         # 如果字典长度超过10，删除最旧的消息
@@ -360,7 +360,6 @@ class SubHeartflow:
         # 使用新的停止方法
         await self._stop_normal_chat()
         await self._stop_heart_fc_chat()
-
 
         # 取消可能存在的旧后台任务 (self.task)
         if self.task and not self.task.done():

@@ -292,7 +292,7 @@ class HeartFChatting:
                     async with global_prompt_manager.async_message_scope(self.chat_stream.context.get_template_name()):
                         logger.debug(f"模板 {self.chat_stream.context.get_template_name()}")
                         loop_info = await self._observe_process_plan_action_loop(cycle_timers, thinking_id)
-                        
+
                         print(loop_info["loop_action_info"]["command"])
                         if loop_info["loop_action_info"]["command"] == "stop_focus_chat":
                             logger.info(f"{self.log_prefix} 麦麦决定停止专注聊天")
@@ -441,7 +441,7 @@ class HeartFChatting:
                 observations.append(self.working_observation)
                 observations.append(self.hfcloop_observation)
                 observations.append(self.structure_observation)
-                
+
                 loop_observation_info = {
                     "observations": observations,
                 }
@@ -562,10 +562,12 @@ class HeartFChatting:
             result = await action_handler.handle_action()
             if len(result) == 3:
                 success, reply_text, command = result
-            else: 
+            else:
                 success, reply_text = result
                 command = ""
-            logger.info(f"{self.log_prefix} 麦麦决定'{action}', 原因'{reasoning}'，返回结果'{success}', '{reply_text}', '{command}'")
+            logger.info(
+                f"{self.log_prefix} 麦麦决定'{action}', 原因'{reasoning}'，返回结果'{success}', '{reply_text}', '{command}'"
+            )
             return success, reply_text, command
 
         except Exception as e:
