@@ -439,7 +439,11 @@ class DefaultExpressor:
                 if type == "emoji":
                     typing = False
 
-                sent_msg = await self.heart_fc_sender.send_message(bot_message, has_thinking=True, typing=typing)
+                if anchor_message.raw_message:
+                    set_reply = True
+                else:
+                    set_reply = False
+                sent_msg = await self.heart_fc_sender.send_message(bot_message, has_thinking=True, typing=typing, set_reply=set_reply)
 
                 reply_message_ids.append(part_message_id)  # 记录我们生成的ID
 

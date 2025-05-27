@@ -104,10 +104,14 @@ class PersonInfoManager:
 
     def get_person_id_by_person_name(self, person_name: str):
         """根据用户名获取用户ID"""
-        document = db.person_info.find_one({"person_name": person_name})
-        if document:
-            return document["person_id"]
-        else:
+        try:
+            record = PersonInfo.get_or_none(PersonInfo.person_name == person_name)
+            if record:
+                return record.person_id
+            else:
+                return ""
+        except Exception as e:
+            logger.error(f"根据用户名 {person_name} 获取用户ID时出错 (Peewee): {e}")
             return ""
 
     @staticmethod
