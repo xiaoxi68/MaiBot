@@ -125,14 +125,13 @@ class ActionPlanner:
                     if action in remove_actions:
                         action = "no_reply"
                         reasoning = f"之前选择的动作{action}已被移除，原因: {reason}"
-                        
+
             using_actions = self.action_manager.get_using_actions()
             action_available_block = ""
             for action_name, action_info in using_actions.items():
                 action_description = action_info["description"]
                 action_available_block += f"\n你在聊天中可以使用{action_name}，这个动作的描述是{action_description}\n"
-            action_available_block += "注意，除了上述动作选项之外，你在群聊里不能做其他任何事情，这是你能力的边界\n"            
-            
+            action_available_block += "注意，除了上述动作选项之外，你在群聊里不能做其他任何事情，这是你能力的边界\n"
 
             # 继续处理其他信息
             for info in all_plan_info:
@@ -156,7 +155,9 @@ class ActionPlanner:
             current_available_actions = self.action_manager.get_using_actions()
 
             # 如果没有可用动作或只有no_reply动作，直接返回no_reply
-            if not current_available_actions or (len(current_available_actions) == 1 and "no_reply" in current_available_actions):
+            if not current_available_actions or (
+                len(current_available_actions) == 1 and "no_reply" in current_available_actions
+            ):
                 action = "no_reply"
                 reasoning = "没有可用的动作" if not current_available_actions else "只有no_reply动作可用，跳过规划"
                 logger.info(f"{self.log_prefix}{reasoning}")
@@ -325,8 +326,7 @@ class ActionPlanner:
                 extra_info_block = f"以下是一些额外的信息，现在请你阅读以下内容，进行决策\n{extra_info_block}\n以上是一些额外的信息，现在请你阅读以下内容，进行决策"
             else:
                 extra_info_block = ""
-            
-            
+
             moderation_prompt_block = "请不要输出违法违规内容，不要输出色情，暴力，政治相关内容，如有敏感内容，请规避。"
 
             planner_prompt_template = await global_prompt_manager.get_prompt_async("planner_prompt")

@@ -369,7 +369,7 @@ class EmojiManager:
     def __init__(self) -> None:
         if self._initialized:
             return  # 如果已经初始化过，直接返回
-            
+
         self._scan_task = None
 
         self.vlm = LLMRequest(model=global_config.model.vlm, temperature=0.3, max_tokens=1000, request_type="emoji")

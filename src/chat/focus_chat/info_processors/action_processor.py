@@ -56,18 +56,18 @@ class ActionProcessor(BaseProcessor):
             all_actions = None
             hfc_obs = None
             chat_obs = None
-            
+
             # 收集所有观察对象
             for obs in observations:
                 if isinstance(obs, HFCloopObservation):
                     hfc_obs = obs
                 if isinstance(obs, ChattingObservation):
                     chat_obs = obs
-            
+
             # 合并所有动作变更
             merged_action_changes = {"add": [], "remove": []}
             reasons = []
-            
+
             # 处理HFCloopObservation
             if hfc_obs:
                 obs = hfc_obs
@@ -77,32 +77,32 @@ class ActionProcessor(BaseProcessor):
                     # 合并动作变更
                     merged_action_changes["add"].extend(action_changes["add"])
                     merged_action_changes["remove"].extend(action_changes["remove"])
-                    
+
                     # 收集变更原因
                     if action_changes["add"]:
                         reasons.append(f"添加动作{action_changes['add']}因为检测到大量无回复")
                     if action_changes["remove"]:
                         reasons.append(f"移除动作{action_changes['remove']}因为检测到连续回复")
-            
+
             # 处理ChattingObservation
             if chat_obs and all_actions is not None:
                 obs = chat_obs
                 # 检查动作的关联类型
                 chat_context = chat_manager.get_stream(obs.chat_id).context
                 type_mismatched_actions = []
-                
+
                 for action_name in all_actions.keys():
                     data = all_actions[action_name]
                     if data.get("associated_types"):
                         if not chat_context.check_types(data["associated_types"]):
                             type_mismatched_actions.append(action_name)
                             logger.debug(f"{self.log_prefix} 动作 {action_name} 关联类型不匹配，移除该动作")
-                
+
                 if type_mismatched_actions:
                     # 合并到移除列表中
                     merged_action_changes["remove"].extend(type_mismatched_actions)
                     reasons.append(f"移除动作{type_mismatched_actions}因为关联类型不匹配")
-            
+
             # 如果有任何动作变更，设置到action_info中
             if merged_action_changes["add"] or merged_action_changes["remove"]:
                 action_info.set_action_changes(merged_action_changes)

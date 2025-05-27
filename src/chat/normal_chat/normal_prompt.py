@@ -17,14 +17,14 @@ logger = get_logger("prompt")
 
 
 def init_prompt():
-#     Prompt(
-#         """
-# 你有以下信息可供参考：
-# {structured_info}
-# 以上的消息是你获取到的消息，或许可以帮助你更好地回复。
-# """,
-#         "info_from_tools",
-#     )
+    #     Prompt(
+    #         """
+    # 你有以下信息可供参考：
+    # {structured_info}
+    # 以上的消息是你获取到的消息，或许可以帮助你更好地回复。
+    # """,
+    #         "info_from_tools",
+    #     )
 
     Prompt("你正在qq群里聊天，下面是群里在聊的内容：", "chat_target_group1")
     Prompt("你正在和{sender_name}聊天，这是你们之前聊的内容：", "chat_target_private1")
@@ -94,9 +94,7 @@ class PromptBuilder:
         in_mind_reply=None,
         target_message=None,
     ) -> Optional[str]:
-
         return await self._build_prompt_normal(chat_stream, message_txt or "", sender_name)
-
 
     async def _build_prompt_normal(self, chat_stream, message_txt: str, sender_name: str = "某人") -> str:
         prompt_personality = individuality.get_prompt(x_person=2, level=2)
@@ -118,8 +116,7 @@ class PromptBuilder:
         for person in who_chat_in_group:
             if len(person) >= 3 and person[0] and person[1]:
                 relation_prompt += await relationship_manager.build_relationship_info(person)
-                
-                
+
         mood_prompt = mood_manager.get_mood_prompt()
         reply_styles1 = [
             ("然后给出日常且口语化的回复，平淡一些", 0.4),
@@ -193,7 +190,7 @@ class PromptBuilder:
             prompt_ger += "你喜欢用文言文"
         if random.random() < 0.04:
             prompt_ger += "你喜欢用流行梗"
-            
+
         moderation_prompt_block = "请不要输出违法违规内容，不要输出色情，暴力，政治相关内容，如有敏感内容，请规避。"
 
         # 知识构建

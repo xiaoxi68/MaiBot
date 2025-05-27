@@ -298,7 +298,7 @@ class RelationshipManager:
         level_num = self.calculate_level_num(relationship_value)
 
         relation_value_prompt = ""
-        
+
         if level_num == 0 or level_num == 5:
             relationship_level = ["厌恶", "冷漠以对", "认识", "友好对待", "喜欢", "暧昧"]
             relation_prompt2_list = [
@@ -309,7 +309,9 @@ class RelationshipManager:
                 "积极回复",
                 "友善和包容的回复",
             ]
-            relation_value_prompt = f"你{relationship_level[level_num]}{person_name}，打算{relation_prompt2_list[level_num]}。"
+            relation_value_prompt = (
+                f"你{relationship_level[level_num]}{person_name}，打算{relation_prompt2_list[level_num]}。"
+            )
         elif level_num == 2:
             relation_value_prompt = ""
         else:
@@ -323,17 +325,19 @@ class RelationshipManager:
                     "积极回复",
                     "友善和包容的回复",
                 ]
-                relation_value_prompt = f"你{relationship_level[level_num]}{person_name}，打算{relation_prompt2_list[level_num]}。"
+                relation_value_prompt = (
+                    f"你{relationship_level[level_num]}{person_name}，打算{relation_prompt2_list[level_num]}。"
+                )
             else:
                 relation_value_prompt = ""
-        
+
         if relation_value_prompt:
             nickname_str = await person_info_manager.get_value(person_id, "nickname")
             platform = await person_info_manager.get_value(person_id, "platform")
             relation_prompt = f"{relation_value_prompt}，ta在{platform}上的昵称是{nickname_str}。\n"
         else:
             relation_prompt = ""
-        
+
         return relation_prompt
 
     @staticmethod

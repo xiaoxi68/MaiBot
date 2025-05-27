@@ -15,7 +15,6 @@ from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservati
 from typing import Dict
 from src.chat.focus_chat.info.info_base import InfoBase
 from src.chat.focus_chat.info.self_info import SelfInfo
-from src.chat.utils.utils import get_recent_group_speaker
 
 logger = get_logger("processor")
 
@@ -101,8 +100,7 @@ class SelfProcessor(BaseProcessor):
             如果return_prompt为True:
                 tuple: (current_mind, past_mind, prompt) 当前想法、过去的想法列表和使用的prompt
         """
-        
-        
+
         for observation in observations:
             if isinstance(observation, ChattingObservation):
                 is_group_chat = observation.is_group_chat
@@ -115,13 +113,11 @@ class SelfProcessor(BaseProcessor):
             memory_str = "以下是当前在聊天中，你回忆起的记忆：\n"
             for running_memory in running_memorys:
                 memory_str += f"{running_memory['topic']}: {running_memory['content']}\n"
-                
 
         relation_prompt = ""
         for person in person_list:
             if len(person) >= 3 and person[0] and person[1]:
-                relation_prompt += await relationship_manager.build_relationship_info(person,is_id=True)        
-        
+                relation_prompt += await relationship_manager.build_relationship_info(person, is_id=True)
 
         if observations is None:
             observations = []
@@ -161,7 +157,6 @@ class SelfProcessor(BaseProcessor):
             relation_prompt = relation_prompt_init + relation_prompt
         else:
             relation_prompt = relation_prompt_init + "没有特别在意的人\n"
-        
 
         prompt = (await global_prompt_manager.get_prompt_async("indentify_prompt")).format(
             name_block=name_block,
@@ -172,7 +167,7 @@ class SelfProcessor(BaseProcessor):
             time_now=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
             chat_observe_info=chat_observe_info,
         )
-        
+
         # print(prompt)
 
         content = ""
