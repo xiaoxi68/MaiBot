@@ -17,7 +17,7 @@ class NormalChatGenerator:
     def __init__(self):
         # TODO: API-Adapter修改标记
         self.model_reasoning = LLMRequest(
-            model=global_config.model.reasoning,
+            model=global_config.model.normal_chat_1,
             temperature=0.7,
             max_tokens=3000,
             request_type="response_reasoning",
@@ -30,7 +30,7 @@ class NormalChatGenerator:
         )
 
         self.model_sum = LLMRequest(
-            model=global_config.model.summary, temperature=0.7, max_tokens=3000, request_type="relation"
+            model=global_config.model.memory_summary, temperature=0.7, max_tokens=3000, request_type="relation"
         )
         self.current_model_type = "r1"  # 默认使用 R1
         self.current_model_name = "unknown model"

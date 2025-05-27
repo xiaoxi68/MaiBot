@@ -78,9 +78,9 @@ class ActionPlanner:
         self.log_prefix = log_prefix
         # LLM规划器配置
         self.planner_llm = LLMRequest(
-            model=global_config.model.plan,
+            model=global_config.model.focus_planner,
             max_tokens=1000,
-            request_type="action_planning",  # 用于动作规划
+            request_type="focus_planner",  # 用于动作规划
         )
 
         self.action_manager = action_manager
@@ -161,6 +161,10 @@ class ActionPlanner:
                 action = "no_reply"
                 reasoning = "没有可用的动作" if not current_available_actions else "只有no_reply动作可用，跳过规划"
                 logger.info(f"{self.log_prefix}{reasoning}")
+                self.action_manager.restore_actions()
+                logger.debug(
+                    f"{self.log_prefix}恢复到默认动作集, 当前可用: {list(self.action_manager.get_using_actions().keys())}"
+                )
                 return {
                     "action_result": {"action_type": action, "action_data": action_data, "reasoning": reasoning},
                     "current_mind": current_mind,
@@ -241,10 +245,10 @@ class ActionPlanner:
             f"{self.log_prefix}规划器Prompt:\n{prompt}\n\n决策动作:{action},\n动作信息: '{action_data}'\n理由: {reasoning}"
         )
 
-        # 恢复原始动作集
+        # 恢复到默认动作集
         self.action_manager.restore_actions()
         logger.debug(
-            f"{self.log_prefix}恢复了原始动作集, 当前可用: {list(self.action_manager.get_using_actions().keys())}"
+            f"{self.log_prefix}恢复到默认动作集, 当前可用: {list(self.action_manager.get_using_actions().keys())}"
         )
 
         action_result = {"action_type": action, "action_data": action_data, "reasoning": reasoning}

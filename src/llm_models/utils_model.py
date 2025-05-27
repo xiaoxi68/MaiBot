@@ -459,6 +459,7 @@ class LLMRequest:
             logger.error(
                 f"模型 {self.model_name} 错误码: {response.status} - {error_code_mapping.get(response.status)}"
             )
+            print(request_content)
             print(response)
             # 尝试获取并记录服务器返回的详细错误信息
             try:
@@ -499,8 +500,8 @@ class LLMRequest:
                 if global_config.model.normal.get("name") == old_model_name:
                     global_config.model.normal["name"] = self.model_name
                     logger.warning(f"将全局配置中的 llm_normal 模型临时降级至{self.model_name}")
-                if global_config.model.reasoning.get("name") == old_model_name:
-                    global_config.model.reasoning["name"] = self.model_name
+                if global_config.model.normal_chat_1.get("name") == old_model_name:
+                    global_config.model.normal_chat_1["name"] = self.model_name
                     logger.warning(f"将全局配置中的 llm_reasoning 模型临时降级至{self.model_name}")
 
                 if payload and "model" in payload:

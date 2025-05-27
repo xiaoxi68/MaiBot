@@ -88,34 +88,34 @@ class BackgroundTaskManager:
                 f"聊天状态更新任务已启动 间隔:{STATE_UPDATE_INTERVAL_SECONDS}s",
                 "_state_update_task",
             ),
-            (
-                self._run_cleanup_cycle,
-                "info",
-                f"清理任务已启动 间隔:{CLEANUP_INTERVAL_SECONDS}s",
-                "_cleanup_task",
-            ),
-            # 新增私聊激活任务配置
-            (
-                # Use lambda to pass the interval to the runner function
-                lambda: self._run_private_chat_activation_cycle(PRIVATE_CHAT_ACTIVATION_CHECK_INTERVAL_SECONDS),
-                "debug",
-                f"私聊激活检查任务已启动 间隔:{PRIVATE_CHAT_ACTIVATION_CHECK_INTERVAL_SECONDS}s",
-                "_private_chat_activation_task",
-            ),
         ]
 
-        # 根据 chat_mode 条件添加专注评估任务
+        # 根据 chat_mode 条件添加其他任务
         if not (global_config.chat.chat_mode == "normal"):
-            task_configs.append(
+            task_configs.extend([
+                (
+                    self._run_cleanup_cycle,
+                    "info",
+                    f"清理任务已启动 间隔:{CLEANUP_INTERVAL_SECONDS}s",
+                    "_cleanup_task",
+                ),
+                # 新增私聊激活任务配置
+                (
+                    # Use lambda to pass the interval to the runner function
+                    lambda: self._run_private_chat_activation_cycle(PRIVATE_CHAT_ACTIVATION_CHECK_INTERVAL_SECONDS),
+                    "debug",
+                    f"私聊激活检查任务已启动 间隔:{PRIVATE_CHAT_ACTIVATION_CHECK_INTERVAL_SECONDS}s",
+                    "_private_chat_activation_task",
+                ),
                 (
                     self._run_into_focus_cycle,
                     "debug",  # 设为debug，避免过多日志
                     f"专注评估任务已启动 间隔:{INTEREST_EVAL_INTERVAL_SECONDS}s",
                     "_into_focus_task",
                 )
-            )
+            ])
         else:
-            logger.info("聊天模式为 normal，跳过启动专注评估任务")
+            logger.info("聊天模式为 normal，跳过启动清理任务、私聊激活任务和专注评估任务")
 
         # 统一启动所有任务
         for task_func, log_level, log_msg, task_attr_name in task_configs:

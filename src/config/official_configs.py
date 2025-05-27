@@ -178,10 +178,10 @@ class EmojiConfig(ConfigBase):
     check_interval: int = 120
     """表情包检查间隔（分钟）"""
 
-    save_pic: bool = False
+    save_pic: bool = True
     """是否保存图片"""
 
-    save_emoji: bool = False
+    save_emoji: bool = True
     """是否保存表情包"""
 
     cache_emoji: bool = True
@@ -384,27 +384,33 @@ class ModelConfig(ConfigBase):
     normal: dict[str, Any] = field(default_factory=lambda: {})
     """普通模型配置"""
 
-    topic_judge: dict[str, Any] = field(default_factory=lambda: {})
-    """主题判断模型配置"""
-
-    summary: dict[str, Any] = field(default_factory=lambda: {})
-    """摘要模型配置"""
+    memory_summary: dict[str, Any] = field(default_factory=lambda: {})
+    """记忆的概括模型配置"""
 
     vlm: dict[str, Any] = field(default_factory=lambda: {})
     """视觉语言模型配置"""
 
-    heartflow: dict[str, Any] = field(default_factory=lambda: {})
-    """心流模型配置"""
-
     observation: dict[str, Any] = field(default_factory=lambda: {})
     """观察模型配置"""
 
-    sub_heartflow: dict[str, Any] = field(default_factory=lambda: {})
-    """子心流模型配置"""
+    focus_working_memory: dict[str, Any] = field(default_factory=lambda: {})
+    """专注工作记忆模型配置"""
+    
+    focus_chat_mind: dict[str, Any] = field(default_factory=lambda: {})
+    """专注聊天规划模型配置"""
+    
+    focus_self_recognize: dict[str, Any] = field(default_factory=lambda: {})
+    """专注自我识别模型配置"""
+    
+    focus_tool_use: dict[str, Any] = field(default_factory=lambda: {})
+    """专注工具使用模型配置"""
 
-    plan: dict[str, Any] = field(default_factory=lambda: {})
-    """计划模型配置"""
-
+    focus_planner: dict[str, Any] = field(default_factory=lambda: {})
+    """专注规划模型配置"""
+    
+    focus_expressor: dict[str, Any] = field(default_factory=lambda: {})
+    """专注表达器模型配置"""
+    
     embedding: dict[str, Any] = field(default_factory=lambda: {})
     """嵌入模型配置"""
 
@@ -417,5 +423,6 @@ class ModelConfig(ConfigBase):
     pfc_reply_checker: dict[str, Any] = field(default_factory=lambda: {})
     """PFC回复检查模型配置"""
 
-    tool_use: dict[str, Any] = field(default_factory=lambda: {})
-    """工具使用模型配置"""
+
+
+

@@ -27,9 +27,6 @@ class ActionProcessor(BaseProcessor):
         """初始化观察处理器"""
         super().__init__()
         # TODO: API-Adapter修改标记
-        self.model_summary = LLMRequest(
-            model=global_config.model.observation, temperature=0.7, max_tokens=300, request_type="chat_observation"
-        )
 
     async def process_info(
         self,

@@ -196,7 +196,7 @@ pfc_chatting = false # 是否启用PFC聊天，该功能仅作用于私聊，与
 model_max_output_length = 800 # 模型单次返回的最大token数
 
 #这个模型必须是推理模型
-[model.reasoning] # 一般聊天模式的推理回复模型
+[model.normal_chat_1] # 一般聊天模式的首要回复模型，推荐使用 推理模型
 name = "Pro/deepseek-ai/DeepSeek-R1"
 provider = "SILICONFLOW"
 pri_in = 1.0 #模型的输入价格（非必填，可以记录消耗）
@@ -210,13 +210,7 @@ pri_out = 8 #模型的输出价格（非必填，可以记录消耗）
 #默认temp 0.2 如果你使用的是老V3或者其他模型，请自己修改temp参数
 temp = 0.2 #模型的温度，新V3建议0.1-0.3
 
-[model.topic_judge] #主题判断模型：建议使用qwen2.5 7b
-name = "Pro/Qwen/Qwen2.5-7B-Instruct"
-provider = "SILICONFLOW"
-pri_in = 0.35
-pri_out = 0.35
-
-[model.summary] #概括模型，建议使用qwen2.5 32b 及以上
+[model.memory_summary] # 记忆的概括模型，建议使用qwen2.5 32b 及以上
 name = "Qwen/Qwen2.5-32B-Instruct"
 provider = "SILICONFLOW"
 pri_in = 1.26
@@ -228,12 +222,6 @@ provider = "SILICONFLOW"
 pri_in = 0.35
 pri_out = 0.35
 
-[model.heartflow] # 用于控制麦麦是否参与聊天的模型
-name = "Qwen/Qwen2.5-32B-Instruct"
-provider = "SILICONFLOW"
-pri_in = 1.26
-pri_out = 1.26
-
 [model.observation] #观察模型，压缩聊天内容，建议用免费的
 # name = "Pro/Qwen/Qwen2.5-7B-Instruct"
 name = "Qwen/Qwen2.5-7B-Instruct"
@@ -241,18 +229,47 @@ provider = "SILICONFLOW"
 pri_in = 0
 pri_out = 0
 
-[model.sub_heartflow] #心流：认真聊天时,生成麦麦的内心想法，必须使用具有工具调用能力的模型
+[model.focus_working_memory] #工作记忆模型，建议使用qwen2.5 32b
+# name = "Pro/Qwen/Qwen2.5-7B-Instruct"
+name = "Qwen/Qwen2.5-32B-Instruct"
+provider = "SILICONFLOW"
+pri_in = 1.26
+pri_out = 1.26
+
+[model.focus_chat_mind] #聊天规划：认真聊天时,生成麦麦对聊天的规划想法
 name = "Pro/deepseek-ai/DeepSeek-V3"
 provider = "SILICONFLOW"
 pri_in = 2
 pri_out = 8
 temp = 0.3 #模型的温度，新V3建议0.1-0.3
 
-[model.plan] #决策：认真聊天时,负责决定麦麦该做什么
+[model.focus_tool_use] #工具调用模型，需要使用支持工具调用的模型，建议使用qwen2.5 32b
+name = "Qwen/Qwen2.5-32B-Instruct"
+provider = "SILICONFLOW"
+pri_in = 1.26
+pri_out = 1.26
+
+[model.focus_planner] #决策：认真聊天时,负责决定麦麦该做什么
 name = "Pro/deepseek-ai/DeepSeek-V3"
 provider = "SILICONFLOW"
 pri_in = 2
 pri_out = 8
+
+#表达器模型，用于生成表达方式
+[model.focus_expressor]
+name = "Pro/deepseek-ai/DeepSeek-V3"
+provider = "SILICONFLOW"
+pri_in = 2
+pri_out = 8
+temp = 0.3
+
+#自我识别模型，用于自我认知和身份识别
+[model.focus_self_recognize]
+name = "Pro/deepseek-ai/DeepSeek-V3"
+provider = "SILICONFLOW"
+pri_in = 2
+pri_out = 8
+temp = 0.3
 
 #嵌入模型
 
@@ -261,6 +278,9 @@ name = "BAAI/bge-m3"
 provider = "SILICONFLOW"
 pri_in = 0
 pri_out = 0
+
+
+
 
 
 #私聊PFC：需要开启PFC功能，默认三个模型均为硅基流动v3，如果需要支持多人同时私聊或频繁调用，建议把其中的一个或两个换成官方v3或其它模型，以免撞到429
@@ -289,15 +309,6 @@ pri_in = 2
 pri_out = 8
 
 
-#以下模型暂时没有使用！！
-#以下模型暂时没有使用！！
-#以下模型暂时没有使用！！
-#以下模型暂时没有使用！！
-#以下模型暂时没有使用！！
 
-[model.tool_use] #工具调用模型，需要使用支持工具调用的模型，建议使用qwen2.5 32b
-name = "Qwen/Qwen2.5-32B-Instruct"
-provider = "SILICONFLOW"
-pri_in = 1.26
-pri_out = 1.26
+
 

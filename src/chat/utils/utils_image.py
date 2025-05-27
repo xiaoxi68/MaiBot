@@ -130,6 +130,7 @@ class ImageManager:
             # 根据配置决定是否保存图片
             if global_config.emoji.save_emoji:
                 # 生成文件名和路径
+                logger.debug(f"保存表情包: {image_hash}")
                 current_timestamp = time.time()
                 filename = f"{int(current_timestamp)}_{image_hash[:8]}.{image_format}"
                 emoji_dir = os.path.join(self.IMAGE_DIR, "emoji")
@@ -156,7 +157,7 @@ class ImageManager:
                             description=description,
                             timestamp=current_timestamp,
                         )
-                    logger.trace(f"保存表情包元数据: {file_path}")
+                    # logger.debug(f"保存表情包元数据: {file_path}")
                 except Exception as e:
                     logger.error(f"保存表情包文件或元数据失败: {str(e)}")
 

@@ -78,10 +78,10 @@ class DefaultExpressor:
         self.log_prefix = "expressor"
         # TODO: API-Adapter修改标记
         self.express_model = LLMRequest(
-            model=global_config.model.normal,
-            temperature=global_config.model.normal["temp"],
+            model=global_config.model.focus_expressor,
+            temperature=global_config.model.focus_expressor["temp"],
             max_tokens=256,
-            request_type="response_heartflow",
+            request_type="focus_expressor",
         )
         self.heart_fc_sender = HeartFCSender()
 
