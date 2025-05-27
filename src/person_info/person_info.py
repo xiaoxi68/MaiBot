@@ -58,7 +58,7 @@ class PersonInfoManager:
         self.person_name_list = {}
         # TODO: API-Adapter修改标记
         self.qv_name_llm = LLMRequest(
-            model=global_config.model.normal,
+            model=global_config.model.utils,
             max_tokens=256,
             request_type="qv_name",
         )

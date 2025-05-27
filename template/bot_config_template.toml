@@ -133,7 +133,7 @@ mood_update_interval = 1.0 # 情绪更新间隔 单位秒
 mood_decay_rate = 0.95 # 情绪衰减率
 mood_intensity_factor = 1.0 # 情绪强度因子
 
-[keyword_reaction] # 针对某个关键词作出反应
+[keyword_reaction] # 针对某个关键词作出反应，仅在 普通聊天 有效
 enable = true  # 关键词反应功能的总开关
 
 [[keyword_reaction.rules]] # 如果想要新增多个关键词，直接复制本条，修改keywords和reaction即可
@@ -181,10 +181,9 @@ enable = true
 
 [experimental] #实验性功能
 enable_friend_chat = false # 是否启用好友聊天
-pfc_chatting = false # 是否启用PFC聊天，该功能仅作用于私聊，与回复模式独立
+pfc_chatting = false # 是否启用PFC聊天，该功能仅作用于私聊，与回复模式独立，在0.7.0暂时无效
 
 #下面的模型若使用硅基流动则不需要更改，使用ds官方则改成.env自定义的宏，使用自定义模型则选择定位相似的模型自己填写
-#推理模型
 
 # 额外字段
 # 下面的模型有以下额外字段可以添加：
@@ -195,20 +194,22 @@ pfc_chatting = false # 是否启用PFC聊天，该功能仅作用于私聊，与
 [model]
 model_max_output_length = 800 # 模型单次返回的最大token数
 
-#这个模型必须是推理模型
-[model.normal_chat_1] # 一般聊天模式的首要回复模型，推荐使用 推理模型
-name = "Pro/deepseek-ai/DeepSeek-R1"
-provider = "SILICONFLOW"
-pri_in = 1.0 #模型的输入价格（非必填，可以记录消耗）
-pri_out = 4.0 #模型的输出价格（非必填，可以记录消耗）
+#------------必填：组件模型------------
 
-[model.normal] #V3 回复模型 专注和一般聊天模式共用的回复模型
+[model.utils] # 在麦麦的一些组件中使用的模型，例如表情包模块，取名模块，消耗量不大
 name = "Pro/deepseek-ai/DeepSeek-V3"
 provider = "SILICONFLOW"
 pri_in = 2 #模型的输入价格（非必填，可以记录消耗）
 pri_out = 8 #模型的输出价格（非必填，可以记录消耗）
 #默认temp 0.2 如果你使用的是老V3或者其他模型，请自己修改temp参数
 temp = 0.2 #模型的温度，新V3建议0.1-0.3
+
+[model.utils_small] # 在麦麦的一些组件中使用的小模型，消耗量较大
+# 强烈建议使用免费的小模型
+name = "Qwen/Qwen2.5-7B-Instruct"
+provider = "SILICONFLOW"
+pri_in = 0
+pri_out = 0
 
 [model.memory_summary] # 记忆的概括模型，建议使用qwen2.5 32b 及以上
 name = "Qwen/Qwen2.5-32B-Instruct"
@@ -222,15 +223,32 @@ provider = "SILICONFLOW"
 pri_in = 0.35
 pri_out = 0.35
 
-[model.observation] #观察模型，压缩聊天内容，建议用免费的
-# name = "Pro/Qwen/Qwen2.5-7B-Instruct"
-name = "Qwen/Qwen2.5-7B-Instruct"
+#嵌入模型
+[model.embedding]
+name = "BAAI/bge-m3"
 provider = "SILICONFLOW"
 pri_in = 0
 pri_out = 0
 
-[model.focus_working_memory] #工作记忆模型，建议使用qwen2.5 32b
-# name = "Pro/Qwen/Qwen2.5-7B-Instruct"
+#------------普通聊天必填模型------------
+
+[model.normal_chat_1] # 一般聊天模式的首要回复模型，推荐使用 推理模型
+name = "Pro/deepseek-ai/DeepSeek-R1"
+provider = "SILICONFLOW"
+pri_in = 1.0 #模型的输入价格（非必填，可以记录消耗）
+pri_out = 4.0 #模型的输出价格（非必填，可以记录消耗）
+
+[model.normal_chat_2] # 一般聊天模式的次要回复模型，推荐使用 非推理模型
+name = "Pro/deepseek-ai/DeepSeek-V3"
+provider = "SILICONFLOW"
+pri_in = 2 #模型的输入价格（非必填，可以记录消耗）
+pri_out = 8 #模型的输出价格（非必填，可以记录消耗）
+#默认temp 0.2 如果你使用的是老V3或者其他模型，请自己修改temp参数
+temp = 0.2 #模型的温度，新V3建议0.1-0.3
+
+#------------专注聊天必填模型------------
+
+[model.focus_working_memory] #工作记忆模型
 name = "Qwen/Qwen2.5-32B-Instruct"
 provider = "SILICONFLOW"
 pri_in = 1.26
@@ -243,7 +261,7 @@ pri_in = 2
 pri_out = 8
 temp = 0.3 #模型的温度，新V3建议0.1-0.3
 
-[model.focus_tool_use] #工具调用模型，需要使用支持工具调用的模型，建议使用qwen2.5 32b
+[model.focus_tool_use] #工具调用模型，需要使用支持工具调用的模型
 name = "Qwen/Qwen2.5-32B-Instruct"
 provider = "SILICONFLOW"
 pri_in = 1.26
@@ -271,16 +289,6 @@ provider = "SILICONFLOW"
 pri_in = 2
 pri_out = 8
 temp = 0.3
-
-#嵌入模型
-
-[model.embedding] #嵌入
-name = "BAAI/bge-m3"
-provider = "SILICONFLOW"
-pri_in = 0
-pri_out = 0
-
-
 
 
 

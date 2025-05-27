@@ -377,21 +377,25 @@ class ModelConfig(ConfigBase):
     """模型配置类"""
 
     model_max_output_length: int = 800  # 最大回复长度
+    
+    
+    utils: dict[str, Any] = field(default_factory=lambda: {})
+    """组件模型配置"""
+    
+    utils_small: dict[str, Any] = field(default_factory=lambda: {})
+    """组件小模型配置"""
 
-    reasoning: dict[str, Any] = field(default_factory=lambda: {})
-    """推理模型配置"""
-
-    normal: dict[str, Any] = field(default_factory=lambda: {})
-    """普通模型配置"""
+    normal_chat_1: dict[str, Any] = field(default_factory=lambda: {})
+    """normal_chat首要回复模型模型配置"""
+    
+    normal_chat_2: dict[str, Any] = field(default_factory=lambda: {})
+    """normal_chat次要回复模型配置"""
 
     memory_summary: dict[str, Any] = field(default_factory=lambda: {})
     """记忆的概括模型配置"""
 
     vlm: dict[str, Any] = field(default_factory=lambda: {})
     """视觉语言模型配置"""
-
-    observation: dict[str, Any] = field(default_factory=lambda: {})
-    """观察模型配置"""
 
     focus_working_memory: dict[str, Any] = field(default_factory=lambda: {})
     """专注工作记忆模型配置"""

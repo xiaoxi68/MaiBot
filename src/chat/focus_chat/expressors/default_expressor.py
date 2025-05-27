@@ -192,9 +192,9 @@ class DefaultExpressor:
         """
         try:
             # 1. 获取情绪影响因子并调整模型温度
-            arousal_multiplier = mood_manager.get_arousal_multiplier()
-            current_temp = float(global_config.model.normal["temp"]) * arousal_multiplier
-            self.express_model.params["temperature"] = current_temp  # 动态调整温度
+            # arousal_multiplier = mood_manager.get_arousal_multiplier()
+            # current_temp = float(global_config.model.normal["temp"]) * arousal_multiplier
+            # self.express_model.params["temperature"] = current_temp  # 动态调整温度
 
             # 2. 获取信息捕捉器
             info_catcher = info_catcher_manager.get_info_catcher(thinking_id)

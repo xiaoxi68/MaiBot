@@ -497,8 +497,8 @@ class LLMRequest:
                 logger.warning(f"检测到403错误，模型从 {old_model_name} 降级为 {self.model_name}")
 
                 # 对全局配置进行更新
-                if global_config.model.normal.get("name") == old_model_name:
-                    global_config.model.normal["name"] = self.model_name
+                if global_config.model.normal_chat_2.get("name") == old_model_name:
+                    global_config.model.normal_chat_2["name"] = self.model_name
                     logger.warning(f"将全局配置中的 llm_normal 模型临时降级至{self.model_name}")
                 if global_config.model.normal_chat_1.get("name") == old_model_name:
                     global_config.model.normal_chat_1["name"] = self.model_name
