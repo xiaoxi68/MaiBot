@@ -18,13 +18,13 @@ class NormalChatGenerator:
         # TODO: API-Adapter修改标记
         self.model_reasoning = LLMRequest(
             model=global_config.model.normal_chat_1,
-            temperature=0.7,
+            # temperature=0.7,
             max_tokens=3000,
             request_type="normal_chat_1",
         )
         self.model_normal = LLMRequest(
             model=global_config.model.normal_chat_2,
-            temperature=global_config.model.normal_chat_2["temp"],
+            # temperature=global_config.model.normal_chat_2["temp"],
             max_tokens=256,
             request_type="normal_chat_2",
         )

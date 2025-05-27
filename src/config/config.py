@@ -32,6 +32,7 @@ from src.config.official_configs import (
     FocusChatProcessorConfig,
     MessageReceiveConfig,
     MaimMessageConfig,
+    RelationshipConfig,
 )
 
 install(extra_lines=3)
@@ -143,6 +144,7 @@ class Config(ConfigBase):
     bot: BotConfig
     personality: PersonalityConfig
     identity: IdentityConfig
+    relationship: RelationshipConfig
     chat: ChatConfig
     message_receive: MessageReceiveConfig
     normal_chat: NormalChatConfig

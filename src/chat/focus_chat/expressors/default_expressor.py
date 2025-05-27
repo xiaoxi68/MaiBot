@@ -79,7 +79,7 @@ class DefaultExpressor:
         # TODO: API-Adapter修改标记
         self.express_model = LLMRequest(
             model=global_config.model.focus_expressor,
-            temperature=global_config.model.focus_expressor["temp"],
+            # temperature=global_config.model.focus_expressor["temp"],
             max_tokens=256,
             request_type="focus_expressor",
         )

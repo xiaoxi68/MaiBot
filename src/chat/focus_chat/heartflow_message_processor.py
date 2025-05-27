@@ -219,7 +219,8 @@ class HeartFCMessageReceiver:
             )
 
             # 8. 关系处理
-            await _process_relationship(message)
+            if global_config.relationship.give_name:
+                await _process_relationship(message)
 
         except Exception as e:
             await _handle_error(e, "消息处理失败", message)

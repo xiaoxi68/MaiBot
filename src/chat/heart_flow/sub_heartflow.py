@@ -129,7 +129,12 @@ class SubHeartflow:
                 return False
             # 在 rewind 为 True 或 NormalChat 实例尚未创建时，创建新实例
             if rewind or not self.normal_chat_instance:
-                self.normal_chat_instance = NormalChat(chat_stream=chat_stream, interest_dict=self.get_interest_dict())
+                # 提供回调函数，用于接收需要切换到focus模式的通知
+                self.normal_chat_instance = NormalChat(
+                    chat_stream=chat_stream, 
+                    interest_dict=self.get_interest_dict(),
+                    on_switch_to_focus_callback=self._handle_switch_to_focus_request
+                )
 
             # 进行异步初始化
             await self.normal_chat_instance.initialize()
@@ -143,6 +148,23 @@ class SubHeartflow:
             logger.error(traceback.format_exc())
             self.normal_chat_instance = None  # 启动/初始化失败，清理实例
             return False
+
+    async def _handle_switch_to_focus_request(self) -> None:
+        """
+        处理来自NormalChat的切换到focus模式的请求
+        
+        Args:
+            stream_id: 请求切换的stream_id
+        """
+        logger.info(f"{self.log_prefix} 收到NormalChat请求切换到focus模式")
+        
+        # 切换到focus模式
+        current_state = self.chat_state.chat_status
+        if current_state == ChatState.NORMAL:
+            await self.change_chat_state(ChatState.FOCUSED)
+            logger.info(f"{self.log_prefix} 已根据NormalChat请求从NORMAL切换到FOCUSED状态")
+        else:
+            logger.warning(f"{self.log_prefix} 当前状态为{current_state.value}，无法切换到FOCUSED状态")
 
     async def _stop_heart_fc_chat(self):
         """停止并清理 HeartFChatting 实例"""
@@ -288,6 +310,19 @@ class SubHeartflow:
 
     def get_interest_dict(self) -> Dict[str, tuple[MessageRecv, float, bool]]:
         return self.interest_chatting.interest_dict
+
+    def get_normal_chat_recent_replies(self, limit: int = 10) -> List[dict]:
+        """获取NormalChat实例的最近回复记录
+        
+        Args:
+            limit: 最大返回数量，默认10条
+            
+        Returns:
+            List[dict]: 最近的回复记录列表，如果没有NormalChat实例则返回空列表
+        """
+        if self.normal_chat_instance:
+            return self.normal_chat_instance.get_recent_replies(limit)
+        return []
 
     def clear_interest_dict(self):
         self.interest_chatting.interest_dict.clear()

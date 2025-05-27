@@ -44,6 +44,13 @@ class IdentityConfig(ConfigBase):
     identity_detail: list[str] = field(default_factory=lambda: [])
     """身份特征"""
 
+@dataclass
+class RelationshipConfig(ConfigBase):
+    """关系配置类"""
+
+    give_name: bool = False
+    """是否给其他人取名"""  
+
 
 @dataclass
 class ChatConfig(ConfigBase):
@@ -115,11 +122,8 @@ class NormalChatConfig(ConfigBase):
 class FocusChatConfig(ConfigBase):
     """专注聊天配置类"""
 
-    reply_trigger_threshold: float = 3.0
-    """心流聊天触发阈值，越低越容易触发"""
-
-    default_decay_rate_per_second: float = 0.98
-    """默认衰减率，越大衰减越快"""
+    auto_focus_threshold: float = 1.0
+    """自动切换到专注聊天的阈值，越低越容易进入专注聊天"""
 
     observation_context_size: int = 12
     """可观察到的最长上下文大小，超过这个值的上下文会被压缩"""

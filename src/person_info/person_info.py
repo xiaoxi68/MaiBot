@@ -264,17 +264,17 @@ class PersonInfoManager:
             prompt_personality = individuality.get_prompt(x_person=2, level=1)
             bot_name = individuality.personality.bot_nickname
 
-            qv_name_prompt = f"你是{bot_name}，{prompt_personality}"
-            qv_name_prompt += f"现在你想给一个用户取一个昵称，用户是的qq昵称是{user_nickname}，"
+            qv_name_prompt = f"你是{bot_name}，一个伪装成人类的AI，你不能让别人发现这一点，"
+            qv_name_prompt += f"现在你想给一个用户取一个昵称，用户的qq昵称是{user_nickname}，"
             qv_name_prompt += f"用户的qq群昵称名是{user_cardname}，"
             if user_avatar:
                 qv_name_prompt += f"用户的qq头像是{user_avatar}，"
             if old_name:
                 qv_name_prompt += f"你之前叫他{old_name}，是因为{old_reason}，"
 
-            qv_name_prompt += f"\n其他取名的要求是：{request}，不要太浮夸"
+            qv_name_prompt += f"\n其他取名的要求是：{request}，不要太浮夸，简短，"
             qv_name_prompt += (
-                "\n请根据以上用户信息，想想你叫他什么比较好，不要太浮夸，请最好使用用户的qq昵称，可以稍作修改"
+                "\n请根据以上用户信息，想想你叫他什么比较好，不要太浮夸，请最好使用用户的qq昵称，可以稍作修改，优先使用原文。优先使用用户的qq昵称或者群昵称原文。"
             )
 
             if existing_names_str:
