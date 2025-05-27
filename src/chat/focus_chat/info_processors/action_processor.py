@@ -20,12 +20,11 @@ class ActionProcessor(BaseProcessor):
     用于处理Observation对象，将其转换为ObsInfo对象。
     """
 
-    log_prefix = "聊天信息处理"
+    log_prefix = "动作处理"
 
     def __init__(self):
         """初始化观察处理器"""
         super().__init__()
-        # TODO: API-Adapter修改标记
 
     async def process_info(
         self,
@@ -136,9 +135,11 @@ class ActionProcessor(BaseProcessor):
             reply_sequence.append(action_type == "reply")
 
         # 检查no_reply比例
-        if len(recent_cycles) >= (5 * global_config.focus_chat.exit_focus_threshold) and (
+        print(f"no_reply_count: {no_reply_count}, len(recent_cycles): {len(recent_cycles)}")
+        # print(1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111)
+        if len(recent_cycles) >= (4 * global_config.focus_chat.exit_focus_threshold) and (
             no_reply_count / len(recent_cycles)
-        ) >= (0.75 * global_config.focus_chat.exit_focus_threshold):
+        ) >= (0.6 * global_config.focus_chat.exit_focus_threshold):
             if global_config.chat.chat_mode == "auto":
                 result["add"].append("exit_focus_chat")
                 result["remove"].append("no_reply")
