@@ -76,7 +76,7 @@ class MessageReceiveConfig(ConfigBase):
 class NormalChatConfig(ConfigBase):
     """普通聊天配置类"""
 
-    reasoning_model_probability: float = 0.3
+    normal_chat_first_probability: float = 0.3
     """
     发言时选择推理模型的概率（0-1之间）
     选择普通模型的概率为 1 - reasoning_normal_model_probability
@@ -131,9 +131,6 @@ class FocusChatConfig(ConfigBase):
 
     observation_context_size: int = 12
     """可观察到的最长上下文大小，超过这个值的上下文会被压缩"""
-
-    consecutive_no_reply_threshold: int = 3
-    """连续不回复的次数阈值"""
 
     compressed_length: int = 5
     """心流上下文压缩的最短压缩长度，超过心流观察到的上下文长度，会压缩，最短压缩长度为5"""

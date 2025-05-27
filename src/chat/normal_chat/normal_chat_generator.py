@@ -38,7 +38,7 @@ class NormalChatGenerator:
     async def generate_response(self, message: MessageThinking, thinking_id: str) -> Optional[Union[str, List[str]]]:
         """根据当前模型类型选择对应的生成函数"""
         # 从global_config中获取模型概率值并选择模型
-        if random.random() < global_config.normal_chat.reasoning_model_probability:
+        if random.random() < global_config.normal_chat.normal_chat_first_probability:
             self.current_model_type = "深深地"
             current_model = self.model_reasoning
         else:
