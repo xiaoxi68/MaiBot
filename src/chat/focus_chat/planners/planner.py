@@ -36,12 +36,16 @@ def init_prompt():
 {mind_info_block}
 {cycle_info_block}
 
+{action_available_block}    
+
 请综合分析聊天内容和你看到的新消息，参考聊天规划，选择合适的action:
 
 {action_options_text}
 
 你必须从上面列出的可用action中选择一个，并说明原因。
 你的决策必须以严格的 JSON 格式输出，且仅包含 JSON 内容，不要有任何其他文字或解释。
+
+{moderation_prompt}
 
 请你以下面格式输出你选择的action：
 {{
@@ -104,6 +108,7 @@ class ActionPlanner:
                     add_actions = info.get_add_actions()
                     remove_actions = info.get_remove_actions()
                     reason = info.get_reason()
+                    print(f"{self.log_prefix} 动作变更: {add_actions} {remove_actions} {reason}")
 
                     # 处理动作的增加
                     for action_name in add_actions:
@@ -120,6 +125,14 @@ class ActionPlanner:
                     if action in remove_actions:
                         action = "no_reply"
                         reasoning = f"之前选择的动作{action}已被移除，原因: {reason}"
+                        
+            using_actions = self.action_manager.get_using_actions()
+            action_available_block = ""
+            for action_name, action_info in using_actions.items():
+                action_description = action_info["description"]
+                action_available_block += f"\n你在聊天中可以使用{action_name}，这个动作的描述是{action_description}\n"
+            action_available_block += "注意，除了上述动作选项之外，你在群聊里不能做其他任何事情，这是你能力的边界\n"            
+            
 
             # 继续处理其他信息
             for info in all_plan_info:
@@ -142,11 +155,11 @@ class ActionPlanner:
             # 获取当前可用的动作
             current_available_actions = self.action_manager.get_using_actions()
 
-            # 如果没有可用动作，直接返回no_reply
-            if not current_available_actions:
-                logger.warning(f"{self.log_prefix}没有可用的动作，将使用no_reply")
+            # 如果没有可用动作或只有no_reply动作，直接返回no_reply
+            if not current_available_actions or (len(current_available_actions) == 1 and "no_reply" in current_available_actions):
                 action = "no_reply"
-                reasoning = "没有可用的动作"
+                reasoning = "没有可用的动作" if not current_available_actions else "只有no_reply动作可用，跳过规划"
+                logger.info(f"{self.log_prefix}{reasoning}")
                 return {
                     "action_result": {"action_type": action, "action_data": action_data, "reasoning": reasoning},
                     "current_mind": current_mind,
@@ -164,6 +177,7 @@ class ActionPlanner:
                 current_available_actions=current_available_actions,  # <-- Pass determined actions
                 cycle_info=cycle_info,  # <-- Pass cycle info
                 extra_info=extra_info,
+                action_available_block=action_available_block,
             )
 
             # --- 调用 LLM (普通文本生成) ---
@@ -249,6 +263,7 @@ class ActionPlanner:
         chat_target_info: Optional[dict],  # Now passed as argument
         observed_messages_str: str,
         current_mind: Optional[str],
+        action_available_block: str,
         current_available_actions: Dict[str, ActionInfo],
         cycle_info: Optional[str],
         extra_info: list[str],
@@ -306,7 +321,13 @@ class ActionPlanner:
                 action_options_block += using_action_prompt
 
             extra_info_block = "\n".join(extra_info)
-            extra_info_block = f"以下是一些额外的信息，现在请你阅读以下内容，进行决策\n{extra_info_block}\n以上是一些额外的信息，现在请你阅读以下内容，进行决策"
+            if extra_info:
+                extra_info_block = f"以下是一些额外的信息，现在请你阅读以下内容，进行决策\n{extra_info_block}\n以上是一些额外的信息，现在请你阅读以下内容，进行决策"
+            else:
+                extra_info_block = ""
+            
+            
+            moderation_prompt_block = "请不要输出违法违规内容，不要输出色情，暴力，政治相关内容，如有敏感内容，请规避。"
 
             planner_prompt_template = await global_prompt_manager.get_prompt_async("planner_prompt")
             prompt = planner_prompt_template.format(
@@ -318,7 +339,9 @@ class ActionPlanner:
                 mind_info_block=mind_info_block,
                 cycle_info_block=cycle_info,
                 action_options_text=action_options_block,
+                action_available_block=action_available_block,
                 extra_info_block=extra_info_block,
+                moderation_prompt=moderation_prompt_block,
             )
             return prompt
 

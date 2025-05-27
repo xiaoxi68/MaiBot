@@ -435,7 +435,7 @@ class LLMRequest:
                 logger.error(
                     f"模型 {self.model_name} 错误码: {response.status} - {error_code_mapping.get(response.status)}"
                 )
-                raise RuntimeError("服务器负载过高，模型恢复失败QAQ")
+                raise RuntimeError("服务器负载过高，模型回复失败QAQ")
             else:
                 logger.warning(f"模型 {self.model_name} 请求限制(429)，等待{wait_time}秒后重试...")
                 raise RuntimeError("请求限制(429)")
@@ -459,6 +459,7 @@ class LLMRequest:
             logger.error(
                 f"模型 {self.model_name} 错误码: {response.status} - {error_code_mapping.get(response.status)}"
             )
+            print(response)
             # 尝试获取并记录服务器返回的详细错误信息
             try:
                 error_json = await response.json()

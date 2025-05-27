@@ -181,6 +181,9 @@ class EmojiConfig(ConfigBase):
     save_pic: bool = False
     """是否保存图片"""
 
+    save_emoji: bool = False
+    """是否保存表情包"""
+
     cache_emoji: bool = True
     """是否缓存表情包"""
 

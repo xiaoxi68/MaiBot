@@ -83,7 +83,7 @@ class ImageManager:
             current_timestamp = time.time()
             defaults = {"description": description, "timestamp": current_timestamp}
             desc_obj, created = ImageDescriptions.get_or_create(
-                hash=image_hash, type=description_type, defaults=defaults
+                image_description_hash=image_hash, type=description_type, defaults=defaults
             )
             if not created:  # 如果记录已存在，则更新
                 desc_obj.description = description
@@ -150,7 +150,7 @@ class ImageManager:
                         img_obj.save()
                     except Images.DoesNotExist:
                         Images.create(
-                            hash=image_hash,
+                            emoji_hash=image_hash,
                             path=file_path,
                             type="emoji",
                             description=description,
@@ -223,7 +223,7 @@ class ImageManager:
                         img_obj.save()
                     except Images.DoesNotExist:
                         Images.create(
-                            hash=image_hash,
+                            emoji_hash=image_hash,
                             path=file_path,
                             type="image",
                             description=description,

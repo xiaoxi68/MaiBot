@@ -83,7 +83,7 @@ class PersonalityExpression:
                     logger.error(f"删除旧的表达文件 {self.expressions_file_path} 失败: {e}")
 
         if count >= self.max_calculations:
-            logger.info(f"对于风格 '{current_style_text}' 已达到最大计算次数 ({self.max_calculations})。跳过提取。")
+            logger.debug(f"对于风格 '{current_style_text}' 已达到最大计算次数 ({self.max_calculations})。跳过提取。")
             # 即使跳过，也更新元数据以反映当前风格已被识别且计数已满
             self._write_meta_data({"last_style_text": current_style_text, "count": count})
             return

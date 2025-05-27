@@ -3,7 +3,7 @@ import random
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.chat.message_receive.message import MessageThinking
-from src.chat.focus_chat.heartflow_prompt_builder import prompt_builder
+from src.chat.normal_chat.normal_prompt import prompt_builder
 from src.chat.utils.utils import process_llm_response
 from src.chat.utils.timer_calculator import Timer
 from src.common.logger_manager import get_logger
