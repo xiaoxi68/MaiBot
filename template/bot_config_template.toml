@@ -206,16 +206,18 @@ temp = 0.2 #模型的温度，新V3建议0.1-0.3
 
 [model.utils_small] # 在麦麦的一些组件中使用的小模型，消耗量较大
 # 强烈建议使用免费的小模型
-name = "Qwen/Qwen2.5-7B-Instruct"
+name = "Qwen/Qwen3-8B"
 provider = "SILICONFLOW"
+enable_thinking = false # 是否启用思考
 pri_in = 0
 pri_out = 0
 
-[model.memory_summary] # 记忆的概括模型，建议使用qwen2.5 32b 及以上
-name = "Qwen/Qwen2.5-32B-Instruct"
+[model.memory_summary] # 记忆的概括模型
+name = "Qwen/Qwen3-30B-A3B"
 provider = "SILICONFLOW"
-pri_in = 1.26
-pri_out = 1.26
+enable_thinking = false # 是否启用思考
+pri_in = 0.7
+pri_out = 2.8
 
 [model.vlm] # 图像识别模型
 name = "Pro/Qwen/Qwen2.5-VL-7B-Instruct"
@@ -226,7 +228,7 @@ pri_out = 0.35
 #嵌入模型
 [model.embedding]
 name = "BAAI/bge-m3"
-provider = "SILICONFLOW"
+provider = "DEV"
 pri_in = 0
 pri_out = 0
 
@@ -235,8 +237,8 @@ pri_out = 0
 [model.normal_chat_1] # 一般聊天模式的首要回复模型，推荐使用 推理模型
 name = "Pro/deepseek-ai/DeepSeek-R1"
 provider = "SILICONFLOW"
-pri_in = 1.0 #模型的输入价格（非必填，可以记录消耗）
-pri_out = 4.0 #模型的输出价格（非必填，可以记录消耗）
+pri_in = 4.0 #模型的输入价格（非必填，可以记录消耗）
+pri_out = 16.0 #模型的输出价格（非必填，可以记录消耗）
 
 [model.normal_chat_2] # 一般聊天模式的次要回复模型，推荐使用 非推理模型
 name = "Pro/deepseek-ai/DeepSeek-V3"
@@ -249,46 +251,57 @@ temp = 0.2 #模型的温度，新V3建议0.1-0.3
 #------------专注聊天必填模型------------
 
 [model.focus_working_memory] #工作记忆模型
-name = "Qwen/Qwen2.5-32B-Instruct"
+name = "Qwen/Qwen3-30B-A3B"
 provider = "SILICONFLOW"
-pri_in = 1.26
-pri_out = 1.26
+enable_thinking = false # 是否启用思考
+pri_in = 0.7
+pri_out = 2.8
 
 [model.focus_chat_mind] #聊天规划：认真聊天时,生成麦麦对聊天的规划想法
 name = "Pro/deepseek-ai/DeepSeek-V3"
+# name = "Qwen/Qwen3-30B-A3B"
 provider = "SILICONFLOW"
+# enable_thinking = false # 是否启用思考
 pri_in = 2
 pri_out = 8
-temp = 0.3 #模型的温度，新V3建议0.1-0.3
+temp = 0.3
 
 [model.focus_tool_use] #工具调用模型，需要使用支持工具调用的模型
-name = "Qwen/Qwen2.5-32B-Instruct"
+name = "Qwen/Qwen3-14B"
 provider = "SILICONFLOW"
-pri_in = 1.26
-pri_out = 1.26
+enable_thinking = false # 是否启用思考
+pri_in = 0.5
+pri_out = 2
 
 [model.focus_planner] #决策：认真聊天时,负责决定麦麦该做什么
 name = "Pro/deepseek-ai/DeepSeek-V3"
+# name = "Qwen/Qwen3-30B-A3B"
 provider = "SILICONFLOW"
+# enable_thinking = false # 是否启用思考
 pri_in = 2
 pri_out = 8
+temp = 0.3
 
 #表达器模型，用于表达麦麦的想法，生成最终回复，对语言风格影响极大
 #也用于表达方式学习
 [model.focus_expressor]
 name = "Pro/deepseek-ai/DeepSeek-V3"
+# name = "Qwen/Qwen3-30B-A3B"
 provider = "SILICONFLOW"
+# enable_thinking = false # 是否启用思考
 pri_in = 2
 pri_out = 8
 temp = 0.3
 
 #自我识别模型，用于自我认知和身份识别
 [model.focus_self_recognize]
-name = "Pro/deepseek-ai/DeepSeek-V3"
+# name = "Pro/deepseek-ai/DeepSeek-V3"
+name = "Qwen/Qwen3-30B-A3B"
 provider = "SILICONFLOW"
-pri_in = 2
-pri_out = 8
-temp = 0.3
+enable_thinking = false # 是否启用思考
+pri_in = 0.7
+pri_out = 2.8
+temp = 0.7
 
 
 

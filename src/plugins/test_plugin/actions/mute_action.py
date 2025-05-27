@@ -11,7 +11,7 @@ class MuteAction(PluginAction):
 
     action_name = "mute_action"
     action_description = (
-        "如果某人违反了公序良俗，或者别人戳你太多，或者某人刷屏，一定要禁言某人，如果你很生气，可以禁言某人，可以自选禁言时长，视严重程度而定"
+        "如果某人违反了公序良俗，或者别人戳你太多，或者某人刷屏，一定要禁言某人，如果你很生气，可以禁言某人，可以自选禁言时长，视严重程度而定。"
     )
     action_parameters = {
         "target": "禁言对象，输入你要禁言的对象的名字，必填",

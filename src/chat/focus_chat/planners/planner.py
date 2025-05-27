@@ -180,8 +180,9 @@ class ActionPlanner:
             # --- 调用 LLM (普通文本生成) ---
             llm_content = None
             try:
-                llm_content, _, _ = await self.planner_llm.generate_response(prompt=prompt)
+                llm_content, reasoning_content, _ = await self.planner_llm.generate_response(prompt=prompt)
                 logger.debug(f"{self.log_prefix}[Planner] LLM 原始 JSON 响应 (预期): {llm_content}")
+                logger.debug(f"{self.log_prefix}[Planner] LLM 原始理由 响应 (预期): {reasoning_content}")
             except Exception as req_e:
                 logger.error(f"{self.log_prefix}[Planner] LLM 请求执行失败: {req_e}")
                 reasoning = f"LLM 请求失败，你的模型出现问题: {req_e}"
