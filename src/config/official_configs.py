@@ -41,21 +41,6 @@ class PersonalityConfig(ConfigBase):
 class IdentityConfig(ConfigBase):
     """个体特征配置类"""
 
-    height: int = 170
-    """身高（单位：厘米）"""
-
-    weight: float = 50
-    """体重（单位：千克）"""
-
-    age: int = 18
-    """年龄（单位：岁）"""
-
-    gender: str = "女"
-    """性别（男/女）"""
-
-    appearance: str = "可爱"
-    """外貌描述"""
-
     identity_detail: list[str] = field(default_factory=lambda: [])
     """身份特征"""
 
