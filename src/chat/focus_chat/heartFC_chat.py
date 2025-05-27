@@ -19,6 +19,7 @@ from src.chat.focus_chat.info_processors.working_memory_processor import Working
 from src.chat.focus_chat.info_processors.action_processor import ActionProcessor
 from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
 from src.chat.heart_flow.observation.working_observation import WorkingMemoryObservation
+from src.chat.heart_flow.observation.structure_observation import StructureObservation
 from src.chat.focus_chat.info_processors.tool_processor import ToolProcessor
 from src.chat.focus_chat.expressors.default_expressor import DefaultExpressor
 from src.chat.focus_chat.memory_activator import MemoryActivator
@@ -97,6 +98,7 @@ class HeartFChatting:
         self.log_prefix: str = str(chat_id)  # Initial default, will be updated
         self.hfcloop_observation = HFCloopObservation(observe_id=self.stream_id)
         self.chatting_observation = observations[0]
+        self.structure_observation = StructureObservation(observe_id=self.stream_id)
 
         self.memory_activator = MemoryActivator()
         self.working_memory = WorkingMemory(chat_id=self.stream_id)
@@ -415,11 +417,13 @@ class HeartFChatting:
                 await self.chatting_observation.observe()
                 await self.working_observation.observe()
                 await self.hfcloop_observation.observe()
+                await self.structure_observation.observe()
                 observations: List[Observation] = []
                 observations.append(self.chatting_observation)
                 observations.append(self.working_observation)
                 observations.append(self.hfcloop_observation)
-
+                observations.append(self.structure_observation)
+                
                 loop_observation_info = {
                     "observations": observations,
                 }

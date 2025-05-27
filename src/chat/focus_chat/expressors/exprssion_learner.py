@@ -61,10 +61,10 @@ class ExpressionLearner:
     def __init__(self) -> None:
         # TODO: API-Adapter修改标记
         self.express_learn_model: LLMRequest = LLMRequest(
-            model=global_config.model.normal,
+            model=global_config.model.focus_expressor,
             temperature=0.1,
             max_tokens=256,
-            request_type="response_heartflow",
+            request_type="learn_expression",
         )
 
     async def get_expression_by_chat_id(self, chat_id: str) -> Tuple[List[Dict[str, str]], List[Dict[str, str]]]:

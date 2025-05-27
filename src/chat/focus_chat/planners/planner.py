@@ -36,9 +36,8 @@ def init_prompt():
 {mind_info_block}
 {cycle_info_block}
 
-{action_available_block}    
-
 请综合分析聊天内容和你看到的新消息，参考聊天规划，选择合适的action:
+注意，除了下面动作选项之外，你在群聊里不能做其他任何事情，这是你能力的边界，现在请你选择合适的action:
 
 {action_options_text}
 
@@ -126,13 +125,6 @@ class ActionPlanner:
                         action = "no_reply"
                         reasoning = f"之前选择的动作{action}已被移除，原因: {reason}"
 
-            using_actions = self.action_manager.get_using_actions()
-            action_available_block = ""
-            for action_name, action_info in using_actions.items():
-                action_description = action_info["description"]
-                action_available_block += f"\n你在聊天中可以使用{action_name}，这个动作的描述是{action_description}\n"
-            action_available_block += "注意，除了上述动作选项之外，你在群聊里不能做其他任何事情，这是你能力的边界\n"
-
             # 继续处理其他信息
             for info in all_plan_info:
                 if isinstance(info, ObsInfo):
@@ -147,7 +139,8 @@ class ActionPlanner:
                 elif isinstance(info, SelfInfo):
                     self_info = info.get_processed_info()
                 elif isinstance(info, StructuredInfo):
-                    _structured_info = info.get_data()
+                    structured_info = info.get_processed_info()
+                    # print(f"structured_info: {structured_info}")
                 elif not isinstance(info, ActionInfo):  # 跳过已处理的ActionInfo
                     extra_info.append(info.get_processed_info())
 
@@ -178,11 +171,10 @@ class ActionPlanner:
                 chat_target_info=None,
                 observed_messages_str=observed_messages_str,  # <-- Pass local variable
                 current_mind=current_mind,  # <-- Pass argument
-                # structured_info=structured_info,  # <-- Pass SubMind info
+                structured_info=structured_info,  # <-- Pass SubMind info
                 current_available_actions=current_available_actions,  # <-- Pass determined actions
                 cycle_info=cycle_info,  # <-- Pass cycle info
                 extra_info=extra_info,
-                action_available_block=action_available_block,
             )
 
             # --- 调用 LLM (普通文本生成) ---
@@ -268,7 +260,7 @@ class ActionPlanner:
         chat_target_info: Optional[dict],  # Now passed as argument
         observed_messages_str: str,
         current_mind: Optional[str],
-        action_available_block: str,
+        structured_info: Optional[str],
         current_available_actions: Dict[str, ActionInfo],
         cycle_info: Optional[str],
         extra_info: list[str],
@@ -326,7 +318,8 @@ class ActionPlanner:
                 action_options_block += using_action_prompt
 
             extra_info_block = "\n".join(extra_info)
-            if extra_info:
+            extra_info_block += f"\n{structured_info}"
+            if extra_info or structured_info:
                 extra_info_block = f"以下是一些额外的信息，现在请你阅读以下内容，进行决策\n{extra_info_block}\n以上是一些额外的信息，现在请你阅读以下内容，进行决策"
             else:
                 extra_info_block = ""
@@ -343,7 +336,7 @@ class ActionPlanner:
                 mind_info_block=mind_info_block,
                 cycle_info_block=cycle_info,
                 action_options_text=action_options_block,
-                action_available_block=action_available_block,
+                # action_available_block=action_available_block,
                 extra_info_block=extra_info_block,
                 moderation_prompt=moderation_prompt_block,
             )

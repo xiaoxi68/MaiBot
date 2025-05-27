@@ -33,10 +33,10 @@ def init_prompt() -> None:
 class PersonalityExpression:
     def __init__(self):
         self.express_learn_model: LLMRequest = LLMRequest(
-            model=global_config.model.normal,
+            model=global_config.model.focus_expressor,
             temperature=0.1,
             max_tokens=256,
-            request_type="response_heartflow",
+            request_type="learn_expression",
         )
         self.meta_file_path = os.path.join("data", "expression", "personality", "expression_style_meta.json")
         self.expressions_file_path = os.path.join("data", "expression", "personality", "expressions.json")

@@ -255,7 +255,8 @@ provider = "SILICONFLOW"
 pri_in = 2
 pri_out = 8
 
-#表达器模型，用于生成表达方式
+#表达器模型，用于表达麦麦的想法，生成最终回复，对语言风格影响极大
+#也用于表达方式学习
 [model.focus_expressor]
 name = "Pro/deepseek-ai/DeepSeek-V3"
 provider = "SILICONFLOW"

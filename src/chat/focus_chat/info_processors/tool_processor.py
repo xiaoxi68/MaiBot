@@ -75,10 +75,12 @@ class ToolProcessor(BaseProcessor):
                     result, used_tools, prompt = await self.execute_tools(observation, running_memorys)
 
             # 更新WorkingObservation中的结构化信息
+            logger.debug(f"工具调用结果: {result}")
+            
             for observation in observations:
                 if isinstance(observation, StructureObservation):
                     for structured_info in result:
-                        logger.debug(f"{self.log_prefix} 更新WorkingObservation中的结构化信息: {structured_info}")
+                        # logger.debug(f"{self.log_prefix} 更新WorkingObservation中的结构化信息: {structured_info}")
                         observation.add_structured_info(structured_info)
 
                     working_infos = observation.get_observe_info()
@@ -87,7 +89,12 @@ class ToolProcessor(BaseProcessor):
         structured_info = StructuredInfo()
         if working_infos:
             for working_info in working_infos:
-                structured_info.set_info(working_info.get("type"), working_info.get("content"))
+                # print(f"working_info: {working_info}")
+                # print(f"working_info.get('type'): {working_info.get('type')}")
+                # print(f"working_info.get('content'): {working_info.get('content')}")
+                structured_info.set_info(key=working_info.get('type'), value=working_info.get('content'))
+                # info = structured_info.get_processed_info()
+                # print(f"info: {info}")
 
         return [structured_info]
 
@@ -155,7 +162,7 @@ class ToolProcessor(BaseProcessor):
         )
 
         # 调用LLM，专注于工具使用
-        # logger.debug(f"开始执行工具调用{prompt}")
+        logger.debug(f"开始执行工具调用{prompt}")
         response, _, tool_calls = await self.llm_model.generate_response_tool_async(prompt=prompt, tools=tools)
 
         logger.debug(f"获取到工具原始输出:\n{tool_calls}")
