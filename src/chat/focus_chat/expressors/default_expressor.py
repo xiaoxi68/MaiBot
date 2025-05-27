@@ -13,7 +13,6 @@ from src.chat.emoji_system.emoji_manager import emoji_manager
 from src.chat.focus_chat.heartFC_sender import HeartFCSender
 from src.chat.utils.utils import process_llm_response
 from src.chat.utils.info_catcher import info_catcher_manager
-from src.manager.mood_manager import mood_manager
 from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
 from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.focus_chat.hfc_utils import parse_thinking_id_to_timestamp
@@ -150,22 +149,22 @@ class DefaultExpressor:
                         action_data=action_data,
                     )
 
-                with Timer("选择表情", cycle_timers):
-                    emoji_keyword = action_data.get("emojis", [])
-                    emoji_base64 = await self._choose_emoji(emoji_keyword)
-                    if emoji_base64:
-                        reply.append(("emoji", emoji_base64))
+            with Timer("选择表情", cycle_timers):
+                emoji_keyword = action_data.get("emojis", [])
+                emoji_base64 = await self._choose_emoji(emoji_keyword)
+                if emoji_base64:
+                    reply.append(("emoji", emoji_base64))
 
-                if reply:
-                    with Timer("发送消息", cycle_timers):
-                        sent_msg_list = await self.send_response_messages(
-                            anchor_message=anchor_message,
-                            thinking_id=thinking_id,
-                            response_set=reply,
-                        )
-                    has_sent_something = True
-                else:
-                    logger.warning(f"{self.log_prefix} 文本回复生成失败")
+            if reply:
+                with Timer("发送消息", cycle_timers):
+                    sent_msg_list = await self.send_response_messages(
+                        anchor_message=anchor_message,
+                        thinking_id=thinking_id,
+                        response_set=reply,
+                    )
+                has_sent_something = True
+            else:
+                logger.warning(f"{self.log_prefix} 文本回复生成失败")
 
             if not has_sent_something:
                 logger.warning(f"{self.log_prefix} 回复动作未包含任何有效内容")
@@ -174,6 +173,7 @@ class DefaultExpressor:
 
         except Exception as e:
             logger.error(f"回复失败: {e}")
+            traceback.print_exc()
             return False, None
 
         # --- 回复器 (Replier) 的定义 --- #
@@ -443,7 +443,9 @@ class DefaultExpressor:
                     set_reply = True
                 else:
                     set_reply = False
-                sent_msg = await self.heart_fc_sender.send_message(bot_message, has_thinking=True, typing=typing, set_reply=set_reply)
+                sent_msg = await self.heart_fc_sender.send_message(
+                    bot_message, has_thinking=True, typing=typing, set_reply=set_reply
+                )
 
                 reply_message_ids.append(part_message_id)  # 记录我们生成的ID
 

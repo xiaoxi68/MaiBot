@@ -10,9 +10,7 @@ class MuteAction(PluginAction):
     """群聊禁言动作处理类"""
 
     action_name = "mute_action"
-    action_description = (
-        "如果某人违反了公序良俗，或者别人戳你太多，或者某人刷屏，一定要禁言某人，如果你很生气，可以禁言某人，可以自选禁言时长，视严重程度而定。"
-    )
+    action_description = "如果某人违反了公序良俗，或者别人戳你太多，或者某人刷屏，一定要禁言某人，如果你很生气，可以禁言某人，可以自选禁言时长，视严重程度而定。"
     action_parameters = {
         "target": "禁言对象，输入你要禁言的对象的名字，必填",
         "duration": "禁言时长，输入你要禁言的时长，单位为秒，必填，必须为数字",
@@ -38,7 +36,7 @@ class MuteAction(PluginAction):
         target = self.action_data.get("target")
         duration = self.action_data.get("duration")
         reason = self.action_data.get("reason", "违反群规")
-        
+
         if not target or not duration:
             error_msg = "禁言参数不完整，需要target和duration"
             logger.error(f"{self.log_prefix} {error_msg}")
@@ -46,7 +44,7 @@ class MuteAction(PluginAction):
 
         # 获取用户ID
         platform, user_id = await self.get_user_id_by_person_name(target)
-        
+
         if not user_id:
             error_msg = f"未找到用户 {target} 的ID"
             logger.error(f"{self.log_prefix} {error_msg}")
@@ -58,19 +56,12 @@ class MuteAction(PluginAction):
         try:
             # 确保duration是字符串类型
             duration_str = str(duration)
-            
+
             # 发送群聊禁言命令，按照新格式
             await self.send_message(
-                type="command",
-                data={
-                    "name": "GROUP_BAN",
-                    "args": {
-                        "qq_id": str(user_id),
-                        "duration": duration_str
-                    }
-                }
+                type="command", data={"name": "GROUP_BAN", "args": {"qq_id": str(user_id), "duration": duration_str}}
             )
-            
+
             logger.info(f"{self.log_prefix} 成功禁言用户 {target}({user_id})，时长 {duration} 秒")
             return True, f"成功禁言 {target}，时长 {duration} 秒"
 

@@ -33,11 +33,11 @@ async def get_subheartflow_cycle_info(subheartflow_id: str, history_len: int) ->
 
 async def get_normal_chat_replies(subheartflow_id: str, limit: int = 10) -> list:
     """获取子心流的NormalChat回复记录
-    
+
     Args:
         subheartflow_id: 子心流ID
         limit: 最大返回数量，默认10条
-        
+
     Returns:
         list: 回复记录列表，如果未找到则返回空列表
     """

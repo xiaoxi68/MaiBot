@@ -59,11 +59,11 @@ class Heartflow:
 
     async def api_get_normal_chat_replies(self, subheartflow_id: str, limit: int = 10) -> Optional[List[dict]]:
         """获取子心流的NormalChat回复记录
-        
+
         Args:
             subheartflow_id: 子心流ID
             limit: 最大返回数量，默认10条
-            
+
         Returns:
             Optional[List[dict]]: 回复记录列表，如果子心流不存在则返回None
         """
@@ -71,7 +71,7 @@ class Heartflow:
         if not subheartflow:
             logger.warning(f"尝试获取不存在的子心流 {subheartflow_id} 的NormalChat回复记录")
             return None
-            
+
         return subheartflow.get_normal_chat_recent_replies(limit)
 
     async def heartflow_start_working(self):

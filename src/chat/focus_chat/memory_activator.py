@@ -19,24 +19,24 @@ logger = get_logger("memory_activator")
 def get_keywords_from_json(json_str):
     """
     从JSON字符串中提取关键词列表
-    
+
     Args:
         json_str: JSON格式的字符串
-        
+
     Returns:
         List[str]: 关键词列表
     """
     try:
         # 使用repair_json修复JSON格式
         fixed_json = repair_json(json_str)
-        
+
         # 如果repair_json返回的是字符串，需要解析为Python对象
         if isinstance(fixed_json, str):
             result = json.loads(fixed_json)
         else:
             # 如果repair_json直接返回了字典对象，直接使用
             result = fixed_json
-            
+
         # 提取关键词
         keywords = result.get("keywords", [])
         return keywords
@@ -100,7 +100,7 @@ class MemoryActivator:
 
         # 将缓存的关键词转换为字符串，用于prompt
         cached_keywords_str = ", ".join(self.cached_keywords) if self.cached_keywords else "暂无历史关键词"
-        
+
         prompt = await global_prompt_manager.format_prompt(
             "memory_activator_prompt",
             obs_info_text=obs_info_text,
@@ -116,7 +116,7 @@ class MemoryActivator:
         # 只取response的第一个元素（字符串）
         response_str = response[0]
         keywords = list(get_keywords_from_json(response_str))
-        
+
         # 更新关键词缓存
         if keywords:
             # 限制缓存大小，最多保留10个关键词
@@ -124,12 +124,12 @@ class MemoryActivator:
                 # 转换为列表，移除最早的关键词
                 cached_list = list(self.cached_keywords)
                 self.cached_keywords = set(cached_list[-8:])
-            
+
             # 添加新的关键词到缓存
             self.cached_keywords.update(keywords)
             logger.debug(f"更新关键词缓存: {self.cached_keywords}")
 
-        #调用记忆系统获取相关记忆
+        # 调用记忆系统获取相关记忆
         related_memory = await HippocampusManager.get_instance().get_memory_from_topic(
             valid_keywords=keywords, max_memory_num=3, max_memory_length=2, max_depth=3
         )

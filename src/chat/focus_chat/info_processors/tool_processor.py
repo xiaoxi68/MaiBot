@@ -76,7 +76,7 @@ class ToolProcessor(BaseProcessor):
 
             # 更新WorkingObservation中的结构化信息
             logger.debug(f"工具调用结果: {result}")
-            
+
             for observation in observations:
                 if isinstance(observation, StructureObservation):
                     for structured_info in result:
@@ -92,7 +92,7 @@ class ToolProcessor(BaseProcessor):
                 # print(f"working_info: {working_info}")
                 # print(f"working_info.get('type'): {working_info.get('type')}")
                 # print(f"working_info.get('content'): {working_info.get('content')}")
-                structured_info.set_info(key=working_info.get('type'), value=working_info.get('content'))
+                structured_info.set_info(key=working_info.get("type"), value=working_info.get("content"))
                 # info = structured_info.get_processed_info()
                 # print(f"info: {info}")
 

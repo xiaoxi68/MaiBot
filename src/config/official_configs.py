@@ -44,12 +44,13 @@ class IdentityConfig(ConfigBase):
     identity_detail: list[str] = field(default_factory=lambda: [])
     """身份特征"""
 
+
 @dataclass
 class RelationshipConfig(ConfigBase):
     """关系配置类"""
 
     give_name: bool = False
-    """是否给其他人取名"""  
+    """是否给其他人取名"""
 
 
 @dataclass
@@ -124,6 +125,9 @@ class FocusChatConfig(ConfigBase):
 
     auto_focus_threshold: float = 1.0
     """自动切换到专注聊天的阈值，越低越容易进入专注聊天"""
+
+    exit_focus_threshold: float = 1.0
+    """自动退出专注聊天的阈值，越低越容易退出专注聊天"""
 
     observation_context_size: int = 12
     """可观察到的最长上下文大小，超过这个值的上下文会被压缩"""
@@ -381,17 +385,16 @@ class ModelConfig(ConfigBase):
     """模型配置类"""
 
     model_max_output_length: int = 800  # 最大回复长度
-    
-    
+
     utils: dict[str, Any] = field(default_factory=lambda: {})
     """组件模型配置"""
-    
+
     utils_small: dict[str, Any] = field(default_factory=lambda: {})
     """组件小模型配置"""
 
     normal_chat_1: dict[str, Any] = field(default_factory=lambda: {})
     """normal_chat首要回复模型模型配置"""
-    
+
     normal_chat_2: dict[str, Any] = field(default_factory=lambda: {})
     """normal_chat次要回复模型配置"""
 
@@ -403,22 +406,22 @@ class ModelConfig(ConfigBase):
 
     focus_working_memory: dict[str, Any] = field(default_factory=lambda: {})
     """专注工作记忆模型配置"""
-    
+
     focus_chat_mind: dict[str, Any] = field(default_factory=lambda: {})
     """专注聊天规划模型配置"""
-    
+
     focus_self_recognize: dict[str, Any] = field(default_factory=lambda: {})
     """专注自我识别模型配置"""
-    
+
     focus_tool_use: dict[str, Any] = field(default_factory=lambda: {})
     """专注工具使用模型配置"""
 
     focus_planner: dict[str, Any] = field(default_factory=lambda: {})
     """专注规划模型配置"""
-    
+
     focus_expressor: dict[str, Any] = field(default_factory=lambda: {})
     """专注表达器模型配置"""
-    
+
     embedding: dict[str, Any] = field(default_factory=lambda: {})
     """嵌入模型配置"""
 
@@ -430,7 +433,3 @@ class ModelConfig(ConfigBase):
 
     pfc_reply_checker: dict[str, Any] = field(default_factory=lambda: {})
     """PFC回复检查模型配置"""
-
-
-
-

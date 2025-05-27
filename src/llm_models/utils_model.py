@@ -636,18 +636,18 @@ class LLMRequest:
             "messages": messages,
             **params_copy,
         }
-        
+
         # 添加temp参数（如果不是默认值0.7）
         if self.temp != 0.7:
             payload["temperature"] = self.temp
-            
+
         # 添加enable_thinking参数（如果不是默认值False）
         if not self.enable_thinking:
             payload["enable_thinking"] = False
-        
+
         if self.thinking_budget != 4096:
             payload["thinking_budget"] = self.thinking_budget
-            
+
         if "max_tokens" not in payload and "max_completion_tokens" not in payload:
             payload["max_tokens"] = global_config.model.model_max_output_length
         # 如果 payload 中依然存在 max_tokens 且需要转换，在这里进行再次检查

@@ -3,6 +3,8 @@ from src.common.logger_manager import get_logger
 from src.tools.tool_can_use import get_all_tool_definitions, get_tool_instance
 
 logger = get_logger("tool_use")
+
+
 class ToolUser:
     @staticmethod
     def _define_tools():

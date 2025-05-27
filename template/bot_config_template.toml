@@ -80,7 +80,7 @@ talk_frequency_down_groups = []  #降低回复频率的群号码
 
 [focus_chat] #专注聊天
 auto_focus_threshold = 1 # 自动切换到专注聊天的阈值，越低越容易进入专注聊天
-
+exit_focus_threshold = 1 # 自动退出专注聊天的阈值，越低越容易退出专注聊天
 consecutive_no_reply_threshold = 3 # 连续不回复的阈值，越低越容易结束专注聊天
 
 think_interval = 3 # 思考间隔 单位秒，可以有效减少消耗

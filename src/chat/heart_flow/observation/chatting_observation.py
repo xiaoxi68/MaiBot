@@ -1,5 +1,4 @@
 from datetime import datetime
-from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 import traceback
 from src.chat.utils.chat_message_builder import (
