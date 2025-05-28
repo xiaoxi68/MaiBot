@@ -6,7 +6,9 @@ import re
 from src.common.message_repository import find_messages, count_messages
 from src.person_info.person_info import person_info_manager
 from src.chat.utils.utils import translate_timestamp_to_human_readable
+from rich.traceback import install
 
+install(extra_lines=3)
 
 def get_raw_msg_by_timestamp(
     timestamp_start: float, timestamp_end: float, limit: int = 0, limit_mode: str = "latest"
@@ -225,7 +227,7 @@ async def _build_readable_messages_internal(
             if not reply_person_name:
                 reply_person_name = aaa
             # 在内容前加上回复信息
-            content = re.sub(reply_pattern, f"回复 {reply_person_name}", content, count=1)
+            content = re.sub(reply_pattern, lambda m, name=reply_person_name: f"回复 {name}", content, count=1)
 
         # 检查是否有 @<aaa:bbb> 字段 @<{member_info.get('nickname')}:{member_info.get('user_id')}>
         at_pattern = r"@<([^:<>]+):([^:<>]+)>"

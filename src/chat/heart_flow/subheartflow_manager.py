@@ -91,9 +91,6 @@ class SubHeartflowManager:
                 if subflow.should_stop:
                     logger.warning(f"尝试获取已停止的子心流 {subheartflow_id}，正在重新激活")
                     subflow.should_stop = False  # 重置停止标志
-
-                subflow.last_active_time = time.time()  # 更新活跃时间
-                # logger.debug(f"获取到已存在的子心流: {subheartflow_id}")
                 return subflow
 
             try:

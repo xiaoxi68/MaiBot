@@ -17,14 +17,6 @@ logger = get_logger("prompt")
 
 
 def init_prompt():
-    #     Prompt(
-    #         """
-    # 你有以下信息可供参考：
-    # {structured_info}
-    # 以上的消息是你获取到的消息，或许可以帮助你更好地回复。
-    # """,
-    #         "info_from_tools",
-    #     )
 
     Prompt("你正在qq群里聊天，下面是群里在聊的内容：", "chat_target_group1")
     Prompt("你正在和{sender_name}聊天，这是你们之前聊的内容：", "chat_target_private1")
@@ -84,15 +76,9 @@ class PromptBuilder:
 
     async def build_prompt(
         self,
-        build_mode,
         chat_stream,
-        reason=None,
-        current_mind_info=None,
-        structured_info=None,
         message_txt=None,
         sender_name="某人",
-        in_mind_reply=None,
-        target_message=None,
     ) -> Optional[str]:
         return await self._build_prompt_normal(chat_stream, message_txt or "", sender_name)
 
@@ -188,8 +174,6 @@ class PromptBuilder:
             prompt_ger += "你喜欢用反问句"
         if random.random() < 0.02:
             prompt_ger += "你喜欢用文言文"
-        if random.random() < 0.04:
-            prompt_ger += "你喜欢用流行梗"
 
         moderation_prompt_block = "请不要输出违法违规内容，不要输出色情，暴力，政治相关内容，如有敏感内容，请规避。"
 

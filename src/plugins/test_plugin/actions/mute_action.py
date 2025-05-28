@@ -13,7 +13,7 @@ class MuteAction(PluginAction):
     action_description = "如果某人违反了公序良俗，或者别人戳你太多，或者某人刷屏，一定要禁言某人，如果你很生气，可以禁言某人，可以自选禁言时长，视严重程度而定。"
     action_parameters = {
         "target": "禁言对象，输入你要禁言的对象的名字，必填",
-        "duration": "禁言时长，输入你要禁言的时长，单位为秒，必填，必须为数字",
+        "duration": "禁言时长，输入你要禁言的时长（秒），单位为秒，必填，必须为数字",
         "reason": "禁言理由，可选",
     }
     action_require = [
@@ -21,7 +21,6 @@ class MuteAction(PluginAction):
         "当有人刷屏时使用",
         "当有人要求禁言自己时使用",
         "当有人戳你两次以上时，防止刷屏，禁言他，必须牢记",
-        "当千石可乐或可乐酱要求你禁言时使用",
         "当你想回避某个话题时使用",
     ]
     default = True  # 默认动作，是否手动添加到使用集
@@ -47,22 +46,27 @@ class MuteAction(PluginAction):
 
         if not user_id:
             error_msg = f"未找到用户 {target} 的ID"
+            await self.send_message_by_expressor(f"压根没 {target} 这个人")
             logger.error(f"{self.log_prefix} {error_msg}")
             return False, error_msg
 
         # 发送表达情绪的消息
-        await self.send_message_by_expressor(f"我要禁言{target}，时长{duration}秒，理由：{reason}")
+        await self.send_message_by_expressor(f"禁言{target} {duration}秒，因为{reason}")
 
         try:
             # 确保duration是字符串类型
-            duration_str = str(duration)
+            if int(duration) < 60:
+                duration = 60
+            if int(duration) > 3600*24*30:
+                duration = 3600*24*30
+            duration_str = str(int(duration))
 
             # 发送群聊禁言命令，按照新格式
             await self.send_message(
                 type="command", data={"name": "GROUP_BAN", "args": {"qq_id": str(user_id), "duration": duration_str}}
             )
 
-            logger.info(f"{self.log_prefix} 成功禁言用户 {target}({user_id})，时长 {duration} 秒")
+            logger.info(f"{self.log_prefix} 成功发送禁言命令，用户 {target}({user_id})，时长 {duration} 秒")
             return True, f"成功禁言 {target}，时长 {duration} 秒"
 
         except Exception as e:

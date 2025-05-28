@@ -13,10 +13,11 @@ from src.chat.heart_flow.mai_state_manager import MaiStateInfo
 from src.chat.heart_flow.chat_state_info import ChatState, ChatStateInfo
 from .utils_chat import get_chat_type_and_target_info
 from src.config.config import global_config
-
+from rich.traceback import install
 
 logger = get_logger("sub_heartflow")
 
+install(extra_lines=3)
 
 class SubHeartflow:
     def __init__(
@@ -49,7 +50,7 @@ class SubHeartflow:
         self.chat_target_info: Optional[dict] = None
         # --- End Initialization ---
 
-        # 兴趣检测器
+        # 兴趣消息集合
         self.interest_dict: Dict[str, tuple[MessageRecv, float, bool]] = {}
 
         # 活动状态管理

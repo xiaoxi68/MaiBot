@@ -8,6 +8,7 @@ from src.chat.utils.utils import process_llm_response
 from src.chat.utils.timer_calculator import Timer
 from src.common.logger_manager import get_logger
 from src.chat.utils.info_catcher import info_catcher_manager
+from src.person_info.person_info import person_info_manager
 
 
 logger = get_logger("llm")
@@ -63,22 +64,25 @@ class NormalChatGenerator:
     async def _generate_response_with_model(self, message: MessageThinking, model: LLMRequest, thinking_id: str):
         info_catcher = info_catcher_manager.get_info_catcher(thinking_id)
 
+
+        person_id = person_info_manager.get_person_id(message.chat_stream.user_info.platform, message.chat_stream.user_info.user_id)
+        
+        person_name = await person_info_manager.get_value(person_id, "person_name")
+        
         if message.chat_stream.user_info.user_cardname and message.chat_stream.user_info.user_nickname:
             sender_name = (
-                f"[({message.chat_stream.user_info.user_id}){message.chat_stream.user_info.user_nickname}]"
-                f"{message.chat_stream.user_info.user_cardname}"
+                f"[{message.chat_stream.user_info.user_nickname}]"
+                f"[群昵称：{message.chat_stream.user_info.user_cardname}]（你叫ta{person_name}）"
             )
         elif message.chat_stream.user_info.user_nickname:
-            sender_name = f"({message.chat_stream.user_info.user_id}){message.chat_stream.user_info.user_nickname}"
+            sender_name = f"[{message.chat_stream.user_info.user_nickname}]（你叫ta{person_name}）"
         else:
             sender_name = f"用户({message.chat_stream.user_info.user_id})"
+            
+            
         # 构建prompt
         with Timer() as t_build_prompt:
             prompt = await prompt_builder.build_prompt(
-                build_mode="normal",
-                reason="",
-                current_mind_info="",
-                structured_info="",
                 message_txt=message.processed_plain_text,
                 sender_name=sender_name,
                 chat_stream=message.chat_stream,

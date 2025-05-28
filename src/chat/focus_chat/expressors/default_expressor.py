@@ -408,6 +408,10 @@ class DefaultExpressor:
             # 为每个消息片段生成唯一ID
             type = msg_text[0]
             data = msg_text[1]
+            
+            if global_config.experimental.debug_show_chat_mode and type == "text":
+                data += "ᶠ"
+            
 
             part_message_id = f"{thinking_id}_{i}"
             message_segment = Seg(type=type, data=data)
