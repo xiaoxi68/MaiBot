@@ -194,7 +194,15 @@ async def _build_readable_messages_internal(
         user_cardname = user_info.get("user_cardname")
 
         timestamp = msg.get("time")
-        content = msg.get("processed_plain_text", "")  # 默认空字符串
+        if msg.get("display_message"):
+            content = msg.get("display_message")
+        else:
+            content = msg.get("processed_plain_text", "")  # 默认空字符串
+            
+        if "ᶠ" in content:
+            content = content.replace("ᶠ", "")
+        if "ⁿ" in content:
+            content = content.replace("ⁿ", "")
 
         # 检查必要信息是否存在
         if not all([platform, user_id, timestamp is not None]):
@@ -453,7 +461,15 @@ async def build_anonymous_messages(messages: List[Dict[str, Any]]) -> str:
         platform = user_info.get("platform")
         user_id = user_info.get("user_id")
         timestamp = msg.get("time")
-        content = msg.get("processed_plain_text", "")
+        if msg.get("display_message"):
+            content = msg.get("display_message")
+        else:
+            content = msg.get("processed_plain_text", "")
+            
+        if "ᶠ" in content:
+            content = content.replace("ᶠ", "")
+        if "ⁿ" in content:
+            content = content.replace("ⁿ", "")
 
         if not all([platform, user_id, timestamp is not None]):
             continue

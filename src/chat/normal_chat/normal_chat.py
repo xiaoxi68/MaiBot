@@ -54,6 +54,8 @@ class NormalChat:
         # 添加回调函数，用于在满足条件时通知切换到focus_chat模式
         self.on_switch_to_focus_callback = on_switch_to_focus_callback
 
+        self._disabled = False  # 增加停用标志
+
 
     async def initialize(self):
         """异步初始化，获取聊天类型和目标信息。"""
@@ -222,6 +224,10 @@ class NormalChat:
     async def normal_response(
         self, message: MessageRecv, is_mentioned: bool, interested_rate: float, rewind_response: bool = False
     ) -> None:
+        # 新增：如果已停用，直接返回
+        if self._disabled:
+            logger.info(f"[{self.stream_name}] 已停用，忽略 normal_response。")
+            return
         # 检查收到的消息是否属于当前实例处理的 chat stream
         if message.chat_stream.stream_id != self.stream_id:
             logger.error(
@@ -306,6 +312,10 @@ class NormalChat:
                 return  # 不执行后续步骤
 
             logger.info(f"[{self.stream_name}] 回复内容: {response_set}")
+            
+            if self._disabled:
+                logger.info(f"[{self.stream_name}] 已停用，忽略 normal_response。")
+                return
 
             # 发送回复 (不再需要传入 chat)
             with Timer("消息发送", timing_results):
@@ -374,6 +384,8 @@ class NormalChat:
         if not self._initialized:
             await self.initialize()  # Ensure initialized before starting tasks
 
+        self._disabled = False  # 启动时重置停用标志
+
         if self._chat_task is None or self._chat_task.done():
             logger.info(f"[{self.stream_name}] 开始处理兴趣消息...")
             polling_task = asyncio.create_task(self._reply_interested_message())
@@ -403,6 +415,7 @@ class NormalChat:
     # 改为实例方法, 移除 stream_id 参数
     async def stop_chat(self):
         """停止当前实例的兴趣监控任务。"""
+        self._disabled = True  # 停止时设置停用标志
         if self._chat_task and not self._chat_task.done():
             task = self._chat_task
             logger.debug(f"[{self.stream_name}] 尝试取消normal聊天任务。")

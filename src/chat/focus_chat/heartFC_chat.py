@@ -53,6 +53,9 @@ CONSECUTIVE_NO_REPLY_THRESHOLD = 3  # 连续不回复的阈值
 
 logger = get_logger("hfc")  # Logger Name Changed
 
+# 设定处理器超时时间（秒）
+PROCESSOR_TIMEOUT = 10
+
 
 async def _handle_cycle_delay(action_taken_this_cycle: bool, cycle_start_time: float, log_prefix: str):
     """处理循环延迟"""
@@ -376,9 +379,13 @@ class HeartFChatting:
 
         for processor in self.processors:
             processor_name = processor.__class__.log_prefix
-            task = asyncio.create_task(
-                processor.process_info(observations=observations, running_memorys=running_memorys)
-            )
+            # 用lambda包裹，便于传参
+            async def run_with_timeout(proc=processor):
+                return await asyncio.wait_for(
+                    proc.process_info(observations=observations, running_memorys=running_memorys),
+                    timeout=PROCESSOR_TIMEOUT
+                )
+            task = asyncio.create_task(run_with_timeout())
             processor_tasks.append(task)
             task_to_name_map[task] = processor_name
             logger.debug(f"{self.log_prefix} 启动处理器任务: {processor_name}")
@@ -404,6 +411,8 @@ class HeartFChatting:
                         all_plan_info.extend(result_list)
                     else:
                         logger.warning(f"{self.log_prefix} 处理器 {processor_name} 返回了 None")
+                except asyncio.TimeoutError:
+                    logger.error(f"{self.log_prefix} 处理器 {processor_name} 超时（>{PROCESSOR_TIMEOUT}s），已跳过")
                 except Exception as e:
                     logger.error(
                         f"{self.log_prefix} 处理器 {processor_name} 执行失败，耗时 (自并行开始): {duration_since_parallel_start:.2f}秒. 错误: {e}",

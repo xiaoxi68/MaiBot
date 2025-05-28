@@ -373,7 +373,7 @@ class DefaultExpressor:
         # --- 发送器 (Sender) --- #
 
     async def send_response_messages(
-        self, anchor_message: Optional[MessageRecv], response_set: List[Tuple[str, str]], thinking_id: str = ""
+        self, anchor_message: Optional[MessageRecv], response_set: List[Tuple[str, str]], thinking_id: str = "", display_message: str = ""
     ) -> Optional[MessageSending]:
         """发送回复消息 (尝试锚定到 anchor_message)，使用 HeartFCSender"""
         chat = self.chat_stream
@@ -426,6 +426,7 @@ class DefaultExpressor:
                 anchor_message=anchor_message,
                 message_id=part_message_id,
                 message_segment=message_segment,
+                display_message=display_message,
                 reply_to=reply_to,
                 is_emoji=is_emoji,
                 thinking_id=thinking_id,
@@ -489,6 +490,7 @@ class DefaultExpressor:
         is_emoji: bool,
         thinking_id: str,
         thinking_start_time: float,
+        display_message: str,
     ) -> MessageSending:
         """构建单个发送消息"""
 
@@ -508,6 +510,7 @@ class DefaultExpressor:
             is_head=reply_to,
             is_emoji=is_emoji,
             thinking_start_time=thinking_start_time,  # 传递原始思考开始时间
+            display_message=display_message,
         )
 
         return bot_message

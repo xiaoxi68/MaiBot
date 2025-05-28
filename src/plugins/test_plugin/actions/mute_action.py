@@ -63,7 +63,8 @@ class MuteAction(PluginAction):
 
             # 发送群聊禁言命令，按照新格式
             await self.send_message(
-                type="command", data={"name": "GROUP_BAN", "args": {"qq_id": str(user_id), "duration": duration_str}}
+                type = "command", data = {"name": "GROUP_BAN", "args": {"qq_id": str(user_id), "duration": duration_str}},
+                display_message = f"我 禁言了 {target} {duration_str}秒"
             )
 
             logger.info(f"{self.log_prefix} 成功发送禁言命令，用户 {target}({user_id})，时长 {duration} 秒")

@@ -111,7 +111,7 @@ class PluginAction(BaseAction):
         return platform, user_id
 
     # 提供简化的API方法
-    async def send_message(self, type: str, data: str, target: Optional[str] = "") -> bool:
+    async def send_message(self, type: str, data: str, target: Optional[str] = "", display_message: str = "") -> bool:
         """发送消息的简化方法
 
         Args:
@@ -158,6 +158,7 @@ class PluginAction(BaseAction):
             success = await expressor.send_response_messages(
                 anchor_message=anchor_message,
                 response_set=response_set,
+                display_message=display_message,
             )
 
             return success

@@ -186,11 +186,12 @@ pfc_chatting = false # 是否启用PFC聊天，该功能仅作用于私聊，与
 
 #下面的模型若使用硅基流动则不需要更改，使用ds官方则改成.env自定义的宏，使用自定义模型则选择定位相似的模型自己填写
 
-# 额外字段
-# 下面的模型有以下额外字段可以添加：
-
 # stream = <true|false> : 用于指定模型是否是使用流式输出
-# 如果不指定，则该项是 False
+# pri_in = <float> : 用于指定模型输入价格
+# pri_out = <float> : 用于指定模型输出价格
+# temp = <float> : 用于指定模型温度
+# enable_thinking = <true|false> : 用于指定模型是否启用思考
+# thinking_budget = <int> : 用于指定模型思考最长长度
 
 [model]
 model_max_output_length = 800 # 模型单次返回的最大token数

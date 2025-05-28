@@ -126,6 +126,10 @@ class ActionPlanner:
                         reasoning = f"之前选择的动作{action}已被移除，原因: {reason}"
 
             # 继续处理其他信息
+            self_info = ""
+            current_mind = ""
+            cycle_info = ""
+            structured_info = ""
             for info in all_plan_info:
                 if isinstance(info, ObsInfo):
                     observed_messages = info.get_talking_message()
