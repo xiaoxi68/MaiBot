@@ -91,7 +91,7 @@ class NormalChatConfig(ConfigBase):
     max_context_size: int = 15
     """上下文长度"""
 
-    message_buffer: bool = True
+    message_buffer: bool = False
     """消息缓冲器"""
 
     emoji_chance: float = 0.2
@@ -102,6 +102,9 @@ class NormalChatConfig(ConfigBase):
 
     willing_mode: str = "classical"
     """意愿模式"""
+
+    talk_frequency: float = 1
+    """回复频率阈值"""
 
     response_willing_amplifier: float = 1.0
     """回复意愿放大系数"""
