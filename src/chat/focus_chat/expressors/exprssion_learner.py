@@ -211,7 +211,8 @@ class ExpressionLearner:
         chat_id: str = random_msg[0]["chat_id"]
         # random_msg_str: str = await build_readable_messages(random_msg, timestamp_mode="normal")
         random_msg_str: str = await build_anonymous_messages(random_msg)
-
+        # print(f"random_msg_str:{random_msg_str}")
+        
         prompt: str = await global_prompt_manager.format_prompt(
             prompt,
             chat_str=random_msg_str,

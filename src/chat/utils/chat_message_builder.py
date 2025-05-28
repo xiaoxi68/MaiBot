@@ -449,7 +449,11 @@ async def build_anonymous_messages(messages: List[Dict[str, Any]]) -> str:
     output_lines = []
 
     def get_anon_name(platform, user_id):
+        # print(f"get_anon_name: platform:{platform}, user_id:{user_id}")
+        # print(f"global_config.bot.qq_account:{global_config.bot.qq_account}")
+        
         if user_id == global_config.bot.qq_account:
+            # print("SELF11111111111111")
             return "SELF"
         try:
             person_id = person_info_manager.get_person_id(platform, user_id)
@@ -467,7 +471,7 @@ async def build_anonymous_messages(messages: List[Dict[str, Any]]) -> str:
         try:
             # user_info = msg.get("user_info", {})
             platform = msg.get("chat_info_platform")
-            user_id = msg.get("chat_info_user_id")
+            user_id = msg.get("user_id")
             timestamp = msg.get("time")
             # print(f"msg:{msg}")
             # print(f"platform:{platform}")
@@ -497,6 +501,7 @@ async def build_anonymous_messages(messages: List[Dict[str, Any]]) -> str:
                 bbb = match.group(2)
                 try:
                     anon_reply = get_anon_name(platform, bbb)
+                    # print(f"anon_reply:{anon_reply}")
                 except Exception:
                     anon_reply = "?"
                 content = re.sub(reply_pattern, f"回复 {anon_reply}", content, count=1)
@@ -513,6 +518,7 @@ async def build_anonymous_messages(messages: List[Dict[str, Any]]) -> str:
                     bbb = m.group(2)
                     try:
                         anon_at = get_anon_name(platform, bbb)
+                        # print(f"anon_at:{anon_at}")
                     except Exception:
                         anon_at = "?"
                     new_content += f"@{anon_at}"
