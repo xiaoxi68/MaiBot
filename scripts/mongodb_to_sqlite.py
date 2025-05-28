@@ -258,7 +258,7 @@ class MongoToSQLiteMigrator:
                     "heartflow_data": "heartflow_data_json",
                     "reasoning_data": "reasoning_data_json",
                 },
-                unique_fields=["chat_id", "created_at"]
+                unique_fields=["chat_id", "trigger_text"]
             ),
             
             # 图节点迁移配置
@@ -350,9 +350,6 @@ class MongoToSQLiteMigrator:
         try:
             if target_field.name == "record_time" and field_type == "DateTimeField":
                 return datetime.now()
-        
-            if target_field.name == "record_time" and field_type == "DateTimeField":
-                return self._convert_record_time(value)
 
             if field_type in ["CharField", "TextField"]:
                 if isinstance(value, (list, dict)):
