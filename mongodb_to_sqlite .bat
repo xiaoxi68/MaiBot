@@ -63,7 +63,7 @@ REM --- 后续脚本执行 ---
 REM 运行预处理脚本
 python "%~dp0scripts\mongodb_to_sqlite.py"
 if %ERRORLEVEL% neq 0 (
-    echo Error: raw_data_preprocessor.py execution failed.
+    echo Error: mongodb_to_sqlite.py execution failed.
     pause
     exit /b 1
 )
