@@ -230,17 +230,32 @@ NORMAL_CHAT_RESPONSE_STYLE_CONFIG = {
         "console_format": (
             "<white>{time:YYYY-MM-DD HH:mm:ss}</white> | "
             "<level>{level: <8}</level> | "
-            "<light-yellow>普通聊天回复</light-yellow> | "
+            "<light-yellow>普通水群回复</light-yellow> | "
             "<level>{message}</level>"
         ),
-        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 普通聊天回复 | {message}",
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 普通水群回复 | {message}",
     },
     "simple": {
-        "console_format": "<level>{time:HH:mm:ss}</level> | <light-green>普通聊天回复</light-green> | {message}",
-        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 普通聊天回复 | {message}",
+        "console_format": "<level>{time:HH:mm:ss}</level> | <light-green>普通水群回复</light-green> | {message}",
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 普通水群回复 | {message}",
     },
 }
 
+EXPRESS_STYLE_CONFIG = {
+    "advanced": {
+        "console_format": (
+            "<white>{time:YYYY-MM-DD HH:mm:ss}</white> | "
+            "<level>{level: <8}</level> | "
+            "<light-yellow>麦麦表达</light-yellow> | "
+            "<level>{message}</level>"
+        ),
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 麦麦表达 | {message}",
+    },
+    "simple": {
+        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #E595FF>麦麦表达</fg #E595FF> | {message}",
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 麦麦表达 | {message}",
+    },
+}
 
 # Topic日志样式配置
 TOPIC_STYLE_CONFIG = {
@@ -975,7 +990,7 @@ INTEREST_CHAT_STYLE_CONFIG = (
 )
 NORMAL_CHAT_STYLE_CONFIG = NORMAL_CHAT_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else NORMAL_CHAT_STYLE_CONFIG["advanced"]
 FOCUS_CHAT_STYLE_CONFIG = FOCUS_CHAT_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else FOCUS_CHAT_STYLE_CONFIG["advanced"]
-
+EXPRESS_STYLE_CONFIG = EXPRESS_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else EXPRESS_STYLE_CONFIG["advanced"]
 
 def is_registered_module(record: dict) -> bool:
     """检查是否为已注册的模块"""

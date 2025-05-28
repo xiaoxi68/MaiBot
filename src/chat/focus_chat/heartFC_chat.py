@@ -54,7 +54,7 @@ CONSECUTIVE_NO_REPLY_THRESHOLD = 3  # 连续不回复的阈值
 logger = get_logger("hfc")  # Logger Name Changed
 
 # 设定处理器超时时间（秒）
-PROCESSOR_TIMEOUT = 20
+PROCESSOR_TIMEOUT = 40
 
 
 async def _handle_cycle_delay(action_taken_this_cycle: bool, cycle_start_time: float, log_prefix: str):
@@ -407,14 +407,14 @@ class HeartFChatting:
                     # 使用 await task 来获取结果或触发异常
                     result_list = await task
                     logger.info(
-                        f"{self.log_prefix} 处理器 {processor_name} 已完成，信息已处理: {duration_since_parallel_start:.2f}秒"
+                        f"{self.log_prefix} 处理器 {processor_name} 已完成!"
                     )
                     if result_list is not None:
                         all_plan_info.extend(result_list)
                     else:
                         logger.warning(f"{self.log_prefix} 处理器 {processor_name} 返回了 None")
                 except asyncio.TimeoutError:
-                    logger.error(f"{self.log_prefix} 处理器 {processor_name} 超时（>{PROCESSOR_TIMEOUT}s），已跳过")
+                    logger.info(f"{self.log_prefix} 处理器 {processor_name} 超时（>{PROCESSOR_TIMEOUT}s），已跳过")
                 except Exception as e:
                     logger.error(
                         f"{self.log_prefix} 处理器 {processor_name} 执行失败，耗时 (自并行开始): {duration_since_parallel_start:.2f}秒. 错误: {e}",
@@ -493,7 +493,7 @@ class HeartFChatting:
                 else:
                     action_str = action_type
 
-                logger.info(f"{self.log_prefix} 麦麦决定'{action_str}', 原因'{reasoning}'")
+                logger.debug(f"{self.log_prefix} 麦麦想要：'{action_str}', 原因'{reasoning}'")
 
                 success, reply_text, command = await self._handle_action(
                     action_type, reasoning, action_data, cycle_timers, thinking_id
@@ -576,8 +576,8 @@ class HeartFChatting:
             else:
                 success, reply_text = result
                 command = ""
-            logger.info(
-                f"{self.log_prefix} 麦麦决定'{action}', 原因'{reasoning}'，返回结果'{success}', '{reply_text}', '{command}'"
+            logger.debug(
+                f"{self.log_prefix} 麦麦执行了'{action}', 原因'{reasoning}'，返回结果'{success}', '{reply_text}', '{command}'"
             )
             return success, reply_text, command
 

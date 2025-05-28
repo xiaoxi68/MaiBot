@@ -100,7 +100,8 @@ class ReplyAction(BaseAction):
             "emojis": "微笑"  # 表情关键词列表（可选）
         }
         """
-
+        logger.info(f"{self.log_prefix} 决定回复: {self.reasoning}")
+        
         # 从聊天观察获取锚定消息
         chatting_observation: ChattingObservation = next(
             obs for obs in self.observations if isinstance(obs, ChattingObservation)

@@ -47,6 +47,7 @@ from src.common.logger import (
     INTEREST_CHAT_STYLE_CONFIG,
     API_SERVER_STYLE_CONFIG,
     NORMAL_CHAT_RESPONSE_STYLE_CONFIG,
+    EXPRESS_STYLE_CONFIG,
 )
 
 # 可根据实际需要补充更多模块配置
@@ -98,6 +99,7 @@ MODULE_LOGGER_CONFIGS = {
     "api": API_SERVER_STYLE_CONFIG,  # API服务器
     "normal_chat": NORMAL_CHAT_STYLE_CONFIG,  # 一般水群
     "focus_chat": FOCUS_CHAT_STYLE_CONFIG,  # 专注水群
+    "expressor": EXPRESS_STYLE_CONFIG,  # 麦麦表达
     # ...如有更多模块，继续添加...
 }
 

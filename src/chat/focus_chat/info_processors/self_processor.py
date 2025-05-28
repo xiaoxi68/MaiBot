@@ -186,7 +186,7 @@ class SelfProcessor(BaseProcessor):
             content = ""
         # 记录初步思考结果
         logger.debug(f"{self.log_prefix} 自我识别prompt: \n{prompt}\n")
-        logger.info(f"{self.log_prefix} 自我识别结果: {content}")
+        logger.info(f"{self.log_prefix} 自我认知: {content}")
 
         return content
 
