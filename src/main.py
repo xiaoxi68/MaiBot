@@ -45,7 +45,7 @@ class MainSystem:
         # 其他初始化任务
         await asyncio.gather(self._init_components())
 
-        logger.success("系统初始化完成")
+        logger.debug("系统初始化完成")
 
     async def _init_components(self):
         """初始化其他组件"""
@@ -73,7 +73,7 @@ class MainSystem:
         await async_task_manager.add_task(MoodPrintTask())
 
         # 检查并清除person_info冗余字段，启动个人习惯推断
-        await person_info_manager.del_all_undefined_field()
+        # await person_info_manager.del_all_undefined_field()
         asyncio.create_task(person_info_manager.personal_habit_deduction())
 
         # 启动愿望管理器
