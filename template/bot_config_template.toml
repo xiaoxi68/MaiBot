@@ -15,7 +15,7 @@ version = "2.6.0"
 [bot]
 qq_account = 1145141919810
 nickname = "麦麦"
-alias_names = ["麦叠", "牢麦"] #仅在 专注聊天 有效
+alias_names = ["麦叠", "牢麦"]
 
 [personality]
 personality_core = "是一个积极向上的女大学生" # 建议50字以内
