@@ -1,4 +1,3 @@
-import time
 import traceback
 from ..memory_system.Hippocampus import HippocampusManager
 from ...config.config import global_config
@@ -73,12 +72,12 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool]:
         text_len = len(message.processed_plain_text)
         # 根据文本长度调整兴趣度，长度越大兴趣度越高，但增长率递减，最低0.01，最高0.05
         # 采用对数函数实现递减增长
-        
+
         base_interest = 0.01 + (0.05 - 0.01) * (math.log10(text_len + 1) / math.log10(1000 + 1))
         base_interest = min(max(base_interest, 0.01), 0.05)
-        
+
         interested_rate += base_interest
-        
+
         logger.trace(f"记忆激活率: {interested_rate:.2f}")
 
     if is_mentioned:
@@ -220,11 +219,7 @@ class HeartFCMessageReceiver:
             # 7. 日志记录
             mes_name = chat.group_info.group_name if chat.group_info else "私聊"
             # current_time = time.strftime("%H:%M:%S", time.localtime(message.message_info.time))
-            logger.info(
-                f"[{mes_name}]"
-                f"{userinfo.user_nickname}:"
-                f"{message.processed_plain_text}"
-            )
+            logger.info(f"[{mes_name}]{userinfo.user_nickname}:{message.processed_plain_text}")
 
             # 8. 关系处理
             if global_config.relationship.give_name:

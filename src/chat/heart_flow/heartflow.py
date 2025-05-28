@@ -15,7 +15,6 @@ class Heartflow:
     """
 
     def __init__(self):
-
         # 子心流管理 (在初始化时传入 current_state)
         self.subheartflow_manager: SubHeartflowManager = SubHeartflowManager()
 

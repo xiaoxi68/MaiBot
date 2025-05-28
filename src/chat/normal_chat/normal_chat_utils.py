@@ -27,7 +27,4 @@ def get_recent_message_stats(minutes: int = 30, chat_id: str = None) -> dict:
     bot_filter["user_id"] = bot_id
     bot_reply_count = count_messages(bot_filter)
 
-    return {
-        "bot_reply_count": bot_reply_count,
-        "total_message_count": total_message_count
-    }
+    return {"bot_reply_count": bot_reply_count, "total_message_count": total_message_count}

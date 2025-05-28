@@ -59,7 +59,7 @@ class ChatConfig(ConfigBase):
 
     chat_mode: str = "normal"
     """聊天模式"""
-    
+
     auto_focus_threshold: float = 1.0
     """自动切换到专注聊天的阈值，越低越容易进入专注聊天"""
 
@@ -131,8 +131,6 @@ class NormalChatConfig(ConfigBase):
 @dataclass
 class FocusChatConfig(ConfigBase):
     """专注聊天配置类"""
-
-
 
     observation_context_size: int = 12
     """可观察到的最长上下文大小，超过这个值的上下文会被压缩"""
@@ -346,7 +344,7 @@ class TelemetryConfig(ConfigBase):
 class ExperimentalConfig(ConfigBase):
     """实验功能配置类"""
 
-    debug_show_chat_mode: bool = True
+    debug_show_chat_mode: bool = False
     """是否在回复后显示当前聊天模式"""
 
     enable_friend_chat: bool = False

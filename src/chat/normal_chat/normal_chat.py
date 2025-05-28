@@ -37,7 +37,7 @@ class NormalChat:
 
         self.is_group_chat: bool = False
         self.chat_target_info: Optional[dict] = None
-        
+
         self.willing_amplifier = 1
 
         # Other sync initializations
@@ -55,7 +55,6 @@ class NormalChat:
         self.on_switch_to_focus_callback = on_switch_to_focus_callback
 
         self._disabled = False  # 增加停用标志
-
 
     async def initialize(self):
         """异步初始化，获取聊天类型和目标信息。"""
@@ -210,7 +209,7 @@ class NormalChat:
                     try:
                         # 处理消息
                         self.adjust_reply_frequency()
-                        
+
                         await self.normal_response(
                             message=message,
                             is_mentioned=is_mentioned,
@@ -233,7 +232,7 @@ class NormalChat:
 
         timing_results = {}
         reply_probability = 1.0 if is_mentioned else 0.0  # 如果被提及，基础概率为1，否则需要意愿判断
-        
+
         # 意愿管理器：设置当前message信息
         willing_manager.setup(message, self.chat_stream, is_mentioned, interested_rate)
 
@@ -306,7 +305,7 @@ class NormalChat:
                 return  # 不执行后续步骤
 
             logger.info(f"[{self.stream_name}] 回复内容: {response_set}")
-            
+
             if self._disabled:
                 logger.info(f"[{self.stream_name}] 已停用，忽略 normal_response。")
                 return
@@ -340,12 +339,10 @@ class NormalChat:
                 # 检查是否需要切换到focus模式
                 await self._check_switch_to_focus()
 
-
             info_catcher.done_catch()
 
             with Timer("处理表情包", timing_results):
                 await self._handle_emoji(message, response_set[0])
-
 
             with Timer("关系更新", timing_results):
                 await self._update_relationship(message, response_set)
@@ -479,8 +476,7 @@ class NormalChat:
                 await self.on_switch_to_focus_callback()
             except Exception as e:
                 logger.error(f"[{self.stream_name}] 触发切换到focus模式时出错: {e}\n{traceback.format_exc()}")
-                
-    
+
     def adjust_reply_frequency(self, duration: int = 10):
         """
         调整回复频率
@@ -492,16 +488,15 @@ class NormalChat:
         print(f"[{self.stream_name}] 最近{duration}分钟内回复数量: {bot_reply_count}")
         total_message_count = stats["total_message_count"]
         print(f"[{self.stream_name}] 最近{duration}分钟内消息总数: {total_message_count}")
-        
+
         # 计算回复频率
         _reply_frequency = bot_reply_count / total_message_count
-        
+
         # 如果回复频率低于0.5，增加回复概率
-        if bot_reply_count/duration < global_config.normal_chat.talk_frequency:
+        if bot_reply_count / duration < global_config.normal_chat.talk_frequency:
             # differ = global_config.normal_chat.talk_frequency - reply_frequency
             logger.info(f"[{self.stream_name}] 回复频率低于{global_config.normal_chat.talk_frequency}，增加回复概率")
             self.willing_amplifier += 0.1
         else:
             logger.info(f"[{self.stream_name}] 回复频率高于{global_config.normal_chat.talk_frequency}，减少回复概率")
             self.willing_amplifier -= 0.1
-

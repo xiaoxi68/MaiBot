@@ -335,7 +335,7 @@ key_file = "" # SSL密钥文件路径，仅在use_wss=true时有效
 enable = true
 
 [experimental] #实验性功能
-debug_show_chat_mode = true # 是否在回复后显示当前聊天模式
+debug_show_chat_mode = false # 是否在回复后显示当前聊天模式
 enable_friend_chat = false # 是否启用好友聊天
 pfc_chatting = false # 暂时无效
 

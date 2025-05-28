@@ -8,8 +8,6 @@ from src.config.config import global_config
 logger = get_logger("background_tasks")
 
 
-
-
 # 新增私聊激活检查间隔
 PRIVATE_CHAT_ACTIVATION_CHECK_INTERVAL_SECONDS = 5  # 与兴趣评估类似，设为5秒
 
@@ -136,9 +134,7 @@ class BackgroundTaskManager:
         # 第三步：清空任务列表
         self._tasks = []  # 重置任务列表
 
-            # 状态转换处理
-
-
+        # 状态转换处理
 
     async def _perform_cleanup_work(self):
         """执行子心流清理任务
@@ -165,12 +161,10 @@ class BackgroundTaskManager:
         # 记录最终清理结果
         logger.info(f"[清理任务] 清理完成, 共停止 {stopped_count}/{len(flows_to_stop)} 个子心流")
 
-
     async def _run_cleanup_cycle(self):
         await _run_periodic_loop(
             task_name="Subflow Cleanup", interval=CLEANUP_INTERVAL_SECONDS, task_func=self._perform_cleanup_work
         )
-
 
     # 新增私聊激活任务运行器
     async def _run_private_chat_activation_cycle(self, interval: int):
