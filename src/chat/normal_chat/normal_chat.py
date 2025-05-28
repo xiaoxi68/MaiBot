@@ -337,7 +337,8 @@ class NormalChat:
                     self.recent_replies = self.recent_replies[-self.max_replies_history :]
 
                 # 检查是否需要切换到focus模式
-                await self._check_switch_to_focus()
+                if global_config.chat.chat_mode == "auto":
+                    await self._check_switch_to_focus()
 
             info_catcher.done_catch()
 

@@ -38,6 +38,12 @@ identity_detail = [
 # 可以描述外貌，性别，身高，职业，属性等等描述
 # 条数任意，不能为0
 
+[expression]
+# 表达方式
+expression_style = "描述麦麦说话的表达风格，表达习惯"
+enable_expression_learning = true # 是否启用表达学习，麦麦会学习人类说话风格
+learning_interval = 600 # 学习间隔 单位秒
+
 [relationship]
 give_name = true # 麦麦是否给其他人取名，关闭后无法使用禁言功能
 
@@ -96,13 +102,6 @@ compress_length_limit = 5 #最多压缩份数，超过该数值的压缩上下�
 self_identify_processor = true # 是否启用自我识别处理器
 tool_use_processor = false # 是否启用工具使用处理器
 working_memory_processor = false # 是否启用工作记忆处理器
-
-[expression]
-# 表达方式
-expression_style = "描述麦麦说话的表达风格，表达习惯"
-enable_expression_learning = true # 是否启用表达学习
-learning_interval = 600 # 学习间隔 单位秒
-
 
 [emoji]
 max_reg_num = 40 # 表情包最大注册数量
