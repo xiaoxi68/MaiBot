@@ -472,8 +472,8 @@ class NormalChat:
             return  # 如果没有设置回调函数，直接返回
         current_time = time.time()
 
-        time_threshold = 120 / global_config.focus_chat.auto_focus_threshold
-        reply_threshold = 6 * global_config.focus_chat.auto_focus_threshold
+        time_threshold = 120 / global_config.chat.auto_focus_threshold
+        reply_threshold = 6 * global_config.chat.auto_focus_threshold
 
         one_minute_ago = current_time - time_threshold
 

@@ -137,9 +137,9 @@ class ActionProcessor(BaseProcessor):
         # 检查no_reply比例
         print(f"no_reply_count: {no_reply_count}, len(recent_cycles): {len(recent_cycles)}")
         # print(1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111)
-        if len(recent_cycles) >= (5 * global_config.focus_chat.exit_focus_threshold) and (
+        if len(recent_cycles) >= (5 * global_config.chat.exit_focus_threshold) and (
             no_reply_count / len(recent_cycles)
-        ) >= (0.8 * global_config.focus_chat.exit_focus_threshold):
+        ) >= (0.8 * global_config.chat.exit_focus_threshold):
             if global_config.chat.chat_mode == "auto":
                 result["add"].append("exit_focus_chat")
                 result["remove"].append("no_reply")

@@ -44,6 +44,8 @@ chat_mode = "normal" # 聊天模式 —— 普通模式：normal，专注模式�
 # chat_mode = "focus"
 # chat_mode = "auto"
 
+auto_focus_threshold = 1 # 自动切换到专注聊天的阈值，越低越容易进入专注聊天
+exit_focus_threshold = 1 # 自动退出专注聊天的阈值，越低越容易退出专注聊天
 # 普通模式下，麦麦会针对感兴趣的消息进行回复，token消耗量较低
 # 专注模式下，麦麦会进行主动的观察和回复，并给出回复，token消耗量较高
 # 自动模式下，麦麦会根据消息内容自动切换到专注模式或普通模式
@@ -79,9 +81,6 @@ at_bot_inevitable_reply = false # @bot 必然回复
 talk_frequency_down_groups = []  #降低回复频率的群号码
 
 [focus_chat] #专注聊天
-auto_focus_threshold = 1 # 自动切换到专注聊天的阈值，越低越容易进入专注聊天
-exit_focus_threshold = 1 # 自动退出专注聊天的阈值，越低越容易退出专注聊天
-
 think_interval = 3 # 思考间隔 单位秒，可以有效减少消耗
 
 observation_context_size = 15 # 观察到的最长上下文大小,建议15，太短太长都会导致脑袋尖尖

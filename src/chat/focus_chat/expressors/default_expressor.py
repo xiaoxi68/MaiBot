@@ -358,14 +358,18 @@ class DefaultExpressor:
             )
         else:  # Private chat
             template_name = "default_expressor_private_prompt"
+            chat_target_1 = "你正在和人私聊"
             prompt = await global_prompt_manager.format_prompt(
                 template_name,
-                sender_name=effective_sender_name,  # Used in private template
-                chat_talking_prompt=chat_talking_prompt,
+                style_habbits=style_habbits_str,
+                grammar_habbits=grammar_habbits_str,
+                chat_target=chat_target_1,
+                chat_info=chat_talking_prompt,
                 bot_name=global_config.bot.nickname,
-                prompt_personality=prompt_personality,
+                prompt_personality="",
                 reason=reason,
-                moderation_prompt=await global_prompt_manager.get_prompt_async("moderation_prompt"),
+                in_mind_reply=in_mind_reply,
+                target_message=target_message,
             )
 
         return prompt

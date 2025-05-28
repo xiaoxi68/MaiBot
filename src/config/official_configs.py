@@ -59,6 +59,12 @@ class ChatConfig(ConfigBase):
 
     chat_mode: str = "normal"
     """聊天模式"""
+    
+    auto_focus_threshold: float = 1.0
+    """自动切换到专注聊天的阈值，越低越容易进入专注聊天"""
+
+    exit_focus_threshold: float = 1.0
+    """自动退出专注聊天的阈值，越低越容易退出专注聊天"""
 
 
 @dataclass
@@ -123,11 +129,7 @@ class NormalChatConfig(ConfigBase):
 class FocusChatConfig(ConfigBase):
     """专注聊天配置类"""
 
-    auto_focus_threshold: float = 1.0
-    """自动切换到专注聊天的阈值，越低越容易进入专注聊天"""
 
-    exit_focus_threshold: float = 1.0
-    """自动退出专注聊天的阈值，越低越容易退出专注聊天"""
 
     observation_context_size: int = 12
     """可观察到的最长上下文大小，超过这个值的上下文会被压缩"""
