@@ -406,9 +406,7 @@ class HeartFChatting:
                 try:
                     # 使用 await task 来获取结果或触发异常
                     result_list = await task
-                    logger.info(
-                        f"{self.log_prefix} 处理器 {processor_name} 已完成!"
-                    )
+                    logger.info(f"{self.log_prefix} 处理器 {processor_name} 已完成!")
                     if result_list is not None:
                         all_plan_info.extend(result_list)
                     else:

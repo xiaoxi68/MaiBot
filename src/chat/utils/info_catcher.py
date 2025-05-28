@@ -111,8 +111,8 @@ class InfoCatcher:
             result = list(messages_between_query)
             # print(f"查询结果数量: {len(result)}")
             # if result:
-                # print(f"第一条消息时间: {result[0].time}")
-                # print(f"最后一条消息时间: {result[-1].time}")
+            # print(f"第一条消息时间: {result[0].time}")
+            # print(f"最后一条消息时间: {result[-1].time}")
             return result
         except Exception as e:
             print(f"获取消息时出错: {str(e)}")

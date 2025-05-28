@@ -326,7 +326,6 @@ FOCUS_CHAT_STYLE_CONFIG = {
 }
 
 
-
 REMOTE_STYLE_CONFIG = {
     "advanced": {
         "console_format": (
@@ -991,6 +990,7 @@ INTEREST_CHAT_STYLE_CONFIG = (
 NORMAL_CHAT_STYLE_CONFIG = NORMAL_CHAT_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else NORMAL_CHAT_STYLE_CONFIG["advanced"]
 FOCUS_CHAT_STYLE_CONFIG = FOCUS_CHAT_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else FOCUS_CHAT_STYLE_CONFIG["advanced"]
 EXPRESS_STYLE_CONFIG = EXPRESS_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else EXPRESS_STYLE_CONFIG["advanced"]
+
 
 def is_registered_module(record: dict) -> bool:
     """检查是否为已注册的模块"""
