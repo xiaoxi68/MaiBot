@@ -214,7 +214,7 @@ pri_out = 0.35
 #嵌入模型
 [model.embedding]
 name = "BAAI/bge-m3"
-provider = "DEV"
+provider = "SILICONFLOW"
 pri_in = 0
 pri_out = 0
 
