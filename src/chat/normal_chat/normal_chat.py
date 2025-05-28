@@ -41,7 +41,6 @@ class NormalChat:
         self.willing_amplifier = 1
         self.start_time = time.time()
 
-
         # Other sync initializations
         self.gpt = NormalChatGenerator()
         self.mood_manager = mood_manager
@@ -58,8 +57,6 @@ class NormalChat:
 
         self._disabled = False  # 增加停用标志
 
-        
-        
     async def initialize(self):
         """异步初始化，获取聊天类型和目标信息。"""
         if self._initialized:
@@ -213,10 +210,9 @@ class NormalChat:
                     try:
                         # 处理消息
                         if time.time() - self.start_time > 600:
-                            self.adjust_reply_frequency(duration=600/60)
+                            self.adjust_reply_frequency(duration=600 / 60)
                         else:
-                            self.adjust_reply_frequency(duration=(time.time() - self.start_time)/60)
-                            
+                            self.adjust_reply_frequency(duration=(time.time() - self.start_time) / 60)
 
                         await self.normal_response(
                             message=message,
@@ -491,32 +487,38 @@ class NormalChat:
         调整回复频率
         """
         # 获取最近30分钟内的消息统计
-        
+
         stats = get_recent_message_stats(minutes=duration, chat_id=self.stream_id)
         bot_reply_count = stats["bot_reply_count"]
 
         total_message_count = stats["total_message_count"]
         if total_message_count == 0:
             return
-        logger.debug(f"[{self.stream_name}]({self.willing_amplifier}) 最近{duration}分钟 回复数量: {bot_reply_count}，消息总数: {total_message_count}")
+        logger.debug(
+            f"[{self.stream_name}]({self.willing_amplifier}) 最近{duration}分钟 回复数量: {bot_reply_count}，消息总数: {total_message_count}"
+        )
 
         # 计算回复频率
         _reply_frequency = bot_reply_count / total_message_count
-        
+
         differ = global_config.normal_chat.talk_frequency - (bot_reply_count / duration)
-        
+
         # 如果回复频率低于0.5，增加回复概率
         if differ > 0.1:
             mapped = 1 + (differ - 0.1) * 4 / 0.9
             mapped = max(1, min(5, mapped))
-            logger.info(f"[{self.stream_name}] 回复频率低于{global_config.normal_chat.talk_frequency}，增加回复概率，differ={differ:.3f}，映射值={mapped:.2f}")
+            logger.info(
+                f"[{self.stream_name}] 回复频率低于{global_config.normal_chat.talk_frequency}，增加回复概率，differ={differ:.3f}，映射值={mapped:.2f}"
+            )
             self.willing_amplifier += mapped * 0.1  # 你可以根据实际需要调整系数
         elif differ < -0.1:
             mapped = 1 - (differ + 0.1) * 4 / 0.9
             mapped = max(1, min(5, mapped))
-            logger.info(f"[{self.stream_name}] 回复频率高于{global_config.normal_chat.talk_frequency}，减少回复概率，differ={differ:.3f}，映射值={mapped:.2f}")
+            logger.info(
+                f"[{self.stream_name}] 回复频率高于{global_config.normal_chat.talk_frequency}，减少回复概率，differ={differ:.3f}，映射值={mapped:.2f}"
+            )
             self.willing_amplifier -= mapped * 0.1
-        
+
         if self.willing_amplifier > 5:
             self.willing_amplifier = 5
         elif self.willing_amplifier < 0.1:
