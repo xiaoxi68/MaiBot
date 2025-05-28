@@ -114,14 +114,13 @@ class PromptBuilder:
                 relation_prompt += await relationship_manager.build_relationship_info(person)
 
         mood_prompt = mood_manager.get_mood_prompt()
-        
-        
+
         (
             learnt_style_expressions,
             learnt_grammar_expressions,
             personality_expressions,
         ) = await expression_learner.get_expression_by_chat_id(chat_stream.stream_id)
-        
+
         style_habbits = []
         grammar_habbits = []
         # 1. learnt_expressions加权随机选2条
@@ -146,10 +145,7 @@ class PromptBuilder:
 
         style_habbits_str = "\n".join(style_habbits)
         grammar_habbits_str = "\n".join(grammar_habbits)
-        
-        
-        
-        
+
         reply_styles2 = [
             ("不要回复的太有条理，可以有个性", 0.6),
             ("不要回复的太有条理，可以复读", 0.15),
@@ -306,7 +302,8 @@ class PromptBuilder:
         except Exception as e:
             logger.error(f"获取知识库内容时发生异常: {str(e)}")
             return "未检索到知识"
-        
+
+
 def weighted_sample_no_replacement(items, weights, k) -> list:
     """
     加权且不放回地随机抽取k个元素。
