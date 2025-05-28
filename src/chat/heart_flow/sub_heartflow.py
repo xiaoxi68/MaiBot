@@ -111,6 +111,8 @@ class SubHeartflow:
         """
         await self._stop_heart_fc_chat()  # 确保 专注聊天已停止
 
+        self.interest_dict.clear()
+
         log_prefix = self.log_prefix
         try:
             # 获取聊天流并创建 NormalChat 实例 (同步部分)

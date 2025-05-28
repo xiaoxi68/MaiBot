@@ -127,7 +127,7 @@ class WorkingMemoryProcessor(BaseProcessor):
         # 调用LLM处理记忆
         content = ""
         try:
-            logger.debug(f"{self.log_prefix} 处理工作记忆的prompt: {prompt}")
+            # logger.debug(f"{self.log_prefix} 处理工作记忆的prompt: {prompt}")
 
             content, _ = await self.llm_model.generate_response_async(prompt=prompt)
             if not content:
