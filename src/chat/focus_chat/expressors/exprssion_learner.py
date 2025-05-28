@@ -217,7 +217,7 @@ class ExpressionLearner:
             chat_str=random_msg_str,
         )
 
-        logger.info(f"学习{type_str}的prompt: {prompt}")
+        logger.debug(f"学习{type_str}的prompt: {prompt}")
 
         try:
             response, _ = await self.express_learn_model.generate_response_async(prompt)
@@ -225,7 +225,7 @@ class ExpressionLearner:
             logger.error(f"学习{type_str}失败: {e}")
             return None
 
-        logger.info(f"学习{type_str}的response: {response}")
+        logger.debug(f"学习{type_str}的response: {response}")
 
         expressions: List[Tuple[str, str, str]] = self.parse_expression_response(response, chat_id)
 
