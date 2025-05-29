@@ -6,7 +6,6 @@ import os
 from typing import Any, Dict, List
 import threading
 import time
-import re
 
 class ConfigEditor:
     def __init__(self, root):
