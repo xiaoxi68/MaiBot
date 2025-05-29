@@ -6,6 +6,7 @@ import os
 from typing import Any, Dict, List
 import threading
 import time
+import sys
 
 class ConfigEditor:
     def __init__(self, root):
@@ -103,6 +104,8 @@ class ConfigEditor:
         except Exception as e:
             messagebox.showerror("错误", f"加载配置文件失败: {str(e)}")
             self.config = {}
+            # 自动打开配置路径窗口
+            self.open_path_config()
 
     def load_env_vars(self):
         """加载并解析环境变量文件"""
@@ -395,7 +398,7 @@ class ConfigEditor:
                             providers.append(prefix)
                             # print(f"添加provider: {prefix}")
                 
-                print(f"最终providers列表: {providers}")
+                # print(f"最终providers列表: {providers}")
                 if providers:
                     # 创建模型名称标签（大字体）
                     model_name = var.get() if var.get() else providers[0]
@@ -688,7 +691,7 @@ class ConfigEditor:
                         k = path[1]
                         if k.endswith("_BASE_URL") or k.endswith("_KEY"):
                             new_env_dict[k] = self.get_widget_value(widget)
-                # 3. 遍历原有行，替换目标key，并且只保留当前界面有的key
+                # 3. 遍历原有行，替换目标key，保留所有其他内容
                 result_lines = []
                 found_keys = set()
                 for line in old_lines:
@@ -697,9 +700,6 @@ class ConfigEditor:
                         if k in new_env_dict:
                             result_lines.append(f"{k}={new_env_dict[k]}\n")
                             found_keys.add(k)
-                        elif k.endswith("_BASE_URL") or k.endswith("_KEY"):
-                            # 跳过界面上已删除的key（不保留）
-                            continue
                         else:
                             result_lines.append(line)
                     else:
@@ -999,11 +999,6 @@ class ConfigEditor:
             msg_frame = ttk.Frame(notebook)
             notebook.add(msg_frame, text="消息服务")
             self.create_section_widgets(msg_frame, "maim_message", self.config["maim_message"], ["maim_message"])
-        # 关键词反应栏
-        if "keyword_reaction" in self.config:
-            kw_frame = ttk.Frame(notebook)
-            notebook.add(kw_frame, text="关键词反应")
-            self.create_section_widgets(kw_frame, "keyword_reaction", self.config["keyword_reaction"], ["keyword_reaction"])
         # 消息接收栏
         if "message_receive" in self.config:
             recv_frame = ttk.Frame(notebook)
@@ -1065,8 +1060,12 @@ class ConfigEditor:
             # 刷新显示
             self.refresh_config()
             
-            messagebox.showinfo("成功", "路径配置已更新")
+            messagebox.showinfo("成功", "路径配置已更新，程序将重新启动")
             dialog.destroy()
+            
+            # 重启程序
+            self.root.quit()
+            os.execv(sys.executable, ['python'] + sys.argv)
         
         def browse_bot_config():
             file_path = filedialog.askopenfilename(

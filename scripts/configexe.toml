@@ -56,7 +56,6 @@ description = "自动退出专注聊天的阈值，越低越容易退出专注�
 path = "chat.exit_focus_threshold"
 type = "number"
 
-
 [[editor.quick_settings.items]]
 name = "思考间隔（focus模式）"
 description = "思考的时间间隔（秒），可以有效减少消耗"
@@ -86,9 +85,6 @@ name = "显示聊天模式（debug模式）"
 description = "是否在回复后显示当前聊天模式"
 path = "experimental.debug_show_chat_mode"
 type = "bool"
-
-
-
 
 [translations.sections.inner]
 name = "版本"
