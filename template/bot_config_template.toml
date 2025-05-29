@@ -13,9 +13,9 @@ version = "2.6.0"
 #----以上是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 
 [bot]
-qq_account = 1145141919810
-nickname = "麦麦"
-alias_names = ["麦叠", "牢麦"]
+qq_account = 1145141919810 # 麦麦的QQ账号
+nickname = "麦麦" # 麦麦的昵称
+alias_names = ["麦叠", "牢麦"] # 麦麦的别名
 
 [personality]
 personality_core = "是一个积极向上的女大学生" # 建议50字以内
@@ -84,8 +84,8 @@ response_willing_amplifier = 1 # 麦麦回复意愿放大系数，一般为1
 response_interested_rate_amplifier = 1 # 麦麦回复兴趣度放大系数,听到记忆里的内容时放大系数
 
 emoji_response_penalty = 0 # 表情包回复惩罚系数，设为0为不回复单个表情包，减少单独回复表情包的概率
-mentioned_bot_inevitable_reply = false # 提及 bot 必然回复
-at_bot_inevitable_reply = false # @bot 必然回复
+mentioned_bot_inevitable_reply = true # 提及 bot 必然回复
+at_bot_inevitable_reply = true # @bot 必然回复
 
 down_frequency_rate = 3 # 降低回复频率的群组回复意愿降低系数 除法
 talk_frequency_down_groups = []  #降低回复频率的群号码
