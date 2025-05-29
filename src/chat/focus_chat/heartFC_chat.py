@@ -56,7 +56,7 @@ CONSECUTIVE_NO_REPLY_THRESHOLD = 3  # 连续不回复的阈值
 logger = get_logger("hfc")  # Logger Name Changed
 
 # 设定处理器超时时间（秒）
-PROCESSOR_TIMEOUT = 25
+PROCESSOR_TIMEOUT = 30
 
 
 async def _handle_cycle_delay(action_taken_this_cycle: bool, cycle_start_time: float, log_prefix: str):
