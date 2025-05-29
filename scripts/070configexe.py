@@ -3,7 +3,7 @@ from tkinter import ttk, messagebox
 import tomli
 import tomli_w
 import os
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List
 import threading
 import time
 
@@ -615,7 +615,8 @@ class ConfigEditor:
                 "type": widget_type
             })
         # 保存到configexe.toml
-        import tomli_w, os
+        import tomli_w
+        import os
         config_path = os.path.join(os.path.dirname(__file__), "configexe.toml")
         with open(config_path, "wb") as f:
             tomli_w.dump(self.editor_config, f)
@@ -631,7 +632,7 @@ class ConfigEditor:
 
 def main():
     root = tk.Tk()
-    app = ConfigEditor(root)
+    _app = ConfigEditor(root)
     root.mainloop()
 
 if __name__ == "__main__":
