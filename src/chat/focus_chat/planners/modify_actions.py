@@ -143,20 +143,32 @@ class ActionModifier:
                 result["remove"].append("no_reply")
                 result["remove"].append("reply")
 
-        # 获取最近三次的reply状态
-        last_three = reply_sequence[-3:] if len(reply_sequence) >= 3 else reply_sequence
+        # 获取最近max_reply_num次的reply状态
+        max_reply_num = int(global_config.focus_chat.consecutive_replies * 3)
+        sec_thres_reply_num = int(global_config.focus_chat.consecutive_replies * 2)
+        one_thres_reply_num = int(global_config.focus_chat.consecutive_replies * 1)
+        last_max_reply_num = reply_sequence[-max_reply_num:] if len(reply_sequence) >= max_reply_num else reply_sequence
 
         # 根据最近的reply情况决定是否移除reply动作
-        if len(last_three) >= 3 and all(last_three):
-            # 如果最近三次都是reply，直接移除
+        if len(last_max_reply_num) >= max_reply_num and all(last_max_reply_num):
+            # 如果最近max_reply_num次都是reply，直接移除
             result["remove"].append("reply")
-        elif len(last_three) >= 2 and all(last_three[-2:]):
-            # 如果最近两次都是reply，40%概率移除
-            if random.random() < 0.4:
+            logger.debug(f"最近{len(last_max_reply_num)}次回复中，有{no_reply_count}次no_reply，{len(last_max_reply_num) - no_reply_count}次reply，直接移除")
+        elif len(last_max_reply_num) >= sec_thres_reply_num and all(last_max_reply_num[-sec_thres_reply_num:]):
+            # 如果最近sec_thres_reply_num次都是reply，40%概率移除
+            if random.random() < 0.4 / global_config.focus_chat.consecutive_replies:
                 result["remove"].append("reply")
-        elif last_three and last_three[-1]:
-            # 如果最近一次是reply，20%概率移除
-            if random.random() < 0.2:
+                logger.debug(f"最近{len(last_max_reply_num)}次回复中，有{no_reply_count}次no_reply，{len(last_max_reply_num) - no_reply_count}次reply，{0.4 / global_config.focus_chat.consecutive_replies}概率移除，移除")
+            else:
+                logger.debug(f"最近{len(last_max_reply_num)}次回复中，有{no_reply_count}次no_reply，{len(last_max_reply_num) - no_reply_count}次reply，{0.4 / global_config.focus_chat.consecutive_replies}概率移除，不移除")
+        elif len(last_max_reply_num) >= one_thres_reply_num and all(last_max_reply_num[-one_thres_reply_num:]):
+            # 如果最近one_thres_reply_num次都是reply，20%概率移除
+            if random.random() < 0.2 / global_config.focus_chat.consecutive_replies:
                 result["remove"].append("reply")
+                logger.debug(f"最近{len(last_max_reply_num)}次回复中，有{no_reply_count}次no_reply，{len(last_max_reply_num) - no_reply_count}次reply，{0.2 / global_config.focus_chat.consecutive_replies}概率移除，移除")
+            else:
+                logger.debug(f"最近{len(last_max_reply_num)}次回复中，有{no_reply_count}次no_reply，{len(last_max_reply_num) - no_reply_count}次reply，{0.2 / global_config.focus_chat.consecutive_replies}概率移除，不移除")
+        else:
+            logger.debug(f"最近{len(last_max_reply_num)}次回复中，有{no_reply_count}次no_reply，{len(last_max_reply_num) - no_reply_count}次reply，无需移除")
 
         return result

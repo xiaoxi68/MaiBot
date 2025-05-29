@@ -143,6 +143,9 @@ class FocusChatConfig(ConfigBase):
 
     think_interval: int = 1
     """思考间隔（秒）"""
+    
+    consecutive_replies: int = 1
+    """连续回复能力，值越高，麦麦连续回复的概率越高"""
 
 
 @dataclass

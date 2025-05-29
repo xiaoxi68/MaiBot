@@ -63,6 +63,12 @@ path = "focus_chat.think_interval"
 type = "number"
 
 [[editor.quick_settings.items]]
+name = "连续回复能力（focus模式）"
+description = "连续回复能力，值越高，麦麦连续回复的概率越高"
+path = "focus_chat.consecutive_replies"
+type = "number"
+
+[[editor.quick_settings.items]]
 name = "自我识别处理器（focus模式）"
 description = "是否启用自我识别处理器"
 path = "focus_chat_processor.self_identify_processor"
@@ -85,6 +91,8 @@ name = "显示聊天模式（debug模式）"
 description = "是否在回复后显示当前聊天模式"
 path = "experimental.debug_show_chat_mode"
 type = "bool"
+
+
 
 [translations.sections.inner]
 name = "版本"
@@ -289,6 +297,10 @@ description = "需要降低回复频率的群组列表"
 [translations.items.think_interval]
 name = "思考间隔"
 description = "思考的时间间隔（秒），可以有效减少消耗"
+
+[translations.items.consecutive_replies]
+name = "连续回复能力"
+description = "连续回复能力，值越高，麦麦连续回复的概率越高"
 
 [translations.items.observation_context_size]
 name = "观察上下文大小"

@@ -885,6 +885,17 @@ API_SERVER_STYLE_CONFIG = {
     },
 }
 
+ACTION_MANAGER_STYLE_CONFIG = {
+    "advanced": {
+        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #AFA04F>动作选择</fg #AFA04F> | <fg #AFA04F>{message}</fg #AFA04F>",
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 动作选择 | {message}",
+    },
+    "simple": {
+        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #AFA04F>动作选择</fg #AFA04F> | <fg #AFA04F>{message}</fg #AFA04F>",
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 动作选择 | {message}",
+    },
+}
+
 # maim_message 消息服务样式配置
 MAIM_MESSAGE_STYLE_CONFIG = {
     "advanced": {
@@ -908,6 +919,9 @@ MAIN_STYLE_CONFIG = MAIN_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else MAIN_STYLE
 EMOJI_STYLE_CONFIG = EMOJI_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else EMOJI_STYLE_CONFIG["advanced"]
 PFC_ACTION_PLANNER_STYLE_CONFIG = (
     PFC_ACTION_PLANNER_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else PFC_ACTION_PLANNER_STYLE_CONFIG["advanced"]
+)
+ACTION_MANAGER_STYLE_CONFIG = (
+    ACTION_MANAGER_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else ACTION_MANAGER_STYLE_CONFIG["advanced"]
 )
 REMOTE_STYLE_CONFIG = REMOTE_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else REMOTE_STYLE_CONFIG["advanced"]
 BASE_TOOL_STYLE_CONFIG = BASE_TOOL_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else BASE_TOOL_STYLE_CONFIG["advanced"]
