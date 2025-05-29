@@ -53,20 +53,20 @@ class MoodUpdateTask(AsyncTask):
         agreeableness_factor = 1  # 宜人性系数
         agreeableness_bias = 0  # 宜人性偏置
         neuroticism_factor = 0.5  # 神经质系数
-        # 获取人格特质
-        personality = individuality.personality
-        if personality:
-            # 神经质：影响情绪变化速度
-            neuroticism_factor = 1 + (personality.neuroticism - 0.5) * 0.4
-            agreeableness_factor = 1 + (personality.agreeableness - 0.5) * 0.4
-
-            # 宜人性：影响情绪基准线
-            if personality.agreeableness < 0.2:
-                agreeableness_bias = (personality.agreeableness - 0.2) * 0.5
-            elif personality.agreeableness > 0.8:
-                agreeableness_bias = (personality.agreeableness - 0.8) * 0.5
-            else:
-                agreeableness_bias = 0
+        ## 获取人格特质（TODO: 等待人格特质分析功能）
+        # personality = individuality.personality
+        # if personality:
+        #    # 神经质：影响情绪变化速度
+        #    neuroticism_factor = 1 + (personality.neuroticism - 0.5) * 0.4
+        #    agreeableness_factor = 1 + (personality.agreeableness - 0.5) * 0.4
+        #
+        #    # 宜人性：影响情绪基准线
+        #    if personality.agreeableness < 0.2:
+        #        agreeableness_bias = (personality.agreeableness - 0.2) * 0.5
+        #    elif personality.agreeableness > 0.8:
+        #        agreeableness_bias = (personality.agreeableness - 0.8) * 0.5
+        #    else:
+        #        agreeableness_bias = 0
 
         # 分别计算正向和负向的衰减率
         if mood_manager.current_mood.valence >= 0:

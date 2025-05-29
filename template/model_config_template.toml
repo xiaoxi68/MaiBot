@@ -92,22 +92,11 @@ price_out = 0
 
 
 [task_model_usage]
-llm_reasoning = "deepseek-r1" # 一般聊天模式的推理回复模型
-llm_normal = { model = "deepseek-v3", temperature = 0.2 } # V3 回复模型 专注和一般聊天模式共用的回复模型
-llm_topic_judge = [
-    "Qwen3-8B-Free",
-    "Qwen2.5-7B-Instruct-Free",
-] # 主题判断模型：建议使用qwen2.5 7b
-vlm = "Qwen2.5-VL-7B-Instruct" # 图像识别模型
-llm_summary = "Qwen2.5-32B-Instruct" # 概括模型，建议使用qwen2.5 32b 及以上
-llm_heartflow = "Qwen2.5-32B-Instruct" # 用于控制麦麦是否参与聊天的模型
-llm_observation = [
-    "Qwen3-8B-Free",
-    "Qwen2.5-7B-Instruct-Free",
-] # 观察模型，压缩聊天内容，建议用免费的
-llm_sub_heartflow = { model = "deepseek-v3", temperature = 0.3 } # 心流：认真水群时,生成麦麦的内心想法，必须使用具有工具调用能力的模型
-llm_plan = "deepseek-v3" # 决策：认真水群时,负责决定麦麦该做什么
-embedding = "siliconflow-bge-m3" # 嵌入模型
-llm_PFC_action_planner = { model = "deepseek-v3", temperature = 0.3 } # PFC决策模型
-llm_PFC_chat = { model = "deepseek-v3", temperature = 0.3 } # PFC聊天模型
-llm_PFC_reply_checker = "deepseek-v3" # PFC观察模型
+# 人设生成模型
+character_gen = { model = "deepseek-r1", temperature = 0.7, max_tokens = 800 }
+# 表情包描述模型
+emoji_describe = { model = "Qwen2.5-VL-7B-Instruct", temperature = 0.3, max_tokens = 1000 }
+# 表情包标签生成模型
+emoji_tag_gen = { model = "deepseek-v3", temperature = 0.7, max_tokens = 600 }
+# 图片描述模型
+image_describe = { model = "Qwen2.5-VL-7B-Instruct", temperature = 0.7, max_tokens = 300 }

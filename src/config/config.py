@@ -14,8 +14,7 @@ from rich.traceback import install
 from src.config.config_base import ConfigBase
 from src.config.official_configs import (
     BotConfig,
-    PersonalityConfig,
-    IdentityConfig,
+    CharacterConfig,
     ExpressionConfig,
     ChatConfig,
     NormalChatConfig,
@@ -28,7 +27,6 @@ from src.config.official_configs import (
     ResponseSplitterConfig,
     TelemetryConfig,
     ExperimentalConfig,
-    ModelConfig,
     FocusChatProcessorConfig,
     MessageReceiveConfig,
     StorageConfig,
@@ -142,8 +140,7 @@ class Config(ConfigBase):
 
     storage: StorageConfig
     bot: BotConfig
-    personality: PersonalityConfig
-    identity: IdentityConfig
+    character: CharacterConfig
     chat: ChatConfig
     message_receive: MessageReceiveConfig
     normal_chat: NormalChatConfig
@@ -158,7 +155,6 @@ class Config(ConfigBase):
     response_splitter: ResponseSplitterConfig
     telemetry: TelemetryConfig
     experimental: ExperimentalConfig
-    model: ModelConfig
 
 
 def load_config(config_path: str) -> Config:

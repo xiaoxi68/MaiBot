@@ -80,9 +80,6 @@ class ChatManager:
             query = select(ChatStream)
             results = session.exec(query)
 
-            for stream in results:
-                stream.
-
 
     async def _initialize(self):
         """异步初始化"""

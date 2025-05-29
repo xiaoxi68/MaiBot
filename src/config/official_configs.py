@@ -38,37 +38,14 @@ class BotConfig(ConfigBase):
 
 
 @dataclass
-class PersonalityConfig(ConfigBase):
-    """人格配置类"""
+class CharacterConfig(ConfigBase):
+    """人设配置类"""
 
-    personality_core: str
-    """核心人格"""
+    personality: str
+    """人格描述"""
 
-    personality_sides: list[str] = field(default_factory=lambda: [])
-    """人格侧写"""
-
-
-@dataclass
-class IdentityConfig(ConfigBase):
-    """个体特征配置类"""
-
-    height: int = 170
-    """身高（单位：厘米）"""
-
-    weight: float = 50
-    """体重（单位：千克）"""
-
-    age: int = 18
-    """年龄（单位：岁）"""
-
-    gender: str = "女"
-    """性别（男/女）"""
-
-    appearance: str = "可爱"
-    """外貌描述"""
-
-    identity_detail: list[str] = field(default_factory=lambda: [])
-    """身份特征"""
+    appearance: str
+    """形象描述"""
 
 
 @dataclass
@@ -358,52 +335,3 @@ class ExperimentalConfig(ConfigBase):
 
     pfc_chatting: bool = False
     """是否启用PFC"""
-
-
-@dataclass
-class ModelConfig(ConfigBase):
-    """模型配置类"""
-
-    model_max_output_length: int = 800  # 最大回复长度
-
-    reasoning: dict[str, Any] = field(default_factory=lambda: {})
-    """推理模型配置"""
-
-    normal: dict[str, Any] = field(default_factory=lambda: {})
-    """普通模型配置"""
-
-    topic_judge: dict[str, Any] = field(default_factory=lambda: {})
-    """主题判断模型配置"""
-
-    summary: dict[str, Any] = field(default_factory=lambda: {})
-    """摘要模型配置"""
-
-    vlm: dict[str, Any] = field(default_factory=lambda: {})
-    """视觉语言模型配置"""
-
-    heartflow: dict[str, Any] = field(default_factory=lambda: {})
-    """心流模型配置"""
-
-    observation: dict[str, Any] = field(default_factory=lambda: {})
-    """观察模型配置"""
-
-    sub_heartflow: dict[str, Any] = field(default_factory=lambda: {})
-    """子心流模型配置"""
-
-    plan: dict[str, Any] = field(default_factory=lambda: {})
-    """计划模型配置"""
-
-    embedding: dict[str, Any] = field(default_factory=lambda: {})
-    """嵌入模型配置"""
-
-    pfc_action_planner: dict[str, Any] = field(default_factory=lambda: {})
-    """PFC动作规划模型配置"""
-
-    pfc_chat: dict[str, Any] = field(default_factory=lambda: {})
-    """PFC聊天模型配置"""
-
-    pfc_reply_checker: dict[str, Any] = field(default_factory=lambda: {})
-    """PFC回复检查模型配置"""
-
-    tool_use: dict[str, Any] = field(default_factory=lambda: {})
-    """工具使用模型配置"""

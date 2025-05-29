@@ -31,7 +31,6 @@ logger = get_logger("main")
 class MainSystem:
     def __init__(self):
         self.hippocampus_manager: HippocampusManager = HippocampusManager.get_instance()
-        self.individuality: Individuality = individuality
 
         # 使用消息API替代直接的FastAPI实例
         from src.common.message import global_api
@@ -53,58 +52,48 @@ class MainSystem:
         init_start_time = time.time()
 
         # 创建数据目录
-        logger.info("开辟数据存储目录...")
+        logger.info("正在创建运行数据目录...")
         os.makedirs(global_config.storage.data_path, exist_ok=True)
 
         # 添加缓存定时清理任务
-        logger.info("启动持久化层缓存清理任务...")
+        logger.info("正在启动缓存清理进程...")
         await async_task_manager.add_task(CacheCleanerTask())
 
         # 添加在线时间统计任务
-        logger.info("启动在线时间记录任务...")
+        logger.info("正在让时间开始流动...")
         await async_task_manager.add_task(OnlineTimeRecordTask())
 
         # 添加统计信息输出任务
-        logger.info("启动统计信息输出任务...")
+        logger.info("正在启动计量输出进程...")
         await async_task_manager.add_task(StatisticOutputTask())
 
         # 添加遥测心跳任务
-        logger.info("启动遥测心跳任务...")
+        logger.info("正在连接到rA9...")
         await async_task_manager.add_task(TelemetryHeartBeatTask())
 
-        # 启动网络服务
-        logger.info("启动网络服务...")
-        await async_task_manager.add_task(NetServerTask())
-
-        # 注册API路由
-        register_api_router()
+        # 初始化人设
+        logger.success("正在构造人格实体...")
+        await individuality.init()
 
         # 添加情绪衰减任务
-        logger.info("启动情绪管理任务...")
+        logger.info("正在启动情绪模拟进程...")
         await async_task_manager.add_task(MoodUpdateTask())
         # 添加情绪打印任务
         await async_task_manager.add_task(MoodPrintTask())
 
         # 启动个体习惯推断任务
-        logger.info("启动个人习惯推断任务...")
+        logger.info("正在启动行为分析进程...")
         await async_task_manager.add_task(PersonMsgIntervalInferTask())
-
-        # 初始化人设
-        logger.success("正在初始化人设...")
-        await self.individuality.initialize(
-            bot_nickname=global_config.bot.nickname,
-            personality_core=global_config.personality.personality_core,
-            personality_sides=global_config.personality.personality_sides,
-            identity_detail=global_config.identity.identity_detail,
-            height=global_config.identity.height,
-            weight=global_config.identity.weight,
-            age=global_config.identity.age,
-            gender=global_config.identity.gender,
-            appearance=global_config.identity.appearance,
-        )
 
         # 启动愿望管理器
         await willing_manager.async_task_starter()
+
+        # 启动网络服务
+        logger.info("正在接入互联网...")
+        await async_task_manager.add_task(NetServerTask())
+
+        # 注册API路由
+        register_api_router()
 
         # 初始化聊天管理器
         await chat_manager._initialize()

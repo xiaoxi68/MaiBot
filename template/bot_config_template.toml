@@ -20,29 +20,12 @@ qq_account = 1145141919810
 nickname = "麦麦"
 alias_names = ["麦叠", "牢麦"] #仅在 专注聊天 有效
 
-[personality]
-personality_core = "用一句话或几句话描述人格的核心特点" # 建议20字以内，谁再写3000字小作文敲谁脑袋
-personality_sides = [
-    "用一句话或几句话描述人格的一些细节",
-    "用一句话或几句话描述人格的一些细节",
-    "用一句话或几句话描述人格的一些细节",
-    "用一句话或几句话描述人格的一些细节",
-    "用一句话或几句话描述人格的一些细节",
-]# 条数任意，不能为0, 该选项还在调试中，可能未完全生效
-
-# 身份特点 部分选项仅在 专注聊天 有效
-[identity] #アイデンティティがない 生まれないらららら
-identity_detail = [
-    "身份特点",
-    "身份特点",
-]# 条数任意，不能为0
-
-#外貌特征
-age = 18 # 年龄 单位岁
-gender = "女" # 性别
-height = "170" # 身高（单位cm）
-weight = "50" # 体重（单位kg）
-appearance = "用一句或几句话描述外貌特征" # 外貌特征
+[character] # 人设信息
+# 以下内容会被用于LLM生成角色设定。
+# 你可以简略填写，由LLM进行扩写生成；也可以详细填写，LLM会根据你的设定进行概括。
+# 生成结果会存储于data/local_storage.json的特定字段（请注意log内容），如果你对生成/概括的设定不满意，可以手动修改相关字段
+personality = "用一段话描述性格特点" # 不建议写超长小作文，会影响人格概括的质量
+appearance = "用一段话描述外貌特征" # 不建议写超长小作文，会影响外貌描写的质量
 
 [chat] #麦麦的聊天通用设置
 chat_mode = "normal" # 聊天模式 —— 普通模式：normal，专注模式：focus，在普通模式和专注模式之间自动切换
@@ -178,121 +161,3 @@ enable = true
 [experimental] #实验性功能
 enable_friend_chat = false # 是否启用好友聊天
 pfc_chatting = false # 是否启用PFC聊天，该功能仅作用于私聊，与回复模式独立
-
-#下面的模型若使用硅基流动则不需要更改，使用ds官方则改成.env自定义的宏，使用自定义模型则选择定位相似的模型自己填写
-#推理模型
-
-# 额外字段
-# 下面的模型有以下额外字段可以添加：
-
-# stream = <true|false> : 用于指定模型是否是使用流式输出
-# 如果不指定，则该项是 False
-
-[model]
-model_max_output_length = 800 # 模型单次返回的最大token数
-
-#这个模型必须是推理模型
-[model.reasoning] # 一般聊天模式的推理回复模型
-name = "Pro/deepseek-ai/DeepSeek-R1"
-provider = "SILICONFLOW"
-pri_in = 1.0 #模型的输入价格（非必填，可以记录消耗）
-pri_out = 4.0 #模型的输出价格（非必填，可以记录消耗）
-
-[model.normal] #V3 回复模型 专注和一般聊天模式共用的回复模型
-name = "Pro/deepseek-ai/DeepSeek-V3"
-provider = "SILICONFLOW"
-pri_in = 2 #模型的输入价格（非必填，可以记录消耗）
-pri_out = 8 #模型的输出价格（非必填，可以记录消耗）
-#默认temp 0.2 如果你使用的是老V3或者其他模型，请自己修改temp参数
-temp = 0.2 #模型的温度，新V3建议0.1-0.3
-
-[model.topic_judge] #主题判断模型：建议使用qwen2.5 7b
-name = "Pro/Qwen/Qwen2.5-7B-Instruct"
-provider = "SILICONFLOW"
-pri_in = 0.35
-pri_out = 0.35
-
-[model.summary] #概括模型，建议使用qwen2.5 32b 及以上
-name = "Qwen/Qwen2.5-32B-Instruct"
-provider = "SILICONFLOW"
-pri_in = 1.26
-pri_out = 1.26
-
-[model.vlm] # 图像识别模型
-name = "Pro/Qwen/Qwen2.5-VL-7B-Instruct"
-provider = "SILICONFLOW"
-pri_in = 0.35
-pri_out = 0.35
-
-[model.heartflow] # 用于控制麦麦是否参与聊天的模型
-name = "Qwen/Qwen2.5-32B-Instruct"
-provider = "SILICONFLOW"
-pri_in = 1.26
-pri_out = 1.26
-
-[model.observation] #观察模型，压缩聊天内容，建议用免费的
-# name = "Pro/Qwen/Qwen2.5-7B-Instruct"
-name = "Qwen/Qwen2.5-7B-Instruct"
-provider = "SILICONFLOW"
-pri_in = 0
-pri_out = 0
-
-[model.sub_heartflow] #心流：认真聊天时,生成麦麦的内心想法，必须使用具有工具调用能力的模型
-name = "Pro/deepseek-ai/DeepSeek-V3"
-provider = "SILICONFLOW"
-pri_in = 2
-pri_out = 8
-temp = 0.3 #模型的温度，新V3建议0.1-0.3
-
-[model.plan] #决策：认真聊天时,负责决定麦麦该做什么
-name = "Pro/deepseek-ai/DeepSeek-V3"
-provider = "SILICONFLOW"
-pri_in = 2
-pri_out = 8
-
-#嵌入模型
-
-[model.embedding] #嵌入
-name = "BAAI/bge-m3"
-provider = "SILICONFLOW"
-pri_in = 0
-pri_out = 0
-
-
-#私聊PFC：需要开启PFC功能，默认三个模型均为硅基流动v3，如果需要支持多人同时私聊或频繁调用，建议把其中的一个或两个换成官方v3或其它模型，以免撞到429
-
-#PFC决策模型
-[model.pfc_action_planner]
-name = "Pro/deepseek-ai/DeepSeek-V3"
-provider = "SILICONFLOW"
-temp = 0.3
-pri_in = 2
-pri_out = 8
-
-#PFC聊天模型
-[model.pfc_chat]
-name = "Pro/deepseek-ai/DeepSeek-V3"
-provider = "SILICONFLOW"
-temp = 0.3
-pri_in = 2
-pri_out = 8
-
-#PFC检查模型
-[model.pfc_reply_checker]
-name = "Pro/deepseek-ai/DeepSeek-V3"
-provider = "SILICONFLOW"
-pri_in = 2
-pri_out = 8
-
-
-#以下模型暂时没有使用！！
-#以下模型暂时没有使用！！
-#以下模型暂时没有使用！！
-#以下模型暂时没有使用！！
-#以下模型暂时没有使用！！
-
-[model.tool_use] #工具调用模型，需要使用支持工具调用的模型，建议使用qwen2.5 32b
-name = "Qwen/Qwen2.5-32B-Instruct"
-provider = "SILICONFLOW"
-pri_in = 1.26
-pri_out = 1.26

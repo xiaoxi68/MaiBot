@@ -10,7 +10,8 @@ from utils.image import gif2jpg
 
 
 from ...config.config import global_config
-from ..models.utils_model import LLMRequest
+from manager.model_manager import global_model_manager
+from maibot_api_adapter.payload_content.message import MessageBuilder
 from src.common.logger_manager import get_logger
 from rich.traceback import install
 
@@ -25,13 +26,13 @@ class ChatImageManager:
     """聊天图片管理器，负责处理图片的描述"""
 
     def __init__(self):
-        self._llm = LLMRequest(model=global_config.model.vlm, temperature=0.4, max_tokens=300, request_type="image")
+        # self._llm = global_model_manager["image_describe"]
+        # """VLM模型请求对象，用于图像描述生成"
+        pass
 
     async def _get_image_desc_by_llm(self, image_bytes: bytes, image_type: str = "normal") -> Optional[str]:
         """
         使用VLM模型获取图片描述
-
-        TODO: API-Adapter修改标记
 
         :param image_b64: 图片的base64字符串
         :param type: 图片类型（默认normal，可选emoji）
@@ -39,25 +40,33 @@ class ChatImageManager:
         （如果是None/空字符串，表示获取失败）
         """
         image = PilImage.open(io.BytesIO(image_bytes))
-        if image.format.lower() == "gif":
+        image_format = image.format.lower()
+
+        if image_format == "gif":
             # GIF图像需要转换为拼接JPG图像
             image, cols, rows, n_frames = gif2jpg(image)
-            prompt = (
-                f"这是一个动态图表情包的拼接图像，从上至下，从左至右，共{rows}行{cols}列。{n_frames}张图像各代表了动态图的某一帧，黑色背景代表透明。请使用简短的语言描述一下表情包表达的情感和内容。"
-                if image_type == "emoji"
-                else f"这是一个动态图的拼接图像，从上至下，从左至右，共{rows}行{cols}列。{n_frames}张图像各代表了动态图的某一帧，黑色背景代表透明。请用中文简要描述这张动态图的内容并尝试猜测这个图片的含义。如果有文字，请把文字都描述出来。所有描述最多100个字。"
-            )
-            image_b64 = base64.b64encode(image.tobytes()).decode("utf-8")
+            image_format = "jpg"
+            with io.BytesIO() as io_buffer:
+                image.save(io_buffer, format="JPEG")
+                jpg_bytes = io_buffer.getvalue()
+            image_b64 = base64.b64encode(jpg_bytes).decode("utf-8")
+            if image_type == "emoji":
+                text_content = f"这是一个动态图表情包的拼接图像，从上至下，从左至右，共{rows}行{cols}列。{n_frames}张图像各代表了动态图的某一帧，黑色背景代表透明。请使用简短的语言描述一下表情包表达的情感和内容。"
+            else:
+                text_content = f"这是一个动态图的拼接图像，从上至下，从左至右，共{rows}行{cols}列。{n_frames}张图像各代表了动态图的某一帧，黑色背景代表透明。请用中文简要描述这张动态图的内容并尝试猜测这个图片的含义。如果有文字，请把文字都描述出来。所有描述最多100个字。"
         else:
-            prompt = (
-                "这是一个表情包，请使用简短的语言描述一下表情包表达的情感和内容。"
-                if image_type == "emoji"
-                else "请用中文简要描述这张图片的内容并尝试猜测这个图片的含义。如果有文字，请把文字都描述出来。所有描述最多100个字。"
-            )
+            image_b64 = base64.b64encode(image_bytes).decode("utf-8")
+            if image_type == "emoji":
+                text_content = "这是一个表情包，请使用简短的语言描述一下表情包表达的情感和内容。"
+            else:
+                text_content = "请用中文简要描述这张图片的内容并尝试猜测这个图片的含义。如果有文字，请把文字都描述出来。所有描述最多100个字。"
 
-        description, _ = await self._llm.generate_response_for_image(prompt, image_b64, image.format.lower())
+        prompt = MessageBuilder().add_text_content(text_content).add_image_content(image_format, image_b64).build()
 
-        return description
+        response = await global_model_manager["image_describe"].get_response(
+            messages=[prompt],
+        )
+        return response.content.strip()
 
     async def get_image_description(self, image_b64: str, image_type: str = "normal") -> Optional[str]:
         """

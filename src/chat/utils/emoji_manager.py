@@ -7,9 +7,10 @@ import os
 import numpy as np
 import random
 from typing import Optional
-from chat.models.utils_model import LLMRequest
 from common.logger_manager import get_logger
 from src.config.config import global_config
+from manager.model_manager import global_model_manager
+from maibot_api_adapter.payload_content.message import MessageBuilder
 from chat.utils.image_manager import chat_image_manager
 from model_manager.emoji import EmojiDTO, EmojiManager
 from utils.calc_hash import calc_bytes_hash
@@ -50,23 +51,17 @@ class ChatEmojiManager:
         self._emoji_reg_tasks: dict[str, asyncio.Task] = {}
         """表情包注册任务表"""
 
-        # TODO: API-Adapter修改标记
+        # self._vl_llm = global_model_manager["emoji_describe"]
+        # """VLM模型请求对象，用于表情包描述生成"""
 
-        self._vl_llm = LLMRequest(model=global_config.model.vlm, temperature=0.3, max_tokens=1000, request_type="emoji")
-        """VLM模型请求对象"""
+        # self._tag_gen_llm = global_model_manager["emoji_tag_gen"]
+        # """Tag生成模型请求对象，用于生成表情包标签"""
 
-        self._tag_gen_llm = LLMRequest(
-            model=global_config.model.normal, temperature=0.7, max_tokens=600, request_type="emoji"
-        )
-        """Tag生成模型请求对象"""
-
-        self._content_filter_llm = LLMRequest(model=global_config.model.vlm, max_tokens=600, request_type="emoji")
-        """内容过滤模型请求对象"""
-
-        self._emoji_judge_llm = LLMRequest(
-            model=global_config.model.normal, temperature=0.8, max_tokens=600, request_type="emoji"
-        )
-        """表情包判断模型请求对象"""
+        # self._content_filter_llm = global_model_manager["emoji_content_filter"]
+        # """内容过滤模型请求对象"""
+        #
+        # self._emoji_judge_llm = global_model_manager["emoji_judge"]
+        # """表情包判断模型请求对象"""
 
         # 1. 从持久化层加载表情包信息
         self._load_emoji_emotions()
@@ -151,22 +146,50 @@ class ChatEmojiManager:
 
             if image.format.lower() == "gif":
                 image, cols, rows, n_frames = gif2jpg(image)
-                prompt = f"这是一个动态图表情包的拼接图像，从上至下，从左至右，共{rows}行{cols}列。{n_frames}张图像代表了动态图的某一帧，黑色背景代表透明。描述一下表情包表达的情感和内容，尽可能多的描述细节，从互联网梗、meme的角度去分析"
-                image_b64 = base64.b64encode(image.tobytes()).decode("utf-8")
-                description, _ = await self._vl_llm.generate_response_for_image(prompt, image_b64, "jpg")
+                with io.BytesIO() as io_buffer:
+                    image.save(io_buffer, format="JPEG")
+                    image_b64 = base64.b64encode(io_buffer.getvalue()).decode("utf-8")
+                prompt = (
+                    MessageBuilder()
+                    .add_text_content(
+                        f"这是一个动态图表情包的拼接图像，从上至下，从左至右，共{rows}行{cols}列。{n_frames}张图像代表了动态图的某一帧，黑色背景代表透明。描述一下表情包表达的情感和内容，尽可能多的描述细节，从互联网梗、meme的角度去分析"
+                    )
+                    .add_image_content("jpg", image_b64)
+                    .build()
+                )
             else:
-                prompt = "这是一个表情包，请详细描述一下表情包所表达的情感和内容，尽可能多的描述细节，从互联网梗、meme的角度去分析"
-                description, _ = await self._vl_llm.generate_response_for_image(prompt, image_b64, image.format.lower())
+                prompt = (
+                    MessageBuilder()
+                    .add_text_content(
+                        "这是一个表情包，请详细描述一下表情包所表达的情感和内容，尽可能多的描述细节，从互联网梗、meme的角度去分析"
+                    )
+                    .add_image_content(image.format.lower(), image_b64)
+                    .build()
+                )
 
+            description = (
+                await global_model_manager["emoji_describe"].get_response(
+                    messages=[prompt],
+                )
+            ).content.strip()
             if not description:
                 logger.error(f"表情包 {hash} 的描述获取失败，注册失败")
                 return None
 
             # TODO: 进行内容过滤
 
-            emotion_prompt = f"请你识别这个表情包的含义和适用场景，给我简短的描述，每个描述不要超过15个字\n这是一个基于这个表情包的描述：'{description}'\n你可以关注其幽默和讽刺意味，动用贴吧，微博，小红书的知识，必须从互联网梗、meme的角度去分析\n请直接输出描述，不要出现任何其他内容，如果有多个描述，可以用英文逗号(\",\")分隔"
-            emotions_text, _ = await self._tag_gen_llm.generate_response_async(emotion_prompt, temperature=0.7)
-
+            emotion_prompt = (
+                MessageBuilder()
+                .add_text_content(
+                    f"请你识别这个表情包的含义和适用场景，给我简短的描述，每个描述不要超过15个字\n这是一个基于这个表情包的描述：'{description}'\n你可以关注其幽默和讽刺意味，动用贴吧，微博，小红书的知识，必须从互联网梗、meme的角度去分析\n请直接输出描述，不要出现任何其他内容，如果有多个描述，可以用英文逗号(\",\")分隔"
+                )
+                .build()
+            )
+            emotions_text = (
+                await global_model_manager["emoji_tag_gen"].get_response(
+                    messages=[emotion_prompt],
+                )
+            ).content.strip()
             emotions = [emotion.strip() for emotion in emotions_text.split(",") if emotion.strip()]
 
             # 避免情感描述过多
