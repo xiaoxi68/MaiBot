@@ -34,7 +34,7 @@ class PicAction(PluginAction):
         "当有人要求你生成并发送一张图片时使用",
         "当有人让你画一张图时使用",
     ]
-    default = True
+    default = False
     action_config_file_name = "pic_action_config.toml"
 
     def __init__(
