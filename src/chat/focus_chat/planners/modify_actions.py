@@ -12,14 +12,13 @@ from src.chat.focus_chat.planners.action_manager import ActionManager
 logger = get_logger("action_manager")
 
 
-class ActionModifier():
+class ActionModifier:
     """动作处理器
 
     用于处理Observation对象，将其转换为ObsInfo对象。
     """
 
     log_prefix = "动作处理"
-    
 
     def __init__(self, action_manager: ActionManager):
         """初始化观察处理器"""
@@ -70,7 +69,7 @@ class ActionModifier():
                     #     reasons.append(f"移除动作{action_changes['remove']}因为检测到连续回复")
 
             # 处理ChattingObservation
-            if chat_obs :
+            if chat_obs:
                 obs = chat_obs
                 # 检查动作的关联类型
                 chat_context = chat_manager.get_stream(obs.chat_id).context

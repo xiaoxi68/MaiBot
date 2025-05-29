@@ -6,6 +6,7 @@ from src.chat.focus_chat.planners.action_manager import ActionManager
 
 logger = get_logger("observation")
 
+
 # 特殊的观察，专门用于观察动作
 # 所有观察的基类
 class ActionObservation:
@@ -20,7 +21,6 @@ class ActionObservation:
 
     def get_observe_info(self):
         return self.observe_info
-
 
     def set_action_manager(self, action_manager: ActionManager):
         self.action_manager = action_manager

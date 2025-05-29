@@ -16,6 +16,7 @@ from src.chat.focus_chat.info.info_base import InfoBase
 from src.chat.focus_chat.info_processors.chattinginfo_processor import ChattingInfoProcessor
 from src.chat.focus_chat.info_processors.mind_processor import MindProcessor
 from src.chat.focus_chat.info_processors.working_memory_processor import WorkingMemoryProcessor
+
 # from src.chat.focus_chat.info_processors.action_processor import ActionProcessor
 from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
 from src.chat.heart_flow.observation.working_observation import WorkingMemoryObservation
@@ -481,7 +482,7 @@ class HeartFChatting:
                 await self.action_modifier.modify_actions(observations=observations, running_memorys=running_memorys)
                 await self.action_observation.observe()
                 observations.append(self.action_observation)
-            
+
             with Timer("执行 信息处理器", cycle_timers):
                 all_plan_info, processor_time_costs = await self._process_processors(
                     observations, running_memorys, cycle_timers

@@ -120,8 +120,6 @@ class ActionPlanner:
             #             self.action_manager.remove_action_from_using(action_name)
             #             logger.debug(f"{self.log_prefix}移除动作: {action_name}, 原因: {reason}")
 
-
-
             # 继续处理其他信息
             self_info = ""
             current_mind = ""
@@ -144,7 +142,7 @@ class ActionPlanner:
                     structured_info = info.get_processed_info()
                     # print(f"structured_info: {structured_info}")
                 # elif not isinstance(info, ActionInfo):  # 跳过已处理的ActionInfo
-                    # extra_info.append(info.get_processed_info())
+                # extra_info.append(info.get_processed_info())
 
             # 获取当前可用的动作
             current_available_actions = self.action_manager.get_using_actions()
