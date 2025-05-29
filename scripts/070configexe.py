@@ -1,11 +1,12 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 import tomli
 import tomli_w
 import os
 from typing import Any, Dict, List, Union
 import threading
 import time
+import re
 
 class ConfigEditor:
     def __init__(self, root):
@@ -20,6 +21,9 @@ class ConfigEditor:
         
         # 加载配置
         self.load_config()
+        
+        # 加载环境变量
+        self.load_env_vars()
         
         # 自动保存相关
         self.last_save_time = time.time()
@@ -92,13 +96,61 @@ class ConfigEditor:
             messagebox.showerror("错误", f"加载配置文件失败: {str(e)}")
             self.config = {}
 
+    def load_env_vars(self):
+        """加载并解析环境变量文件"""
+        try:
+            # 从配置中获取环境文件路径
+            env_path = self.config.get("inner", {}).get("env_file", ".env")
+            if not os.path.isabs(env_path):
+                env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), env_path)
+            
+            if not os.path.exists(env_path):
+                print(f"环境文件不存在: {env_path}")
+                return
+            
+            # 读取环境文件
+            with open(env_path, 'r', encoding='utf-8') as f:
+                env_content = f.read()
+            
+            # 解析环境变量
+            env_vars = {}
+            for line in env_content.split('\n'):
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                
+                if '=' in line:
+                    key, value = line.split('=', 1)
+                    key = key.strip()
+                    value = value.strip()
+                    
+                    # 检查是否是目标变量
+                    if key.endswith('_BASE_URL') or key.endswith('_KEY'):
+                        # 提取前缀（去掉_BASE_URL或_KEY）
+                        prefix = key[:-9] if key.endswith('_BASE_URL') else key[:-4]
+                        if prefix not in env_vars:
+                            env_vars[prefix] = {}
+                        env_vars[prefix][key] = value
+            
+            # 将解析的环境变量添加到配置中
+            if 'env_vars' not in self.config:
+                self.config['env_vars'] = {}
+            self.config['env_vars'].update(env_vars)
+            
+        except Exception as e:
+            print(f"加载环境变量失败: {str(e)}")
+
     def create_version_label(self):
         """创建版本号显示标签"""
         version = self.config.get("inner", {}).get("version", "未知版本")
         version_frame = ttk.Frame(self.main_frame)
         version_frame.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
         
-        version_label = ttk.Label(version_frame, text=f"麦麦版本：{version}", font=("", 10, "bold"))
+        # 添加配置按钮
+        config_button = ttk.Button(version_frame, text="配置路径", command=self.open_path_config)
+        config_button.pack(side=tk.LEFT, padx=5)
+        
+        version_label = ttk.Label(version_frame, text=f"麦麦版本：{version}", font=("微软雅黑", 10, "bold"))
         version_label.pack(side=tk.LEFT, padx=5)
 
     def create_navbar(self):
@@ -113,14 +165,15 @@ class ConfigEditor:
         # 添加快捷设置节
         self.tree.insert("", "end", text="快捷设置", values=("quick_settings",))
         
-        # 添加配置项到树
+        # 添加env_vars节，显示为"配置你的模型APIKEY"
+        self.tree.insert("", "end", text="配置你的模型APIKEY", values=("env_vars",))
+        
+        # 只显示bot_config.toml实际存在的section
         for section in self.config:
-            if section != "inner":  # 跳过inner部分
-                # 获取节的中文名称
+            if section not in ("inner", "env_vars", "telemetry", "experimental", "maim_message", "keyword_reaction", "message_receive", "relationship"):
                 section_trans = self.translations.get("sections", {}).get(section, {})
                 section_name = section_trans.get("name", section)
                 self.tree.insert("", "end", text=section_name, values=(section,))
-        
         # 绑定选择事件
         self.tree.bind("<<TreeviewSelect>>", self.on_section_select)
 
@@ -130,8 +183,8 @@ class ConfigEditor:
         self.editor_frame.grid(row=1, column=1, sticky=(tk.W, tk.E, tk.N, tk.S))
         
         # 创建编辑区标题
-        self.editor_title = ttk.Label(self.editor_frame, text="")
-        self.editor_title.pack(fill=tk.X)
+        # self.editor_title = ttk.Label(self.editor_frame, text="")
+        # self.editor_title.pack(fill=tk.X)
         
         # 创建编辑区内容
         self.editor_content = ttk.Frame(self.editor_frame)
@@ -167,8 +220,12 @@ class ConfigEditor:
         self.button_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E))
         
         # 刷新按钮
-        self.refresh_button = ttk.Button(self.button_frame, text="刷新", command=self.refresh_config)
-        self.refresh_button.pack(side=tk.RIGHT, padx=5)
+        # self.refresh_button = ttk.Button(self.button_frame, text="刷新", command=self.refresh_config)
+        # self.refresh_button.pack(side=tk.RIGHT, padx=5)
+
+        # 高级选项按钮（左下角）
+        self.advanced_button = ttk.Button(self.button_frame, text="高级选项", command=self.open_advanced_options)
+        self.advanced_button.pack(side=tk.LEFT, padx=5)
 
     def create_widget_for_value(self, parent: ttk.Frame, key: str, value: Any, path: List[str]) -> None:
         """为不同类型的值创建对应的编辑控件"""
@@ -177,6 +234,14 @@ class ConfigEditor:
         
         # --- 修改开始: 改进翻译查找逻辑 ---
         full_config_path_key = ".".join(path + [key])  # 例如 "chinese_typo.enable"
+        
+        model_item_translations = {
+            "name": ("模型名称", "模型的唯一标识或名称"),
+            "provider": ("模型提供商", "模型API的提供商"),
+            "pri_in": ("输入价格", "模型输入的价格/消耗"),
+            "pri_out": ("输出价格", "模型输出的价格/消耗"),
+            "temp": ("模型温度", "控制模型输出的多样性")
+        }
         
         item_name_to_display = key  # 默认显示原始键名
         item_desc_to_display = ""   # 默认无描述
@@ -192,10 +257,12 @@ class ConfigEditor:
             if generic_translation and generic_translation.get("name"):
                 item_name_to_display = generic_translation.get("name")
                 item_desc_to_display = generic_translation.get("description", "")
+            elif key in model_item_translations:
+                item_name_to_display, item_desc_to_display = model_item_translations[key]
         # --- 修改结束 ---
         
         # 配置名（大号字体）
-        label = ttk.Label(frame, text=item_name_to_display, font=("", 20, "bold"))
+        label = ttk.Label(frame, text=item_name_to_display, font=("微软雅黑", 16, "bold"))
         label.grid(row=0, column=0, sticky=tk.W, padx=5, pady=(0, 0))
         
         # 星星图标快捷设置（与配置名同一行）
@@ -210,11 +277,19 @@ class ConfigEditor:
             for widget in parent.winfo_children():
                 widget.destroy()
             self.widgets.clear()
-            # 重新渲染本分组
-            if hasattr(self, 'current_section') and self.current_section and self.current_section != "quick_settings":
-                self.create_section_widgets(parent, self.current_section, self.config[self.current_section], [self.current_section])
-            elif hasattr(self, 'current_section') and self.current_section == "quick_settings":
-                 self.create_quick_settings_widgets() # 如果当前是快捷设置，也刷新它
+            # 判断parent是不是self.content_frame
+            if parent == self.content_frame:
+                # 主界面
+                if hasattr(self, 'current_section') and self.current_section and self.current_section != "quick_settings":
+                    self.create_section_widgets(parent, self.current_section, self.config[self.current_section], [self.current_section])
+                elif hasattr(self, 'current_section') and self.current_section == "quick_settings":
+                    self.create_quick_settings_widgets()
+            else:
+                # 弹窗Tab
+                # 重新渲染当前Tab的内容
+                if path:
+                    section = path[0]
+                    self.create_section_widgets(parent, section, self.config[section], path)
 
         pin_btn = ttk.Button(frame, text=icon, width=2, command=on_star_click)
         pin_btn.grid(row=0, column=content_col_offset_for_star, sticky=tk.W, padx=5)
@@ -228,7 +303,7 @@ class ConfigEditor:
         # 配置项描述（第二行）
         desc_row = 1
         if item_desc_to_display:
-            desc_label = ttk.Label(frame, text=item_desc_to_display, foreground="gray", font=("", 16))
+            desc_label = ttk.Label(frame, text=item_desc_to_display, foreground="gray", font=("微软雅黑", 10))
             desc_label.grid(row=desc_row, column=0, columnspan=content_col_offset_for_star + 1, sticky=tk.W, padx=5, pady=(0, 4))
             widget_row = desc_row + 1 # 内容控件在描述下方
         else:
@@ -236,7 +311,7 @@ class ConfigEditor:
 
         # 配置内容控件（第三行或第二行）
         if path[0] == "inner":
-            value_label = ttk.Label(frame, text=str(value), font=("", 20))
+            value_label = ttk.Label(frame, text=str(value), font=("微软雅黑", 16))
             value_label.grid(row=widget_row, column=0, columnspan=content_col_offset_for_star +1, sticky=tk.W, padx=5)
             return
             
@@ -251,7 +326,7 @@ class ConfigEditor:
         elif isinstance(value, (int, float)):
             # 数字使用数字输入框
             var = tk.StringVar(value=str(value))
-            entry = ttk.Entry(frame, textvariable=var, font=("", 20))
+            entry = ttk.Entry(frame, textvariable=var, font=("微软雅黑", 16))
             entry.grid(row=widget_row, column=0, columnspan=content_col_offset_for_star +1, sticky=tk.W+tk.E, padx=5)
             var.trace_add("write", lambda *args: self.on_value_changed())
             self.widgets[tuple(path + [key])] = var
@@ -287,19 +362,98 @@ class ConfigEditor:
         else:
             # 其他类型（字符串等）使用普通文本框
             var = tk.StringVar(value=str(value))
-            entry = ttk.Entry(frame, textvariable=var, font=("", 20))
-            entry.grid(row=widget_row, column=0, columnspan=content_col_offset_for_star +1, sticky=tk.W+tk.E, padx=5)
-            var.trace_add("write", lambda *args: self.on_value_changed())
-            self.widgets[tuple(path + [key])] = var
+            
+            # 特殊处理provider字段
+            full_path = ".".join(path + [key])
+            if key == "provider" and full_path.startswith("model."):
+                # print(f"处理provider字段，完整路径: {full_path}")
+                # print(f"当前config中的env_vars: {self.config.get('env_vars', {})}")
+                # 获取所有可用的provider选项
+                providers = []
+                if "env_vars" in self.config:
+                    # print(f"找到env_vars节，内容: {self.config['env_vars']}")
+                    # 遍历env_vars中的所有配置对
+                    for prefix, values in self.config["env_vars"].items():
+                        # print(f"检查配置对 {prefix}: {values}")
+                        # 检查是否同时有BASE_URL和KEY
+                        if f"{prefix}_BASE_URL" in values and f"{prefix}_KEY" in values:
+                            providers.append(prefix)
+                            # print(f"添加provider: {prefix}")
+                
+                print(f"最终providers列表: {providers}")
+                if providers:
+                    # 创建模型名称标签（大字体）
+                    model_name = var.get() if var.get() else providers[0]
+                    section_translations = {
+                        "model.utils": "工具模型",
+                        "model.utils_small": "小型工具模型",
+                        "model.memory_summary": "记忆概括模型",
+                        "model.vlm": "图像识别模型",
+                        "model.embedding": "嵌入模型",
+                        "model.normal_chat_1": "普通聊天：主要聊天模型",
+                        "model.normal_chat_2": "普通聊天：次要聊天模型",
+                        "model.focus_working_memory": "专注模式：工作记忆模型",
+                        "model.focus_chat_mind": "专注模式：聊天规划模型",
+                        "model.focus_tool_use": "专注模式：工具调用模型",
+                        "model.focus_planner": "专注模式：决策模型",
+                        "model.focus_expressor": "专注模式：表达器模型",
+                        "model.focus_self_recognize": "专注模式：自我识别模型"
+                    }
+                    # 获取当前节的名称
+                    # current_section = ".".join(path[:-1])  # 去掉最后一个key
+                    # section_name = section_translations.get(current_section, current_section)
+                    
+                    # 创建节名称标签（大字体）
+                    # section_label = ttk.Label(frame, text="11", font=("微软雅黑", 24, "bold"))
+                    # section_label.grid(row=widget_row, column=0, columnspan=content_col_offset_for_star +1, sticky=tk.W, padx=5, pady=(0, 5))
+                    
+                    # 创建下拉菜单（小字体）
+                    combo = ttk.Combobox(frame, textvariable=var, values=providers, font=("微软雅黑", 12), state="readonly")
+                    combo.grid(row=widget_row + 1, column=0, columnspan=content_col_offset_for_star +1, sticky=tk.W+tk.E, padx=5)
+                    combo.bind("<<ComboboxSelected>>", lambda e: self.on_value_changed())
+                    self.widgets[tuple(path + [key])] = var
+                    widget_type = "provider"
+                    # print(f"创建了下拉菜单，选项: {providers}")
+                else:
+                    # 如果没有可用的provider，使用普通文本框
+                    # print(f"没有可用的provider，使用普通文本框")
+                    entry = ttk.Entry(frame, textvariable=var, font=("微软雅黑", 16))
+                    entry.grid(row=widget_row, column=0, columnspan=content_col_offset_for_star +1, sticky=tk.W+tk.E, padx=5)
+                    var.trace_add("write", lambda *args: self.on_value_changed())
+                    self.widgets[tuple(path + [key])] = var
+                    widget_type = "text"
+            else:
+                # 普通文本框
+                entry = ttk.Entry(frame, textvariable=var, font=("微软雅黑", 16))
+                entry.grid(row=widget_row, column=0, columnspan=content_col_offset_for_star +1, sticky=tk.W+tk.E, padx=5)
+                var.trace_add("write", lambda *args: self.on_value_changed())
+                self.widgets[tuple(path + [key])] = var
             widget_type = "text"
         
     def create_section_widgets(self, parent: ttk.Frame, section: str, data: Dict, path=None) -> None:
         """为配置节创建编辑控件"""
         if path is None:
             path = [section]
+        # section完整路径
+        full_section_path = ".".join(path)
         # 获取节的中文名称和描述
-        section_trans = self.translations.get("sections", {}).get(section, {})
-        section_name = section_trans.get("name", section)
+        section_translations = {
+            "model.utils": "工具模型",
+            "model.utils_small": "小型工具模型",
+            "model.memory_summary": "记忆概括模型",
+            "model.vlm": "图像识别模型",
+            "model.embedding": "嵌入模型",
+            "model.normal_chat_1": "主要聊天模型",
+            "model.normal_chat_2": "次要聊天模型",
+            "model.focus_working_memory": "工作记忆模型",
+            "model.focus_chat_mind": "聊天规划模型",
+            "model.focus_tool_use": "工具调用模型",
+            "model.focus_planner": "决策模型",
+            "model.focus_expressor": "表达器模型",
+            "model.focus_self_recognize": "自我识别模型"
+        }
+        section_trans = self.translations.get("sections", {}).get(full_section_path, {})
+        section_name = section_trans.get("name") or section_translations.get(full_section_path) or section
         section_desc = section_trans.get("description", "")
         
         # 创建节的标签框架
@@ -307,13 +461,17 @@ class ConfigEditor:
         section_frame.pack(fill=tk.X, padx=5, pady=10)
         
         # 创建节的名称标签
-        section_label = ttk.Label(section_frame, text=f"[{section_name}]", font=("", 12, "bold"))
+        section_label = ttk.Label(section_frame, text=f"[{section_name}]", font=("微软雅黑", 18, "bold"))
         section_label.pack(side=tk.LEFT, padx=5)
         
         # 创建节的描述标签
-        if section_desc:
-            desc_label = ttk.Label(section_frame, text=f"({section_desc})", foreground="gray")
-            desc_label.pack(side=tk.LEFT, padx=5)
+        if isinstance(section_trans.get("description"), dict):
+            # 如果是多语言描述，优先取en，否则取第一个
+            desc_en = section_trans["description"].get("en") or next(iter(section_trans["description"].values()), "")
+            desc_label = ttk.Label(section_frame, text=desc_en, foreground="gray", font=("微软雅黑", 10))
+        else:
+            desc_label = ttk.Label(section_frame, text=section_desc, foreground="gray", font=("微软雅黑", 10))
+        desc_label.pack(side=tk.LEFT, padx=5)
         
         # 为每个配置项创建对应的控件
         for key, value in data.items():
@@ -343,14 +501,6 @@ class ConfigEditor:
         section = self.tree.item(selection[0])["values"][0]  # 使用values中的原始节名
         self.current_section = section
         
-        # 获取节的中文名称
-        if section == "quick_settings":
-            section_name = "快捷设置"
-        else:
-            section_trans = self.translations.get("sections", {}).get(section, {})
-            section_name = section_trans.get("name", section)
-        self.editor_title.config(text=f"编辑 {section_name}")
-        
         # 清空编辑器
         for widget in self.content_frame.winfo_children():
             widget.destroy()
@@ -361,6 +511,8 @@ class ConfigEditor:
         # 创建编辑控件
         if section == "quick_settings":
             self.create_quick_settings_widgets()
+        elif section == "env_vars":
+            self.create_env_vars_section(self.content_frame)
         elif section in self.config:
             self.create_section_widgets(self.content_frame, section, self.config[section])
 
@@ -382,12 +534,12 @@ class ConfigEditor:
             value = current.get(path[-1])  # 获取最后一个键的值
             
             # 创建名称标签
-            name_label = ttk.Label(frame, text=setting["name"], font=("", 18))
+            name_label = ttk.Label(frame, text=setting["name"], font=("微软雅黑", 18))
             name_label.pack(fill=tk.X, padx=5, pady=(2, 0))
             
             # 创建描述标签
             if setting.get("description"):
-                desc_label = ttk.Label(frame, text=setting['description'], foreground="gray", font=("", 16))
+                desc_label = ttk.Label(frame, text=setting['description'], foreground="gray", font=("微软雅黑", 16))
                 desc_label.pack(fill=tk.X, padx=5, pady=(0, 2))
             
             # 根据类型创建不同的控件
@@ -404,14 +556,14 @@ class ConfigEditor:
             elif setting_type == "text":
                 value = str(value) if value is not None else ""
                 var = tk.StringVar(value=value)
-                entry = ttk.Entry(frame, textvariable=var, width=40, font=("", 18))
+                entry = ttk.Entry(frame, textvariable=var, width=40, font=("微软雅黑", 18))
                 entry.pack(fill=tk.X, padx=5, pady=(0,5))
                 var.trace_add("write", lambda *args, p=path, v=var: self.on_quick_setting_changed(p, v))
                 
             elif setting_type == "number":
                 value = str(value) if value is not None else "0"
                 var = tk.StringVar(value=value)
-                entry = ttk.Entry(frame, textvariable=var, width=10, font=("", 18))
+                entry = ttk.Entry(frame, textvariable=var, width=10, font=("微软雅黑", 18))
                 entry.pack(fill=tk.X, padx=5, pady=(0,5))
                 var.trace_add("write", lambda *args, p=path, v=var: self.on_quick_setting_changed(p, v))
                 
@@ -483,22 +635,78 @@ class ConfigEditor:
             try:
                 # 获取所有控件的值
                 for path, widget in self.widgets.items():
+                    # 跳过 env_vars 的控件赋值（只用于.env，不写回config）
+                    if len(path) >= 2 and path[0] == 'env_vars':
+                        continue
                     value = self.get_widget_value(widget)
-                    # 更新配置
                     current = self.config
                     for key in path[:-1]:
                         current = current[key]
-                    final_key = path[-1]  # 直接用最后一个key
+                    final_key = path[-1]
                     current[final_key] = value
-                
-                # 保存到文件
+
+                # === 只保存 TOML，不包含 env_vars ===
+                env_vars = self.config.pop('env_vars', None)
                 with open(self.config_path, "wb") as f:
                     tomli_w.dump(self.config, f)
-                
+                if env_vars is not None:
+                    self.config['env_vars'] = env_vars
+
+                # === 保存 env_vars 到 .env 文件（只覆盖特定key，其他内容保留） ===
+                env_path = self.editor_config["config"].get("env_file", ".env")
+                if not os.path.isabs(env_path):
+                    env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), env_path)
+                # 1. 读取原有.env内容
+                old_lines = []
+                if os.path.exists(env_path):
+                    with open(env_path, "r", encoding="utf-8") as f:
+                        old_lines = f.readlines()
+                # 2. 收集所有目标key的新值（直接从widgets取）
+                new_env_dict = {}
+                for path, widget in self.widgets.items():
+                    if len(path) == 2 and path[0] == 'env_vars':
+                        k = path[1]
+                        if k.endswith("_BASE_URL") or k.endswith("_KEY"):
+                            new_env_dict[k] = self.get_widget_value(widget)
+                # 3. 遍历原有行，替换目标key，并且只保留当前界面有的key
+                result_lines = []
+                found_keys = set()
+                for line in old_lines:
+                    if "=" in line and not line.strip().startswith("#"):
+                        k = line.split("=", 1)[0].strip()
+                        if k in new_env_dict:
+                            result_lines.append(f"{k}={new_env_dict[k]}\n")
+                            found_keys.add(k)
+                        elif k.endswith("_BASE_URL") or k.endswith("_KEY"):
+                            # 跳过界面上已删除的key（不保留）
+                            continue
+                        else:
+                            result_lines.append(line)
+                    else:
+                        result_lines.append(line)
+                # 4. 新key如果原.env没有，则追加
+                for k, v in new_env_dict.items():
+                    if k not in found_keys:
+                        result_lines.append(f"{k}={v}\n")
+                # 5. 写回.env
+                with open(env_path, "w", encoding="utf-8") as f:
+                    f.writelines(result_lines)
+                # === 结束 ===
+
+                # === 保存完 .env 后，同步 widgets 的值回 self.config['env_vars'] ===
+                for path, widget in self.widgets.items():
+                    if len(path) == 2 and path[0] == 'env_vars':
+                        prefix_key = path[1]
+                        if prefix_key.endswith("_BASE_URL") or prefix_key.endswith("_KEY"):
+                            prefix = prefix_key[:-9] if prefix_key.endswith("_BASE_URL") else prefix_key[:-4]
+                            if 'env_vars' not in self.config:
+                                self.config['env_vars'] = {}
+                            if prefix not in self.config['env_vars']:
+                                self.config['env_vars'][prefix] = {}
+                            self.config['env_vars'][prefix][prefix_key] = self.get_widget_value(widget)
+
                 self.last_save_time = time.time()
                 self.pending_save = False
-                self.editor_title.config(text=f"{self.editor_title.cget('text')} (已保存)")
-                self.root.after(2000, lambda: self.editor_title.config(text=self.editor_title.cget('text').replace(" (已保存)", "")))
             except Exception as e:
                 messagebox.showerror("错误", f"保存配置失败: {str(e)}")
 
@@ -628,6 +836,254 @@ class ConfigEditor:
                 widget.destroy()
             self.widgets.clear()
             self.create_quick_settings_widgets()
+
+    def create_env_var_group(self, parent: ttk.Frame, prefix: str, values: Dict[str, str], path: List[str]) -> None:
+        """创建环境变量组"""
+        frame = ttk.Frame(parent)
+        frame.pack(fill=tk.X, padx=5, pady=2)
+        
+        # 创建组标题
+        title_frame = ttk.Frame(frame)
+        title_frame.pack(fill=tk.X, pady=(5, 0))
+        
+        title_label = ttk.Label(title_frame, text=f"API配置组: {prefix}", font=("微软雅黑", 16, "bold"))
+        title_label.pack(side=tk.LEFT, padx=5)
+        
+        # 删除按钮
+        del_button = ttk.Button(title_frame, text="删除组", 
+                              command=lambda: self.delete_env_var_group(prefix))
+        del_button.pack(side=tk.RIGHT, padx=5)
+        
+        # 创建BASE_URL输入框
+        base_url_frame = ttk.Frame(frame)
+        base_url_frame.pack(fill=tk.X, padx=5, pady=2)
+        
+        base_url_label = ttk.Label(base_url_frame, text="BASE_URL:", font=("微软雅黑", 12))
+        base_url_label.pack(side=tk.LEFT, padx=5)
+        
+        base_url_var = tk.StringVar(value=values.get(f"{prefix}_BASE_URL", ""))
+        base_url_entry = ttk.Entry(base_url_frame, textvariable=base_url_var, font=("微软雅黑", 12))
+        base_url_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+        base_url_var.trace_add("write", lambda *args: self.on_value_changed())
+        
+        # 创建KEY输入框
+        key_frame = ttk.Frame(frame)
+        key_frame.pack(fill=tk.X, padx=5, pady=2)
+        
+        key_label = ttk.Label(key_frame, text="API KEY:", font=("微软雅黑", 12))
+        key_label.pack(side=tk.LEFT, padx=5)
+        
+        key_var = tk.StringVar(value=values.get(f"{prefix}_KEY", ""))
+        key_entry = ttk.Entry(key_frame, textvariable=key_var, font=("微软雅黑", 12))
+        key_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+        key_var.trace_add("write", lambda *args: self.on_value_changed())
+        
+        # 存储变量引用
+        self.widgets[tuple(path + [f"{prefix}_BASE_URL"])] = base_url_var
+        self.widgets[tuple(path + [f"{prefix}_KEY"])] = key_var
+        
+        # 添加分隔线
+        separator = ttk.Separator(frame, orient='horizontal')
+        separator.pack(fill=tk.X, pady=5)
+
+    def create_env_vars_section(self, parent: ttk.Frame) -> None:
+        """创建环境变量编辑区"""
+        # 创建添加新组的按钮
+        add_button = ttk.Button(parent, text="添加新的API配置组", 
+                              command=self.add_new_env_var_group)
+        add_button.pack(pady=10)
+        
+        # 创建现有组的编辑区
+        if 'env_vars' in self.config:
+            for prefix, values in self.config['env_vars'].items():
+                self.create_env_var_group(parent, prefix, values, ['env_vars'])
+
+    def add_new_env_var_group(self):
+        """添加新的环境变量组"""
+        # 创建新窗口
+        dialog = tk.Toplevel(self.root)
+        dialog.title("添加新的API配置组")
+        dialog.geometry("400x200")
+        
+        # 创建输入框架
+        frame = ttk.Frame(dialog, padding="10")
+        frame.pack(fill=tk.BOTH, expand=True)
+        
+        # 前缀输入
+        prefix_label = ttk.Label(frame, text="API前缀名称:", font=("微软雅黑", 12))
+        prefix_label.pack(pady=5)
+        
+        prefix_var = tk.StringVar()
+        prefix_entry = ttk.Entry(frame, textvariable=prefix_var, font=("微软雅黑", 12))
+        prefix_entry.pack(fill=tk.X, pady=5)
+        
+        # 确认按钮
+        def on_confirm():
+            prefix = prefix_var.get().strip()
+            if prefix:
+                if 'env_vars' not in self.config:
+                    self.config['env_vars'] = {}
+                self.config['env_vars'][prefix] = {
+                    f"{prefix}_BASE_URL": "",
+                    f"{prefix}_KEY": ""
+                }
+                # 刷新显示
+                self.refresh_env_vars_section()
+                self.on_value_changed()
+                dialog.destroy()
+        
+        confirm_button = ttk.Button(frame, text="确认", command=on_confirm)
+        confirm_button.pack(pady=10)
+
+    def delete_env_var_group(self, prefix: str):
+        """删除环境变量组"""
+        if messagebox.askyesno("确认", f"确定要删除 {prefix} 配置组吗？"):
+            if 'env_vars' in self.config:
+                del self.config['env_vars'][prefix]
+                # 刷新显示
+                self.refresh_env_vars_section()
+                self.on_value_changed()
+
+    def refresh_env_vars_section(self):
+        """刷新环境变量编辑区"""
+        # 清空当前显示
+        for widget in self.content_frame.winfo_children():
+            widget.destroy()
+        self.widgets.clear()
+        
+        # 重新创建编辑区
+        self.create_env_vars_section(self.content_frame)
+
+    def open_advanced_options(self):
+        """弹窗显示高级配置"""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("高级选项")
+        dialog.geometry("700x800")
+        
+        notebook = ttk.Notebook(dialog)
+        notebook.pack(fill=tk.BOTH, expand=True)
+        
+        # 遥测栏
+        if "telemetry" in self.config:
+            telemetry_frame = ttk.Frame(notebook)
+            notebook.add(telemetry_frame, text="遥测")
+            self.create_section_widgets(telemetry_frame, "telemetry", self.config["telemetry"], ["telemetry"])
+        # 实验性功能栏
+        if "experimental" in self.config:
+            exp_frame = ttk.Frame(notebook)
+            notebook.add(exp_frame, text="实验性功能")
+            self.create_section_widgets(exp_frame, "experimental", self.config["experimental"], ["experimental"])
+        # 消息服务栏
+        if "maim_message" in self.config:
+            msg_frame = ttk.Frame(notebook)
+            notebook.add(msg_frame, text="消息服务")
+            self.create_section_widgets(msg_frame, "maim_message", self.config["maim_message"], ["maim_message"])
+        # 关键词反应栏
+        if "keyword_reaction" in self.config:
+            kw_frame = ttk.Frame(notebook)
+            notebook.add(kw_frame, text="关键词反应")
+            self.create_section_widgets(kw_frame, "keyword_reaction", self.config["keyword_reaction"], ["keyword_reaction"])
+        # 消息接收栏
+        if "message_receive" in self.config:
+            recv_frame = ttk.Frame(notebook)
+            notebook.add(recv_frame, text="消息接收")
+            self.create_section_widgets(recv_frame, "message_receive", self.config["message_receive"], ["message_receive"])
+        # 关系栏
+        if "relationship" in self.config:
+            rel_frame = ttk.Frame(notebook)
+            notebook.add(rel_frame, text="关系")
+            self.create_section_widgets(rel_frame, "relationship", self.config["relationship"], ["relationship"])
+
+    def open_path_config(self):
+        """打开路径配置对话框"""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("配置路径")
+        dialog.geometry("600x200")
+        
+        # 创建输入框架
+        frame = ttk.Frame(dialog, padding="10")
+        frame.pack(fill=tk.BOTH, expand=True)
+        
+        # bot_config.toml路径配置
+        bot_config_frame = ttk.Frame(frame)
+        bot_config_frame.pack(fill=tk.X, pady=5)
+        
+        bot_config_label = ttk.Label(bot_config_frame, text="bot_config.toml路径:", font=("微软雅黑", 12))
+        bot_config_label.pack(side=tk.LEFT, padx=5)
+        
+        bot_config_var = tk.StringVar(value=self.config_path)
+        bot_config_entry = ttk.Entry(bot_config_frame, textvariable=bot_config_var, font=("微软雅黑", 12))
+        bot_config_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+        
+        def apply_config():
+            new_bot_config_path = bot_config_var.get().strip()
+            new_env_path = env_var.get().strip()
+            
+            if not new_bot_config_path or not new_env_path:
+                messagebox.showerror("错误", "路径不能为空")
+                return
+                
+            if not os.path.exists(new_bot_config_path):
+                messagebox.showerror("错误", "bot_config.toml文件不存在")
+                return
+                
+            # 更新配置
+            self.config_path = new_bot_config_path
+            self.editor_config["config"]["bot_config_path"] = new_bot_config_path
+            self.editor_config["config"]["env_file"] = new_env_path
+            
+            # 保存编辑器配置
+            config_path = os.path.join(os.path.dirname(__file__), "configexe.toml")
+            with open(config_path, "wb") as f:
+                tomli_w.dump(self.editor_config, f)
+            
+            # 重新加载配置
+            self.load_config()
+            self.load_env_vars()
+            
+            # 刷新显示
+            self.refresh_config()
+            
+            messagebox.showinfo("成功", "路径配置已更新")
+            dialog.destroy()
+        
+        def browse_bot_config():
+            file_path = filedialog.askopenfilename(
+                title="选择bot_config.toml文件",
+                filetypes=[("TOML文件", "*.toml"), ("所有文件", "*.*")]
+            )
+            if file_path:
+                bot_config_var.set(file_path)
+                apply_config()
+        
+        browse_bot_config_btn = ttk.Button(bot_config_frame, text="浏览", command=browse_bot_config)
+        browse_bot_config_btn.pack(side=tk.LEFT, padx=5)
+        
+        # .env路径配置
+        env_frame = ttk.Frame(frame)
+        env_frame.pack(fill=tk.X, pady=5)
+        
+        env_label = ttk.Label(env_frame, text=".env路径:", font=("微软雅黑", 12))
+        env_label.pack(side=tk.LEFT, padx=5)
+        
+        env_path = self.editor_config["config"].get("env_file", ".env")
+        if not os.path.isabs(env_path):
+            env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), env_path)
+        env_var = tk.StringVar(value=env_path)
+        env_entry = ttk.Entry(env_frame, textvariable=env_var, font=("微软雅黑", 12))
+        env_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+        
+        def browse_env():
+            file_path = filedialog.askopenfilename(
+                title="选择.env文件",
+                filetypes=[("环境变量文件", "*.env"), ("所有文件", "*.*")]
+            )
+            if file_path:
+                env_var.set(file_path)
+                apply_config()
+        
+        browse_env_btn = ttk.Button(env_frame, text="浏览", command=browse_env)
+        browse_env_btn.pack(side=tk.LEFT, padx=5)
 
 def main():
     root = tk.Tk()

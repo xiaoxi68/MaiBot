@@ -1,5 +1,7 @@
 [config]
-bot_config_path = "config/bot_config.toml"
+bot_config_path = "C:/GitHub/MaiBot-Core/config/bot_config.toml"
+env_path = "env.toml"
+env_file = "c:\\GitHub\\MaiBot-Core\\.env"
 
 [editor]
 window_width = 1000
@@ -70,6 +72,12 @@ type = "bool"
 name = "工作记忆处理器"
 description = "是否启用工作记忆处理器，不稳定，消耗量大"
 path = "focus_chat_processor.working_memory_processor"
+type = "bool"
+
+[[editor.quick_settings.items]]
+name = "显示聊天模式"
+description = "是否在回复后显示当前聊天模式"
+path = "experimental.debug_show_chat_mode"
 type = "bool"
 
 [translations.sections.inner]
@@ -487,6 +495,10 @@ description = "暂时无效"
 [translations.items."response_splitter.enable"]
 name = "启用分割器"
 description = "是否启用回复分割器"
+
+[translations.items."telemetry.enable"]
+name = "启用遥测"
+description = "是否发送统计信息，主要是看全球有多少只麦麦"
 
 [translations.items."chinese_typo.enable"]
 name = "启用错别字"

@@ -8,6 +8,7 @@ from src.chat.focus_chat.expressors.default_expressor import DefaultExpressor
 from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 from src.chat.focus_chat.hfc_utils import create_empty_anchor_message
+from src.config.config import global_config
 
 logger = get_logger("action_taken")
 
@@ -34,7 +35,7 @@ class ReplyAction(BaseAction):
         "一次只回复一个人，一次只回复一个话题,突出重点",
         "如果是自己发的消息想继续，需自然衔接",
         "避免重复或评价自己的发言,不要和自己聊天",
-        "注意：回复尽量简短一些。可以参考贴吧，知乎和微博的回复风格，回复不要浮夸，不要用夸张修辞，平淡一些。不要有额外的符号，尽量简单简短",
+        f"注意你的回复要求：{global_config.expression.expression_style}",
     ]
 
     associated_types: list[str] = ["text", "emoji"]

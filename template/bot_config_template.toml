@@ -40,7 +40,7 @@ identity_detail = [
 
 [expression]
 # 表达方式
-expression_style = "描述麦麦说话的表达风格，表达习惯"
+expression_style = "描述麦麦说话的表达风格，表达习惯，例如：(回复尽量简短一些。可以参考贴吧，知乎和微博的回复风格，回复不要浮夸，不要用夸张修辞，平淡一些。不要有额外的符号，尽量简单简短)"
 enable_expression_learning = true # 是否启用表达学习，麦麦会学习人类说话风格
 learning_interval = 600 # 学习间隔 单位秒
 
@@ -194,22 +194,25 @@ temp = 0.2 #模型的温度，新V3建议0.1-0.3
 # 强烈建议使用免费的小模型
 name = "Qwen/Qwen3-8B"
 provider = "SILICONFLOW"
-enable_thinking = false # 是否启用思考
 pri_in = 0
 pri_out = 0
+temp = 0.7
+enable_thinking = false # 是否启用思考
 
 [model.memory_summary] # 记忆的概括模型
 name = "Qwen/Qwen3-30B-A3B"
 provider = "SILICONFLOW"
-enable_thinking = false # 是否启用思考
 pri_in = 0.7
 pri_out = 2.8
+temp = 0.7
+enable_thinking = false # 是否启用思考
 
 [model.vlm] # 图像识别模型
 name = "Pro/Qwen/Qwen2.5-VL-7B-Instruct"
 provider = "SILICONFLOW"
 pri_in = 0.35
 pri_out = 0.35
+
 
 #嵌入模型
 [model.embedding]
@@ -225,6 +228,7 @@ name = "Pro/deepseek-ai/DeepSeek-R1"
 provider = "SILICONFLOW"
 pri_in = 4.0 #模型的输入价格（非必填，可以记录消耗）
 pri_out = 16.0 #模型的输出价格（非必填，可以记录消耗）
+temp = 0.7
 
 [model.normal_chat_2] # 一般聊天模式的次要回复模型，推荐使用 非推理模型
 name = "Pro/deepseek-ai/DeepSeek-V3"
@@ -239,9 +243,10 @@ temp = 0.2 #模型的温度，新V3建议0.1-0.3
 [model.focus_working_memory] #工作记忆模型
 name = "Qwen/Qwen3-30B-A3B"
 provider = "SILICONFLOW"
-enable_thinking = false # 是否启用思考
+enable_thinking = false # 是否启用思考(qwen3 only)
 pri_in = 0.7
 pri_out = 2.8
+temp = 0.7
 
 [model.focus_chat_mind] #聊天规划：认真聊天时,生成麦麦对聊天的规划想法
 name = "Pro/deepseek-ai/DeepSeek-V3"
@@ -255,15 +260,16 @@ temp = 0.3
 [model.focus_tool_use] #工具调用模型，需要使用支持工具调用的模型
 name = "Qwen/Qwen3-14B"
 provider = "SILICONFLOW"
-enable_thinking = false # 是否启用思考
 pri_in = 0.5
 pri_out = 2
+temp = 0.7
+enable_thinking = false # 是否启用思考（qwen3 only）
 
 [model.focus_planner] #决策：认真聊天时,负责决定麦麦该做什么
 name = "Pro/deepseek-ai/DeepSeek-V3"
 # name = "Qwen/Qwen3-30B-A3B"
 provider = "SILICONFLOW"
-# enable_thinking = false # 是否启用思考
+# enable_thinking = false # 是否启用思考(qwen3 only)
 pri_in = 2
 pri_out = 8
 temp = 0.3
@@ -274,7 +280,7 @@ temp = 0.3
 name = "Pro/deepseek-ai/DeepSeek-V3"
 # name = "Qwen/Qwen3-30B-A3B"
 provider = "SILICONFLOW"
-# enable_thinking = false # 是否启用思考
+# enable_thinking = false # 是否启用思考(qwen3 only)
 pri_in = 2
 pri_out = 8
 temp = 0.3
@@ -284,37 +290,10 @@ temp = 0.3
 # name = "Pro/deepseek-ai/DeepSeek-V3"
 name = "Qwen/Qwen3-30B-A3B"
 provider = "SILICONFLOW"
-enable_thinking = false # 是否启用思考
 pri_in = 0.7
 pri_out = 2.8
 temp = 0.7
-
-
-
-#私聊PFC：需要开启PFC功能，默认三个模型均为硅基流动v3，如果需要支持多人同时私聊或频繁调用，建议把其中的一个或两个换成官方v3或其它模型，以免撞到429
-
-#PFC决策模型
-[model.pfc_action_planner]
-name = "Pro/deepseek-ai/DeepSeek-V3"
-provider = "SILICONFLOW"
-temp = 0.3
-pri_in = 2
-pri_out = 8
-
-#PFC聊天模型
-[model.pfc_chat]
-name = "Pro/deepseek-ai/DeepSeek-V3"
-provider = "SILICONFLOW"
-temp = 0.3
-pri_in = 2
-pri_out = 8
-
-#PFC检查模型
-[model.pfc_reply_checker]
-name = "Pro/deepseek-ai/DeepSeek-V3"
-provider = "SILICONFLOW"
-pri_in = 2
-pri_out = 8
+enable_thinking = false # 是否启用思考(qwen3 only)
 
 
 
@@ -335,7 +314,6 @@ enable = true
 [experimental] #实验性功能
 debug_show_chat_mode = false # 是否在回复后显示当前聊天模式
 enable_friend_chat = false # 是否启用好友聊天
-pfc_chatting = false # 暂时无效
 
 
 
