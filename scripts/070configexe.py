@@ -56,6 +56,15 @@ class ConfigEditor:
         self.main_frame.columnconfigure(1, weight=1)
         self.main_frame.rowconfigure(1, weight=1)  # 修改为1，因为第0行是版本号
 
+        # 默认选择快捷设置栏
+        self.current_section = "quick_settings"
+        self.create_quick_settings_widgets()
+        # 选中导航树中的快捷设置项
+        for item in self.tree.get_children():
+            if self.tree.item(item)["values"][0] == "quick_settings":
+                self.tree.selection_set(item)
+                break
+
     def load_editor_config(self):
         """加载编辑器配置"""
         try:
@@ -539,13 +548,13 @@ class ConfigEditor:
                 current = current.get(key, {})
             value = current.get(path[-1])  # 获取最后一个键的值
 
-            # 创建名称标签
-            name_label = ttk.Label(frame, text=setting["name"], font=("微软雅黑", 18))
+            # 创建名称标签（加粗）
+            name_label = ttk.Label(frame, text=setting["name"], font=("微软雅黑", 16, "bold"))
             name_label.pack(fill=tk.X, padx=5, pady=(2, 0))
 
             # 创建描述标签
             if setting.get("description"):
-                desc_label = ttk.Label(frame, text=setting['description'], foreground="gray", font=("微软雅黑", 16))
+                desc_label = ttk.Label(frame, text=setting['description'], foreground="gray", font=("微软雅黑", 10))
                 desc_label.pack(fill=tk.X, padx=5, pady=(0, 2))
 
             # 根据类型创建不同的控件
@@ -562,14 +571,14 @@ class ConfigEditor:
             elif setting_type == "text":
                 value = str(value) if value is not None else ""
                 var = tk.StringVar(value=value)
-                entry = ttk.Entry(frame, textvariable=var, width=40, font=("微软雅黑", 18))
+                entry = ttk.Entry(frame, textvariable=var, width=40, font=("微软雅黑", 12))
                 entry.pack(fill=tk.X, padx=5, pady=(0,5))
                 var.trace_add("write", lambda *args, p=path, v=var: self.on_quick_setting_changed(p, v))
 
             elif setting_type == "number":
                 value = str(value) if value is not None else "0"
                 var = tk.StringVar(value=value)
-                entry = ttk.Entry(frame, textvariable=var, width=10, font=("微软雅黑", 18))
+                entry = ttk.Entry(frame, textvariable=var, width=10, font=("微软雅黑", 12))
                 entry.pack(fill=tk.X, padx=5, pady=(0,5))
                 var.trace_add("write", lambda *args, p=path, v=var: self.on_quick_setting_changed(p, v))
 
