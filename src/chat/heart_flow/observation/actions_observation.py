@@ -6,6 +6,7 @@ from src.chat.focus_chat.planners.action_manager import ActionManager
 
 logger = get_logger("observation")
 
+
 # 特殊的观察，专门用于观察动作
 # 所有观察的基类
 class ActionObservation:
@@ -21,7 +22,6 @@ class ActionObservation:
     def get_observe_info(self):
         return self.observe_info
 
-
     def set_action_manager(self, action_manager: ActionManager):
         self.action_manager = action_manager
         self.all_actions = self.action_manager.get_registered_actions()
@@ -31,6 +31,6 @@ class ActionObservation:
         self.all_using_actions = self.action_manager.get_using_actions()
         for action_name, action_info in self.all_using_actions.items():
             action_info_block += f"\n{action_name}: {action_info.get('description', '')}"
-        action_info_block += f"\n注意，除了上面动作选项之外，你在群聊里不能做其他任何事情，这是你能力的边界\n"
+        action_info_block += "\n注意，除了上面动作选项之外，你在群聊里不能做其他任何事情，这是你能力的边界\n"
 
         self.observe_info = action_info_block

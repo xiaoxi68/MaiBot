@@ -101,24 +101,6 @@ class ActionPlanner:
             # 获取观察信息
             extra_info: list[str] = []
 
-            # # 首先处理动作变更
-            # for info in all_plan_info:
-            #     if isinstance(info, ActionInfo) and info.has_changes():
-            #         add_actions = info.get_add_actions()
-            #         remove_actions = info.get_remove_actions()
-            #         reason = info.get_reason()
-            #         print(f"{self.log_prefix} 动作变更: {add_actions} {remove_actions} {reason}")
-
-            #         # 处理动作的增加
-            #         for action_name in add_actions:
-            #             if action_name in self.action_manager.get_registered_actions():
-            #                 self.action_manager.add_action_to_using(action_name)
-            #                 logger.debug(f"{self.log_prefix}添加动作: {action_name}, 原因: {reason}")
-
-            #         # 处理动作的移除
-            #         for action_name in remove_actions:
-            #             self.action_manager.remove_action_from_using(action_name)
-            #             logger.debug(f"{self.log_prefix}移除动作: {action_name}, 原因: {reason}")
 
 
 
@@ -134,6 +116,7 @@ class ActionPlanner:
             
             self_info = name_block + personality_block + identity_block
             current_mind = "你思考了很久，没有想清晰要做什么"
+
             cycle_info = ""
             structured_info = ""
             extra_info = []
@@ -157,7 +140,7 @@ class ActionPlanner:
                     structured_info = info.get_processed_info()
                     # print(f"structured_info: {structured_info}")
                 # elif not isinstance(info, ActionInfo):  # 跳过已处理的ActionInfo
-                    # extra_info.append(info.get_processed_info())
+                # extra_info.append(info.get_processed_info())
 
             # 获取当前可用的动作
             current_available_actions = self.action_manager.get_using_actions()

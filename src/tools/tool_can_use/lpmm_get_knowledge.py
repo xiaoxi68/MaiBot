@@ -1,5 +1,4 @@
 from src.tools.tool_can_use.base_tool import BaseTool
-from src.chat.utils.utils import get_embedding
 
 # from src.common.database import db
 from src.common.logger_manager import get_logger
@@ -40,9 +39,9 @@ class SearchKnowledgeFromLPMMTool(BaseTool):
             # 调用知识库搜索
 
             knowledge_info = qa_manager.get_knowledge(query)
-            
+
             logger.debug(f"知识库查询结果: {knowledge_info}")
-            
+
             if knowledge_info:
                 content = f"你知道这些知识: {knowledge_info}"
             else:
@@ -54,6 +53,3 @@ class SearchKnowledgeFromLPMMTool(BaseTool):
             # 在其他异常情况下，确保 id 仍然是 query (如果它被定义了)
             query_id = query if "query" in locals() else "unknown_query"
             return {"type": "info", "id": query_id, "content": f"lpmm知识库搜索失败，炸了: {str(e)}"}
-
-
-
