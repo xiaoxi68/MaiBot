@@ -1,5 +1,4 @@
 from src.tools.tool_can_use.base_tool import BaseTool
-from src.chat.utils.utils import get_embedding
 
 # from src.common.database import db
 from src.common.logger_manager import get_logger
