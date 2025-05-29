@@ -133,7 +133,7 @@ class ActionModifier:
             reply_sequence.append(action_type == "reply")
 
         # 检查no_reply比例
-        print(f"no_reply_count: {no_reply_count}, len(recent_cycles): {len(recent_cycles)}")
+        # print(f"no_reply_count: {no_reply_count}, len(recent_cycles): {len(recent_cycles)}")
         # print(1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111)
         if len(recent_cycles) >= (5 * global_config.chat.exit_focus_threshold) and (
             no_reply_count / len(recent_cycles)
@@ -143,11 +143,24 @@ class ActionModifier:
                 result["remove"].append("no_reply")
                 result["remove"].append("reply")
 
-        # 获取最近max_reply_num次的reply状态
-        max_reply_num = int(global_config.focus_chat.consecutive_replies * 3)
+        # 计算连续回复的相关阈值
+
+        max_reply_num = int(global_config.focus_chat.consecutive_replies * 3.2)
         sec_thres_reply_num = int(global_config.focus_chat.consecutive_replies * 2)
-        one_thres_reply_num = int(global_config.focus_chat.consecutive_replies * 1)
-        last_max_reply_num = reply_sequence[-max_reply_num:] if len(reply_sequence) >= max_reply_num else reply_sequence
+        one_thres_reply_num = int(global_config.focus_chat.consecutive_replies * 1.5)
+
+        # 获取最近max_reply_num次的reply状态
+        if len(reply_sequence) >= max_reply_num:
+            last_max_reply_num = reply_sequence[-max_reply_num:]
+        else:
+            last_max_reply_num = reply_sequence[:]
+
+        # 详细打印阈值和序列信息，便于调试
+        logger.debug(
+            f"连续回复阈值: max={max_reply_num}, sec={sec_thres_reply_num}, one={one_thres_reply_num}，"
+            f"最近reply序列: {last_max_reply_num}"
+        )
+        # print(f"consecutive_replies: {consecutive_replies}")
 
         # 根据最近的reply情况决定是否移除reply动作
         if len(last_max_reply_num) >= max_reply_num and all(last_max_reply_num):

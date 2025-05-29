@@ -141,10 +141,10 @@ class FocusChatConfig(ConfigBase):
     compress_length_limit: int = 5
     """最多压缩份数，超过该数值的压缩上下文会被删除"""
 
-    think_interval: int = 1
+    think_interval: float = 1
     """思考间隔（秒）"""
     
-    consecutive_replies: int = 1
+    consecutive_replies: float = 1
     """连续回复能力，值越高，麦麦连续回复的概率越高"""
 
 
