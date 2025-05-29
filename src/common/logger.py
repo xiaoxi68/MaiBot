@@ -887,11 +887,11 @@ API_SERVER_STYLE_CONFIG = {
 
 ACTION_MANAGER_STYLE_CONFIG = {
     "advanced": {
-        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #AFA04F>动作选择</fg #AFA04F> | <fg #AFA04F>{message}</fg #AFA04F>",
+        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #FFA01F>动作选择</fg #FFA01F> | <fg #FFA01F>{message}</fg #FFA01F>",
         "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 动作选择 | {message}",
     },
     "simple": {
-        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #AFA04F>动作选择</fg #AFA04F> | <fg #AFA04F>{message}</fg #AFA04F>",
+        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #FFA01F>动作选择</fg #FFA01F> | <fg #FFA01F>{message}</fg #FFA01F>",
         "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 动作选择 | {message}",
     },
 }
