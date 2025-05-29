@@ -79,7 +79,7 @@ class ActionPlanner:
         self.planner_llm = LLMRequest(
             model=global_config.model.focus_planner,
             max_tokens=1000,
-            request_type="focus_planner",  # 用于动作规划
+            request_type="focus.planner",  # 用于动作规划
         )
 
         self.action_manager = action_manager

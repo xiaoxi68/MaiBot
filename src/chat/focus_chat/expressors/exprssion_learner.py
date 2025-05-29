@@ -64,7 +64,7 @@ class ExpressionLearner:
             model=global_config.model.focus_expressor,
             temperature=0.1,
             max_tokens=256,
-            request_type="learn_expression",
+            request_type="expressor.learner",
         )
 
     async def get_expression_by_chat_id(self, chat_id: str) -> Tuple[List[Dict[str, str]], List[Dict[str, str]]]:

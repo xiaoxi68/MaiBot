@@ -79,7 +79,7 @@ class MindProcessor(BaseProcessor):
             model=global_config.model.focus_chat_mind,
             temperature=global_config.model.focus_chat_mind["temp"],
             max_tokens=800,
-            request_type="focus_chat_mind",
+            request_type="focus.processor.chat_mind",
         )
 
         self.current_mind = ""
