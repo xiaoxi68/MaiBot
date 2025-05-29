@@ -221,7 +221,7 @@ class PromptBuilder:
         logger.debug(f"知识检索耗时: {(end_time - start_time):.3f}秒")
 
         logger.debug("开始构建 normal prompt")
-        
+
         now_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
         # --- Choose template and format based on chat type ---
