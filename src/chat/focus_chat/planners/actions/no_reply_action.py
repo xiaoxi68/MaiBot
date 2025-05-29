@@ -11,7 +11,7 @@ from src.chat.focus_chat.hfc_utils import parse_thinking_id_to_timestamp
 logger = get_logger("action_taken")
 
 # 常量定义
-WAITING_TIME_THRESHOLD = 300  # 等待新消息时间阈值，单位秒
+WAITING_TIME_THRESHOLD = 1200  # 等待新消息时间阈值，单位秒
 
 
 @register_action
