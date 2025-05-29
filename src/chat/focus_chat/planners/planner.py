@@ -101,9 +101,6 @@ class ActionPlanner:
             # 获取观察信息
             extra_info: list[str] = []
 
-
-
-
             # 设置默认值
             nickname_str = ""
             for nicknames in global_config.bot.alias_names:
@@ -112,8 +109,7 @@ class ActionPlanner:
 
             personality_block = individuality.get_personality_prompt(x_person=2, level=2)
             identity_block = individuality.get_identity_prompt(x_person=2, level=2)
-            
-            
+
             self_info = name_block + personality_block + identity_block
             current_mind = "你思考了很久，没有想清晰要做什么"
 
@@ -121,7 +117,7 @@ class ActionPlanner:
             structured_info = ""
             extra_info = []
             observed_messages = []
-            observed_messages_str = "" 
+            observed_messages_str = ""
             chat_type = "group"
             is_group_chat = True
             for info in all_plan_info:
