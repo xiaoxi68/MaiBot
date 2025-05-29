@@ -122,11 +122,24 @@ class ActionPlanner:
 
 
 
-            # 继续处理其他信息
-            self_info = ""
-            current_mind = ""
+            # 设置默认值
+            nickname_str = ""
+            for nicknames in global_config.bot.alias_names:
+                nickname_str += f"{nicknames},"
+            name_block = f"你的名字是{global_config.bot.nickname},你的昵称有{nickname_str}，有人也会用这些昵称称呼你。"
+
+            personality_block = individuality.get_personality_prompt(x_person=2, level=2)
+            identity_block = individuality.get_identity_prompt(x_person=2, level=2)
+            
+            
+            self_info = name_block + personality_block + identity_block
+            current_mind = "你思考了很久，没有想清晰要做什么"
             cycle_info = ""
             structured_info = ""
+            extra_info = []
+            observed_messages = []
+            observed_messages_str = "" 
+            chat_type = "group"
             is_group_chat = True
             for info in all_plan_info:
                 if isinstance(info, ObsInfo):

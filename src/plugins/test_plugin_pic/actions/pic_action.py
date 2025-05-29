@@ -48,6 +48,8 @@ class PicAction(PluginAction):
     ):
         super().__init__(action_data, reasoning, cycle_timers, thinking_id, global_config, **kwargs)
 
+        logger.info(f"{self.log_prefix} 开始绘图！原因是：{self.reasoning}")
+
         http_base_url = self.config.get("base_url")
         http_api_key = self.config.get("volcano_generate_api_key")
 
