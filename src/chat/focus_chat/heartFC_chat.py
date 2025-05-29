@@ -335,7 +335,9 @@ class HeartFChatting:
                 for pname, ptime in processor_time_costs.items():
                     formatted_ptime = f"{ptime * 1000:.2f}毫秒" if ptime < 1 else f"{ptime:.2f}秒"
                     processor_time_strings.append(f"{pname}: {formatted_ptime}")
-                processor_time_log = ("\n各处理器耗时: " + "; ".join(processor_time_strings)) if processor_time_strings else ""
+                processor_time_log = (
+                    ("\n各处理器耗时: " + "; ".join(processor_time_strings)) if processor_time_strings else ""
+                )
 
                 logger.info(
                     f"{self.log_prefix} 第{self._current_cycle.cycle_id}次思考,"
@@ -471,7 +473,9 @@ class HeartFChatting:
                 running_memorys = await self.memory_activator.activate_memory(observations)
 
             with Timer("执行 信息处理器", cycle_timers):
-                all_plan_info, processor_time_costs = await self._process_processors(observations, running_memorys, cycle_timers)
+                all_plan_info, processor_time_costs = await self._process_processors(
+                    observations, running_memorys, cycle_timers
+                )
 
                 loop_processor_info = {
                     "all_plan_info": all_plan_info,
