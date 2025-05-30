@@ -86,6 +86,7 @@ class MainSystem:
         await async_task_manager.add_task(PersonMsgIntervalInferTask())
 
         # 启动愿望管理器
+        logger.info("正在启动聊天意愿管理进程...")
         await willing_manager.async_task_starter()
 
         # 启动网络服务
@@ -94,10 +95,6 @@ class MainSystem:
 
         # 注册API路由
         register_api_router()
-
-        # 初始化聊天管理器
-        await chat_manager._initialize()
-        asyncio.create_task(chat_manager._auto_save_task())
 
         # 使用HippocampusManager初始化海马体
         self.hippocampus_manager.initialize()
