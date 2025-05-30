@@ -75,6 +75,15 @@ class CycleDetail:
         """完成循环，记录结束时间"""
         self.end_time = time.time()
         
+        # 处理 prefix，只保留中英文字符
+        if not self.prefix:
+            self.prefix = "group"
+        else:
+            # 只保留中文和英文字符
+            self.prefix = ''.join(char for char in self.prefix if '\u4e00' <= char <= '\u9fff' or char.isascii())
+            if not self.prefix:
+                self.prefix = "group"
+        
         current_time_minute = time.strftime("%Y%m%d_%H%M", time.localtime())
         self.log_cycle_to_file(log_dir + self.prefix + f"/{current_time_minute}_cycle_" + str(self.cycle_id) + ".json")
         
