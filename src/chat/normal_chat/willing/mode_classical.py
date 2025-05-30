@@ -1,7 +1,27 @@
 import asyncio
 
+from manager.async_task_manager import AsyncTask, async_task_manager
 from src.config.config import global_config
 from .willing_manager import BaseWillingManager
+
+
+class WillingDecayTask(AsyncTask):
+    """
+    回复意愿衰减任务
+    定期衰减回复意愿
+    """
+
+    def __init__(self, willing_manager: BaseWillingManager):
+        super().__init__(
+            task_name="Willing Decay Task",
+            wait_before_start=1,
+            run_interval=1,
+        )
+        self.willing_manager = willing_manager
+
+    async def run(self):
+        for chat_id, reply_willing in self.willing_manager.chat_reply_willing.items():
+            self.willing_manager.chat_reply_willing[chat_id] = max(0.0, reply_willing * 0.9)
 
 
 class ClassicalWillingManager(BaseWillingManager):
@@ -9,16 +29,8 @@ class ClassicalWillingManager(BaseWillingManager):
         super().__init__()
         self._decay_task: asyncio.Task | None = None
 
-    async def _decay_reply_willing(self):
-        """定期衰减回复意愿"""
-        while True:
-            await asyncio.sleep(1)
-            for chat_id in self.chat_reply_willing:
-                self.chat_reply_willing[chat_id] = max(0.0, self.chat_reply_willing[chat_id] * 0.9)
-
     async def async_task_starter(self):
-        if self._decay_task is None:
-            self._decay_task = asyncio.create_task(self._decay_reply_willing())
+        await async_task_manager.add_task(WillingDecayTask(self))  # 启动回复意愿衰减任务
 
     async def get_reply_probability(self, message_id):
         willing_info = self.ongoing_messages[message_id]

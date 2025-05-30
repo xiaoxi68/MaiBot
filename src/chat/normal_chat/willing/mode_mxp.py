@@ -19,12 +19,123 @@ Mxp 模式：梦溪畔独家赞助
 下下策是询问一个菜鸟（@梦溪畔）
 """
 
+from manager.async_task_manager import AsyncTask, async_task_manager
 from src.config.config import global_config
-from .willing_manager import BaseWillingManager
+from .willing_manager import BaseWillingManager, WillingInfo
 from typing import Dict
-import asyncio
 import time
 import math
+
+
+class WillingDecayTask(AsyncTask):
+    """
+    回复意愿衰减任务
+    定期衰减回复意愿
+    """
+
+    def __init__(self, willing_manager: BaseWillingManager):
+        super().__init__(
+            task_name="Willing Reset Task",
+            wait_before_start=3,
+            run_interval=3,
+        )
+        self.willing_manager = willing_manager
+
+    async def run(self):
+        async with self.willing_manager.lock:
+            for chat_id, person_willing in self.willing_manager.chat_person_reply_willing.items():
+                for person_id in person_willing.keys():
+                    if chat_id not in self.willing_manager.chat_reply_willing:
+                        self.willing_manager.logger.debug(f"聊天流{chat_id}不存在，错误")
+                        continue
+                    basic_willing = self.willing_manager.chat_reply_willing[chat_id]
+                    person_willing[person_id] = (
+                        basic_willing
+                        + (person_willing[person_id] - basic_willing) * self.willing_manager.intention_decay_rate
+                    )
+
+
+class WillingUpdateTask(AsyncTask):
+    """聊天流意愿更新任务"""
+
+    def __init__(self, willing_manager: "MxpWillingManager"):
+        super().__init__(
+            task_name="Willing Update Task",
+            wait_before_start=20,
+            run_interval=20,
+        )
+        self.willing_manager = willing_manager
+
+    def _basic_willing_culculate(self, t: float) -> float:
+        """基础意愿值计算"""
+        return (
+            math.tan(
+                t
+                * self.willing_manager.expected_replies_per_min
+                * math.pi
+                / 120
+                / self.willing_manager.number_of_message_storage
+            )
+            / 2
+        )
+
+    async def run(self):
+        async with self.willing_manager.lock:
+            for chat_id, message_times in self.willing_manager.chat_new_message_time.items():
+                # 清理过期消息
+                current_time = time.time()
+                message_times = [
+                    msg_time
+                    for msg_time in message_times
+                    if current_time - msg_time
+                    < self.willing_manager.number_of_message_storage
+                    * self.willing_manager.basic_maximum_willing
+                    / self.willing_manager.expected_replies_per_min
+                    * 60
+                ]
+                self.willing_manager.chat_new_message_time[chat_id] = message_times
+
+                if len(message_times) < self.willing_manager.number_of_message_storage:
+                    self.willing_manager.chat_reply_willing[chat_id] = self.willing_manager.basic_maximum_willing
+                    self.run_interval = 20
+                elif len(message_times) == self.willing_manager.number_of_message_storage:
+                    time_interval = current_time - message_times[0]
+                    basic_willing = self._basic_willing_culculate(time_interval)
+                    self.willing_manager.chat_reply_willing[chat_id] = basic_willing
+                    self.run_interval = 17 * basic_willing / self.willing_manager.basic_maximum_willing + 3
+                else:
+                    self.willing_manager.logger.debug(f"聊天流{chat_id}消息时间数量异常，数量：{len(message_times)}")
+                    self.willing_manager.chat_reply_willing[chat_id] = 0
+
+            if self.willing_manager.is_debug:
+                self.willing_manager.logger.debug(f"聊天流意愿值更新：{self.willing_manager.chat_reply_willing}")
+
+
+class WillingFatigueDecayTask(AsyncTask):
+    """疲劳衰减任务"""
+
+    def __init__(self, willing_manager: "MxpWillingManager"):
+        super().__init__(
+            task_name="Willing Fatigue Decay Task",
+            wait_before_start=1,
+            run_interval=1,
+        )
+        self.willing_manager = willing_manager
+
+    async def run(self):
+        current_time = time.time()
+        async with self.willing_manager.lock:
+            for chat_id, fatigue_list in self.willing_manager.chat_fatigue_punishment_list.items():
+                fatigue_list = [z for z in fatigue_list if current_time - z[0] < z[1]]
+                self.willing_manager.chat_fatigue_willing_attenuation[chat_id] = 0
+                for start_time, duration in fatigue_list:
+                    self.willing_manager.chat_fatigue_willing_attenuation[chat_id] += (
+                        self.willing_manager.chat_reply_willing[chat_id]
+                        * 2
+                        / math.pi
+                        * math.asin(2 * (current_time - start_time) / duration - 1)
+                        - self.willing_manager.chat_reply_willing[chat_id]
+                    ) * self.willing_manager.fatigue_coefficient
 
 
 class MxpWillingManager(BaseWillingManager):
@@ -60,9 +171,9 @@ class MxpWillingManager(BaseWillingManager):
 
     async def async_task_starter(self) -> None:
         """异步任务启动器"""
-        asyncio.create_task(self._return_to_basic_willing())
-        asyncio.create_task(self._chat_new_message_to_change_basic_willing())
-        asyncio.create_task(self._fatigue_attenuation())
+        await async_task_manager.add_task(WillingDecayTask(self))
+        await async_task_manager.add_task(WillingUpdateTask(self))
+        await async_task_manager.add_task(WillingFatigueDecayTask(self))
 
     async def before_generate_reply_handle(self, message_id: str):
         """回复前处理"""
@@ -116,64 +227,16 @@ class MxpWillingManager(BaseWillingManager):
         """获取回复概率"""
         async with self.lock:
             w_info = self.ongoing_messages[message_id]
-            current_willing = self.chat_person_reply_willing[w_info.chat_id][w_info.person_id]
-            if self.is_debug:
-                self.logger.debug(f"基础意愿值：{current_willing}")
-
-            if w_info.is_mentioned_bot:
-                current_willing_ = self.mention_willing_gain / (int(current_willing) + 1)
-                current_willing += current_willing_
-                if self.is_debug:
-                    self.logger.debug(f"提及增益：{current_willing_}")
-
-            if w_info.interested_rate > 0:
-                current_willing += math.atan(w_info.interested_rate / 2) / math.pi * 2 * self.interest_willing_gain
-                if self.is_debug:
-                    self.logger.debug(
-                        f"兴趣增益：{math.atan(w_info.interested_rate / 2) / math.pi * 2 * self.interest_willing_gain}"
-                    )
-
+            current_willing = self._get_base_willing(w_info)
             self.chat_person_reply_willing[w_info.chat_id][w_info.person_id] = current_willing
 
             rel_value = await w_info.person_info_manager.get_value(w_info.person_id, "relationship_value")
             rel_level = self._get_relationship_level_num(rel_value)
-            current_willing += rel_level * 0.1
-            if self.is_debug and rel_level != 0:
-                self.logger.debug(f"关系增益：{rel_level * 0.1}")
+            current_willing = self._apply_relationship_gain(rel_level, current_willing)
 
-            if (
-                w_info.chat_id in self.last_response_person
-                and self.last_response_person[w_info.chat_id][0] == w_info.person_id
-                and self.last_response_person[w_info.chat_id][1]
-            ):
-                current_willing += self.single_chat_gain * (2 * self.last_response_person[w_info.chat_id][1] + 1)
-                if self.is_debug:
-                    self.logger.debug(
-                        f"单聊增益：{self.single_chat_gain * (2 * self.last_response_person[w_info.chat_id][1] + 1)}"
-                    )
-
-            current_willing += self.chat_fatigue_willing_attenuation.get(w_info.chat_id, 0)
-            if self.is_debug:
-                self.logger.debug(f"疲劳衰减：{self.chat_fatigue_willing_attenuation.get(w_info.chat_id, 0)}")
-
-            chat_ongoing_messages = [msg for msg in self.ongoing_messages.values() if msg.chat_id == w_info.chat_id]
-            chat_person_ogoing_messages = [msg for msg in chat_ongoing_messages if msg.person_id == w_info.person_id]
-            if len(chat_person_ogoing_messages) >= 2:
-                current_willing = 0
-                if self.is_debug:
-                    self.logger.debug("进行中消息惩罚：归0")
-            elif len(chat_ongoing_messages) == 2:
-                current_willing -= 0.5
-                if self.is_debug:
-                    self.logger.debug("进行中消息惩罚：-0.5")
-            elif len(chat_ongoing_messages) == 3:
-                current_willing -= 1.5
-                if self.is_debug:
-                    self.logger.debug("进行中消息惩罚：-1.5")
-            elif len(chat_ongoing_messages) >= 4:
-                current_willing = 0
-                if self.is_debug:
-                    self.logger.debug("进行中消息惩罚：归0")
+            current_willing = self._apply_single_chat_gain(w_info, current_willing)
+            current_willing = self._apply_fatigue_attenuation(w_info, current_willing)
+            current_willing = self._apply_ongoing_message_penalty(w_info, current_willing)
 
             probability = self._willing_to_probability(current_willing)
 
@@ -187,26 +250,75 @@ class MxpWillingManager(BaseWillingManager):
 
             return probability
 
+    def _get_base_willing(self, w_info: WillingInfo, current_willing: float) -> float:
+        """获取基础意愿值"""
+        current_willing = self.chat_person_reply_willing[w_info.chat_id][w_info.person_id]
+        if self.is_debug:
+            self.logger.debug(f"基础意愿值：{current_willing}")
+
+        if w_info.is_mentioned_bot:
+            current_willing_ = self.mention_willing_gain / (int(current_willing) + 1)
+            current_willing += current_willing_
+            if self.is_debug:
+                self.logger.debug(f"提及增益：{current_willing_}")
+
+        if w_info.interested_rate > 0:
+            gain = math.atan(w_info.interested_rate / 2) / math.pi * 2 * self.interest_willing_gain
+            current_willing += gain
+            if self.is_debug:
+                self.logger.debug(f"兴趣增益：{gain}")
+        return current_willing
+
+    def _apply_relationship_gain(self, rel_level, current_willing):
+        """应用关系增益"""
+        current_willing += rel_level * 0.1
+        if self.is_debug and rel_level != 0:
+            self.logger.debug(f"关系增益：{rel_level * 0.1}")
+        return current_willing
+
+    def _apply_single_chat_gain(self, w_info, current_willing):
+        """应用单聊增益"""
+        if (
+            w_info.chat_id in self.last_response_person
+            and self.last_response_person[w_info.chat_id][0] == w_info.person_id
+            and self.last_response_person[w_info.chat_id][1]
+        ):
+            gain = self.single_chat_gain * (2 * self.last_response_person[w_info.chat_id][1] + 1)
+            current_willing += gain
+            if self.is_debug:
+                self.logger.debug(f"单聊增益：{gain}")
+        return current_willing
+
+    def _apply_fatigue_attenuation(self, w_info, current_willing):
+        """应用疲劳衰减"""
+        fatigue = self.chat_fatigue_willing_attenuation.get(w_info.chat_id, 0)
+        current_willing += fatigue
+        if self.is_debug:
+            self.logger.debug(f"疲劳衰减：{fatigue}")
+        return current_willing
+
+    def _apply_ongoing_message_penalty(self, w_info, current_willing):
+        chat_ongoing_messages = [msg for msg in self.ongoing_messages.values() if msg.chat_id == w_info.chat_id]
+        chat_person_ogoing_messages = [msg for msg in chat_ongoing_messages if msg.person_id == w_info.person_id]
+        if len(chat_person_ogoing_messages) >= 2 or len(chat_ongoing_messages) >= 4:
+            current_willing = 0
+            if self.is_debug:
+                self.logger.debug("进行中消息惩罚：归0")
+        elif len(chat_ongoing_messages) == 2:
+            current_willing -= 0.5
+            if self.is_debug:
+                self.logger.debug("进行中消息惩罚：-0.5")
+        elif len(chat_ongoing_messages) == 3:
+            current_willing -= 1.5
+            if self.is_debug:
+                self.logger.debug("进行中消息惩罚：-1.5")
+        return current_willing
+
     async def bombing_buffer_message_handle(self, message_id: str):
         """炸飞消息处理"""
         async with self.lock:
             w_info = self.ongoing_messages[message_id]
             self.chat_person_reply_willing[w_info.chat_id][w_info.person_id] += 0.1
-
-    async def _return_to_basic_willing(self):
-        """使每个人的意愿恢复到chat基础意愿"""
-        while True:
-            await asyncio.sleep(3)
-            async with self.lock:
-                for chat_id, person_willing in self.chat_person_reply_willing.items():
-                    for person_id, willing in person_willing.items():
-                        if chat_id not in self.chat_reply_willing:
-                            self.logger.debug(f"聊天流{chat_id}不存在，错误")
-                            continue
-                        basic_willing = self.chat_reply_willing[chat_id]
-                        person_willing[person_id] = (
-                            basic_willing + (willing - basic_willing) * self.intention_decay_rate
-                        )
 
     def setup(self, message, chat, is_mentioned_bot, interested_rate):
         super().setup(message, chat, is_mentioned_bot, interested_rate)
@@ -244,46 +356,11 @@ class MxpWillingManager(BaseWillingManager):
         """意愿值转化为概率"""
         willing = max(0, willing)
         if willing < 2:
-            probability = math.atan(willing * 2) / math.pi * 2
+            return math.atan(willing * 2) / math.pi * 2
         elif willing < 2.5:
-            probability = math.atan(willing * 4) / math.pi * 2
+            return math.atan(willing * 4) / math.pi * 2
         else:
-            probability = 1
-        return probability
-
-    async def _chat_new_message_to_change_basic_willing(self):
-        """聊天流新消息改变基础意愿"""
-        update_time = 20
-        while True:
-            await asyncio.sleep(update_time)
-            async with self.lock:
-                for chat_id, message_times in self.chat_new_message_time.items():
-                    # 清理过期消息
-                    current_time = time.time()
-                    message_times = [
-                        msg_time
-                        for msg_time in message_times
-                        if current_time - msg_time
-                        < self.number_of_message_storage
-                        * self.basic_maximum_willing
-                        / self.expected_replies_per_min
-                        * 60
-                    ]
-                    self.chat_new_message_time[chat_id] = message_times
-
-                    if len(message_times) < self.number_of_message_storage:
-                        self.chat_reply_willing[chat_id] = self.basic_maximum_willing
-                        update_time = 20
-                    elif len(message_times) == self.number_of_message_storage:
-                        time_interval = current_time - message_times[0]
-                        basic_willing = self._basic_willing_culculate(time_interval)
-                        self.chat_reply_willing[chat_id] = basic_willing
-                        update_time = 17 * basic_willing / self.basic_maximum_willing + 3
-                    else:
-                        self.logger.debug(f"聊天流{chat_id}消息时间数量异常，数量：{len(message_times)}")
-                        self.chat_reply_willing[chat_id] = 0
-                if self.is_debug:
-                    self.logger.debug(f"聊天流意愿值更新：{self.chat_reply_willing}")
+            return 1
 
     @staticmethod
     def _get_relationship_level_num(relationship_value) -> int:
@@ -303,28 +380,6 @@ class MxpWillingManager(BaseWillingManager):
         else:
             level_num = 5 if relationship_value > 1000 else 0
         return level_num - 2
-
-    def _basic_willing_culculate(self, t: float) -> float:
-        """基础意愿值计算"""
-        return math.tan(t * self.expected_replies_per_min * math.pi / 120 / self.number_of_message_storage) / 2
-
-    async def _fatigue_attenuation(self):
-        """疲劳衰减"""
-        while True:
-            await asyncio.sleep(1)
-            current_time = time.time()
-            async with self.lock:
-                for chat_id, fatigue_list in self.chat_fatigue_punishment_list.items():
-                    fatigue_list = [z for z in fatigue_list if current_time - z[0] < z[1]]
-                    self.chat_fatigue_willing_attenuation[chat_id] = 0
-                    for start_time, duration in fatigue_list:
-                        self.chat_fatigue_willing_attenuation[chat_id] += (
-                            self.chat_reply_willing[chat_id]
-                            * 2
-                            / math.pi
-                            * math.asin(2 * (current_time - start_time) / duration - 1)
-                            - self.chat_reply_willing[chat_id]
-                        ) * self.fatigue_coefficient
 
     async def get_willing(self, chat_id):
         return self.temporary_willing
