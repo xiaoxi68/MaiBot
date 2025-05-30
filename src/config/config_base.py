@@ -1,5 +1,5 @@
 from dataclasses import dataclass, fields, MISSING
-from typing import TypeVar, Type, Any, get_origin, get_args
+from typing import TypeVar, Type, Any, get_origin, get_args, Literal
 
 T = TypeVar("T", bound="ConfigBase")
 
@@ -102,6 +102,18 @@ class ConfigBase:
             return {cls._convert_field(k, key_type): cls._convert_field(v, value_type) for k, v in value.items()}
 
         # 处理基础类型，例如 int, str 等
+        if field_origin_type is type(None) and value is None:  # 处理Optional类型
+            return None
+
+        # 处理Literal类型
+        if field_origin_type is Literal or get_origin(field_type) is Literal:
+            # 获取Literal的允许值
+            allowed_values = get_args(field_type)
+            if value in allowed_values:
+                return value
+            else:
+                raise TypeError(f"Value '{value}' is not in allowed values {allowed_values} for Literal type")
+
         if field_type is Any or isinstance(value, field_type):
             return value
 

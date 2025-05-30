@@ -1,5 +1,5 @@
 from src.tools.tool_can_use.base_tool import BaseTool, register_tool
-from chat.person_info.person_identity import person_identity_manager
+from src.person_info.person_identity import person_identity_manager
 from src.common.logger_manager import get_logger
 import time
 

@@ -3,10 +3,11 @@ import contextlib
 import time
 import traceback
 from collections import deque
-from typing import List, Optional, Dict, Any, Deque
+from typing import List, Optional, Dict, Any, Deque, Callable, Awaitable
 from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.message_receive.chat_stream import chat_manager
 from rich.traceback import install
+from src.chat.utils.prompt_builder import global_prompt_manager
 from src.common.logger_manager import get_logger
 from src.chat.utils.timer_calculator import Timer
 from src.chat.heart_flow.observation.observation import Observation
@@ -15,14 +16,19 @@ from src.chat.focus_chat.info.info_base import InfoBase
 from src.chat.focus_chat.info_processors.chattinginfo_processor import ChattingInfoProcessor
 from src.chat.focus_chat.info_processors.mind_processor import MindProcessor
 from src.chat.focus_chat.info_processors.working_memory_processor import WorkingMemoryProcessor
+
+# from src.chat.focus_chat.info_processors.action_processor import ActionProcessor
 from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
 from src.chat.heart_flow.observation.working_observation import WorkingMemoryObservation
+from src.chat.heart_flow.observation.structure_observation import StructureObservation
+from src.chat.heart_flow.observation.actions_observation import ActionObservation
 from src.chat.focus_chat.info_processors.tool_processor import ToolProcessor
 from src.chat.focus_chat.expressors.default_expressor import DefaultExpressor
 from src.chat.focus_chat.memory_activator import MemoryActivator
 from src.chat.focus_chat.info_processors.base_processor import BaseProcessor
 from src.chat.focus_chat.info_processors.self_processor import SelfProcessor
 from src.chat.focus_chat.planners.planner import ActionPlanner
+from src.chat.focus_chat.planners.modify_actions import ActionModifier
 from src.chat.focus_chat.planners.action_manager import ActionManager
 from src.chat.focus_chat.working_memory.working_memory import WorkingMemory
 from src.config.config import global_config
@@ -39,13 +45,6 @@ PROCESSOR_CLASSES = {
     "WorkingMemoryProcessor": (WorkingMemoryProcessor, "working_memory_processor"),
     "SelfProcessor": (SelfProcessor, "self_identify_processor"),
 }
-
-
-WAITING_TIME_THRESHOLD = 300  # 等待新消息时间阈值，单位秒
-
-EMOJI_SEND_PRO = 0.3  # 设置一个概率，比如 30% 才真的发
-
-CONSECUTIVE_NO_REPLY_THRESHOLD = 3  # 连续不回复的阈值
 
 logger = get_logger("hfc")  # Logger Name Changed
 
@@ -80,6 +79,7 @@ class HeartFChatting:
         self,
         chat_id: str,
         observations: list[Observation],
+        on_stop_focus_chat: Optional[Callable[[], Awaitable[None]]] = None,
     ):
         """
         HeartFChatting 初始化函数
@@ -87,6 +87,7 @@ class HeartFChatting:
         参数:
             chat_id: 聊天流唯一标识符(如stream_id)
             observations: 关联的观察列表
+            on_stop_focus_chat: 当收到stop_focus_chat命令时调用的回调函数
         """
         # 基础属性
         self.stream_id: str = chat_id  # 聊天流ID
@@ -94,6 +95,7 @@ class HeartFChatting:
         self.log_prefix: str = str(chat_id)  # Initial default, will be updated
         self.hfcloop_observation = HFCloopObservation(observe_id=self.stream_id)
         self.chatting_observation = observations[0]
+        self.structure_observation = StructureObservation(observe_id=self.stream_id)
 
         self.memory_activator = MemoryActivator()
         self.working_memory = WorkingMemory(chat_id=self.stream_id)
@@ -119,8 +121,10 @@ class HeartFChatting:
         self.expressor = DefaultExpressor(chat_id=self.stream_id)
         self.action_manager = ActionManager()
         self.action_planner = ActionPlanner(log_prefix=self.log_prefix, action_manager=self.action_manager)
+        self.action_modifier = ActionModifier(action_manager=self.action_manager)
+        self.action_observation = ActionObservation(observe_id=self.stream_id)
 
-        self.hfcloop_observation.set_action_manager(self.action_manager)
+        self.action_observation.set_action_manager(self.action_manager)
 
         self.all_observations = observations
 
@@ -135,8 +139,11 @@ class HeartFChatting:
         # 添加循环信息管理相关的属性
         self._cycle_counter = 0
         self._cycle_history: Deque[CycleDetail] = deque(maxlen=10)  # 保留最近10个循环的信息
-        self._current_cycle: Optional[CycleDetail] = None
+        self._current_cycle_detail: Optional[CycleDetail] = None
         self._shutting_down: bool = False  # 关闭标志位
+
+        # 存储回调函数
+        self.on_stop_focus_chat = on_stop_focus_chat
 
     async def _initialize(self) -> bool:
         """
@@ -244,12 +251,12 @@ class HeartFChatting:
         try:
             exception = task.exception()
             if exception:
-                logger.error(f"{self.log_prefix} HeartFChatting: 麦麦脱离了聊天(异常): {exception}")
+                logger.error(f"{self.log_prefix} HeartFChatting: 脱离了聊天(异常): {exception}")
                 logger.error(traceback.format_exc())  # Log full traceback for exceptions
             else:
-                logger.info(f"{self.log_prefix} HeartFChatting: 麦麦脱离了聊天 (外部停止)")
+                logger.info(f"{self.log_prefix} HeartFChatting: 脱离了聊天 (外部停止)")
         except asyncio.CancelledError:
-            logger.info(f"{self.log_prefix} HeartFChatting: 麦麦脱离了聊天(任务取消)")
+            logger.info(f"{self.log_prefix} HeartFChatting: 脱离了聊天(任务取消)")
         finally:
             self._loop_active = False
             self._loop_task = None
@@ -268,7 +275,8 @@ class HeartFChatting:
 
                 # 创建新的循环信息
                 self._cycle_counter += 1
-                self._current_cycle = CycleDetail(self._cycle_counter)
+                self._current_cycle_detail = CycleDetail(self._cycle_counter)
+                self._current_cycle_detail.prefix = self.log_prefix
 
                 # 初始化周期状态
                 cycle_timers = {}
@@ -277,15 +285,28 @@ class HeartFChatting:
                 # 执行规划和处理阶段
                 async with self._get_cycle_context():
                     thinking_id = "tid" + str(round(time.time(), 2))
-                    self._current_cycle.set_thinking_id(thinking_id)
+                    self._current_cycle_detail.set_thinking_id(thinking_id)
                     # 主循环：思考->决策->执行
+                    async with global_prompt_manager.async_message_scope(self.chat_stream.context.get_template_name()):
+                        logger.debug(f"模板 {self.chat_stream.context.get_template_name()}")
+                        loop_info = await self._observe_process_plan_action_loop(cycle_timers, thinking_id)
 
-                    loop_info = await self._observe_process_plan_action_loop(cycle_timers, thinking_id)
+                        if loop_info["loop_action_info"]["command"] == "stop_focus_chat":
+                            logger.info(f"{self.log_prefix} 麦麦决定停止专注聊天")
+                            # 如果设置了回调函数，则调用它
+                            if self.on_stop_focus_chat:
+                                try:
+                                    await self.on_stop_focus_chat()
+                                    logger.info(f"{self.log_prefix} 成功调用回调函数处理停止专注聊天")
+                                except Exception as e:
+                                    logger.error(f"{self.log_prefix} 调用停止专注聊天回调函数时出错: {e}")
+                                    logger.error(traceback.format_exc())
+                            break
 
-                    self._current_cycle.set_loop_info(loop_info)
+                    self._current_cycle_detail.set_loop_info(loop_info)
 
-                    self.hfcloop_observation.add_loop_info(self._current_cycle)
-                    self._current_cycle.timers = cycle_timers
+                    self.hfcloop_observation.add_loop_info(self._current_cycle_detail)
+                    self._current_cycle_detail.timers = cycle_timers
 
                     # 防止循环过快消耗资源
                     await _handle_cycle_delay(
@@ -293,8 +314,8 @@ class HeartFChatting:
                     )
 
                 # 完成当前循环并保存历史
-                self._current_cycle.complete_cycle()
-                self._cycle_history.append(self._current_cycle)
+                self._current_cycle_detail.complete_cycle()
+                self._cycle_history.append(self._current_cycle_detail)
 
                 # 记录循环信息和计时器结果
                 timer_strings = []
@@ -302,11 +323,22 @@ class HeartFChatting:
                     formatted_time = f"{elapsed * 1000:.2f}毫秒" if elapsed < 1 else f"{elapsed:.2f}秒"
                     timer_strings.append(f"{name}: {formatted_time}")
 
+                # 新增：输出每个处理器的耗时
+                processor_time_costs = self._current_cycle_detail.loop_processor_info.get("processor_time_costs", {})
+                processor_time_strings = []
+                for pname, ptime in processor_time_costs.items():
+                    formatted_ptime = f"{ptime * 1000:.2f}毫秒" if ptime < 1 else f"{ptime:.2f}秒"
+                    processor_time_strings.append(f"{pname}: {formatted_ptime}")
+                processor_time_log = (
+                    ("\n各处理器耗时: " + "; ".join(processor_time_strings)) if processor_time_strings else ""
+                )
+
                 logger.info(
-                    f"{self.log_prefix} 第{self._current_cycle.cycle_id}次思考,"
-                    f"耗时: {self._current_cycle.end_time - self._current_cycle.start_time:.1f}秒, "
-                    f"动作: {self._current_cycle.loop_plan_info['action_result']['action_type']}"
+                    f"{self.log_prefix} 第{self._current_cycle_detail.cycle_id}次思考,"
+                    f"耗时: {self._current_cycle_detail.end_time - self._current_cycle_detail.start_time:.1f}秒, "
+                    f"动作: {self._current_cycle_detail.loop_plan_info['action_result']['action_type']}"
                     + (f"\n详情: {'; '.join(timer_strings)}" if timer_strings else "")
+                    + processor_time_log
                 )
 
                 await asyncio.sleep(global_config.focus_chat.think_interval)
@@ -341,20 +373,26 @@ class HeartFChatting:
                 self._processing_lock.release()
 
     async def _process_processors(
-        self, observations: List[Observation], running_memorys: List[Dict[str, Any]], cycle_timers: dict
-    ) -> List[InfoBase]:
+        self, observations: List[Observation], running_memorys: List[Dict[str, Any]]
+    ) -> tuple[List[InfoBase], Dict[str, float]]:
         # 记录并行任务开始时间
         parallel_start_time = time.time()
         logger.debug(f"{self.log_prefix} 开始信息处理器并行任务")
 
         processor_tasks = []
         task_to_name_map = {}
+        processor_time_costs = {}  # 新增: 记录每个处理器耗时
 
         for processor in self.processors:
             processor_name = processor.__class__.log_prefix
-            task = asyncio.create_task(
-                processor.process_info(observations=observations, running_memorys=running_memorys)
-            )
+
+            async def run_with_timeout(proc=processor):
+                return await asyncio.wait_for(
+                    proc.process_info(observations=observations, running_memorys=running_memorys),
+                    timeout=global_config.focus_chat.processor_max_time,
+                )
+
+            task = asyncio.create_task(run_with_timeout())
             processor_tasks.append(task)
             task_to_name_map[task] = processor_name
             logger.debug(f"{self.log_prefix} 启动处理器任务: {processor_name}")
@@ -371,22 +409,24 @@ class HeartFChatting:
                 duration_since_parallel_start = task_completed_time - parallel_start_time
 
                 try:
-                    # 使用 await task 来获取结果或触发异常
                     result_list = await task
-                    logger.info(
-                        f"{self.log_prefix} 处理器 {processor_name} 已完成，信息已处理: {duration_since_parallel_start:.2f}秒"
-                    )
+                    logger.info(f"{self.log_prefix} 处理器 {processor_name} 已完成!")
                     if result_list is not None:
                         all_plan_info.extend(result_list)
                     else:
                         logger.warning(f"{self.log_prefix} 处理器 {processor_name} 返回了 None")
+                    # 记录耗时
+                    processor_time_costs[processor_name] = duration_since_parallel_start
+                except asyncio.TimeoutError:
+                    logger.info(f"{self.log_prefix} 处理器 {processor_name} 超时（>{global_config.focus_chat.processor_max_time}s），已跳过")
+                    processor_time_costs[processor_name] = global_config.focus_chat.processor_max_time
                 except Exception as e:
                     logger.error(
                         f"{self.log_prefix} 处理器 {processor_name} 执行失败，耗时 (自并行开始): {duration_since_parallel_start:.2f}秒. 错误: {e}",
                         exc_info=True,
                     )
                     traceback.print_exc()
-                    # 即使出错，也认为该任务结束了，已从 pending_tasks 中移除
+                    processor_time_costs[processor_name] = duration_since_parallel_start
 
             if pending_tasks:
                 current_progress_time = time.time()
@@ -402,38 +442,62 @@ class HeartFChatting:
         logger.info(f"{self.log_prefix} 所有处理器任务全部完成，总耗时: {total_duration:.2f}秒")
         # logger.debug(f"{self.log_prefix} 所有信息处理器处理后的信息: {all_plan_info}")
 
-        return all_plan_info
+        return all_plan_info, processor_time_costs
 
-    async def _observe_process_plan_action_loop(self, cycle_timers: dict, thinking_id: str) -> tuple[bool, str]:
+    async def _observe_process_plan_action_loop(self, cycle_timers: dict, thinking_id: str) -> dict:
         try:
             with Timer("观察", cycle_timers):
-                # await self.observations[0].observe()
                 await self.chatting_observation.observe()
                 await self.working_observation.observe()
                 await self.hfcloop_observation.observe()
+                await self.structure_observation.observe()
                 observations: List[Observation] = []
                 observations.append(self.chatting_observation)
                 observations.append(self.working_observation)
                 observations.append(self.hfcloop_observation)
+                observations.append(self.structure_observation)
 
                 loop_observation_info = {
                     "observations": observations,
                 }
 
                 self.all_observations = observations
+                
+            with Timer("调整动作", cycle_timers):
+                # 处理特殊的观察
+                await self.action_modifier.modify_actions(observations=observations)
+                await self.action_observation.observe()
+                observations.append(self.action_observation)
 
-            with Timer("回忆", cycle_timers):
-                running_memorys = await self.memory_activator.activate_memory(observations)
+            # 根据配置决定是否并行执行回忆和处理器阶段
+            # print(global_config.focus_chat.parallel_processing)
+            if global_config.focus_chat.parallel_processing:
+                # 并行执行回忆和处理器阶段
+                with Timer("并行回忆和处理", cycle_timers):
+                    memory_task = asyncio.create_task(self.memory_activator.activate_memory(observations))
+                    processor_task = asyncio.create_task(self._process_processors(observations, []))
+                    
+                    # 等待两个任务完成
+                    running_memorys, (all_plan_info, processor_time_costs) = await asyncio.gather(memory_task, processor_task)
+            else:
+                # 串行执行
+                with Timer("回忆", cycle_timers):
+                    running_memorys = await self.memory_activator.activate_memory(observations)
 
-            with Timer("执行 信息处理器", cycle_timers):
-                all_plan_info = await self._process_processors(observations, running_memorys, cycle_timers)
+                with Timer("执行 信息处理器", cycle_timers):
+                    all_plan_info, processor_time_costs = await self._process_processors(
+                        observations, running_memorys
+                    )
 
-                loop_processor_info = {
-                    "all_plan_info": all_plan_info,
-                }
+            loop_processor_info = {
+                "all_plan_info": all_plan_info,
+                "processor_time_costs": processor_time_costs,
+            }
+
+
 
             with Timer("规划器", cycle_timers):
-                plan_result = await self.action_planner.plan(all_plan_info, cycle_timers)
+                plan_result = await self.action_planner.plan(all_plan_info, running_memorys)
 
                 loop_plan_info = {
                     "action_result": plan_result.get("action_result", {}),
@@ -448,7 +512,6 @@ class HeartFChatting:
                     plan_result.get("action_result", {}).get("reasoning", "未提供理由"),
                 )
 
-                # 在此处添加日志记录
                 if action_type == "reply":
                     action_str = "回复"
                 elif action_type == "no_reply":
@@ -456,15 +519,17 @@ class HeartFChatting:
                 else:
                     action_str = action_type
 
-                logger.info(f"{self.log_prefix} 麦麦决定'{action_str}', 原因'{reasoning}'")
+                logger.debug(f"{self.log_prefix} 麦麦想要：'{action_str}', 原因'{reasoning}'")
 
-                success, reply_text = await self._handle_action(
+                success, reply_text, command = await self._handle_action(
                     action_type, reasoning, action_data, cycle_timers, thinking_id
                 )
 
                 loop_action_info = {
                     "action_taken": success,
                     "reply_text": reply_text,
+                    "command": command,
+                    "taken_time": time.time(),
                 }
 
             loop_info = {
@@ -479,7 +544,12 @@ class HeartFChatting:
         except Exception as e:
             logger.error(f"{self.log_prefix} FOCUS聊天处理失败: {e}")
             logger.error(traceback.format_exc())
-            return {}
+            return {
+                "loop_observation_info": {},
+                "loop_processor_info": {},
+                "loop_plan_info": {},
+                "loop_action_info": {"action_taken": False, "reply_text": "", "command": ""},
+            }
 
     async def _handle_action(
         self,
@@ -488,7 +558,7 @@ class HeartFChatting:
         action_data: dict,
         cycle_timers: dict,
         thinking_id: str,
-    ) -> tuple[bool, str]:
+    ) -> tuple[bool, str, str]:
         """
         处理规划动作，使用动作工厂创建相应的动作处理器
 
@@ -500,36 +570,48 @@ class HeartFChatting:
             thinking_id: 思考ID
 
         返回:
-            tuple[bool, str]: (是否执行了动作, 思考消息ID)
+            tuple[bool, str, str]: (是否执行了动作, 思考消息ID, 命令)
         """
         try:
             # 使用工厂创建动作处理器实例
-            action_handler = self.action_manager.create_action(
-                action_name=action,
-                action_data=action_data,
-                reasoning=reasoning,
-                cycle_timers=cycle_timers,
-                thinking_id=thinking_id,
-                observations=self.all_observations,
-                expressor=self.expressor,
-                chat_stream=self.chat_stream,
-                log_prefix=self.log_prefix,
-                shutting_down=self._shutting_down,
-            )
+            try:
+                action_handler = self.action_manager.create_action(
+                    action_name=action,
+                    action_data=action_data,
+                    reasoning=reasoning,
+                    cycle_timers=cycle_timers,
+                    thinking_id=thinking_id,
+                    observations=self.all_observations,
+                    expressor=self.expressor,
+                    chat_stream=self.chat_stream,
+                    log_prefix=self.log_prefix,
+                    shutting_down=self._shutting_down,
+                )
+            except Exception as e:
+                logger.error(f"{self.log_prefix} 创建动作处理器时出错: {e}")
+                traceback.print_exc()
+                return False, "", ""
 
             if not action_handler:
                 logger.warning(f"{self.log_prefix} 未能创建动作处理器: {action}, 原因: {reasoning}")
-                return False, ""
+                return False, "", ""
 
             # 处理动作并获取结果
-            success, reply_text = await action_handler.handle_action()
-
-            return success, reply_text
+            result = await action_handler.handle_action()
+            if len(result) == 3:
+                success, reply_text, command = result
+            else:
+                success, reply_text = result
+                command = ""
+            logger.debug(
+                f"{self.log_prefix} 麦麦执行了'{action}', 原因'{reasoning}'，返回结果'{success}', '{reply_text}', '{command}'"
+            )
+            return success, reply_text, command
 
         except Exception as e:
             logger.error(f"{self.log_prefix} 处理{action}时出错: {e}")
             traceback.print_exc()
-            return False, ""
+            return False, "", ""
 
     async def shutdown(self):
         """优雅关闭HeartFChatting实例，取消活动循环任务"""

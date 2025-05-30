@@ -11,7 +11,7 @@ import jieba
 import networkx as nx
 import numpy as np
 from collections import Counter
-from ...chat.models.utils_model import LLMRequest
+from ...llm_models.utils_model import LLMRequest
 from src.common.logger_manager import get_logger
 from src.chat.memory_system.sample_distribution import MemoryBuildScheduler  # 分布生成器
 from ..utils.chat_message_builder import (
@@ -193,7 +193,6 @@ class MemoryGraph:
 class Hippocampus:
     def __init__(self):
         self.memory_graph = MemoryGraph()
-        self.llm_topic_judge = None
         self.model_summary = None
         self.entorhinal_cortex = None
         self.parahippocampal_gyrus = None
@@ -205,8 +204,7 @@ class Hippocampus:
         # 从数据库加载记忆图
         self.entorhinal_cortex.sync_memory_from_db()
         # TODO: API-Adapter修改标记
-        self.llm_topic_judge = LLMRequest(global_config.model.topic_judge, request_type="memory")
-        self.model_summary = LLMRequest(global_config.model.summary, request_type="memory")
+        self.model_summary = LLMRequest(global_config.model.memory_summary, request_type="memory")
 
     def get_all_node_names(self) -> list:
         """获取记忆图中所有节点的名字列表"""
@@ -241,7 +239,7 @@ class Hippocampus:
         # 不再需要 time_info 参数
         prompt = (
             f'这是一段文字：\n{text}\n\n我想让你基于这段文字来概括"{topic}"这个概念，帮我总结成一句自然的话，'
-            f"要求包含对这个概念的定义，内容，知识，可以包含时间和人物。只输出这句话就好"
+            f"要求包含对这个概念的定义，内容，知识，但是这些信息必须来自这段文字，不能添加信息。\n，请包含时间和人物。只输出这句话就好"
         )
         return prompt
 
@@ -338,12 +336,13 @@ class Hippocampus:
             # 去重
             keywords = list(set(keywords))
             # 限制关键词数量
-            keywords = keywords[:5]
+            logger.debug(f"提取关键词: {keywords}")
+
         else:
             # 使用LLM提取关键词
             topic_num = min(5, max(1, int(len(text) * 0.1)))  # 根据文本长度动态调整关键词数量
             # logger.info(f"提取关键词数量: {topic_num}")
-            topics_response = await self.llm_topic_judge.generate_response(self.find_topic_llm(text, topic_num))
+            topics_response = await self.model_summary.generate_response(self.find_topic_llm(text, topic_num))
 
             # 提取关键词
             keywords = re.findall(r"<([^>]+)>", topics_response[0])
@@ -361,7 +360,7 @@ class Hippocampus:
         # 过滤掉不存在于记忆图中的关键词
         valid_keywords = [keyword for keyword in keywords if keyword in self.memory_graph.G]
         if not valid_keywords:
-            # logger.info("没有找到有效的关键词节点")
+            logger.info("没有找到有效的关键词节点")
             return []
 
         logger.debug(f"有效的关键词: {', '.join(valid_keywords)}")
@@ -527,12 +526,12 @@ class Hippocampus:
         if not keywords:
             return []
 
-        # logger.info(f"提取的关键词: {', '.join(keywords)}")
+        logger.info(f"提取的关键词: {', '.join(keywords)}")
 
         # 过滤掉不存在于记忆图中的关键词
         valid_keywords = [keyword for keyword in keywords if keyword in self.memory_graph.G]
         if not valid_keywords:
-            # logger.info("没有找到有效的关键词节点")
+            logger.info("没有找到有效的关键词节点")
             return []
 
         logger.debug(f"有效的关键词: {', '.join(valid_keywords)}")
@@ -698,7 +697,7 @@ class Hippocampus:
             # 使用LLM提取关键词
             topic_num = min(5, max(1, int(len(text) * 0.1)))  # 根据文本长度动态调整关键词数量
             # logger.info(f"提取关键词数量: {topic_num}")
-            topics_response = await self.llm_topic_judge.generate_response(self.find_topic_llm(text, topic_num))
+            topics_response = await self.model_summary.generate_response(self.find_topic_llm(text, topic_num))
 
             # 提取关键词
             keywords = re.findall(r"<([^>]+)>", topics_response[0])
@@ -1125,7 +1124,7 @@ class ParahippocampalGyrus:
 
         # 2. 使用LLM提取关键主题
         topic_num = self.hippocampus.calculate_topic_num(input_text, compress_rate)
-        topics_response = await self.hippocampus.llm_topic_judge.generate_response(
+        topics_response = await self.hippocampus.model_summary.generate_response(
             self.hippocampus.find_topic_llm(input_text, topic_num)
         )
 

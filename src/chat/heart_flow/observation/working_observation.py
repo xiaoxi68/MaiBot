@@ -32,3 +32,13 @@ class WorkingMemoryObservation:
 
     async def observe(self):
         pass
+
+    def to_dict(self) -> dict:
+        """将观察对象转换为可序列化的字典"""
+        return {
+            "observe_info": self.observe_info,
+            "observe_id": self.observe_id,
+            "last_observe_time": self.last_observe_time,
+            "working_memory": self.working_memory.to_dict() if hasattr(self.working_memory, 'to_dict') else str(self.working_memory),
+            "retrieved_working_memory": [item.to_dict() if hasattr(item, 'to_dict') else str(item) for item in self.retrieved_working_memory]
+        }

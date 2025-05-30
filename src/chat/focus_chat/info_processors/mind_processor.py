@@ -1,6 +1,6 @@
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 from src.chat.heart_flow.observation.observation import Observation
-from src.chat.models.utils_model import LLMRequest
+from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 import time
 import traceback
@@ -9,11 +9,12 @@ from src.individuality.individuality import individuality
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.utils.json_utils import safe_json_dumps
 from src.chat.message_receive.chat_stream import chat_manager
-from src.chat.person_info.relationship_manager import relationship_manager
+from src.person_info.relationship_manager import relationship_manager
 from .base_processor import BaseProcessor
 from src.chat.focus_chat.info.mind_info import MindInfo
 from typing import List, Optional
 from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
+from src.chat.heart_flow.observation.actions_observation import ActionObservation
 from typing import Dict
 from src.chat.focus_chat.info.info_base import InfoBase
 
@@ -23,12 +24,12 @@ logger = get_logger("processor")
 def init_prompt():
     group_prompt = """
 你的名字是{bot_name}
-{memory_str}
-{extra_info}
-{relation_prompt}
+{memory_str}{extra_info}{relation_prompt}
 {cycle_info_block}
 现在是{time_now}，你正在上网，和qq群里的网友们聊天，以下是正在进行的聊天内容：
 {chat_observe_info}
+
+{action_observe_info}
 
 以下是你之前对聊天的观察和规划，你的名字是{bot_name}：
 {last_mind}
@@ -43,13 +44,11 @@ def init_prompt():
 
     private_prompt = """
 你的名字是{bot_name}
-{memory_str}
-{extra_info}
-{relation_prompt}
+{memory_str}{extra_info}{relation_prompt}
 {cycle_info_block}
 现在是{time_now}，你正在上网，和qq群里的网友们聊天，以下是正在进行的聊天内容：
 {chat_observe_info}
-
+{action_observe_info}
 以下是你之前对聊天的观察和规划，你的名字是{bot_name}：
 {last_mind}
 
@@ -71,10 +70,10 @@ class MindProcessor(BaseProcessor):
         self.subheartflow_id = subheartflow_id
 
         self.llm_model = LLMRequest(
-            model=global_config.model.sub_heartflow,
-            temperature=global_config.model.sub_heartflow["temp"],
+            model=global_config.model.focus_chat_mind,
+            # temperature=global_config.model.focus_chat_mind["temp"],
             max_tokens=800,
-            request_type="sub_heart_flow",
+            request_type="focus.processor.chat_mind",
         )
 
         self.current_mind = ""
@@ -150,14 +149,14 @@ class MindProcessor(BaseProcessor):
 
         # ---------- 0. 更新和清理 structured_info ----------
         if self.structured_info:
-            updated_info = []
-            for item in self.structured_info:
-                item["ttl"] -= 1
-                if item["ttl"] > 0:
-                    updated_info.append(item)
-                else:
-                    logger.debug(f"{self.log_prefix} 移除过期的 structured_info 项: {item['id']}")
-            self.structured_info = updated_info
+            # updated_info = []
+            # for item in self.structured_info:
+            #     item["ttl"] -= 1
+            #     if item["ttl"] > 0:
+            #         updated_info.append(item)
+            #     else:
+            #         logger.debug(f"{self.log_prefix} 移除过期的 structured_info 项: {item['id']}")
+            # self.structured_info = updated_info
             self._update_structured_info_str()
         logger.debug(
             f"{self.log_prefix} 当前完整的 structured_info: {safe_json_dumps(self.structured_info, ensure_ascii=False)}"
@@ -191,6 +190,8 @@ class MindProcessor(BaseProcessor):
                 person_list = observation.person_list
             if isinstance(observation, HFCloopObservation):
                 hfcloop_observe_info = observation.get_observe_info()
+            if isinstance(observation, ActionObservation):
+                action_observe_info = observation.get_observe_info()
 
         # ---------- 3. 准备个性化数据 ----------
         # 获取个性化信息
@@ -211,6 +212,7 @@ class MindProcessor(BaseProcessor):
             chat_observe_info=chat_observe_info,
             last_mind=previous_mind,
             cycle_info_block=hfcloop_observe_info,
+            action_observe_info=action_observe_info,
             chat_target_name=chat_target_name,
         )
 
@@ -223,11 +225,11 @@ class MindProcessor(BaseProcessor):
             # 处理总体异常
             logger.error(f"{self.log_prefix} 执行LLM请求或处理响应时出错: {e}")
             logger.error(traceback.format_exc())
-            content = "思考过程中出现错误"
+            content = "注意：思考过程中出现错误，应该是LLM大模型有问题！！你需要告诉别人，检查大模型配置"
 
         # 记录初步思考结果
         logger.debug(f"{self.log_prefix} 思考prompt: \n{prompt}\n")
-        logger.info(f"{self.log_prefix} 思考结果: {content}")
+        logger.info(f"{self.log_prefix} 聊天规划: {content}")
         self.update_current_mind(content)
 
         return content

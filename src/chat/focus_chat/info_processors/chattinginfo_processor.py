@@ -9,8 +9,9 @@ from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservati
 from src.chat.focus_chat.info.cycle_info import CycleInfo
 from datetime import datetime
 from typing import Dict
-from src.chat.models.utils_model import LLMRequest
+from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
+import asyncio
 
 logger = get_logger("processor")
 
@@ -28,7 +29,10 @@ class ChattingInfoProcessor(BaseProcessor):
         super().__init__()
         # TODO: API-Adapter修改标记
         self.model_summary = LLMRequest(
-            model=global_config.model.observation, temperature=0.7, max_tokens=300, request_type="chat_observation"
+            model=global_config.model.utils_small,
+            temperature=0.7,
+            max_tokens=300,
+            request_type="focus.observation.chat",
         )
 
     async def process_info(
@@ -59,7 +63,8 @@ class ChattingInfoProcessor(BaseProcessor):
 
                     obs_info = ObsInfo()
 
-                    await self.chat_compress(obs)
+                    # 改为异步任务，不阻塞主流程
+                    asyncio.create_task(self.chat_compress(obs))
 
                     # 设置说话消息
                     if hasattr(obs, "talking_message_str"):
@@ -95,14 +100,20 @@ class ChattingInfoProcessor(BaseProcessor):
         return processed_infos
 
     async def chat_compress(self, obs: ChattingObservation):
+        log_msg = ""
         if obs.compressor_prompt:
+            summary = ""
             try:
-                summary_result, _, _ = await self.model_summary.generate_response(obs.compressor_prompt)
-                summary = "没有主题的闲聊"  # 默认值
-                if summary_result:  # 确保结果不为空
+                summary_result, _ = await self.model_summary.generate_response_async(obs.compressor_prompt)
+                summary = "没有主题的闲聊"
+                if summary_result:
                     summary = summary_result
             except Exception as e:
-                logger.error(f"总结主题失败 for chat {obs.chat_id}: {e}")
+                log_msg = f"总结主题失败 for chat {obs.chat_id}: {e}"
+                logger.error(log_msg)
+            else:
+                log_msg = f"chat_compress 完成 for chat {obs.chat_id}, summary: {summary}"
+                logger.info(log_msg)
 
             mid_memory = {
                 "id": str(int(datetime.now().timestamp())),
@@ -129,3 +140,5 @@ class ChattingInfoProcessor(BaseProcessor):
             obs.compressor_prompt = ""
             obs.oldest_messages = []
             obs.oldest_messages_str = ""
+
+        return log_msg

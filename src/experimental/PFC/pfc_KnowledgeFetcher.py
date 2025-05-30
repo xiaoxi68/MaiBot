@@ -1,7 +1,7 @@
 from typing import List, Tuple
 from src.common.logger import get_module_logger
 from src.chat.memory_system.Hippocampus import HippocampusManager
-from src.chat.models.utils_model import LLMRequest
+from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.chat.message_receive.message import Message
 from src.chat.knowledge.knowledge_lib import qa_manager
@@ -16,8 +16,8 @@ class KnowledgeFetcher:
     def __init__(self, private_name: str):
         # TODO: API-Adapter修改标记
         self.llm = LLMRequest(
-            model=global_config.model.normal,
-            temperature=global_config.model.normal["temp"],
+            model=global_config.model.utils,
+            temperature=global_config.model.utils["temp"],
             max_tokens=1000,
             request_type="knowledge_fetch",
         )

@@ -1,11 +1,9 @@
 import asyncio
 import time
-import random
 from typing import Dict, Any, Optional, List
 from src.common.logger_manager import get_logger
 from src.chat.message_receive.chat_stream import chat_manager
 from src.chat.heart_flow.sub_heartflow import SubHeartflow, ChatState
-from src.chat.heart_flow.mai_state_manager import MaiStateInfo
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 
 
@@ -55,10 +53,9 @@ async def _try_set_subflow_absent_internal(subflow: "SubHeartflow", log_prefix: 
 class SubHeartflowManager:
     """管理所有活跃的 SubHeartflow 实例。"""
 
-    def __init__(self, mai_state_info: MaiStateInfo):
+    def __init__(self):
         self.subheartflows: Dict[Any, "SubHeartflow"] = {}
         self._lock = asyncio.Lock()  # 用于保护 self.subheartflows 的访问
-        self.mai_state_info: MaiStateInfo = mai_state_info  # 存储传入的 MaiStateInfo 实例
 
     async def force_change_state(self, subflow_id: Any, target_state: ChatState) -> bool:
         """强制改变指定子心流的状态"""
@@ -92,16 +89,12 @@ class SubHeartflowManager:
                 if subflow.should_stop:
                     logger.warning(f"尝试获取已停止的子心流 {subheartflow_id}，正在重新激活")
                     subflow.should_stop = False  # 重置停止标志
-
-                subflow.last_active_time = time.time()  # 更新活跃时间
-                # logger.debug(f"获取到已存在的子心流: {subheartflow_id}")
                 return subflow
 
             try:
                 # 初始化子心流, 传入 mai_state_info
                 new_subflow = SubHeartflow(
                     subheartflow_id,
-                    self.mai_state_info,
                 )
 
                 # 首先创建并添加聊天观察者
@@ -186,41 +179,41 @@ class SubHeartflowManager:
             f"{log_prefix} 完成，共处理 {processed_count} 个子心流，成功将 {changed_count} 个非 ABSENT 子心流的状态更改为 ABSENT。"
         )
 
-    async def sbhf_normal_into_focus(self):
-        """评估子心流兴趣度，满足条件则提升到FOCUSED状态（基于start_hfc_probability）"""
-        try:
-            for sub_hf in list(self.subheartflows.values()):
-                flow_id = sub_hf.subheartflow_id
-                stream_name = chat_manager.get_stream_name(flow_id) or flow_id
+    # async def sbhf_normal_into_focus(self):
+    # """评估子心流兴趣度，满足条件则提升到FOCUSED状态（基于start_hfc_probability）"""
+    # try:
+    #     for sub_hf in list(self.subheartflows.values()):
+    #         flow_id = sub_hf.subheartflow_id
+    #         stream_name = chat_manager.get_stream_name(flow_id) or flow_id
 
-                # 跳过已经是FOCUSED状态的子心流
-                if sub_hf.chat_state.chat_status == ChatState.FOCUSED:
-                    continue
+    #         # 跳过已经是FOCUSED状态的子心流
+    #         if sub_hf.chat_state.chat_status == ChatState.FOCUSED:
+    #             continue
 
-                if sub_hf.interest_chatting.start_hfc_probability == 0:
-                    continue
-                else:
-                    logger.debug(
-                        f"{stream_name}，现在状态: {sub_hf.chat_state.chat_status.value}，进入专注概率: {sub_hf.interest_chatting.start_hfc_probability}"
-                    )
+    #         if sub_hf.interest_chatting.start_hfc_probability == 0:
+    #             continue
+    #         else:
+    #             logger.debug(
+    #                 f"{stream_name}，现在状态: {sub_hf.chat_state.chat_status.value}，进入专注概率: {sub_hf.interest_chatting.start_hfc_probability}"
+    #             )
 
-                if random.random() >= sub_hf.interest_chatting.start_hfc_probability:
-                    continue
+    #         if random.random() >= sub_hf.interest_chatting.start_hfc_probability:
+    #             continue
 
-                # 获取最新状态并执行提升
-                current_subflow = self.subheartflows.get(flow_id)
-                if not current_subflow:
-                    continue
+    #         # 获取最新状态并执行提升
+    #         current_subflow = self.subheartflows.get(flow_id)
+    #         if not current_subflow:
+    #             continue
 
-                logger.info(
-                    f"{stream_name} 触发 认真水群 (概率={current_subflow.interest_chatting.start_hfc_probability:.2f})"
-                )
+    #         logger.info(
+    #             f"{stream_name} 触发 认真水群 (概率={current_subflow.interest_chatting.start_hfc_probability:.2f})"
+    #         )
 
-                # 执行状态提升
-                await current_subflow.change_chat_state(ChatState.FOCUSED)
+    #         # 执行状态提升
+    #         await current_subflow.change_chat_state(ChatState.FOCUSED)
 
-        except Exception as e:
-            logger.error(f"启动HFC 兴趣评估失败: {e}", exc_info=True)
+    # except Exception as e:
+    #     logger.error(f"启动HFC 兴趣评估失败: {e}", exc_info=True)
 
     async def sbhf_focus_into_normal(self, subflow_id: Any):
         """
@@ -249,7 +242,7 @@ class SubHeartflowManager:
                 )
                 try:
                     # 从HFC到CHAT时，清空兴趣字典
-                    subflow.clear_interest_dict()
+                    subflow.interest_dict.clear()
                     await subflow.change_chat_state(target_state)
                     final_state = subflow.chat_state.chat_status
                     if final_state == target_state:

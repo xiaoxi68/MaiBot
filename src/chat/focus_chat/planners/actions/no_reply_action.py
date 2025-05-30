@@ -11,7 +11,7 @@ from src.chat.focus_chat.hfc_utils import parse_thinking_id_to_timestamp
 logger = get_logger("action_taken")
 
 # 常量定义
-WAITING_TIME_THRESHOLD = 300  # 等待新消息时间阈值，单位秒
+WAITING_TIME_THRESHOLD = 1200  # 等待新消息时间阈值，单位秒
 
 
 @register_action
@@ -26,8 +26,8 @@ class NoReplyAction(BaseAction):
     action_parameters = {}
     action_require = [
         "话题无关/无聊/不感兴趣/不懂",
-        "最后一条消息是你自己发的且无人回应你",
-        "你发送了太多消息，且无人回复",
+        "聊天记录中最新一条消息是你自己发的且无人回应你",
+        "你连续发送了太多消息，且无人回复",
     ]
     default = True
 

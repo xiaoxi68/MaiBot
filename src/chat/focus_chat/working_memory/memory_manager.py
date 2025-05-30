@@ -3,7 +3,7 @@ import traceback
 from json_repair import repair_json
 from rich.traceback import install
 from src.common.logger_manager import get_logger
-from src.chat.models.utils_model import LLMRequest
+from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.chat.focus_chat.working_memory.memory_item import MemoryItem
 import json  # 添加json模块导入
@@ -33,7 +33,10 @@ class MemoryManager:
         self._id_map: Dict[str, MemoryItem] = {}
 
         self.llm_summarizer = LLMRequest(
-            model=global_config.model.summary, temperature=0.3, max_tokens=512, request_type="memory_summarization"
+            model=global_config.model.focus_working_memory,
+            temperature=0.3,
+            max_tokens=512,
+            request_type="focus.processor.working_memory",
         )
 
     @property
@@ -396,7 +399,7 @@ class MemoryManager:
         try:
             # 调用LLM修改总结、概括和要点
             response, _ = await self.llm_summarizer.generate_response_async(prompt)
-            logger.info(f"精简记忆响应: {response}")
+            logger.debug(f"精简记忆响应: {response}")
             # 使用repair_json处理响应
             try:
                 # 修复JSON格式

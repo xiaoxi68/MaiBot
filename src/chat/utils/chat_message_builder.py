@@ -4,8 +4,11 @@ import time  # 导入 time 模块以获取当前时间
 import random
 import re
 from src.common.message_repository import find_messages, count_messages
-from chat.person_info.person_identity import person_identity_manager
+from src.person_info.person_identity import person_identity_manager
 from src.chat.utils.utils import translate_timestamp_to_human_readable
+from rich.traceback import install
+
+install(extra_lines=3)
 
 
 def get_raw_msg_by_timestamp(
@@ -192,7 +195,15 @@ async def _build_readable_messages_internal(
         user_cardname = user_info.get("user_cardname")
 
         timestamp = msg.get("time")
-        content = msg.get("processed_plain_text", "")  # 默认空字符串
+        if msg.get("display_message"):
+            content = msg.get("display_message")
+        else:
+            content = msg.get("processed_plain_text", "")  # 默认空字符串
+
+        if "ᶠ" in content:
+            content = content.replace("ᶠ", "")
+        if "ⁿ" in content:
+            content = content.replace("ⁿ", "")
 
         # 检查必要信息是否存在
         if not all([platform, user_id, timestamp is not None]):
@@ -225,7 +236,7 @@ async def _build_readable_messages_internal(
             if not reply_person_name:
                 reply_person_name = aaa
             # 在内容前加上回复信息
-            content = re.sub(reply_pattern, f"回复 {reply_person_name}", content, count=1)
+            content = re.sub(reply_pattern, lambda m, name=reply_person_name: f"回复 {name}", content, count=1)
 
         # 检查是否有 @<aaa:bbb> 字段 @<{member_info.get('nickname')}:{member_info.get('user_id')}>
         at_pattern = r"@<([^:<>]+):([^:<>]+)>"
@@ -430,6 +441,7 @@ async def build_anonymous_messages(messages: List[Dict[str, Any]]) -> str:
     处理 回复<aaa:bbb> 和 @<aaa:bbb> 字段，将bbb映射为匿名占位符。
     """
     if not messages:
+        print("111111111111没有消息，无法构建匿名消息")
         return ""
 
     person_map = {}
@@ -437,9 +449,18 @@ async def build_anonymous_messages(messages: List[Dict[str, Any]]) -> str:
     output_lines = []
 
     def get_anon_name(platform, user_id):
+        # print(f"get_anon_name: platform:{platform}, user_id:{user_id}")
+        # print(f"global_config.bot.qq_account:{global_config.bot.qq_account}")
+
         if user_id == global_config.bot.qq_account:
+            # print("SELF11111111111111")
             return "SELF"
-        person_id = person_identity_manager.get_person_id(platform, user_id)
+        try:
+            person_id = person_identity_manager.get_person_id(platform, user_id)
+        except Exception as _e:
+            person_id = None
+        if not person_id:
+            return "?"
         if person_id not in person_map:
             nonlocal current_char
             person_map[person_id] = chr(current_char)
@@ -447,47 +468,75 @@ async def build_anonymous_messages(messages: List[Dict[str, Any]]) -> str:
         return person_map[person_id]
 
     for msg in messages:
-        user_info = msg.get("user_info", {})
-        platform = user_info.get("platform")
-        user_id = user_info.get("user_id")
-        timestamp = msg.get("time")
-        content = msg.get("processed_plain_text", "")
+        try:
+            # user_info = msg.get("user_info", {})
+            platform = msg.get("chat_info_platform")
+            user_id = msg.get("user_id")
+            _timestamp = msg.get("time")
+            # print(f"msg:{msg}")
+            # print(f"platform:{platform}")
+            # print(f"user_id:{user_id}")
+            # print(f"timestamp:{timestamp}")
+            if msg.get("display_message"):
+                content = msg.get("display_message")
+            else:
+                content = msg.get("processed_plain_text", "")
 
-        if not all([platform, user_id, timestamp is not None]):
+            if "ᶠ" in content:
+                content = content.replace("ᶠ", "")
+            if "ⁿ" in content:
+                content = content.replace("ⁿ", "")
+
+            # if not all([platform, user_id, timestamp is not None]):
+            # continue
+
+            anon_name = get_anon_name(platform, user_id)
+            # print(f"anon_name:{anon_name}")
+
+            # 处理 回复<aaa:bbb>
+            reply_pattern = r"回复<([^:<>]+):([^:<>]+)>"
+            match = re.search(reply_pattern, content)
+            if match:
+                # print(f"发现回复match:{match}")
+                bbb = match.group(2)
+                try:
+                    anon_reply = get_anon_name(platform, bbb)
+                    # print(f"anon_reply:{anon_reply}")
+                except Exception:
+                    anon_reply = "?"
+                content = re.sub(reply_pattern, f"回复 {anon_reply}", content, count=1)
+
+            # 处理 @<aaa:bbb>，无嵌套def
+            at_pattern = r"@<([^:<>]+):([^:<>]+)>"
+            at_matches = list(re.finditer(at_pattern, content))
+            if at_matches:
+                # print(f"发现@match:{at_matches}")
+                new_content = ""
+                last_end = 0
+                for m in at_matches:
+                    new_content += content[last_end : m.start()]
+                    bbb = m.group(2)
+                    try:
+                        anon_at = get_anon_name(platform, bbb)
+                        # print(f"anon_at:{anon_at}")
+                    except Exception:
+                        anon_at = "?"
+                    new_content += f"@{anon_at}"
+                    last_end = m.end()
+                new_content += content[last_end:]
+                content = new_content
+
+            header = f"{anon_name}说 "
+            output_lines.append(header)
+            stripped_line = content.strip()
+            if stripped_line:
+                if stripped_line.endswith("。"):
+                    stripped_line = stripped_line[:-1]
+                output_lines.append(f"{stripped_line}")
+            # print(f"output_lines:{output_lines}")
+            output_lines.append("\n")
+        except Exception:
             continue
-
-        anon_name = get_anon_name(platform, user_id)
-
-        # 处理 回复<aaa:bbb>
-        reply_pattern = r"回复<([^:<>]+):([^:<>]+)>"
-
-        def reply_replacer(match, platform=platform):
-            # aaa = match.group(1)
-            bbb = match.group(2)
-            anon_reply = get_anon_name(platform, bbb)  # noqa
-            return f"回复 {anon_reply}"
-
-        content = re.sub(reply_pattern, reply_replacer, content, count=1)
-
-        # 处理 @<aaa:bbb>
-        at_pattern = r"@<([^:<>]+):([^:<>]+)>"
-
-        def at_replacer(match, platform=platform):
-            # aaa = match.group(1)
-            bbb = match.group(2)
-            anon_at = get_anon_name(platform, bbb)  # noqa
-            return f"@{anon_at}"
-
-        content = re.sub(at_pattern, at_replacer, content)
-
-        header = f"{anon_name}说 "
-        output_lines.append(header)
-        stripped_line = content.strip()
-        if stripped_line:
-            if stripped_line.endswith("。"):
-                stripped_line = stripped_line[:-1]
-            output_lines.append(f"{stripped_line}")
-        output_lines.append("\n")
 
     formatted_string = "".join(output_lines).strip()
     return formatted_string

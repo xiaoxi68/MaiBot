@@ -6,18 +6,16 @@ from src.chat.message_receive.message import Seg  # Local import needed after mo
 from src.chat.message_receive.message import UserInfo
 from src.chat.message_receive.chat_stream import chat_manager
 from src.common.logger_manager import get_logger
-from src.chat.models.utils_model import LLMRequest
+from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.chat.utils.timer_calculator import Timer  # <--- Import Timer
 from src.chat.utils.emoji_manager import chat_emoji_manager
 from src.chat.focus_chat.heartFC_sender import HeartFCSender
 from src.chat.utils.utils import process_llm_response
 from src.chat.utils.info_catcher import info_catcher_manager
-from src.manager.mood_manager import mood_manager
 from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
 from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.focus_chat.hfc_utils import parse_thinking_id_to_timestamp
-from src.individuality.individuality import individuality
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_before_timestamp_with_chat
 import time
@@ -43,8 +41,8 @@ def init_prompt():
 你需要使用合适的语法和句法，参考聊天内容，组织一条日常且口语化的回复。
 请你根据情景使用以下句法：
 {grammar_habbits}
-回复尽量简短一些。可以参考贴吧，知乎和微博的回复风格，你可以完全重组回复，保留最基本的表达含义就好，但注意回复要简短，但重组后保持语意通顺。
-回复不要浮夸，不要用夸张修辞，平淡一些。不要输出多余内容(包括前后缀，冒号和引号，括号，表情包，at或 @等 )，只输出一条回复就好。
+{config_expression_style}，你可以完全重组回复，保留最基本的表达含义就好，但重组后保持语意通顺。
+不要浮夸，不要夸张修辞，平淡且不要输出多余内容(包括前后缀，冒号和引号，括号，表情包，at或 @等 )，只输出一条回复就好。
 现在，你说：
 """,
         "default_expressor_prompt",
@@ -65,8 +63,8 @@ def init_prompt():
 你需要使用合适的语法和句法，参考聊天内容，组织一条日常且口语化的回复。
 请你根据情景使用以下句法：
 {grammar_habbits}
-回复尽量简短一些。可以参考贴吧，知乎和微博的回复风格，你可以完全重组回复，保留最基本的表达含义就好，但注意回复要简短，但重组后保持语意通顺。
-回复不要浮夸，不要用夸张修辞，平淡一些。不要输出多余内容(包括前后缀，冒号和引号，括号，表情包，at或 @等 )，只输出一条回复就好。
+{config_expression_style}，你可以完全重组回复，保留最基本的表达含义就好，但重组后保持语意通顺。
+不要浮夸，不要夸张修辞，平淡且不要输出多余内容(包括前后缀，冒号和引号，括号，表情包，at或 @等 )，只输出一条回复就好。
 现在，你说：
 """,
         "default_expressor_private_prompt",  # New template for private FOCUSED chat
@@ -78,10 +76,10 @@ class DefaultExpressor:
         self.log_prefix = "expressor"
         # TODO: API-Adapter修改标记
         self.express_model = LLMRequest(
-            model=global_config.model.normal,
-            temperature=global_config.model.normal["temp"],
+            model=global_config.model.focus_expressor,
+            # temperature=global_config.model.focus_expressor["temp"],
             max_tokens=256,
-            request_type="response_heartflow",
+            request_type="focus.expressor",
         )
         self.heart_fc_sender = HeartFCSender()
 
@@ -107,10 +105,7 @@ class DefaultExpressor:
             user_nickname=global_config.bot.nickname,
             platform=messageinfo.platform,
         )
-        # logger.debug(f"创建思考消息：{anchor_message}")
-        # logger.debug(f"创建思考消息chat：{chat}")
-        # logger.debug(f"创建思考消息bot_user_info：{bot_user_info}")
-        # logger.debug(f"创建思考消息messageinfo：{messageinfo}")
+
         thinking_message = MessageThinking(
             message_id=thinking_id,
             chat_stream=chat,
@@ -133,7 +128,7 @@ class DefaultExpressor:
         # 创建思考消息
         await self._create_thinking_message(anchor_message, thinking_id)
 
-        reply = None  # 初始化 reply，防止未定义
+        reply = []  # 初始化 reply，防止未定义
         try:
             has_sent_something = False
 
@@ -150,22 +145,22 @@ class DefaultExpressor:
                         action_data=action_data,
                     )
 
-                with Timer("选择表情", cycle_timers):
-                    emoji_keyword = action_data.get("emojis", [])
-                    emoji_base64 = self._choose_emoji(emoji_keyword)
-                    if emoji_base64:
-                        reply.append(("emoji", emoji_base64))
+            with Timer("选择表情", cycle_timers):
+                emoji_keyword = action_data.get("emojis", [])
+                emoji_base64 = await self._choose_emoji(emoji_keyword)
+                if emoji_base64:
+                    reply.append(("emoji", emoji_base64))
 
-                if reply:
-                    with Timer("发送消息", cycle_timers):
-                        sent_msg_list = await self.send_response_messages(
-                            anchor_message=anchor_message,
-                            thinking_id=thinking_id,
-                            response_set=reply,
-                        )
-                    has_sent_something = True
-                else:
-                    logger.warning(f"{self.log_prefix} 文本回复生成失败")
+            if reply:
+                with Timer("发送消息", cycle_timers):
+                    sent_msg_list = await self.send_response_messages(
+                        anchor_message=anchor_message,
+                        thinking_id=thinking_id,
+                        response_set=reply,
+                    )
+                has_sent_something = True
+            else:
+                logger.warning(f"{self.log_prefix} 文本回复生成失败")
 
             if not has_sent_something:
                 logger.warning(f"{self.log_prefix} 回复动作未包含任何有效内容")
@@ -174,6 +169,7 @@ class DefaultExpressor:
 
         except Exception as e:
             logger.error(f"回复失败: {e}")
+            traceback.print_exc()
             return False, None
 
         # --- 回复器 (Replier) 的定义 --- #
@@ -192,9 +188,9 @@ class DefaultExpressor:
         """
         try:
             # 1. 获取情绪影响因子并调整模型温度
-            arousal_multiplier = mood_manager.get_arousal_multiplier()
-            current_temp = float(global_config.model.normal["temp"]) * arousal_multiplier
-            self.express_model.params["temperature"] = current_temp  # 动态调整温度
+            # arousal_multiplier = mood_manager.get_arousal_multiplier()
+            # current_temp = float(global_config.model.normal["temp"]) * arousal_multiplier
+            # self.express_model.params["temperature"] = current_temp  # 动态调整温度
 
             # 2. 获取信息捕捉器
             info_catcher = info_catcher_manager.get_info_catcher(thinking_id)
@@ -220,6 +216,7 @@ class DefaultExpressor:
                     reason=reason,
                     sender_name=sender_name_for_prompt,  # Pass determined name
                     target_message=target_message,
+                    config_expression_style=global_config.expression.expression_style,
                 )
 
             # 4. 调用 LLM 生成回复
@@ -234,13 +231,12 @@ class DefaultExpressor:
                 with Timer("LLM生成", {}):  # 内部计时器，可选保留
                     # TODO: API-Adapter修改标记
                     # logger.info(f"{self.log_prefix}[Replier-{thinking_id}]\nPrompt:\n{prompt}\n")
-                    content, reasoning_content, model_name = await self.express_model.generate_response(prompt)
+                    content, (reasoning_content, model_name) = await self.express_model.generate_response_async(prompt)
 
                     # logger.info(f"{self.log_prefix}\nPrompt:\n{prompt}\n---------------------------\n")
 
-                    logger.info(f"想要表达：{in_mind_reply}")
-                    logger.info(f"理由：{reason}")
-                    logger.info(f"生成回复: {content}\n")
+                    logger.info(f"想要表达：{in_mind_reply}||理由：{reason}")
+                    logger.info(f"最终回复: {content}\n")
 
                 info_catcher.catch_after_llm_generated(
                     prompt=prompt, response=content, reasoning_content=reasoning_content, model_name=model_name
@@ -280,15 +276,9 @@ class DefaultExpressor:
         sender_name,
         in_mind_reply,
         target_message,
+        config_expression_style,
     ) -> str:
-        prompt_personality = individuality.get_prompt(x_person=0, level=2)
-
-        # Determine if it's a group chat
         is_group_chat = bool(chat_stream.group_info)
-
-        # Use sender_name passed from caller for private chat, otherwise use a default for group
-        # Default sender_name for group chat isn't used in the group prompt template, but set for consistency
-        effective_sender_name = sender_name if not is_group_chat else "某人"
 
         message_list_before_now = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_stream.stream_id,
@@ -355,17 +345,23 @@ class DefaultExpressor:
                 reason=reason,
                 in_mind_reply=in_mind_reply,
                 target_message=target_message,
+                config_expression_style=config_expression_style,
             )
         else:  # Private chat
             template_name = "default_expressor_private_prompt"
+            chat_target_1 = "你正在和人私聊"
             prompt = await global_prompt_manager.format_prompt(
                 template_name,
-                sender_name=effective_sender_name,  # Used in private template
-                chat_talking_prompt=chat_talking_prompt,
+                style_habbits=style_habbits_str,
+                grammar_habbits=grammar_habbits_str,
+                chat_target=chat_target_1,
+                chat_info=chat_talking_prompt,
                 bot_name=global_config.bot.nickname,
-                prompt_personality=prompt_personality,
+                prompt_personality="",
                 reason=reason,
-                moderation_prompt=await global_prompt_manager.get_prompt_async("moderation_prompt"),
+                in_mind_reply=in_mind_reply,
+                target_message=target_message,
+                config_expression_style=config_expression_style,
             )
 
         return prompt
@@ -373,7 +369,11 @@ class DefaultExpressor:
         # --- 发送器 (Sender) --- #
 
     async def send_response_messages(
-        self, anchor_message: Optional[MessageRecv], response_set: List[Tuple[str, str]], thinking_id: str = ""
+        self,
+        anchor_message: Optional[MessageRecv],
+        response_set: List[Tuple[str, str]],
+        thinking_id: str = "",
+        display_message: str = "",
     ) -> Optional[MessageSending]:
         """发送回复消息 (尝试锚定到 anchor_message)，使用 HeartFCSender"""
         chat = self.chat_stream
@@ -409,6 +409,9 @@ class DefaultExpressor:
             type = msg_text[0]
             data = msg_text[1]
 
+            if global_config.experimental.debug_show_chat_mode and type == "text":
+                data += "ᶠ"
+
             part_message_id = f"{thinking_id}_{i}"
             message_segment = Seg(type=type, data=data)
 
@@ -422,6 +425,7 @@ class DefaultExpressor:
                 anchor_message=anchor_message,
                 message_id=part_message_id,
                 message_segment=message_segment,
+                display_message=display_message,
                 reply_to=reply_to,
                 is_emoji=is_emoji,
                 thinking_id=thinking_id,
@@ -439,7 +443,13 @@ class DefaultExpressor:
                 if type == "emoji":
                     typing = False
 
-                sent_msg = await self.heart_fc_sender.send_message(bot_message, has_thinking=True, typing=typing)
+                if anchor_message.raw_message:
+                    set_reply = True
+                else:
+                    set_reply = False
+                sent_msg = await self.heart_fc_sender.send_message(
+                    bot_message, has_thinking=True, typing=typing, set_reply=set_reply
+                )
 
                 reply_message_ids.append(part_message_id)  # 记录我们生成的ID
 
@@ -475,6 +485,7 @@ class DefaultExpressor:
         is_emoji: bool,
         thinking_id: str,
         thinking_start_time: float,
+        display_message: str,
     ) -> MessageSending:
         """构建单个发送消息"""
 
@@ -494,6 +505,7 @@ class DefaultExpressor:
             is_head=reply_to,
             is_emoji=is_emoji,
             thinking_start_time=thinking_start_time,  # 传递原始思考开始时间
+            display_message=display_message,
         )
 
         return bot_message

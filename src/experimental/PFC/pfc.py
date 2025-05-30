@@ -1,6 +1,6 @@
 from typing import List, Tuple, TYPE_CHECKING
 from src.common.logger import get_module_logger
-from src.chat.models.utils_model import LLMRequest
+from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.experimental.PFC.chat_observer import ChatObserver
 from src.experimental.PFC.pfc_utils import get_items_from_json
@@ -44,7 +44,7 @@ class GoalAnalyzer:
     def __init__(self, stream_id: str, private_name: str):
         # TODO: API-Adapter修改标记
         self.llm = LLMRequest(
-            model=global_config.model.normal, temperature=0.7, max_tokens=1000, request_type="conversation_goal"
+            model=global_config.model.utils, temperature=0.7, max_tokens=1000, request_type="conversation_goal"
         )
 
         self.personality_info = individuality.get_prompt(x_person=2, level=3)

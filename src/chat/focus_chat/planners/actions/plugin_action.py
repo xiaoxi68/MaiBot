@@ -1,10 +1,10 @@
 import traceback
 from typing import Tuple, Dict, List, Any, Optional
-from src.chat.focus_chat.planners.actions.base_action import BaseAction
+from src.chat.focus_chat.planners.actions.base_action import BaseAction, register_action  # noqa F401
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 from src.chat.focus_chat.hfc_utils import create_empty_anchor_message
 from src.common.logger_manager import get_logger
-from chat.person_info.person_identity import person_identity_manager
+from src.person_info.person_identity import person_identity_manager
 from abc import abstractmethod
 import os
 import inspect
@@ -111,7 +111,7 @@ class PluginAction(BaseAction):
         return platform, user_id
 
     # 提供简化的API方法
-    async def send_message(self, type: str, data: str, target: Optional[str] = "") -> bool:
+    async def send_message(self, type: str, data: str, target: Optional[str] = "", display_message: str = "") -> bool:
         """发送消息的简化方法
 
         Args:
@@ -158,6 +158,7 @@ class PluginAction(BaseAction):
             success = await expressor.send_response_messages(
                 anchor_message=anchor_message,
                 response_set=response_set,
+                display_message=display_message,
             )
 
             return success

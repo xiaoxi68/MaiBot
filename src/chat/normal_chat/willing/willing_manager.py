@@ -1,9 +1,8 @@
 from src.common.logger import LogConfig, WILLING_STYLE_CONFIG, LoguruLogger, get_module_logger
 from dataclasses import dataclass
 from src.config.config import global_config
-from src.chat.message_receive.chat_stream import ChatStream, GroupInfo
 from src.chat.message_receive.message import MessageRecv
-from chat.person_info.person_identity import person_identity_manager, PersonIdentityManager
+from src.person_info.person_identity import person_identity_manager, PersonIdentityManager
 from abc import ABC, abstractmethod
 import importlib
 from typing import Dict, Optional

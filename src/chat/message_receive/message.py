@@ -1,12 +1,14 @@
 import time
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Optional, Any
+from typing import Optional, Any, TYPE_CHECKING
 
 import urllib3
 
 from src.common.logger_manager import get_logger
-from .chat_stream import ChatStream
+
+if TYPE_CHECKING:
+    from .chat_stream import ChatStream
 from ..utils.utils_image import image_manager
 from maim_message import Seg, UserInfo, BaseMessageInfo, MessageBase
 from rich.traceback import install
@@ -25,16 +27,15 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 @dataclass
 class Message(MessageBase):
-    chat_stream: ChatStream = None
+    chat_stream: "ChatStream" = None
     reply: Optional["Message"] = None
-    detailed_plain_text: str = ""
     processed_plain_text: str = ""
     memorized_times: int = 0
 
     def __init__(
         self,
         message_id: str,
-        chat_stream: ChatStream,
+        chat_stream: "ChatStream",
         user_info: UserInfo,
         message_segment: Optional[Seg] = None,
         timestamp: Optional[float] = None,
@@ -111,7 +112,7 @@ class MessageRecv(Message):
         self.detailed_plain_text = ""  # 初始化为空字符串
         self.is_emoji = False
 
-    def update_chat_stream(self, chat_stream: ChatStream):
+    def update_chat_stream(self, chat_stream: "ChatStream"):
         self.chat_stream = chat_stream
 
     async def process(self) -> None:
@@ -165,7 +166,7 @@ class MessageProcessBase(Message):
     def __init__(
         self,
         message_id: str,
-        chat_stream: ChatStream,
+        chat_stream: "ChatStream",
         bot_user_info: UserInfo,
         message_segment: Optional[Seg] = None,
         reply: Optional["MessageRecv"] = None,
@@ -241,7 +242,7 @@ class MessageThinking(MessageProcessBase):
     def __init__(
         self,
         message_id: str,
-        chat_stream: ChatStream,
+        chat_stream: "ChatStream",
         bot_user_info: UserInfo,
         reply: Optional["MessageRecv"] = None,
         thinking_start_time: float = 0,
@@ -269,10 +270,11 @@ class MessageSending(MessageProcessBase):
     def __init__(
         self,
         message_id: str,
-        chat_stream: ChatStream,
+        chat_stream: "ChatStream",
         bot_user_info: UserInfo,
         sender_info: UserInfo | None,  # 用来记录发送者信息,用于私聊回复
         message_segment: Seg,
+        display_message: str = "",
         reply: Optional["MessageRecv"] = None,
         is_head: bool = False,
         is_emoji: bool = False,
@@ -296,10 +298,11 @@ class MessageSending(MessageProcessBase):
         self.is_emoji = is_emoji
         self.apply_set_reply_logic = apply_set_reply_logic
 
+        # 用于显示发送内容与显示不一致的情况
+        self.display_message = display_message
+
     def set_reply(self, reply: Optional["MessageRecv"] = None):
         """设置回复消息"""
-        # print(f"set_reply: {reply}")
-        # if self.message_info.format_info is not None and "reply" in self.message_info.format_info.accept_format:
         if True:
             if reply:
                 self.reply = reply
@@ -317,7 +320,6 @@ class MessageSending(MessageProcessBase):
         """处理消息内容，生成纯文本和详细文本"""
         if self.message_segment:
             self.processed_plain_text = await self._process_message_segments(self.message_segment)
-            self.detailed_plain_text = self._generate_detailed_text()
 
     @classmethod
     def from_thinking(
@@ -353,7 +355,7 @@ class MessageSending(MessageProcessBase):
 class MessageSet:
     """消息集合类，可以存储多个发送消息"""
 
-    def __init__(self, chat_stream: ChatStream, message_id: str):
+    def __init__(self, chat_stream: "ChatStream", message_id: str):
         self.chat_stream = chat_stream
         self.message_id = message_id
         self.messages: list[MessageSending] = []

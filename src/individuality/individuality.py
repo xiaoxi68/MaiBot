@@ -10,10 +10,6 @@ from manager.local_store_manager import local_storage
 
 from maibot_api_adapter.payload_content.message import MessageBuilder
 from maibot_api_adapter.payload_content.resp_format import RespFormat, RespFormatType
-from .personality import Personality
-from .identity import Identity
-from .expression_style import PersonalityExpression
-import random
 from rich.traceback import install
 
 install(extra_lines=3)

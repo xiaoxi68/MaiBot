@@ -1,36 +1,37 @@
 from typing import List, Optional, Tuple, Union
 import random
-from ..models.utils_model import LLMRequest
-from ...config.config import global_config
-from ..message_receive.message import MessageThinking
-from src.chat.focus_chat.heartflow_prompt_builder import prompt_builder
+from src.llm_models.utils_model import LLMRequest
+from src.config.config import global_config
+from src.chat.message_receive.message import MessageThinking
+from src.chat.normal_chat.normal_prompt import prompt_builder
 from src.chat.utils.utils import process_llm_response
 from src.chat.utils.timer_calculator import Timer
 from src.common.logger_manager import get_logger
 from src.chat.utils.info_catcher import info_catcher_manager
+from src.person_info.person_info import person_info_manager
 
 
-logger = get_logger("llm")
+logger = get_logger("normal_chat_response")
 
 
 class NormalChatGenerator:
     def __init__(self):
         # TODO: API-Adapter修改标记
         self.model_reasoning = LLMRequest(
-            model=global_config.model.reasoning,
-            temperature=0.7,
+            model=global_config.model.normal_chat_1,
+            # temperature=0.7,
             max_tokens=3000,
-            request_type="response_reasoning",
+            request_type="normal.chat_1",
         )
         self.model_normal = LLMRequest(
-            model=global_config.model.normal,
-            temperature=global_config.model.normal["temp"],
+            model=global_config.model.normal_chat_2,
+            # temperature=global_config.model.normal_chat_2["temp"],
             max_tokens=256,
-            request_type="response_reasoning",
+            request_type="normal.chat_2",
         )
 
         self.model_sum = LLMRequest(
-            model=global_config.model.summary, temperature=0.7, max_tokens=3000, request_type="relation"
+            model=global_config.model.memory_summary, temperature=0.7, max_tokens=3000, request_type="relation"
         )
         self.current_model_type = "r1"  # 默认使用 R1
         self.current_model_name = "unknown model"
@@ -38,47 +39,50 @@ class NormalChatGenerator:
     async def generate_response(self, message: MessageThinking, thinking_id: str) -> Optional[Union[str, List[str]]]:
         """根据当前模型类型选择对应的生成函数"""
         # 从global_config中获取模型概率值并选择模型
-        if random.random() < global_config.normal_chat.reasoning_model_probability:
-            self.current_model_type = "深深地"
+        if random.random() < global_config.normal_chat.normal_chat_first_probability:
             current_model = self.model_reasoning
+            self.current_model_name = current_model.model_name
         else:
-            self.current_model_type = "浅浅的"
             current_model = self.model_normal
+            self.current_model_name = current_model.model_name
 
         logger.info(
-            f"{self.current_model_type}思考:{message.processed_plain_text[:30] + '...' if len(message.processed_plain_text) > 30 else message.processed_plain_text}"
+            f"{self.current_model_name}思考:{message.processed_plain_text[:30] + '...' if len(message.processed_plain_text) > 30 else message.processed_plain_text}"
         )  # noqa: E501
 
         model_response = await self._generate_response_with_model(message, current_model, thinking_id)
 
         if model_response:
-            logger.info(f"{global_config.bot.nickname}的回复是：{model_response}")
+            logger.debug(f"{global_config.bot.nickname}的原始回复是：{model_response}")
             model_response = await self._process_response(model_response)
 
             return model_response
         else:
-            logger.info(f"{self.current_model_type}思考，失败")
+            logger.info(f"{self.current_model_name}思考，失败")
             return None
 
     async def _generate_response_with_model(self, message: MessageThinking, model: LLMRequest, thinking_id: str):
         info_catcher = info_catcher_manager.get_info_catcher(thinking_id)
 
+        person_id = person_info_manager.get_person_id(
+            message.chat_stream.user_info.platform, message.chat_stream.user_info.user_id
+        )
+
+        person_name = await person_info_manager.get_value(person_id, "person_name")
+
         if message.chat_stream.user_info.user_cardname and message.chat_stream.user_info.user_nickname:
             sender_name = (
-                f"[({message.chat_stream.user_info.user_id}){message.chat_stream.user_info.user_nickname}]"
-                f"{message.chat_stream.user_info.user_cardname}"
+                f"[{message.chat_stream.user_info.user_nickname}]"
+                f"[群昵称：{message.chat_stream.user_info.user_cardname}]（你叫ta{person_name}）"
             )
         elif message.chat_stream.user_info.user_nickname:
-            sender_name = f"({message.chat_stream.user_info.user_id}){message.chat_stream.user_info.user_nickname}"
+            sender_name = f"[{message.chat_stream.user_info.user_nickname}]（你叫ta{person_name}）"
         else:
             sender_name = f"用户({message.chat_stream.user_info.user_id})"
+
         # 构建prompt
         with Timer() as t_build_prompt:
             prompt = await prompt_builder.build_prompt(
-                build_mode="normal",
-                reason="",
-                current_mind_info="",
-                structured_info="",
                 message_txt=message.processed_plain_text,
                 sender_name=sender_name,
                 chat_stream=message.chat_stream,

@@ -1,5 +1,4 @@
 from datetime import datetime
-from src.chat.models.utils_model import LLMRequest
 from src.config.config import global_config
 import traceback
 from src.chat.utils.chat_message_builder import (
@@ -66,10 +65,24 @@ class ChattingObservation(Observation):
         self.oldest_messages = []
         self.oldest_messages_str = ""
         self.compressor_prompt = ""
-        # TODO: API-Adapter修改标记
-        self.model_summary = LLMRequest(
-            model=global_config.model.observation, temperature=0.7, max_tokens=300, request_type="chat_observation"
-        )
+
+    def to_dict(self) -> dict:
+        """将观察对象转换为可序列化的字典"""
+        return {
+            "chat_id": self.chat_id,
+            "platform": self.platform,
+            "is_group_chat": self.is_group_chat,
+            "chat_target_info": self.chat_target_info,
+            "talking_message_str": self.talking_message_str,
+            "talking_message_str_truncate": self.talking_message_str_truncate,
+            "name": self.name,
+            "nick_name": self.nick_name,
+            "mid_memory_info": self.mid_memory_info,
+            "person_list": self.person_list,
+            "oldest_messages_str": self.oldest_messages_str,
+            "compressor_prompt": self.compressor_prompt,
+            "last_observe_time": self.last_observe_time
+        }
 
     async def initialize(self):
         self.is_group_chat, self.chat_target_info = await get_chat_type_and_target_info(self.chat_id)
@@ -184,7 +197,7 @@ class ChattingObservation(Observation):
             "processed_plain_text": find_msg.get("processed_plain_text"),
         }
         find_rec_msg = MessageRecv(message_dict)
-        logger.debug(f"锚定消息处理后：find_rec_msg: {find_rec_msg}")
+        # logger.debug(f"锚定消息处理后：find_rec_msg: {find_rec_msg}")
         return find_rec_msg
 
     async def observe(self):

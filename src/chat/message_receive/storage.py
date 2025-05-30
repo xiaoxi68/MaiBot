@@ -24,11 +24,14 @@ class MessageStorage:
             else:
                 filtered_processed_plain_text = ""
 
-            detailed_plain_text = message.detailed_plain_text
-            if detailed_plain_text:
-                filtered_detailed_plain_text = re.sub(pattern, "", detailed_plain_text, flags=re.DOTALL)
+            if isinstance(message, MessageSending):
+                display_message = message.display_message
+                if display_message:
+                    filtered_display_message = re.sub(pattern, "", display_message, flags=re.DOTALL)
+                else:
+                    filtered_display_message = ""
             else:
-                filtered_detailed_plain_text = ""
+                filtered_display_message = ""
 
             chat_info_dict = chat_stream.to_dict()
             user_info_dict = message.message_info.user_info.to_dict()
@@ -64,7 +67,7 @@ class MessageStorage:
                 user_cardname=user_info_dict.get("user_cardname"),
                 # Text content
                 processed_plain_text=filtered_processed_plain_text,
-                detailed_plain_text=filtered_detailed_plain_text,
+                display_message=filtered_display_message,
                 memorized_times=message.memorized_times,
             )
         except Exception:

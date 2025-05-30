@@ -3,10 +3,7 @@ from src.common.logger_manager import get_logger
 import math
 import random
 
-from ...manager.mood_manager import mood_manager
-
-# import re
-# import traceback
+from src.manager.mood_manager import mood_manager
 
 
 logger = get_logger("relation")

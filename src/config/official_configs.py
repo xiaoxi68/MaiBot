@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 from src.config.config_base import ConfigBase
 
@@ -49,11 +49,25 @@ class CharacterConfig(ConfigBase):
 
 
 @dataclass
+class RelationshipConfig(ConfigBase):
+    """关系配置类"""
+
+    give_name: bool = False
+    """是否给其他人取名"""
+
+
+@dataclass
 class ChatConfig(ConfigBase):
     """聊天配置类"""
 
     chat_mode: str = "normal"
     """聊天模式"""
+
+    auto_focus_threshold: float = 1.0
+    """自动切换到专注聊天的阈值，越低越容易进入专注聊天"""
+
+    exit_focus_threshold: float = 1.0
+    """自动退出专注聊天的阈值，越低越容易退出专注聊天"""
 
 
 @dataclass
@@ -71,7 +85,7 @@ class MessageReceiveConfig(ConfigBase):
 class NormalChatConfig(ConfigBase):
     """普通聊天配置类"""
 
-    reasoning_model_probability: float = 0.3
+    normal_chat_first_probability: float = 0.3
     """
     发言时选择推理模型的概率（0-1之间）
     选择普通模型的概率为 1 - reasoning_normal_model_probability
@@ -80,7 +94,7 @@ class NormalChatConfig(ConfigBase):
     max_context_size: int = 15
     """上下文长度"""
 
-    message_buffer: bool = True
+    message_buffer: bool = False
     """消息缓冲器"""
 
     emoji_chance: float = 0.2
@@ -91,6 +105,9 @@ class NormalChatConfig(ConfigBase):
 
     willing_mode: str = "classical"
     """意愿模式"""
+
+    talk_frequency: float = 1
+    """回复频率阈值"""
 
     response_willing_amplifier: float = 1.0
     """回复意愿放大系数"""
@@ -118,17 +135,8 @@ class NormalChatConfig(ConfigBase):
 class FocusChatConfig(ConfigBase):
     """专注聊天配置类"""
 
-    reply_trigger_threshold: float = 3.0
-    """心流聊天触发阈值，越低越容易触发"""
-
-    default_decay_rate_per_second: float = 0.98
-    """默认衰减率，越大衰减越快"""
-
     observation_context_size: int = 12
     """可观察到的最长上下文大小，超过这个值的上下文会被压缩"""
-
-    consecutive_no_reply_threshold: int = 3
-    """连续不回复的次数阈值"""
 
     compressed_length: int = 5
     """心流上下文压缩的最短压缩长度，超过心流观察到的上下文长度，会压缩，最短压缩长度为5"""
@@ -136,8 +144,17 @@ class FocusChatConfig(ConfigBase):
     compress_length_limit: int = 5
     """最多压缩份数，超过该数值的压缩上下文会被删除"""
 
-    think_interval: int = 1
+    think_interval: float = 1
     """思考间隔（秒）"""
+
+    consecutive_replies: float = 1
+    """连续回复能力，值越高，麦麦连续回复的概率越高"""
+
+    parallel_processing: bool = False
+    """是否允许处理器阶段和回忆阶段并行执行"""
+
+    processor_max_time: int = 25
+    """处理器最大时间，单位秒，如果超过这个时间，处理器会自动停止"""
 
 
 @dataclass
@@ -152,6 +169,9 @@ class FocusChatProcessorConfig(ConfigBase):
 
     working_memory_processor: bool = True
     """是否启用工作记忆处理器"""
+
+    lite_chat_mind_processor: bool = False
+    """是否启用轻量级聊天思维处理器，可以节省token消耗和时间"""
 
 
 @dataclass
@@ -330,8 +350,40 @@ class TelemetryConfig(ConfigBase):
 class ExperimentalConfig(ConfigBase):
     """实验功能配置类"""
 
+    debug_show_chat_mode: bool = False
+    """是否在回复后显示当前聊天模式"""
+
     enable_friend_chat: bool = False
     """是否启用好友聊天"""
 
     pfc_chatting: bool = False
     """是否启用PFC"""
+
+
+@dataclass
+class MaimMessageConfig(ConfigBase):
+    """maim_message配置类"""
+
+    use_custom: bool = False
+    """是否使用自定义的maim_message配置"""
+
+    host: str = "127.0.0.1"
+    """主机地址"""
+
+    port: int = 8090
+    """"端口号"""
+
+    mode: Literal["ws", "tcp"] = "ws"
+    """连接模式，支持ws和tcp"""
+
+    use_wss: bool = False
+    """是否使用WSS安全连接"""
+
+    cert_file: str = ""
+    """SSL证书文件路径，仅在use_wss=True时有效"""
+
+    key_file: str = ""
+    """SSL密钥文件路径，仅在use_wss=True时有效"""
+
+    auth_token: list[str] = field(default_factory=lambda: [])
+    """认证令牌，用于API验证，为空则不启用验证"""

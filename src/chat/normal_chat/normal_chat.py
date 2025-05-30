@@ -1,38 +1,33 @@
 import asyncio
-import base64
-import statistics  # 导入 statistics 模块
 import time
 import traceback
 from random import random
 from typing import List, Optional  # 导入 Optional
-
 from maim_message import UserInfo, Seg
-
 from src.common.logger_manager import get_logger
 from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
 from src.manager.mood_manager import mood_manager
-from src.chat.message_receive.chat_stream import ChatStream, chat_manager
-from src.chat.person_info.relationship_manager import relationship_manager
+from src.person_info.relationship_manager import relationship_manager
 from src.chat.utils.info_catcher import info_catcher_manager
 from src.chat.utils.timer_calculator import Timer
+from src.chat.utils.prompt_builder import global_prompt_manager
 from .normal_chat_generator import NormalChatGenerator
 from ..message_receive.message import MessageSending, MessageRecv, MessageThinking, MessageSet
 from src.chat.message_receive.message_sender import message_manager
 from src.chat.utils.emoji_manager import chat_emoji_manager
 from src.chat.normal_chat.willing.willing_manager import willing_manager
+from src.chat.normal_chat.normal_chat_utils import get_recent_message_stats
 from src.config.config import global_config
 
 logger = get_logger("normal_chat")
 
 
 class NormalChat:
-    def __init__(self, chat_stream: ChatStream, interest_dict: dict = None):
+    def __init__(self, chat_stream: ChatStream, interest_dict: dict = None, on_switch_to_focus_callback=None):
         """初始化 NormalChat 实例。只进行同步操作。"""
 
-        # Basic info from chat_stream (sync)
         self.chat_stream = chat_stream
         self.stream_id = chat_stream.stream_id
-        # Get initial stream name, might be updated in initialize
         self.stream_name = chat_manager.get_stream_name(self.stream_id) or self.stream_id
 
         # Interest dict
@@ -41,26 +36,34 @@ class NormalChat:
         self.is_group_chat: bool = False
         self.chat_target_info: Optional[dict] = None
 
+        self.willing_amplifier = 1
+        self.start_time = time.time()
+
         # Other sync initializations
         self.gpt = NormalChatGenerator()
         self.mood_manager = mood_manager
         self.start_time = time.time()
-        self.last_speak_time = 0
         self._chat_task: Optional[asyncio.Task] = None
         self._initialized = False  # Track initialization status
+
+        # 记录最近的回复内容，每项包含: {time, user_message, response, is_mentioned, is_reference_reply}
+        self.recent_replies = []
+        self.max_replies_history = 20  # 最多保存最近20条回复记录
+
+        # 添加回调函数，用于在满足条件时通知切换到focus_chat模式
+        self.on_switch_to_focus_callback = on_switch_to_focus_callback
+
+        self._disabled = False  # 增加停用标志
 
     async def initialize(self):
         """异步初始化，获取聊天类型和目标信息。"""
         if self._initialized:
             return
 
-        # --- Use utility function to determine chat type and fetch info ---
         self.is_group_chat, self.chat_target_info = await get_chat_type_and_target_info(self.stream_id)
-        # Update stream_name again after potential async call in util func
         self.stream_name = chat_manager.get_stream_name(self.stream_id) or self.stream_id
-        # --- End using utility function ---
         self._initialized = True
-        logger.info(f"[{self.stream_name}] NormalChat 实例 initialize 完成 (异步部分)。")
+        logger.debug(f"[{self.stream_name}] NormalChat 初始化完成 (异步部分)。")
 
     # 改为实例方法
     async def _create_thinking_message(self, message: MessageRecv, timestamp: Optional[float] = None) -> str:
@@ -111,6 +114,8 @@ class NormalChat:
         mark_head = False
         first_bot_msg = None
         for msg in response_set:
+            if global_config.experimental.debug_show_chat_mode:
+                msg += "ⁿ"
             message_segment = Seg(type="text", data=msg)
             bot_message = MessageSending(
                 message_id=thinking_id,
@@ -134,8 +139,6 @@ class NormalChat:
             message_set.add_message(bot_message)
 
         await message_manager.add_message(message_set)
-
-        self.last_speak_time = time.time()
 
         return first_bot_msg
 
@@ -188,55 +191,57 @@ class NormalChat:
         通常由start_monitoring_interest()启动
         """
         while True:
-            await asyncio.sleep(0.5)  # 每秒检查一次
-            # 检查任务是否已被取消
-            if self._chat_task is None or self._chat_task.cancelled():
-                logger.info(f"[{self.stream_name}] 兴趣监控任务被取消或置空，退出")
-                break
+            async with global_prompt_manager.async_message_scope(self.chat_stream.context.get_template_name()):
+                await asyncio.sleep(0.5)  # 每秒检查一次
+                # 检查任务是否已被取消
+                if self._chat_task is None or self._chat_task.cancelled():
+                    logger.info(f"[{self.stream_name}] 兴趣监控任务被取消或置空，退出")
+                    break
 
-            items_to_process = list(self.interest_dict.items())
-            if not items_to_process:
-                continue
+                items_to_process = list(self.interest_dict.items())
+                if not items_to_process:
+                    continue
 
-            # 处理每条兴趣消息
-            for msg_id, (message, interest_value, is_mentioned) in items_to_process:
-                try:
-                    # 处理消息
-                    await self.normal_response(
-                        message=message,
-                        is_mentioned=is_mentioned,
-                        interested_rate=interest_value,
-                        rewind_response=False,
-                    )
-                except Exception as e:
-                    logger.error(f"[{self.stream_name}] 处理兴趣消息{msg_id}时出错: {e}\n{traceback.format_exc()}")
-                finally:
-                    self.interest_dict.pop(msg_id, None)
+                # 处理每条兴趣消息
+                for msg_id, (message, interest_value, is_mentioned) in items_to_process:
+                    try:
+                        # 处理消息
+                        if time.time() - self.start_time > 600:
+                            self.adjust_reply_frequency(duration=600 / 60)
+                        else:
+                            self.adjust_reply_frequency(duration=(time.time() - self.start_time) / 60)
+
+                        await self.normal_response(
+                            message=message,
+                            is_mentioned=is_mentioned,
+                            interested_rate=interest_value * self.willing_amplifier,
+                            rewind_response=False,
+                        )
+                    except Exception as e:
+                        logger.error(f"[{self.stream_name}] 处理兴趣消息{msg_id}时出错: {e}\n{traceback.format_exc()}")
+                    finally:
+                        self.interest_dict.pop(msg_id, None)
 
     # 改为实例方法, 移除 chat 参数
     async def normal_response(
         self, message: MessageRecv, is_mentioned: bool, interested_rate: float, rewind_response: bool = False
     ) -> None:
-        # 检查收到的消息是否属于当前实例处理的 chat stream
-        if message.chat_stream.stream_id != self.stream_id:
-            logger.error(
-                f"[{self.stream_name}] normal_response 收到不匹配的消息 (来自 {message.chat_stream.stream_id})，预期 {self.stream_id}。已忽略。"
-            )
+        # 新增：如果已停用，直接返回
+        if self._disabled:
+            logger.info(f"[{self.stream_name}] 已停用，忽略 normal_response。")
             return
 
         timing_results = {}
-
         reply_probability = 1.0 if is_mentioned else 0.0  # 如果被提及，基础概率为1，否则需要意愿判断
 
         # 意愿管理器：设置当前message信息
-
         willing_manager.setup(message, self.chat_stream, is_mentioned, interested_rate)
 
         # 获取回复概率
-        is_willing = False
+        # is_willing = False
         # 仅在未被提及或基础概率不为1时查询意愿概率
         if reply_probability < 1:  # 简化逻辑，如果未提及 (reply_probability 为 0)，则获取意愿概率
-            is_willing = True
+            # is_willing = True
             reply_probability = await willing_manager.get_reply_probability(message.message_info.message_id)
 
             if message.message_info.additional_config:
@@ -246,13 +251,13 @@ class NormalChat:
 
         # 打印消息信息
         mes_name = self.chat_stream.group_info.group_name if self.chat_stream.group_info else "私聊"
-        current_time = time.strftime("%H:%M:%S", time.localtime(message.message_info.time))
+        # current_time = time.strftime("%H:%M:%S", time.localtime(message.message_info.time))
         # 使用 self.stream_id
-        willing_log = f"[回复意愿:{await willing_manager.get_willing(self.stream_id):.2f}]" if is_willing else ""
+        # willing_log = f"[激活值:{await willing_manager.get_willing(self.stream_id):.2f}]" if is_willing else ""
         logger.info(
-            f"[{current_time}][{mes_name}]"
+            f"[{mes_name}]"
             f"{message.message_info.user_info.user_nickname}:"  # 使用 self.chat_stream
-            f"{message.processed_plain_text}{willing_log}[概率:{reply_probability * 100:.1f}%]"
+            f"{message.processed_plain_text}[兴趣:{interested_rate:.2f}][回复概率:{reply_probability * 100:.1f}%]"
         )
         do_reply = False
         response_set = None  # 初始化 response_set
@@ -300,7 +305,11 @@ class NormalChat:
                 willing_manager.delete(message.message_info.message_id)
                 return  # 不执行后续步骤
 
-            logger.info(f"[{self.stream_name}] 回复内容: {response_set}")
+            # logger.info(f"[{self.stream_name}] 回复内容: {response_set}")
+
+            if self._disabled:
+                logger.info(f"[{self.stream_name}] 已停用，忽略 normal_response。")
+                return
 
             # 发送回复 (不再需要传入 chat)
             with Timer("消息发送", timing_results):
@@ -309,14 +318,34 @@ class NormalChat:
             # 检查 first_bot_msg 是否为 None (例如思考消息已被移除的情况)
             if first_bot_msg:
                 info_catcher.catch_after_response(timing_results["消息发送"], response_set, first_bot_msg)
-            else:
-                logger.warning(f"[{self.stream_name}] 思考消息 {thinking_id} 在发送前丢失，无法记录 info_catcher")
 
-            # 处理表情包 (不再需要传入 chat)
+                # 记录回复信息到最近回复列表中
+                reply_info = {
+                    "time": time.time(),
+                    "user_message": message.processed_plain_text,
+                    "user_info": {
+                        "user_id": message.message_info.user_info.user_id,
+                        "user_nickname": message.message_info.user_info.user_nickname,
+                    },
+                    "response": response_set,
+                    "is_mentioned": is_mentioned,
+                    "is_reference_reply": message.reply is not None,  # 判断是否为引用回复
+                    "timing": {k: round(v, 2) for k, v in timing_results.items()},
+                }
+                self.recent_replies.append(reply_info)
+                # 保持最近回复历史在限定数量内
+                if len(self.recent_replies) > self.max_replies_history:
+                    self.recent_replies = self.recent_replies[-self.max_replies_history :]
+
+                # 检查是否需要切换到focus模式
+                if global_config.chat.chat_mode == "auto":
+                    await self._check_switch_to_focus()
+
+            info_catcher.done_catch()
+
             with Timer("处理表情包", timing_results):
                 await self._handle_emoji(message, response_set[0])
 
-            # 更新关系情绪 (不再需要传入 chat)
             with Timer("关系更新", timing_results):
                 await self._update_relationship(message, response_set)
 
@@ -329,122 +358,14 @@ class NormalChat:
             trigger_msg = message.processed_plain_text
             response_msg = " ".join(response_set)
             logger.info(
-                f"[{self.stream_name}] 触发消息: {trigger_msg[:20]}... | 推理消息: {response_msg[:20]}... | 性能计时: {timing_str}"
+                f"[{self.stream_name}]回复消息: {trigger_msg[:30]}... | 回复内容: {response_msg[:30]}... | 计时: {timing_str}"
             )
         elif not do_reply:
             # 不回复处理
             await willing_manager.not_reply_handle(message.message_info.message_id)
-        # else: # do_reply is True but response_set is None (handled above)
-        # logger.info(f"[{self.stream_name}] 决定回复但模型未生成内容。触发: {message.processed_plain_text[:20]}...")
 
         # 意愿管理器：注销当前message信息 (无论是否回复，只要处理过就删除)
         willing_manager.delete(message.message_info.message_id)
-
-    # --- 新增：处理初始高兴趣消息的私有方法 ---
-    async def _process_initial_interest_messages(self):
-        """处理启动时存在于 interest_dict 中的高兴趣消息。"""
-        if not self.interest_dict:
-            return  # 如果 interest_dict 为 None 或空，直接返回
-
-        items_to_process = list(self.interest_dict.items())
-        if not items_to_process:
-            return  # 没有初始消息，直接返回
-
-        logger.info(f"[{self.stream_name}] 发现 {len(items_to_process)} 条初始兴趣消息，开始处理高兴趣部分...")
-        interest_values = [item[1][1] for item in items_to_process]  # 提取兴趣值列表
-
-        messages_to_reply = []  # 需要立即回复的消息
-
-        if len(interest_values) == 1:
-            # 如果只有一个消息，直接处理
-            messages_to_reply.append(items_to_process[0])
-            logger.info(f"[{self.stream_name}] 只有一条初始消息，直接处理。")
-        elif len(interest_values) > 1:
-            # 计算均值和标准差
-            try:
-                mean_interest = statistics.mean(interest_values)
-                stdev_interest = statistics.stdev(interest_values)
-                threshold = mean_interest + stdev_interest
-                logger.info(
-                    f"[{self.stream_name}] 初始兴趣值 均值: {mean_interest:.2f}, 标准差: {stdev_interest:.2f}, 阈值: {threshold:.2f}"
-                )
-
-                # 找出高于阈值的消息
-                for item in items_to_process:
-                    msg_id, (message, interest_value, is_mentioned) = item
-                    if interest_value > threshold:
-                        messages_to_reply.append(item)
-                logger.info(f"[{self.stream_name}] 找到 {len(messages_to_reply)} 条高于阈值的初始消息进行处理。")
-            except statistics.StatisticsError as e:
-                logger.error(f"[{self.stream_name}] 计算初始兴趣统计值时出错: {e}，跳过初始处理。")
-
-        # 处理需要回复的消息
-        processed_count = 0
-        # --- 修改：迭代前创建要处理的ID列表副本，防止迭代时修改 ---
-        messages_to_process_initially = list(messages_to_reply)  # 创建副本
-        # --- 新增：限制最多处理两条消息 ---
-        messages_to_process_initially = messages_to_process_initially[:2]
-        # --- 新增结束 ---
-        for item in messages_to_process_initially:  # 使用副本迭代
-            msg_id, (message, interest_value, is_mentioned) = item
-            # --- 修改：在处理前尝试 pop，防止竞争 ---
-            popped_item = self.interest_dict.pop(msg_id, None)
-            if popped_item is None:
-                logger.warning(f"[{self.stream_name}] 初始兴趣消息 {msg_id} 在处理前已被移除，跳过。")
-                continue  # 如果消息已被其他任务处理（pop），则跳过
-            # --- 修改结束 ---
-
-            try:
-                logger.info(f"[{self.stream_name}] 处理初始高兴趣消息 {msg_id} (兴趣值: {interest_value:.2f})")
-                await self.normal_response(
-                    message=message, is_mentioned=is_mentioned, interested_rate=interest_value, rewind_response=True
-                )
-                processed_count += 1
-            except Exception as e:
-                logger.error(f"[{self.stream_name}] 处理初始兴趣消息 {msg_id} 时出错: {e}\\n{traceback.format_exc()}")
-
-        # --- 新增：处理完后清空整个字典 ---
-        logger.info(
-            f"[{self.stream_name}] 处理了 {processed_count} 条初始高兴趣消息。现在清空所有剩余的初始兴趣消息..."
-        )
-        self.interest_dict.clear()
-        # --- 新增结束 ---
-
-        logger.info(
-            f"[{self.stream_name}] 初始高兴趣消息处理完毕，共处理 {processed_count} 条。剩余 {len(self.interest_dict)} 条待轮询。"
-        )
-
-    # --- 新增结束 ---
-
-    # 保持 staticmethod, 因为不依赖实例状态, 但需要 chat 对象来获取日志上下文
-    @staticmethod
-    def _check_ban_words(text: str, chat: ChatStream, userinfo: UserInfo) -> bool:
-        """检查消息中是否包含过滤词"""
-        stream_name = chat_manager.get_stream_name(chat.stream_id) or chat.stream_id
-        for word in global_config.chat.ban_words:
-            if word in text:
-                logger.info(
-                    f"[{stream_name}][{chat.group_info.group_name if chat.group_info else '私聊'}]"
-                    f"{userinfo.user_nickname}:{text}"
-                )
-                logger.info(f"[{stream_name}][过滤词识别] 消息中含有 '{word}'，filtered")
-                return True
-        return False
-
-    # 保持 staticmethod, 因为不依赖实例状态, 但需要 chat 对象来获取日志上下文
-    @staticmethod
-    def _check_ban_regex(text: str, chat: ChatStream, userinfo: UserInfo) -> bool:
-        """检查消息是否匹配过滤正则表达式"""
-        stream_name = chat_manager.get_stream_name(chat.stream_id) or chat.stream_id
-        for pattern in global_config.chat.ban_msgs_regex:
-            if pattern.search(text):
-                logger.info(
-                    f"[{stream_name}][{chat.group_info.group_name if chat.group_info else '私聊'}]"
-                    f"{userinfo.user_nickname}:{text}"
-                )
-                logger.info(f"[{stream_name}][正则表达式过滤] 消息匹配到 '{pattern.pattern}'，filtered")
-                return True
-        return False
 
     # 改为实例方法, 移除 chat 参数
 
@@ -453,12 +374,10 @@ class NormalChat:
         if not self._initialized:
             await self.initialize()  # Ensure initialized before starting tasks
 
+        self._disabled = False  # 启动时重置停用标志
+
         if self._chat_task is None or self._chat_task.done():
-            logger.info(f"[{self.stream_name}] 开始回顾消息...")
-            # Process initial messages first
-            await self._process_initial_interest_messages()
-            # Then start polling task
-            logger.info(f"[{self.stream_name}] 开始处理兴趣消息...")
+            # logger.info(f"[{self.stream_name}] 开始处理兴趣消息...")
             polling_task = asyncio.create_task(self._reply_interested_message())
             polling_task.add_done_callback(lambda t: self._handle_task_completion(t))
             self._chat_task = polling_task
@@ -486,6 +405,7 @@ class NormalChat:
     # 改为实例方法, 移除 stream_id 参数
     async def stop_chat(self):
         """停止当前实例的兴趣监控任务。"""
+        self._disabled = True  # 停止时设置停用标志
         if self._chat_task and not self._chat_task.done():
             task = self._chat_task
             logger.debug(f"[{self.stream_name}] 尝试取消normal聊天任务。")
@@ -515,3 +435,88 @@ class NormalChat:
         except Exception as e:
             logger.error(f"[{self.stream_name}] 清理思考消息时出错: {e}")
             traceback.print_exc()
+
+    # 获取最近回复记录的方法
+    def get_recent_replies(self, limit: int = 10) -> List[dict]:
+        """获取最近的回复记录
+
+        Args:
+            limit: 最大返回数量，默认10条
+
+        Returns:
+            List[dict]: 最近的回复记录列表，每项包含：
+                time: 回复时间戳
+                user_message: 用户消息内容
+                user_info: 用户信息(user_id, user_nickname)
+                response: 回复内容
+                is_mentioned: 是否被提及(@)
+                is_reference_reply: 是否为引用回复
+                timing: 各阶段耗时
+        """
+        # 返回最近的limit条记录，按时间倒序排列
+        return sorted(self.recent_replies[-limit:], key=lambda x: x["time"], reverse=True)
+
+    async def _check_switch_to_focus(self) -> None:
+        """检查是否满足切换到focus模式的条件"""
+        if not self.on_switch_to_focus_callback:
+            return  # 如果没有设置回调函数，直接返回
+        current_time = time.time()
+
+        time_threshold = 120 / global_config.chat.auto_focus_threshold
+        reply_threshold = 6 * global_config.chat.auto_focus_threshold
+
+        one_minute_ago = current_time - time_threshold
+
+        # 统计1分钟内的回复数量
+        recent_reply_count = sum(1 for reply in self.recent_replies if reply["time"] > one_minute_ago)
+        if recent_reply_count > reply_threshold:
+            logger.info(
+                f"[{self.stream_name}] 检测到1分钟内回复数量({recent_reply_count})大于{reply_threshold}，触发切换到focus模式"
+            )
+            try:
+                # 调用回调函数通知上层切换到focus模式
+                await self.on_switch_to_focus_callback()
+            except Exception as e:
+                logger.error(f"[{self.stream_name}] 触发切换到focus模式时出错: {e}\n{traceback.format_exc()}")
+
+    def adjust_reply_frequency(self, duration: int = 10):
+        """
+        调整回复频率
+        """
+        # 获取最近30分钟内的消息统计
+
+        stats = get_recent_message_stats(minutes=duration, chat_id=self.stream_id)
+        bot_reply_count = stats["bot_reply_count"]
+
+        total_message_count = stats["total_message_count"]
+        if total_message_count == 0:
+            return
+        logger.debug(
+            f"[{self.stream_name}]({self.willing_amplifier}) 最近{duration}分钟 回复数量: {bot_reply_count}，消息总数: {total_message_count}"
+        )
+
+        # 计算回复频率
+        _reply_frequency = bot_reply_count / total_message_count
+
+        differ = global_config.normal_chat.talk_frequency - (bot_reply_count / duration)
+
+        # 如果回复频率低于0.5，增加回复概率
+        if differ > 0.1:
+            mapped = 1 + (differ - 0.1) * 4 / 0.9
+            mapped = max(1, min(5, mapped))
+            logger.info(
+                f"[{self.stream_name}] 回复频率低于{global_config.normal_chat.talk_frequency}，增加回复概率，differ={differ:.3f}，映射值={mapped:.2f}"
+            )
+            self.willing_amplifier += mapped * 0.1  # 你可以根据实际需要调整系数
+        elif differ < -0.1:
+            mapped = 1 - (differ + 0.1) * 4 / 0.9
+            mapped = max(1, min(5, mapped))
+            logger.info(
+                f"[{self.stream_name}] 回复频率高于{global_config.normal_chat.talk_frequency}，减少回复概率，differ={differ:.3f}，映射值={mapped:.2f}"
+            )
+            self.willing_amplifier -= mapped * 0.1
+
+        if self.willing_amplifier > 5:
+            self.willing_amplifier = 5
+        elif self.willing_amplifier < 0.1:
+            self.willing_amplifier = 0.1

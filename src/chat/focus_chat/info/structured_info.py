@@ -67,3 +67,19 @@ class StructuredInfo:
             value: 要设置的属性值
         """
         self.data[key] = value
+
+    def get_processed_info(self) -> str:
+        """获取处理后的信息
+
+        Returns:
+            str: 处理后的信息字符串
+        """
+
+        info_str = ""
+        # print(f"self.data: {self.data}")
+
+        for key, value in self.data.items():
+            # print(f"key: {key}, value: {value}")
+            info_str += f"信息类型：{key}，信息内容：{value}\n"
+
+        return info_str

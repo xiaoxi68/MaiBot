@@ -1,6 +1,6 @@
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 from src.chat.heart_flow.observation.observation import Observation
-from src.chat.models.utils_model import LLMRequest
+from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 import time
 import traceback
@@ -8,7 +8,7 @@ from src.common.logger_manager import get_logger
 from src.individuality.individuality import individuality
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.message_receive.chat_stream import chat_manager
-from src.chat.person_info.relationship_manager import relationship_manager
+from src.person_info.relationship_manager import relationship_manager
 from .base_processor import BaseProcessor
 from typing import List, Optional
 from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
@@ -22,21 +22,20 @@ logger = get_logger("processor")
 def init_prompt():
     indentify_prompt = """
 {name_block}
-你是一个AI，但是你伪装成了一个人类，你的人格是，{prompt_personality}。
+你是一个AI，但是你伪装成了一个人类，你的人格是，{prompt_personality}
 {indentify_block}
 
-{relation_prompt}
-{memory_str}
-
+{relation_prompt}{memory_str}
 现在是{time_now}，你正在上网，和qq群里的网友们聊天，以下是正在进行的聊天内容：
 {chat_observe_info}
 
-现在请你根据现有的信息，思考自我认同
-1. 你是一个什么样的人,你和群里的人关系如何
-2. 你的形象是什么
-3. 思考有没有人提到你，或者图片与你有关
-4. 你的自我认同是否有助于你的回答，如果你需要自我相关的信息来帮你参与聊天，请输出，否则请输出十几个字的简短自我认同
-5. 一般情况下不用输出自我认同，只需要输出十几个字的简短自我认同就好，除非有明显需要自我认同的场景
+现在请你根据现有的信息，思考自我认同：请严格遵守以下规则
+1. 请严格参考最上方的人设，适当参考记忆和当前聊天内容，不要被记忆和当前聊天内容中相反的内容误导
+2. 你是一个什么样的人,你和群里的人关系如何
+3. 你的形象是什么
+4. 思考有没有人提到你，或者图片与你有关
+5. 你的自我认同是否有助于你的回答，如果你需要自我相关的信息来帮你参与聊天，请输出，否则请输出十几个字的简短自我认同
+6. 一般情况下不用输出自我认同，只需要输出十几个字的简短自我认同就好，除非有明显需要自我认同的场景
 
 输出内容平淡一些，说中文，不要浮夸，平淡一些。
 请注意不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出自我认同内容，记得明确说明这是你的自我认同。
@@ -54,10 +53,10 @@ class SelfProcessor(BaseProcessor):
         self.subheartflow_id = subheartflow_id
 
         self.llm_model = LLMRequest(
-            model=global_config.model.sub_heartflow,
-            temperature=global_config.model.sub_heartflow["temp"],
+            model=global_config.model.focus_self_recognize,
+            temperature=global_config.model.focus_self_recognize["temp"],
             max_tokens=800,
-            request_type="self_identify",
+            request_type="focus.processor.self_identify",
         )
 
         name = chat_manager.get_stream_name(self.subheartflow_id)
@@ -101,11 +100,23 @@ class SelfProcessor(BaseProcessor):
                 tuple: (current_mind, past_mind, prompt) 当前想法、过去的想法列表和使用的prompt
         """
 
+        for observation in observations:
+            if isinstance(observation, ChattingObservation):
+                is_group_chat = observation.is_group_chat
+                chat_target_info = observation.chat_target_info
+                chat_target_name = "对方"  # 私聊默认名称
+                person_list = observation.person_list
+
         memory_str = ""
         if running_memorys:
             memory_str = "以下是当前在聊天中，你回忆起的记忆：\n"
             for running_memory in running_memorys:
                 memory_str += f"{running_memory['topic']}: {running_memory['content']}\n"
+
+        relation_prompt = ""
+        for person in person_list:
+            if len(person) >= 3 and person[0] and person[1]:
+                relation_prompt += await relationship_manager.build_relationship_info(person, is_id=True)
 
         if observations is None:
             observations = []
@@ -135,9 +146,16 @@ class SelfProcessor(BaseProcessor):
         personality_block = individuality.get_personality_prompt(x_person=2, level=2)
         identity_block = individuality.get_identity_prompt(x_person=2, level=2)
 
-        relation_prompt = ""
+        if is_group_chat:
+            relation_prompt_init = "在这个群聊中，你：\n"
+        else:
+            relation_prompt_init = ""
         for person in person_list:
             relation_prompt += await relationship_manager.build_relationship_info(person, is_id=True)
+        if relation_prompt:
+            relation_prompt = relation_prompt_init + relation_prompt
+        else:
+            relation_prompt = relation_prompt_init + "没有特别在意的人\n"
 
         prompt = (await global_prompt_manager.get_prompt_async("indentify_prompt")).format(
             name_block=name_block,
@@ -148,6 +166,8 @@ class SelfProcessor(BaseProcessor):
             time_now=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
             chat_observe_info=chat_observe_info,
         )
+
+        # print(prompt)
 
         content = ""
         try:
@@ -163,8 +183,8 @@ class SelfProcessor(BaseProcessor):
         if content == "None":
             content = ""
         # 记录初步思考结果
-        logger.debug(f"{self.log_prefix} 自我识别prompt: \n{prompt}\n")
-        logger.info(f"{self.log_prefix} 自我识别结果: {content}")
+        # logger.debug(f"{self.log_prefix} 自我识别prompt: \n{prompt}\n")
+        logger.info(f"{self.log_prefix} 自我认知: {content}")
 
         return content
 

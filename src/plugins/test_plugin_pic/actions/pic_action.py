@@ -1,7 +1,7 @@
 import asyncio
-import json  # 新增：用于处理JSON数据
-import urllib.request  # 新增：用于发起HTTP请求
-import urllib.error  # 新增：用于处理HTTP错误
+import json
+import urllib.request
+import urllib.error
 import base64  # 新增：用于Base64编码
 import traceback  # 新增：用于打印堆栈跟踪
 from typing import Tuple
@@ -9,18 +9,11 @@ from src.chat.focus_chat.planners.actions.plugin_action import PluginAction, reg
 from src.common.logger_manager import get_logger
 from .generate_pic_config import generate_config
 
-# 尝试导入 volcenginesdkarkruntime，如果失败则记录错误并在后续处理中提示用户
-# 即使我们现在主要用HTTP，这个检查也可以保留，以防未来需要或其他功能使用
-try:
-    from volcenginesdkarkruntime import Ark
-
-    VOLCENGINE_SDK_AVAILABLE = True
-except ImportError:
-    VOLCENGINE_SDK_AVAILABLE = False
-    Ark = None  # 占位，避免 NameError
-
 logger = get_logger("pic_action")
 
+# 当此模块被加载时，尝试生成配置文件（如果它不存在）
+# 注意：在某些插件加载机制下，这可能会在每次机器人启动或插件重载时执行
+# 考虑是否需要更复杂的逻辑来决定何时运行 (例如，仅在首次安装时)
 generate_config()
 
 
@@ -29,12 +22,15 @@ class PicAction(PluginAction):
     """根据描述使用火山引擎HTTP API生成图片的动作处理类"""
 
     action_name = "pic_action"
-    action_description = "可以根据特定的描述，使用火山引擎模型生成并发送一张图片 (通过HTTP API)"
+    action_description = (
+        "可以根据特定的描述，生成并发送一张图片，如果没提供描述，就根据聊天内容生成,你可以立刻画好，不用等待"
+    )
     action_parameters = {
         "description": "图片描述，输入你想要生成并发送的图片的描述，必填",
         "size": "图片尺寸，例如 '1024x1024' (可选, 默认从配置或 '1024x1024')",
     }
     action_require = [
+        "当有人让你画东西时使用，你可以立刻画好，不用等待",
         "当有人要求你生成并发送一张图片时使用",
         "当有人让你画一张图时使用",
     ]
@@ -52,12 +48,7 @@ class PicAction(PluginAction):
     ):
         super().__init__(action_data, reasoning, cycle_timers, thinking_id, global_config, **kwargs)
 
-        if not VOLCENGINE_SDK_AVAILABLE:
-            logger.warning(
-                f"{self.log_prefix} Volcengine SDK (volcenginesdkarkruntime) 未找到. PicAction将仅依赖HTTP配置."
-            )
-        else:
-            logger.info(f"{self.log_prefix} Volcengine SDK 可用, 但PicAction配置为优先HTTP方式.")
+        logger.info(f"{self.log_prefix} 开始绘图！原因是：{self.reasoning}")
 
         http_base_url = self.config.get("base_url")
         http_api_key = self.config.get("volcano_generate_api_key")
@@ -167,7 +158,7 @@ class PicAction(PluginAction):
 
             if encode_success:
                 base64_image_string = encode_result
-                send_success = await self.send_message(type="emoji", data=base64_image_string)
+                send_success = await self.send_message(type="image", data=base64_image_string)
                 if send_success:
                     await self.send_message_by_expressor("图片表情已发送！")
                     return True, "图片表情已发送"

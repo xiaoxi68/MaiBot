@@ -10,7 +10,7 @@ from maim_message import UserInfo
 from src.common.logger import get_module_logger
 from src.manager.mood_manager import mood_manager
 from ..message_receive.message import MessageRecv
-from ..models.utils_model import LLMRequest
+from src.llm_models.utils_model import LLMRequest
 from .typo_generator import ChineseTypoGenerator
 from ...config.config import global_config
 from ...common.message_repository import find_messages, count_messages
@@ -62,10 +62,21 @@ def is_mentioned_bot_in_message(message: MessageRecv) -> tuple[bool, float]:
                 f"消息中包含不合理的设置 is_mentioned: {message.message_info.additional_config.get('is_mentioned')}"
             )
 
+    if global_config.bot.nickname in message.processed_plain_text:
+        is_mentioned = True
+
+    for alias_name in global_config.bot.alias_names:
+        if alias_name in message.processed_plain_text:
+            is_mentioned = True
+
     # 判断是否被@
-    if re.search(f"@[\s\S]*?（id:{global_config.bot.qq_account}）", message.processed_plain_text):
+    if re.search(rf"@<(.+?):{global_config.bot.qq_account}>", message.processed_plain_text):
         is_at = True
         is_mentioned = True
+
+    # print(f"message.processed_plain_text: {message.processed_plain_text}")
+    # print(f"is_mentioned: {is_mentioned}")
+    # print(f"is_at: {is_at}")
 
     if is_at and global_config.normal_chat.at_bot_inevitable_reply:
         reply_probability = 1.0
@@ -74,13 +85,18 @@ def is_mentioned_bot_in_message(message: MessageRecv) -> tuple[bool, float]:
         if not is_mentioned:
             # 判断是否被回复
             if re.match(
-                f"\[回复 [\s\S]*?\({str(global_config.bot.qq_account)}\)：[\s\S]*?]，说：", message.processed_plain_text
+                rf"\[回复 (.+?)\({str(global_config.bot.qq_account)}\)：(.+?)\]，说：", message.processed_plain_text
+            ) or re.match(
+                rf"\[回复<(.+?)(?=:{str(global_config.bot.qq_account)}>)\:{str(global_config.bot.qq_account)}>：(.+?)\]，说：",
+                message.processed_plain_text,
             ):
                 is_mentioned = True
             else:
                 # 判断内容中是否被提及
-                message_content = re.sub(r"@[\s\S]*?（(\d+)）", "", message.processed_plain_text)
-                message_content = re.sub(r"\[回复 [\s\S]*?\(((\d+)|未知id)\)：[\s\S]*?]，说：", "", message_content)
+                message_content = re.sub(r"@(.+?)（(\d+)）", "", message.processed_plain_text)
+                message_content = re.sub(r"@<(.+?)(?=:(\d+))\:(\d+)>", "", message_content)
+                message_content = re.sub(r"\[回复 (.+?)\(((\d+)|未知id)\)：(.+?)\]，说：", "", message_content)
+                message_content = re.sub(r"\[回复<(.+?)(?=:(\d+))\:(\d+)>：(.+?)\]，说：", "", message_content)
                 for keyword in keywords:
                     if keyword in message_content:
                         is_mentioned = True

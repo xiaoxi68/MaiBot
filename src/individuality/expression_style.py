@@ -1,6 +1,6 @@
 import random
 from src.common.logger_manager import get_logger
-from src.chat.models.utils_model import LLMRequest
+from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from typing import List, Tuple
@@ -14,13 +14,13 @@ def init_prompt() -> None:
     personality_expression_prompt = """
 {personality}
 
-请从以上人设中总结出这个角色可能的语言风格
+请从以上人设中总结出这个角色可能的语言风格，你必须严格根据人设引申，不要输出例子
 思考回复的特殊内容和情感
 思考有没有特殊的梗，一并总结成语言风格
 总结成如下格式的规律，总结的内容要详细，但具有概括性：
 当"xxx"时，可以"xxx", xxx不超过10个字
 
-例如：
+例如（不要输出例子）：
 当"表示十分惊叹"时，使用"我嘞个xxxx"
 当"表示讽刺的赞同，不想讲道理"时，使用"对对对"
 当"想说明某个观点，但懒得明说"，使用"懂的都懂"
@@ -33,14 +33,13 @@ def init_prompt() -> None:
 class PersonalityExpression:
     def __init__(self):
         self.express_learn_model: LLMRequest = LLMRequest(
-            model=global_config.model.normal,
-            temperature=0.1,
-            max_tokens=256,
-            request_type="response_heartflow",
+            model=global_config.model.focus_expressor,
+            max_tokens=512,
+            request_type="expressor.learner",
         )
         self.meta_file_path = os.path.join("data", "expression", "personality", "expression_style_meta.json")
         self.expressions_file_path = os.path.join("data", "expression", "personality", "expressions.json")
-        self.max_calculations = 5
+        self.max_calculations = 10
 
     def _read_meta_data(self):
         if os.path.exists(self.meta_file_path):
@@ -83,7 +82,7 @@ class PersonalityExpression:
                     logger.error(f"删除旧的表达文件 {self.expressions_file_path} 失败: {e}")
 
         if count >= self.max_calculations:
-            logger.info(f"对于风格 '{current_style_text}' 已达到最大计算次数 ({self.max_calculations})。跳过提取。")
+            logger.debug(f"对于风格 '{current_style_text}' 已达到最大计算次数 ({self.max_calculations})。跳过提取。")
             # 即使跳过，也更新元数据以反映当前风格已被识别且计数已满
             self._write_meta_data({"last_style_text": current_style_text, "count": count})
             return

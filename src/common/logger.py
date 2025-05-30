@@ -225,22 +225,37 @@ SCHEDULE_STYLE_CONFIG = {
     },
 }
 
-LLM_STYLE_CONFIG = {
+NORMAL_CHAT_RESPONSE_STYLE_CONFIG = {
     "advanced": {
         "console_format": (
             "<white>{time:YYYY-MM-DD HH:mm:ss}</white> | "
             "<level>{level: <8}</level> | "
-            "<light-yellow>麦麦组织语言</light-yellow> | "
+            "<light-yellow>普通水群回复</light-yellow> | "
             "<level>{message}</level>"
         ),
-        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 麦麦组织语言 | {message}",
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 普通水群回复 | {message}",
     },
     "simple": {
-        "console_format": "<level>{time:HH:mm:ss}</level> | <light-green>麦麦组织语言</light-green> | {message}",
-        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 麦麦组织语言 | {message}",
+        "console_format": "<level>{time:HH:mm:ss}</level> | <light-green>普通水群回复</light-green> | {message}",
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 普通水群回复 | {message}",
     },
 }
 
+EXPRESS_STYLE_CONFIG = {
+    "advanced": {
+        "console_format": (
+            "<white>{time:YYYY-MM-DD HH:mm:ss}</white> | "
+            "<level>{level: <8}</level> | "
+            "<light-yellow>麦麦表达</light-yellow> | "
+            "<level>{message}</level>"
+        ),
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 麦麦表达 | {message}",
+    },
+    "simple": {
+        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #E595FF>麦麦表达</fg #E595FF> | {message}",
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 麦麦表达 | {message}",
+    },
+}
 
 # Topic日志样式配置
 TOPIC_STYLE_CONFIG = {
@@ -271,7 +286,7 @@ CHAT_STYLE_CONFIG = {
         "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 见闻 | {message}",
     },
     "simple": {
-        "console_format": "<level>{time:HH:mm:ss}</level> | <green>见闻</green> | <green>{message}</green>",  # noqa: E501
+        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #1AFF5E>见闻</fg #1AFF5E> | <fg #1AFF5E>{message}</fg #1AFF5E>",  # noqa: E501
         "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 见闻 | {message}",
     },
 }
@@ -282,14 +297,14 @@ NORMAL_CHAT_STYLE_CONFIG = {
         "console_format": (
             "<white>{time:YYYY-MM-DD HH:mm:ss}</white> | "
             "<level>{level: <8}</level> | "
-            "<green>一般水群</green> | "
+            "<green>普通水群</green> | "
             "<level>{message}</level>"
         ),
-        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 一般水群 | {message}",
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 普通水群 | {message}",
     },
     "simple": {
-        "console_format": "<level>{time:HH:mm:ss}</level> | <green>一般水群</green> | <green>{message}</green>",  # noqa: E501
-        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 一般水群 | {message}",
+        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #00B741>普通水群</fg #00B741> | <fg #00B741>{message}</fg #00B741>",  # noqa: E501
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 普通水群 | {message}",
     },
 }
 
@@ -309,6 +324,7 @@ FOCUS_CHAT_STYLE_CONFIG = {
         "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 专注水群 | {message}",
     },
 }
+
 
 REMOTE_STYLE_CONFIG = {
     "advanced": {
@@ -530,19 +546,19 @@ EMOJI_STYLE_CONFIG = {
     },
 }
 
-MAI_STATE_CONFIG = {
+STATISTIC_STYLE_CONFIG = {
     "advanced": {
         "console_format": (
             "<white>{time:YYYY-MM-DD HH:mm:ss}</white> | "
             "<level>{level: <8}</level> | "
-            "<light-blue>麦麦状态</light-blue> | "
+            "<light-blue>麦麦统计</light-blue> | "
             "<level>{message}</level>"
         ),
-        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 麦麦状态 | {message}",
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 麦麦统计 | {message}",
     },
     "simple": {
-        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #66CCFF>麦麦状态 | {message} </fg #66CCFF>",  # noqa: E501
-        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 麦麦状态 | {message}",
+        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #66CCFF>麦麦统计 | {message} </fg #66CCFF>",  # noqa: E501
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 麦麦统计 | {message}",
     },
 }
 
@@ -663,11 +679,11 @@ PROCESSOR_STYLE_CONFIG = {
 
 PLANNER_STYLE_CONFIG = {
     "advanced": {
-        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #4DCDFF>规划器</fg #4DCDFF> | <fg #4DCDFF>{message}</fg #4DCDFF>",
+        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #069AFF>规划器</fg #069AFF> | <fg #069AFF>{message}</fg #069AFF>",
         "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 规划器 | {message}",
     },
     "simple": {
-        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #4DCDFF>规划器</fg #4DCDFF> | <fg #4DCDFF>{message}</fg #4DCDFF>",
+        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #069AFF>规划器</fg #069AFF> | <fg #069AFF>{message}</fg #069AFF>",
         "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 规划器 | {message}",
     },
 }
@@ -869,12 +885,43 @@ API_SERVER_STYLE_CONFIG = {
     },
 }
 
+ACTION_MANAGER_STYLE_CONFIG = {
+    "advanced": {
+        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #FFA01F>动作选择</fg #FFA01F> | <fg #FFA01F>{message}</fg #FFA01F>",
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 动作选择 | {message}",
+    },
+    "simple": {
+        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #FFA01F>动作选择</fg #FFA01F> | <fg #FFA01F>{message}</fg #FFA01F>",
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 动作选择 | {message}",
+    },
+}
+
+# maim_message 消息服务样式配置
+MAIM_MESSAGE_STYLE_CONFIG = {
+    "advanced": {
+        "console_format": (
+            "<white>{time:YYYY-MM-DD HH:mm:ss}</white> | "
+            "<level>{level: <8}</level> | "
+            "<fg #00B2FF>消息服务</fg #00B2FF> | "
+            "<level>{message}</level>"
+        ),
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 消息服务 | {message}",
+    },
+    "simple": {
+        "console_format": "<level>{time:HH:mm:ss}</level> | <fg #00B2FF>消息服务</fg #00B2FF> | {message}",
+        "file_format": "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[module]: <15} | 消息服务 | {message}",
+    },
+}
+
 
 # 根据SIMPLE_OUTPUT选择配置
 MAIN_STYLE_CONFIG = MAIN_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else MAIN_STYLE_CONFIG["advanced"]
 EMOJI_STYLE_CONFIG = EMOJI_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else EMOJI_STYLE_CONFIG["advanced"]
 PFC_ACTION_PLANNER_STYLE_CONFIG = (
     PFC_ACTION_PLANNER_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else PFC_ACTION_PLANNER_STYLE_CONFIG["advanced"]
+)
+ACTION_MANAGER_STYLE_CONFIG = (
+    ACTION_MANAGER_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else ACTION_MANAGER_STYLE_CONFIG["advanced"]
 )
 REMOTE_STYLE_CONFIG = REMOTE_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else REMOTE_STYLE_CONFIG["advanced"]
 BASE_TOOL_STYLE_CONFIG = BASE_TOOL_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else BASE_TOOL_STYLE_CONFIG["advanced"]
@@ -889,7 +936,9 @@ MEMORY_STYLE_CONFIG = MEMORY_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else MEMORY
 CHAT_STREAM_STYLE_CONFIG = CHAT_STREAM_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else CHAT_STREAM_STYLE_CONFIG["advanced"]
 TOPIC_STYLE_CONFIG = TOPIC_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else TOPIC_STYLE_CONFIG["advanced"]
 SENDER_STYLE_CONFIG = SENDER_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else SENDER_STYLE_CONFIG["advanced"]
-LLM_STYLE_CONFIG = LLM_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else LLM_STYLE_CONFIG["advanced"]
+NORMAL_CHAT_RESPONSE_STYLE_CONFIG = (
+    NORMAL_CHAT_RESPONSE_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else NORMAL_CHAT_RESPONSE_STYLE_CONFIG["advanced"]
+)
 CHAT_STYLE_CONFIG = CHAT_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else CHAT_STYLE_CONFIG["advanced"]
 MOOD_STYLE_CONFIG = MOOD_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else MOOD_STYLE_CONFIG["advanced"]
 RELATION_STYLE_CONFIG = RELATION_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else RELATION_STYLE_CONFIG["advanced"]
@@ -902,7 +951,7 @@ SUB_HEARTFLOW_MIND_STYLE_CONFIG = (
     SUB_HEARTFLOW_MIND_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else SUB_HEARTFLOW_MIND_STYLE_CONFIG["advanced"]
 )
 WILLING_STYLE_CONFIG = WILLING_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else WILLING_STYLE_CONFIG["advanced"]
-MAI_STATE_CONFIG = MAI_STATE_CONFIG["simple"] if SIMPLE_OUTPUT else MAI_STATE_CONFIG["advanced"]
+STATISTIC_STYLE_CONFIG = STATISTIC_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else STATISTIC_STYLE_CONFIG["advanced"]
 CONFIG_STYLE_CONFIG = CONFIG_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else CONFIG_STYLE_CONFIG["advanced"]
 TOOL_USE_STYLE_CONFIG = TOOL_USE_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else TOOL_USE_STYLE_CONFIG["advanced"]
 PFC_STYLE_CONFIG = PFC_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else PFC_STYLE_CONFIG["advanced"]
@@ -946,11 +995,15 @@ CHAT_MESSAGE_STYLE_CONFIG = (
 CHAT_IMAGE_STYLE_CONFIG = CHAT_IMAGE_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else CHAT_IMAGE_STYLE_CONFIG["advanced"]
 INIT_STYLE_CONFIG = INIT_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else INIT_STYLE_CONFIG["advanced"]
 API_SERVER_STYLE_CONFIG = API_SERVER_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else API_SERVER_STYLE_CONFIG["advanced"]
+MAIM_MESSAGE_STYLE_CONFIG = (
+    MAIM_MESSAGE_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else MAIM_MESSAGE_STYLE_CONFIG["advanced"]
+)
 INTEREST_CHAT_STYLE_CONFIG = (
     INTEREST_CHAT_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else INTEREST_CHAT_STYLE_CONFIG["advanced"]
 )
 NORMAL_CHAT_STYLE_CONFIG = NORMAL_CHAT_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else NORMAL_CHAT_STYLE_CONFIG["advanced"]
 FOCUS_CHAT_STYLE_CONFIG = FOCUS_CHAT_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else FOCUS_CHAT_STYLE_CONFIG["advanced"]
+EXPRESS_STYLE_CONFIG = EXPRESS_STYLE_CONFIG["simple"] if SIMPLE_OUTPUT else EXPRESS_STYLE_CONFIG["advanced"]
 
 
 def is_registered_module(record: dict) -> bool:
