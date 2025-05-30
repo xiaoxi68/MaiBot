@@ -137,7 +137,7 @@ class Prompt(str):
 
     @staticmethod
     def _process_escaped_braces(template: str) -> str:
-        """处理模板中的转义花括号，将 \{ 和 \} 替换为临时标记"""
+        """处理模板中的转义花括号，将 \\\\{ 和 \\\\} 替换为临时标记"""
         return template.replace("\\{", Prompt._TEMP_LEFT_BRACE).replace("\\}", Prompt._TEMP_RIGHT_BRACE)
 
     @staticmethod

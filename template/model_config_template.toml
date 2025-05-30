@@ -100,3 +100,5 @@ emoji_describe = { model = "Qwen2.5-VL-7B-Instruct", temperature = 0.3, max_toke
 emoji_tag_gen = { model = "deepseek-v3", temperature = 0.7, max_tokens = 600 }
 # 图片描述模型
 image_describe = { model = "Qwen2.5-VL-7B-Instruct", temperature = 0.7, max_tokens = 300 }
+# 昵称生成模型
+nickname_generate = { model = "deepseek-r1", temperature = 0.7, max_tokens = 600 }
