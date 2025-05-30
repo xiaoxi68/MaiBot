@@ -185,20 +185,23 @@ class PromptBuilder:
 
         # 关键词检测与反应
         keywords_reaction_prompt = ""
-        for rule in global_config.keyword_reaction.rules:
-            if rule.enable:
-                if any(keyword in message_txt for keyword in rule.keywords):
-                    logger.info(f"检测到以下关键词之一：{rule.keywords}，触发反应：{rule.reaction}")
-                    keywords_reaction_prompt += f"{rule.reaction}，"
-                else:
-                    for pattern in rule.regex:
-                        if result := pattern.search(message_txt):
-                            reaction = rule.reaction
-                            for name, content in result.groupdict().items():
-                                reaction = reaction.replace(f"[{name}]", content)
-                            logger.info(f"匹配到以下正则表达式：{pattern}，触发反应：{reaction}")
-                            keywords_reaction_prompt += reaction + "，"
-                            break
+        try:
+            for rule in global_config.keyword_reaction.rules:
+                if rule.enable:
+                    if any(keyword in message_txt for keyword in rule.keywords):
+                        logger.info(f"检测到以下关键词之一：{rule.keywords}，触发反应：{rule.reaction}")
+                        keywords_reaction_prompt += f"{rule.reaction}，"
+                    else:
+                        for pattern in rule.regex:
+                            if result := pattern.search(message_txt):
+                                reaction = rule.reaction
+                                for name, content in result.groupdict().items():
+                                    reaction = reaction.replace(f"[{name}]", content)
+                                logger.info(f"匹配到以下正则表达式：{pattern}，触发反应：{reaction}")
+                                keywords_reaction_prompt += reaction + "，"
+                                break
+        except Exception as e:
+            logger.warning(f"关键词检测与反应时发生异常，可能是配置文件有误，跳过关键词匹配: {str(e)}")
 
         # 中文高手(新加的好玩功能)
         prompt_ger = ""

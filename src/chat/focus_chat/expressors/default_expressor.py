@@ -128,7 +128,7 @@ class DefaultExpressor:
         # 创建思考消息
         await self._create_thinking_message(anchor_message, thinking_id)
 
-        reply = None  # 初始化 reply，防止未定义
+        reply = []  # 初始化 reply，防止未定义
         try:
             has_sent_something = False
 
