@@ -753,8 +753,13 @@ class LLMRequest:
 
         response = await self._execute_request(endpoint="/chat/completions", payload=data, prompt=prompt)
         # 原样返回响应，不做处理
-
-        return response
+        
+        if len(response) == 3:
+            content, reasoning_content, tool_calls = response
+            return content, (reasoning_content, self.model_name, tool_calls)
+        else:
+            content, reasoning_content = response
+            return content, (reasoning_content, self.model_name)
 
     async def generate_response_tool_async(self, prompt: str, tools: list, **kwargs) -> tuple[str, str, list]:
         """异步方式根据输入的提示生成模型的响应"""

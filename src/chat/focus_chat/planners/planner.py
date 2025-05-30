@@ -15,6 +15,7 @@ from src.common.logger_manager import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.individuality.individuality import individuality
 from src.chat.focus_chat.planners.action_manager import ActionManager
+from json_repair import repair_json
 
 logger = get_logger("planner")
 
@@ -174,7 +175,9 @@ class ActionPlanner:
             # --- 调用 LLM (普通文本生成) ---
             llm_content = None
             try:
-                llm_content, reasoning_content, _ = await self.planner_llm.generate_response(prompt=prompt)
+                prompt = f"{prompt}"
+                print(len(prompt))
+                llm_content, (reasoning_content, _) = await self.planner_llm.generate_response_async(prompt=prompt)
                 logger.debug(f"{self.log_prefix}[Planner] LLM 原始 JSON 响应 (预期): {llm_content}")
                 logger.debug(f"{self.log_prefix}[Planner] LLM 原始理由 响应 (预期): {reasoning_content}")
             except Exception as req_e:
@@ -184,13 +187,16 @@ class ActionPlanner:
 
             if llm_content:
                 try:
-                    # 尝试去除可能的 markdown 代码块标记
-                    cleaned_content = (
-                        llm_content.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-                    )
-                    if not cleaned_content:
-                        raise json.JSONDecodeError("Cleaned content is empty", cleaned_content, 0)
-                    parsed_json = json.loads(cleaned_content)
+                    fixed_json_string = repair_json(llm_content)
+                    if isinstance(fixed_json_string, str):
+                        try:
+                            parsed_json = json.loads(fixed_json_string)
+                        except json.JSONDecodeError as decode_error:
+                            logger.error(f"JSON解析错误: {str(decode_error)}")
+                            parsed_json = {}
+                    else:
+                        # 如果repair_json直接返回了字典对象，直接使用
+                        parsed_json = fixed_json_string
 
                     # 提取决策，提供默认值
                     extracted_action = parsed_json.get("action", "no_reply")
@@ -244,6 +250,7 @@ class ActionPlanner:
             "action_result": action_result,
             "current_mind": current_mind,
             "observed_messages": observed_messages,
+            "action_prompt": prompt,
         }
 
         return plan_result

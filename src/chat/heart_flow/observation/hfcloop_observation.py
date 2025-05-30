@@ -102,9 +102,11 @@ class HFCloopObservation:
 
     def to_dict(self) -> dict:
         """将观察对象转换为可序列化的字典"""
+        # 只序列化基本信息，避免循环引用
         return {
             "observe_info": self.observe_info,
             "observe_id": self.observe_id,
             "last_observe_time": self.last_observe_time,
-            "history_loop": [cycle.to_dict() for cycle in self.history_loop]
+            # 不序列化history_loop，避免循环引用
+            "history_loop_count": len(self.history_loop)
         }

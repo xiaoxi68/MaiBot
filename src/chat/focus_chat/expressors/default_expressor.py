@@ -41,8 +41,8 @@ def init_prompt():
 你需要使用合适的语法和句法，参考聊天内容，组织一条日常且口语化的回复。
 请你根据情景使用以下句法：
 {grammar_habbits}
-回复尽量简短一些。可以参考贴吧，知乎和微博的回复风格，你可以完全重组回复，保留最基本的表达含义就好，但注意回复要简短，但重组后保持语意通顺。
-回复不要浮夸，不要用夸张修辞，平淡一些。不要输出多余内容(包括前后缀，冒号和引号，括号，表情包，at或 @等 )，只输出一条回复就好。
+{config_expression_style}，你可以完全重组回复，保留最基本的表达含义就好，但重组后保持语意通顺。
+不要浮夸，不要夸张修辞，平淡且不要输出多余内容(包括前后缀，冒号和引号，括号，表情包，at或 @等 )，只输出一条回复就好。
 现在，你说：
 """,
         "default_expressor_prompt",
@@ -63,8 +63,8 @@ def init_prompt():
 你需要使用合适的语法和句法，参考聊天内容，组织一条日常且口语化的回复。
 请你根据情景使用以下句法：
 {grammar_habbits}
-回复尽量简短一些。可以参考贴吧，知乎和微博的回复风格，你可以完全重组回复，保留最基本的表达含义就好，但注意回复要简短，但重组后保持语意通顺。
-回复不要浮夸，不要用夸张修辞，平淡一些。不要输出多余内容(包括前后缀，冒号和引号，括号，表情包，at或 @等 )，只输出一条回复就好。
+{config_expression_style}，你可以完全重组回复，保留最基本的表达含义就好，但重组后保持语意通顺。
+不要浮夸，不要夸张修辞，平淡且不要输出多余内容(包括前后缀，冒号和引号，括号，表情包，at或 @等 )，只输出一条回复就好。
 现在，你说：
 """,
         "default_expressor_private_prompt",  # New template for private FOCUSED chat
@@ -216,6 +216,7 @@ class DefaultExpressor:
                     reason=reason,
                     sender_name=sender_name_for_prompt,  # Pass determined name
                     target_message=target_message,
+                    config_expression_style=global_config.expression.expression_style,
                 )
 
             # 4. 调用 LLM 生成回复
@@ -230,7 +231,7 @@ class DefaultExpressor:
                 with Timer("LLM生成", {}):  # 内部计时器，可选保留
                     # TODO: API-Adapter修改标记
                     # logger.info(f"{self.log_prefix}[Replier-{thinking_id}]\nPrompt:\n{prompt}\n")
-                    content, reasoning_content, model_name = await self.express_model.generate_response(prompt)
+                    content, (reasoning_content, model_name) = await self.express_model.generate_response_async(prompt)
 
                     # logger.info(f"{self.log_prefix}\nPrompt:\n{prompt}\n---------------------------\n")
 
@@ -275,6 +276,7 @@ class DefaultExpressor:
         sender_name,
         in_mind_reply,
         target_message,
+        config_expression_style,
     ) -> str:
         is_group_chat = bool(chat_stream.group_info)
 
@@ -343,6 +345,7 @@ class DefaultExpressor:
                 reason=reason,
                 in_mind_reply=in_mind_reply,
                 target_message=target_message,
+                config_expression_style=config_expression_style,
             )
         else:  # Private chat
             template_name = "default_expressor_private_prompt"
@@ -358,6 +361,7 @@ class DefaultExpressor:
                 reason=reason,
                 in_mind_reply=in_mind_reply,
                 target_message=target_message,
+                config_expression_style=config_expression_style,
             )
 
         return prompt

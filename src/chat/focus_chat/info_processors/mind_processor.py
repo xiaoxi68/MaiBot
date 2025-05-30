@@ -71,7 +71,7 @@ class MindProcessor(BaseProcessor):
 
         self.llm_model = LLMRequest(
             model=global_config.model.focus_chat_mind,
-            temperature=global_config.model.focus_chat_mind["temp"],
+            # temperature=global_config.model.focus_chat_mind["temp"],
             max_tokens=800,
             request_type="focus.processor.chat_mind",
         )
@@ -225,7 +225,7 @@ class MindProcessor(BaseProcessor):
             # 处理总体异常
             logger.error(f"{self.log_prefix} 执行LLM请求或处理响应时出错: {e}")
             logger.error(traceback.format_exc())
-            content = "思考过程中出现错误"
+            content = "注意：思考过程中出现错误，应该是LLM大模型有问题！！你需要告诉别人，检查大模型配置"
 
         # 记录初步思考结果
         logger.debug(f"{self.log_prefix} 思考prompt: \n{prompt}\n")

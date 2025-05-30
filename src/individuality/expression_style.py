@@ -34,13 +34,12 @@ class PersonalityExpression:
     def __init__(self):
         self.express_learn_model: LLMRequest = LLMRequest(
             model=global_config.model.focus_expressor,
-            temperature=0.1,
-            max_tokens=256,
+            max_tokens=512,
             request_type="expressor.learner",
         )
         self.meta_file_path = os.path.join("data", "expression", "personality", "expression_style_meta.json")
         self.expressions_file_path = os.path.join("data", "expression", "personality", "expressions.json")
-        self.max_calculations = 5
+        self.max_calculations = 10
 
     def _read_meta_data(self):
         if os.path.exists(self.meta_file_path):

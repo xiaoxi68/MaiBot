@@ -104,7 +104,7 @@ class ChattingInfoProcessor(BaseProcessor):
         if obs.compressor_prompt:
             summary = ""
             try:
-                summary_result, _, _ = await self.model_summary.generate_response(obs.compressor_prompt)
+                summary_result, _ = await self.model_summary.generate_response_async(obs.compressor_prompt)
                 summary = "没有主题的闲聊"
                 if summary_result:
                     summary = summary_result
