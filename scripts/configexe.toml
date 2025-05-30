@@ -302,6 +302,15 @@ description = "思考的时间间隔（秒），可以有效减少消耗"
 name = "连续回复能力"
 description = "连续回复能力，值越高，麦麦连续回复的概率越高"
 
+[translations.items.parallel_processing]
+name = "并行处理"
+description = "是否并行处理回忆和处理器阶段，可以节省时间"
+
+[translations.items.processor_max_time]
+name = "处理器最大时间"
+description = "处理器最大时间，单位秒，如果超过这个时间，处理器会自动停止"
+
+
 [translations.items.observation_context_size]
 name = "观察上下文大小"
 description = "观察到的最长上下文大小，建议15，太短太长都会导致脑袋尖尖"

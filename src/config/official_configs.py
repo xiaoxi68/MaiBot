@@ -143,9 +143,15 @@ class FocusChatConfig(ConfigBase):
 
     think_interval: float = 1
     """思考间隔（秒）"""
-    
+
     consecutive_replies: float = 1
     """连续回复能力，值越高，麦麦连续回复的概率越高"""
+    
+    parallel_processing: bool = False
+    """是否允许处理器阶段和回忆阶段并行执行"""
+    
+    processor_max_time: int = 25
+    """处理器最大时间，单位秒，如果超过这个时间，处理器会自动停止"""
 
 
 @dataclass
@@ -160,6 +166,11 @@ class FocusChatProcessorConfig(ConfigBase):
 
     working_memory_processor: bool = True
     """是否启用工作记忆处理器"""
+    
+    lite_chat_mind_processor: bool = False
+    """是否启用轻量级聊天思维处理器，可以节省token消耗和时间"""
+
+
 
 
 @dataclass

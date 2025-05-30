@@ -403,15 +403,15 @@ class ConfigEditor:
                     # 创建模型名称标签（大字体）
                     model_name = var.get() if var.get() else providers[0]
                     section_translations = {
-                        "model.utils": "工具模型",
-                        "model.utils_small": "小型工具模型",
+                        "model.utils": "麦麦组件模型",
+                        "model.utils_small": "小型麦麦组件模型",
                         "model.memory_summary": "记忆概括模型",
                         "model.vlm": "图像识别模型",
                         "model.embedding": "嵌入模型",
                         "model.normal_chat_1": "普通聊天：主要聊天模型",
                         "model.normal_chat_2": "普通聊天：次要聊天模型",
                         "model.focus_working_memory": "专注模式：工作记忆模型",
-                        "model.focus_chat_mind": "专注模式：聊天规划模型",
+                        "model.focus_chat_mind": "专注模式：聊天思考模型",
                         "model.focus_tool_use": "专注模式：工具调用模型",
                         "model.focus_planner": "专注模式：决策模型",
                         "model.focus_expressor": "专注模式：表达器模型",

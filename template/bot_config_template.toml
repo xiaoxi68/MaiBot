@@ -41,7 +41,7 @@ identity_detail = [
 [expression]
 # 表达方式
 expression_style = "描述麦麦说话的表达风格，表达习惯，例如：(回复尽量简短一些。可以参考贴吧，知乎和微博的回复风格，回复不要浮夸，不要用夸张修辞，平淡一些。不要有额外的符号，尽量简单简短)"
-enable_expression_learning = true # 是否启用表达学习，麦麦会学习人类说话风格
+enable_expression_learning = false # 是否启用表达学习，麦麦会学习人类说话风格
 learning_interval = 600 # 学习间隔 单位秒
 
 [relationship]
@@ -94,8 +94,11 @@ talk_frequency_down_groups = []  #降低回复频率的群号码
 think_interval = 3 # 思考间隔 单位秒，可以有效减少消耗
 consecutive_replies = 1 # 连续回复能力，值越高，麦麦连续回复的概率越高
 
+parallel_processing = true # 是否并行处理回忆和处理器阶段，可以节省时间
 
-observation_context_size = 16 # 观察到的最长上下文大小,建议15，太短太长都会导致脑袋尖尖
+processor_max_time = 25 # 处理器最大时间，单位秒，如果超过这个时间，处理器会自动停止
+
+observation_context_size = 16 # 观察到的最长上下文大小
 compressed_length = 8 # 不能大于observation_context_size,心流上下文压缩的最短压缩长度，超过心流观察到的上下文长度，会压缩，最短压缩长度为5
 compress_length_limit = 4 #最多压缩份数，超过该数值的压缩上下文会被删除
 

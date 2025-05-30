@@ -15,6 +15,16 @@ class StructureObservation:
         self.history_loop = []
         self.structured_info = []
 
+    def to_dict(self) -> dict:
+        """将观察对象转换为可序列化的字典"""
+        return {
+            "observe_info": self.observe_info,
+            "observe_id": self.observe_id,
+            "last_observe_time": self.last_observe_time,
+            "history_loop": self.history_loop,
+            "structured_info": self.structured_info
+        }
+
     def get_observe_info(self):
         return self.structured_info
 

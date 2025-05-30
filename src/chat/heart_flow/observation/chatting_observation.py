@@ -66,6 +66,24 @@ class ChattingObservation(Observation):
         self.oldest_messages_str = ""
         self.compressor_prompt = ""
 
+    def to_dict(self) -> dict:
+        """将观察对象转换为可序列化的字典"""
+        return {
+            "chat_id": self.chat_id,
+            "platform": self.platform,
+            "is_group_chat": self.is_group_chat,
+            "chat_target_info": self.chat_target_info,
+            "talking_message_str": self.talking_message_str,
+            "talking_message_str_truncate": self.talking_message_str_truncate,
+            "name": self.name,
+            "nick_name": self.nick_name,
+            "mid_memory_info": self.mid_memory_info,
+            "person_list": self.person_list,
+            "oldest_messages_str": self.oldest_messages_str,
+            "compressor_prompt": self.compressor_prompt,
+            "last_observe_time": self.last_observe_time
+        }
+
     async def initialize(self):
         self.is_group_chat, self.chat_target_info = await get_chat_type_and_target_info(self.chat_id)
         logger.debug(f"初始化observation: self.is_group_chat: {self.is_group_chat}")

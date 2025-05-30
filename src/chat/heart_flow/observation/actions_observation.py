@@ -34,3 +34,13 @@ class ActionObservation:
         action_info_block += "\n注意，除了上面动作选项之外，你在群聊里不能做其他任何事情，这是你能力的边界\n"
 
         self.observe_info = action_info_block
+
+    def to_dict(self) -> dict:
+        """将观察对象转换为可序列化的字典"""
+        return {
+            "observe_info": self.observe_info,
+            "observe_id": self.observe_id,
+            "last_observe_time": self.last_observe_time,
+            "all_actions": self.all_actions,
+            "all_using_actions": self.all_using_actions
+        }

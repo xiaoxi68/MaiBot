@@ -25,9 +25,7 @@ def init_prompt():
 你是一个AI，但是你伪装成了一个人类，你的人格是，{prompt_personality}
 {indentify_block}
 
-{relation_prompt}
-{memory_str}
-
+{relation_prompt}{memory_str}
 现在是{time_now}，你正在上网，和qq群里的网友们聊天，以下是正在进行的聊天内容：
 {chat_observe_info}
 

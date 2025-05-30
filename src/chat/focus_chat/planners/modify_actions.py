@@ -28,11 +28,8 @@ class ActionModifier:
     async def modify_actions(
         self,
         observations: Optional[List[Observation]] = None,
-        running_memorys: Optional[List[Dict]] = None,
         **kwargs: Any,
     ):
-        # print(f"observations: {observations}")
-        # processed_infos = []
 
         # 处理Observation对象
         if observations:

@@ -24,9 +24,7 @@ logger = get_logger("processor")
 def init_prompt():
     group_prompt = """
 你的名字是{bot_name}
-{memory_str}
-{extra_info}
-{relation_prompt}
+{memory_str}{extra_info}{relation_prompt}
 {cycle_info_block}
 现在是{time_now}，你正在上网，和qq群里的网友们聊天，以下是正在进行的聊天内容：
 {chat_observe_info}
@@ -46,15 +44,11 @@ def init_prompt():
 
     private_prompt = """
 你的名字是{bot_name}
-{memory_str}
-{extra_info}
-{relation_prompt}
+{memory_str}{extra_info}{relation_prompt}
 {cycle_info_block}
 现在是{time_now}，你正在上网，和qq群里的网友们聊天，以下是正在进行的聊天内容：
 {chat_observe_info}
-
 {action_observe_info}
-
 以下是你之前对聊天的观察和规划，你的名字是{bot_name}：
 {last_mind}
 
@@ -155,14 +149,14 @@ class MindProcessor(BaseProcessor):
 
         # ---------- 0. 更新和清理 structured_info ----------
         if self.structured_info:
-            updated_info = []
-            for item in self.structured_info:
-                item["ttl"] -= 1
-                if item["ttl"] > 0:
-                    updated_info.append(item)
-                else:
-                    logger.debug(f"{self.log_prefix} 移除过期的 structured_info 项: {item['id']}")
-            self.structured_info = updated_info
+            # updated_info = []
+            # for item in self.structured_info:
+            #     item["ttl"] -= 1
+            #     if item["ttl"] > 0:
+            #         updated_info.append(item)
+            #     else:
+            #         logger.debug(f"{self.log_prefix} 移除过期的 structured_info 项: {item['id']}")
+            # self.structured_info = updated_info
             self._update_structured_info_str()
         logger.debug(
             f"{self.log_prefix} 当前完整的 structured_info: {safe_json_dumps(self.structured_info, ensure_ascii=False)}"

@@ -23,7 +23,7 @@ class MuteAction(PluginAction):
         "当有人戳你两次以上时，防止刷屏，禁言他，必须牢记",
         "当你想回避某个话题时使用",
     ]
-    default = True  # 默认动作，是否手动添加到使用集
+    default = False  # 默认动作，是否手动添加到使用集
     associated_types = ["command", "text"]
     # associated_types = ["text"]
 

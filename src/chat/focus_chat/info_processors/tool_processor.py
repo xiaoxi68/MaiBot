@@ -23,10 +23,7 @@ def init_prompt():
     # 添加工具执行器提示词
     tool_executor_prompt = """
 你是一个专门执行工具的助手。你的名字是{bot_name}。现在是{time_now}。
-
-你当前的额外信息：
 {memory_str}
-
 群里正在进行的聊天内容：
 {chat_observe_info}
 
@@ -165,8 +162,9 @@ class ToolProcessor(BaseProcessor):
         logger.debug(f"开始执行工具调用{prompt}")
         response, _, tool_calls = await self.llm_model.generate_response_tool_async(prompt=prompt, tools=tools)
 
-        logger.debug(f"获取到工具原始输出:\n{tool_calls}")
-        # 处理工具调用和结果收集，类似于SubMind中的逻辑
+        if tool_calls:
+            logger.debug(f"获取到工具原始输出:\n{tool_calls}")
+            # 处理工具调用和结果收集，类似于SubMind中的逻辑
         new_structured_items = []
         used_tools = []  # 记录使用了哪些工具
 

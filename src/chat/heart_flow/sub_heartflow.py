@@ -278,10 +278,6 @@ class SubHeartflow:
             self.update_last_chat_state_time()
             self.history_chat_state.append((current_state, self.chat_state_last_time))
 
-            # logger.info(
-            # f"{log_prefix} 麦麦的聊天状态从 {current_state.value} （持续了 {int(self.chat_state_last_time)} 秒） 变更为 {new_state.value}"
-            # )
-
             self.chat_state.chat_status = new_state
             self.chat_state_last_time = 0
             self.chat_state_changed_time = time.time()
