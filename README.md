@@ -1,6 +1,6 @@
 <picture>
   <source media="(max-width: 300px)" srcset="depends-data/maimai.png" width="50%">
-  <img alt="MaiBot" src="depends-data/maimai.png" title="作者:略nd" style="float: right; width: 20%;">
+  <img alt="MaiBot" src="depends-data/maimai.png" title="作者:略nd" style="float: right; width: 20%; max-width: 200px; height: auto;">
 </picture>
 
 # 麦麦！MaiCore-MaiBot
@@ -31,8 +31,8 @@
 - 💭 **智能对话系统**：基于 LLM 的自然语言交互。
 - 🤔 **实时思维系统**：模拟人类思考过程。
 - 💝 **情感表达系统**：丰富的表情包和情绪表达。
-- 🧠 **持久记忆系统**：基于 MongoDB 的长期记忆存储。
-- 🔄 **动态人格系统**：自适应的性格特征。
+- 🧠 **持久记忆系统**：基于图的长期记忆存储。
+- 🔄 **动态人格系统**：自适应的性格特征和表达方式。
 
 <div style="text-align: center">
 <a href="https://www.bilibili.com/video/BV1amAneGE3P" target="_blank">
@@ -49,16 +49,18 @@
 
 **最新版本: v0.7.0** ([更新日志](changelogs/changelog.md))
 可前往 [Release](https://github.com/MaiM-with-u/MaiBot/releases/) 页面下载最新版本
+可前往 [启动器发布页面](https://github.com/MaiM-with-u/mailauncher/releases/tag/v0.1.0)下载最新启动器
 **GitHub 分支说明：**
 - `main`: 稳定发布版本(推荐)
 - `dev`: 开发测试版本(不稳定)
 - `classical`: 旧版本(停止维护)
 
-### 最新版本部署教程 (MaiCore 版本)
+### 最新版本部署教程
+- [从0.6升级须知](https://docs.mai-mai.org/faq/maibot/update_to_07.html)
 - [🚀 最新版本部署教程](https://docs.mai-mai.org/manual/deployment/mmc_deploy_windows.html) - 基于 MaiCore 的新版本部署方式(与旧版本不兼容)
 
 > [!WARNING]
-> - 从 0.5.x 旧版本升级前请务必阅读：[升级指南](https://docs.mai-mai.org/faq/maibot/backup_update.html)
+> - 从 0.6.x 旧版本升级前请务必阅读：[升级指南](https://docs.mai-mai.org/faq/maibot/update_to_07.html)
 > - 项目处于活跃开发阶段，功能和 API 可能随时调整。
 > - 文档未完善，有问题可以提交 Issue 或者 Discussion。
 > - QQ 机器人存在被限制风险，请自行了解，谨慎使用。
