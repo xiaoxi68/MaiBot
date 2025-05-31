@@ -1,6 +1,6 @@
 <picture>
   <source media="(max-width: 300px)" srcset="depends-data/maimai.png" width="50%">
-  <img alt="MaiBot" src="depends-data/maimai.png" title="作者:略nd" style="float: right; width: 20%; max-width: 200px; height: auto;">
+  <img alt="MaiBot" src="depends-data/maimai.png" title="作者:略nd" style="float: right; width: 120px; height: auto;">
 </picture>
 
 # 麦麦！MaiCore-MaiBot
