@@ -1,4 +1,4 @@
-![MaiBot](depends-data/maimai.png "作者:略nd" =x100)
+<img src="depends-data/maimai.png" alt="MaiBot" title="作者:略nd" width="80">
 
 # 麦麦！MaiCore-MaiBot
 
