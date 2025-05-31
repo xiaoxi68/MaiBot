@@ -1,9 +1,9 @@
 <picture>
-  <source media="(max-width: 600px)" srcset="depends-data/maimai.png" width="50%">
+  <source media="(max-width: 300px)" srcset="depends-data/maimai.png" width="50%">
   <img alt="MaiBot" src="depends-data/maimai.png" title="作者:略nd" style="float: right; width: 20%;">
 </picture>
 
-# 麦麦！MaiCore-MaiBot (编辑中)
+# 麦麦！MaiCore-MaiBot
 
 ![Python Version](https://img.shields.io/badge/Python-3.10+-blue)
 ![License](https://img.shields.io/github/license/SengokuCola/MaiMBot?label=协议)
@@ -47,7 +47,7 @@
 
 ## 🔥 更新和安装
 
-**最新版本: v0.6.3** ([更新日志](changelogs/changelog.md))
+**最新版本: v0.7.0** ([更新日志](changelogs/changelog.md))
 可前往 [Release](https://github.com/MaiM-with-u/MaiBot/releases/) 页面下载最新版本
 **GitHub 分支说明：**
 - `main`: 稳定发布版本(推荐)
