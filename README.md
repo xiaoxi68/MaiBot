@@ -1,4 +1,4 @@
-<img src="depends-data/maimai.png" alt="MaiBot" title="作者:略nd" width="80">
+<img src="depends-data/maimai.png" alt="MaiBot" title="作者:略nd" width="300">
 
 # 麦麦！MaiCore-MaiBot
 
