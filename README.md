@@ -1,6 +1,6 @@
 <picture>
   <source media="(max-width: 600px)" srcset="depends-data/maimai.png" width="100%">
-  <img alt="MaiBot" src="depends-data/maimai.png" title="作者:略nd" align="right" width="30%">
+  <img alt="MaiBot" src="depends-data/maimai.png" title="作者:略nd" style="float: right; width: 30%;">
 </picture>
 
 # 麦麦！MaiCore-MaiBot (编辑中)
@@ -14,6 +14,7 @@
 ![issues](https://img.shields.io/github/issues/MaiM-with-u/MaiBot)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/DrSmoothl/MaiBot)
 
+<div style="text-align: center">
 <strong>
 <a href="https://www.bilibili.com/video/BV1amAneGE3P">🌟 演示视频</a> | 
 <a href="#-更新和安装">🚀 快速入门</a> | 
@@ -21,6 +22,7 @@
 <a href="#-讨论">💬 讨论</a> | 
 <a href="#-贡献和致谢">🙋 贡献指南</a>
 </strong>
+</div>
 
 ## 🎉 介绍
 
