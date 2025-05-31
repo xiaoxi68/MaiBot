@@ -1,7 +1,4 @@
-<picture>
-  <source media="(max-width: 300px)" srcset="depends-data/maimai.png" width="50%">
-  <img alt="MaiBot" src="depends-data/maimai.png" title="作者:略nd" style="float: right; width: 120px; height: auto;">
-</picture>
+![MaiBot](depends-data/maimai.png "作者:略nd" =x100)
 
 # 麦麦！MaiCore-MaiBot
 
