@@ -36,7 +36,7 @@ class MessageDTO(DTOBase):
     memorized_times: Optional[int] = None
     """记忆次数（用于统计消息被用于构建记忆的次数）"""
 
-    __orm_create_rule__ = "message_time & chat_id & sender_id"
+    __orm_create_rule__ = "message_time & chat_stream_id & sender_id"
 
     __orm_select_rule__ = "id"
 
@@ -84,7 +84,6 @@ class MessageManager:
                 chat_stream_id=dto.chat_stream_id,
                 sender_id=dto.sender_id,
                 processed_plain_text=dto.processed_plain_text,
-                memorized_times=dto.memorized_times,
             )
             session.add(message)
             session.commit()

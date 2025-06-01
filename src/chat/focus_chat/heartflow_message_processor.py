@@ -1,19 +1,17 @@
+from model_manager.message import MessageManager
 from src.chat.memory_system.Hippocampus import HippocampusManager
 from src.config.config import global_config
 from src.chat.message_receive.message import MessageRecv
 from src.chat.message_receive.storage import MessageStorage
 from src.chat.heart_flow.heartflow import heartflow
-from src.chat.message_receive.chat_stream import chat_manager, ChatStream
-from src.chat.utils.utils import is_mentioned_bot_in_message
 from src.chat.utils.timer_calculator import Timer
 from src.common.logger_manager import get_logger
-from src.person_info.relationship_manager import relationship_manager
 
 import math
 import re
 import traceback
-from typing import Optional, Tuple, Dict, Any
-from maim_message import UserInfo
+from typing import Optional, Tuple
+from maim_message import MessageBase
 
 # from ..message_receive.message_buffer import message_buffer
 
@@ -34,25 +32,37 @@ async def _handle_error(error: Exception, context: str, message: Optional[Messag
         logger.error(f"相关消息原始内容: {message.raw_message}")
 
 
-async def _process_relationship(message: MessageRecv) -> None:
-    """处理用户关系逻辑
+def is_mentioned_bot_in_message(message: MessageRecv) -> tuple[bool, float]:
+    """检查消息是否提到了机器人"""
+    reply_probability = 0.0
+    is_mentioned = False
 
-    Args:
-        message: 消息对象，包含用户信息
-    """
-    platform = message.message_info.platform
-    user_id = message.message_info.user_info.user_id
-    nickname = message.message_info.user_info.user_nickname
-    cardname = message.message_info.user_info.user_cardname or nickname
+    # 来自Adapter的额外配置
+    # TODO: 该部分实现非最终实现，待议
+    if (
+        message.message_base.message_info.additional_config is not None
+        and message.message_base.message_info.additional_config.get("is_mentioned") is not None
+    ):
+        try:
+            reply_probability = float(message.message_base.message_info.additional_config.get("is_mentioned"))
+            is_mentioned = True
+            return is_mentioned, reply_probability
+        except Exception as e:
+            logger.warning(e)
+            logger.warning(
+                f"消息中包含不合理的设置 is_mentioned: {message.message_base.message_info.additional_config.get('is_mentioned')}"
+            )
 
-    is_known = await relationship_manager.is_known_some_one(platform, user_id)
+    if message.is_self_at or message.is_self_replied:
+        is_mentioned = True
+        if global_config.normal_chat.at_bot_inevitable_reply:
+            reply_probability = 1.0
+    elif message.is_self_mentioned:
+        is_mentioned = True
+        if global_config.normal_chat.mentioned_bot_inevitable_reply:
+            reply_probability = 1.0
 
-    if not is_known:
-        logger.info(f"首次认识用户: {nickname}")
-        await relationship_manager.first_knowing_some_one(platform, user_id, nickname, cardname, "")
-    elif not await relationship_manager.is_qved_name(platform, user_id):
-        logger.info(f"给用户({nickname},{cardname})取名: {nickname}")
-        await relationship_manager.first_knowing_some_one(platform, user_id, nickname, cardname, "")
+    return is_mentioned, reply_probability
 
 
 async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool]:
@@ -90,68 +100,6 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool]:
     return interested_rate, is_mentioned
 
 
-# def _get_message_type(message: MessageRecv) -> str:
-#     """获取消息类型
-
-#     Args:
-#         message: 消息对象
-
-#     Returns:
-#         str: 消息类型
-#     """
-#     if message.message_segment.type != "seglist":
-#         return message.message_segment.type
-
-#     if (
-#         isinstance(message.message_segment.data, list)
-#         and all(isinstance(x, Seg) for x in message.message_segment.data)
-#         and len(message.message_segment.data) == 1
-#     ):
-#         return message.message_segment.data[0].type
-
-#     return "seglist"
-
-
-def _check_ban_words(text: str, chat: ChatStream, userinfo: UserInfo) -> bool:
-    """检查消息是否包含过滤词
-
-    Args:
-        text: 待检查的文本
-        chat: 聊天对象
-        userinfo: 用户信息
-
-    Returns:
-        bool: 是否包含过滤词
-    """
-    for word in global_config.message_receive.ban_words:
-        if word in text:
-            chat_name = chat.group_info.group_name if chat.group_info else "私聊"
-            logger.info(f"[{chat_name}]{userinfo.user_nickname}:{text}")
-            logger.info(f"[过滤词识别]消息中含有{word}，filtered")
-            return True
-    return False
-
-
-def _check_ban_regex(text: str, chat: ChatStream, userinfo: UserInfo) -> bool:
-    """检查消息是否匹配过滤正则表达式
-
-    Args:
-        text: 待检查的文本
-        chat: 聊天对象
-        userinfo: 用户信息
-
-    Returns:
-        bool: 是否匹配过滤正则
-    """
-    for pattern in global_config.message_receive.ban_msgs_regex:
-        if re.search(pattern, text):
-            chat_name = chat.group_info.group_name if chat.group_info else "私聊"
-            logger.info(f"[{chat_name}]{userinfo.user_nickname}:{text}")
-            logger.info(f"[正则表达式过滤]消息匹配到{pattern}，filtered")
-            return True
-    return False
-
-
 class HeartFCMessageReceiver:
     """心流处理器，负责处理接收到的消息并计算兴趣度"""
 
@@ -159,7 +107,7 @@ class HeartFCMessageReceiver:
         """初始化心流处理器，创建消息存储实例"""
         self.storage = MessageStorage()
 
-    async def process_message(self, message_data: Dict[str, Any]) -> None:
+    async def process_message(self, message_base: MessageBase) -> None:
         """处理接收到的原始消息数据
 
         主要流程:
@@ -174,59 +122,67 @@ class HeartFCMessageReceiver:
         """
         message = None
         try:
+            message = MessageRecv(message_base)
+            del message_base  # 释放原始消息对象
+
             # 1. 消息解析与初始化
-            message = MessageRecv(message_data)
-            groupinfo = message.message_info.group_info
-            userinfo = message.message_info.user_info
-            messageinfo = message.message_info
-
-            # 2. 消息缓冲与流程序化
-            # await message_buffer.start_caching_messages(message)
-
-            chat = await chat_manager.get_or_create_stream(
-                platform=messageinfo.platform,
-                user_info=userinfo,
-                group_info=groupinfo,
-            )
-
-            subheartflow = await heartflow.get_or_create_subheartflow(chat.stream_id)
-            message.update_chat_stream(chat)
             await message.process()
 
-            # 3. 过滤检查
-            if _check_ban_words(message.processed_plain_text, chat, userinfo) or _check_ban_regex(
-                message.raw_message, chat, userinfo
-            ):
-                return
+            is_group_msg = message.message_base.message_info.group_info is not None
 
-            # 4. 缓冲检查
-            # buffer_result = await message_buffer.query_buffer_result(message)
-            # if not buffer_result:
-            #     msg_type = _get_message_type(message)
-            #     type_messages = {
-            #         "text": f"触发缓冲，消息：{message.processed_plain_text}",
-            #         "image": "触发缓冲，表情包/图片等待中",
-            #         "seglist": "触发缓冲，消息列表等待中",
-            #     }
-            #     logger.debug(type_messages.get(msg_type, "触发未知类型缓冲"))
-            #     return
+            sender_name = message.message_base.message_info.user_info.user_nickname
+            if is_group_msg:
+                group_name = message.message_base.message_info.group_info.group_name
 
-            # 5. 消息存储
-            await self.storage.store_message(message, chat)
-            logger.trace(f"存储成功: {message.processed_plain_text}")
+            # 2. 过滤检查
+            for word in global_config.message_receive.ban_words:
+                if word in message.processed_plain_text:
+                    if is_group_msg:
+                        logger.info(
+                            f"[过滤词识别] 群聊 '{group_name}' 中，"
+                            f"'{sender_name}' 发送的消息 '{message.processed_plain_text}' "
+                            f"含有过滤词 '{word}'，已过滤"
+                        )
+                    else:
+                        logger.info(
+                            f"[过滤词识别] 与 '{sender_name}' 的私聊中，"
+                            f"对方发送的消息 '{message.processed_plain_text}' "
+                            f"含有过滤词 '{word}'，已过滤"
+                        )
+                    return
 
-            # 6. 兴趣度计算与更新
+            for regex in global_config.message_receive.ban_msgs_regex:
+                if re.search(regex, message.processed_plain_text):
+                    if is_group_msg:
+                        logger.info(
+                            f"[过滤正则识别] 群聊 '{group_name}' 中，"
+                            f"'{sender_name}' 发送的消息 '{message.processed_plain_text}' "
+                            f"匹配到了过滤正则 '{regex}'，已过滤"
+                        )
+                    else:
+                        logger.info(
+                            f"[过滤正则识别] 与 '{sender_name}' 的私聊中，"
+                            f"对方发送的消息 '{message.processed_plain_text}' "
+                            f"匹配到了过滤正则 '{regex}'，已过滤"
+                        )
+                    return
+
+            # 3. 消息存储
+            message_dto = MessageManager.create_message(message)
+            logger.trace(f"存储成功: message_id in DB-'{message_dto.id}'")
+
+            # 4. 获取子心流
+            subheartflow = await heartflow.get_or_create_subheartflow(message.chat_stream_id)
+
+            # 5. 兴趣度计算与更新
             interested_rate, is_mentioned = await _calculate_interest(message)
             subheartflow.add_message_to_normal_chat_cache(message, interested_rate, is_mentioned)
 
             # 7. 日志记录
-            mes_name = chat.group_info.group_name if chat.group_info else "私聊"
-            # current_time = time.strftime("%H:%M:%S", time.localtime(message.message_info.time))
-            logger.info(f"[{mes_name}]{userinfo.user_nickname}:{message.processed_plain_text}")
-
-            # 8. 关系处理
-            if global_config.relationship.give_name:
-                await _process_relationship(message)
+            if is_group_msg:
+                logger.info(f"[群聊 '{group_name}'] '{sender_name}': '{message.processed_plain_text}'")
+            else:
+                logger.info(f"[私聊] '{sender_name}': '{message.processed_plain_text}'")
 
         except Exception as e:
             await _handle_error(e, "消息处理失败", message)

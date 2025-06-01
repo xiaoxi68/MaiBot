@@ -1,7 +1,5 @@
 import json
-from typing import Optional
 
-from numpy import double
 
 from common.logger_manager import get_logger
 from config.config import global_config

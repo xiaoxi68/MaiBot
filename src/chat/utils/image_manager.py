@@ -108,7 +108,7 @@ class ChatImageManager:
             # 删除数据库中的条目
             ImageManager.delete_image(image_dto)
             logger.debug(f"获取图片 {image_dto.img_hash} 的描述失败，已删除数据库中的条目")
-            return "[图片（加载失败）]"
+            return None
 
         # 2.2.2. 成功获取描述，更新数据库中的条目
         image_dto.description = description

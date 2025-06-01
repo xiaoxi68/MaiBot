@@ -1,15 +1,22 @@
+from datetime import datetime
 import time
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Optional, Any, TYPE_CHECKING
+from typing import Optional
 
 import urllib3
 
+from config.config import global_config
+from chat.utils.emoji_manager import chat_emoji_manager
+from chat.utils.image_manager import chat_image_manager
+from model_manager.chat_group import ChatGroupDTO, ChatGroupManager
+from model_manager.chat_group_user import ChatGroupUserDTO, ChatGroupUserManager
+from model_manager.chat_stream import ChatStreamDTO, ChatStreamManager
+from model_manager.chat_user import ChatUserDTO, ChatUserManager
+from model_manager.message import MessageDTO
+from person_info.person_identity import PersonIdentityManager
 from src.common.logger_manager import get_logger
 
-if TYPE_CHECKING:
-    from .chat_stream import ChatStream
-from ..utils.utils_image import image_manager
 from maim_message import Seg, UserInfo, BaseMessageInfo, MessageBase
 from rich.traceback import install
 
@@ -20,14 +27,253 @@ logger = get_logger("chat_message")
 # 禁用SSL警告
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# 这个类是消息数据类，用于存储和管理消息数据。
-# 它定义了消息的属性，包括群组ID、用户ID、消息ID、原始消息内容、纯文本内容和时间戳。
-# 它还定义了两个辅助属性：keywords用于提取消息的关键词，is_plain_text用于判断消息是否为纯文本。
+
+@dataclass
+class MessageRecv(MessageDTO):
+    """接收消息类，用于处理从MessageCQ序列化的消息"""
+
+    def __init__(self, message_base: MessageBase):
+        """从MessageBase初始化
+
+        :param message_base: MessageBase实例，包含消息信息和段落
+        """
+        super().__init__(
+            message_time=(
+                datetime.fromtimestamp(message_base.message_info.time)
+                if message_base.message_info.time
+                else datetime.now()
+            )  # 若未提供message_base.message_info.time，则使用当前时间
+        )
+
+        self.message_base = message_base
+        """消息元数据"""
+
+        # -- 以下为消息处理所需字段 --
+
+        self.is_emoji: bool = False
+        """是否为表情包消息"""
+
+        self.is_self_mentioned: bool = False
+        """消息是否提到了自身"""
+
+        self.is_self_at: bool = False
+        """消息是否包含@自己"""
+
+        self.is_self_replied: bool = False
+        """是否为回复自己的消息"""
+
+    async def process(self) -> None:
+        """处理消息内容，填充MessageDTO字段和消息处理必要的字段"""
+        chat_user_dto = await self._get_or_create_chat_user()
+        chat_group_dto = None
+        _chat_group_user_dto = None
+
+        if self.message_base.message_info.group_info:
+            chat_group_dto = self._get_or_create_chat_group()
+            _chat_group_user_dto = self._get_or_create_group_user(chat_group_dto, chat_user_dto)
+            chat_stream_dto = self._get_chat_stream(chat_group_dto=chat_group_dto)
+        else:
+            chat_stream_dto = self._get_chat_stream(chat_user_dto=chat_user_dto)
+
+        self.chat_stream_id = chat_stream_dto.id
+        self.sender_id = chat_user_dto.id
+        self.processed_plain_text = await self._process_single_segment(self.message_base.message_segment)
+
+        self.is_self_mentioned = self._check_if_self_mentioned()
+
+    async def _get_or_create_chat_user(self):
+        """查找或创建发送者信息"""
+        # 如果群组信息存在，尝试使用用户的群名片
+        user_cardname = None
+        if self.message_base.message_info.group_info:
+            user_cardname = (
+                self.message_base.message_info.user_info.user_cardname
+                or self.message_base.message_info.user_info.user_nickname
+            )
+
+        if not (
+            chat_user_dto := ChatUserManager.get_chat_user(
+                ChatUserDTO(
+                    platform=self.message_base.message_info.platform,
+                    platform_user_id=self.message_base.message_info.user_info.user_id,
+                )
+            )
+        ):
+            # 如果没有找到用户信息，则创建新的用户信息
+            person_dto = await PersonIdentityManager.create_person_info(
+                user_nickname=self.message_base.message_info.user_info.user_nickname,
+                user_cardname=user_cardname,
+                user_avatar=None,
+            )
+            chat_user_dto = ChatUserManager.create_user(
+                ChatUserDTO(
+                    platform=self.message_base.message_info.platform,
+                    platform_user_id=self.message_base.message_info.user_info.user_id,
+                    user_name=self.message_base.message_info.user_info.user_nickname,
+                    person_id=person_dto.id,
+                )
+            )
+        elif (
+            self.message_base.message_info.user_info.user_nickname
+            and self.message_base.message_info.user_info.user_nickname != chat_user_dto.user_name
+        ):
+            chat_user_dto.user_name = self.message_base.message_info.user_info.user_nickname
+            ChatUserManager.update_user(chat_user_dto)
+
+        return chat_user_dto
+
+    def _get_or_create_chat_group(self):
+        """查找或创建群组信息"""
+        if not (
+            chat_group_dto := ChatGroupManager.get_chat_group(
+                platform=self.message_base.message_info.platform,
+                group_id=self.message_base.message_info.group_info.group_id,
+            )
+        ):
+            # 如果没有找到群组信息，则创建新的群组信息
+            chat_group_dto = ChatGroupManager.create_chat_group(
+                ChatGroupDTO(
+                    platform=self.message_base.message_info.platform,
+                    platform_group_id=self.message_base.message_info.group_info.group_id,
+                    group_name=self.message_base.message_info.group_info.group_name or None,
+                )
+            )
+        elif (
+            self.message_base.message_info.group_info.group_name
+            and self.message_base.message_info.group_info.group_name != chat_group_dto.group_name
+        ):
+            chat_group_dto.group_name = self.message_base.message_info.group_info.group_name
+            ChatGroupManager.update_chat_group(chat_group_dto)
+
+        return chat_group_dto
+
+    def _get_or_create_group_user(self, chat_group_dto, chat_user_dto):
+        """查找或创建群组用户关联"""
+        if self.message_base.message_info.user_info.user_cardname:
+            user_cardname = self.message_base.message_info.user_info.user_cardname
+        else:
+            user_cardname = None
+
+        if not (
+            chat_group_user_dto := ChatGroupUserManager.create_group_user(
+                ChatGroupUserDTO(
+                    group_id=chat_group_dto.id,
+                    user_id=chat_user_dto.id,
+                )
+            )
+        ):
+            # 如果没有找到群组用户信息，则创建新的群组用户信息
+            chat_group_user_dto = ChatGroupUserManager.create_group_user(
+                ChatGroupUserDTO(
+                    group_id=chat_group_dto.id,
+                    user_id=chat_user_dto.id,
+                    platform=self.message_base.message_info.platform,
+                    user_group_name=user_cardname,
+                )
+            )
+        elif user_cardname and user_cardname != chat_group_user_dto.user_group_name:
+            chat_group_user_dto.user_group_name = user_cardname
+            ChatGroupUserManager.update_group_user(chat_group_user_dto)
+
+        return chat_group_user_dto
+
+    def _get_chat_stream(self, chat_group_dto=None, chat_user_dto=None):
+        """查找聊天流"""
+        if chat_group_dto:
+            return ChatStreamManager.get_chat_stream(
+                ChatStreamDTO(
+                    group_id=chat_group_dto.id,
+                )
+            )
+        elif chat_user_dto:
+            return ChatStreamManager.get_chat_stream(
+                ChatStreamDTO(
+                    user_id=chat_user_dto.id,
+                )
+            )
+        else:
+            raise ValueError("chat_group_dto or chat_user_dto must be provided")
+
+    async def _process_single_segment(self, seg: Seg) -> str:
+        """处理单个消息段
+
+        :params seg: 要处理的消息段
+
+        :returns: 处理后的文本
+        """
+        try:
+            match seg.type:
+                case "text":
+                    return seg.data
+
+                case "image":
+                    # 如果是base64图片数据
+                    if not isinstance(seg.data, str):
+                        return "[图片(加载失败)]"
+
+                    return (await chat_image_manager.get_image_description(seg.data)) or "[图片(加载失败)]"
+
+                case "emoji":
+                    self.is_emoji = True
+                    if not isinstance(seg.data, str):
+                        return "[表情包(加载失败)]"
+
+                    return (await chat_emoji_manager.get_emoji_description(seg.data)) or "[表情包(加载失败)]"
+
+                case "at":
+                    # self.is_at = True
+                    if not isinstance(seg.data, dict):
+                        return "[@消息(加载失败)]"
+
+                    self.is_self_at = seg.data.get("self_target", False)
+                    user_nickname = seg.data.get("user_nickname")
+                    return f"@{user_nickname}"
+
+                case "reply":
+                    # self.self_replied = True
+                    if not isinstance(seg.data, dict):
+                        return "[回复消息(加载失败)]"
+
+                    self.is_self_replied = seg.data.get("self_target", False)
+                    replied_message_seg = seg.data.get("replied_message")
+                    if not isinstance(replied_message_seg, Seg):
+                        return "[回复消息(加载失败)]"
+
+                    replied_message = await self._process_single_segment(replied_message_seg)
+                    user_nickname = seg.data.get("user_nickname")
+                    return f"[回复 {user_nickname}: {replied_message}] 说"
+
+                case "seglist":
+                    if not isinstance(seg.data, list):
+                        return "[消息(加载失败)]"
+
+                    segments_text = []
+                    for single_seg in seg.data:
+                        processed = await self._process_message_segments(single_seg)
+                        if processed:
+                            segments_text.append(processed)
+                    return " ".join(segments_text)
+
+                case _:
+                    return f"[{seg.type}:{str(seg.data)}]"
+
+        except Exception as e:
+            logger.error(f"处理消息段失败: {str(e)}, 类型: {seg.type}, 数据: {seg.data}")
+            return f"[处理失败的{seg.type}消息]"
+
+    def _check_if_self_mentioned(self) -> bool:
+        """检查消息是否提到了自己"""
+        self_tokens = [global_config.bot.nickname]
+        self_tokens.extend(global_config.bot.alias_names)
+
+        return any(token in self.processed_plain_text for token in self_tokens)
 
 
 @dataclass
 class Message(MessageBase):
-    chat_stream: "ChatStream" = None
+    """消息类，包含消息的基本信息和处理逻辑"""
+
+    chat_stream_id: Optional[int] = None
     reply: Optional["Message"] = None
     processed_plain_text: str = ""
     memorized_times: int = 0
@@ -65,98 +311,9 @@ class Message(MessageBase):
         # 回复消息
         self.reply = reply
 
-    async def _process_message_segments(self, segment: Seg) -> str:
-        """递归处理消息段，转换为文字描述
-
-        Args:
-            segment: 要处理的消息段
-
-        Returns:
-            str: 处理后的文本
-        """
-        if segment.type == "seglist":
-            # 处理消息段列表
-            segments_text = []
-            for seg in segment.data:
-                processed = await self._process_message_segments(seg)
-                if processed:
-                    segments_text.append(processed)
-            return " ".join(segments_text)
-        else:
-            # 处理单个消息段
-            return await self._process_single_segment(segment)
-
     @abstractmethod
     async def _process_single_segment(self, segment):
         pass
-
-
-@dataclass
-class MessageRecv(Message):
-    """接收消息类，用于处理从MessageCQ序列化的消息"""
-
-    def __init__(self, message_dict: dict[str, Any]):
-        """从MessageCQ的字典初始化
-
-        Args:
-            message_dict: MessageCQ序列化后的字典
-        """
-        # print(f"message_dict: {message_dict}")
-        self.message_info = BaseMessageInfo.from_dict(message_dict.get("message_info", {}))
-
-        self.message_segment = Seg.from_dict(message_dict.get("message_segment", {}))
-        self.raw_message = message_dict.get("raw_message")
-
-        # 处理消息内容
-        self.processed_plain_text = ""  # 初始化为空字符串
-        self.detailed_plain_text = ""  # 初始化为空字符串
-        self.is_emoji = False
-
-    def update_chat_stream(self, chat_stream: "ChatStream"):
-        self.chat_stream = chat_stream
-
-    async def process(self) -> None:
-        """处理消息内容，生成纯文本和详细文本
-
-        这个方法必须在创建实例后显式调用，因为它包含异步操作。
-        """
-        self.processed_plain_text = await self._process_message_segments(self.message_segment)
-        self.detailed_plain_text = self._generate_detailed_text()
-
-    async def _process_single_segment(self, seg: Seg) -> str:
-        """处理单个消息段
-
-        Args:
-            seg: 要处理的消息段
-
-        Returns:
-            str: 处理后的文本
-        """
-        try:
-            if seg.type == "text":
-                return seg.data
-            elif seg.type == "image":
-                # 如果是base64图片数据
-                if isinstance(seg.data, str):
-                    return await image_manager.get_image_description(seg.data)
-                return "[发了一张图片，网卡了加载不出来]"
-            elif seg.type == "emoji":
-                self.is_emoji = True
-                if isinstance(seg.data, str):
-                    return await image_manager.get_emoji_description(seg.data)
-                return "[发了一个表情包，网卡了加载不出来]"
-            else:
-                return f"[{seg.type}:{str(seg.data)}]"
-        except Exception as e:
-            logger.error(f"处理消息段失败: {str(e)}, 类型: {seg.type}, 数据: {seg.data}")
-            return f"[处理失败的{seg.type}消息]"
-
-    def _generate_detailed_text(self) -> str:
-        """生成详细文本，包含时间和用户信息"""
-        timestamp = self.message_info.time
-        user_info = self.message_info.user_info
-        name = f"<{self.message_info.platform}:{user_info.user_id}:{user_info.user_nickname}:{user_info.user_cardname}>"
-        return f"[{timestamp}] {name}: {self.processed_plain_text}\n"
 
 
 @dataclass
@@ -207,11 +364,11 @@ class MessageProcessBase(Message):
             elif seg.type == "image":
                 # 如果是base64图片数据
                 if isinstance(seg.data, str):
-                    return await image_manager.get_image_description(seg.data)
+                    return await chat_image_manager(seg.data)
                 return "[图片，网卡了加载不出来]"
             elif seg.type == "emoji":
                 if isinstance(seg.data, str):
-                    return await image_manager.get_emoji_description(seg.data)
+                    return await chat_emoji_manager.get_emoji_description(seg.data)
                 return "[表情，网卡了加载不出来]"
             elif seg.type == "at":
                 return f"[@{seg.data}]"

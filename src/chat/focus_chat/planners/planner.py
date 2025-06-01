@@ -270,7 +270,6 @@ class ActionPlanner:
     ) -> str:
         """构建 Planner LLM 的提示词 (获取模板并填充数据)"""
         try:
-            
             memory_str = ""
             if global_config.focus_chat.parallel_processing:
                 memory_str = ""
@@ -278,10 +277,7 @@ class ActionPlanner:
                     memory_str = "以下是当前在聊天中，你回忆起的记忆：\n"
                     for running_memory in running_memorys:
                         memory_str += f"{running_memory['topic']}: {running_memory['content']}\n"
-            
-            
-            
-            
+
             chat_context_description = "你现在正在一个群聊中"
             chat_target_name = None  # Only relevant for private
             if not is_group_chat and chat_target_info:

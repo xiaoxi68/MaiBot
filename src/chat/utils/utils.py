@@ -9,7 +9,6 @@ from maim_message import UserInfo
 
 from src.common.logger import get_module_logger
 from src.manager.mood_manager import mood_manager
-from ..message_receive.message import MessageRecv
 from src.llm_models.utils_model import LLMRequest
 from .typo_generator import ChineseTypoGenerator
 from ...config.config import global_config
@@ -38,75 +37,6 @@ def db_message_to_str(message_dict: dict) -> str:
     result = f"[{time_str}] {name}: {content}\n"
     logger.debug(f"result: {result}")
     return result
-
-
-def is_mentioned_bot_in_message(message: MessageRecv) -> tuple[bool, float]:
-    """检查消息是否提到了机器人"""
-    keywords = [global_config.bot.nickname]
-    nicknames = global_config.bot.alias_names
-    reply_probability = 0.0
-    is_at = False
-    is_mentioned = False
-
-    if (
-        message.message_info.additional_config is not None
-        and message.message_info.additional_config.get("is_mentioned") is not None
-    ):
-        try:
-            reply_probability = float(message.message_info.additional_config.get("is_mentioned"))
-            is_mentioned = True
-            return is_mentioned, reply_probability
-        except Exception as e:
-            logger.warning(e)
-            logger.warning(
-                f"消息中包含不合理的设置 is_mentioned: {message.message_info.additional_config.get('is_mentioned')}"
-            )
-
-    if global_config.bot.nickname in message.processed_plain_text:
-        is_mentioned = True
-
-    for alias_name in global_config.bot.alias_names:
-        if alias_name in message.processed_plain_text:
-            is_mentioned = True
-
-    # 判断是否被@
-    if re.search(rf"@<(.+?):{global_config.bot.qq_account}>", message.processed_plain_text):
-        is_at = True
-        is_mentioned = True
-
-    # print(f"message.processed_plain_text: {message.processed_plain_text}")
-    # print(f"is_mentioned: {is_mentioned}")
-    # print(f"is_at: {is_at}")
-
-    if is_at and global_config.normal_chat.at_bot_inevitable_reply:
-        reply_probability = 1.0
-        logger.info("被@，回复概率设置为100%")
-    else:
-        if not is_mentioned:
-            # 判断是否被回复
-            if re.match(
-                rf"\[回复 (.+?)\({str(global_config.bot.qq_account)}\)：(.+?)\]，说：", message.processed_plain_text
-            ) or re.match(
-                rf"\[回复<(.+?)(?=:{str(global_config.bot.qq_account)}>)\:{str(global_config.bot.qq_account)}>：(.+?)\]，说：",
-                message.processed_plain_text,
-            ):
-                is_mentioned = True
-            else:
-                # 判断内容中是否被提及
-                message_content = re.sub(r"@(.+?)（(\d+)）", "", message.processed_plain_text)
-                message_content = re.sub(r"@<(.+?)(?=:(\d+))\:(\d+)>", "", message_content)
-                message_content = re.sub(r"\[回复 (.+?)\(((\d+)|未知id)\)：(.+?)\]，说：", "", message_content)
-                message_content = re.sub(r"\[回复<(.+?)(?=:(\d+))\:(\d+)>：(.+?)\]，说：", "", message_content)
-                for keyword in keywords:
-                    if keyword in message_content:
-                        is_mentioned = True
-                for nickname in nicknames:
-                    if nickname in message_content:
-                        is_mentioned = True
-        if is_mentioned and global_config.normal_chat.mentioned_bot_inevitable_reply:
-            reply_probability = 1.0
-            logger.info("被提及，回复概率设置为100%")
-    return is_mentioned, reply_probability
 
 
 async def get_embedding(text, request_type="embedding"):

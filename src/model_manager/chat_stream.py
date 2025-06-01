@@ -37,7 +37,7 @@ class ChatStreamDTO(DTOBase):
 
     __orm_create_rule__ = "((group_id & !user_id) | (user_id & !group_id)) & last_active_at"
 
-    __orm_select_rule__ = "id"
+    __orm_select_rule__ = "(id & !group_id & !user_id) | (!id & user_id & !group_id) | (!id & !user_id & group_id)"
 
     __orm_update_rule__ = "last_active_at"
 
@@ -58,66 +58,56 @@ def _pk(id: int):
     return f"chat_stream:pk:{id}"
 
 
-def _user_platform_info_key(platform: str, platform_user_id: str):
-    """构造缓存用户平台信息键"""
-    return f"chat_stream:user_platform_info:{platform}:{platform_user_id}"
+def _user_id_key(user_id: int):
+    """构造缓存用户ID键"""
+    return f"chat_stream:user_id:{user_id}"
 
 
-def _group_platform_info_key(platform: str, platform_group_id: str):
-    """构造缓存群组平台信息键"""
-    return f"chat_stream:group_platform_info:{platform}:{platform_group_id}"
+def _group_id_key(group_id: int):
+    """构造缓存群组ID键"""
+    return f"chat_stream:group_id:{group_id}"
 
 
 class ChatStreamManager:
     @classmethod
     def get_chat_stream(
         cls,
-        stream_id: Optional[int] = None,
-        platform: Optional[str] = None,
-        platform_user_id: Optional[str] = None,
-        platform_group_id: Optional[str] = None,
+        dto: ChatStreamDTO,
     ) -> Optional[ChatStreamDTO]:
         """获取聊天流
 
         可选的查询参数组合（匹配优先级）：
         1. stream_id
-        2. platform + platform_user_id (自动创建)
-        3. platform + platform_group_id (自动创建)
+        2. user_id (自动创建)
+        3. group_id (自动创建)
 
-        :param stream_id: 聊天流 ID
-        :param platform: 平台名称
-        :param platform_user_id: 平台用户 ID
-        :param platform_group_id: 平台群组 ID
+        :param dto: 聊天流 DTO 对象
         :return: 聊天流 DTO 对象
         """
+        if dto.select_entity_check() is False:
+            raise ValueError("Invalid DTO object for select.")
 
         def _get_by_pk(id: int) -> Optional[ChatStreamDTO]:
             """通过主键获取聊天流"""
             return chat_stream if (chat_stream := global_cache[_pk(id)]) else cls._get_stream_by_id(id)
 
-        if stream_id:
+        if dto.id:
             # 使用stream_id直接查询
             # 不会自动创建新的聊天流
-            if chat_stream := _get_by_pk(stream_id):
+            if chat_stream := _get_by_pk(dto.id):
                 return chat_stream
-
-            raise ValueError(f"ChatStream '{stream_id}' does not exist.")
-        elif platform and platform_user_id:
-            # 使用平台用户信息查询
-            if stream_id := global_cache[_user_platform_info_key(platform, platform_user_id)]:
+        elif dto.user_id and not dto.group_id:
+            # 使用用户id查询
+            if stream_id := global_cache[_user_id_key(dto.user_id)]:
                 if chat_stream := _get_by_pk(stream_id):
                     return chat_stream
-            return cls._get_stream_by_user_info(platform, platform_user_id)
-        elif platform and platform_group_id:
-            # 使用平台群组信息查询
-            if stream_id := global_cache[_group_platform_info_key(platform, platform_group_id)]:
+            return cls._get_stream_by_user_info(dto.user_id)
+        elif dto.group_id and not dto.user_id:
+            # 使用群组id查询
+            if stream_id := global_cache[_group_id_key(dto.group_id)]:
                 if chat_stream := _get_by_pk(stream_id):
                     return chat_stream
-            return cls._get_stream_by_group_info(platform, platform_group_id)
-        else:
-            raise ValueError(
-                "At least one of 'stream_id', 'platform + platform_user_id', or 'platform + platform_group_id' must be provided."
-            )
+            return cls._get_stream_by_group_info(dto.group_id)
 
     @classmethod
     def _get_stream_by_id(cls, stream_id: int) -> Optional[ChatStreamDTO]:
@@ -136,56 +126,54 @@ class ChatStreamManager:
         return dto
 
     @classmethod
-    def _get_stream_by_user_info(cls, platform: str, platform_user_id: str) -> Optional[ChatStreamDTO]:
-        """数据库操作：通过用户平台信息获取聊天流信息"""
+    def _get_stream_by_user_info(cls, user_id: int) -> Optional[ChatStreamDTO]:
+        """数据库操作：通过用户ID获取聊天流信息"""
         with DBSession() as session:
             statement = select(ChatUser).where(
-                ChatUser.platform == platform,
-                ChatUser.platform_user_id == platform_user_id,
+                ChatUser.id == user_id,
             )
 
             user = session.exec(statement).first()
 
             if user is None:
-                raise ValueError(f"User '{platform}:{platform_user_id}' does not exist.")
+                raise ValueError(f"User '{user_id}' does not exist.")
 
             chat_stream = user.chat_stream
 
         if chat_stream is None:
-            dto = cls._create_stream(user_id=user.id)
+            dto = cls._create_stream(user_id=user_id)
         else:
             dto = ChatStreamDTO.from_orm(chat_stream)
             global_cache[_pk(dto.id)] = dto  # 主键缓存
 
         # 缓存键映射
-        global_cache[_user_platform_info_key(platform, platform_user_id)] = dto.id
+        global_cache[_user_id_key(user_id)] = dto.id
 
         return dto
 
     @classmethod
-    def _get_stream_by_group_info(cls, platform: str, platform_group_id: str) -> Optional[ChatStreamDTO]:
-        """数据库操作：通过群组平台信息获取聊天流信息"""
+    def _get_stream_by_group_info(cls, group_id: int) -> Optional[ChatStreamDTO]:
+        """数据库操作：通过群组ID获取聊天流信息"""
         with DBSession() as session:
             statement = select(ChatGroup).where(
-                ChatGroup.platform == platform,
-                ChatGroup.platform_group_id == platform_group_id,
+                ChatGroup.id == group_id,
             )
 
             group = session.exec(statement).first()
 
             if group is None:
-                raise ValueError(f"Group '{platform}:{platform_group_id}' does not exist.")
+                raise ValueError(f"ChatGroup '{group_id}' does not exist.")
 
             chat_stream = group.chat_stream
 
         if chat_stream is None:
-            dto = cls._create_stream(group_id=group.id)
+            dto = cls._create_stream(group_id=group_id)
         else:
             dto = ChatStreamDTO.from_orm(chat_stream)
-            global_cache[_pk(dto.id)] = dto  # 主键缓存
+            global_cache[_pk(dto.id)] = dto
 
         # 缓存键映射
-        global_cache[_group_platform_info_key(platform, platform_group_id)] = dto.id
+        global_cache[_group_id_key(group_id)] = dto.id
 
         return dto
 

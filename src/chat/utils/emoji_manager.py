@@ -131,7 +131,7 @@ class ChatEmojiManager:
         self.emoji_emotion_map.pop(emoji_hash, None)
         logger.info(f"表情包 {emoji_hash} 已被禁止使用")
 
-    async def _get_or_create_emoji_dto(self, image_b64: str, hash: str) -> Optional[EmojiDTO]:
+    async def _get_or_create_emoji_dto(self, image_bytes: bytes, hash: str) -> Optional[EmojiDTO]:
         """
         获取或创建表情包DTO对象
 
@@ -141,9 +141,7 @@ class ChatEmojiManager:
         """
         emoji_dto = EmojiManager.get_emoji(EmojiDTO(img_hash=hash))
         if not emoji_dto:
-            image_bytes = base64.b64decode(image_b64)
             image = Image.open(io.BytesIO(image_bytes))
-
             if image.format.lower() == "gif":
                 image, cols, rows, n_frames = gif2jpg(image)
                 with io.BytesIO() as io_buffer:
@@ -158,6 +156,7 @@ class ChatEmojiManager:
                     .build()
                 )
             else:
+                image_b64 = base64.b64encode(image_bytes).decode("utf-8")
                 prompt = (
                     MessageBuilder()
                     .add_text_content(
@@ -210,14 +209,14 @@ class ChatEmojiManager:
 
         return emoji_dto
 
-    async def _async_register_emoji(self, image_b64: str, hash: str) -> None:
+    async def _async_register_emoji(self, image_bytes: bytes, hash: str) -> None:
         """
         异步任务：尝试注册表情包
 
         :param image_b64: 表情包的base64字符串
         :param hash: 表情包的哈希值
         """
-        emoji_dto = await self._get_or_create_emoji_dto(image_b64, hash)
+        emoji_dto = await self._get_or_create_emoji_dto(image_bytes, hash)
         if not emoji_dto:
             return
 
@@ -237,7 +236,7 @@ class ChatEmojiManager:
         if len(self.emoji_emotion_map) >= global_config.emoji.max_emoji_num:
             await self._replace_emoji()
 
-        await self._register_new_emoji(image_b64, emoji_dto, hash)
+        await self._register_new_emoji(image_bytes, emoji_dto, hash)
 
     async def _replace_emoji(self):
         """替换已有表情包"""
@@ -263,12 +262,11 @@ class ChatEmojiManager:
         self.emoji_emotion_map.pop(emoji_to_replace.img_hash, None)
         logger.debug(f"表情包 {emoji_to_replace.img_hash} 已被替换，移动到缓存目录")
 
-    async def _register_new_emoji(self, image_b64: str, emoji_dto: EmojiDTO, hash: str):
+    async def _register_new_emoji(self, image_bytes: bytes, emoji_dto: EmojiDTO, hash: str):
         """注册新的表情包"""
 
         # 将表情包图片保存到已注册目录
-        image_data = base64.b64decode(image_b64)
-        image = Image.open(io.BytesIO(image_data))
+        image = Image.open(io.BytesIO(image_bytes))
         file_name = f"{hash}.{image.format.lower()}"
         image.save(f"{_emoji_registered_dir()}/{file_name}")
 
@@ -306,9 +304,6 @@ class ChatEmojiManager:
         # 1. 从ChatImageManager获取表情包图片描述
         description = chat_image_manager.get_image_description(image_b64, image_type="emoji")
 
-        if not description:
-            return None  # 如果获取失败，返回None/空字符串
-
         # 2. 若该表情包尚未注册，发起异步任务尝试注册表情包
 
         # 解码base64字符串为字节数据
@@ -318,7 +313,7 @@ class ChatEmojiManager:
         # 表情包尚未注册，且没有对这个表情包正在进行的注册任务
         if image_hash not in self.emoji_emotion_map and image_hash not in self._emoji_reg_tasks:
             # 2.1. 创建注册任务
-            self._emoji_reg_tasks[image_hash] = asyncio.create_task(self._async_register_emoji(image_b64, image_hash))
+            self._emoji_reg_tasks[image_hash] = asyncio.create_task(self._async_register_emoji(image_bytes, image_hash))
             self._emoji_reg_tasks[image_hash].set_name(image_hash)
             self._emoji_reg_tasks[image_hash].add_done_callback(
                 self._register_task_callback

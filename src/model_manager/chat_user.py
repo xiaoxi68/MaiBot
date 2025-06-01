@@ -123,12 +123,12 @@ class ChatUserManager:
             raise ValueError("Invalid DTO object for select.")
 
         if dto.id:
-            if group := global_cache[_pk(dto.id)]:
-                return group
+            if user := global_cache[_pk(dto.id)]:
+                return user
             else:
                 return cls._get_user_by_id(dto.id)
-        elif group := global_cache[_platform_info_key(dto.platform, dto.platform_user_id)]:
-            return group
+        elif user := global_cache[_platform_info_key(dto.platform, dto.platform_user_id)]:
+            return user
         else:
             return cls._get_user_by_platform_info(dto.platform, dto.platform_user_id)
 

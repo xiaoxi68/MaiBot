@@ -10,14 +10,13 @@ from .manager.async_task_manager import async_task_manager
 from .chat.utils.statistic import OnlineTimeRecordTask, StatisticOutputTask
 from .manager.mood_manager import MoodPrintTask, MoodUpdateTask
 from .chat.normal_chat.willing.willing_manager import willing_manager
-from .chat.message_receive.chat_stream import chat_manager
 from src.chat.heart_flow.heartflow import heartflow
 from .chat.memory_system.Hippocampus import HippocampusManager
 from .chat.message_receive.message_sender import message_manager
 from .config.config import global_config
 from .chat.message_receive.bot import chat_bot
 from .common.logger_manager import get_logger
-from .individuality.individuality import individuality, Individuality
+from .individuality.individuality import individuality
 from .common.server import global_server, Server, NetServerTask
 from rich.traceback import install
 from .chat.focus_chat.expressors.exprssion_learner import expression_learner

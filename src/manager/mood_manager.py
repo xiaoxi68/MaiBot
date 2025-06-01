@@ -7,7 +7,6 @@ from typing import Dict, Tuple
 from ..config.config import global_config
 from ..common.logger_manager import get_logger
 from ..manager.async_task_manager import AsyncTask
-from ..individuality.individuality import individuality
 
 logger = get_logger("mood")
 

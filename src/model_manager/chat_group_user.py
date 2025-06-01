@@ -33,7 +33,7 @@ class ChatGroupUserDTO(DTOBase):
     platform_spec_info: Optional[str] = None
     """平台特定的信息 (可能为空)"""
 
-    __orm_create_rule__ = "group_id & user_id & created_at & platform"
+    __orm_create_rule__ = "group_id & user_id & platform"
 
     __orm_select_rule__ = "group_id & user_id"
 

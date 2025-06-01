@@ -5,7 +5,6 @@ from asyncio import Task
 from typing import Union
 from src.common.message.api import global_api
 
-# from ...common.database import db # 数据库依赖似乎不需要了，注释掉
 from .message import MessageSending, MessageThinking, MessageSet
 
 from .storage import MessageStorage
