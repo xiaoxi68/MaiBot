@@ -81,7 +81,7 @@ class ChattingObservation(Observation):
             "person_list": self.person_list,
             "oldest_messages_str": self.oldest_messages_str,
             "compressor_prompt": self.compressor_prompt,
-            "last_observe_time": self.last_observe_time
+            "last_observe_time": self.last_observe_time,
         }
 
     async def initialize(self):
@@ -89,6 +89,8 @@ class ChattingObservation(Observation):
         logger.debug(f"初始化observation: self.is_group_chat: {self.is_group_chat}")
         logger.debug(f"初始化observation: self.chat_target_info: {self.chat_target_info}")
         initial_messages = get_raw_msg_before_timestamp_with_chat(self.chat_id, self.last_observe_time, 10)
+        self.last_observe_time = initial_messages[-1]["time"] if initial_messages else self.last_observe_time
+        # logger.error(f"初始化observation: initial_messages: {initial_messages}\n\n\n\n{self.last_observe_time}")
         self.talking_message = initial_messages
         self.talking_message_str = await build_readable_messages(self.talking_message)
 

@@ -29,14 +29,6 @@ def init_prompt():
 {self_info_block}
 {extra_info_block}
 {memory_str}
-你需要基于以下信息决定如何参与对话
-这些信息可能会有冲突，请你整合这些信息，并选择一个最合适的action：
-{chat_content_block}
-
-{mind_info_block}
-{cycle_info_block}
-
-请综合分析聊天内容和你看到的新消息，参考聊天规划，选择合适的action:
 注意，除了下面动作选项之外，你在群聊里不能做其他任何事情，这是你能力的边界，现在请你选择合适的action:
 
 {action_options_text}
@@ -45,6 +37,15 @@ def init_prompt():
 你的决策必须以严格的 JSON 格式输出，且仅包含 JSON 内容，不要有任何其他文字或解释。
 
 {moderation_prompt}
+
+你需要基于以下信息决定如何参与对话
+这些信息可能会有冲突，请你整合这些信息，并选择一个最合适的action：
+{chat_content_block}
+
+{mind_info_block}
+{cycle_info_block}
+
+请综合分析聊天内容和你看到的新消息，参考聊天规划，选择合适的action:
 
 请你以下面格式输出你选择的action：
 {{
@@ -270,7 +271,6 @@ class ActionPlanner:
     ) -> str:
         """构建 Planner LLM 的提示词 (获取模板并填充数据)"""
         try:
-            
             memory_str = ""
             if global_config.focus_chat.parallel_processing:
                 memory_str = ""
@@ -278,10 +278,7 @@ class ActionPlanner:
                     memory_str = "以下是当前在聊天中，你回忆起的记忆：\n"
                     for running_memory in running_memorys:
                         memory_str += f"{running_memory['topic']}: {running_memory['content']}\n"
-            
-            
-            
-            
+
             chat_context_description = "你现在正在一个群聊中"
             chat_target_name = None  # Only relevant for private
             if not is_group_chat and chat_target_info:

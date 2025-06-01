@@ -418,7 +418,9 @@ class HeartFChatting:
                     # 记录耗时
                     processor_time_costs[processor_name] = duration_since_parallel_start
                 except asyncio.TimeoutError:
-                    logger.info(f"{self.log_prefix} 处理器 {processor_name} 超时（>{global_config.focus_chat.processor_max_time}s），已跳过")
+                    logger.info(
+                        f"{self.log_prefix} 处理器 {processor_name} 超时（>{global_config.focus_chat.processor_max_time}s），已跳过"
+                    )
                     processor_time_costs[processor_name] = global_config.focus_chat.processor_max_time
                 except Exception as e:
                     logger.error(
@@ -462,7 +464,7 @@ class HeartFChatting:
                 }
 
                 self.all_observations = observations
-                
+
             with Timer("调整动作", cycle_timers):
                 # 处理特殊的观察
                 await self.action_modifier.modify_actions(observations=observations)
@@ -476,25 +478,23 @@ class HeartFChatting:
                 with Timer("并行回忆和处理", cycle_timers):
                     memory_task = asyncio.create_task(self.memory_activator.activate_memory(observations))
                     processor_task = asyncio.create_task(self._process_processors(observations, []))
-                    
+
                     # 等待两个任务完成
-                    running_memorys, (all_plan_info, processor_time_costs) = await asyncio.gather(memory_task, processor_task)
+                    running_memorys, (all_plan_info, processor_time_costs) = await asyncio.gather(
+                        memory_task, processor_task
+                    )
             else:
                 # 串行执行
                 with Timer("回忆", cycle_timers):
                     running_memorys = await self.memory_activator.activate_memory(observations)
 
                 with Timer("执行 信息处理器", cycle_timers):
-                    all_plan_info, processor_time_costs = await self._process_processors(
-                        observations, running_memorys
-                    )
+                    all_plan_info, processor_time_costs = await self._process_processors(observations, running_memorys)
 
             loop_processor_info = {
                 "all_plan_info": all_plan_info,
                 "processor_time_costs": processor_time_costs,
             }
-
-
 
             with Timer("规划器", cycle_timers):
                 plan_result = await self.action_planner.plan(all_plan_info, running_memorys)
