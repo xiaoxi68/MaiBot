@@ -81,7 +81,7 @@ class ChattingObservation(Observation):
             "person_list": self.person_list,
             "oldest_messages_str": self.oldest_messages_str,
             "compressor_prompt": self.compressor_prompt,
-            "last_observe_time": self.last_observe_time
+            "last_observe_time": self.last_observe_time,
         }
 
     async def initialize(self):
