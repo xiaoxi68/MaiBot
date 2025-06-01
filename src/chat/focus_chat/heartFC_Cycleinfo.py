@@ -98,7 +98,12 @@ class CycleDetail:
         # 如果目录不存在，则创建目录
         dir_name = os.path.dirname(file_path)
         if dir_name and not os.path.exists(dir_name):
-            os.makedirs(dir_name, exist_ok=True)
+            try:
+                os.makedirs(dir_name, exist_ok=True)
+            except Exception as e:
+                print(f"创建目录 {dir_name} 失败: {e}")
+                print(f"日志将会写入到temp目录下")
+                file_path = os.path.join("temp", os.path.basename(file_path))
         # 写入文件
         import json
 
