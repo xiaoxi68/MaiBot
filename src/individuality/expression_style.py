@@ -39,7 +39,7 @@ class PersonalityExpression:
         )
         self.meta_file_path = os.path.join("data", "expression", "personality", "expression_style_meta.json")
         self.expressions_file_path = os.path.join("data", "expression", "personality", "expressions.json")
-        self.max_calculations = 10
+        self.max_calculations = 20
 
     def _read_meta_data(self):
         if os.path.exists(self.meta_file_path):
