@@ -1,8 +1,9 @@
 import time
 import os
-from typing import List, Optional, Dict, Any
+from typing import Optional, Dict, Any
 
 log_dir = "log/log_cycle_debug/"
+
 
 class CycleDetail:
     """循环信息记录类"""
@@ -23,35 +24,40 @@ class CycleDetail:
 
     def to_dict(self) -> Dict[str, Any]:
         """将循环信息转换为字典格式"""
+
         def convert_to_serializable(obj, depth=0, seen=None):
             if seen is None:
                 seen = set()
-            
+
             # 防止递归过深
             if depth > 5:  # 降低递归深度限制
                 return str(obj)
-            
+
             # 防止循环引用
             obj_id = id(obj)
             if obj_id in seen:
                 return str(obj)
             seen.add(obj_id)
-            
+
             try:
-                if hasattr(obj, 'to_dict'):
+                if hasattr(obj, "to_dict"):
                     # 对于有to_dict方法的对象，直接调用其to_dict方法
                     return obj.to_dict()
                 elif isinstance(obj, dict):
                     # 对于字典，只保留基本类型和可序列化的值
-                    return {k: convert_to_serializable(v, depth + 1, seen) 
-                        for k, v in obj.items() 
-                        if isinstance(k, (str, int, float, bool))}
+                    return {
+                        k: convert_to_serializable(v, depth + 1, seen)
+                        for k, v in obj.items()
+                        if isinstance(k, (str, int, float, bool))
+                    }
                 elif isinstance(obj, (list, tuple)):
                     # 对于列表和元组，只保留可序列化的元素
-                    return [convert_to_serializable(item, depth + 1, seen) 
-                        for item in obj 
-                        if not isinstance(item, (dict, list, tuple)) or 
-                        isinstance(item, (str, int, float, bool, type(None)))]
+                    return [
+                        convert_to_serializable(item, depth + 1, seen)
+                        for item in obj
+                        if not isinstance(item, (dict, list, tuple))
+                        or isinstance(item, (str, int, float, bool, type(None)))
+                    ]
                 elif isinstance(obj, (str, int, float, bool, type(None))):
                     return obj
                 else:
@@ -74,19 +80,19 @@ class CycleDetail:
     def complete_cycle(self):
         """完成循环，记录结束时间"""
         self.end_time = time.time()
-        
+
         # 处理 prefix，只保留中英文字符
         if not self.prefix:
             self.prefix = "group"
         else:
             # 只保留中文和英文字符
-            self.prefix = ''.join(char for char in self.prefix if '\u4e00' <= char <= '\u9fff' or char.isascii())
+            self.prefix = "".join(char for char in self.prefix if "\u4e00" <= char <= "\u9fff" or char.isascii())
             if not self.prefix:
                 self.prefix = "group"
-        
+
         current_time_minute = time.strftime("%Y%m%d_%H%M", time.localtime())
         self.log_cycle_to_file(log_dir + self.prefix + f"/{current_time_minute}_cycle_" + str(self.cycle_id) + ".json")
-        
+
     def log_cycle_to_file(self, file_path: str):
         """将循环信息写入文件"""
         # 如果目录不存在，则创建目录
@@ -95,6 +101,7 @@ class CycleDetail:
             os.makedirs(dir_name, exist_ok=True)
         # 写入文件
         import json
+
         with open(file_path, "a", encoding="utf-8") as f:
             f.write(json.dumps(self.to_dict(), ensure_ascii=False) + "\n")
 
