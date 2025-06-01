@@ -97,13 +97,12 @@ class CycleDetail:
         """将循环信息写入文件"""
         # 如果目录不存在，则创建目录
         dir_name = os.path.dirname(file_path)
+        # 去除特殊字符，保留字母、数字、下划线、中划线和中文
+        dir_name = "".join(
+            char for char in dir_name if char.isalnum() or char in ["_", "-", "/"] or "\u4e00" <= char <= "\u9fff"
+        )
         if dir_name and not os.path.exists(dir_name):
-            try:
-                os.makedirs(dir_name, exist_ok=True)
-            except Exception as e:
-                print(f"创建目录 {dir_name} 失败: {e}")
-                print(f"日志将会写入到temp目录下")
-                file_path = os.path.join("temp", os.path.basename(file_path))
+            os.makedirs(dir_name, exist_ok=True)
         # 写入文件
         import json
 
