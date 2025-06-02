@@ -58,21 +58,7 @@ def init_prompt():
 """,
         "planner_prompt",
     )
-
-    Prompt(
-        """
-{raw_output}
-请从上面这段内容中提取出JSON内容，不要有任何其他文字或解释。
-以严格的 JSON 格式输出，且仅包含 JSON 内容，不要有任何其他文字或解释。
-请你以下面格式输出：
-{{
-    "action": "action_name"
-    "参数": "参数的值"(可能有多个参数),
-}}
-
-请输出你提取的JSON，不要有任何其他文字或解释：""",
-        "planner_prompt_json",
-    )
+    
 
     Prompt(
         """
@@ -206,16 +192,6 @@ class ActionPlanner(BasePlanner):
                 reasoning = f"LLM 请求失败，你的模型出现问题: {req_e}"
                 action = "no_reply"
 
-            # try:
-            #     prompt_json = await global_prompt_manager.get_prompt_async("planner_prompt_json")
-            #     prompt_json = prompt_json.format(raw_output=llm_content)
-            #     llm_content_json, (reasoning_content_json, _) = await self.utils_llm.generate_response_async(prompt=prompt_json)
-            #     logger.debug(f"{self.log_prefix}LLM格式化JSON: {llm_content_json}")
-            #     logger.debug(f"{self.log_prefix}LLM格式化理由: {reasoning_content_json}")
-            # except Exception as json_e:
-            #     logger.error(f"{self.log_prefix}解析LLM响应JSON失败，模型返回不标准: {json_e}. LLM原始输出: '{llm_content}'")
-            #     reasoning = f"解析LLM响应JSON失败: {json_e}. 将使用默认动作 'no_reply'."
-            #     action = "no_reply"
 
             if llm_content:
                 try:
@@ -258,8 +234,9 @@ class ActionPlanner(BasePlanner):
 
                 except Exception as json_e:
                     logger.warning(
-                        f"{self.log_prefix}解析LLM响应JSON失败，模型返回不标准: {json_e}. LLM原始输出: '{llm_content}'"
+                        f"{self.log_prefix}解析LLM响应JSON失败 {json_e}. LLM原始输出: '{llm_content}'"
                     )
+                    traceback.print_exc()
                     reasoning = f"解析LLM响应JSON失败: {json_e}. 将使用默认动作 'no_reply'."
                     action = "no_reply"
 

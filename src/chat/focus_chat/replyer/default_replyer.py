@@ -21,6 +21,7 @@ from src.chat.utils.chat_message_builder import build_readable_messages, get_raw
 import time
 from src.chat.focus_chat.expressors.exprssion_learner import expression_learner
 import random
+from datetime import datetime
 import re
 
 logger = get_logger("expressor")
@@ -32,14 +33,15 @@ def init_prompt():
 你可以参考以下的语言习惯，如果情景合适就使用，不要盲目使用,不要生硬使用，而是结合到表达中：
 {style_habbits}
 
+{time_block}
 你现在正在群里聊天，以下是群里正在进行的聊天内容：
 {chat_info}
 
 以上是聊天内容，你需要了解聊天记录中的内容
 
 {chat_target}
-{identity}，在这聊天中，"{target_message}"引起了你的注意，你想要在群里发言或者回复这条消息。原因是：{reason}。
-你需要使用合适的语法和句法，参考聊天内容，组织一条日常且口语化的回复。
+{identity}，在这聊天中，"{target_message}"引起了你的注意，你想要在群里发言或者回复这条消息。
+你需要使用合适的语法和句法，参考聊天内容，组织一条日常且口语化的回复。注意不要复读你说过的话。
 请你根据情景使用以下句法：
 {grammar_habbits}
 {config_expression_style}，请注意不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出回复内容。
@@ -56,22 +58,24 @@ def init_prompt():
 你可以参考以下的语言习惯，如果情景合适就使用，不要盲目使用,不要生硬使用，而是结合到表达中：
 {style_habbits}
 
-你现在正在群里聊天，以下是群里正在进行的聊天内容：
+{time_block}
+你现在正在聊天，以下是你和对方正在进行的聊天内容：
 {chat_info}
 
 以上是聊天内容，你需要了解聊天记录中的内容
 
 {chat_target}
-你的名字是{bot_name}，{prompt_personality}，在这聊天中，"{target_message}"引起了你的注意，对这句话，你想表达：{in_mind_reply},原因是：{reason}。你现在要思考怎么回复
-你需要使用合适的语法和句法，参考聊天内容，组织一条日常且口语化的回复。
+{identity}，在这聊天中，"{target_message}"引起了你的注意，你想要发言或者回复这条消息。
+你需要使用合适的语法和句法，参考聊天内容，组织一条日常且口语化的回复。注意不要复读你说过的话。
 请你根据情景使用以下句法：
 {grammar_habbits}
-{config_expression_style}，你可以完全重组回复，保留最基本的表达含义就好，但重组后保持语意通顺。
+{config_expression_style}，请注意不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出回复内容。
 {keywords_reaction_prompt}
-不要浮夸，不要夸张修辞，平淡且不要输出多余内容(包括前后缀，冒号和引号，括号，表情包，at或 @等 )，只输出一条回复就好。
+请不要输出违法违规内容，不要输出色情，暴力，政治相关内容，如有敏感内容，请规避。
+不要浮夸，不要夸张修辞，只输出一条回复就好。
 现在，你说：
 """,
-        "default_replyer_private_prompt",  # New template for private FOCUSED chat
+        "default_replyer_private_prompt", 
     )
 
 
@@ -289,7 +293,8 @@ class DefaultReplyer:
                     # TODO: API-Adapter修改标记
                     # logger.info(f"{self.log_prefix}[Replier-{thinking_id}]\nPrompt:\n{prompt}\n")
                     content, (reasoning_content, model_name) = await self.express_model.generate_response_async(prompt)
-
+                    
+                    logger.debug(f"prompt: {prompt}")
                     logger.info(f"最终回复: {content}")
 
                 info_catcher.catch_after_llm_generated(
@@ -407,9 +412,9 @@ class DefaultReplyer:
         except Exception as e:
             logger.error(f"关键词检测与反应时发生异常: {str(e)}", exc_info=True)
         
-        
+        time_block = f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
 
-        logger.debug("开始构建 focus prompt")
+        # logger.debug("开始构建 focus prompt")
 
         # --- Choose template based on chat type ---
         if is_group_chat:
@@ -424,9 +429,10 @@ class DefaultReplyer:
                 grammar_habbits=grammar_habbits_str,
                 chat_target=chat_target_1,
                 chat_info=chat_talking_prompt,
+                time_block=time_block,
                 # bot_name=global_config.bot.nickname,
                 # prompt_personality="",
-                reason=reason,
+                # reason=reason,
                 # in_mind_reply=in_mind_reply,
                 keywords_reaction_prompt=keywords_reaction_prompt,
                 identity=identity,
@@ -442,9 +448,10 @@ class DefaultReplyer:
                 grammar_habbits=grammar_habbits_str,
                 chat_target=chat_target_1,
                 chat_info=chat_talking_prompt,
+                time_block=time_block,
                 # bot_name=global_config.bot.nickname,
                 # prompt_personality="",
-                reason=reason,
+                # reason=reason,
                 # in_mind_reply=in_mind_reply,
                 keywords_reaction_prompt=keywords_reaction_prompt,
                 identity=identity,
