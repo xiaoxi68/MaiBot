@@ -56,8 +56,9 @@ def init_prompt():
 """,
         "planner_prompt",
     )
-    
-    Prompt("""
+
+    Prompt(
+        """
 {raw_output}
 请从上面这段内容中提取出JSON内容，不要有任何其他文字或解释。
 以严格的 JSON 格式输出，且仅包含 JSON 内容，不要有任何其他文字或解释。
@@ -68,11 +69,8 @@ def init_prompt():
 }}
 
 请输出你提取的JSON，不要有任何其他文字或解释：""",
-    "planner_prompt_json",
+        "planner_prompt_json",
     )
-    
-    
-    
 
     Prompt(
         """
@@ -93,7 +91,7 @@ class ActionPlanner(BasePlanner):
             max_tokens=1000,
             request_type="focus.planner",  # 用于动作规划
         )
-        
+
         self.utils_llm = LLMRequest(
             model=global_config.model.utils_small,
             max_tokens=1000,
@@ -193,20 +191,20 @@ class ActionPlanner(BasePlanner):
             try:
                 prompt = f"{prompt}"
                 llm_content, (reasoning_content, _) = await self.planner_llm.generate_response_async(prompt=prompt)
-                
+
                 logger.debug(
                     f"{self.log_prefix}规划器Prompt:\n{prompt}\n\n决策动作:{action},\n动作信息: '{action_data}'\n理由: {reasoning}"
                 )
-                
+
                 logger.debug(f"{self.log_prefix}LLM 原始响应: {llm_content}")
                 logger.debug(f"{self.log_prefix}LLM 原始理由响应: {reasoning_content}")
             except Exception as req_e:
                 logger.error(f"{self.log_prefix}LLM 请求执行失败: {req_e}")
                 reasoning = f"LLM 请求失败，你的模型出现问题: {req_e}"
                 action = "no_reply"
-            
+
             # try:
-            #     prompt_json = await global_prompt_manager.get_prompt_async("planner_prompt_json") 
+            #     prompt_json = await global_prompt_manager.get_prompt_async("planner_prompt_json")
             #     prompt_json = prompt_json.format(raw_output=llm_content)
             #     llm_content_json, (reasoning_content_json, _) = await self.utils_llm.generate_response_async(prompt=prompt_json)
             #     logger.debug(f"{self.log_prefix}LLM格式化JSON: {llm_content_json}")
@@ -215,8 +213,6 @@ class ActionPlanner(BasePlanner):
             #     logger.error(f"{self.log_prefix}解析LLM响应JSON失败，模型返回不标准: {json_e}. LLM原始输出: '{llm_content}'")
             #     reasoning = f"解析LLM响应JSON失败: {json_e}. 将使用默认动作 'no_reply'."
             #     action = "no_reply"
-                
-            
 
             if llm_content:
                 try:
@@ -241,7 +237,7 @@ class ActionPlanner(BasePlanner):
                     for key, value in parsed_json.items():
                         if key not in ["action", "reasoning"]:
                             action_data[key] = value
-                            
+
                     action_data["identity"] = self_info
 
                     # 对于reply动作不需要额外处理，因为相关字段已经在上面的循环中添加到action_data
@@ -358,7 +354,7 @@ class ActionPlanner(BasePlanner):
                     param_text = f"参数：\n{param_text}"
                 else:
                     param_text = "无需参数"
-                
+
                 using_action_prompt = using_action_prompt.format(
                     action_name=using_actions_name,
                     action_description=using_actions_info["description"],

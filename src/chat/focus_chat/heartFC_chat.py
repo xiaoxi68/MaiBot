@@ -122,7 +122,9 @@ class HeartFChatting:
         self.expressor = DefaultExpressor(chat_id=self.stream_id)
         self.replyer = DefaultReplyer(chat_id=self.stream_id)
         self.action_manager = ActionManager()
-        self.action_planner = PlannerFactory.create_planner(log_prefix=self.log_prefix, action_manager=self.action_manager)
+        self.action_planner = PlannerFactory.create_planner(
+            log_prefix=self.log_prefix, action_manager=self.action_manager
+        )
         self.action_modifier = ActionModifier(action_manager=self.action_manager)
         self.action_observation = ActionObservation(observe_id=self.stream_id)
 
