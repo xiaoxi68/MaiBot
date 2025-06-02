@@ -135,11 +135,14 @@ class PluginAction(BaseAction):
             # 获取锚定消息（如果有）
             observations = self._services.get("observations", [])
 
-            chatting_observation: ChattingObservation = next(
-                obs for obs in observations if isinstance(obs, ChattingObservation)
-            )
+            if len(observations) > 0:
+                chatting_observation: ChattingObservation = next(
+                    obs for obs in observations if isinstance(obs, ChattingObservation)
+                )
 
-            anchor_message = chatting_observation.search_message_by_text(target)
+                anchor_message = chatting_observation.search_message_by_text(target)
+            else:
+                anchor_message = None
 
             # 如果没有找到锚点消息，创建一个占位符
             if not anchor_message:

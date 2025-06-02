@@ -127,6 +127,9 @@ class NormalChatConfig(ConfigBase):
     at_bot_inevitable_reply: bool = False
     """@bot 必然回复"""
 
+    enable_planner: bool = False
+    """是否启用动作规划器"""
+
 
 @dataclass
 class FocusChatConfig(ConfigBase):
