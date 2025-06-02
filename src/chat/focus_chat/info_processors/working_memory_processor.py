@@ -108,9 +108,7 @@ class WorkingMemoryProcessor(BaseProcessor):
             memory_summary = memory.summary
             memory_id = memory.id
             memory_brief = memory_summary.get("brief")
-            # memory_detailed = memory_summary.get("detailed")
-            memory_keypoints = memory_summary.get("keypoints")
-            memory_events = memory_summary.get("events")
+            memory_keypoints = memory_summary.get("key_points", [])
             memory_single_prompt = f"记忆id:{memory_id},记忆摘要:{memory_brief}\n"
             memory_prompts.append(memory_single_prompt)
 
@@ -165,15 +163,9 @@ class WorkingMemoryProcessor(BaseProcessor):
                     memory_summary = memory.summary
                     memory_id = memory.id
                     memory_brief = memory_summary.get("brief")
-                    # memory_detailed = memory_summary.get("detailed")
-                    memory_keypoints = memory_summary.get("keypoints")
-                    memory_events = memory_summary.get("events")
+                    memory_keypoints = memory_summary.get("key_points", [])
                     for keypoint in memory_keypoints:
                         memory_str += f"记忆要点:{keypoint}\n"
-                    for event in memory_events:
-                        memory_str += f"记忆事件:{event}\n"
-                    # memory_str += f"记忆摘要:{memory_detailed}\n"
-                    # memory_str += f"记忆主题:{memory_brief}\n"
 
         working_memory_info = WorkingMemoryInfo()
         if memory_str:
@@ -225,7 +217,7 @@ class WorkingMemoryProcessor(BaseProcessor):
             logger.debug(f"{self.log_prefix} 异步合并记忆成功: {memory_id1} 和 {memory_id2}...")
             logger.debug(f"{self.log_prefix} 合并后的记忆梗概: {merged_memory.summary.get('brief')}")
             logger.debug(f"{self.log_prefix} 合并后的记忆详情: {merged_memory.summary.get('detailed')}")
-            logger.debug(f"{self.log_prefix} 合并后的记忆要点: {merged_memory.summary.get('keypoints')}")
+            logger.debug(f"{self.log_prefix} 合并后的记忆要点: {merged_memory.summary.get('key_points')}")
             logger.debug(f"{self.log_prefix} 合并后的记忆事件: {merged_memory.summary.get('events')}")
 
         except Exception as e:
