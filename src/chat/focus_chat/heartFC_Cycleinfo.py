@@ -90,11 +90,16 @@ class CycleDetail:
         else:
             # 只保留中文、英文字母、数字和基本标点
             allowed_chars = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_")
-            self.prefix = "".join(char for char in self.prefix if "\u4e00" <= char <= "\u9fff" or char in allowed_chars) or "group"
+            self.prefix = (
+                "".join(char for char in self.prefix if "\u4e00" <= char <= "\u9fff" or char in allowed_chars)
+                or "group"
+            )
 
         current_time_minute = time.strftime("%Y%m%d_%H%M", time.localtime())
         try:
-            self.log_cycle_to_file(log_dir + self.prefix + f"/{current_time_minute}_cycle_" + str(self.cycle_id) + ".json")
+            self.log_cycle_to_file(
+                log_dir + self.prefix + f"/{current_time_minute}_cycle_" + str(self.cycle_id) + ".json"
+            )
         except Exception as e:
             logger.warning(f"写入文件日志，可能是群名称包含非法字符: {e}")
 
