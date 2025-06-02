@@ -71,14 +71,13 @@ class MemoryManager:
 
         return memory_item.id
 
-    async def push_with_summary(self, data: T, from_source: str = "", tags: Optional[List[str]] = None) -> MemoryItem:
+    async def push_with_summary(self, data: T, from_source: str = "") -> MemoryItem:
         """
         推送一段有类型的信息到工作记忆中，并自动生成总结
 
         Args:
             data: 要存储的数据
             from_source: 数据来源
-            tags: 数据标签列表
 
         Returns:
             包含原始数据和总结信息的字典
@@ -88,11 +87,8 @@ class MemoryManager:
             # 先生成总结
             summary = await self.summarize_memory_item(data)
 
-            # 准备标签
-            memory_tags = list(tags) if tags else []
-
             # 创建记忆项
-            memory_item = MemoryItem(data, from_source, memory_tags)
+            memory_item = MemoryItem(data, from_source, brief=summary.get("brief", ""))
 
             # 将总结信息保存到记忆项中
             memory_item.set_summary(summary)
@@ -103,7 +99,7 @@ class MemoryManager:
             return memory_item
         else:
             # 非字符串类型，直接创建并推送记忆项
-            memory_item = MemoryItem(data, from_source, tags)
+            memory_item = MemoryItem(data, from_source)
             self.push_item(memory_item)
 
             return memory_item
@@ -136,7 +132,6 @@ class MemoryManager:
         self,
         data_type: Optional[Type] = None,
         source: Optional[str] = None,
-        tags: Optional[List[str]] = None,
         start_time: Optional[float] = None,
         end_time: Optional[float] = None,
         memory_id: Optional[str] = None,
@@ -150,7 +145,6 @@ class MemoryManager:
         Args:
             data_type: 要查找的数据类型
             source: 数据来源
-            tags: 必须包含的标签列表
             start_time: 开始时间戳
             end_time: 结束时间戳
             memory_id: 特定记忆项ID
@@ -189,10 +183,6 @@ class MemoryManager:
             for item in items_to_check:
                 # 检查来源是否匹配
                 if source is not None and not item.matches_source(source):
-                    continue
-
-                # 检查标签是否匹配
-                if tags is not None and not item.has_all_tags(tags):
                     continue
 
                 # 检查时间范围
@@ -491,9 +481,6 @@ class MemoryManager:
         if not memory_item1 or not memory_item2:
             raise ValueError("无法找到指定的记忆项")
 
-        content1 = memory_item1.data
-        content2 = memory_item2.data
-
         # 获取记忆的摘要信息（如果有）
         summary1 = memory_item1.summary
         summary2 = memory_item2.summary
@@ -515,31 +502,22 @@ class MemoryManager:
             prompt += f"记忆2主题：{summary2['brief']}\n"
             prompt += "记忆2关键要点：\n" + "\n".join([f"- {point}" for point in summary2.get("points", [])]) + "\n\n"
 
-        # 添加记忆原始内容
-        prompt += f"""
-记忆1原始内容：
-{content1}
-
-记忆2原始内容：
-{content2}
-
+        prompt += """
 请按以下JSON格式输出合并结果：
 ```json
-{{
-    "content": "合并后的记忆内容文本（尽可能保留原信息，但去除重复）",
+{
     "brief": "合并后的主题（20字以内）",
     "points": [
         "合并后的要点",
         "合并后的要点"
     ]
-}}
+}
 ```
 请确保输出是有效的JSON格式，不要添加任何额外的说明或解释。
 """
 
         # 默认合并结果
         default_merged = {
-            "content": f"{content1}\n\n{content2}",
             "brief": f"合并：{summary1['brief']} + {summary2['brief']}",
             "points": [],
         }
@@ -579,10 +557,6 @@ class MemoryManager:
                     logger.error(f"修复后的JSON不是字典类型: {type(merged_data)}")
                     merged_data = default_merged
 
-                # 确保所有必要字段都存在且类型正确
-                if "content" not in merged_data or not isinstance(merged_data["content"], str):
-                    merged_data["content"] = default_merged["content"]
-
                 if "brief" not in merged_data or not isinstance(merged_data["brief"], str):
                     merged_data["brief"] = default_merged["brief"]
 
@@ -605,9 +579,6 @@ class MemoryManager:
             merged_data = default_merged
 
         # 创建新的记忆项
-        # 合并记忆项的标签
-        merged_tags = memory_item1.tags.union(memory_item2.tags)
-
         # 取两个记忆项中更强的来源
         merged_source = (
             memory_item1.from_source
@@ -615,8 +586,8 @@ class MemoryManager:
             else memory_item2.from_source
         )
 
-        # 创建新的记忆项
-        merged_memory = MemoryItem(data=merged_data["content"], from_source=merged_source, tags=list(merged_tags))
+        # 创建新的记忆项，使用空字符串作为data
+        merged_memory = MemoryItem(data="", from_source=merged_source, brief=merged_data["brief"])
 
         # 设置合并后的摘要
         summary = {
