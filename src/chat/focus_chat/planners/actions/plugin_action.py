@@ -45,6 +45,8 @@ class PluginAction(BaseAction):
             self._services["expressor"] = kwargs["expressor"]
         if "chat_stream" in kwargs:
             self._services["chat_stream"] = kwargs["chat_stream"]
+        if "replyer" in kwargs:
+            self._services["replyer"] = kwargs["replyer"]
 
         self.log_prefix = kwargs.get("log_prefix", "")
         self._load_plugin_config()  # 初始化时加载插件配置

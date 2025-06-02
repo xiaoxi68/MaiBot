@@ -10,18 +10,17 @@ class MuteAction(PluginAction):
     """群聊禁言动作处理类"""
 
     action_name = "mute_action"
-    action_description = "如果某人违反了公序良俗，或者别人戳你太多，或者某人刷屏，一定要禁言某人，如果你很生气，可以禁言某人，可以自选禁言时长，视严重程度而定。"
+    action_description = "在特定情境下，对某人采取禁言，让他不能说话"
     action_parameters = {
         "target": "禁言对象，必填,输入你要禁言的对象的名字",
         "duration": "禁言时长，必填，输入你要禁言的时长（秒），单位为秒，必须为数字",
         "reason": "禁言理由，可选",
     }
     action_require = [
-        "当有人违反了公序良俗时使用",
+        "当有人违反了公序良俗的内容",
         "当有人刷屏时使用",
+        "当有人发了擦边，或者色情内容时使用",
         "当有人要求禁言自己时使用",
-        "当有人戳你两次以上时，防止刷屏，禁言他，必须牢记",
-        "当你想回避某个话题时使用",
     ]
     default = False  # 默认动作，是否手动添加到使用集
     associated_types = ["command", "text"]

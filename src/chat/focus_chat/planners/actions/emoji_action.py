@@ -13,23 +13,24 @@ logger = get_logger("action_taken")
 
 
 @register_action
-class ReplyAction(BaseAction):
-    """回复动作处理类
+class EmojiAction(BaseAction):
+    """表情动作处理类
 
-    处理构建和发送消息回复的动作。
+    处理构建和发送消息表情的动作。
     """
 
-    action_name: str = "reply"
-    action_description: str = "当你想要参与回复或者聊天"
+    action_name: str = "emoji"
+    action_description: str = "当你想发送一个表情辅助你的回复表达"
     action_parameters: dict[str:str] = {
-        "target": "如果你要明确回复特定某人的某句话，请在target参数中中指定那句话的原始文本（非必须，仅文本，不包含发送者)（可选）",
+        "description": "文字描述你想要发送的表情",
     }
     action_require: list[str] = [
-        "你想要闲聊或者随便附和",
-        "有人提到你",
+        "你想要发送一个表情",
+        "表达情绪时可以选择使用",
+        "一般在你回复之后可以选择性使用"
     ]
 
-    associated_types: list[str] = ["text", "emoji"]
+    associated_types: list[str] = ["emoji"]
 
     default = True
 
@@ -87,36 +88,38 @@ class ReplyAction(BaseAction):
 
         reply_data格式:
         {
-            "text": "你好啊"  # 文本内容列表（可选）
-            "target": "锚定消息",  # 锚定消息的文本内容
-            "emojis": "微笑"  # 表情关键词列表（可选）
+            "description": "描述你想要发送的表情"
         }
         """
-        logger.info(f"{self.log_prefix} 决定回复: {self.reasoning}")
-
+        logger.info(f"{self.log_prefix} 决定发送表情")
         # 从聊天观察获取锚定消息
-        chatting_observation: ChattingObservation = next(
-            obs for obs in self.observations if isinstance(obs, ChattingObservation)
-        )
-        if reply_data.get("target"):
-            anchor_message = chatting_observation.search_message_by_text(reply_data["target"])
-        else:
-            anchor_message = None
+        # chatting_observation: ChattingObservation = next(
+        #     obs for obs in self.observations if isinstance(obs, ChattingObservation)
+        # )
+        # if reply_data.get("target"):
+        #     anchor_message = chatting_observation.search_message_by_text(reply_data["target"])
+        # else:
+        #     anchor_message = None
 
         # 如果没有找到锚点消息，创建一个占位符
-        if not anchor_message:
-            logger.info(f"{self.log_prefix} 未找到锚点消息，创建占位符")
-            anchor_message = await create_empty_anchor_message(
-                self.chat_stream.platform, self.chat_stream.group_info, self.chat_stream
-            )
-        else:
-            anchor_message.update_chat_stream(self.chat_stream)
+        # if not anchor_message:
+        #     logger.info(f"{self.log_prefix} 未找到锚点消息，创建占位符")
+        #     anchor_message = await create_empty_anchor_message(
+        #         self.chat_stream.platform, self.chat_stream.group_info, self.chat_stream
+        #     )
+        # else:
+        #     anchor_message.update_chat_stream(self.chat_stream)
+        
+        logger.info(f"{self.log_prefix} 为了表情包创建占位符")
+        anchor_message = await create_empty_anchor_message(
+            self.chat_stream.platform, self.chat_stream.group_info, self.chat_stream
+        )
 
-        success, reply_set = await self.replyer.deal_reply(
+        success, reply_set = await self.replyer.deal_emoji(
             cycle_timers=cycle_timers,
             action_data=reply_data,
             anchor_message=anchor_message,
-            reasoning=reasoning,
+            # reasoning=reasoning,
             thinking_id=thinking_id,
         )
 

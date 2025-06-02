@@ -224,39 +224,27 @@ class MemoryManager:
         Returns:
             包含总结、概括、关键概念和事件的字典
         """
-        prompt = f"""请对以下内容进行总结，总结成记忆，输出四部分：
+        prompt = f"""请对以下内容进行总结，总结成记忆，输出两部分：
 1. 记忆内容主题（精简，20字以内）：让用户可以一眼看出记忆内容是什么
-2. 记忆内容概括（200字以内）：让用户可以了解记忆内容的大致内容
-3. 关键概念和知识（keypoints）：多条，提取关键的概念、知识点和关键词，要包含对概念的解释
-4. 事件描述（events）：多条，描述谁（人物）在什么时候（时间）做了什么（事件）
+2. key_points：多条，包含关键的概念、事件，每条都要包含解释或描述，谁在什么时候干了什么
 
 内容：
 {content}
 
 请按以下JSON格式输出：
-```json
 {{
   "brief": "记忆内容主题（20字以内）",
-  "detailed": "记忆内容概括（200字以内）",
-  "keypoints": [
-    "概念1：解释",
-    "概念2：解释",
-    ...
-  ],
-  "events": [
-    "事件1：谁在什么时候做了什么",
-    "事件2：谁在什么时候做了什么",
+  "key_points": [
+    "要点1：解释或描述",
+    "要点2：解释或描述",
     ...
   ]
 }}
-```
 请确保输出是有效的JSON格式，不要添加任何额外的说明或解释。
 """
         default_summary = {
             "brief": "主题未知的记忆",
-            "detailed": "大致内容未知的记忆",
-            "keypoints": ["未知的概念"],
-            "events": ["未知的事件"],
+            "key_points": ["未知的要点"],
         }
 
         try:
@@ -288,29 +276,14 @@ class MemoryManager:
                 if "brief" not in json_result or not isinstance(json_result["brief"], str):
                     json_result["brief"] = "主题未知的记忆"
 
-                if "detailed" not in json_result or not isinstance(json_result["detailed"], str):
-                    json_result["detailed"] = "大致内容未知的记忆"
-
-                # 处理关键概念
-                if "keypoints" not in json_result or not isinstance(json_result["keypoints"], list):
-                    json_result["keypoints"] = ["未知的概念"]
+                # 处理关键要点
+                if "key_points" not in json_result or not isinstance(json_result["key_points"], list):
+                    json_result["key_points"] = ["未知的要点"]
                 else:
-                    # 确保keypoints中的每个项目都是字符串
-                    json_result["keypoints"] = [str(point) for point in json_result["keypoints"] if point is not None]
-                    if not json_result["keypoints"]:
-                        json_result["keypoints"] = ["未知的概念"]
-
-                # 处理事件
-                if "events" not in json_result or not isinstance(json_result["events"], list):
-                    json_result["events"] = ["未知的事件"]
-                else:
-                    # 确保events中的每个项目都是字符串
-                    json_result["events"] = [str(event) for event in json_result["events"] if event is not None]
-                    if not json_result["events"]:
-                        json_result["events"] = ["未知的事件"]
-
-                # 兼容旧版，将keypoints和events合并到key_points中
-                json_result["key_points"] = json_result["keypoints"] + json_result["events"]
+                    # 确保key_points中的每个项目都是字符串
+                    json_result["key_points"] = [str(point) for point in json_result["key_points"] if point is not None]
+                    if not json_result["key_points"]:
+                        json_result["key_points"] = ["未知的要点"]
 
                 return json_result
 
@@ -348,52 +321,31 @@ class MemoryManager:
 
         # 使用LLM根据要求对总结、概括和要点进行精简修改
         prompt = f"""
-请根据以下要求，对记忆内容的主题、概括、关键概念和事件进行精简，模拟记忆的遗忘过程：
+请根据以下要求，对记忆内容的主题和关键要点进行精简，模拟记忆的遗忘过程：
 要求：{requirements}
-你可以随机对关键概念和事件进行压缩，模糊或者丢弃，修改后，同样修改主题和概括
+你可以随机对关键要点进行压缩，模糊或者丢弃，修改后，同样修改主题
 
 目前主题：{summary["brief"]}
 
-目前概括：{summary["detailed"]}
+目前关键要点：
+{chr(10).join([f"- {point}" for point in summary.get("key_points", [])])}
 
-目前关键概念：
-{chr(10).join([f"- {point}" for point in summary.get("keypoints", [])])}
-
-目前事件：
-{chr(10).join([f"- {point}" for point in summary.get("events", [])])}
-
-请生成修改后的主题、概括、关键概念和事件，遵循以下格式：
+请生成修改后的主题和关键要点，遵循以下格式：
 ```json
 {{
     "brief": "修改后的主题（20字以内）",
-    "detailed": "修改后的概括（200字以内）",
-    "keypoints": [
-        "修改后的概念1：解释",
-        "修改后的概念2：解释"
-    ],
-    "events": [
-        "修改后的事件1：谁在什么时候做了什么",
-        "修改后的事件2：谁在什么时候做了什么"
+    "key_points": [
+        "修改后的要点1：解释或描述",
+        "修改后的要点2：解释或描述"
     ]
 }}
 ```
 请确保输出是有效的JSON格式，不要添加任何额外的说明或解释。
 """
-        # 检查summary中是否有旧版结构，转换为新版结构
-        if "keypoints" not in summary and "events" not in summary and "key_points" in summary:
-            # 尝试区分key_points中的keypoints和events
-            # 简单地将前半部分视为keypoints，后半部分视为events
-            key_points = summary.get("key_points", [])
-            halfway = len(key_points) // 2
-            summary["keypoints"] = key_points[:halfway] or ["未知的概念"]
-            summary["events"] = key_points[halfway:] or ["未知的事件"]
-
         # 定义默认的精简结果
         default_refined = {
             "brief": summary["brief"],
-            "detailed": summary["detailed"],
-            "keypoints": summary.get("keypoints", ["未知的概念"])[:1],  # 默认只保留第一个关键概念
-            "events": summary.get("events", ["未知的事件"])[:1],  # 默认只保留第一个事件
+            "key_points": summary.get("key_points", ["未知的要点"])[:1],  # 默认只保留第一个要点
         }
 
         try:
@@ -421,30 +373,17 @@ class MemoryManager:
                     logger.error(f"修复后的JSON不是字典类型: {type(refined_data)}")
                     refined_data = default_refined
 
-                # 更新总结、概括
+                # 更新总结
                 summary["brief"] = refined_data.get("brief", "主题未知的记忆")
-                summary["detailed"] = refined_data.get("detailed", "大致内容未知的记忆")
 
-                # 更新关键概念
-                keypoints = refined_data.get("keypoints", [])
-                if isinstance(keypoints, list) and keypoints:
-                    # 确保所有关键概念都是字符串
-                    summary["keypoints"] = [str(point) for point in keypoints if point is not None]
+                # 更新关键要点
+                key_points = refined_data.get("key_points", [])
+                if isinstance(key_points, list) and key_points:
+                    # 确保所有要点都是字符串
+                    summary["key_points"] = [str(point) for point in key_points if point is not None]
                 else:
-                    # 如果keypoints不是列表或为空，使用默认值
-                    summary["keypoints"] = ["主要概念已遗忘"]
-
-                # 更新事件
-                events = refined_data.get("events", [])
-                if isinstance(events, list) and events:
-                    # 确保所有事件都是字符串
-                    summary["events"] = [str(event) for event in events if event is not None]
-                else:
-                    # 如果events不是列表或为空，使用默认值
-                    summary["events"] = ["事件细节已遗忘"]
-
-                # 兼容旧版，维护key_points
-                summary["key_points"] = summary["keypoints"] + summary["events"]
+                    # 如果key_points不是列表或为空，使用默认值
+                    summary["key_points"] = ["主要要点已遗忘"]
 
             except Exception as e:
                 logger.error(f"精简记忆出错: {str(e)}")
@@ -452,9 +391,7 @@ class MemoryManager:
 
                 # 出错时使用简化的默认精简
                 summary["brief"] = summary["brief"] + " (已简化)"
-                summary["keypoints"] = summary.get("keypoints", ["未知的概念"])[:1]
-                summary["events"] = summary.get("events", ["未知的事件"])[:1]
-                summary["key_points"] = summary["keypoints"] + summary["events"]
+                summary["key_points"] = summary.get("key_points", ["未知的要点"])[:1]
 
         except Exception as e:
             logger.error(f"精简记忆调用LLM出错: {str(e)}")
@@ -573,27 +510,11 @@ class MemoryManager:
         # 如果有摘要信息，添加到提示中
         if summary1:
             prompt += f"记忆1主题：{summary1['brief']}\n"
-            prompt += f"记忆1概括：{summary1['detailed']}\n"
-
-            if "keypoints" in summary1:
-                prompt += "记忆1关键概念：\n" + "\n".join([f"- {point}" for point in summary1["keypoints"]]) + "\n\n"
-
-            if "events" in summary1:
-                prompt += "记忆1事件：\n" + "\n".join([f"- {point}" for point in summary1["events"]]) + "\n\n"
-            elif "key_points" in summary1:
-                prompt += "记忆1要点：\n" + "\n".join([f"- {point}" for point in summary1["key_points"]]) + "\n\n"
+            prompt += "记忆1关键要点：\n" + "\n".join([f"- {point}" for point in summary1.get("key_points", [])]) + "\n\n"
 
         if summary2:
             prompt += f"记忆2主题：{summary2['brief']}\n"
-            prompt += f"记忆2概括：{summary2['detailed']}\n"
-
-            if "keypoints" in summary2:
-                prompt += "记忆2关键概念：\n" + "\n".join([f"- {point}" for point in summary2["keypoints"]]) + "\n\n"
-
-            if "events" in summary2:
-                prompt += "记忆2事件：\n" + "\n".join([f"- {point}" for point in summary2["events"]]) + "\n\n"
-            elif "key_points" in summary2:
-                prompt += "记忆2要点：\n" + "\n".join([f"- {point}" for point in summary2["key_points"]]) + "\n\n"
+            prompt += "记忆2关键要点：\n" + "\n".join([f"- {point}" for point in summary2.get("key_points", [])]) + "\n\n"
 
         # 添加记忆原始内容
         prompt += f"""
@@ -608,15 +529,10 @@ class MemoryManager:
 {{
     "content": "合并后的记忆内容文本（尽可能保留原信息，但去除重复）",
     "brief": "合并后的主题（20字以内）",
-    "detailed": "合并后的概括（200字以内）",
-    "keypoints": [
-        "合并后的概念1：解释",
-        "合并后的概念2：解释",
-        "合并后的概念3：解释"
-    ],
-    "events": [
-        "合并后的事件1：谁在什么时候做了什么",
-        "合并后的事件2：谁在什么时候做了什么"
+    "key_points": [
+        "合并后的要点1：解释或描述",
+        "合并后的要点2：解释或描述",
+        "合并后的要点3：解释或描述"
     ]
 }}
 ```
@@ -627,40 +543,18 @@ class MemoryManager:
         default_merged = {
             "content": f"{content1}\n\n{content2}",
             "brief": f"合并：{summary1['brief']} + {summary2['brief']}",
-            "detailed": f"合并了两个记忆：{summary1['detailed']} 以及 {summary2['detailed']}",
-            "keypoints": [],
-            "events": [],
+            "key_points": [],
         }
 
-        # 合并旧版key_points
+        # 合并key_points
         if "key_points" in summary1:
-            default_merged["keypoints"].extend(summary1.get("keypoints", []))
-            default_merged["events"].extend(summary1.get("events", []))
-            # 如果没有新的结构，尝试从旧结构分离
-            if not default_merged["keypoints"] and not default_merged["events"] and "key_points" in summary1:
-                key_points = summary1["key_points"]
-                halfway = len(key_points) // 2
-                default_merged["keypoints"].extend(key_points[:halfway])
-                default_merged["events"].extend(key_points[halfway:])
-
+            default_merged["key_points"].extend(summary1["key_points"])
         if "key_points" in summary2:
-            default_merged["keypoints"].extend(summary2.get("keypoints", []))
-            default_merged["events"].extend(summary2.get("events", []))
-            # 如果没有新的结构，尝试从旧结构分离
-            if not default_merged["keypoints"] and not default_merged["events"] and "key_points" in summary2:
-                key_points = summary2["key_points"]
-                halfway = len(key_points) // 2
-                default_merged["keypoints"].extend(key_points[:halfway])
-                default_merged["events"].extend(key_points[halfway:])
+            default_merged["key_points"].extend(summary2["key_points"])
 
         # 确保列表不为空
-        if not default_merged["keypoints"]:
-            default_merged["keypoints"] = ["合并的关键概念"]
-        if not default_merged["events"]:
-            default_merged["events"] = ["合并的事件"]
-
-        # 添加key_points兼容
-        default_merged["key_points"] = default_merged["keypoints"] + default_merged["events"]
+        if not default_merged["key_points"]:
+            default_merged["key_points"] = ["合并的要点"]
 
         try:
             # 调用LLM合并记忆
@@ -694,29 +588,14 @@ class MemoryManager:
                 if "brief" not in merged_data or not isinstance(merged_data["brief"], str):
                     merged_data["brief"] = default_merged["brief"]
 
-                if "detailed" not in merged_data or not isinstance(merged_data["detailed"], str):
-                    merged_data["detailed"] = default_merged["detailed"]
-
-                # 处理关键概念
-                if "keypoints" not in merged_data or not isinstance(merged_data["keypoints"], list):
-                    merged_data["keypoints"] = default_merged["keypoints"]
+                # 处理关键要点
+                if "key_points" not in merged_data or not isinstance(merged_data["key_points"], list):
+                    merged_data["key_points"] = default_merged["key_points"]
                 else:
-                    # 确保keypoints中的每个项目都是字符串
-                    merged_data["keypoints"] = [str(point) for point in merged_data["keypoints"] if point is not None]
-                    if not merged_data["keypoints"]:
-                        merged_data["keypoints"] = ["合并的关键概念"]
-
-                # 处理事件
-                if "events" not in merged_data or not isinstance(merged_data["events"], list):
-                    merged_data["events"] = default_merged["events"]
-                else:
-                    # 确保events中的每个项目都是字符串
-                    merged_data["events"] = [str(event) for event in merged_data["events"] if event is not None]
-                    if not merged_data["events"]:
-                        merged_data["events"] = ["合并的事件"]
-
-                # 添加key_points兼容
-                merged_data["key_points"] = merged_data["keypoints"] + merged_data["events"]
+                    # 确保key_points中的每个项目都是字符串
+                    merged_data["key_points"] = [str(point) for point in merged_data["key_points"] if point is not None]
+                    if not merged_data["key_points"]:
+                        merged_data["key_points"] = ["合并的要点"]
 
             except Exception as e:
                 logger.error(f"合并记忆时处理JSON出错: {str(e)}")
@@ -744,9 +623,6 @@ class MemoryManager:
         # 设置合并后的摘要
         summary = {
             "brief": merged_data["brief"],
-            "detailed": merged_data["detailed"],
-            "keypoints": merged_data["keypoints"],
-            "events": merged_data["events"],
             "key_points": merged_data["key_points"],
         }
         merged_memory.set_summary(summary)

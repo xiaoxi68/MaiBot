@@ -16,6 +16,7 @@ from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.individuality.individuality import individuality
 from src.chat.focus_chat.planners.action_manager import ActionManager
 from json_repair import repair_json
+from src.chat.focus_chat.planners.base_planner import BasePlanner
 
 logger = get_logger("planner")
 
@@ -73,17 +74,15 @@ action_name: {action_name}
     )
 
 
-class ActionPlanner:
+class ActionPlanner(BasePlanner):
     def __init__(self, log_prefix: str, action_manager: ActionManager):
-        self.log_prefix = log_prefix
+        super().__init__(log_prefix, action_manager)
         # LLM规划器配置
         self.planner_llm = LLMRequest(
             model=global_config.model.focus_planner,
             max_tokens=1000,
             request_type="focus.planner",  # 用于动作规划
         )
-
-        self.action_manager = action_manager
 
     async def plan(self, all_plan_info: List[InfoBase], running_memorys: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
@@ -117,6 +116,7 @@ class ActionPlanner:
             cycle_info = ""
             structured_info = ""
             extra_info = []
+            current_mind = ""
             observed_messages = []
             observed_messages_str = ""
             chat_type = "group"
