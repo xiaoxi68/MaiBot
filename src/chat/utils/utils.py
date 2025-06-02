@@ -392,8 +392,8 @@ def process_llm_response(text: str) -> list[str]:
 def calculate_typing_time(
     input_string: str,
     thinking_start_time: float,
-    chinese_time: float = 0.2,
-    english_time: float = 0.1,
+    chinese_time: float = 0.3,
+    english_time: float = 0.15,
     is_emoji: bool = False,
 ) -> float:
     """
