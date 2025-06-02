@@ -1,6 +1,9 @@
 import time
 import os
 from typing import Optional, Dict, Any
+from src.common.logger_manager import get_logger
+
+logger = get_logger("hfc")  # Logger Name Changed
 
 log_dir = "log/log_cycle_debug/"
 
@@ -81,17 +84,19 @@ class CycleDetail:
         """完成循环，记录结束时间"""
         self.end_time = time.time()
 
-        # 处理 prefix，只保留中英文字符
+        # 处理 prefix，只保留中英文字符和基本标点
         if not self.prefix:
             self.prefix = "group"
         else:
-            # 只保留中文和英文字符
-            self.prefix = "".join(char for char in self.prefix if "\u4e00" <= char <= "\u9fff" or char.isascii())
-            if not self.prefix:
-                self.prefix = "group"
+            # 只保留中文、英文字母、数字和基本标点
+            allowed_chars = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_")
+            self.prefix = "".join(char for char in self.prefix if "\u4e00" <= char <= "\u9fff" or char in allowed_chars) or "group"
 
         current_time_minute = time.strftime("%Y%m%d_%H%M", time.localtime())
-        self.log_cycle_to_file(log_dir + self.prefix + f"/{current_time_minute}_cycle_" + str(self.cycle_id) + ".json")
+        try:
+            self.log_cycle_to_file(log_dir + self.prefix + f"/{current_time_minute}_cycle_" + str(self.cycle_id) + ".json")
+        except Exception as e:
+            logger.warning(f"写入文件日志，可能是群名称包含非法字符: {e}")
 
     def log_cycle_to_file(self, file_path: str):
         """将循环信息写入文件"""
