@@ -95,13 +95,20 @@ class CycleDetail:
 
     def log_cycle_to_file(self, file_path: str):
         """将循环信息写入文件"""
-        # 如果目录不存在，则创建目录
+        # 如果目录不存在，则创建目
         dir_name = os.path.dirname(file_path)
+        # 去除特殊字符，保留字母、数字、下划线、中划线和中文
+        dir_name = "".join(
+            char for char in dir_name if char.isalnum() or char in ["_", "-", "/"] or "\u4e00" <= char <= "\u9fff"
+        )
+        print("dir_name:", dir_name)
         if dir_name and not os.path.exists(dir_name):
             os.makedirs(dir_name, exist_ok=True)
         # 写入文件
         import json
 
+        file_path = os.path.join(dir_name, os.path.basename(file_path))
+        print("file_path:", file_path)
         with open(file_path, "a", encoding="utf-8") as f:
             f.write(json.dumps(self.to_dict(), ensure_ascii=False) + "\n")
 
