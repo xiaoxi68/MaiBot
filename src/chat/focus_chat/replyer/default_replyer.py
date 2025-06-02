@@ -30,6 +30,11 @@ logger = get_logger("expressor")
 def init_prompt():
     Prompt(
         """
+你可以参考以下的语言习惯，如果情景合适就使用，不要盲目使用,不要生硬使用，而是结合到表达中：
+{style_habbits}
+请你根据情景使用以下句法：
+{grammar_habbits}
+        
 {extra_info_block}
 
 {time_block}
@@ -40,11 +45,7 @@ def init_prompt():
 
 {chat_target}
 {identity}，在这聊天中，"{target_message}"引起了你的注意，你想要在群里发言或者回复这条消息。
-你需要使用合适的语法和句法，参考聊天内容，组织一条日常且口语化的回复。注意不要复读你说过的话。
-你可以参考以下的语言习惯，如果情景合适就使用，不要盲目使用,不要生硬使用，而是结合到表达中：
-{style_habbits}
-请你根据情景使用以下句法：
-{grammar_habbits}
+你需要使用合适的语言习惯和句法，参考聊天内容，组织一条日常且口语化的回复。注意不要复读你说过的话。
 {config_expression_style}，请注意不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出回复内容。
 {keywords_reaction_prompt}
 请不要输出违法违规内容，不要输出色情，暴力，政治相关内容，如有敏感内容，请规避。
