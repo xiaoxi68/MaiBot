@@ -20,13 +20,14 @@ class EmojiAction(BaseAction):
     """
 
     action_name: str = "emoji"
-    action_description: str = "当你想发送一个表情"
+    action_description: str = "当你想发送一个表情辅助你的回复表达"
     action_parameters: dict[str:str] = {
-        "description": "描述你想要发送的表情",
+        "description": "文字描述你想要发送的表情",
     }
     action_require: list[str] = [
         "你想要发送一个表情",
         "表达情绪时可以选择使用",
+        "一般在你回复之后可以选择性使用"
     ]
 
     associated_types: list[str] = ["emoji"]
@@ -90,8 +91,7 @@ class EmojiAction(BaseAction):
             "description": "描述你想要发送的表情"
         }
         """
-        logger.info(f"{self.log_prefix} 决定发送表情: {self.reasoning}")
-
+        logger.info(f"{self.log_prefix} 决定发送表情")
         # 从聊天观察获取锚定消息
         # chatting_observation: ChattingObservation = next(
         #     obs for obs in self.observations if isinstance(obs, ChattingObservation)

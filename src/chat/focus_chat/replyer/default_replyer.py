@@ -193,12 +193,17 @@ class DefaultReplyer:
         
         
         try:
+            has_sent_something = False
+            sent_msg_list = []
             reply = []
             with Timer("选择表情", cycle_timers):
                 emoji_keyword = action_data.get("description", [])
-                emoji_base64 = await self._choose_emoji(emoji_keyword)
+                emoji_base64, description = await self._choose_emoji(emoji_keyword)
                 if emoji_base64:
+                    logger.info(f"选择表情: {description}")
                     reply.append(("emoji", emoji_base64))
+                else:
+                    logger.warning(f"{self.log_prefix} 没有找到合适表情")
                     
                 
             if reply:
@@ -559,11 +564,12 @@ class DefaultReplyer:
         选择表情，根据send_emoji文本选择表情，返回表情base64
         """
         emoji_base64 = ""
+        description = ""
         emoji_raw = await emoji_manager.get_emoji_for_text(send_emoji)
         if emoji_raw:
-            emoji_path, _description = emoji_raw
+            emoji_path, description = emoji_raw
             emoji_base64 = image_path_to_base64(emoji_path)
-        return emoji_base64
+        return emoji_base64, description
 
     async def _build_single_sending_message(
         self,
