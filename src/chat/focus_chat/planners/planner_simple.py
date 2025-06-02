@@ -47,7 +47,6 @@ def init_prompt():
 请你以下面格式输出：
 {{
     "action": "action_name"
-    "reasoning": "理由",
     "参数": "参数的值"(可能有多个参数),
 }}
 
