@@ -496,6 +496,7 @@ class MemoryManager:
         # 如果有摘要信息，添加到提示中
         if summary1:
             prompt += f"记忆1主题：{summary1['brief']}\n"
+
             prompt += "记忆1关键要点：\n" + "\n".join([f"- {point}" for point in summary1.get("points", [])]) + "\n\n"
 
         if summary2:

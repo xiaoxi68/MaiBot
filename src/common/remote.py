@@ -90,7 +90,9 @@ class TelemetryHeartBeatTask(AsyncTask):
                 else:
                     logger.error("无效的服务端响应")
             else:
-                logger.error(f"请求UUID失败，不过你还是可以正常使用麦麦，状态码: {response.status_code}, 响应内容: {response.text}")
+                logger.error(
+                    f"请求UUID失败，不过你还是可以正常使用麦麦，状态码: {response.status_code}, 响应内容: {response.text}"
+                )
 
             # 请求失败，重试次数+1
             try_count += 1

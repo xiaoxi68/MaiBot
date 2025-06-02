@@ -6,7 +6,6 @@ from typing import Tuple, List
 from src.chat.heart_flow.observation.observation import Observation
 from src.chat.focus_chat.replyer.default_replyer import DefaultReplyer
 from src.chat.message_receive.chat_stream import ChatStream
-from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 from src.chat.focus_chat.hfc_utils import create_empty_anchor_message
 
 logger = get_logger("action_taken")
@@ -24,11 +23,7 @@ class EmojiAction(BaseAction):
     action_parameters: dict[str:str] = {
         "description": "文字描述你想要发送的表情",
     }
-    action_require: list[str] = [
-        "你想要发送一个表情",
-        "表达情绪时可以选择使用",
-        "一般在你回复之后可以选择性使用"
-    ]
+    action_require: list[str] = ["你想要发送一个表情", "表达情绪时可以选择使用", "一般在你回复之后可以选择性使用"]
 
     associated_types: list[str] = ["emoji"]
 
@@ -109,7 +104,7 @@ class EmojiAction(BaseAction):
         #     )
         # else:
         #     anchor_message.update_chat_stream(self.chat_stream)
-        
+
         logger.info(f"{self.log_prefix} 为了表情包创建占位符")
         anchor_message = await create_empty_anchor_message(
             self.chat_stream.platform, self.chat_stream.group_info, self.chat_stream

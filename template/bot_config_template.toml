@@ -87,6 +87,8 @@ emoji_response_penalty = 0 # 对其他人发的表情包回复惩罚系数，设
 mentioned_bot_inevitable_reply = true # 提及 bot 必然回复
 at_bot_inevitable_reply = true # @bot 必然回复
 
+enable_planner = false # 是否启用动作规划器（实验性功能，与focus_chat共享actions）
+
 down_frequency_rate = 3 # 降低回复频率的群组回复意愿降低系数 除法
 talk_frequency_down_groups = []  #降低回复频率的群号码
 
