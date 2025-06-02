@@ -177,6 +177,52 @@ class DefaultReplyer:
             return False, None
 
         # --- 回复器 (Replier) 的定义 --- #
+        
+    async def deal_emoji(
+        self,
+        anchor_message: MessageRecv,
+        thinking_id: str,
+        action_data: Dict[str, Any],
+        cycle_timers: dict,
+    ) -> Optional[List[str]]:
+        """
+        表情动作处理类
+        """
+        
+        await self._create_thinking_message(anchor_message, thinking_id)
+        
+        
+        try:
+            reply = []
+            with Timer("选择表情", cycle_timers):
+                emoji_keyword = action_data.get("description", [])
+                emoji_base64 = await self._choose_emoji(emoji_keyword)
+                if emoji_base64:
+                    reply.append(("emoji", emoji_base64))
+                    
+                
+            if reply:
+                with Timer("发送表情", cycle_timers):
+                    sent_msg_list = await self.send_response_messages(
+                        anchor_message=anchor_message,
+                        thinking_id=thinking_id,
+                        response_set=reply,
+                    )
+                has_sent_something = True
+            else:
+                logger.warning(f"{self.log_prefix} 表情发送失败")
+
+            if not has_sent_something:
+                logger.warning(f"{self.log_prefix} 表情发送失败")
+
+            return has_sent_something, sent_msg_list
+
+        except Exception as e:
+            logger.error(f"回复失败: {e}")
+            traceback.print_exc()
+            return False, None
+    
+    
 
     async def reply(
         self,
@@ -426,13 +472,15 @@ class DefaultReplyer:
 
         # 检查思考过程是否仍在进行，并获取开始时间
         if thinking_id:
+            # print(f"thinking_id: {thinking_id}")
             thinking_start_time = await self.heart_fc_sender.get_thinking_start_time(chat_id, thinking_id)
         else:
-            thinking_id = "ds" + str(round(time.time(), 2))
+            print("thinking_id is None")
+            # thinking_id = "ds" + str(round(time.time(), 2))
             thinking_start_time = time.time()
 
         if thinking_start_time is None:
-            logger.error(f"[{stream_name}]思考过程未找到或已结束，无法发送回复。")
+            logger.error(f"[{stream_name}]replyer思考过程未找到或已结束，无法发送回复。")
             return None
 
         mark_head = False

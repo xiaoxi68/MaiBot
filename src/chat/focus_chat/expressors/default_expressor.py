@@ -395,7 +395,7 @@ class DefaultExpressor:
             thinking_start_time = time.time()
 
         if thinking_start_time is None:
-            logger.error(f"[{stream_name}]思考过程未找到或已结束，无法发送回复。")
+            logger.error(f"[{stream_name}]expressor思考过程未找到或已结束，无法发送回复。")
             return None
 
         mark_head = False
