@@ -208,15 +208,6 @@ class EmojiConfig(ConfigBase):
     check_interval: int = 120
     """表情包检查间隔（分钟）"""
 
-    save_pic: bool = True
-    """是否保存图片"""
-
-    save_emoji: bool = True
-    """是否保存表情包"""
-
-    cache_emoji: bool = True
-    """是否缓存表情包"""
-
     steal_emoji: bool = True
     """是否偷取表情包，让麦麦可以发送她保存的这些表情包"""
 

@@ -51,19 +51,18 @@ class WorkingMemory:
             except Exception as e:
                 print(f"自动衰减记忆时出错: {str(e)}")
 
-    async def add_memory(self, content: Any, from_source: str = "", tags: Optional[List[str]] = None):
+    async def add_memory(self, content: Any, from_source: str = ""):
         """
         添加一段记忆到指定聊天
 
         Args:
             content: 记忆内容
             from_source: 数据来源
-            tags: 数据标签列表
 
         Returns:
             包含记忆信息的字典
         """
-        memory = await self.memory_manager.push_with_summary(content, from_source, tags)
+        memory = await self.memory_manager.push_with_summary(content, from_source)
         if len(self.memory_manager.get_all_items()) > self.max_memories_per_chat:
             self.remove_earliest_memory()
 

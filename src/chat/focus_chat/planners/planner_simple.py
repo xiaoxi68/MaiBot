@@ -136,7 +136,8 @@ class ActionPlanner(BasePlanner):
                     self_info = info.get_processed_info()
                 elif isinstance(info, StructuredInfo):
                     structured_info = info.get_processed_info()
-                    # print(f"structured_info: {structured_info}")
+                else:
+                    extra_info.append(info.get_processed_info())
                 # elif not isinstance(info, ActionInfo):  # 跳过已处理的ActionInfo
                 # extra_info.append(info.get_processed_info())
 
@@ -216,6 +217,15 @@ class ActionPlanner(BasePlanner):
                             action_data[key] = value
 
                     action_data["identity"] = self_info
+                    
+                    extra_info_block = "\n".join(extra_info)
+                    extra_info_block += f"\n{structured_info}"
+                    if extra_info or structured_info:
+                        extra_info_block = f"以下是一些额外的信息，现在请你阅读以下内容，进行决策\n{extra_info_block}\n以上是一些额外的信息，现在请你阅读以下内容，进行决策"
+                    else:
+                        extra_info_block = ""
+                    
+                    action_data["extra_info_block"] = extra_info_block
 
                     # 对于reply动作不需要额外处理，因为相关字段已经在上面的循环中添加到action_data
 
@@ -253,9 +263,13 @@ class ActionPlanner(BasePlanner):
         )
 
         action_result = {"action_type": action, "action_data": action_data, "reasoning": reasoning}
+    
+
+    
 
         plan_result = {
             "action_result": action_result,
+            # "extra_info_block": extra_info_block,
             "current_mind": current_mind,
             "observed_messages": observed_messages,
             "action_prompt": prompt,
@@ -284,7 +298,7 @@ class ActionPlanner(BasePlanner):
                 if running_memorys:
                     memory_str = "以下是当前在聊天中，你回忆起的记忆：\n"
                     for running_memory in running_memorys:
-                        memory_str += f"{running_memory['topic']}: {running_memory['content']}\n"
+                        memory_str += f"{running_memory['content']}\n"
 
             chat_context_description = "你现在正在一个群聊中"
             chat_target_name = None  # Only relevant for private

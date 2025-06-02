@@ -32,6 +32,10 @@ def init_prompt():
         """
 你可以参考以下的语言习惯，如果情景合适就使用，不要盲目使用,不要生硬使用，而是结合到表达中：
 {style_habbits}
+请你根据情景使用以下句法：
+{grammar_habbits}
+        
+{extra_info_block}
 
 {time_block}
 你现在正在群里聊天，以下是群里正在进行的聊天内容：
@@ -41,9 +45,7 @@ def init_prompt():
 
 {chat_target}
 {identity}，在这聊天中，"{target_message}"引起了你的注意，你想要在群里发言或者回复这条消息。
-你需要使用合适的语法和句法，参考聊天内容，组织一条日常且口语化的回复。注意不要复读你说过的话。
-请你根据情景使用以下句法：
-{grammar_habbits}
+你需要使用合适的语言习惯和句法，参考聊天内容，组织一条日常且口语化的回复。注意不要复读你说过的话。
 {config_expression_style}，请注意不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出回复内容。
 {keywords_reaction_prompt}
 请不要输出违法违规内容，不要输出色情，暴力，政治相关内容，如有敏感内容，请规避。
@@ -55,8 +57,7 @@ def init_prompt():
 
     Prompt(
         """
-你可以参考以下的语言习惯，如果情景合适就使用，不要盲目使用,不要生硬使用，而是结合到表达中：
-{style_habbits}
+{extra_info_block}
 
 {time_block}
 你现在正在聊天，以下是你和对方正在进行的聊天内容：
@@ -67,8 +68,10 @@ def init_prompt():
 {chat_target}
 {identity}，在这聊天中，"{target_message}"引起了你的注意，你想要发言或者回复这条消息。
 你需要使用合适的语法和句法，参考聊天内容，组织一条日常且口语化的回复。注意不要复读你说过的话。
-请你根据情景使用以下句法：
+你可以参考以下的语言习惯和句法，如果情景合适就使用，不要盲目使用,不要生硬使用，而是结合到表达中：
+{style_habbits}
 {grammar_habbits}
+
 {config_expression_style}，请注意不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出回复内容。
 {keywords_reaction_prompt}
 请不要输出违法违规内容，不要输出色情，暴力，政治相关内容，如有敏感内容，请规避。
@@ -263,6 +266,7 @@ class DefaultReplyer:
 
             target_message = action_data.get("target", "")
             identity = action_data.get("identity", "")
+            extra_info_block = action_data.get("extra_info_block", "")
 
             # 3. 构建 Prompt
             with Timer("构建Prompt", {}):  # 内部计时器，可选保留
@@ -270,6 +274,7 @@ class DefaultReplyer:
                     chat_stream=self.chat_stream,  # Pass the stream object
                     # in_mind_reply=in_mind_reply,
                     identity=identity,
+                    extra_info_block=extra_info_block,
                     reason=reason,
                     sender_name=sender_name_for_prompt,  # Pass determined name
                     target_message=target_message,
@@ -330,6 +335,7 @@ class DefaultReplyer:
         chat_stream,
         sender_name,
         # in_mind_reply,
+        extra_info_block,
         identity,
         target_message,
         config_expression_style,
@@ -425,6 +431,7 @@ class DefaultReplyer:
                 grammar_habbits=grammar_habbits_str,
                 chat_target=chat_target_1,
                 chat_info=chat_talking_prompt,
+                extra_info_block=extra_info_block,
                 time_block=time_block,
                 # bot_name=global_config.bot.nickname,
                 # prompt_personality="",
@@ -444,6 +451,7 @@ class DefaultReplyer:
                 grammar_habbits=grammar_habbits_str,
                 chat_target=chat_target_1,
                 chat_info=chat_talking_prompt,
+                extra_info_block=extra_info_block,
                 time_block=time_block,
                 # bot_name=global_config.bot.nickname,
                 # prompt_personality="",

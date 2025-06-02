@@ -71,14 +71,13 @@ class MemoryManager:
 
         return memory_item.id
 
-    async def push_with_summary(self, data: T, from_source: str = "", tags: Optional[List[str]] = None) -> MemoryItem:
+    async def push_with_summary(self, data: T, from_source: str = "") -> MemoryItem:
         """
         推送一段有类型的信息到工作记忆中，并自动生成总结
 
         Args:
             data: 要存储的数据
             from_source: 数据来源
-            tags: 数据标签列表
 
         Returns:
             包含原始数据和总结信息的字典
@@ -88,11 +87,8 @@ class MemoryManager:
             # 先生成总结
             summary = await self.summarize_memory_item(data)
 
-            # 准备标签
-            memory_tags = list(tags) if tags else []
-
             # 创建记忆项
-            memory_item = MemoryItem(data, from_source, memory_tags)
+            memory_item = MemoryItem(data, from_source, brief=summary.get("brief", ""))
 
             # 将总结信息保存到记忆项中
             memory_item.set_summary(summary)
@@ -103,7 +99,7 @@ class MemoryManager:
             return memory_item
         else:
             # 非字符串类型，直接创建并推送记忆项
-            memory_item = MemoryItem(data, from_source, tags)
+            memory_item = MemoryItem(data, from_source)
             self.push_item(memory_item)
 
             return memory_item
@@ -136,7 +132,6 @@ class MemoryManager:
         self,
         data_type: Optional[Type] = None,
         source: Optional[str] = None,
-        tags: Optional[List[str]] = None,
         start_time: Optional[float] = None,
         end_time: Optional[float] = None,
         memory_id: Optional[str] = None,
@@ -150,7 +145,6 @@ class MemoryManager:
         Args:
             data_type: 要查找的数据类型
             source: 数据来源
-            tags: 必须包含的标签列表
             start_time: 开始时间戳
             end_time: 结束时间戳
             memory_id: 特定记忆项ID
@@ -191,10 +185,6 @@ class MemoryManager:
                 if source is not None and not item.matches_source(source):
                     continue
 
-                # 检查标签是否匹配
-                if tags is not None and not item.has_all_tags(tags):
-                    continue
-
                 # 检查时间范围
                 if start_time is not None and item.timestamp < start_time:
                     continue
@@ -226,25 +216,24 @@ class MemoryManager:
         """
         prompt = f"""请对以下内容进行总结，总结成记忆，输出两部分：
 1. 记忆内容主题（精简，20字以内）：让用户可以一眼看出记忆内容是什么
-2. key_points：多条，包含关键的概念、事件，每条都要包含解释或描述，谁在什么时候干了什么
+2. content：一到三条，包含关键的概念、事件，每条都要包含解释或描述，谁在什么时候干了什么
 
 内容：
 {content}
 
 请按以下JSON格式输出：
 {{
-  "brief": "记忆内容主题（20字以内）",
-  "key_points": [
-    "要点1：解释或描述",
-    "要点2：解释或描述",
-    ...
+  "brief": "记忆内容主题",
+  "points": [
+    "内容",
+    "内容"
   ]
 }}
 请确保输出是有效的JSON格式，不要添加任何额外的说明或解释。
 """
         default_summary = {
             "brief": "主题未知的记忆",
-            "key_points": ["未知的要点"],
+            "points": ["未知的要点"],
         }
 
         try:
@@ -277,13 +266,13 @@ class MemoryManager:
                     json_result["brief"] = "主题未知的记忆"
 
                 # 处理关键要点
-                if "key_points" not in json_result or not isinstance(json_result["key_points"], list):
-                    json_result["key_points"] = ["未知的要点"]
+                if "points" not in json_result or not isinstance(json_result["points"], list):
+                    json_result["points"] = ["未知的要点"]
                 else:
-                    # 确保key_points中的每个项目都是字符串
-                    json_result["key_points"] = [str(point) for point in json_result["key_points"] if point is not None]
-                    if not json_result["key_points"]:
-                        json_result["key_points"] = ["未知的要点"]
+                    # 确保points中的每个项目都是字符串
+                    json_result["points"] = [str(point) for point in json_result["points"] if point is not None]
+                    if not json_result["points"]:
+                        json_result["points"] = ["未知的要点"]
 
                 return json_result
 
@@ -328,15 +317,15 @@ class MemoryManager:
 目前主题：{summary["brief"]}
 
 目前关键要点：
-{chr(10).join([f"- {point}" for point in summary.get("key_points", [])])}
+{chr(10).join([f"- {point}" for point in summary.get("points", [])])}
 
 请生成修改后的主题和关键要点，遵循以下格式：
 ```json
 {{
     "brief": "修改后的主题（20字以内）",
-    "key_points": [
-        "修改后的要点1：解释或描述",
-        "修改后的要点2：解释或描述"
+    "points": [
+        "修改后的要点",
+        "修改后的要点"
     ]
 }}
 ```
@@ -345,7 +334,7 @@ class MemoryManager:
         # 定义默认的精简结果
         default_refined = {
             "brief": summary["brief"],
-            "key_points": summary.get("key_points", ["未知的要点"])[:1],  # 默认只保留第一个要点
+            "points": summary.get("points", ["未知的要点"])[:1],  # 默认只保留第一个要点
         }
 
         try:
@@ -377,13 +366,13 @@ class MemoryManager:
                 summary["brief"] = refined_data.get("brief", "主题未知的记忆")
 
                 # 更新关键要点
-                key_points = refined_data.get("key_points", [])
-                if isinstance(key_points, list) and key_points:
+                points = refined_data.get("points", [])
+                if isinstance(points, list) and points:
                     # 确保所有要点都是字符串
-                    summary["key_points"] = [str(point) for point in key_points if point is not None]
+                    summary["points"] = [str(point) for point in points if point is not None]
                 else:
-                    # 如果key_points不是列表或为空，使用默认值
-                    summary["key_points"] = ["主要要点已遗忘"]
+                    # 如果points不是列表或为空，使用默认值
+                    summary["points"] = ["主要要点已遗忘"]
 
             except Exception as e:
                 logger.error(f"精简记忆出错: {str(e)}")
@@ -391,7 +380,7 @@ class MemoryManager:
 
                 # 出错时使用简化的默认精简
                 summary["brief"] = summary["brief"] + " (已简化)"
-                summary["key_points"] = summary.get("key_points", ["未知的要点"])[:1]
+                summary["points"] = summary.get("points", ["未知的要点"])[:1]
 
         except Exception as e:
             logger.error(f"精简记忆调用LLM出错: {str(e)}")
@@ -492,9 +481,6 @@ class MemoryManager:
         if not memory_item1 or not memory_item2:
             raise ValueError("无法找到指定的记忆项")
 
-        content1 = memory_item1.data
-        content2 = memory_item2.data
-
         # 获取记忆的摘要信息（如果有）
         summary1 = memory_item1.summary
         summary2 = memory_item2.summary
@@ -510,55 +496,42 @@ class MemoryManager:
         # 如果有摘要信息，添加到提示中
         if summary1:
             prompt += f"记忆1主题：{summary1['brief']}\n"
-            prompt += (
-                "记忆1关键要点：\n" + "\n".join([f"- {point}" for point in summary1.get("key_points", [])]) + "\n\n"
-            )
+
+            prompt += "记忆1关键要点：\n" + "\n".join([f"- {point}" for point in summary1.get("points", [])]) + "\n\n"
 
         if summary2:
             prompt += f"记忆2主题：{summary2['brief']}\n"
-            prompt += (
-                "记忆2关键要点：\n" + "\n".join([f"- {point}" for point in summary2.get("key_points", [])]) + "\n\n"
-            )
+            prompt += "记忆2关键要点：\n" + "\n".join([f"- {point}" for point in summary2.get("points", [])]) + "\n\n"
 
-        # 添加记忆原始内容
-        prompt += f"""
-记忆1原始内容：
-{content1}
-
-记忆2原始内容：
-{content2}
-
+        prompt += """
 请按以下JSON格式输出合并结果：
 ```json
-{{
-    "content": "合并后的记忆内容文本（尽可能保留原信息，但去除重复）",
+{
     "brief": "合并后的主题（20字以内）",
-    "key_points": [
-        "合并后的要点1：解释或描述",
-        "合并后的要点2：解释或描述",
-        "合并后的要点3：解释或描述"
+    "points": [
+        "合并后的要点",
+        "合并后的要点"
     ]
-}}
+}
 ```
 请确保输出是有效的JSON格式，不要添加任何额外的说明或解释。
 """
 
         # 默认合并结果
         default_merged = {
-            "content": f"{content1}\n\n{content2}",
             "brief": f"合并：{summary1['brief']} + {summary2['brief']}",
-            "key_points": [],
+            "points": [],
         }
 
-        # 合并key_points
-        if "key_points" in summary1:
-            default_merged["key_points"].extend(summary1["key_points"])
-        if "key_points" in summary2:
-            default_merged["key_points"].extend(summary2["key_points"])
+        # 合并points
+        if "points" in summary1:
+            default_merged["points"].extend(summary1["points"])
+        if "points" in summary2:
+            default_merged["points"].extend(summary2["points"])
 
         # 确保列表不为空
-        if not default_merged["key_points"]:
-            default_merged["key_points"] = ["合并的要点"]
+        if not default_merged["points"]:
+            default_merged["points"] = ["合并的要点"]
 
         try:
             # 调用LLM合并记忆
@@ -585,21 +558,17 @@ class MemoryManager:
                     logger.error(f"修复后的JSON不是字典类型: {type(merged_data)}")
                     merged_data = default_merged
 
-                # 确保所有必要字段都存在且类型正确
-                if "content" not in merged_data or not isinstance(merged_data["content"], str):
-                    merged_data["content"] = default_merged["content"]
-
                 if "brief" not in merged_data or not isinstance(merged_data["brief"], str):
                     merged_data["brief"] = default_merged["brief"]
 
                 # 处理关键要点
-                if "key_points" not in merged_data or not isinstance(merged_data["key_points"], list):
-                    merged_data["key_points"] = default_merged["key_points"]
+                if "points" not in merged_data or not isinstance(merged_data["points"], list):
+                    merged_data["points"] = default_merged["points"]
                 else:
-                    # 确保key_points中的每个项目都是字符串
-                    merged_data["key_points"] = [str(point) for point in merged_data["key_points"] if point is not None]
-                    if not merged_data["key_points"]:
-                        merged_data["key_points"] = ["合并的要点"]
+                    # 确保points中的每个项目都是字符串
+                    merged_data["points"] = [str(point) for point in merged_data["points"] if point is not None]
+                    if not merged_data["points"]:
+                        merged_data["points"] = ["合并的要点"]
 
             except Exception as e:
                 logger.error(f"合并记忆时处理JSON出错: {str(e)}")
@@ -611,9 +580,6 @@ class MemoryManager:
             merged_data = default_merged
 
         # 创建新的记忆项
-        # 合并记忆项的标签
-        merged_tags = memory_item1.tags.union(memory_item2.tags)
-
         # 取两个记忆项中更强的来源
         merged_source = (
             memory_item1.from_source
@@ -621,13 +587,13 @@ class MemoryManager:
             else memory_item2.from_source
         )
 
-        # 创建新的记忆项
-        merged_memory = MemoryItem(data=merged_data["content"], from_source=merged_source, tags=list(merged_tags))
+        # 创建新的记忆项，使用空字符串作为data
+        merged_memory = MemoryItem(data="", from_source=merged_source, brief=merged_data["brief"])
 
         # 设置合并后的摘要
         summary = {
             "brief": merged_data["brief"],
-            "key_points": merged_data["key_points"],
+            "points": merged_data["points"],
         }
         merged_memory.set_summary(summary)
 
