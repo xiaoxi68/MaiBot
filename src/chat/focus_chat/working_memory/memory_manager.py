@@ -510,11 +510,15 @@ class MemoryManager:
         # 如果有摘要信息，添加到提示中
         if summary1:
             prompt += f"记忆1主题：{summary1['brief']}\n"
-            prompt += "记忆1关键要点：\n" + "\n".join([f"- {point}" for point in summary1.get("key_points", [])]) + "\n\n"
+            prompt += (
+                "记忆1关键要点：\n" + "\n".join([f"- {point}" for point in summary1.get("key_points", [])]) + "\n\n"
+            )
 
         if summary2:
             prompt += f"记忆2主题：{summary2['brief']}\n"
-            prompt += "记忆2关键要点：\n" + "\n".join([f"- {point}" for point in summary2.get("key_points", [])]) + "\n\n"
+            prompt += (
+                "记忆2关键要点：\n" + "\n".join([f"- {point}" for point in summary2.get("key_points", [])]) + "\n\n"
+            )
 
         # 添加记忆原始内容
         prompt += f"""

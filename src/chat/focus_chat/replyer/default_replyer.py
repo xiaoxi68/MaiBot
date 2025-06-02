@@ -75,7 +75,7 @@ def init_prompt():
 不要浮夸，不要夸张修辞，只输出一条回复就好。
 现在，你说：
 """,
-        "default_replyer_private_prompt", 
+        "default_replyer_private_prompt",
     )
 
 
@@ -181,7 +181,7 @@ class DefaultReplyer:
             return False, None
 
         # --- 回复器 (Replier) 的定义 --- #
-        
+
     async def deal_emoji(
         self,
         anchor_message: MessageRecv,
@@ -192,10 +192,9 @@ class DefaultReplyer:
         """
         表情动作处理类
         """
-        
+
         await self._create_thinking_message(anchor_message, thinking_id)
-        
-        
+
         try:
             has_sent_something = False
             sent_msg_list = []
@@ -208,8 +207,7 @@ class DefaultReplyer:
                     reply.append(("emoji", emoji_base64))
                 else:
                     logger.warning(f"{self.log_prefix} 没有找到合适表情")
-                    
-                
+
             if reply:
                 with Timer("发送表情", cycle_timers):
                     sent_msg_list = await self.send_response_messages(
@@ -230,8 +228,6 @@ class DefaultReplyer:
             logger.error(f"回复失败: {e}")
             traceback.print_exc()
             return False, None
-    
-    
 
     async def reply(
         self,
@@ -293,7 +289,7 @@ class DefaultReplyer:
                     # TODO: API-Adapter修改标记
                     # logger.info(f"{self.log_prefix}[Replier-{thinking_id}]\nPrompt:\n{prompt}\n")
                     content, (reasoning_content, model_name) = await self.express_model.generate_response_async(prompt)
-                    
+
                     logger.debug(f"prompt: {prompt}")
                     logger.info(f"最终回复: {content}")
 
@@ -384,8 +380,8 @@ class DefaultReplyer:
 
         style_habbits_str = "\n".join(style_habbits)
         grammar_habbits_str = "\n".join(grammar_habbits)
-        
-                # 关键词检测与反应
+
+        # 关键词检测与反应
         keywords_reaction_prompt = ""
         try:
             # 处理关键词规则
@@ -393,7 +389,7 @@ class DefaultReplyer:
                 if any(keyword in target_message for keyword in rule.keywords):
                     logger.info(f"检测到关键词规则：{rule.keywords}，触发反应：{rule.reaction}")
                     keywords_reaction_prompt += f"{rule.reaction}，"
-            
+
             # 处理正则表达式规则
             for rule in global_config.keyword_reaction.regex_rules:
                 for pattern_str in rule.regex:
@@ -411,7 +407,7 @@ class DefaultReplyer:
                         continue
         except Exception as e:
             logger.error(f"关键词检测与反应时发生异常: {str(e)}", exc_info=True)
-        
+
         time_block = f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
 
         # logger.debug("开始构建 focus prompt")

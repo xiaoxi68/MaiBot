@@ -58,7 +58,6 @@ def init_prompt():
 """,
         "simple_planner_prompt",
     )
-    
 
     Prompt(
         """
@@ -192,7 +191,6 @@ class ActionPlanner(BasePlanner):
                 reasoning = f"LLM 请求失败，你的模型出现问题: {req_e}"
                 action = "no_reply"
 
-
             if llm_content:
                 try:
                     fixed_json_string = repair_json(llm_content)
@@ -233,9 +231,7 @@ class ActionPlanner(BasePlanner):
                         reasoning = extracted_reasoning
 
                 except Exception as json_e:
-                    logger.warning(
-                        f"{self.log_prefix}解析LLM响应JSON失败 {json_e}. LLM原始输出: '{llm_content}'"
-                    )
+                    logger.warning(f"{self.log_prefix}解析LLM响应JSON失败 {json_e}. LLM原始输出: '{llm_content}'")
                     traceback.print_exc()
                     reasoning = f"解析LLM响应JSON失败: {json_e}. 将使用默认动作 'no_reply'."
                     action = "no_reply"
@@ -353,7 +349,7 @@ class ActionPlanner(BasePlanner):
 
             # moderation_prompt_block = "请不要输出违法违规内容，不要输出色情，暴力，政治相关内容，如有敏感内容，请规避。"
             moderation_prompt_block = ""
-            
+
             # 获取当前时间
             time_block = f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
 
