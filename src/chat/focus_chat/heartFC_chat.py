@@ -24,10 +24,11 @@ from src.chat.heart_flow.observation.structure_observation import StructureObser
 from src.chat.heart_flow.observation.actions_observation import ActionObservation
 from src.chat.focus_chat.info_processors.tool_processor import ToolProcessor
 from src.chat.focus_chat.expressors.default_expressor import DefaultExpressor
+from src.chat.focus_chat.replyer.default_replyer import DefaultReplyer
 from src.chat.focus_chat.memory_activator import MemoryActivator
 from src.chat.focus_chat.info_processors.base_processor import BaseProcessor
 from src.chat.focus_chat.info_processors.self_processor import SelfProcessor
-from src.chat.focus_chat.planners.planner import ActionPlanner
+from src.chat.focus_chat.planners.planner_factory import PlannerFactory
 from src.chat.focus_chat.planners.modify_actions import ActionModifier
 from src.chat.focus_chat.planners.action_manager import ActionManager
 from src.chat.focus_chat.working_memory.working_memory import WorkingMemory
@@ -119,8 +120,9 @@ class HeartFChatting:
         self._register_default_processors()
 
         self.expressor = DefaultExpressor(chat_id=self.stream_id)
+        self.replyer = DefaultReplyer(chat_id=self.stream_id)
         self.action_manager = ActionManager()
-        self.action_planner = ActionPlanner(log_prefix=self.log_prefix, action_manager=self.action_manager)
+        self.action_planner = PlannerFactory.create_planner(log_prefix=self.log_prefix, action_manager=self.action_manager)
         self.action_modifier = ActionModifier(action_manager=self.action_manager)
         self.action_observation = ActionObservation(observe_id=self.stream_id)
 
@@ -167,8 +169,10 @@ class HeartFChatting:
 
         try:
             await self.expressor.initialize()
+            await self.replyer.initialize()
             self.chat_stream = await asyncio.to_thread(chat_manager.get_stream, self.stream_id)
             self.expressor.chat_stream = self.chat_stream
+            self.replyer.chat_stream = self.chat_stream
             self.log_prefix = f"[{chat_manager.get_stream_name(self.stream_id) or self.stream_id}]"
         except Exception as e:
             logger.error(f"[HFC:{self.stream_id}] 初始化HFC时发生错误: {e}")
@@ -583,6 +587,7 @@ class HeartFChatting:
                     thinking_id=thinking_id,
                     observations=self.all_observations,
                     expressor=self.expressor,
+                    replyer=self.replyer,
                     chat_stream=self.chat_stream,
                     log_prefix=self.log_prefix,
                     shutting_down=self._shutting_down,

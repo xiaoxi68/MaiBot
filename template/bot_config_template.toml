@@ -102,6 +102,8 @@ observation_context_size = 16 # 观察到的最长上下文大小
 compressed_length = 8 # 不能大于observation_context_size,心流上下文压缩的最短压缩长度，超过心流观察到的上下文长度，会压缩，最短压缩长度为5
 compress_length_limit = 4 #最多压缩份数，超过该数值的压缩上下文会被删除
 
+planner_type = "complex" # 规划器类型，可选值：complex（复杂规划器）, simple（简单规划器）
+
 [focus_chat_processor] # 专注聊天处理器，打开可以实现更多功能，但是会增加token消耗
 mind_processor = false # 是否启用思维处理器
 self_identify_processor = true # 是否启用自我识别处理器

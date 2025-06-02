@@ -153,6 +153,9 @@ class FocusChatConfig(ConfigBase):
     processor_max_time: int = 25
     """处理器最大时间，单位秒，如果超过这个时间，处理器会自动停止"""
 
+    planner_type: str = "default"
+    """规划器类型，可选值：default（默认规划器）, simple（简单规划器）"""
+
 
 @dataclass
 class FocusChatProcessorConfig(ConfigBase):
