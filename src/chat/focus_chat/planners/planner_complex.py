@@ -116,6 +116,7 @@ class ActionPlanner(BasePlanner):
             cycle_info = ""
             structured_info = ""
             extra_info = []
+            current_mind = ""
             observed_messages = []
             observed_messages_str = ""
             chat_type = "group"

@@ -56,7 +56,7 @@ def init_prompt():
 请输出你提取的JSON，不要有任何其他文字或解释：
 
 """,
-        "planner_prompt",
+        "simple_planner_prompt",
     )
     
 
@@ -357,7 +357,7 @@ class ActionPlanner(BasePlanner):
             # 获取当前时间
             time_block = f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
 
-            planner_prompt_template = await global_prompt_manager.get_prompt_async("planner_prompt")
+            planner_prompt_template = await global_prompt_manager.get_prompt_async("simple_planner_prompt")
             prompt = planner_prompt_template.format(
                 self_info_block=self_info_block,
                 memory_str=memory_str,
