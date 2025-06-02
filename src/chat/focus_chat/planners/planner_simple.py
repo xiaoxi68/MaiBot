@@ -17,6 +17,7 @@ from src.individuality.individuality import individuality
 from src.chat.focus_chat.planners.action_manager import ActionManager
 from json_repair import repair_json
 from src.chat.focus_chat.planners.base_planner import BasePlanner
+from datetime import datetime
 
 logger = get_logger("planner")
 
@@ -30,6 +31,8 @@ def init_prompt():
 {self_info_block}
 {extra_info_block}
 {memory_str}
+
+{time_block}
 
 你是群内的一员，你现在正在参与群内的闲聊，以下是群内的聊天内容：
 
@@ -76,7 +79,8 @@ def init_prompt():
 动作名称：{action_name}
     描述：{action_description}
     {action_parameters}
-    使用该动作的场景：{action_require}""",
+    使用该动作的场景：
+    {action_require}""",
         "action_prompt",
     )
 
@@ -372,11 +376,15 @@ class ActionPlanner(BasePlanner):
 
             # moderation_prompt_block = "请不要输出违法违规内容，不要输出色情，暴力，政治相关内容，如有敏感内容，请规避。"
             moderation_prompt_block = ""
+            
+            # 获取当前时间
+            time_block = f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
 
             planner_prompt_template = await global_prompt_manager.get_prompt_async("planner_prompt")
             prompt = planner_prompt_template.format(
                 self_info_block=self_info_block,
                 memory_str=memory_str,
+                time_block=time_block,
                 # bot_name=global_config.bot.nickname,
                 prompt_personality=personality_block,
                 chat_context_description=chat_context_description,

@@ -227,7 +227,7 @@ class ChattingObservation(Observation):
 
             # print(f"压缩中：oldest_messages: {oldest_messages}")
             oldest_messages_str = await build_readable_messages(
-                messages=oldest_messages, timestamp_mode="normal", read_mark=0
+                messages=oldest_messages, timestamp_mode="normal_no_YMD", read_mark=0
             )
 
             # --- Build prompt using template ---
@@ -278,7 +278,7 @@ class ChattingObservation(Observation):
         # print(f"构建中：self.talking_message_str: {self.talking_message_str}")
         self.talking_message_str_truncate = await build_readable_messages(
             messages=self.talking_message,
-            timestamp_mode="normal",
+            timestamp_mode="normal_no_YMD",
             read_mark=last_obs_time_mark,
             truncate=True,
         )
