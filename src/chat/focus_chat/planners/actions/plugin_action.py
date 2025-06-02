@@ -182,26 +182,33 @@ class PluginAction(BaseAction):
         Returns:
             bool: 是否发送成功
         """
-        try:
-            expressor = self._services.get("expressor")
-            chat_stream = self._services.get("chat_stream")
+        expressor = self._services.get("expressor")
+        chat_stream = self._services.get("chat_stream")
 
-            if not expressor or not chat_stream:
-                logger.error(f"{self.log_prefix} 无法发送消息：缺少必要的内部服务")
-                return False
+        if not expressor or not chat_stream:
+            logger.error(f"{self.log_prefix} 无法发送消息：缺少必要的内部服务")
+            return False
 
-            # 构造简化的动作数据
-            reply_data = {"text": text, "target": target or "", "emojis": []}
+        # 构造简化的动作数据
+        reply_data = {"text": text, "target": target or "", "emojis": []}
 
-            # 获取锚定消息（如果有）
-            observations = self._services.get("observations", [])
+        # 获取锚定消息（如果有）
+        observations = self._services.get("observations", [])
+        
+        # 查找 ChattingObservation 实例
+        chatting_observation = None
+        for obs in observations:
+            if isinstance(obs, ChattingObservation):
+                chatting_observation = obs
+                break
 
-            chatting_observation: ChattingObservation = next(
-                obs for obs in observations if isinstance(obs, ChattingObservation)
+        if not chatting_observation:
+            logger.warning(f"{self.log_prefix} 未找到 ChattingObservation 实例，创建占位符")
+            anchor_message = await create_empty_anchor_message(
+                chat_stream.platform, chat_stream.group_info, chat_stream
             )
+        else:
             anchor_message = chatting_observation.search_message_by_text(reply_data["target"])
-
-            # 如果没有找到锚点消息，创建一个占位符
             if not anchor_message:
                 logger.info(f"{self.log_prefix} 未找到锚点消息，创建占位符")
                 anchor_message = await create_empty_anchor_message(
@@ -210,19 +217,16 @@ class PluginAction(BaseAction):
             else:
                 anchor_message.update_chat_stream(chat_stream)
 
-            # 调用内部方法发送消息
-            success, _ = await expressor.deal_reply(
-                cycle_timers=self.cycle_timers,
-                action_data=reply_data,
-                anchor_message=anchor_message,
-                reasoning=self.reasoning,
-                thinking_id=self.thinking_id,
-            )
+        # 调用内部方法发送消息
+        success, _ = await expressor.deal_reply(
+            cycle_timers=self.cycle_timers,
+            action_data=reply_data,
+            anchor_message=anchor_message,
+            reasoning=self.reasoning,
+            thinking_id=self.thinking_id,
+        )
 
-            return success
-        except Exception as e:
-            logger.error(f"{self.log_prefix} 发送消息时出错: {e}")
-            return False
+        return success
 
     def get_chat_type(self) -> str:
         """获取当前聊天类型

@@ -135,11 +135,11 @@ class ActionManager:
         cycle_timers: dict,
         thinking_id: str,
         observations: List[Observation],
-        expressor: DefaultExpressor,
-        replyer: DefaultReplyer,
         chat_stream: ChatStream,
         log_prefix: str,
         shutting_down: bool = False,
+        expressor: DefaultExpressor = None,
+        replyer: DefaultReplyer = None,
     ) -> Optional[BaseAction]:
         """
         创建动作处理器实例

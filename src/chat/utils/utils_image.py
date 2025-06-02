@@ -128,38 +128,38 @@ class ImageManager:
                 return f"[表情包，含义看起来是：{cached_description}]"
 
             # 根据配置决定是否保存图片
-            if global_config.emoji.save_emoji:
-                # 生成文件名和路径
-                logger.debug(f"保存表情包: {image_hash}")
-                current_timestamp = time.time()
-                filename = f"{int(current_timestamp)}_{image_hash[:8]}.{image_format}"
-                emoji_dir = os.path.join(self.IMAGE_DIR, "emoji")
-                os.makedirs(emoji_dir, exist_ok=True)
-                file_path = os.path.join(emoji_dir, filename)
+            # if global_config.emoji.save_emoji:
+            # 生成文件名和路径
+            logger.debug(f"保存表情包: {image_hash}")
+            current_timestamp = time.time()
+            filename = f"{int(current_timestamp)}_{image_hash[:8]}.{image_format}"
+            emoji_dir = os.path.join(self.IMAGE_DIR, "emoji")
+            os.makedirs(emoji_dir, exist_ok=True)
+            file_path = os.path.join(emoji_dir, filename)
 
+            try:
+                # 保存文件
+                with open(file_path, "wb") as f:
+                    f.write(image_bytes)
+
+                # 保存到数据库 (Images表)
                 try:
-                    # 保存文件
-                    with open(file_path, "wb") as f:
-                        f.write(image_bytes)
-
-                    # 保存到数据库 (Images表)
-                    try:
-                        img_obj = Images.get((Images.emoji_hash == image_hash) & (Images.type == "emoji"))
-                        img_obj.path = file_path
-                        img_obj.description = description
-                        img_obj.timestamp = current_timestamp
-                        img_obj.save()
-                    except Images.DoesNotExist:
-                        Images.create(
-                            emoji_hash=image_hash,
-                            path=file_path,
-                            type="emoji",
-                            description=description,
-                            timestamp=current_timestamp,
-                        )
-                    # logger.debug(f"保存表情包元数据: {file_path}")
-                except Exception as e:
-                    logger.error(f"保存表情包文件或元数据失败: {str(e)}")
+                    img_obj = Images.get((Images.emoji_hash == image_hash) & (Images.type == "emoji"))
+                    img_obj.path = file_path
+                    img_obj.description = description
+                    img_obj.timestamp = current_timestamp
+                    img_obj.save()
+                except Images.DoesNotExist:
+                    Images.create(
+                        emoji_hash=image_hash,
+                        path=file_path,
+                        type="emoji",
+                        description=description,
+                        timestamp=current_timestamp,
+                    )
+                # logger.debug(f"保存表情包元数据: {file_path}")
+            except Exception as e:
+                logger.error(f"保存表情包文件或元数据失败: {str(e)}")
 
             # 保存描述到数据库 (ImageDescriptions表)
             self._save_description_to_db(image_hash, description, "emoji")

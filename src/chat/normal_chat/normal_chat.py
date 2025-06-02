@@ -24,6 +24,7 @@ from src.chat.focus_chat.planners.action_manager import ActionManager
 from src.chat.normal_chat.normal_chat_planner import NormalChatPlanner
 from src.chat.normal_chat.normal_chat_action_modifier import NormalChatActionModifier
 from src.chat.normal_chat.normal_chat_expressor import NormalChatExpressor
+from src.chat.focus_chat.replyer.default_replyer import DefaultReplyer
 
 logger = get_logger("normal_chat")
 
@@ -77,6 +78,9 @@ class NormalChat:
 
         # 初始化Normal Chat专用表达器
         self.expressor = NormalChatExpressor(self.chat_stream, self.stream_name)
+        self.replyer = DefaultReplyer(chat_id=self.stream_id)
+        
+        self.replyer.chat_stream = self.chat_stream
 
         self._initialized = True
         logger.debug(f"[{self.stream_name}] NormalChat 初始化完成 (异步部分)。")
@@ -653,6 +657,7 @@ class NormalChat:
                 thinking_id=thinking_id,
                 observations=[],  # normal_chat不使用observations
                 expressor=self.expressor,  # 使用normal_chat专用的expressor
+                replyer=self.replyer,
                 chat_stream=self.chat_stream,
                 log_prefix=self.stream_name,
                 shutting_down=self._disabled,
