@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Any, Literal
+import re
 
 from src.config.config_base import ConfigBase
 
@@ -153,7 +154,7 @@ class FocusChatConfig(ConfigBase):
     processor_max_time: int = 25
     """处理器最大时间，单位秒，如果超过这个时间，处理器会自动停止"""
 
-    planner_type: str = "default"
+    planner_type: str = "simple"
     """规划器类型，可选值：default（默认规划器）, simple（简单规划器）"""
 
 
@@ -289,9 +290,6 @@ class MoodConfig(ConfigBase):
 class KeywordRuleConfig(ConfigBase):
     """关键词规则配置类"""
 
-    enable: bool = True
-    """是否启用关键词规则"""
-
     keywords: list[str] = field(default_factory=lambda: [])
     """关键词列表"""
 
@@ -301,16 +299,38 @@ class KeywordRuleConfig(ConfigBase):
     reaction: str = ""
     """关键词触发的反应"""
 
+    def __post_init__(self):
+        """验证配置"""
+        if not self.keywords and not self.regex:
+            raise ValueError("关键词规则必须至少包含keywords或regex中的一个")
+        
+        if not self.reaction:
+            raise ValueError("关键词规则必须包含reaction")
+        
+        # 验证正则表达式
+        for pattern in self.regex:
+            try:
+                re.compile(pattern)
+            except re.error as e:
+                raise ValueError(f"无效的正则表达式 '{pattern}': {str(e)}")
+
 
 @dataclass
 class KeywordReactionConfig(ConfigBase):
     """关键词配置类"""
 
-    enable: bool = True
-    """是否启用关键词反应"""
+    keyword_rules: list[KeywordRuleConfig] = field(default_factory=lambda: [])
+    """关键词规则列表"""
 
-    rules: list[KeywordRuleConfig] = field(default_factory=lambda: [])
-    """关键词反应规则列表"""
+    regex_rules: list[KeywordRuleConfig] = field(default_factory=lambda: [])
+    """正则表达式规则列表"""
+
+    def __post_init__(self):
+        """验证配置"""
+        # 验证所有规则
+        for rule in self.keyword_rules + self.regex_rules:
+            if not isinstance(rule, KeywordRuleConfig):
+                raise ValueError(f"规则必须是KeywordRuleConfig类型，而不是{type(rule).__name__}")
 
 
 @dataclass

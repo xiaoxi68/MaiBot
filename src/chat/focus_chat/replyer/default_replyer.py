@@ -21,6 +21,7 @@ from src.chat.utils.chat_message_builder import build_readable_messages, get_raw
 import time
 from src.chat.focus_chat.expressors.exprssion_learner import expression_learner
 import random
+import re
 
 logger = get_logger("expressor")
 
@@ -42,6 +43,7 @@ def init_prompt():
 请你根据情景使用以下句法：
 {grammar_habbits}
 {config_expression_style}，请注意不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出回复内容。
+{keywords_reaction_prompt}
 请不要输出违法违规内容，不要输出色情，暴力，政治相关内容，如有敏感内容，请规避。
 不要浮夸，不要夸张修辞，只输出一条回复就好。
 现在，你说：
@@ -65,6 +67,7 @@ def init_prompt():
 请你根据情景使用以下句法：
 {grammar_habbits}
 {config_expression_style}，你可以完全重组回复，保留最基本的表达含义就好，但重组后保持语意通顺。
+{keywords_reaction_prompt}
 不要浮夸，不要夸张修辞，平淡且不要输出多余内容(包括前后缀，冒号和引号，括号，表情包，at或 @等 )，只输出一条回复就好。
 现在，你说：
 """,
@@ -74,7 +77,7 @@ def init_prompt():
 
 class DefaultReplyer:
     def __init__(self, chat_id: str):
-        self.log_prefix = "expressor"
+        self.log_prefix = "replyer"
         # TODO: API-Adapter修改标记
         self.express_model = LLMRequest(
             model=global_config.model.focus_expressor,
@@ -325,6 +328,35 @@ class DefaultReplyer:
 
         style_habbits_str = "\n".join(style_habbits)
         grammar_habbits_str = "\n".join(grammar_habbits)
+        
+                # 关键词检测与反应
+        keywords_reaction_prompt = ""
+        try:
+            # 处理关键词规则
+            for rule in global_config.keyword_reaction.keyword_rules:
+                if any(keyword in target_message for keyword in rule.keywords):
+                    logger.info(f"检测到关键词规则：{rule.keywords}，触发反应：{rule.reaction}")
+                    keywords_reaction_prompt += f"{rule.reaction}，"
+            
+            # 处理正则表达式规则
+            for rule in global_config.keyword_reaction.regex_rules:
+                for pattern_str in rule.regex:
+                    try:
+                        pattern = re.compile(pattern_str)
+                        if result := pattern.search(target_message):
+                            reaction = rule.reaction
+                            for name, content in result.groupdict().items():
+                                reaction = reaction.replace(f"[{name}]", content)
+                            logger.info(f"匹配到正则表达式：{pattern_str}，触发反应：{reaction}")
+                            keywords_reaction_prompt += reaction + "，"
+                            break
+                    except re.error as e:
+                        logger.error(f"正则表达式编译错误: {pattern_str}, 错误信息: {str(e)}")
+                        continue
+        except Exception as e:
+            logger.error(f"关键词检测与反应时发生异常: {str(e)}", exc_info=True)
+        
+        
 
         logger.debug("开始构建 focus prompt")
 
@@ -345,6 +377,7 @@ class DefaultReplyer:
                 # prompt_personality="",
                 reason=reason,
                 # in_mind_reply=in_mind_reply,
+                keywords_reaction_prompt=keywords_reaction_prompt,
                 identity=identity,
                 target_message=target_message,
                 config_expression_style=config_expression_style,
@@ -362,6 +395,7 @@ class DefaultReplyer:
                 # prompt_personality="",
                 reason=reason,
                 # in_mind_reply=in_mind_reply,
+                keywords_reaction_prompt=keywords_reaction_prompt,
                 identity=identity,
                 target_message=target_message,
                 config_expression_style=config_expression_style,
