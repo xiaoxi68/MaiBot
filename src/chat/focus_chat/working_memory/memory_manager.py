@@ -286,110 +286,110 @@ class MemoryManager:
             logger.error(f"生成总结时出错: {str(e)}")
             return default_summary
 
-    async def refine_memory(self, memory_id: str, requirements: str = "") -> Dict[str, Any]:
-        """
-        对记忆进行精简操作，根据要求修改要点、总结和概括
+#     async def refine_memory(self, memory_id: str, requirements: str = "") -> Dict[str, Any]:
+#         """
+#         对记忆进行精简操作，根据要求修改要点、总结和概括
 
-        Args:
-            memory_id: 记忆ID
-            requirements: 精简要求，描述如何修改记忆，包括可能需要移除的要点
+#         Args:
+#             memory_id: 记忆ID
+#             requirements: 精简要求，描述如何修改记忆，包括可能需要移除的要点
 
-        Returns:
-            修改后的记忆总结字典
-        """
-        # 获取指定ID的记忆项
-        logger.info(f"精简记忆: {memory_id}")
-        memory_item = self.get_by_id(memory_id)
-        if not memory_item:
-            raise ValueError(f"未找到ID为{memory_id}的记忆项")
+#         Returns:
+#             修改后的记忆总结字典
+#         """
+#         # 获取指定ID的记忆项
+#         logger.info(f"精简记忆: {memory_id}")
+#         memory_item = self.get_by_id(memory_id)
+#         if not memory_item:
+#             raise ValueError(f"未找到ID为{memory_id}的记忆项")
 
-        # 增加精简次数
-        memory_item.increase_compress_count()
+#         # 增加精简次数
+#         memory_item.increase_compress_count()
 
-        summary = memory_item.summary
+#         summary = memory_item.summary
 
-        # 使用LLM根据要求对总结、概括和要点进行精简修改
-        prompt = f"""
-请根据以下要求，对记忆内容的主题和关键要点进行精简，模拟记忆的遗忘过程：
-要求：{requirements}
-你可以随机对关键要点进行压缩，模糊或者丢弃，修改后，同样修改主题
+#         # 使用LLM根据要求对总结、概括和要点进行精简修改
+#         prompt = f"""
+# 请根据以下要求，对记忆内容的主题和关键要点进行精简，模拟记忆的遗忘过程：
+# 要求：{requirements}
+# 你可以随机对关键要点进行压缩，模糊或者丢弃，修改后，同样修改主题
 
-目前主题：{summary["brief"]}
+# 目前主题：{summary["brief"]}
 
-目前关键要点：
-{chr(10).join([f"- {point}" for point in summary.get("points", [])])}
+# 目前关键要点：
+# {chr(10).join([f"- {point}" for point in summary.get("points", [])])}
 
-请生成修改后的主题和关键要点，遵循以下格式：
-```json
-{{
-    "brief": "修改后的主题（20字以内）",
-    "points": [
-        "修改后的要点",
-        "修改后的要点"
-    ]
-}}
-```
-请确保输出是有效的JSON格式，不要添加任何额外的说明或解释。
-"""
-        # 定义默认的精简结果
-        default_refined = {
-            "brief": summary["brief"],
-            "points": summary.get("points", ["未知的要点"])[:1],  # 默认只保留第一个要点
-        }
+# 请生成修改后的主题和关键要点，遵循以下格式：
+# ```json
+# {{
+#     "brief": "修改后的主题（20字以内）",
+#     "points": [
+#         "修改后的要点",
+#         "修改后的要点"
+#     ]
+# }}
+# ```
+# 请确保输出是有效的JSON格式，不要添加任何额外的说明或解释。
+# """
+#         # 定义默认的精简结果
+#         default_refined = {
+#             "brief": summary["brief"],
+#             "points": summary.get("points", ["未知的要点"])[:1],  # 默认只保留第一个要点
+#         }
 
-        try:
-            # 调用LLM修改总结、概括和要点
-            response, _ = await self.llm_summarizer.generate_response_async(prompt)
-            logger.debug(f"精简记忆响应: {response}")
-            # 使用repair_json处理响应
-            try:
-                # 修复JSON格式
-                fixed_json_string = repair_json(response)
+#         try:
+#             # 调用LLM修改总结、概括和要点
+#             response, _ = await self.llm_summarizer.generate_response_async(prompt)
+#             logger.debug(f"精简记忆响应: {response}")
+#             # 使用repair_json处理响应
+#             try:
+#                 # 修复JSON格式
+#                 fixed_json_string = repair_json(response)
 
-                # 将修复后的字符串解析为Python对象
-                if isinstance(fixed_json_string, str):
-                    try:
-                        refined_data = json.loads(fixed_json_string)
-                    except json.JSONDecodeError as decode_error:
-                        logger.error(f"JSON解析错误: {str(decode_error)}")
-                        refined_data = default_refined
-                else:
-                    # 如果repair_json直接返回了字典对象，直接使用
-                    refined_data = fixed_json_string
+#                 # 将修复后的字符串解析为Python对象
+#                 if isinstance(fixed_json_string, str):
+#                     try:
+#                         refined_data = json.loads(fixed_json_string)
+#                     except json.JSONDecodeError as decode_error:
+#                         logger.error(f"JSON解析错误: {str(decode_error)}")
+#                         refined_data = default_refined
+#                 else:
+#                     # 如果repair_json直接返回了字典对象，直接使用
+#                     refined_data = fixed_json_string
 
-                # 确保是字典类型
-                if not isinstance(refined_data, dict):
-                    logger.error(f"修复后的JSON不是字典类型: {type(refined_data)}")
-                    refined_data = default_refined
+#                 # 确保是字典类型
+#                 if not isinstance(refined_data, dict):
+#                     logger.error(f"修复后的JSON不是字典类型: {type(refined_data)}")
+#                     refined_data = default_refined
 
-                # 更新总结
-                summary["brief"] = refined_data.get("brief", "主题未知的记忆")
+#                 # 更新总结
+#                 summary["brief"] = refined_data.get("brief", "主题未知的记忆")
 
-                # 更新关键要点
-                points = refined_data.get("points", [])
-                if isinstance(points, list) and points:
-                    # 确保所有要点都是字符串
-                    summary["points"] = [str(point) for point in points if point is not None]
-                else:
-                    # 如果points不是列表或为空，使用默认值
-                    summary["points"] = ["主要要点已遗忘"]
+#                 # 更新关键要点
+#                 points = refined_data.get("points", [])
+#                 if isinstance(points, list) and points:
+#                     # 确保所有要点都是字符串
+#                     summary["points"] = [str(point) for point in points if point is not None]
+#                 else:
+#                     # 如果points不是列表或为空，使用默认值
+#                     summary["points"] = ["主要要点已遗忘"]
 
-            except Exception as e:
-                logger.error(f"精简记忆出错: {str(e)}")
-                traceback.print_exc()
+#             except Exception as e:
+#                 logger.error(f"精简记忆出错: {str(e)}")
+#                 traceback.print_exc()
 
-                # 出错时使用简化的默认精简
-                summary["brief"] = summary["brief"] + " (已简化)"
-                summary["points"] = summary.get("points", ["未知的要点"])[:1]
+#                 # 出错时使用简化的默认精简
+#                 summary["brief"] = summary["brief"] + " (已简化)"
+#                 summary["points"] = summary.get("points", ["未知的要点"])[:1]
 
-        except Exception as e:
-            logger.error(f"精简记忆调用LLM出错: {str(e)}")
-            traceback.print_exc()
+#         except Exception as e:
+#             logger.error(f"精简记忆调用LLM出错: {str(e)}")
+#             traceback.print_exc()
 
-        # 更新原记忆项的总结
-        memory_item.set_summary(summary)
+#         # 更新原记忆项的总结
+#         memory_item.set_summary(summary)
 
-        return memory_item
+#         return memory_item
 
     def decay_memory(self, memory_id: str, decay_factor: float = 0.8) -> bool:
         """

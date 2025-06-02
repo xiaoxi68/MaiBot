@@ -112,10 +112,10 @@ class WorkingMemory:
                 self.memory_manager.delete(memory_id)
                 continue
             # 计算衰减量
-            if memory_item.memory_strength < 5:
-                await self.memory_manager.refine_memory(
-                    memory_id, f"由于时间过去了{self.auto_decay_interval}秒，记忆变的模糊，所以需要压缩"
-                )
+            # if memory_item.memory_strength < 5:
+            #     await self.memory_manager.refine_memory(
+            #         memory_id, f"由于时间过去了{self.auto_decay_interval}秒，记忆变的模糊，所以需要压缩"
+            #     )
 
     async def merge_memory(self, memory_id1: str, memory_id2: str) -> MemoryItem:
         """合并记忆
@@ -126,51 +126,6 @@ class WorkingMemory:
         return await self.memory_manager.merge_memories(
             memory_id1=memory_id1, memory_id2=memory_id2, reason="两端记忆有重复的内容"
         )
-
-    # 暂时没用，先留着
-    async def simulate_memory_blur(self, chat_id: str, blur_rate: float = 0.2):
-        """
-        模拟记忆模糊过程，随机选择一部分记忆进行精简
-
-        Args:
-            chat_id: 聊天ID
-            blur_rate: 模糊比率(0-1之间)，表示有多少比例的记忆会被精简
-        """
-        memory = self.get_memory(chat_id)
-
-        # 获取所有字符串类型且有总结的记忆
-        all_summarized_memories = []
-        for type_items in memory._memory.values():
-            for item in type_items:
-                if isinstance(item.data, str) and hasattr(item, "summary") and item.summary:
-                    all_summarized_memories.append(item)
-
-        if not all_summarized_memories:
-            return
-
-        # 计算要模糊的记忆数量
-        blur_count = max(1, int(len(all_summarized_memories) * blur_rate))
-
-        # 随机选择要模糊的记忆
-        memories_to_blur = random.sample(all_summarized_memories, min(blur_count, len(all_summarized_memories)))
-
-        # 对选中的记忆进行精简
-        for memory_item in memories_to_blur:
-            try:
-                # 根据记忆强度决定模糊程度
-                if memory_item.memory_strength > 7:
-                    requirement = "保留所有重要信息，仅略微精简"
-                elif memory_item.memory_strength > 4:
-                    requirement = "保留核心要点，适度精简细节"
-                else:
-                    requirement = "只保留最关键的1-2个要点，大幅精简内容"
-
-                # 进行精简
-                await memory.refine_memory(memory_item.id, requirement)
-                print(f"已模糊记忆 {memory_item.id}，强度: {memory_item.memory_strength}, 要求: {requirement}")
-
-            except Exception as e:
-                print(f"模糊记忆 {memory_item.id} 时出错: {str(e)}")
 
     async def shutdown(self) -> None:
         """关闭管理器，停止所有任务"""
