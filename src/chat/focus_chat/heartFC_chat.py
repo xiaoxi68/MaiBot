@@ -40,7 +40,7 @@ install(extra_lines=3)
 # 如果配置键名为 None，则该处理器默认启用且不能通过 focus_chat_processor 配置禁用
 PROCESSOR_CLASSES = {
     "ChattingInfoProcessor": (ChattingInfoProcessor, None),
-    "MindProcessor": (MindProcessor, None),
+    "MindProcessor": (MindProcessor, "mind_processor"),
     "ToolProcessor": (ToolProcessor, "tool_use_processor"),
     "WorkingMemoryProcessor": (WorkingMemoryProcessor, "working_memory_processor"),
     "SelfProcessor": (SelfProcessor, "self_identify_processor"),

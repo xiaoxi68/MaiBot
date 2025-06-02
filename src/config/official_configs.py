@@ -158,6 +158,9 @@ class FocusChatConfig(ConfigBase):
 class FocusChatProcessorConfig(ConfigBase):
     """专注聊天处理器配置类"""
 
+    mind_processor: bool = True
+    """是否启用思维处理器"""
+
     self_identify_processor: bool = True
     """是否启用自我识别处理器"""
 

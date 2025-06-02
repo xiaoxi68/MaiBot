@@ -122,7 +122,9 @@ class TelemetryHeartBeatTask(AsyncTask):
                 timeout=5,  # 设置超时时间为5秒
             )
         except Exception as e:
-            logger.error(f"心跳发送失败: {e}")
+            # 你知道为什么设置成debug吗？
+            # 因为我不想看到群里天天报错
+            logger.debug(f"心跳发送失败: {e}")
 
         logger.debug(response)
 

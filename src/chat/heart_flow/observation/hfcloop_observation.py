@@ -60,7 +60,7 @@ class HFCloopObservation:
 
             if action_type == "reply":
                 consecutive_text_replies += 1
-                response_text = cycle.loop_plan_info["action_result"]["action_data"].get("text", "[空回复]")
+                response_text = cycle.loop_action_info["reply_text"]
                 responses_for_prompt.append(response_text)
 
                 if is_taken:
@@ -68,9 +68,10 @@ class HFCloopObservation:
                 else:
                     action_detailed_str += f"{action_taken_time_str}时，你选择回复(action:{action_type},内容是:'{response_text}')，但是动作失败了。{action_reasoning_str}\n"
             elif action_type == "no_reply":
-                action_detailed_str += (
-                    f"{action_taken_time_str}时，你选择不回复(action:{action_type})，{action_reasoning_str}\n"
-                )
+                # action_detailed_str += (
+                #     f"{action_taken_time_str}时，你选择不回复(action:{action_type})，{action_reasoning_str}\n"
+                # )
+                pass
             else:
                 if is_taken:
                     action_detailed_str += (
