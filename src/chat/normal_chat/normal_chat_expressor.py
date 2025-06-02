@@ -7,15 +7,12 @@ Normal Chat Expressor
 
 import time
 from typing import List, Optional, Tuple, Dict, Any
-from src.chat.message_receive.message import MessageRecv, MessageSending, MessageThinking, MessageSet, Seg
+from src.chat.message_receive.message import MessageRecv, MessageSending, MessageThinking, Seg
 from src.chat.message_receive.message import UserInfo
 from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.message_receive.message_sender import message_manager
 from src.config.config import global_config
 from src.common.logger_manager import get_logger
-from src.chat.emoji_system.emoji_manager import emoji_manager
-from src.chat.utils.utils_image import image_path_to_base64
-import random
 
 logger = get_logger("normal_chat_expressor")
 

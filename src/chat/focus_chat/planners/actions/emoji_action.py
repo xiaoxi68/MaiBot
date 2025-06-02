@@ -6,7 +6,6 @@ from typing import Tuple, List
 from src.chat.heart_flow.observation.observation import Observation
 from src.chat.focus_chat.replyer.default_replyer import DefaultReplyer
 from src.chat.message_receive.chat_stream import ChatStream
-from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 from src.chat.focus_chat.hfc_utils import create_empty_anchor_message
 
 logger = get_logger("action_taken")
