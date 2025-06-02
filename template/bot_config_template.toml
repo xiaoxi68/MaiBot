@@ -1,5 +1,5 @@
 [inner]
-version = "2.7.0"
+version = "2.8.0"
 
 #----以下是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 #如果你想要修改配置文件，请在修改后将version的值进行变更
@@ -103,6 +103,7 @@ compressed_length = 8 # 不能大于observation_context_size,心流上下文压�
 compress_length_limit = 4 #最多压缩份数，超过该数值的压缩上下文会被删除
 
 [focus_chat_processor] # 专注聊天处理器，打开可以实现更多功能，但是会增加token消耗
+mind_processor = false # 是否启用思维处理器
 self_identify_processor = true # 是否启用自我识别处理器
 tool_use_processor = false # 是否启用工具使用处理器
 working_memory_processor = false # 是否启用工作记忆处理器，不稳定，消耗量大
