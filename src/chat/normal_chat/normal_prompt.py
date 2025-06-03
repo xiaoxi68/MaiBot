@@ -104,10 +104,9 @@ class PromptBuilder:
                 (chat_stream.user_info.platform, chat_stream.user_info.user_id) if chat_stream.user_info else None,
                 limit=global_config.normal_chat.max_context_size,
             )
-        elif chat_stream.user_info:
-            who_chat_in_group.append(
-                (chat_stream.user_info.platform, chat_stream.user_info.user_id, chat_stream.user_info.user_nickname)
-            )
+        who_chat_in_group.append(
+            (chat_stream.user_info.platform, chat_stream.user_info.user_id, chat_stream.user_info.user_nickname)
+        )
 
         relation_prompt = ""
         for person in who_chat_in_group:
