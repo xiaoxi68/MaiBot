@@ -342,7 +342,7 @@ async def _build_readable_messages_internal(
         # 使用指定的 timestamp_mode 格式化时间
         readable_time = translate_timestamp_to_human_readable(merged["start_time"], mode=timestamp_mode)
 
-        header = f"{readable_time}{merged['name']} 说:"
+        header = f"{readable_time}, {merged['name']} :"
         output_lines.append(header)
         # 将内容合并，并添加缩进
         for line in merged["content"]:
