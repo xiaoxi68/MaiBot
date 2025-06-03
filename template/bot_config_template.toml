@@ -109,7 +109,6 @@ planner_type = "simple" # 规划器类型，可选值：complex（复杂规划�
 self_identify_processor = true # 是否启用自我识别处理器
 relation_processor = true # 是否启用关系识别处理器
 tool_use_processor = false # 是否启用工具使用处理器
-mind_processor = false # 是否启用思维处理器
 working_memory_processor = false # 是否启用工作记忆处理器，消耗量大
 
 [emoji]
@@ -135,7 +134,7 @@ consolidate_memory_interval = 2000 # 记忆整合间隔 单位秒   间隔越低
 consolidation_similarity_threshold = 0.7 # 相似度阈值
 consolidation_check_percentage = 0.01 # 检查节点比例
 
-#不希望记忆的词，已经记忆的不会受到影响
+#不希望记忆的词，已经记忆的不会受到影响，需要手动清理
 memory_ban_words = [ "表情包", "图片", "回复", "聊天记录" ]
 
 [mood] # 仅在 普通聊天 有效
@@ -143,11 +142,17 @@ mood_update_interval = 1.0 # 情绪更新间隔 单位秒
 mood_decay_rate = 0.95 # 情绪衰减率
 mood_intensity_factor = 1.0 # 情绪强度因子
 
-# 规则
+
+# keyword_rules 用于设置关键词触发的额外回复知识
+# 添加新规则方法：在 keyword_rules 数组中增加一项，格式如下：
+# { keywords = ["关键词1", "关键词2"], reaction = "触发这些关键词时的回复内容" }
+# 例如，添加一个新规则：当检测到“你好”或“hello”时回复“你好，有什么可以帮你？”
+# { keywords = ["你好", "hello"], reaction = "你好，有什么可以帮你？" }
 [keyword_reaction]
 keyword_rules = [
     { keywords = ["人机", "bot", "机器", "入机", "robot", "机器人", "ai", "AI"], reaction = "有人说你是人机或者机器人，否定这一事实，攻击或反问他。注意，只有认为你是机器人才回复，否则不要否认" },
     { keywords = ["测试关键词回复", "test"], reaction = "回答测试成功" }
+    # 在此处添加更多规则，格式同上
 ]
 
 regex_rules = [
@@ -164,7 +169,7 @@ word_replace_rate=0.006 # 整词替换概率
 [response_splitter]
 enable = true # 是否启用回复分割器
 max_length = 512 # 回复允许的最大长度
-max_sentence_num = 7 # 回复允许的最大句子数
+max_sentence_num = 8 # 回复允许的最大句子数
 enable_kaomoji_protection = false # 是否启用颜文字保护
 
 

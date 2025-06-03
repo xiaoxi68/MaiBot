@@ -75,9 +75,9 @@ class SubHeartflow:
         self.log_prefix = (
             chat_manager.get_stream_name(self.subheartflow_id) or self.subheartflow_id
         )  # Keep this line or adjust if utils provides name
-        logger.debug(
-            f"SubHeartflow {self.chat_id} initialized: is_group={self.is_group_chat}, target_info={self.chat_target_info}"
-        )
+        # logger.debug(
+            # f"SubHeartflow {self.chat_id} initialized: is_group={self.is_group_chat}, target_info={self.chat_target_info}"
+        # )
 
         # 根据配置决定初始状态
         if global_config.chat.chat_mode == "focus":
