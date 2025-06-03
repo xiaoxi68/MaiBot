@@ -1,5 +1,5 @@
 [inner]
-version = "2.11.0"
+version = "2.11.1"
 
 #----以下是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 #如果你想要修改配置文件，请在修改后将version的值进行变更
@@ -214,6 +214,13 @@ provider = "SILICONFLOW"
 pri_in = 0.35
 pri_out = 0.35
 
+[model.planner] #决策：负责决定麦麦该做什么，麦麦的决策模型
+name = "Pro/deepseek-ai/DeepSeek-V3"
+provider = "SILICONFLOW"
+pri_in = 2
+pri_out = 8
+temp = 0.3
+
 
 #嵌入模型
 [model.embedding]
@@ -265,15 +272,6 @@ pri_in = 0.5
 pri_out = 2
 temp = 0.7
 enable_thinking = false # 是否启用思考（qwen3 only）
-
-[model.focus_planner] #决策：认真聊天时,负责决定麦麦该做什么
-name = "Pro/deepseek-ai/DeepSeek-V3"
-# name = "Qwen/Qwen3-30B-A3B"
-provider = "SILICONFLOW"
-# enable_thinking = false # 是否启用思考(qwen3 only)
-pri_in = 2
-pri_out = 8
-temp = 0.3
 
 #表达器模型，用于表达麦麦的想法，生成最终回复，对语言风格影响极大
 #也用于表达方式学习

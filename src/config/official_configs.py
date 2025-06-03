@@ -451,8 +451,8 @@ class ModelConfig(ConfigBase):
     focus_tool_use: dict[str, Any] = field(default_factory=lambda: {})
     """专注工具使用模型配置"""
 
-    focus_planner: dict[str, Any] = field(default_factory=lambda: {})
-    """专注规划模型配置"""
+    planner: dict[str, Any] = field(default_factory=lambda: {})
+    """规划模型配置"""
 
     focus_expressor: dict[str, Any] = field(default_factory=lambda: {})
     """专注表达器模型配置"""

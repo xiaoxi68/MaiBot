@@ -79,7 +79,7 @@ class ActionPlanner(BasePlanner):
         super().__init__(log_prefix, action_manager)
         # LLM规划器配置
         self.planner_llm = LLMRequest(
-            model=global_config.model.focus_planner,
+            model=global_config.model.planner,
             max_tokens=1000,
             request_type="focus.planner",  # 用于动作规划
         )

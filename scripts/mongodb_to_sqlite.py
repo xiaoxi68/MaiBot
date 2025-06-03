@@ -250,8 +250,6 @@ class MongoToSQLiteMigrator:
                     "nickname": "nickname",
                     "relationship_value": "relationship_value",
                     "konw_time": "know_time",
-                    "msg_interval": "msg_interval",
-                    "msg_interval_list": "msg_interval_list",
                 },
                 unique_fields=["person_id"],
             ),
