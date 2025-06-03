@@ -250,7 +250,7 @@ class NormalChat:
             return
 
         timing_results = {}
-        reply_probability = 1.0 if is_mentioned else 0.0  # 如果被提及，基础概率为1，否则需要意愿判断
+        reply_probability = 1.0 if is_mentioned and global_config.normal_chat.mentioned_bot_inevitable_reply else 0.0  # 如果被提及，且开启了提及必回复，则基础概率为1，否则需要意愿判断
 
         # 意愿管理器：设置当前message信息
         willing_manager.setup(message, self.chat_stream, is_mentioned, interested_rate)
