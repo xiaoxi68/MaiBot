@@ -362,6 +362,9 @@ class NormalChat:
                     if action_type == "no_action":
                         logger.debug(f"[{self.stream_name}] Planner决定不执行任何额外动作")
                         return None
+                    elif action_type == "change_to_focus_chat":
+                        logger.info(f"[{self.stream_name}] Planner决定切换到focus聊天模式")
+                        return None
 
                     # 执行额外的动作（不影响回复生成）
                     action_result = await self._execute_action(action_type, action_data, message, thinking_id)
@@ -396,7 +399,9 @@ class NormalChat:
             elif plan_result:
                 logger.debug(f"[{self.stream_name}] 额外动作处理完成: {plan_result['action_type']}")
 
-            if not response_set or (self.enable_planner and self.action_type != "no_action"):
+            if not response_set or (
+                self.enable_planner and self.action_type not in ["no_action", "change_to_focus_chat"]
+            ):
                 logger.info(f"[{self.stream_name}] 模型未生成回复内容")
                 # 如果模型未生成回复，移除思考消息
                 container = await message_manager.get_container(self.stream_id)  # 使用 self.stream_id
@@ -445,7 +450,15 @@ class NormalChat:
 
                 # 检查是否需要切换到focus模式
                 if global_config.chat.chat_mode == "auto":
-                    await self._check_switch_to_focus()
+                    if self.action_type == "change_to_focus_chat":
+                        logger.info(f"[{self.stream_name}] 检测到切换到focus聊天模式的请求")
+                        if self.on_switch_to_focus_callback:
+                            await self.on_switch_to_focus_callback()
+                        else:
+                            logger.warning(f"[{self.stream_name}] 没有设置切换到focus聊天模式的回调函数，无法执行切换")
+                        return
+                    else:
+                        await self._check_switch_to_focus()
 
             info_catcher.done_catch()
 
