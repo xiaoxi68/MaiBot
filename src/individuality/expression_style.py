@@ -104,7 +104,13 @@ class PersonalityExpression:
         if count >= self.max_calculations:
             logger.debug(f"对于风格 '{current_style_text}' 已达到最大计算次数 ({self.max_calculations})。跳过提取。")
             # 即使跳过，也更新元数据以反映当前风格已被识别且计数已满
-            self._write_meta_data({"last_style_text": current_style_text, "count": count, "last_update_time": meta_data.get("last_update_time")})
+            self._write_meta_data(
+                {
+                    "last_style_text": current_style_text,
+                    "count": count,
+                    "last_update_time": meta_data.get("last_update_time"),
+                }
+            )
             return
 
         # 构建prompt
@@ -119,12 +125,18 @@ class PersonalityExpression:
         except Exception as e:
             logger.error(f"个性表达方式提取失败: {e}")
             # 如果提取失败，保存当前的风格和未增加的计数
-            self._write_meta_data({"last_style_text": current_style_text, "count": count, "last_update_time": meta_data.get("last_update_time")})
+            self._write_meta_data(
+                {
+                    "last_style_text": current_style_text,
+                    "count": count,
+                    "last_update_time": meta_data.get("last_update_time"),
+                }
+            )
             return
 
         logger.info(f"个性表达方式提取response: {response}")
         # chat_id用personality
-        
+
         # 转为dict并count=100
         if response != "":
             expressions = self.parse_expression_response(response, "personality")
@@ -136,25 +148,27 @@ class PersonalityExpression:
                         existing_expressions = json.load(f)
                 except (json.JSONDecodeError, FileNotFoundError):
                     logger.warning(f"无法读取或解析 {self.expressions_file_path}，将创建新的表达文件。")
-            
+
             # 创建新的表达方式
             new_expressions = []
             for _, situation, style in expressions:
                 new_expressions.append({"situation": situation, "style": style, "count": 1})
-            
+
             # 合并表达方式，如果situation和style相同则累加count
             merged_expressions = existing_expressions.copy()
             for new_expr in new_expressions:
                 found = False
                 for existing_expr in merged_expressions:
-                    if (existing_expr["situation"] == new_expr["situation"] and 
-                        existing_expr["style"] == new_expr["style"]):
+                    if (
+                        existing_expr["situation"] == new_expr["situation"]
+                        and existing_expr["style"] == new_expr["style"]
+                    ):
                         existing_expr["count"] += new_expr["count"]
                         found = True
                         break
                 if not found:
                     merged_expressions.append(new_expr)
-            
+
             # 超过50条时随机删除多余的，只保留50条
             if len(merged_expressions) > 50:
                 remove_count = len(merged_expressions) - 50
@@ -168,11 +182,9 @@ class PersonalityExpression:
             # 成功提取后更新元数据
             count += 1
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            self._write_meta_data({
-                "last_style_text": current_style_text, 
-                "count": count, 
-                "last_update_time": current_time
-            })
+            self._write_meta_data(
+                {"last_style_text": current_style_text, "count": count, "last_update_time": current_time}
+            )
             logger.info(f"成功处理。风格 '{current_style_text}' 的计数现在是 {count}，最后更新时间：{current_time}。")
         else:
             logger.warning(f"个性表达方式提取失败，模型返回空内容: {response}")

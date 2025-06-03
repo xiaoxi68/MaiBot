@@ -32,7 +32,6 @@ from rich.panel import Panel
 from src.common.database.database import db
 from src.common.database.database_model import (
     ChatStreams,
-    LLMUsage,
     Emoji,
     Messages,
     Images,

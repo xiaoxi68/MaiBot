@@ -24,7 +24,6 @@ from rich.traceback import install
 
 from ...config.config import global_config
 from src.common.database.database_model import Messages, GraphNodes, GraphEdges  # Peewee Models导入
-from peewee import Case
 
 install(extra_lines=3)
 
@@ -217,7 +216,7 @@ class Hippocampus:
         """计算节点的特征值"""
         if not isinstance(memory_items, list):
             memory_items = [memory_items] if memory_items else []
-        
+
         # 使用集合来去重，避免排序
         unique_items = set(str(item) for item in memory_items)
         # 使用frozenset来保证顺序一致性
@@ -816,7 +815,7 @@ class EntorhinalCortex:
         timestamps = sample_scheduler.get_timestamp_array()
         # 使用 translate_timestamp_to_human_readable 并指定 mode="normal"
         readable_timestamps = [translate_timestamp_to_human_readable(ts, mode="normal") for ts in timestamps]
-        for timestamp, readable_timestamp in zip(timestamps, readable_timestamps):
+        for _, readable_timestamp in zip(timestamps, readable_timestamps):
             logger.debug(f"回忆往事: {readable_timestamp}")
         chat_samples = []
         for timestamp in timestamps:
@@ -843,16 +842,20 @@ class EntorhinalCortex:
             # 定义时间范围：从目标时间戳开始，向后推移 time_window_seconds
             timestamp_start = target_timestamp
             timestamp_end = target_timestamp + time_window_seconds
-            
+
             chosen_message = get_raw_msg_by_timestamp(
                 timestamp_start=timestamp_start, timestamp_end=timestamp_end, limit=1, limit_mode="earliest"
             )
-            
+
             if chosen_message:
                 chat_id = chosen_message[0].get("chat_id")
 
                 messages = get_raw_msg_by_timestamp_with_chat(
-                    timestamp_start=timestamp_start, timestamp_end=timestamp_end, limit=chat_size, limit_mode="earliest", chat_id=chat_id
+                    timestamp_start=timestamp_start,
+                    timestamp_end=timestamp_end,
+                    limit=chat_size,
+                    limit_mode="earliest",
+                    chat_id=chat_id,
                 )
 
                 if messages:
@@ -885,7 +888,7 @@ class EntorhinalCortex:
     async def sync_memory_to_db(self):
         """将记忆图同步到数据库"""
         start_time = time.time()
-        
+
         # 获取数据库中所有节点和内存中所有节点
         db_load_start = time.time()
         db_nodes = {node.concept: node for node in GraphNodes.select()}
@@ -943,13 +946,15 @@ class EntorhinalCortex:
 
             if concept not in db_nodes:
                 # 数据库中缺少的节点,添加到创建列表
-                nodes_to_create.append({
-                    'concept': concept,
-                    'memory_items': memory_items_json,
-                    'hash': memory_hash,
-                    'created_time': created_time,
-                    'last_modified': last_modified
-                })
+                nodes_to_create.append(
+                    {
+                        "concept": concept,
+                        "memory_items": memory_items_json,
+                        "hash": memory_hash,
+                        "created_time": created_time,
+                        "last_modified": last_modified,
+                    }
+                )
                 logger.debug(f"[同步] 准备创建节点: {concept}, memory_items长度: {len(memory_items)}")
             else:
                 # 获取数据库中节点的特征值
@@ -958,12 +963,14 @@ class EntorhinalCortex:
 
                 # 如果特征值不同,则添加到更新列表
                 if db_hash != memory_hash:
-                    nodes_to_update.append({
-                        'concept': concept,
-                        'memory_items': memory_items_json,
-                        'hash': memory_hash,
-                        'last_modified': last_modified
-                    })
+                    nodes_to_update.append(
+                        {
+                            "concept": concept,
+                            "memory_items": memory_items_json,
+                            "hash": memory_hash,
+                            "last_modified": last_modified,
+                        }
+                    )
 
         # 检查需要删除的节点
         memory_concepts = {concept for concept, _ in memory_nodes}
@@ -972,7 +979,9 @@ class EntorhinalCortex:
 
         node_process_end = time.time()
         logger.info(f"[同步] 处理节点数据耗时: {node_process_end - node_process_start:.2f}秒")
-        logger.info(f"[同步] 准备创建 {len(nodes_to_create)} 个节点，更新 {len(nodes_to_update)} 个节点，删除 {len(nodes_to_delete)} 个节点")
+        logger.info(
+            f"[同步] 准备创建 {len(nodes_to_create)} 个节点，更新 {len(nodes_to_update)} 个节点，删除 {len(nodes_to_delete)} 个节点"
+        )
 
         # 异步批量创建新节点
         node_create_start = time.time()
@@ -981,22 +990,24 @@ class EntorhinalCortex:
                 # 验证所有要创建的节点数据
                 valid_nodes_to_create = []
                 for node_data in nodes_to_create:
-                    if not node_data.get('memory_items'):
+                    if not node_data.get("memory_items"):
                         logger.warning(f"[同步] 跳过创建节点 {node_data['concept']}: memory_items 为空")
                         continue
                     try:
                         # 验证 JSON 字符串
-                        json.loads(node_data['memory_items'])
+                        json.loads(node_data["memory_items"])
                         valid_nodes_to_create.append(node_data)
                     except json.JSONDecodeError:
-                        logger.warning(f"[同步] 跳过创建节点 {node_data['concept']}: memory_items 不是有效的 JSON 字符串")
+                        logger.warning(
+                            f"[同步] 跳过创建节点 {node_data['concept']}: memory_items 不是有效的 JSON 字符串"
+                        )
                         continue
 
                 if valid_nodes_to_create:
                     # 使用异步批量插入
                     batch_size = 100
                     for i in range(0, len(valid_nodes_to_create), batch_size):
-                        batch = valid_nodes_to_create[i:i + batch_size]
+                        batch = valid_nodes_to_create[i : i + batch_size]
                         await self._async_batch_create_nodes(batch)
                     logger.info(f"[同步] 成功创建 {len(valid_nodes_to_create)} 个节点")
                 else:
@@ -1006,21 +1017,25 @@ class EntorhinalCortex:
                 # 尝试逐个创建以找出问题节点
                 for node_data in nodes_to_create:
                     try:
-                        if not node_data.get('memory_items'):
+                        if not node_data.get("memory_items"):
                             logger.warning(f"[同步] 跳过创建节点 {node_data['concept']}: memory_items 为空")
                             continue
                         try:
-                            json.loads(node_data['memory_items'])
+                            json.loads(node_data["memory_items"])
                         except json.JSONDecodeError:
-                            logger.warning(f"[同步] 跳过创建节点 {node_data['concept']}: memory_items 不是有效的 JSON 字符串")
+                            logger.warning(
+                                f"[同步] 跳过创建节点 {node_data['concept']}: memory_items 不是有效的 JSON 字符串"
+                            )
                             continue
                         await self._async_create_node(node_data)
                     except Exception as e:
                         logger.error(f"[同步] 创建节点失败: {node_data['concept']}, 错误: {e}")
                         # 从图中移除问题节点
-                        self.memory_graph.G.remove_node(node_data['concept'])
+                        self.memory_graph.G.remove_node(node_data["concept"])
         node_create_end = time.time()
-        logger.info(f"[同步] 创建新节点耗时: {node_create_end - node_create_start:.2f}秒 (创建了 {len(nodes_to_create)} 个节点)")
+        logger.info(
+            f"[同步] 创建新节点耗时: {node_create_end - node_create_start:.2f}秒 (创建了 {len(nodes_to_create)} 个节点)"
+        )
 
         # 异步批量更新节点
         node_update_start = time.time()
@@ -1028,30 +1043,32 @@ class EntorhinalCortex:
             # 按批次更新节点，每批100个
             batch_size = 100
             for i in range(0, len(nodes_to_update), batch_size):
-                batch = nodes_to_update[i:i + batch_size]
+                batch = nodes_to_update[i : i + batch_size]
                 try:
                     # 验证批次中的每个节点数据
                     valid_batch = []
                     for node_data in batch:
                         # 确保 memory_items 不为空且是有效的 JSON 字符串
-                        if not node_data.get('memory_items'):
+                        if not node_data.get("memory_items"):
                             logger.warning(f"[同步] 跳过更新节点 {node_data['concept']}: memory_items 为空")
                             continue
                         try:
                             # 验证 JSON 字符串是否有效
-                            json.loads(node_data['memory_items'])
+                            json.loads(node_data["memory_items"])
                             valid_batch.append(node_data)
                         except json.JSONDecodeError:
-                            logger.warning(f"[同步] 跳过更新节点 {node_data['concept']}: memory_items 不是有效的 JSON 字符串")
+                            logger.warning(
+                                f"[同步] 跳过更新节点 {node_data['concept']}: memory_items 不是有效的 JSON 字符串"
+                            )
                             continue
-                    
+
                     if not valid_batch:
-                        logger.warning(f"[同步] 批次 {i//batch_size + 1} 没有有效的节点可以更新")
+                        logger.warning(f"[同步] 批次 {i // batch_size + 1} 没有有效的节点可以更新")
                         continue
 
                     # 异步批量更新节点
                     await self._async_batch_update_nodes(valid_batch)
-                    logger.debug(f"[同步] 成功更新批次 {i//batch_size + 1} 中的 {len(valid_batch)} 个节点")
+                    logger.debug(f"[同步] 成功更新批次 {i // batch_size + 1} 中的 {len(valid_batch)} 个节点")
                 except Exception as e:
                     logger.error(f"[同步] 批量更新节点失败: {e}")
                     # 如果批量更新失败，尝试逐个更新
@@ -1061,17 +1078,21 @@ class EntorhinalCortex:
                         except Exception as e:
                             logger.error(f"[同步] 更新节点失败: {node_data['concept']}, 错误: {e}")
                             # 从图中移除问题节点
-                            self.memory_graph.G.remove_node(node_data['concept'])
+                            self.memory_graph.G.remove_node(node_data["concept"])
 
         node_update_end = time.time()
-        logger.info(f"[同步] 更新节点耗时: {node_update_end - node_update_start:.2f}秒 (更新了 {len(nodes_to_update)} 个节点)")
+        logger.info(
+            f"[同步] 更新节点耗时: {node_update_end - node_update_start:.2f}秒 (更新了 {len(nodes_to_update)} 个节点)"
+        )
 
         # 异步删除不存在的节点
         node_delete_start = time.time()
         if nodes_to_delete:
             await self._async_delete_nodes(nodes_to_delete)
         node_delete_end = time.time()
-        logger.info(f"[同步] 删除节点耗时: {node_delete_end - node_delete_start:.2f}秒 (删除了 {len(nodes_to_delete)} 个节点)")
+        logger.info(
+            f"[同步] 删除节点耗时: {node_delete_end - node_delete_start:.2f}秒 (删除了 {len(nodes_to_delete)} 个节点)"
+        )
 
         # 处理边的信息
         edge_load_start = time.time()
@@ -1106,24 +1127,28 @@ class EntorhinalCortex:
 
             if edge_key not in db_edge_dict:
                 # 添加新边到创建列表
-                edges_to_create.append({
-                    'source': source,
-                    'target': target,
-                    'strength': strength,
-                    'hash': edge_hash,
-                    'created_time': created_time,
-                    'last_modified': last_modified
-                })
+                edges_to_create.append(
+                    {
+                        "source": source,
+                        "target": target,
+                        "strength": strength,
+                        "hash": edge_hash,
+                        "created_time": created_time,
+                        "last_modified": last_modified,
+                    }
+                )
             else:
                 # 检查边的特征值是否变化
                 if db_edge_dict[edge_key]["hash"] != edge_hash:
-                    edges_to_update.append({
-                        'source': source,
-                        'target': target,
-                        'strength': strength,
-                        'hash': edge_hash,
-                        'last_modified': last_modified
-                    })
+                    edges_to_update.append(
+                        {
+                            "source": source,
+                            "target": target,
+                            "strength": strength,
+                            "hash": edge_hash,
+                            "last_modified": last_modified,
+                        }
+                    )
         edge_process_end = time.time()
         logger.info(f"[同步] 处理边数据耗时: {edge_process_end - edge_process_start:.2f}秒")
 
@@ -1132,20 +1157,24 @@ class EntorhinalCortex:
         if edges_to_create:
             batch_size = 100
             for i in range(0, len(edges_to_create), batch_size):
-                batch = edges_to_create[i:i + batch_size]
+                batch = edges_to_create[i : i + batch_size]
                 await self._async_batch_create_edges(batch)
         edge_create_end = time.time()
-        logger.info(f"[同步] 创建新边耗时: {edge_create_end - edge_create_start:.2f}秒 (创建了 {len(edges_to_create)} 条边)")
+        logger.info(
+            f"[同步] 创建新边耗时: {edge_create_end - edge_create_start:.2f}秒 (创建了 {len(edges_to_create)} 条边)"
+        )
 
         # 异步批量更新边
         edge_update_start = time.time()
         if edges_to_update:
             batch_size = 100
             for i in range(0, len(edges_to_update), batch_size):
-                batch = edges_to_update[i:i + batch_size]
+                batch = edges_to_update[i : i + batch_size]
                 await self._async_batch_update_edges(batch)
         edge_update_end = time.time()
-        logger.info(f"[同步] 更新边耗时: {edge_update_end - edge_update_start:.2f}秒 (更新了 {len(edges_to_update)} 条边)")
+        logger.info(
+            f"[同步] 更新边耗时: {edge_update_end - edge_update_start:.2f}秒 (更新了 {len(edges_to_update)} 条边)"
+        )
 
         # 检查需要删除的边
         memory_edge_keys = {(source, target) for source, target, _ in memory_edges}
@@ -1157,7 +1186,9 @@ class EntorhinalCortex:
         if edges_to_delete:
             await self._async_delete_edges(edges_to_delete)
         edge_delete_end = time.time()
-        logger.info(f"[同步] 删除边耗时: {edge_delete_end - edge_delete_start:.2f}秒 (删除了 {len(edges_to_delete)} 条边)")
+        logger.info(
+            f"[同步] 删除边耗时: {edge_delete_end - edge_delete_start:.2f}秒 (删除了 {len(edges_to_delete)} 条边)"
+        )
 
         end_time = time.time()
         logger.success(f"[同步] 总耗时: {end_time - start_time:.2f}秒")
@@ -1183,8 +1214,8 @@ class EntorhinalCortex:
         """异步批量更新节点"""
         try:
             for node_data in nodes_data:
-                GraphNodes.update(**{k: v for k, v in node_data.items() if k != 'concept'}).where(
-                    GraphNodes.concept == node_data['concept']
+                GraphNodes.update(**{k: v for k, v in node_data.items() if k != "concept"}).where(
+                    GraphNodes.concept == node_data["concept"]
                 ).execute()
         except Exception as e:
             logger.error(f"[同步] 批量更新节点失败: {e}")
@@ -1193,8 +1224,8 @@ class EntorhinalCortex:
     async def _async_update_node(self, node_data):
         """异步更新单个节点"""
         try:
-            GraphNodes.update(**{k: v for k, v in node_data.items() if k != 'concept'}).where(
-                GraphNodes.concept == node_data['concept']
+            GraphNodes.update(**{k: v for k, v in node_data.items() if k != "concept"}).where(
+                GraphNodes.concept == node_data["concept"]
             ).execute()
         except Exception as e:
             logger.error(f"[同步] 更新节点失败: {e}")
@@ -1220,9 +1251,8 @@ class EntorhinalCortex:
         """异步批量更新边"""
         try:
             for edge_data in edges_data:
-                GraphEdges.update(**{k: v for k, v in edge_data.items() if k not in ['source', 'target']}).where(
-                    (GraphEdges.source == edge_data['source']) & 
-                    (GraphEdges.target == edge_data['target'])
+                GraphEdges.update(**{k: v for k, v in edge_data.items() if k not in ["source", "target"]}).where(
+                    (GraphEdges.source == edge_data["source"]) & (GraphEdges.target == edge_data["target"])
                 ).execute()
         except Exception as e:
             logger.error(f"[同步] 批量更新边失败: {e}")
@@ -1232,10 +1262,7 @@ class EntorhinalCortex:
         """异步删除边"""
         try:
             for source, target in edge_keys:
-                GraphEdges.delete().where(
-                    (GraphEdges.source == source) & 
-                    (GraphEdges.target == target)
-                ).execute()
+                GraphEdges.delete().where((GraphEdges.source == source) & (GraphEdges.target == target)).execute()
         except Exception as e:
             logger.error(f"[同步] 删除边失败: {e}")
             raise
@@ -1406,7 +1433,7 @@ class ParahippocampalGyrus:
         if not input_text:
             logger.warning("无法从提供的消息生成可读文本，跳过记忆压缩。")
             return set(), {}
-        
+
         current_YMD_time = datetime.datetime.now().strftime("%Y-%m-%d")
         current_YMD_time_str = f"当前日期: {current_YMD_time}"
         input_text = f"{current_YMD_time_str}\n{input_text}"
@@ -1533,8 +1560,7 @@ class ParahippocampalGyrus:
                 logger.debug(f"连接同批次节点: {topic1} 和 {topic2}")
                 all_added_edges.append(f"{topic1}-{topic2}")
                 self.memory_graph.connect_dot(topic1, topic2)
-                
-                
+
             progress = (i / len(memory_samples)) * 100
             bar_length = 30
             filled_length = int(bar_length * i // len(memory_samples))
