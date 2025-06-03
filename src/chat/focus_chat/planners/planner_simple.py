@@ -190,11 +190,10 @@ class ActionPlanner(BasePlanner):
                 prompt = f"{prompt}"
                 llm_content, (reasoning_content, _) = await self.planner_llm.generate_response_async(prompt=prompt)
 
-                logger.debug(
-                    f"{self.log_prefix}规划器Prompt:\n{prompt}\n\n决策动作:{action},\n动作信息: '{action_data}'\n理由: {reasoning}"
+                logger.info(
+                    f"{self.log_prefix}规划器Prompt:\n{prompt}\n\nLLM 原始响应: {llm_content}'"
                 )
 
-                logger.debug(f"{self.log_prefix}LLM 原始响应: {llm_content}")
                 logger.debug(f"{self.log_prefix}LLM 原始理由响应: {reasoning_content}")
             except Exception as req_e:
                 logger.error(f"{self.log_prefix}LLM 请求执行失败: {req_e}")
