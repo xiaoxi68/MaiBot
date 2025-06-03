@@ -121,7 +121,7 @@ class WorkingMemoryProcessor(BaseProcessor):
         )
 
         print(f"prompt: {prompt}")
-        
+
         # 调用LLM处理记忆
         content = ""
         try:

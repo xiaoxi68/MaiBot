@@ -1,6 +1,5 @@
 from typing import List, Any, Optional
 import asyncio
-import random
 from src.common.logger_manager import get_logger
 from src.chat.focus_chat.working_memory.memory_manager import MemoryManager, MemoryItem
 

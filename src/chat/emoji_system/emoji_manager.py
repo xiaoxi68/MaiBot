@@ -602,9 +602,10 @@ class EmojiManager:
                 continue
 
             # 检查是否需要处理表情包(数量超过最大值或不足)
-            if global_config.emoji.steal_emoji and ((self.emoji_num > self.emoji_num_max and global_config.emoji.do_replace) or (
-                self.emoji_num < self.emoji_num_max
-            )):
+            if global_config.emoji.steal_emoji and (
+                (self.emoji_num > self.emoji_num_max and global_config.emoji.do_replace)
+                or (self.emoji_num < self.emoji_num_max)
+            ):
                 try:
                     # 获取目录下所有图片文件
                     files_to_process = [

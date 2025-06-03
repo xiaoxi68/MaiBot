@@ -28,6 +28,7 @@ def init_prompt():
 
 重要说明：
 - "no_action" 表示只进行普通聊天回复，不执行任何额外动作
+- "change_to_focus_chat" 表示当聊天变得热烈、自己回复条数很多或需要深入交流时，正常回复消息并切换到focus_chat模式进行更深入的对话
 - 其他action表示在普通回复的基础上，执行相应的额外动作
 
 你必须从上面列出的可用action中选择一个，并说明原因。
@@ -156,8 +157,8 @@ class NormalChatPlanner:
                     # 提取其他参数作为action_data
                     action_data = {k: v for k, v in action_result.items() if k not in ["action", "reasoning"]}
 
-                    # 验证动作是否在可用动作列表中
-                    if action not in current_available_actions:
+                    # 验证动作是否在可用动作列表中，或者是特殊动作
+                    if action not in current_available_actions and action != "change_to_focus_chat":
                         logger.warning(f"{self.log_prefix}规划器选择了不可用的动作: {action}, 回退到no_action")
                         action = "no_action"
                         reasoning = f"选择的动作{action}不在可用列表中，回退到no_action"
@@ -211,6 +212,19 @@ class NormalChatPlanner:
         try:
             # 构建动作选项文本
             action_options_text = ""
+
+            # 添加特殊的change_to_focus_chat动作
+            action_options_text += "action_name: change_to_focus_chat\n"
+            action_options_text += (
+                "    描述：当聊天变得热烈、自己回复条数很多或需要深入交流时使用，正常回复消息并切换到focus_chat模式\n"
+            )
+            action_options_text += "    参数：\n"
+            action_options_text += "    动作要求：\n"
+            action_options_text += "    - 聊天上下文中自己的回复条数较多（超过3-4条）\n"
+            action_options_text += "    - 对话进行得非常热烈活跃\n"
+            action_options_text += "    - 用户表现出深入交流的意图\n"
+            action_options_text += "    - 话题需要更专注和深入的讨论\n\n"
+
             for action_name, action_info in current_available_actions.items():
                 action_description = action_info.get("description", "")
                 action_parameters = action_info.get("parameters", {})
