@@ -22,7 +22,7 @@ class MuteAction(PluginAction):
         "当有人发了擦边，或者色情内容时使用",
         "当有人要求禁言自己时使用",
     ]
-    default = True  # 默认动作，是否手动添加到使用集
+    default = False  # 默认动作，是否手动添加到使用集
     associated_types = ["command", "text"]
     # associated_types = ["text"]
 
