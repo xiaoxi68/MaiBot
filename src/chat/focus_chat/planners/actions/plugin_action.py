@@ -194,7 +194,7 @@ class PluginAction(BaseAction):
 
         # 获取锚定消息（如果有）
         observations = self._services.get("observations", [])
-        
+
         # 查找 ChattingObservation 实例
         chatting_observation = None
         for obs in observations:

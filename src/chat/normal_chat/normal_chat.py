@@ -79,7 +79,7 @@ class NormalChat:
         # 初始化Normal Chat专用表达器
         self.expressor = NormalChatExpressor(self.chat_stream, self.stream_name)
         self.replyer = DefaultReplyer(chat_id=self.stream_id)
-        
+
         self.replyer.chat_stream = self.chat_stream
 
         self._initialized = True
@@ -243,9 +243,7 @@ class NormalChat:
                         self.interest_dict.pop(msg_id, None)
 
     # 改为实例方法, 移除 chat 参数
-    async def normal_response(
-        self, message: MessageRecv, is_mentioned: bool, interested_rate: float
-    ) -> None:
+    async def normal_response(self, message: MessageRecv, is_mentioned: bool, interested_rate: float) -> None:
         # 新增：如果已停用，直接返回
         if self._disabled:
             logger.info(f"[{self.stream_name}] 已停用，忽略 normal_response。")
@@ -286,7 +284,6 @@ class NormalChat:
 
             # 回复前处理
             await willing_manager.before_generate_reply_handle(message.message_info.message_id)
-
 
             thinking_id = await self._create_thinking_message(message)
 

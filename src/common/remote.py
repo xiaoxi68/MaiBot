@@ -142,7 +142,9 @@ class TelemetryHeartBeatTask(AsyncTask):
             del local_storage["mmc_uuid"]  # 删除本地存储的UUID
         else:
             # 其他错误
-            logger.warning(f"（此错误不会影响正常使用）状态未发送，状态码: {response.status_code}, 响应内容: {response.text}")
+            logger.warning(
+                f"（此错误不会影响正常使用）状态未发送，状态码: {response.status_code}, 响应内容: {response.text}"
+            )
 
     async def run(self):
         # 发送心跳
