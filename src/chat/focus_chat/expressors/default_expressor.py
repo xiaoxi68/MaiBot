@@ -476,7 +476,7 @@ class DefaultExpressor:
         emoji_base64 = ""
         emoji_raw = await emoji_manager.get_emoji_for_text(send_emoji)
         if emoji_raw:
-            emoji_path, _description = emoji_raw
+            emoji_path, _description, _emotion = emoji_raw
             emoji_base64 = image_path_to_base64(emoji_path)
         return emoji_base64
 

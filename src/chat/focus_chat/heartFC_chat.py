@@ -527,7 +527,7 @@ class HeartFChatting:
                 else:
                     action_str = action_type
 
-                logger.debug(f"{self.log_prefix} 麦麦想要：'{action_str}', 原因'{reasoning}'")
+                logger.debug(f"{self.log_prefix} 麦麦想要：'{action_str}'")
 
                 success, reply_text, command = await self._handle_action(
                     action_type, reasoning, action_data, cycle_timers, thinking_id

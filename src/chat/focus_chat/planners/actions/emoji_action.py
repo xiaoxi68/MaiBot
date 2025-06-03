@@ -19,11 +19,15 @@ class EmojiAction(BaseAction):
     """
 
     action_name: str = "emoji"
-    action_description: str = "当你想单独发送一个表情辅助你的回复表达"
+    action_description: str = "当你想单独发送一个表情包辅助你的回复表达"
     action_parameters: dict[str:str] = {
-        "description": "文字描述你想要发送的表情",
+        "description": "文字描述你想要发送的表情包内容",
     }
-    action_require: list[str] = ["你想要发送一个表情", "表达情绪时可以选择使用", "一般在你回复之后可以选择性使用"]
+    action_require: list[str] = [
+        "你想要发送一个表情",
+        "表达情绪时可以选择使用",
+        "一般在你回复之后可以选择性使用",
+        "重点：不要连续发，不要发太多[表情包]"]
 
     associated_types: list[str] = ["emoji"]
 

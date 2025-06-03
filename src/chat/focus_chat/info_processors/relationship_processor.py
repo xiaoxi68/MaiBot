@@ -31,6 +31,7 @@ def init_prompt():
 现在请你根据现有的信息，总结你和群里的人的关系
 1. 当聊天记录中提到你时，请输出你和这个人之间的关系
 2. 当聊天记录中提到其他人时，请输出你和这个人之间的关系
+3. 如果没有特别需要提及的关系，请输出“没有特别在意的人”
 
 输出内容平淡一些，说中文。
 请注意不要输出多余内容(包括前后缀，括号()，表情包，at或 @等 )。只输出关系内容，记得明确说明这是你的关系。
@@ -130,9 +131,10 @@ class RelationshipProcessor(BaseProcessor):
         name_block = f"你的名字是{global_config.bot.nickname},你的昵称有{nickname_str}，有人也会用这些昵称称呼你。"
 
         if is_group_chat:
-            relation_prompt_init = "在这个群聊中，你：\n"
+            relation_prompt_init = "你对群聊里的人的印象是：\n"
         else:
-            relation_prompt_init = ""
+            relation_prompt_init = "你对对方的印象是：\n"
+            
         for person in person_list:
             relation_prompt += await relationship_manager.build_relationship_info(person, is_id=True)
         if relation_prompt:
