@@ -6,7 +6,7 @@ import time
 import random
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
-from src.chat.utils.chat_message_builder import get_raw_msg_by_timestamp_with_chat_users
+from src.chat.utils.chat_message_builder import get_raw_msg_by_timestamp_with_chat
 from src.chat.utils.chat_message_builder import build_readable_messages
 from src.manager.mood_manager import mood_manager
 from src.individuality.individuality import individuality
@@ -300,20 +300,38 @@ class RelationshipManager:
         # logger.debug(f"更新印象的person_id: {person_id}, chat_id: {chat_id}, reason: {reason}, timestamp: {timestamp}, user_id: {user_id}")
 
         # 获取时间戳前后的消息
-        messages_before = get_raw_msg_by_timestamp_with_chat_users(
+        # messages_before = get_raw_msg_by_timestamp_with_chat_users(
+        #     chat_id=chat_id,
+        #     timestamp_start=timestamp - 600,  # 前10分钟
+        #     timestamp_end=timestamp,
+        #     person_ids=[user_id],
+        #     limit=200,
+        #     limit_mode="latest"
+        # )
+        
+        # messages_after = get_raw_msg_by_timestamp_with_chat_users(
+        #     chat_id=chat_id,
+        #     timestamp_start=timestamp,
+        #     timestamp_end=timestamp + 600,  # 后10分钟
+        #     person_ids=[user_id],
+        #     limit=200,
+        #     limit_mode="earliest"
+        # )
+        
+        messages_before = get_raw_msg_by_timestamp_with_chat(
             chat_id=chat_id,
             timestamp_start=timestamp - 600,  # 前10分钟
             timestamp_end=timestamp,
-            person_ids=[user_id],
+            # person_ids=[user_id],
             limit=200,
             limit_mode="latest"
         )
         
-        messages_after = get_raw_msg_by_timestamp_with_chat_users(
+        messages_after = get_raw_msg_by_timestamp_with_chat(
             chat_id=chat_id,
             timestamp_start=timestamp,
             timestamp_end=timestamp + 600,  # 后10分钟
-            person_ids=[user_id],
+            # person_ids=[user_id],
             limit=200,
             limit_mode="earliest"
         )
