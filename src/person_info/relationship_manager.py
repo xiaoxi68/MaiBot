@@ -9,6 +9,8 @@ from src.config.config import global_config
 from src.chat.utils.chat_message_builder import get_raw_msg_by_timestamp_with_chat_users
 from src.chat.utils.chat_message_builder import build_readable_messages
 from src.manager.mood_manager import mood_manager
+from src.individuality.individuality import individuality
+import re
 
 
 logger = get_logger("relation")
@@ -210,6 +212,7 @@ class RelationshipManager:
         else:
             # print(f"person: {person}")
             person_id = person_info_manager.get_person_id(person[0], person[1])
+            
         person_name = await person_info_manager.get_value(person_id, "person_name")
         # print(f"person_name: {person_name}")
         relationship_value = await person_info_manager.get_value(person_id, "relationship_value")
@@ -249,20 +252,13 @@ class RelationshipManager:
             else:
                 relation_value_prompt = ""
 
-        if relation_value_prompt:
-            nickname_str = await person_info_manager.get_value(person_id, "nickname")
-            platform = await person_info_manager.get_value(person_id, "platform")
-            relation_prompt = f"{relation_value_prompt}，ta在{platform}上的昵称是{nickname_str}。\n"
-        else:
-            relation_prompt = ""
-            
-        person_name_reason = await person_info_manager.get_value(person_id, "person_name_reason")
-        if person_name_reason:
-            relation_prompt += f"ta的昵称{person_name}的由来是：{person_name_reason}。\n"
+        nickname_str = await person_info_manager.get_value(person_id, "nickname")
+        platform = await person_info_manager.get_value(person_id, "platform")
+        relation_prompt = f"你认识 {person_name} ，ta在{platform}上的昵称是{nickname_str}。"
             
         person_impression = await person_info_manager.get_value(person_id, "person_impression")
         if person_impression:
-            relation_prompt += f"ta的印象是：{person_impression}。\n"
+            relation_prompt += f"你对ta的印象是：{person_impression}。\n"
 
         return relation_prompt
 
@@ -301,24 +297,24 @@ class RelationshipManager:
         old_impression = await person_info_manager.get_value(person_id, "person_impression")
         user_id = await person_info_manager.get_value(person_id, "user_id")
         
-        logger.debug(f"更新印象的person_id: {person_id}, chat_id: {chat_id}, reason: {reason}, timestamp: {timestamp}, user_id: {user_id}")
+        # logger.debug(f"更新印象的person_id: {person_id}, chat_id: {chat_id}, reason: {reason}, timestamp: {timestamp}, user_id: {user_id}")
 
         # 获取时间戳前后的消息
         messages_before = get_raw_msg_by_timestamp_with_chat_users(
             chat_id=chat_id,
-            timestamp_start=timestamp - 3600,  # 前1小时
+            timestamp_start=timestamp - 600,  # 前10分钟
             timestamp_end=timestamp,
             person_ids=[user_id],
-            limit=30,
+            limit=200,
             limit_mode="latest"
         )
         
         messages_after = get_raw_msg_by_timestamp_with_chat_users(
             chat_id=chat_id,
             timestamp_start=timestamp,
-            timestamp_end=timestamp + 3600,  # 后1小时
+            timestamp_end=timestamp + 600,  # 后10分钟
             person_ids=[user_id],
-            limit=30,
+            limit=200,
             limit_mode="earliest"
         )
         
@@ -330,49 +326,98 @@ class RelationshipManager:
         
         # 构建可读消息
         
-        readable_messages = await build_readable_messages(
-            messages=user_messages,
-            replace_bot_name=True,
-            timestamp_mode="relative",
-            truncate=False
-        )
-        
-        # 使用LLM总结印象
-        prompt = f"""基于以下信息，总结对{person_name}(昵称:{nickname})的印象：
-原因：{reason}
+        if user_messages:
+            
+            readable_messages = await build_readable_messages(
+                messages=user_messages,
+                replace_bot_name=True,
+                timestamp_mode="relative",
+                truncate=False
+            )
+            
+            # 使用LLM总结印象
+            alias_str = ""
+            for alias in global_config.bot.alias_names:
+                alias_str += f"{alias}, "
+                
+                
+            personality_block = individuality.get_personality_prompt(x_person=2, level=2)
+            identity_block = individuality.get_identity_prompt(x_person=2, level=2)
+            
+            prompt = f"""
+你的名字是{global_config.bot.nickname}，别名是{alias_str}。
+你是一个AI，但是你伪装成了一个人类，不要让别人发现这一点
+请参考以下人格：
+{personality_block}
+{identity_block}
+
+基于以下信息，总结对{person_name}(昵称:{nickname})的印象：
 历史印象：{old_impression if old_impression else '无'}
 最近发言：
+
 {readable_messages}
 
-请用简洁的语言总结对这个人的印象，不超过200字。"""
-        
-        new_impression, _ = await self.relationship_llm.generate_response_async(prompt=prompt)
-        
-        
-        logger.debug(f"新印象prompt：{prompt}")
-        logger.info(f"新印象：{new_impression}")
-        
-        
-        # 合并新旧印象
-        if old_impression:
-            merge_prompt = f"""请将以下两段印象合并，形成一段连贯的描述：
-旧印象：{old_impression}
-新印象：{new_impression}
+（如果某个发言像另一个聊天机器人，请指出来）
 
-请用简洁的语言合并这两段印象，不超过200字。"""
-            final_impression, _ = await self.relationship_llm.generate_response_async(prompt=merge_prompt)
+请用简洁的语言总结对这个人的印象，不超过50字。"""
             
-            logger.debug(f"合并印象prompt：{merge_prompt}")
-            logger.info(f"合并印象：{final_impression}")
-            
-        else:
-            final_impression = new_impression
+            new_impression, _ = await self.relationship_llm.generate_response_async(prompt=prompt)
             
             
-        # 更新到数据库
-        await person_info_manager.update_one_field(person_id, "person_impression", final_impression)
+            
+            # 合并新旧印象
+            if old_impression:
+                merge_prompt = f"""
+你的名字是{global_config.bot.nickname}，别名是{alias_str}。
+你是一个AI，但是你伪装成了一个人类，不要让别人发现这一点
+请参考以下人格：
+{personality_block}
+{identity_block}
+
+请根据对{person_name}(昵称:{nickname})的已有了解和新的了解，合并形成对这个人的完整印象：
+对这个人的印象：
+<impression>
+{old_impression}
+</impression>
+
+新了解：
+<new_impression>
+{new_impression}
+</new_impression>
+
+注意，原有印象比较重要，新了解只是补充，不要超过原有印象的篇幅。
+请用简洁的语言合并这两段印象，近输出印象，不要输出其他内容，不超过200字。"""
+                final_impression, _ = await self.relationship_llm.generate_response_async(prompt=merge_prompt)
+                
+                # 找到<impression>包裹的内容，如果找不到，直接用原文
+                
+                match = re.search(r"<impression>(.*?)</impression>", final_impression, re.DOTALL)
+                if match:
+                    final_impression = match.group(1).strip()
+                
+                
+                logger.debug(f"新印象prompt：{prompt}")
+                logger.info(f"新印象：{new_impression}")
+                logger.debug(f"合并印象prompt：{merge_prompt}")
+                logger.info(f"合并印象：{final_impression}")
+                
+            else:
+                logger.debug(f"新印象prompt：{prompt}")
+                logger.info(f"新印象：{new_impression}")
+                
+                
+                final_impression = new_impression
+                
+                
+            # 更新到数据库
+            await person_info_manager.update_one_field(person_id, "person_impression", final_impression)
+            
+            return final_impression
         
-        return final_impression
+        else:
+            logger.info(f"没有找到{person_name}的消息")
+            return old_impression
+
 
 
 relationship_manager = RelationshipManager()

@@ -168,7 +168,7 @@ class NormalChat:
         if random() < global_config.normal_chat.emoji_chance:
             emoji_raw = await emoji_manager.get_emoji_for_text(response)
             if emoji_raw:
-                emoji_path, description = emoji_raw
+                emoji_path, description, _emotion = emoji_raw
                 emoji_cq = image_path_to_base64(emoji_path)
 
                 thinking_time_point = round(message.message_info.time, 2)

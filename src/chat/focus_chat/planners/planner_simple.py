@@ -30,7 +30,10 @@ def init_prompt():
         """
 你的自我认知是：
 {self_info_block}
+请记住你的性格，身份和特点。
+
 {relation_info_block}
+
 {extra_info_block}
 {memory_str}
 
