@@ -182,25 +182,6 @@ class MongoToSQLiteMigrator:
                 enable_validation=False,  # 禁用数据验证
                 unique_fields=["stream_id"],
             ),
-            # LLM使用记录迁移配置
-            MigrationConfig(
-                mongo_collection="llm_usage",
-                target_model=LLMUsage,
-                field_mapping={
-                    "model_name": "model_name",
-                    "user_id": "user_id",
-                    "request_type": "request_type",
-                    "endpoint": "endpoint",
-                    "prompt_tokens": "prompt_tokens",
-                    "completion_tokens": "completion_tokens",
-                    "total_tokens": "total_tokens",
-                    "cost": "cost",
-                    "status": "status",
-                    "timestamp": "timestamp",
-                },
-                enable_validation=True,  # 禁用数据验证"
-                unique_fields=["user_id", "prompt_tokens", "completion_tokens", "total_tokens", "cost"],  # 组合唯一性
-            ),
             # 消息迁移配置
             MigrationConfig(
                 mongo_collection="messages",

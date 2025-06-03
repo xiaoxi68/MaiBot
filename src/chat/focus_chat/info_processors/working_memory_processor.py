@@ -162,7 +162,7 @@ class WorkingMemoryProcessor(BaseProcessor):
                     memory_brief = memory_summary.get("brief")
                     memory_points = memory_summary.get("points", [])
                     for point in memory_points:
-                        memory_str += f"记忆要点:{point}\n"
+                        memory_str += f"{point}\n"
 
         working_memory_info = WorkingMemoryInfo()
         if memory_str:

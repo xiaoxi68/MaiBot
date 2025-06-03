@@ -24,6 +24,7 @@ from src.chat.focus_chat.planners.action_manager import ActionManager
 from src.chat.normal_chat.normal_chat_planner import NormalChatPlanner
 from src.chat.normal_chat.normal_chat_action_modifier import NormalChatActionModifier
 from src.chat.normal_chat.normal_chat_expressor import NormalChatExpressor
+from src.chat.focus_chat.replyer.default_replyer import DefaultReplyer
 
 logger = get_logger("normal_chat")
 
@@ -77,6 +78,9 @@ class NormalChat:
 
         # 初始化Normal Chat专用表达器
         self.expressor = NormalChatExpressor(self.chat_stream, self.stream_name)
+        self.replyer = DefaultReplyer(chat_id=self.stream_id)
+        
+        self.replyer.chat_stream = self.chat_stream
 
         self._initialized = True
         logger.debug(f"[{self.stream_name}] NormalChat 初始化完成 (异步部分)。")
@@ -93,7 +97,7 @@ class NormalChat:
         )
 
         thinking_time_point = round(time.time(), 2)
-        thinking_id = "mt" + str(thinking_time_point)
+        thinking_id = "tid" + str(thinking_time_point)
         thinking_message = MessageThinking(
             message_id=thinking_id,
             chat_stream=self.chat_stream,
@@ -232,7 +236,6 @@ class NormalChat:
                             message=message,
                             is_mentioned=is_mentioned,
                             interested_rate=interest_value * self.willing_amplifier,
-                            rewind_response=False,
                         )
                     except Exception as e:
                         logger.error(f"[{self.stream_name}] 处理兴趣消息{msg_id}时出错: {e}\n{traceback.format_exc()}")
@@ -241,7 +244,7 @@ class NormalChat:
 
     # 改为实例方法, 移除 chat 参数
     async def normal_response(
-        self, message: MessageRecv, is_mentioned: bool, interested_rate: float, rewind_response: bool = False
+        self, message: MessageRecv, is_mentioned: bool, interested_rate: float
     ) -> None:
         # 新增：如果已停用，直接返回
         if self._disabled:
@@ -284,11 +287,8 @@ class NormalChat:
             # 回复前处理
             await willing_manager.before_generate_reply_handle(message.message_info.message_id)
 
-            with Timer("创建思考消息", timing_results):
-                if rewind_response:
-                    thinking_id = await self._create_thinking_message(message, message.message_info.time)
-                else:
-                    thinking_id = await self._create_thinking_message(message)
+
+            thinking_id = await self._create_thinking_message(message)
 
             logger.debug(f"[{self.stream_name}] 创建捕捉器，thinking_id:{thinking_id}")
 
@@ -666,6 +666,7 @@ class NormalChat:
                 thinking_id=thinking_id,
                 observations=[],  # normal_chat不使用observations
                 expressor=self.expressor,  # 使用normal_chat专用的expressor
+                replyer=self.replyer,
                 chat_stream=self.chat_stream,
                 log_prefix=self.stream_name,
                 shutting_down=self._disabled,
