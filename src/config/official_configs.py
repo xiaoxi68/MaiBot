@@ -171,6 +171,9 @@ class FocusChatProcessorConfig(ConfigBase):
     self_identify_processor: bool = True
     """是否启用自我识别处理器"""
 
+    relation_processor: bool = True
+    """是否启用关系识别处理器"""
+
     tool_use_processor: bool = True
     """是否启用工具使用处理器"""
 

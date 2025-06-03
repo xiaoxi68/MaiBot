@@ -14,6 +14,7 @@ from src.chat.heart_flow.observation.observation import Observation
 from src.chat.focus_chat.heartFC_Cycleinfo import CycleDetail
 from src.chat.focus_chat.info.info_base import InfoBase
 from src.chat.focus_chat.info_processors.chattinginfo_processor import ChattingInfoProcessor
+from src.chat.focus_chat.info_processors.relationship_processor import RelationshipProcessor
 from src.chat.focus_chat.info_processors.mind_processor import MindProcessor
 from src.chat.focus_chat.info_processors.working_memory_processor import WorkingMemoryProcessor
 
@@ -45,6 +46,7 @@ PROCESSOR_CLASSES = {
     "ToolProcessor": (ToolProcessor, "tool_use_processor"),
     "WorkingMemoryProcessor": (WorkingMemoryProcessor, "working_memory_processor"),
     "SelfProcessor": (SelfProcessor, "self_identify_processor"),
+    "RelationshipProcessor": (RelationshipProcessor, "relationship_processor"),
 }
 
 logger = get_logger("hfc")  # Logger Name Changed
@@ -194,7 +196,7 @@ class HeartFChatting:
             if processor_info:
                 processor_actual_class = processor_info[0]  # 获取实际的类定义
                 # 根据处理器类名判断是否需要 subheartflow_id
-                if name in ["MindProcessor", "ToolProcessor", "WorkingMemoryProcessor", "SelfProcessor"]:
+                if name in ["MindProcessor", "ToolProcessor", "WorkingMemoryProcessor", "SelfProcessor", "RelationshipProcessor"]:
                     self.processors.append(processor_actual_class(subheartflow_id=self.stream_id))
                 elif name == "ChattingInfoProcessor":
                     self.processors.append(processor_actual_class())

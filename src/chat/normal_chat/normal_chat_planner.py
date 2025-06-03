@@ -71,7 +71,7 @@ class NormalChatPlanner:
         self.log_prefix = log_prefix
         # LLM规划器配置
         self.planner_llm = LLMRequest(
-            model=global_config.model.normal_chat_2,
+            model=global_config.model.planner,
             max_tokens=1000,
             request_type="normal_chat.planner",  # 用于normal_chat动作规划
         )

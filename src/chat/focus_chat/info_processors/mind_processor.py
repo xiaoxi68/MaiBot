@@ -23,7 +23,7 @@ logger = get_logger("processor")
 
 def init_prompt():
     group_prompt = """
-{memory_str}{extra_info}{relation_prompt}
+{extra_info}{relation_prompt}
 {cycle_info_block}
 现在是{time_now}，你正在上网，和qq群里的网友们聊天，以下是正在进行的聊天内容：
 {chat_observe_info}
@@ -42,7 +42,7 @@ def init_prompt():
 
     private_prompt = """
 你的名字是{bot_name}
-{memory_str}{extra_info}{relation_prompt}
+{extra_info}{relation_prompt}
 {cycle_info_block}
 现在是{time_now}，你正在上网，和qq群里的网友们聊天，以下是正在进行的聊天内容：
 {chat_observe_info}

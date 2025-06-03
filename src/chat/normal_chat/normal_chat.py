@@ -192,19 +192,19 @@ class NormalChat:
                 await message_manager.add_message(bot_message)
 
     # 改为实例方法 (虽然它只用 message.chat_stream, 但逻辑上属于实例)
-    async def _update_relationship(self, message: MessageRecv, response_set):
-        """更新关系情绪"""
-        ori_response = ",".join(response_set)
-        stance, emotion = await self.gpt._get_emotion_tags(ori_response, message.processed_plain_text)
-        user_info = message.message_info.user_info
-        platform = user_info.platform
-        await relationship_manager.calculate_update_relationship_value(
-            user_info,
-            platform,
-            label=emotion,
-            stance=stance,  # 使用 self.chat_stream
-        )
-        self.mood_manager.update_mood_from_emotion(emotion, global_config.mood.mood_intensity_factor)
+    # async def _update_relationship(self, message: MessageRecv, response_set):
+    #     """更新关系情绪"""
+    #     ori_response = ",".join(response_set)
+    #     stance, emotion = await self.gpt._get_emotion_tags(ori_response, message.processed_plain_text)
+    #     user_info = message.message_info.user_info
+    #     platform = user_info.platform
+    #     await relationship_manager.calculate_update_relationship_value(
+    #         user_info,
+    #         platform,
+    #         label=emotion,
+    #         stance=stance,  # 使用 self.chat_stream
+    #     )
+    #     self.mood_manager.update_mood_from_emotion(emotion, global_config.mood.mood_intensity_factor)
 
     async def _reply_interested_message(self) -> None:
         """
@@ -452,8 +452,8 @@ class NormalChat:
             with Timer("处理表情包", timing_results):
                 await self._handle_emoji(message, response_set[0])
 
-            with Timer("关系更新", timing_results):
-                await self._update_relationship(message, response_set)
+            # with Timer("关系更新", timing_results):
+            #     await self._update_relationship(message, response_set)
 
             # 回复后处理
             await willing_manager.after_generate_reply_handle(message.message_info.message_id)

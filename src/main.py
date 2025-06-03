@@ -72,10 +72,6 @@ class MainSystem:
         # 添加情绪打印任务
         await async_task_manager.add_task(MoodPrintTask())
 
-        # 检查并清除person_info冗余字段，启动个人习惯推断
-        # await person_info_manager.del_all_undefined_field()
-        asyncio.create_task(person_info_manager.personal_habit_deduction())
-
         # 启动愿望管理器
         await willing_manager.async_task_starter()
 

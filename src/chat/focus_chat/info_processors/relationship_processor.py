@@ -14,36 +14,33 @@ from typing import List, Optional
 from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
 from typing import Dict
 from src.chat.focus_chat.info.info_base import InfoBase
-from src.chat.focus_chat.info.self_info import SelfInfo
+from src.chat.focus_chat.info.relation_info import RelationInfo
 
 logger = get_logger("processor")
 
 
 def init_prompt():
-    indentify_prompt = """
+    relationship_prompt = """
 {name_block}
-你是一个AI，但是你伪装成了一个人类，不要让别人发现这一点
-请参考以下人格，不要被当前聊天内容中的内容误导：
-{prompt_personality}
-{indentify_block}
+你是一个AI，但是你伪装成了一个人类，你不想让别人知道你是一个AI
 
-以下是正在进行的聊天内容：
-现在是{time_now}，你正在参与聊天
+{relation_prompt}
+现在是{time_now}，你正在上网，和qq群里的网友们聊天，以下是正在进行的聊天内容：
 {chat_observe_info}
 
-现在请你输出对自己的描述：请严格遵守以下规则
-1. 根据聊天记录，输出与聊天记录相关的自我描述，包括人格，形象等等，对人格形象进行精简
-2. 思考有没有内容与你的描述相关
-3. 如果没有明显相关内容，请输出十几个字的简短自我描述
+现在请你根据现有的信息，总结你和群里的人的关系
+1. 当聊天记录中提到你时，请输出你和这个人之间的关系
+2. 当聊天记录中提到其他人时，请输出你和这个人之间的关系
 
-现在请输出你的自我描述,请注意不要输出多余内容(包括前后缀，括号()，表情包，at或 @等 )：
+输出内容平淡一些，说中文。
+请注意不要输出多余内容(包括前后缀，括号()，表情包，at或 @等 )。只输出关系内容，记得明确说明这是你的关系。
 
 """
-    Prompt(indentify_prompt, "indentify_prompt")
+    Prompt(relationship_prompt, "relationship_prompt")
 
 
-class SelfProcessor(BaseProcessor):
-    log_prefix = "自我认同"
+class RelationshipProcessor(BaseProcessor):
+    log_prefix = "关系"
 
     def __init__(self, subheartflow_id: str):
         super().__init__()
@@ -71,19 +68,19 @@ class SelfProcessor(BaseProcessor):
         Returns:
             List[InfoBase]: 处理后的结构化信息列表
         """
-        self_info_str = await self.self_indentify(observations, running_memorys)
+        relation_info_str = await self.relation_identify(observations)
 
-        if self_info_str:
-            self_info = SelfInfo()
-            self_info.set_self_info(self_info_str)
+        if relation_info_str:
+            relation_info = RelationInfo()
+            relation_info.set_relation_info(relation_info_str)
         else:
-            self_info = None
+            relation_info = None
             return None
 
-        return [self_info]
+        return [relation_info]
 
-    async def self_indentify(
-        self, observations: Optional[List[Observation]] = None, running_memorys: Optional[List[Dict]] = None
+    async def relation_identify(
+        self, observations: Optional[List[Observation]] = None,
     ):
         """
         在回复前进行思考，生成内心想法并收集工具调用结果
@@ -104,7 +101,6 @@ class SelfProcessor(BaseProcessor):
                 chat_target_info = observation.chat_target_info
                 chat_target_name = "对方"  # 私聊默认名称
                 person_list = observation.person_list
-
 
         relation_prompt = ""
         for person in person_list:
@@ -136,13 +132,20 @@ class SelfProcessor(BaseProcessor):
             nickname_str += f"{nicknames},"
         name_block = f"你的名字是{global_config.bot.nickname},你的昵称有{nickname_str}，有人也会用这些昵称称呼你。"
 
-        personality_block = individuality.get_personality_prompt(x_person=2, level=2)
-        identity_block = individuality.get_identity_prompt(x_person=2, level=2)
+        if is_group_chat:
+            relation_prompt_init = "在这个群聊中，你：\n"
+        else:
+            relation_prompt_init = ""
+        for person in person_list:
+            relation_prompt += await relationship_manager.build_relationship_info(person, is_id=True)
+        if relation_prompt:
+            relation_prompt = relation_prompt_init + relation_prompt
+        else:
+            relation_prompt = relation_prompt_init + "没有特别在意的人\n"
 
-        prompt = (await global_prompt_manager.get_prompt_async("indentify_prompt")).format(
+        prompt = (await global_prompt_manager.get_prompt_async("relationship_prompt")).format(
             name_block=name_block,
-            prompt_personality=personality_block,
-            indentify_block=identity_block,
+            relation_prompt=relation_prompt,
             time_now=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
             chat_observe_info=chat_observe_info,
         )
@@ -153,18 +156,18 @@ class SelfProcessor(BaseProcessor):
         try:
             content, _ = await self.llm_model.generate_response_async(prompt=prompt)
             if not content:
-                logger.warning(f"{self.log_prefix} LLM返回空结果，自我识别失败。")
+                logger.warning(f"{self.log_prefix} LLM返回空结果，关系识别失败。")
         except Exception as e:
             # 处理总体异常
             logger.error(f"{self.log_prefix} 执行LLM请求或处理响应时出错: {e}")
             logger.error(traceback.format_exc())
-            content = "自我识别过程中出现错误"
+            content = "关系识别过程中出现错误"
 
         if content == "None":
             content = ""
         # 记录初步思考结果
-        logger.debug(f"{self.log_prefix} 自我识别prompt: \n{prompt}\n")
-        logger.info(f"{self.log_prefix} 自我认知: {content}")
+        logger.debug(f"{self.log_prefix} 关系识别prompt: \n{prompt}\n")
+        logger.info(f"{self.log_prefix} 关系识别: {content}")
 
         return content
 
