@@ -68,8 +68,7 @@ class MindProcessor(BaseProcessor):
         self.subheartflow_id = subheartflow_id
 
         self.llm_model = LLMRequest(
-            model=global_config.model.focus_chat_mind,
-            # temperature=global_config.model.focus_chat_mind["temp"],
+            model=global_config.model.planner,
             max_tokens=800,
             request_type="focus.processor.chat_mind",
         )

@@ -165,7 +165,7 @@ class FocusChatConfig(ConfigBase):
 class FocusChatProcessorConfig(ConfigBase):
     """专注聊天处理器配置类"""
 
-    mind_processor: bool = True
+    mind_processor: bool = False
     """是否启用思维处理器"""
 
     self_identify_processor: bool = True
@@ -179,9 +179,6 @@ class FocusChatProcessorConfig(ConfigBase):
 
     working_memory_processor: bool = True
     """是否启用工作记忆处理器"""
-
-    lite_chat_mind_processor: bool = False
-    """是否启用轻量级聊天思维处理器，可以节省token消耗和时间"""
 
 
 @dataclass
@@ -445,17 +442,15 @@ class ModelConfig(ConfigBase):
     focus_working_memory: dict[str, Any] = field(default_factory=lambda: {})
     """专注工作记忆模型配置"""
 
-    focus_chat_mind: dict[str, Any] = field(default_factory=lambda: {})
-    """专注聊天规划模型配置"""
-
-    focus_self_recognize: dict[str, Any] = field(default_factory=lambda: {})
-    """专注自我识别模型配置"""
 
     focus_tool_use: dict[str, Any] = field(default_factory=lambda: {})
     """专注工具使用模型配置"""
 
     planner: dict[str, Any] = field(default_factory=lambda: {})
     """规划模型配置"""
+
+    relation: dict[str, Any] = field(default_factory=lambda: {})
+    """关系模型配置"""
 
     focus_expressor: dict[str, Any] = field(default_factory=lambda: {})
     """专注表达器模型配置"""

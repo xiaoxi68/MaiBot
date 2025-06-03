@@ -320,19 +320,19 @@ class RelationshipManager:
         
         messages_before = get_raw_msg_by_timestamp_with_chat(
             chat_id=chat_id,
-            timestamp_start=timestamp - 600,  # 前10分钟
+            timestamp_start=timestamp - 6000,  # 前10分钟
             timestamp_end=timestamp,
             # person_ids=[user_id],
-            limit=200,
+            limit=100,
             limit_mode="latest"
         )
         
         messages_after = get_raw_msg_by_timestamp_with_chat(
             chat_id=chat_id,
             timestamp_start=timestamp,
-            timestamp_end=timestamp + 600,  # 后10分钟
+            timestamp_end=timestamp + 6000,  # 后10分钟
             # person_ids=[user_id],
-            limit=200,
+            limit=100,
             limit_mode="earliest"
         )
         

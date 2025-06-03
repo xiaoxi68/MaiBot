@@ -429,11 +429,9 @@ class ConfigEditor:
                     #     "model.normal_chat_1": "普通聊天：主要聊天模型",
                     #     "model.normal_chat_2": "普通聊天：次要聊天模型",
                     #     "model.focus_working_memory": "专注模式：工作记忆模型",
-                    #     "model.focus_chat_mind": "专注模式：聊天思考模型",
                     #     "model.focus_tool_use": "专注模式：工具调用模型",
                     #     "model.focus_planner": "专注模式：决策模型",
                     #     "model.focus_expressor": "专注模式：表达器模型",
-                    #     "model.focus_self_recognize": "专注模式：自我识别模型"
                     # }
                     # 获取当前节的名称
                     # current_section = ".".join(path[:-1])  # 去掉最后一个key
@@ -494,11 +492,9 @@ class ConfigEditor:
             "model.normal_chat_1": "主要聊天模型",
             "model.normal_chat_2": "次要聊天模型",
             "model.focus_working_memory": "工作记忆模型",
-            "model.focus_chat_mind": "聊天规划模型",
             "model.focus_tool_use": "工具调用模型",
             "model.focus_planner": "决策模型",
             "model.focus_expressor": "表达器模型",
-            "model.focus_self_recognize": "自我识别模型",
         }
         section_trans = self.translations.get("sections", {}).get(full_section_path, {})
         section_name = section_trans.get("name") or section_translations.get(full_section_path) or section

@@ -17,8 +17,8 @@ class ImpressionUpdateTask(AsyncTask):
     def __init__(self):
         super().__init__(
             task_name="impression_update",
-            wait_before_start=10,  # 启动后等待10秒
-            run_interval=30  # 每1分钟运行一次
+            wait_before_start=2,  # 启动后等待10秒
+            run_interval=20  # 每1分钟运行一次
         )
 
     async def run(self):
@@ -27,7 +27,7 @@ class ImpressionUpdateTask(AsyncTask):
             
             # 获取最近10分钟的消息
             current_time = int(time.time())
-            start_time = current_time - 600  # 10分钟前
+            start_time = current_time - 6000  # 10分钟前
             logger.debug(f"获取时间范围: {start_time} -> {current_time}")
             
             # 获取所有消息

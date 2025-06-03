@@ -51,8 +51,7 @@ class SelfProcessor(BaseProcessor):
         self.subheartflow_id = subheartflow_id
 
         self.llm_model = LLMRequest(
-            model=global_config.model.focus_self_recognize,
-            temperature=global_config.model.focus_self_recognize["temp"],
+            model=global_config.model.relation,
             max_tokens=800,
             request_type="focus.processor.self_identify",
         )
