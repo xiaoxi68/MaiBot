@@ -21,6 +21,7 @@ from .common.server import global_server, Server
 from rich.traceback import install
 from .chat.focus_chat.expressors.exprssion_learner import expression_learner
 from .api.main import start_api_server
+from .person_info.impression_update_task import impression_update_task
 
 install(extra_lines=3)
 
@@ -59,6 +60,9 @@ class MainSystem:
 
         # 添加遥测心跳任务
         await async_task_manager.add_task(TelemetryHeartBeatTask())
+
+        # 添加印象更新任务
+        await async_task_manager.add_task(impression_update_task)
 
         # 启动API服务器
         start_api_server()

@@ -123,9 +123,6 @@ class RelationshipProcessor(BaseProcessor):
                 # 获取聊天内容
                 chat_observe_info = observation.get_observe_info()
                 person_list = observation.person_list
-            if isinstance(observation, HFCloopObservation):
-                # hfcloop_observe_info = observation.get_observe_info()
-                pass
 
         nickname_str = ""
         for nicknames in global_config.bot.alias_names:

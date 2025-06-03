@@ -32,6 +32,7 @@ logger = get_logger("person_info")
 person_info_default = {
     "person_id": None,
     "person_name": None,  # 模型中已设为 null=True，此默认值OK
+    "person_name_reason": None,
     "name_reason": None,
     "platform": "unknown",  # 提供非None的默认值
     "user_id": "unknown",  # 提供非None的默认值

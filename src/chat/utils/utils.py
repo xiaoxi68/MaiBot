@@ -623,15 +623,15 @@ def translate_timestamp_to_human_readable(timestamp: float, mode: str = "normal"
         diff = now - timestamp
 
         if diff < 20:
-            return "刚刚:\n"
+            return "刚刚"
         elif diff < 60:
-            return f"{int(diff)}秒前:\n"
+            return f"{int(diff)}秒前"
         elif diff < 3600:
-            return f"{int(diff / 60)}分钟前:\n"
+            return f"{int(diff / 60)}分钟前"
         elif diff < 86400:
-            return f"{int(diff / 3600)}小时前:\n"
+            return f"{int(diff / 3600)}小时前"
         elif diff < 86400 * 2:
-            return f"{int(diff / 86400)}天前:\n"
+            return f"{int(diff / 86400)}天前"
         else:
             return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp)) + ":\n"
     else:  # mode = "lite" or unknown
