@@ -87,8 +87,7 @@ class DefaultReplyer:
         self.log_prefix = "replyer"
         # TODO: API-Adapter修改标记
         self.express_model = LLMRequest(
-            model=global_config.model.focus_expressor,
-            # temperature=global_config.model.focus_expressor["temp"],
+            model=global_config.model.replyer_1,
             max_tokens=256,
             request_type="focus.expressor",
         )

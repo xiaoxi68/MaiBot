@@ -28,9 +28,7 @@ def init_prompt():
 
 请仔细分析聊天内容，考虑以下几点：
 1. 内容中是否包含需要查询信息的问题
-2. 是否需要执行特定操作
-3. 是否有明确的工具使用指令
-4. 考虑用户与你的关系以及当前的对话氛围
+2. 是否有明确的工具使用指令
 
 If you need to use a tool, please directly call the corresponding tool function. If you do not need to use any tool, simply output "No tool needed".
 """
@@ -146,23 +144,27 @@ class ToolProcessor(BaseProcessor):
         prompt = await global_prompt_manager.format_prompt(
             "tool_executor_prompt",
             memory_str=memory_str,
-            # extra_info="extra_structured_info",
             chat_observe_info=chat_observe_info,
-            # chat_target_name=chat_target_name,
             is_group_chat=is_group_chat,
-            # relation_prompt=relation_prompt,
-            # prompt_personality=prompt_personality,
-            # mood_info=mood_info,
             bot_name=individuality.name,
             time_now=time_now,
         )
 
         # 调用LLM，专注于工具使用
-        logger.debug(f"开始执行工具调用{prompt}")
-        response, _, tool_calls = await self.llm_model.generate_response_tool_async(prompt=prompt, tools=tools)
+        # logger.info(f"开始执行工具调用{prompt}")
+        response, other_info = await self.llm_model.generate_response_async(
+            prompt=prompt, tools=tools
+        )
 
+        if len(other_info) == 3:
+            reasoning_content, model_name, tool_calls = other_info
+        else:
+            reasoning_content, model_name = other_info
+            tool_calls = None
+
+        # print("tooltooltooltooltooltooltooltooltooltooltooltooltooltooltooltooltool")
         if tool_calls:
-            logger.debug(f"获取到工具原始输出:\n{tool_calls}")
+            logger.info(f"获取到工具原始输出:\n{tool_calls}")
             # 处理工具调用和结果收集，类似于SubMind中的逻辑
         new_structured_items = []
         used_tools = []  # 记录使用了哪些工具

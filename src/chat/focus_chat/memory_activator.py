@@ -112,14 +112,9 @@ class MemoryActivator:
 
         # logger.debug(f"prompt: {prompt}")
 
-        response = await self.summary_model.generate_response(prompt)
+        response, (reasoning_content, model_name) = await self.summary_model.generate_response_async(prompt)
 
-        # logger.debug(f"response: {response}")
-
-        # 只取response的第一个元素（字符串）
-        response_str = response[0]
-        # print(f"response_str: {response_str[1]}")
-        keywords = list(get_keywords_from_json(response_str))
+        keywords = list(get_keywords_from_json(response))
 
         # 更新关键词缓存
         if keywords:

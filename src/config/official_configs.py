@@ -424,10 +424,10 @@ class ModelConfig(ConfigBase):
     utils_small: dict[str, Any] = field(default_factory=lambda: {})
     """组件小模型配置"""
 
-    normal_chat_1: dict[str, Any] = field(default_factory=lambda: {})
+    replyer_1: dict[str, Any] = field(default_factory=lambda: {})
     """normal_chat首要回复模型模型配置"""
 
-    normal_chat_2: dict[str, Any] = field(default_factory=lambda: {})
+    replyer_2: dict[str, Any] = field(default_factory=lambda: {})
     """normal_chat次要回复模型配置"""
 
     memory_summary: dict[str, Any] = field(default_factory=lambda: {})
@@ -448,9 +448,6 @@ class ModelConfig(ConfigBase):
 
     relation: dict[str, Any] = field(default_factory=lambda: {})
     """关系模型配置"""
-
-    focus_expressor: dict[str, Any] = field(default_factory=lambda: {})
-    """专注表达器模型配置"""
 
     embedding: dict[str, Any] = field(default_factory=lambda: {})
     """嵌入模型配置"""

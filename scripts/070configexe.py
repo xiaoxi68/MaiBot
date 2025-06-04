@@ -426,8 +426,8 @@ class ConfigEditor:
                     #     "model.memory_summary": "记忆概括模型",
                     #     "model.vlm": "图像识别模型",
                     #     "model.embedding": "嵌入模型",
-                    #     "model.normal_chat_1": "普通聊天：主要聊天模型",
-                    #     "model.normal_chat_2": "普通聊天：次要聊天模型",
+                    #     "model.replyer_1": "普通聊天：主要聊天模型",
+                    #     "model.replyer_2": "普通聊天：次要聊天模型",
                     #     "model.focus_working_memory": "专注模式：工作记忆模型",
                     #     "model.focus_tool_use": "专注模式：工具调用模型",
                     #     "model.focus_planner": "专注模式：决策模型",
@@ -489,12 +489,11 @@ class ConfigEditor:
             "model.memory_summary": "记忆概括模型",
             "model.vlm": "图像识别模型",
             "model.embedding": "嵌入模型",
-            "model.normal_chat_1": "主要聊天模型",
-            "model.normal_chat_2": "次要聊天模型",
+            "model.replyer_1": "主要聊天模型",
+            "model.replyer_2": "次要聊天模型",
             "model.focus_working_memory": "工作记忆模型",
             "model.focus_tool_use": "工具调用模型",
             "model.focus_planner": "决策模型",
-            "model.focus_expressor": "表达器模型",
         }
         section_trans = self.translations.get("sections", {}).get(full_section_path, {})
         section_name = section_trans.get("name") or section_translations.get(full_section_path) or section

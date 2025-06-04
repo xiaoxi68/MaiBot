@@ -18,14 +18,14 @@ class NormalChatGenerator:
     def __init__(self):
         # TODO: API-Adapter修改标记
         self.model_reasoning = LLMRequest(
-            model=global_config.model.normal_chat_1,
+            model=global_config.model.replyer_1,
             # temperature=0.7,
             max_tokens=3000,
             request_type="normal.chat_1",
         )
         self.model_normal = LLMRequest(
-            model=global_config.model.normal_chat_2,
-            # temperature=global_config.model.normal_chat_2["temp"],
+            model=global_config.model.replyer_2,
+            # temperature=global_config.model.replyer_2["temp"],
             max_tokens=256,
             request_type="normal.chat_2",
         )
@@ -103,7 +103,7 @@ class NormalChatGenerator:
         logger.debug(f"构建prompt时间: {t_build_prompt.human_readable}")
 
         try:
-            content, reasoning_content, self.current_model_name = await model.generate_response(prompt)
+            content, (reasoning_content, model_name) = await model.generate_response_async(prompt)
 
             logger.debug(f"prompt:{prompt}\n生成回复：{content}")
 
@@ -147,7 +147,7 @@ class NormalChatGenerator:
             """
 
             # 调用模型生成结果
-            result, _, _ = await self.model_sum.generate_response(prompt)
+            result, (reasoning_content, model_name) = await self.model_sum.generate_response_async(prompt)
             result = result.strip()
 
             # 解析模型输出的结果

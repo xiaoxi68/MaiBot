@@ -123,12 +123,13 @@ class EmojiAction(BaseAction):
         )
 
         reply_text = ""
-        for reply in reply_set:
-            type = reply[0]
-            data = reply[1]
-            if type == "text":
-                reply_text += data
-            elif type == "emoji":
-                reply_text += data
+        if reply_set:
+            for reply in reply_set:
+                type = reply[0]
+                data = reply[1]
+                if type == "text":
+                    reply_text += data
+                elif type == "emoji":
+                    reply_text += data
 
         return success, reply_text

@@ -1,5 +1,5 @@
 [inner]
-version = "2.12.2"
+version = "2.13.0"
 
 #----以下是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 #如果你想要修改配置文件，请在修改后将version的值进行变更
@@ -72,7 +72,7 @@ ban_msgs_regex = [
 
 [normal_chat] #普通聊天
 #一般回复参数
-normal_chat_first_probability = 0.3 # 麦麦回答时选择首要模型的概率（与之相对的，次要模型的概率为1 - normal_chat_first_probability）
+normal_chat_first_probability = 0.5 # 麦麦回答时选择首要模型的概率（与之相对的，次要模型的概率为1 - normal_chat_first_probability）
 max_context_size = 15 #上下文长度
 emoji_chance = 0.2 # 麦麦一般回复时使用表情包的概率，设置为1让麦麦自己决定发不发
 thinking_timeout = 120 # 麦麦最长思考时间，超过这个时间的思考会放弃（往往是api反应太慢）
@@ -200,6 +200,22 @@ pri_out = 0
 temp = 0.7
 enable_thinking = false # 是否启用思考
 
+[model.replyer_1] # 首要回复模型，还用于表达器和表达方式学习
+name = "Pro/deepseek-ai/DeepSeek-V3"
+provider = "SILICONFLOW"
+pri_in = 2 #模型的输入价格（非必填，可以记录消耗）
+pri_out = 8 #模型的输出价格（非必填，可以记录消耗）
+#默认temp 0.2 如果你使用的是老V3或者其他模型，请自己修改temp参数
+temp = 0.2 #模型的温度，新V3建议0.1-0.3
+
+[model.replyer_2] # 一般聊天模式的次要回复模型
+name = "Pro/deepseek-ai/DeepSeek-R1"
+provider = "SILICONFLOW"
+pri_in = 4.0 #模型的输入价格（非必填，可以记录消耗）
+pri_out = 16.0 #模型的输出价格（非必填，可以记录消耗）
+temp = 0.7
+
+
 [model.memory_summary] # 记忆的概括模型
 name = "Qwen/Qwen3-30B-A3B"
 provider = "SILICONFLOW"
@@ -236,23 +252,6 @@ provider = "SILICONFLOW"
 pri_in = 0
 pri_out = 0
 
-#------------普通聊天必填模型------------
-
-[model.normal_chat_1] # 一般聊天模式的首要回复模型，推荐使用 推理模型
-name = "Pro/deepseek-ai/DeepSeek-R1"
-provider = "SILICONFLOW"
-pri_in = 4.0 #模型的输入价格（非必填，可以记录消耗）
-pri_out = 16.0 #模型的输出价格（非必填，可以记录消耗）
-temp = 0.7
-
-[model.normal_chat_2] # 一般聊天模式的次要回复模型，推荐使用 非推理模型
-name = "Pro/deepseek-ai/DeepSeek-V3"
-provider = "SILICONFLOW"
-pri_in = 2 #模型的输入价格（非必填，可以记录消耗）
-pri_out = 8 #模型的输出价格（非必填，可以记录消耗）
-#默认temp 0.2 如果你使用的是老V3或者其他模型，请自己修改temp参数
-temp = 0.2 #模型的温度，新V3建议0.1-0.3
-
 #------------专注聊天必填模型------------
 
 [model.focus_working_memory] #工作记忆模型
@@ -272,16 +271,7 @@ pri_out = 2
 temp = 0.7
 enable_thinking = false # 是否启用思考（qwen3 only）
 
-#表达器模型，用于表达麦麦的想法，生成最终回复，对语言风格影响极大
-#也用于表达方式学习
-[model.focus_expressor]
-name = "Pro/deepseek-ai/DeepSeek-V3"
-# name = "Qwen/Qwen3-30B-A3B"
-provider = "SILICONFLOW"
-# enable_thinking = false # 是否启用思考(qwen3 only)
-pri_in = 2
-pri_out = 8
-temp = 0.3
+
 
 
 

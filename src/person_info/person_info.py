@@ -238,7 +238,7 @@ class PersonInfoManager:
         old_name = await self.get_value(person_id, "person_name")
         old_reason = await self.get_value(person_id, "name_reason")
 
-        max_retries = 5
+        max_retries = 8
         current_try = 0
         existing_names_str = ""
         current_name_set = set(self.person_name_list.values())
@@ -269,7 +269,7 @@ class PersonInfoManager:
                 "nickname": "昵称",
                 "reason": "理由"
             }"""
-            response = await self.qv_name_llm.generate_response(qv_name_prompt)
+            response, (reasoning_content, model_name) = await self.qv_name_llm.generate_response_async(qv_name_prompt)
             logger.trace(f"取名提示词：{qv_name_prompt}\n取名回复：{response}")
             result = self._extract_json_from_text(response[0])
 

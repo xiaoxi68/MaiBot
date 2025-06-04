@@ -346,10 +346,10 @@ class Hippocampus:
             # 使用LLM提取关键词
             topic_num = min(5, max(1, int(len(text) * 0.1)))  # 根据文本长度动态调整关键词数量
             # logger.info(f"提取关键词数量: {topic_num}")
-            topics_response = await self.model_summary.generate_response(self.find_topic_llm(text, topic_num))
+            topics_response, (reasoning_content, model_name) = await self.model_summary.generate_response_async(self.find_topic_llm(text, topic_num))
 
             # 提取关键词
-            keywords = re.findall(r"<([^>]+)>", topics_response[0])
+            keywords = re.findall(r"<([^>]+)>", topics_response)
             if not keywords:
                 keywords = []
             else:
@@ -701,10 +701,10 @@ class Hippocampus:
             # 使用LLM提取关键词
             topic_num = min(5, max(1, int(len(text) * 0.1)))  # 根据文本长度动态调整关键词数量
             # logger.info(f"提取关键词数量: {topic_num}")
-            topics_response = await self.model_summary.generate_response(self.find_topic_llm(text, topic_num))
+            topics_response, (reasoning_content, model_name) = await self.model_summary.generate_response_async(self.find_topic_llm(text, topic_num))
 
             # 提取关键词
-            keywords = re.findall(r"<([^>]+)>", topics_response[0])
+            keywords = re.findall(r"<([^>]+)>", topics_response)
             if not keywords:
                 keywords = []
             else:
@@ -1248,12 +1248,12 @@ class ParahippocampalGyrus:
 
         # 2. 使用LLM提取关键主题
         topic_num = self.hippocampus.calculate_topic_num(input_text, compress_rate)
-        topics_response = await self.hippocampus.model_summary.generate_response(
+        topics_response, (reasoning_content, model_name) = await self.hippocampus.model_summary.generate_response_async(
             self.hippocampus.find_topic_llm(input_text, topic_num)
         )
 
         # 提取<>中的内容
-        topics = re.findall(r"<([^>]+)>", topics_response[0])
+        topics = re.findall(r"<([^>]+)>", topics_response)
 
         if not topics:
             topics = ["none"]
