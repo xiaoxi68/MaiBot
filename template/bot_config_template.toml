@@ -84,7 +84,7 @@ response_interested_rate_amplifier = 1 # 麦麦回复兴趣度放大系数
 
 emoji_response_penalty = 0 # 对其他人发的表情包回复惩罚系数，设为0为不回复单个表情包，减少单独回复表情包的概率
 mentioned_bot_inevitable_reply = true # 提及 bot 必然回复
-at_bot_inevitable_reply = true # @bot 必然回复
+at_bot_inevitable_reply = true # @bot 必然回复（包含提及）
 
 enable_planner = false # 是否启用动作规划器（实验性功能，与focus_chat共享actions）
 
@@ -145,7 +145,8 @@ mood_intensity_factor = 1.0 # 情绪强度因子
 [keyword_reaction]
 keyword_rules = [
     { keywords = ["人机", "bot", "机器", "入机", "robot", "机器人", "ai", "AI"], reaction = "有人说你是人机或者机器人，否定这一事实，攻击或反问他。注意，只有认为你是机器人才回复，否则不要否认" },
-    { keywords = ["测试关键词回复", "test"], reaction = "回答测试成功" }
+    { keywords = ["测试关键词回复", "test"], reaction = "回答测试成功" },
+    #{ keywords = ["你好", "hello"], reaction = "你好，有什么可以帮你？" }    
     # 在此处添加更多规则，格式同上
 ]
 
