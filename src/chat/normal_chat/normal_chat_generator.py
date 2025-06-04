@@ -93,7 +93,7 @@ class NormalChatGenerator:
 
         # 构建prompt
         with Timer() as t_build_prompt:
-            prompt = await prompt_builder.build_prompt(
+            prompt = await prompt_builder.build_prompt_normal(
                 message_txt=message.processed_plain_text,
                 sender_name=sender_name,
                 chat_stream=message.chat_stream,

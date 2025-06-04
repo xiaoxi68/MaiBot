@@ -7,9 +7,11 @@ from src.common.logger_manager import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.individuality.individuality import individuality
 from src.chat.focus_chat.planners.action_manager import ActionManager
-from src.chat.normal_chat.normal_prompt import prompt_builder
 from src.chat.message_receive.message import MessageThinking
 from json_repair import repair_json
+from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_before_timestamp_with_chat
+import time
+import traceback
 
 logger = get_logger("normal_chat_planner")
 
@@ -113,12 +115,27 @@ class NormalChatPlanner:
                 }
 
             # 构建normal_chat的上下文 (使用与normal_chat相同的prompt构建方法)
-            chat_context = await prompt_builder.build_prompt(
-                message_txt=message.processed_plain_text,
-                sender_name=sender_name,
-                chat_stream=message.chat_stream,
+            # chat_context = await prompt_builder.build_prompt_normal(
+            #     enable_planner=True,
+            #     message_txt=message.processed_plain_text,
+            #     sender_name=sender_name,
+            #     chat_stream=message.chat_stream,
+            # )
+            
+            message_list_before_now = get_raw_msg_before_timestamp_with_chat(
+                chat_id=message.chat_stream.stream_id,
+                timestamp=time.time(),
+                limit=global_config.focus_chat.observation_context_size,
             )
-
+            
+            chat_context = build_readable_messages(
+                message_list_before_now,
+                replace_bot_name=True,
+                merge_messages=False,
+                timestamp_mode="relative",
+                read_mark=0.0,
+            )
+            
             # 构建planner的prompt
             prompt = await self.build_planner_prompt(
                 self_info_block=self_info,
@@ -137,7 +154,10 @@ class NormalChatPlanner:
             # 使用LLM生成动作决策
             try:
                 content, reasoning_content, model_name = await self.planner_llm.generate_response(prompt)
-                logger.debug(f"{self.log_prefix}规划器原始响应: {content}")
+                
+                
+                logger.info(f"{self.log_prefix}规划器原始提示词: {prompt}")
+                logger.info(f"{self.log_prefix}规划器原始响应: {content}")
 
                 # 解析JSON响应
                 try:
@@ -226,7 +246,8 @@ class NormalChatPlanner:
 
                 if action_parameters:
                     param_text = "\n"
-                    for param_name, param_description in action_parameters:
+                    print(action_parameters)
+                    for param_name, param_description in action_parameters.items():
                         param_text += f'    "{param_name}":"{param_description}"\n'
                     param_text = param_text.rstrip('\n')
                 else:
@@ -264,6 +285,7 @@ class NormalChatPlanner:
 
         except Exception as e:
             logger.error(f"{self.log_prefix}构建Planner提示词失败: {e}")
+            traceback.print_exc()
             return ""
 
 

@@ -118,10 +118,6 @@ class SubHeartflow:
                     on_switch_to_focus_callback=self._handle_switch_to_focus_request,
                 )
 
-            # 进行异步初始化
-            await self.normal_chat_instance.initialize()
-
-            # 启动聊天任务
             logger.info(f"{log_prefix} 开始普通聊天，随便水群...")
             await self.normal_chat_instance.start_chat()  # start_chat now ensures init is called again if needed
             return True

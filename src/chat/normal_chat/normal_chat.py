@@ -36,6 +36,10 @@ class NormalChat:
         self.stream_id = chat_stream.stream_id
         self.stream_name = chat_manager.get_stream_name(self.stream_id) or self.stream_id
 
+        # 初始化Normal Chat专用表达器
+        self.expressor = NormalChatExpressor(self.chat_stream)
+        self.replyer = DefaultReplyer(self.chat_stream)
+
         # Interest dict
         self.interest_dict = interest_dict
 
@@ -65,21 +69,7 @@ class NormalChat:
         self.on_switch_to_focus_callback = on_switch_to_focus_callback
 
         self._disabled = False  # 增加停用标志
-
-    async def initialize(self):
-        """异步初始化，获取聊天类型和目标信息。"""
-        if self._initialized:
-            return
         
-        self.stream_name = chat_manager.get_stream_name(self.stream_id) or self.stream_id
-
-        # 初始化Normal Chat专用表达器
-        self.expressor = NormalChatExpressor(self.chat_stream, self.stream_name)
-        self.replyer = DefaultReplyer(chat_id=self.stream_id)
-
-        self.replyer.chat_stream = self.chat_stream
-
-        self._initialized = True
         logger.debug(f"[{self.stream_name}] NormalChat 初始化完成 (异步部分)。")
 
     # 改为实例方法
@@ -224,8 +214,8 @@ class NormalChat:
                 for msg_id, (message, interest_value, is_mentioned) in items_to_process:
                     try:
                         # 处理消息
-                        if time.time() - self.start_time > 600:
-                            self.adjust_reply_frequency(duration=600 / 60)
+                        if time.time() - self.start_time > 300:
+                            self.adjust_reply_frequency(duration=300 / 60)
                         else:
                             self.adjust_reply_frequency(duration=(time.time() - self.start_time) / 60)
 
@@ -483,10 +473,7 @@ class NormalChat:
     # 改为实例方法, 移除 chat 参数
 
     async def start_chat(self):
-        """先进行异步初始化，然后启动聊天任务。"""
-        if not self._initialized:
-            await self.initialize()  # Ensure initialized before starting tasks
-
+        """启动聊天任务。"""  # Ensure initialized before starting tasks
         self._disabled = False  # 启动时重置停用标志
 
         if self._chat_task is None or self._chat_task.done():

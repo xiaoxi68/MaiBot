@@ -9,7 +9,7 @@ import time
 from typing import List, Optional, Tuple, Dict, Any
 from src.chat.message_receive.message import MessageRecv, MessageSending, MessageThinking, Seg
 from src.chat.message_receive.message import UserInfo
-from src.chat.message_receive.chat_stream import ChatStream
+from src.chat.message_receive.chat_stream import ChatStream,chat_manager
 from src.chat.message_receive.message_sender import message_manager
 from src.config.config import global_config
 from src.common.logger_manager import get_logger
@@ -27,7 +27,7 @@ class NormalChatExpressor:
     4. 保持与focus_chat expressor相似的API，但去掉复杂的风格化流程
     """
 
-    def __init__(self, chat_stream: ChatStream, stream_name: str):
+    def __init__(self, chat_stream: ChatStream):
         """初始化Normal Chat表达器
 
         Args:
@@ -35,8 +35,9 @@ class NormalChatExpressor:
             stream_name: 流名称
         """
         self.chat_stream = chat_stream
-        self.stream_name = stream_name
-        self.log_prefix = f"[{stream_name}]Normal表达器"
+        self.stream_name = chat_manager.get_stream_name(self.chat_stream.stream_id) or self.chat_stream.stream_id
+        self.log_prefix = f"[{self.stream_name}]Normal表达器"
+        
         logger.debug(f"{self.log_prefix} 初始化完成")
 
     async def create_thinking_message(
