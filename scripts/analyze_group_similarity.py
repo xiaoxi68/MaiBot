@@ -48,7 +48,7 @@ def load_group_data(group_dir):
     """加载单个群组的数据"""
     json_path = Path(group_dir) / "expressions.json"
     if not json_path.exists():
-        return [], [], []
+        return [], [], [], 0
 
     with open(json_path, "r", encoding="utf-8") as f:
         data = json.load(f)
@@ -56,6 +56,7 @@ def load_group_data(group_dir):
     situations = []
     styles = []
     combined = []
+    total_count = sum(item["count"] for item in data)
 
     for item in data:
         count = item["count"]
@@ -63,41 +64,46 @@ def load_group_data(group_dir):
         styles.extend([item["style"]] * count)
         combined.extend([f"{item['situation']} {item['style']}"] * count)
 
-    return situations, styles, combined
+    return situations, styles, combined, total_count
 
 
 def analyze_group_similarity():
     # 获取所有群组目录
     base_dir = Path("data/expression/learnt_style")
     group_dirs = [d for d in base_dir.iterdir() if d.is_dir()]
-    group_ids = [d.name for d in group_dirs]
-
-    # 获取群组名称
-    group_names = [get_group_name(group_id) for group_id in group_ids]
-
-    # 加载所有群组的数据
-    group_situations = []
-    group_styles = []
-    group_combined = []
-
+    
+    # 加载所有群组的数据并过滤
+    valid_groups = []
+    valid_names = []
+    valid_situations = []
+    valid_styles = []
+    valid_combined = []
+    
     for d in group_dirs:
-        situations, styles, combined = load_group_data(d)
-        group_situations.append(" ".join(situations))
-        group_styles.append(" ".join(styles))
-        group_combined.append(" ".join(combined))
-
+        situations, styles, combined, total_count = load_group_data(d)
+        if total_count >= 50:  # 只保留数据量大于等于50的群组
+            valid_groups.append(d)
+            valid_names.append(get_group_name(d.name))
+            valid_situations.append(" ".join(situations))
+            valid_styles.append(" ".join(styles))
+            valid_combined.append(" ".join(combined))
+    
+    if not valid_groups:
+        print("没有找到数据量大于等于50的群组")
+        return
+        
     # 创建TF-IDF向量化器
     vectorizer = TfidfVectorizer()
 
     # 计算三种相似度矩阵
-    situation_matrix = cosine_similarity(vectorizer.fit_transform(group_situations))
-    style_matrix = cosine_similarity(vectorizer.fit_transform(group_styles))
-    combined_matrix = cosine_similarity(vectorizer.fit_transform(group_combined))
+    situation_matrix = cosine_similarity(vectorizer.fit_transform(valid_situations))
+    style_matrix = cosine_similarity(vectorizer.fit_transform(valid_styles))
+    combined_matrix = cosine_similarity(vectorizer.fit_transform(valid_combined))
 
     # 对相似度矩阵进行对数变换
-    log_situation_matrix = np.log1p(situation_matrix)
-    log_style_matrix = np.log1p(style_matrix)
-    log_combined_matrix = np.log1p(combined_matrix)
+    log_situation_matrix = np.log10(situation_matrix * 100 + 1) * 10 / np.log10(4)
+    log_style_matrix = np.log10(style_matrix * 100 + 1) * 10 / np.log10(4)
+    log_combined_matrix = np.log10(combined_matrix * 100 + 1) * 10 / np.log10(4)
 
     # 创建一个大图，包含三个子图
     plt.figure(figsize=(45, 12))
@@ -106,45 +112,45 @@ def analyze_group_similarity():
     plt.subplot(1, 3, 1)
     sns.heatmap(
         log_situation_matrix,
-        xticklabels=group_names,
-        yticklabels=group_names,
+        xticklabels=valid_names,
+        yticklabels=valid_names,
         cmap="YlOrRd",
         annot=True,
-        fmt=".2f",
+        fmt=".1f",
         vmin=0,
-        vmax=np.log1p(0.2),
+        vmax=30,
     )
-    plt.title("群组场景相似度热力图 (对数变换)")
+    plt.title("群组场景相似度热力图 (对数百分比)")
     plt.xticks(rotation=45, ha="right")
 
     # 表达方式相似度热力图
     plt.subplot(1, 3, 2)
     sns.heatmap(
         log_style_matrix,
-        xticklabels=group_names,
-        yticklabels=group_names,
+        xticklabels=valid_names,
+        yticklabels=valid_names,
         cmap="YlOrRd",
         annot=True,
-        fmt=".2f",
+        fmt=".1f",
         vmin=0,
-        vmax=np.log1p(0.2),
+        vmax=30,
     )
-    plt.title("群组表达方式相似度热力图 (对数变换)")
+    plt.title("群组表达方式相似度热力图 (对数百分比)")
     plt.xticks(rotation=45, ha="right")
 
     # 组合相似度热力图
     plt.subplot(1, 3, 3)
     sns.heatmap(
         log_combined_matrix,
-        xticklabels=group_names,
-        yticklabels=group_names,
+        xticklabels=valid_names,
+        yticklabels=valid_names,
         cmap="YlOrRd",
         annot=True,
-        fmt=".2f",
+        fmt=".1f",
         vmin=0,
-        vmax=np.log1p(0.2),
+        vmax=30,
     )
-    plt.title("群组场景+表达方式相似度热力图 (对数变换)")
+    plt.title("群组场景+表达方式相似度热力图 (对数百分比)")
     plt.xticks(rotation=45, ha="right")
 
     plt.tight_layout()
@@ -156,18 +162,18 @@ def analyze_group_similarity():
         f.write("群组相似度详情\n")
         f.write("=" * 50 + "\n\n")
 
-        for i in range(len(group_ids)):
-            for j in range(i + 1, len(group_ids)):
-                if log_combined_matrix[i][j] > np.log1p(0.05):
-                    f.write(f"群组1: {group_names[i]}\n")
-                    f.write(f"群组2: {group_names[j]}\n")
+        for i in range(len(valid_names)):
+            for j in range(i + 1, len(valid_names)):
+                if log_combined_matrix[i][j] > 50:
+                    f.write(f"群组1: {valid_names[i]}\n")
+                    f.write(f"群组2: {valid_names[j]}\n")
                     f.write(f"场景相似度: {situation_matrix[i][j]:.4f}\n")
                     f.write(f"表达方式相似度: {style_matrix[i][j]:.4f}\n")
                     f.write(f"组合相似度: {combined_matrix[i][j]:.4f}\n")
 
                     # 获取两个群组的数据
-                    situations1, styles1, _ = load_group_data(group_dirs[i])
-                    situations2, styles2, _ = load_group_data(group_dirs[j])
+                    situations1, styles1, _ = load_group_data(valid_groups[i])
+                    situations2, styles2, _ = load_group_data(valid_groups[j])
 
                     # 找出共同的场景
                     common_situations = set(situations1) & set(situations2)
