@@ -362,6 +362,30 @@ class PersonInfoManager:
             return default_value
 
     @staticmethod
+    def get_value_sync(person_id: str, field_name: str):
+        """同步版本：获取指定person_id文档的字段值，若不存在该字段，则返回该字段的全局默认值"""
+        if not person_id:
+            logger.debug("get_value_sync获取失败：person_id不能为空")
+            return person_info_default.get(field_name)
+
+        if field_name not in PersonInfo._meta.fields:
+            if field_name in person_info_default:
+                logger.trace(f"字段'{field_name}'不在Peewee模型中，但存在于默认配置中。返回配置默认值。")
+                return copy.deepcopy(person_info_default[field_name])
+            logger.debug(f"get_value_sync获取失败：字段'{field_name}'未在Peewee模型和默认配置中定义。")
+            return None
+
+        record = PersonInfo.get_or_none(PersonInfo.person_id == person_id)
+        if record:
+            value = getattr(record, field_name)
+            if value is not None:
+                return value
+
+        default_value = copy.deepcopy(person_info_default.get(field_name))
+        logger.trace(f"获取{person_id}的{field_name}失败或值为None，已返回默认值{default_value} (Peewee)")
+        return default_value
+
+    @staticmethod
     async def get_values(person_id: str, field_names: list) -> dict:
         """获取指定person_id文档的多个字段值，若不存在该字段，则返回该字段的全局默认值"""
         if not person_id:

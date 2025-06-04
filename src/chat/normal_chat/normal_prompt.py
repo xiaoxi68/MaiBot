@@ -190,7 +190,7 @@ class PromptBuilder:
             timestamp=time.time(),
             limit=global_config.focus_chat.observation_context_size,
         )
-        chat_talking_prompt = await build_readable_messages(
+        chat_talking_prompt = build_readable_messages(
             message_list_before_now,
             replace_bot_name=True,
             merge_messages=False,

@@ -12,12 +12,12 @@ logger = get_logger("observation")
 
 # 所有观察的基类
 class WorkingMemoryObservation:
-    def __init__(self, observe_id, working_memory: WorkingMemory):
+    def __init__(self, observe_id):
         self.observe_info = ""
         self.observe_id = observe_id
         self.last_observe_time = datetime.now().timestamp()
 
-        self.working_memory = working_memory
+        self.working_memory = WorkingMemory(chat_id=observe_id)
 
         self.retrieved_working_memory = []
 

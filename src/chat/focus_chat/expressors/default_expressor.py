@@ -72,7 +72,7 @@ def init_prompt():
 
 
 class DefaultExpressor:
-    def __init__(self, chat_id: str):
+    def __init__(self, chat_stream: ChatStream):
         self.log_prefix = "expressor"
         # TODO: API-Adapter修改标记
         self.express_model = LLMRequest(
@@ -83,13 +83,9 @@ class DefaultExpressor:
         )
         self.heart_fc_sender = HeartFCSender()
 
-        self.chat_id = chat_id
-        self.chat_stream: Optional[ChatStream] = None
-        self.is_group_chat = True
-        self.chat_target_info = None
-
-    async def initialize(self):
-        self.is_group_chat, self.chat_target_info = await get_chat_type_and_target_info(self.chat_id)
+        self.chat_id = chat_stream.stream_id
+        self.chat_stream = chat_stream
+        self.is_group_chat, self.chat_target_info = get_chat_type_and_target_info(self.chat_id)
 
     async def _create_thinking_message(self, anchor_message: Optional[MessageRecv], thinking_id: str):
         """创建思考消息 (尝试锚定到 anchor_message)"""
@@ -285,7 +281,7 @@ class DefaultExpressor:
             timestamp=time.time(),
             limit=global_config.focus_chat.observation_context_size,
         )
-        chat_talking_prompt = await build_readable_messages(
+        chat_talking_prompt = build_readable_messages(
             message_list_before_now,
             replace_bot_name=True,
             merge_messages=True,

@@ -21,6 +21,7 @@ def init_prompt():
         """
 你的自我认知是：
 {self_info_block}
+请记住你的性格，身份和特点。
 
 注意，除了下面动作选项之外，你在聊天中不能做其他任何事情，这是你能力的边界，现在请你选择合适的action:
 
@@ -32,37 +33,30 @@ def init_prompt():
 - 其他action表示在普通回复的基础上，执行相应的额外动作
 
 你必须从上面列出的可用action中选择一个，并说明原因。
-你的决策必须以严格的 JSON 格式输出，且仅包含 JSON 内容，不要有任何其他文字或解释。
-
 {moderation_prompt}
 
-当前聊天上下文：
+你是群内的一员，你现在正在参与群内的闲聊，以下是群内的聊天内容：
 {chat_context}
 
 基于以上聊天上下文和用户的最新消息，选择最合适的action。
 
-请你以下面格式输出你选择的action：
-{{
-    "action": "action_name",
-    "reasoning": "说明你做出该action的原因",
-    "参数1": "参数1的值",
-    "参数2": "参数2的值",
-    "参数3": "参数3的值",
-    ...
-}}
-
-请输出你的决策 JSON：""",
+请以动作的输出要求，以严格的 JSON 格式输出，且仅包含 JSON 内容。
+请输出你提取的JSON，不要有任何其他文字或解释：
+""",
         "normal_chat_planner_prompt",
     )
 
     Prompt(
         """
-action_name: {action_name}
-    描述：{action_description}
-    参数：
-{action_parameters}
-    动作要求：
-{action_require}""",
+动作：{action_name}
+该动作的描述：{action_description}
+使用该动作的场景：
+{action_require}
+输出要求：
+{{
+    "action": "{action_name}",{action_parameters}
+}}
+""",
         "normal_chat_action_prompt",
     )
 
@@ -230,22 +224,26 @@ class NormalChatPlanner:
                 action_parameters = action_info.get("parameters", {})
                 action_require = action_info.get("require", [])
 
-                # 格式化参数
-                parameters_text = ""
-                for param_name, param_desc in action_parameters.items():
-                    parameters_text += f"    - {param_name}: {param_desc}\n"
+                if action_parameters:
+                    param_text = "\n"
+                    for param_name, param_description in action_parameters:
+                        param_text += f'    "{param_name}":"{param_description}"\n'
+                    param_text = param_text.rstrip('\n')
+                else:
+                    param_text = ""
 
-                # 格式化要求
+
                 require_text = ""
-                for req in action_require:
-                    require_text += f"    - {req}\n"
+                for require_item in action_require:
+                    require_text += f"- {require_item}\n"
+                require_text = require_text.rstrip('\n')
 
                 # 构建单个动作的提示
                 action_prompt = await global_prompt_manager.format_prompt(
                     "normal_chat_action_prompt",
                     action_name=action_name,
                     action_description=action_description,
-                    action_parameters=parameters_text,
+                    action_parameters=param_text,
                     action_require=require_text,
                 )
                 action_options_text += action_prompt + "\n\n"

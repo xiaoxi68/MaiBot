@@ -40,8 +40,7 @@ class NormalChat:
         # Interest dict
         self.interest_dict = interest_dict
 
-        self.is_group_chat: bool = False
-        self.chat_target_info: Optional[dict] = None
+        self.is_group_chat, self.chat_target_info = get_chat_type_and_target_info(self.stream_id)
 
         self.willing_amplifier = 1
         self.start_time = time.time()
@@ -72,8 +71,7 @@ class NormalChat:
         """异步初始化，获取聊天类型和目标信息。"""
         if self._initialized:
             return
-
-        self.is_group_chat, self.chat_target_info = await get_chat_type_and_target_info(self.stream_id)
+        
         self.stream_name = chat_manager.get_stream_name(self.stream_id) or self.stream_id
 
         # 初始化Normal Chat专用表达器

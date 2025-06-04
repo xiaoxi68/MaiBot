@@ -345,7 +345,7 @@ class RelationshipManager:
         
         if user_messages:
             
-            readable_messages = await build_readable_messages(
+            readable_messages = build_readable_messages(
                 messages=user_messages,
                 replace_bot_name=True,
                 timestamp_mode="relative",

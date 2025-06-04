@@ -2,6 +2,7 @@ import time
 import os
 from typing import Optional, Dict, Any
 from src.common.logger_manager import get_logger
+import json
 
 logger = get_logger("hfc")  # Logger Name Changed
 
@@ -111,14 +112,14 @@ class CycleDetail:
         dir_name = "".join(
             char for char in dir_name if char.isalnum() or char in ["_", "-", "/"] or "\u4e00" <= char <= "\u9fff"
         )
-        print("dir_name:", dir_name)
+        # print("dir_name:", dir_name)
         if dir_name and not os.path.exists(dir_name):
             os.makedirs(dir_name, exist_ok=True)
         # 写入文件
-        import json
+        
 
         file_path = os.path.join(dir_name, os.path.basename(file_path))
-        print("file_path:", file_path)
+        # print("file_path:", file_path)
         with open(file_path, "a", encoding="utf-8") as f:
             f.write(json.dumps(self.to_dict(), ensure_ascii=False) + "\n")
 
