@@ -46,18 +46,13 @@ def init_prompt():
 {mind_info_block}
 
 {cycle_info_block}
-注意，除了下面动作选项之外，你在群聊里不能做其他任何事情，这是你能力的边界，现在请你选择合适的action:
+
 {moderation_prompt}
+注意，除了下面动作选项之外，你在群聊里不能做其他任何事情，这是你能力的边界，现在请你选择合适的action:
 
 {action_options_text}
 
-以严格的 JSON 格式输出，且仅包含 JSON 内容，不要有任何其他文字或解释。
-请你以下面格式输出：
-{{
-    "action": "action_name"
-    "参数": "参数的值"(可能有多个参数),
-}}
-
+请以动作的输出要求，以严格的 JSON 格式输出，且仅包含 JSON 内容。
 请输出你提取的JSON，不要有任何其他文字或解释：
 
 """,
@@ -66,11 +61,15 @@ def init_prompt():
 
     Prompt(
         """
-动作名称：{action_name}
-    描述：{action_description}
-    {action_parameters}
-    使用该动作的场景：
-{action_require}""",
+动作：{action_name}
+该动作的描述：{action_description}
+使用该动作的场景：
+{action_require}
+输出要求：
+{{
+    "action": "{action_name}",{action_parameters}
+}}
+""",
         "action_prompt",
     )
 
@@ -342,18 +341,20 @@ class ActionPlanner(BasePlanner):
 
                 using_action_prompt = await global_prompt_manager.get_prompt_async("action_prompt")
 
-                param_text = ""
-                for param_name, param_description in using_actions_info["parameters"].items():
-                    param_text += f"    {param_name}: {param_description}\n"
+                if using_actions_info["parameters"]:
+                    param_text = "\n"
+                    for param_name, param_description in using_actions_info["parameters"].items():
+                        param_text += f'    "{param_name}":"{param_description}"\n'
+                    param_text = param_text.rstrip('\n')
+                else:
+                    param_text = ""
+
 
                 require_text = ""
                 for require_item in using_actions_info["require"]:
-                    require_text += f"{require_item}\n"
+                    require_text += f"- {require_item}\n"
+                require_text = require_text.rstrip('\n')
 
-                if param_text:
-                    param_text = f"参数：\n{param_text}"
-                else:
-                    param_text = "无需参数"
 
                 using_action_prompt = using_action_prompt.format(
                     action_name=using_actions_name,

@@ -1,6 +1,5 @@
 from typing import Dict, Type
 from src.chat.focus_chat.planners.base_planner import BasePlanner
-from src.chat.focus_chat.planners.planner_complex import ActionPlanner as ComplexActionPlanner
 from src.chat.focus_chat.planners.planner_simple import ActionPlanner as SimpleActionPlanner
 from src.chat.focus_chat.planners.action_manager import ActionManager
 from src.config.config import global_config
@@ -14,7 +13,6 @@ class PlannerFactory:
 
     # 注册所有可用的规划器类型
     _planner_types: Dict[str, Type[BasePlanner]] = {
-        "complex": ComplexActionPlanner,
         "simple": SimpleActionPlanner,
     }
 
