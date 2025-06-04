@@ -335,7 +335,6 @@ def initialize_database():
     检查所有定义的表是否存在，如果不存在则创建它们。
     检查所有表的所有字段是否存在，如果缺失则自动添加。
     """
-    import sys
 
     models = [
         ChatStreams,

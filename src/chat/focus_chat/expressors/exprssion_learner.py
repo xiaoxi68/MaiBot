@@ -131,8 +131,12 @@ class ExpressionLearner:
         else:
             raise ValueError(f"Invalid type: {type}")
         # logger.info(f"开始学习{type_str}...")
-        learnt_expressions,chat_id = await self.learn_expression(type, num)
-        
+        res = await self.learn_expression(type, num)
+
+        if res is None:
+            return []
+        learnt_expressions, chat_id = res
+
         chat_stream = chat_manager.get_stream(chat_id)
         if chat_stream.group_info:
             group_name = chat_stream.group_info.group_name
@@ -140,7 +144,6 @@ class ExpressionLearner:
             group_name = f"{chat_stream.user_info.user_nickname}的私聊"
         learnt_expressions_str = ""
         for _chat_id, situation, style in learnt_expressions:
-            
             learnt_expressions_str += f"{situation}->{style}\n"
         logger.info(f"在 {group_name} 学习到{type_str}:\n{learnt_expressions_str}")
         # learnt_expressions: List[(chat_id, situation, style)]
@@ -244,7 +247,7 @@ class ExpressionLearner:
 
         expressions: List[Tuple[str, str, str]] = self.parse_expression_response(response, chat_id)
 
-        return expressions,chat_id
+        return expressions, chat_id
 
     def parse_expression_response(self, response: str, chat_id: str) -> List[Tuple[str, str, str]]:
         """
