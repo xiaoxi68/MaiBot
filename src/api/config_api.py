@@ -52,7 +52,6 @@ class APIBotConfig:
     emoji_chance: float  # 表情符号出现概率
     thinking_timeout: int  # 思考超时时间
     willing_mode: str  # 意愿模式
-    response_willing_amplifier: float  # 回复意愿放大器
     response_interested_rate_amplifier: float  # 回复兴趣率放大器
     down_frequency_rate: float  # 降低频率率
     emoji_response_penalty: float  # 表情回复惩罚

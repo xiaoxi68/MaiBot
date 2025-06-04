@@ -107,9 +107,6 @@ class NormalChatConfig(ConfigBase):
     talk_frequency: float = 1
     """回复频率阈值"""
 
-    response_willing_amplifier: float = 1.0
-    """回复意愿放大系数"""
-
     response_interested_rate_amplifier: float = 1.0
     """回复兴趣度放大系数"""
 

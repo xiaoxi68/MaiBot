@@ -266,10 +266,6 @@ description = "回复意愿的计算模式：经典模式（classical）、mxp�
 name = "回复频率"
 description = "麦麦回复频率，一般为1，默认频率下，30分钟麦麦回复30条（约数）"
 
-[translations.items.response_willing_amplifier]
-name = "回复意愿放大系数"
-description = "麦麦回复意愿放大系数，一般为1"
-
 [translations.items.response_interested_rate_amplifier]
 name = "兴趣度放大系数"
 description = "麦麦回复兴趣度放大系数，听到记忆里的内容时放大系数"
