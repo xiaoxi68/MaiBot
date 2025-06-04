@@ -350,6 +350,7 @@ class DefaultReplyer:
             timestamp_mode="normal_no_YMD",
             read_mark=0.0,
             truncate=True,
+            show_actions=True,
         )
 
         (

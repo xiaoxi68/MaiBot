@@ -16,7 +16,7 @@ class ImpressionUpdateTask(AsyncTask):
     def __init__(self):
         super().__init__(
             task_name="impression_update",
-            wait_before_start=10,  # 启动后等待10秒
+            wait_before_start=100,  # 启动后等待10秒
             run_interval=600,  # 每1分钟运行一次
         )
 

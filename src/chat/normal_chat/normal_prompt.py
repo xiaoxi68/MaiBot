@@ -184,6 +184,7 @@ class PromptBuilder:
             merge_messages=False,
             timestamp_mode="relative",
             read_mark=0.0,
+            show_actions=True,
         )
 
         # 关键词检测与反应

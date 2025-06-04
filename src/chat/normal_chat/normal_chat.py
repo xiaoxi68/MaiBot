@@ -24,6 +24,8 @@ from src.chat.normal_chat.normal_chat_planner import NormalChatPlanner
 from src.chat.normal_chat.normal_chat_action_modifier import NormalChatActionModifier
 from src.chat.normal_chat.normal_chat_expressor import NormalChatExpressor
 from src.chat.focus_chat.replyer.default_replyer import DefaultReplyer
+from src.common.database.database_model import ActionRecords
+
 
 logger = get_logger("normal_chat")
 
@@ -442,7 +444,8 @@ class NormalChat:
                             logger.warning(f"[{self.stream_name}] 没有设置切换到focus聊天模式的回调函数，无法执行切换")
                         return
                     else:
-                        await self._check_switch_to_focus()
+                        # await self._check_switch_to_focus()
+                        pass
 
             info_catcher.done_catch()
 
@@ -656,13 +659,16 @@ class NormalChat:
             if action_handler:
                 # 执行动作
                 result = await action_handler.handle_action()
+                success = False
+                
                 if result and isinstance(result, tuple) and len(result) >= 2:
                     # handle_action返回 (success: bool, message: str)
-                    success, _ = result[0], result[1]
-                    return success
+                    success = result[0]
                 elif result:
                     # 如果返回了其他结果，假设成功
-                    return True
+                    success = True
+
+                return success
 
         except Exception as e:
             logger.error(f"[{self.stream_name}] 执行动作 {action_type} 失败: {e}")

@@ -35,6 +35,7 @@ from src.chat.focus_chat.planners.modify_actions import ActionModifier
 from src.chat.focus_chat.planners.action_manager import ActionManager
 from src.chat.focus_chat.working_memory.working_memory import WorkingMemory
 from src.config.config import global_config
+from src.common.database.database_model import ActionRecords
 
 install(extra_lines=3)
 
@@ -552,6 +553,9 @@ class HeartFChatting:
             tuple[bool, str, str]: (是否执行了动作, 思考消息ID, 命令)
         """
         try:
+            action_time = time.time()
+            action_id = f"{action_time}_{thinking_id}"
+
             # 使用工厂创建动作处理器实例
             try:
                 action_handler = self.action_manager.create_action(
@@ -586,6 +590,7 @@ class HeartFChatting:
             logger.debug(
                 f"{self.log_prefix} 麦麦执行了'{action}', 返回结果'{success}', '{reply_text}', '{command}'"
             )
+
             return success, reply_text, command
 
         except Exception as e:

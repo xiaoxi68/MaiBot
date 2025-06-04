@@ -43,8 +43,6 @@ def init_prompt():
 
 {chat_content_block}
 
-{mind_info_block}
-
 {cycle_info_block}
 
 {moderation_prompt}
@@ -323,11 +321,11 @@ class ActionPlanner(BasePlanner):
             else:
                 chat_content_block = "你还未开始聊天"
 
-            mind_info_block = ""
-            if current_mind:
-                mind_info_block = f"对聊天的规划：{current_mind}"
-            else:
-                mind_info_block = "你刚参与聊天"
+            # mind_info_block = ""
+            # if current_mind:
+                # mind_info_block = f"对聊天的规划：{current_mind}"
+            # else:
+                # mind_info_block = "你刚参与聊天"
 
             personality_block = individuality.get_prompt(x_person=2, level=2)
 
@@ -388,7 +386,7 @@ class ActionPlanner(BasePlanner):
                 prompt_personality=personality_block,
                 chat_context_description=chat_context_description,
                 chat_content_block=chat_content_block,
-                mind_info_block=mind_info_block,
+                # mind_info_block=mind_info_block,
                 cycle_info_block=cycle_info,
                 action_options_text=action_options_block,
                 # action_available_block=action_available_block,

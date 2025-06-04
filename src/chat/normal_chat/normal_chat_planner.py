@@ -1,4 +1,5 @@
 import json
+from re import A
 from typing import Dict, Any
 from rich.traceback import install
 from src.llm_models.utils_model import LLMRequest
@@ -115,13 +116,6 @@ class NormalChatPlanner:
                 }
 
             # 构建normal_chat的上下文 (使用与normal_chat相同的prompt构建方法)
-            # chat_context = await prompt_builder.build_prompt_normal(
-            #     enable_planner=True,
-            #     message_txt=message.processed_plain_text,
-            #     sender_name=sender_name,
-            #     chat_stream=message.chat_stream,
-            # )
-            
             message_list_before_now = get_raw_msg_before_timestamp_with_chat(
                 chat_id=message.chat_stream.stream_id,
                 timestamp=time.time(),
@@ -134,6 +128,7 @@ class NormalChatPlanner:
                 merge_messages=False,
                 timestamp_mode="relative",
                 read_mark=0.0,
+                show_actions=True,
             )
             
             # 构建planner的prompt
@@ -154,7 +149,6 @@ class NormalChatPlanner:
             # 使用LLM生成动作决策
             try:
                 content, reasoning_content, model_name = await self.planner_llm.generate_response(prompt)
-                
                 
                 logger.info(f"{self.log_prefix}规划器原始提示词: {prompt}")
                 logger.info(f"{self.log_prefix}规划器原始响应: {content}")
@@ -206,7 +200,21 @@ class NormalChatPlanner:
             f"{self.log_prefix}规划后恢复到默认动作集, 当前可用: {list(self.action_manager.get_using_actions().keys())}"
         )
 
-        action_result = {"action_type": action, "action_data": action_data, "reasoning": reasoning}
+        # 构建 action 记录
+        action_record = {
+            "action_type": action,
+            "action_data": action_data,
+            "reasoning": reasoning,
+            "timestamp": time.time(),
+            "model_name": model_name if 'model_name' in locals() else None
+        }
+
+        action_result = {
+            "action_type": action, 
+            "action_data": action_data, 
+            "reasoning": reasoning,
+            "action_record": json.dumps(action_record, ensure_ascii=False)
+        }
 
         plan_result = {
             "action_result": action_result,
@@ -228,17 +236,25 @@ class NormalChatPlanner:
             action_options_text = ""
 
             # 添加特殊的change_to_focus_chat动作
-            action_options_text += "action_name: change_to_focus_chat\n"
+            action_options_text += "动作：change_to_focus_chat\n"
             action_options_text += (
-                "    描述：当聊天变得热烈、自己回复条数很多或需要深入交流时使用，正常回复消息并切换到focus_chat模式\n"
+                "该动作的描述：当聊天变得热烈、自己回复条数很多或需要深入交流时使用，正常回复消息并切换到focus_chat模式\n"
             )
-            action_options_text += "    参数：\n"
-            action_options_text += "    动作要求：\n"
-            action_options_text += "    - 聊天上下文中自己的回复条数较多（超过3-4条）\n"
-            action_options_text += "    - 对话进行得非常热烈活跃\n"
-            action_options_text += "    - 用户表现出深入交流的意图\n"
-            action_options_text += "    - 话题需要更专注和深入的讨论\n\n"
 
+            action_options_text += "使用该动作的场景：\n"
+            action_options_text += "- 聊天上下文中自己的回复条数较多（超过3-4条）\n"
+            action_options_text += "- 对话进行得非常热烈活跃\n"
+            action_options_text += "- 用户表现出深入交流的意图\n"
+            action_options_text += "- 话题需要更专注和深入的讨论\n\n"
+            
+            action_options_text += "输出要求：\n"
+            action_options_text += "{{"
+            action_options_text += "    \"action\": \"change_to_focus_chat\""
+            action_options_text += "}}\n\n"
+            
+            
+            
+            
             for action_name, action_info in current_available_actions.items():
                 action_description = action_info.get("description", "")
                 action_parameters = action_info.get("parameters", {})

@@ -154,6 +154,29 @@ class Messages(BaseModel):
     class Meta:
         # database = db # 继承自 BaseModel
         table_name = "messages"
+        
+class ActionRecords(BaseModel):
+    """
+    用于存储动作记录数据的模型。
+    """
+
+    action_id = TextField(index=True)  # 消息 ID (更改自 IntegerField)
+    time = DoubleField()  # 消息时间戳
+    
+    action_name = TextField()
+    action_data = TextField()
+    action_done = BooleanField(default=False)
+    
+    action_build_into_prompt = BooleanField(default=False)
+    action_prompt_display = TextField()
+
+    chat_id = TextField(index=True)  # 对应的 ChatStreams stream_id
+    chat_info_stream_id = TextField()
+    chat_info_platform = TextField()
+
+    class Meta:
+        # database = db # 继承自 BaseModel
+        table_name = "action_records"
 
 
 class Images(BaseModel):
@@ -326,6 +349,7 @@ def create_tables():
                 RecalledMessages,  # 添加新模型
                 GraphNodes,  # 添加图节点表
                 GraphEdges,  # 添加图边表
+                ActionRecords,  # 添加 ActionRecords 到初始化列表
             ]
         )
 
@@ -350,6 +374,7 @@ def initialize_database():
         RecalledMessages,
         GraphNodes,
         GraphEdges,
+        ActionRecords,  # 添加 ActionRecords 到初始化列表
     ]
 
     try:

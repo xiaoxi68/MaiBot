@@ -66,7 +66,7 @@ class ChattingObservation(Observation):
         initial_messages = get_raw_msg_before_timestamp_with_chat(self.chat_id, self.last_observe_time, 10)
         self.last_observe_time = initial_messages[-1]["time"] if initial_messages else self.last_observe_time
         self.talking_message = initial_messages
-        self.talking_message_str = build_readable_messages(self.talking_message)
+        self.talking_message_str = build_readable_messages(self.talking_message, show_actions=True)
 
 
     def to_dict(self) -> dict:
@@ -220,7 +220,7 @@ class ChattingObservation(Observation):
 
             # print(f"压缩中：oldest_messages: {oldest_messages}")
             oldest_messages_str = build_readable_messages(
-                messages=oldest_messages, timestamp_mode="normal_no_YMD", read_mark=0
+                messages=oldest_messages, timestamp_mode="normal_no_YMD", read_mark=0, show_actions=True
             )
 
             # --- Build prompt using template ---
@@ -267,6 +267,7 @@ class ChattingObservation(Observation):
             messages=self.talking_message,
             timestamp_mode="lite",
             read_mark=last_obs_time_mark,
+            show_actions=True,
         )
         # print(f"构建中：self.talking_message_str: {self.talking_message_str}")
         self.talking_message_str_truncate = build_readable_messages(
@@ -274,6 +275,7 @@ class ChattingObservation(Observation):
             timestamp_mode="normal_no_YMD",
             read_mark=last_obs_time_mark,
             truncate=True,
+            show_actions=True,
         )
         # print(f"构建中：self.talking_message_str_truncate: {self.talking_message_str_truncate}")
 

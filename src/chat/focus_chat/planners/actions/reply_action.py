@@ -8,6 +8,9 @@ from src.chat.focus_chat.replyer.default_replyer import DefaultReplyer
 from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 from src.chat.focus_chat.hfc_utils import create_empty_anchor_message
+import time
+import traceback
+from src.common.database.database_model import ActionRecords
 
 logger = get_logger("action_taken")
 
@@ -72,12 +75,19 @@ class ReplyAction(BaseAction):
             Tuple[bool, str]: (是否执行成功, 回复文本)
         """
         # 注意: 此处可能会使用不同的expressor实现根据任务类型切换不同的回复策略
-        return await self._handle_reply(
+        success, reply_text = await self._handle_reply(
             reasoning=self.reasoning,
             reply_data=self.action_data,
             cycle_timers=self.cycle_timers,
             thinking_id=self.thinking_id,
         )
+        
+        await self.store_action_info(
+            action_build_into_prompt=False,
+            action_prompt_display=f"{reply_text}",
+        )
+        
+        return success, reply_text
 
     async def _handle_reply(
         self, reasoning: str, reply_data: dict, cycle_timers: dict, thinking_id: str
@@ -130,3 +140,40 @@ class ReplyAction(BaseAction):
                 reply_text += data
 
         return success, reply_text
+
+
+    async def store_action_info(self, action_build_into_prompt: bool = False, action_prompt_display: str = "", action_done: bool = True) -> None:
+        """存储action执行信息到数据库
+
+        Args:
+            action_build_into_prompt: 是否构建到提示中
+            action_prompt_display: 动作显示内容
+        """
+        try:
+            chat_stream = self.chat_stream
+            if not chat_stream:
+                logger.error(f"{self.log_prefix} 无法存储action信息：缺少chat_stream服务")
+                return
+
+            action_time = time.time()
+            action_id = f"{action_time}_{self.thinking_id}"
+
+            ActionRecords.create(
+                action_id=action_id,
+                time=action_time,
+                action_name=self.__class__.__name__,
+                action_data=str(self.action_data),
+                action_done=action_done,
+                action_build_into_prompt=action_build_into_prompt,
+                action_prompt_display=action_prompt_display,
+                chat_id=chat_stream.stream_id,
+                chat_info_stream_id=chat_stream.stream_id,
+                chat_info_platform=chat_stream.platform,
+                user_id=chat_stream.user_info.user_id if chat_stream.user_info else "",
+                user_nickname=chat_stream.user_info.user_nickname if chat_stream.user_info else "",
+                user_cardname=chat_stream.user_info.user_cardname if chat_stream.user_info else ""
+            )
+            logger.debug(f"{self.log_prefix} 已存储action信息: {action_prompt_display}")
+        except Exception as e:
+            logger.error(f"{self.log_prefix} 存储action信息时出错: {e}")
+            traceback.print_exc()

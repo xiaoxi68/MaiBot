@@ -7,6 +7,7 @@ from src.common.message_repository import find_messages, count_messages
 from src.person_info.person_info import person_info_manager
 from src.chat.utils.utils import translate_timestamp_to_human_readable
 from rich.traceback import install
+from src.common.database.database_model import ActionRecords
 
 install(extra_lines=3)
 
@@ -177,6 +178,15 @@ def _build_readable_messages_internal(
 
     # 1 & 2: 获取发送者信息并提取消息组件
     for msg in messages:
+        # 检查是否是动作记录
+        if msg.get("is_action_record", False):
+            is_action = True
+            timestamp = msg.get("time")
+            content = msg.get("display_message", "")
+            # 对于动作记录，直接使用内容
+            message_details_raw.append((timestamp, global_config.bot.nickname, content, is_action))
+            continue
+
         # 检查并修复缺少的user_info字段
         if "user_info" not in msg:
             # 创建user_info字段
@@ -263,18 +273,32 @@ def _build_readable_messages_internal(
                 content = content.replace(target_str, "")
 
         if content != "":
-            message_details_raw.append((timestamp, person_name, content))
+            message_details_raw.append((timestamp, person_name, content, False))
 
     if not message_details_raw:
         return "", []
 
     message_details_raw.sort(key=lambda x: x[0])  # 按时间戳(第一个元素)升序排序，越早的消息排在前面
 
+    # 为每条消息添加一个标记，指示它是否是动作记录
+    message_details_with_flags = []
+    for timestamp, name, content, is_action in message_details_raw:
+        message_details_with_flags.append((timestamp, name, content, is_action))
+        # print(f"content:{content}")
+        # print(f"is_action:{is_action}")
+        
+    # print(f"message_details_with_flags:{message_details_with_flags}")
+
     # 应用截断逻辑 (如果 truncate 为 True)
-    message_details: List[Tuple[float, str, str]] = []
-    n_messages = len(message_details_raw)
+    message_details: List[Tuple[float, str, str, bool]] = []
+    n_messages = len(message_details_with_flags)
     if truncate and n_messages > 0:
-        for i, (timestamp, name, content) in enumerate(message_details_raw):
+        for i, (timestamp, name, content, is_action) in enumerate(message_details_with_flags):
+            # 对于动作记录，不进行截断
+            if is_action:
+                message_details.append((timestamp, name, content, is_action))
+                continue
+
             percentile = i / n_messages  # 计算消息在列表中的位置百分比 (0 <= percentile < 1)
             original_len = len(content)
             limit = -1  # 默认不截断
@@ -296,10 +320,12 @@ def _build_readable_messages_internal(
             if 0 < limit < original_len:
                 truncated_content = f"{content[:limit]}{replace_content}"
 
-            message_details.append((timestamp, name, truncated_content))
+            message_details.append((timestamp, name, truncated_content, is_action))
     else:
         # 如果不截断，直接使用原始列表
-        message_details = message_details_raw
+        message_details = message_details_with_flags
+        
+    # print(f"message_details:{message_details}")
 
     # 3: 合并连续消息 (如果 merge_messages 为 True)
     merged_messages = []
@@ -310,10 +336,26 @@ def _build_readable_messages_internal(
             "start_time": message_details[0][0],
             "end_time": message_details[0][0],
             "content": [message_details[0][2]],
+            "is_action": message_details[0][3]
         }
 
         for i in range(1, len(message_details)):
-            timestamp, name, content = message_details[i]
+            timestamp, name, content, is_action = message_details[i]
+            
+            # 对于动作记录，不进行合并
+            if is_action or current_merge["is_action"]:
+                # 保存当前的合并块
+                merged_messages.append(current_merge)
+                # 创建新的块
+                current_merge = {
+                    "name": name,
+                    "start_time": timestamp,
+                    "end_time": timestamp,
+                    "content": [content],
+                    "is_action": is_action
+                }
+                continue
+
             # 如果是同一个人发送的连续消息且时间间隔小于等于60秒
             if name == current_merge["name"] and (timestamp - current_merge["end_time"] <= 60):
                 current_merge["content"].append(content)
@@ -322,19 +364,27 @@ def _build_readable_messages_internal(
                 # 保存上一个合并块
                 merged_messages.append(current_merge)
                 # 开始新的合并块
-                current_merge = {"name": name, "start_time": timestamp, "end_time": timestamp, "content": [content]}
+                current_merge = {
+                    "name": name, 
+                    "start_time": timestamp, 
+                    "end_time": timestamp, 
+                    "content": [content],
+                    "is_action": is_action
+                }
         # 添加最后一个合并块
         merged_messages.append(current_merge)
     elif message_details:  # 如果不合并消息，则每个消息都是一个独立的块
-        for timestamp, name, content in message_details:
+        for timestamp, name, content, is_action in message_details:
             merged_messages.append(
                 {
                     "name": name,
                     "start_time": timestamp,  # 起始和结束时间相同
                     "end_time": timestamp,
                     "content": [content],  # 内容只有一个元素
+                    "is_action": is_action
                 }
             )
+            
 
     # 4 & 5: 格式化为字符串
     output_lines = []
@@ -342,20 +392,25 @@ def _build_readable_messages_internal(
         # 使用指定的 timestamp_mode 格式化时间
         readable_time = translate_timestamp_to_human_readable(merged["start_time"], mode=timestamp_mode)
 
-        header = f"{readable_time}, {merged['name']} :"
-        output_lines.append(header)
-        # 将内容合并，并添加缩进
-        for line in merged["content"]:
-            stripped_line = line.strip()
-            if stripped_line:  # 过滤空行
-                # 移除末尾句号，添加分号 - 这个逻辑似乎有点奇怪，暂时保留
-                if stripped_line.endswith("。"):
-                    stripped_line = stripped_line[:-1]
-                # 如果内容被截断，结尾已经是 ...（内容太长），不再添加分号
-                if not stripped_line.endswith("（内容太长）"):
-                    output_lines.append(f"{stripped_line}")
-                else:
-                    output_lines.append(stripped_line)  # 直接添加截断后的内容
+        # 检查是否是动作记录
+        if merged["is_action"]:
+            # 对于动作记录，使用特殊格式
+            output_lines.append(f"{readable_time}, {merged['content'][0]}")
+        else:
+            header = f"{readable_time}, {merged['name']} :"
+            output_lines.append(header)
+            # 将内容合并，并添加缩进
+            for line in merged["content"]:
+                stripped_line = line.strip()
+                if stripped_line:  # 过滤空行
+                    # 移除末尾句号，添加分号 - 这个逻辑似乎有点奇怪，暂时保留
+                    if stripped_line.endswith("。"):
+                        stripped_line = stripped_line[:-1]
+                    # 如果内容被截断，结尾已经是 ...（内容太长），不再添加分号
+                    if not stripped_line.endswith("（内容太长）"):
+                        output_lines.append(f"{stripped_line}")
+                    else:
+                        output_lines.append(stripped_line)  # 直接添加截断后的内容
         output_lines.append("\n")  # 在每个消息块后添加换行，保持可读性
 
     # 移除可能的多余换行，然后合并
@@ -363,7 +418,7 @@ def _build_readable_messages_internal(
 
     # 返回格式化后的字符串和 *应用截断后* 的 message_details 列表
     # 注意：如果外部调用者需要原始未截断的内容，可能需要调整返回策略
-    return formatted_string, message_details
+    return formatted_string, [(t, n, c) for t, n, c, is_action in message_details if not is_action]
 
 
 async def build_readable_messages_with_list(
@@ -390,26 +445,88 @@ def build_readable_messages(
     timestamp_mode: str = "relative",
     read_mark: float = 0.0,
     truncate: bool = False,
+    show_actions: bool = False,
 ) -> str:
     """
     将消息列表转换为可读的文本格式。
     如果提供了 read_mark，则在相应位置插入已读标记。
     允许通过参数控制格式化行为。
+    
+    Args:
+        messages: 消息列表
+        replace_bot_name: 是否替换机器人名称为"你"
+        merge_messages: 是否合并连续消息
+        timestamp_mode: 时间戳显示模式
+        read_mark: 已读标记时间戳
+        truncate: 是否截断长消息
+        show_actions: 是否显示动作记录
     """
+    # 创建messages的深拷贝，避免修改原始列表
+    copy_messages = [msg.copy() for msg in messages]
+    
+    if show_actions and copy_messages:
+        # 获取所有消息的时间范围
+        min_time = min(msg.get("time", 0) for msg in copy_messages)
+        max_time = max(msg.get("time", 0) for msg in copy_messages)
+        
+        # 从第一条消息中获取chat_id
+        chat_id = copy_messages[0].get("chat_id") if copy_messages else None
+        
+        # 获取这个时间范围内的动作记录，并匹配chat_id
+        actions = ActionRecords.select().where(
+            (ActionRecords.time >= min_time) & 
+            (ActionRecords.time <= max_time) &
+            (ActionRecords.chat_id == chat_id)
+        ).order_by(ActionRecords.time)
+        
+        # 将动作记录转换为消息格式
+        for action in actions:
+            # 只有当build_into_prompt为True时才添加动作记录
+            if action.action_build_into_prompt:
+                action_msg = {
+                    "time": action.time,
+                    "user_id": global_config.bot.qq_account,  # 使用机器人的QQ账号
+                    "user_nickname": global_config.bot.nickname,  # 使用机器人的昵称
+                    "user_cardname": "",  # 机器人没有群名片
+                    "processed_plain_text": f"{action.action_prompt_display}",
+                    "display_message": f"{action.action_prompt_display}",
+                    "chat_info_platform": action.chat_info_platform,
+                    "is_action_record": True,  # 添加标识字段
+                    "action_name": action.action_name,  # 保存动作名称
+                }
+                copy_messages.append(action_msg)
+        
+        # 重新按时间排序
+        copy_messages.sort(key=lambda x: x.get("time", 0))
+
     if read_mark <= 0:
         # 没有有效的 read_mark，直接格式化所有消息
+        
+        # for message in messages:
+            # print(f"message:{message}")
+            
+            
         formatted_string, _ = _build_readable_messages_internal(
-            messages, replace_bot_name, merge_messages, timestamp_mode, truncate
+            copy_messages, replace_bot_name, merge_messages, timestamp_mode, truncate
         )
+        
+        # print(f"formatted_string:{formatted_string}")
+        
+        
+        
         return formatted_string
     else:
         # 按 read_mark 分割消息
-        messages_before_mark = [msg for msg in messages if msg.get("time", 0) <= read_mark]
-        messages_after_mark = [msg for msg in messages if msg.get("time", 0) > read_mark]
+        messages_before_mark = [msg for msg in copy_messages if msg.get("time", 0) <= read_mark]
+        messages_after_mark = [msg for msg in copy_messages if msg.get("time", 0) > read_mark]
+
+        # for message in messages_before_mark:
+            # print(f"message:{message}")
+            
+        # for message in messages_after_mark:
+            # print(f"message:{message}")
 
         # 分别格式化
-        # 注意：这里决定对已读和未读部分都应用相同的 truncate 设置
-        # 如果需要不同的行为（例如只截断已读部分），需要调整这里的调用
         formatted_before, _ = _build_readable_messages_internal(
             messages_before_mark, replace_bot_name, merge_messages, timestamp_mode, truncate
         )
@@ -419,11 +536,13 @@ def build_readable_messages(
             merge_messages,
             timestamp_mode,
         )
+        
+        # print(f"formatted_before:{formatted_before}")
+        # print(f"formatted_after:{formatted_after}")
 
-        # readable_read_mark = translate_timestamp_to_human_readable(read_mark, mode=timestamp_mode)
         read_mark_line = "\n--- 以上消息是你已经看过---\n--- 请关注以下未读的新消息---\n"
 
-        # 组合结果，确保空部分不引入多余的标记或换行
+        # 组合结果
         if formatted_before and formatted_after:
             return f"{formatted_before}{read_mark_line}{formatted_after}"
         elif formatted_before:
@@ -431,8 +550,7 @@ def build_readable_messages(
         elif formatted_after:
             return f"{read_mark_line}{formatted_after}"
         else:
-            # 理论上不应该发生，但作为保险
-            return read_mark_line.strip()  # 如果前后都无消息，只返回标记行
+            return read_mark_line.strip()
 
 
 async def build_anonymous_messages(messages: List[Dict[str, Any]]) -> str:
