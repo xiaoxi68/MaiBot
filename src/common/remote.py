@@ -124,7 +124,7 @@ class TelemetryHeartBeatTask(AsyncTask):
                 timeout=5,  # 设置超时时间为5秒
             )
         except Exception as e:
-            logger.warning(f"（此错误不会影响正常使用）状态未发生: {e}")
+            logger.warning(f"（此消息不会影响正常使用）状态未发生: {e}")
 
         logger.debug(response)
 
@@ -135,7 +135,7 @@ class TelemetryHeartBeatTask(AsyncTask):
         elif response.status_code == 403:
             # 403 Forbidden
             logger.warning(
-                "（此错误不会影响正常使用）心跳发送失败，403 Forbidden: 可能是UUID无效或未注册。"
+                "（此消息不会影响正常使用）心跳发送失败，403 Forbidden: 可能是UUID无效或未注册。"
                 "处理措施：重置UUID，下次发送心跳时将尝试重新注册。"
             )
             self.client_uuid = None
@@ -143,7 +143,7 @@ class TelemetryHeartBeatTask(AsyncTask):
         else:
             # 其他错误
             logger.warning(
-                f"（此错误不会影响正常使用）状态未发送，状态码: {response.status_code}, 响应内容: {response.text}"
+                f"（此消息不会影响正常使用）状态未发送，状态码: {response.status_code}, 响应内容: {response.text}"
             )
 
     async def run(self):

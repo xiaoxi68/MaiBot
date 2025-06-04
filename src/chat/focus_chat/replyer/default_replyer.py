@@ -291,7 +291,7 @@ class DefaultReplyer:
                     # logger.info(f"{self.log_prefix}[Replier-{thinking_id}]\nPrompt:\n{prompt}\n")
                     content, (reasoning_content, model_name) = await self.express_model.generate_response_async(prompt)
 
-                    logger.info(f"prompt: {prompt}")
+                    # logger.info(f"prompt: {prompt}")
                     logger.info(f"最终回复: {content}")
 
                 info_catcher.catch_after_llm_generated(
