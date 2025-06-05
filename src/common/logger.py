@@ -1076,7 +1076,7 @@ def get_module_logger(
     # 文件处理器
     log_dir = Path(current_config["log_dir"])
     log_dir.mkdir(parents=True, exist_ok=True)
-    log_file = log_dir / module_name / "{time:YYYY-MM-DD}.log"
+    log_file = log_dir / "{time:YYYY-MM-DD}.log"
     log_file.parent.mkdir(parents=True, exist_ok=True)
 
     file_id = logger.add(
