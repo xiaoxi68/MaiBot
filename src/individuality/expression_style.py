@@ -1,4 +1,6 @@
 import random
+
+from reportportal_client import current
 from src.common.logger_manager import get_logger
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
@@ -7,7 +9,6 @@ from typing import List, Tuple
 import os
 import json
 from datetime import datetime
-from src.individuality.individuality import individuality
 
 logger = get_logger("expressor")
 
@@ -89,21 +90,18 @@ class PersonalityExpression:
         os.makedirs(os.path.dirname(self.expressions_file_path), exist_ok=True)
 
         current_style_text = global_config.expression.expression_style
-        current_personality = individuality.get_personality_prompt(x_person=2, level=2)
-        current_identity = individuality.get_identity_prompt(x_person=2, level=2)
+        current_personality = global_config.personality.personality_core
         
         meta_data = self._read_meta_data()
 
         last_style_text = meta_data.get("last_style_text")
         last_personality = meta_data.get("last_personality")
-        last_identity = meta_data.get("last_identity")
         count = meta_data.get("count", 0)
 
         # 检查是否有任何变化
         if (current_style_text != last_style_text or 
-            current_personality != last_personality or 
-            current_identity != last_identity):
-            logger.info(f"检测到变化：\n风格: '{last_style_text}' -> '{current_style_text}'\n人格: '{last_personality}' -> '{current_personality}'\n身份: '{last_identity}' -> '{current_identity}'")
+            current_personality != last_personality):
+            logger.info(f"检测到变化：\n风格: '{last_style_text}' -> '{current_style_text}'\n人格: '{last_personality}' -> '{current_personality}'")
             count = 0
             if os.path.exists(self.expressions_file_path):
                 try:
@@ -119,7 +117,6 @@ class PersonalityExpression:
                 {
                     "last_style_text": current_style_text,
                     "last_personality": current_personality,
-                    "last_identity": current_identity,
                     "count": count,
                     "last_update_time": meta_data.get("last_update_time"),
                 }
@@ -142,7 +139,6 @@ class PersonalityExpression:
                 {
                     "last_style_text": current_style_text,
                     "last_personality": current_personality,
-                    "last_identity": current_identity,
                     "count": count,
                     "last_update_time": meta_data.get("last_update_time"),
                 }
@@ -200,7 +196,6 @@ class PersonalityExpression:
                 {
                     "last_style_text": current_style_text,
                     "last_personality": current_personality,
-                    "last_identity": current_identity,
                     "count": count,
                     "last_update_time": current_time
                 }

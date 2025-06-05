@@ -111,14 +111,43 @@ class ExpressionLearner:
     async def learn_and_store_expression(self) -> List[Tuple[str, str, str]]:
         """
         学习并存储表达方式，分别学习语言风格和句法特点
+        同时对所有已存储的表达方式进行全局衰减
         """
+        current_time = time.time()
+        
+        # 全局衰减所有已存储的表达方式
+        for type in ["style", "grammar"]:
+            base_dir = os.path.join("data", "expression", f"learnt_{type}")
+            if not os.path.exists(base_dir):
+                continue
+                
+            for chat_id in os.listdir(base_dir):
+                file_path = os.path.join(base_dir, chat_id, "expressions.json")
+                if not os.path.exists(file_path):
+                    continue
+                    
+                try:
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        expressions = json.load(f)
+                    
+                    # 应用全局衰减
+                    decayed_expressions = self.apply_decay_to_expressions(expressions, current_time)
+                    
+                    # 保存衰减后的结果
+                    with open(file_path, "w", encoding="utf-8") as f:
+                        json.dump(decayed_expressions, f, ensure_ascii=False, indent=2)
+                except Exception as e:
+                    logger.error(f"全局衰减{type}表达方式失败: {e}")
+                    continue
+
+        # 学习新的表达方式（这里会进行局部衰减）
         for i in range(3):
-            learnt_style: Optional[List[Tuple[str, str, str]]] = await self.learn_and_store(type="style", num=15)
+            learnt_style: Optional[List[Tuple[str, str, str]]] = await self.learn_and_store(type="style", num=25)
             if not learnt_style:
                 return []
 
-        for i in range(1):
-            learnt_grammar: Optional[List[Tuple[str, str, str]]] = await self.learn_and_store(type="grammar", num=15)
+        for j in range(1):
+            learnt_grammar: Optional[List[Tuple[str, str, str]]] = await self.learn_and_store(type="grammar", num=10)
             if not learnt_grammar:
                 return []
 
@@ -126,29 +155,29 @@ class ExpressionLearner:
 
     def calculate_decay_factor(self, time_diff_days: float) -> float:
         """
-        计算衰减因子
-        当时间差为0天或30天时，衰减值为0.01
-        当时间差为7天时，衰减值为1.0
+        计算衰减值
+        当时间差为0天时，衰减值为0.001
+        当时间差为7天时，衰减值为0
+        当时间差为30天时，衰减值为0.001
         使用二次函数进行曲线插值
         """
         if time_diff_days <= 0 or time_diff_days >= DECAY_DAYS:
-            return DECAY_MIN
+            return 0.001
             
         # 使用二次函数进行插值
         # 将7天作为顶点，0天和30天作为两个端点
         # 使用顶点式：y = a(x-h)^2 + k，其中(h,k)为顶点
         h = 7.0  # 顶点x坐标
-        k = 1.0  # 顶点y坐标
+        k = 0.001  # 顶点y坐标
         
-        # 计算a值，使得x=0和x=30时y=0.01
-        # 0.01 = a(0-7)^2 + 1
-        # 0.01 = a(30-7)^2 + 1
-        # 解得a = -0.99/49
-        a = -0.99 / 49
+        # 计算a值，使得x=0和x=30时y=0.001
+        # 0.001 = a(0-7)^2 + 0.001
+        # 解得a = 0
+        a = 0
         
-        # 计算衰减因子
+        # 计算衰减值
         decay = a * (time_diff_days - h) ** 2 + k
-        return max(DECAY_MIN, min(1.0, decay))
+        return min(0.001, decay)
 
     def apply_decay_to_expressions(self, expressions: List[Dict[str, Any]], current_time: float) -> List[Dict[str, Any]]:
         """
@@ -157,11 +186,15 @@ class ExpressionLearner:
         """
         result = []
         for expr in expressions:
-            last_active = expr.get("last_active_time", current_time)
+            # 确保last_active_time存在，如果不存在则使用current_time
+            if "last_active_time" not in expr:
+                expr["last_active_time"] = current_time
+                
+            last_active = expr["last_active_time"]
             time_diff_days = (current_time - last_active) / (24 * 3600)  # 转换为天
             
-            decay_factor = self.calculate_decay_factor(time_diff_days)
-            expr["count"] = expr.get("count", 1) * decay_factor
+            decay_value = self.calculate_decay_factor(time_diff_days)
+            expr["count"] = max(0.01, expr.get("count", 1) - decay_value)
             
             if expr["count"] > 0:
                 result.append(expr)
@@ -225,7 +258,7 @@ class ExpressionLearner:
                     old_data = []
             
             # 应用衰减
-            old_data = self.apply_decay_to_expressions(old_data, current_time)
+            # old_data = self.apply_decay_to_expressions(old_data, current_time)
             
             # 合并逻辑
             for new_expr in expr_list:
