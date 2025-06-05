@@ -7,7 +7,6 @@ from src.config.config import global_config
 from src.chat.focus_chat.info.info_base import InfoBase
 from src.chat.focus_chat.info.obs_info import ObsInfo
 from src.chat.focus_chat.info.cycle_info import CycleInfo
-from src.chat.focus_chat.info.mind_info import MindInfo
 from src.chat.focus_chat.info.action_info import ActionInfo
 from src.chat.focus_chat.info.structured_info import StructuredInfo
 from src.chat.focus_chat.info.self_info import SelfInfo
@@ -129,8 +128,6 @@ class ActionPlanner(BasePlanner):
                     observed_messages_str = info.get_talking_message_str_truncate()
                     chat_type = info.get_chat_type()
                     is_group_chat = chat_type == "group"
-                elif isinstance(info, MindInfo):
-                    current_mind = info.get_current_mind()
                 elif isinstance(info, CycleInfo):
                     cycle_info = info.get_observe_info()
                 elif isinstance(info, SelfInfo):
@@ -171,7 +168,6 @@ class ActionPlanner(BasePlanner):
                 is_group_chat=is_group_chat,  # <-- Pass HFC state
                 chat_target_info=None,
                 observed_messages_str=observed_messages_str,  # <-- Pass local variable
-                current_mind=current_mind,  # <-- Pass argument
                 structured_info=structured_info,  # <-- Pass SubMind info
                 current_available_actions=current_available_actions,  # <-- Pass determined actions
                 cycle_info=cycle_info,  # <-- Pass cycle info
@@ -284,7 +280,6 @@ class ActionPlanner(BasePlanner):
         is_group_chat: bool,  # Now passed as argument
         chat_target_info: Optional[dict],  # Now passed as argument
         observed_messages_str: str,
-        current_mind: Optional[str],
         structured_info: Optional[str],
         current_available_actions: Dict[str, ActionInfo],
         cycle_info: Optional[str],

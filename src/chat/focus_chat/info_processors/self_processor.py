@@ -104,12 +104,6 @@ class SelfProcessor(BaseProcessor):
                 chat_target_name = "对方"  # 私聊默认名称
                 person_list = observation.person_list
 
-
-        relation_prompt = ""
-        for person in person_list:
-            if len(person) >= 3 and person[0] and person[1]:
-                relation_prompt += await relationship_manager.build_relationship_info(person, is_id=True)
-
         if observations is None:
             observations = []
         for observation in observations:

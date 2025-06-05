@@ -128,15 +128,6 @@ class ToolProcessor(BaseProcessor):
             for running_memory in running_memorys:
                 memory_str += f"{running_memory['topic']}: {running_memory['content']}\n"
 
-        # 构建关系信息
-        relation_prompt = "【关系信息】\n"
-        for person in person_list:
-            relation_prompt += await relationship_manager.build_relationship_info(person, is_id=True)
-
-        # 获取个性信息
-
-        # prompt_personality = individuality.get_prompt(x_person=2, level=2)
-
         # 获取时间信息
         time_now = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 

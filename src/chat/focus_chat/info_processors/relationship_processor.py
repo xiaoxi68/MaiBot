@@ -29,7 +29,7 @@ def init_prompt():
 现在请你根据现有的信息，总结你和群里的人的关系
 1. 当聊天记录中提到你时，请输出你和这个人之间的关系
 2. 当聊天记录中提到其他人时，请输出你和这个人之间的关系
-3. 如果没有特别需要提及的关系，请输出“没有特别在意的人”
+3. 如果没有特别需要提及的关系，就不用输出这个人
 
 输出内容平淡一些，说中文。
 请注意不要输出多余内容(包括前后缀，括号()，表情包，at或 @等 )。只输出关系内容，记得明确说明这是你的关系。
@@ -93,18 +93,6 @@ class RelationshipProcessor(BaseProcessor):
                 tuple: (current_mind, past_mind, prompt) 当前想法、过去的想法列表和使用的prompt
         """
 
-        for observation in observations:
-            if isinstance(observation, ChattingObservation):
-                is_group_chat = observation.is_group_chat
-                chat_target_info = observation.chat_target_info
-                chat_target_name = "对方"  # 私聊默认名称
-                person_list = observation.person_list
-
-        relation_prompt = ""
-        for person in person_list:
-            if len(person) >= 3 and person[0] and person[1]:
-                relation_prompt += await relationship_manager.build_relationship_info(person, is_id=True)
-
         if observations is None:
             observations = []
         for observation in observations:
@@ -131,9 +119,11 @@ class RelationshipProcessor(BaseProcessor):
             relation_prompt_init = "你对群聊里的人的印象是：\n"
         else:
             relation_prompt_init = "你对对方的印象是：\n"
-            
+        
+        relation_prompt = ""
         for person in person_list:
-            relation_prompt += await relationship_manager.build_relationship_info(person, is_id=True)
+            relation_prompt += f"{await relationship_manager.build_relationship_info(person, is_id=True)}\n"
+            
         if relation_prompt:
             relation_prompt = relation_prompt_init + relation_prompt
         else:
@@ -162,7 +152,7 @@ class RelationshipProcessor(BaseProcessor):
         if content == "None":
             content = ""
         # 记录初步思考结果
-        logger.debug(f"{self.log_prefix} 关系识别prompt: \n{prompt}\n")
+        logger.info(f"{self.log_prefix} 关系识别prompt: \n{prompt}\n")
         logger.info(f"{self.log_prefix} 关系识别: {content}")
 
         return content

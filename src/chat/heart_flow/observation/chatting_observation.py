@@ -278,8 +278,9 @@ class ChattingObservation(Observation):
             show_actions=True,
         )
         # print(f"构建中：self.talking_message_str_truncate: {self.talking_message_str_truncate}")
-
+        
         self.person_list = await get_person_id_list(self.talking_message)
+
         # print(f"构建中：self.person_list: {self.person_list}")
 
         logger.trace(

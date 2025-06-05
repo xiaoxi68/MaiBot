@@ -114,8 +114,7 @@ class PromptBuilder:
 
         relation_prompt = ""
         for person in who_chat_in_group:
-            if len(person) >= 3 and person[0] and person[1]:
-                relation_prompt += await relationship_manager.build_relationship_info(person)
+            relation_prompt += await relationship_manager.build_relationship_info(person)
 
         mood_prompt = mood_manager.get_mood_prompt()
 

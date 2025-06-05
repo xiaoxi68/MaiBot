@@ -133,6 +133,7 @@ class RelationshipManager:
                 gender_list = json.loads(gender)
                 gender = random.choice(gender_list)
             except json.JSONDecodeError:
+                logger.error(f"性别解析错误: {gender}")
                 pass
                 
             if gender and "女" in gender:
@@ -146,34 +147,39 @@ class RelationshipManager:
 
         nickname_str = await person_info_manager.get_value(person_id, "nickname")
         platform = await person_info_manager.get_value(person_id, "platform")
-        relation_prompt = f"你认识 {person_name} ，{gender_prompt}在{platform}上的昵称是{nickname_str}。你对{gender_prompt}的印象是"
-
+        relation_prompt = f"'{person_name}' ，{gender_prompt}在{platform}上的昵称是{nickname_str}。"
+        
         # person_impression = await person_info_manager.get_value(person_id, "person_impression")
         # if person_impression:
         #     relation_prompt += f"你对ta的印象是：{person_impression}。"
             
         traits = await person_info_manager.get_value(person_id, "traits")
+        gender = await person_info_manager.get_value(person_id, "gender")
+        relation = await person_info_manager.get_value(person_id, "relation")
+        identity = await person_info_manager.get_value(person_id, "identity")
+        meme = await person_info_manager.get_value(person_id, "meme")
+        
+        if traits or gender or relation or identity or meme:
+            relation_prompt += f"你对{gender_prompt}的印象是："  
+        
         if traits:
             relation_prompt += f"{gender_prompt}的性格特征是：{traits}。"
 
-        gender = await person_info_manager.get_value(person_id, "gender")
         if gender:
             relation_prompt += f"{gender_prompt}的性别是：{gender}。"  
             
-        relation = await person_info_manager.get_value(person_id, "relation")
+        
         if relation:
             relation_prompt += f"你与{gender_prompt}的关系是：{relation}。"
 
-        identity = await person_info_manager.get_value(person_id, "identity")
         if identity:
             relation_prompt += f"{gender_prompt}的身份是：{identity}。"
             
-        meme = await person_info_manager.get_value(person_id, "meme")
         if meme:
             relation_prompt += f"你与{gender_prompt}之间的梗是：{meme}。"
 
         
-        print(f"relation_prompt: {relation_prompt}")
+        # print(f"relation_prompt: {relation_prompt}")
         return relation_prompt
 
     async def update_person_impression(self, person_id, chat_id, reason, timestamp):

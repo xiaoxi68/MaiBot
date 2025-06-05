@@ -673,9 +673,8 @@ async def get_person_id_list(messages: List[Dict[str, Any]]) -> List[str]:
     person_ids_set = set()  # 使用集合来自动去重
 
     for msg in messages:
-        user_info = msg.get("user_info", {})
-        platform = user_info.get("platform")
-        user_id = user_info.get("user_id")
+        platform = msg.get("user_platform")
+        user_id = msg.get("user_id")
 
         # 检查必要信息是否存在 且 不是机器人自己
         if not all([platform, user_id]) or user_id == global_config.bot.qq_account:

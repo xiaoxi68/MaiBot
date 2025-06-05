@@ -22,9 +22,19 @@ class ImpressionUpdateTask(AsyncTask):
 
     async def run(self):
         try:
-            # 获取最近10分钟的消息
-            current_time = int(time.time())
-            start_time = current_time - 6000  # 10分钟前
+            if random.random() < 0.5:
+                # 获取最近10分钟的消息
+                current_time = int(time.time())
+                start_time = current_time - 6000  # 10分钟前
+                # 取一个月内任意一个小时的时间段
+            else:
+                now = int(time.time())
+                # 30天前的时间戳
+                month_ago = now - 30 * 24 * 60 * 60
+                # 随机选择一个小时的起点
+                random_start = random.randint(month_ago, now - 3600)
+                start_time = random_start
+                current_time = random_start + 3600  # 一个小时后
 
             # 获取所有消息
             messages = get_raw_msg_by_timestamp(timestamp_start=start_time, timestamp_end=current_time, limit=100)
