@@ -12,6 +12,8 @@ import json
 
 
 MAX_EXPRESSION_COUNT = 300
+DECAY_DAYS = 30  # 30天衰减到0.01
+DECAY_MIN = 0.01  # 最小衰减值
 
 logger = get_logger("expressor")
 
@@ -30,9 +32,10 @@ def init_prompt() -> None:
 当"xxx"时，可以"xxx", xxx不超过10个字
 
 例如：
-当"表示十分惊叹"时，使用"我嘞个xxxx"
+当"表示十分惊叹，有些意外"时，使用"我嘞个xxxx"
 当"表示讽刺的赞同，不想讲道理"时，使用"对对对"
-当"想说明某个观点，但懒得明说"，使用"懂的都懂"
+当"想说明某个观点，但懒得明说，或者不便明说"，使用"懂的都懂"
+当"表示意外的夸赞，略带戏谑意味"时，使用"这么强！"
 
 注意不要总结你自己（SELF）的发言
 现在请你概括
@@ -109,15 +112,61 @@ class ExpressionLearner:
         """
         学习并存储表达方式，分别学习语言风格和句法特点
         """
-        learnt_style: Optional[List[Tuple[str, str, str]]] = await self.learn_and_store(type="style", num=15)
-        if not learnt_style:
-            return []
+        for i in range(3):
+            learnt_style: Optional[List[Tuple[str, str, str]]] = await self.learn_and_store(type="style", num=15)
+            if not learnt_style:
+                return []
 
-        learnt_grammar: Optional[List[Tuple[str, str, str]]] = await self.learn_and_store(type="grammar", num=15)
-        if not learnt_grammar:
-            return []
+        for i in range(1):
+            learnt_grammar: Optional[List[Tuple[str, str, str]]] = await self.learn_and_store(type="grammar", num=15)
+            if not learnt_grammar:
+                return []
 
         return learnt_style, learnt_grammar
+
+    def calculate_decay_factor(self, time_diff_days: float) -> float:
+        """
+        计算衰减因子
+        当时间差为0天或30天时，衰减值为0.01
+        当时间差为7天时，衰减值为1.0
+        使用二次函数进行曲线插值
+        """
+        if time_diff_days <= 0 or time_diff_days >= DECAY_DAYS:
+            return DECAY_MIN
+            
+        # 使用二次函数进行插值
+        # 将7天作为顶点，0天和30天作为两个端点
+        # 使用顶点式：y = a(x-h)^2 + k，其中(h,k)为顶点
+        h = 7.0  # 顶点x坐标
+        k = 1.0  # 顶点y坐标
+        
+        # 计算a值，使得x=0和x=30时y=0.01
+        # 0.01 = a(0-7)^2 + 1
+        # 0.01 = a(30-7)^2 + 1
+        # 解得a = -0.99/49
+        a = -0.99 / 49
+        
+        # 计算衰减因子
+        decay = a * (time_diff_days - h) ** 2 + k
+        return max(DECAY_MIN, min(1.0, decay))
+
+    def apply_decay_to_expressions(self, expressions: List[Dict[str, Any]], current_time: float) -> List[Dict[str, Any]]:
+        """
+        对表达式列表应用衰减
+        返回衰减后的表达式列表，移除count小于0的项
+        """
+        result = []
+        for expr in expressions:
+            last_active = expr.get("last_active_time", current_time)
+            time_diff_days = (current_time - last_active) / (24 * 3600)  # 转换为天
+            
+            decay_factor = self.calculate_decay_factor(time_diff_days)
+            expr["count"] = expr.get("count", 1) * decay_factor
+            
+            if expr["count"] > 0:
+                result.append(expr)
+        
+        return result
 
     async def learn_and_store(self, type: str, num: int = 10) -> List[Tuple[str, str, str]]:
         """
@@ -130,7 +179,7 @@ class ExpressionLearner:
             type_str = "句法特点"
         else:
             raise ValueError(f"Invalid type: {type}")
-        # logger.info(f"开始学习{type_str}...")
+        
         res = await self.learn_expression(type, num)
 
         if res is None:
@@ -146,7 +195,6 @@ class ExpressionLearner:
         for _chat_id, situation, style in learnt_expressions:
             learnt_expressions_str += f"{situation}->{style}\n"
         logger.info(f"在 {group_name} 学习到{type_str}:\n{learnt_expressions_str}")
-        # learnt_expressions: List[(chat_id, situation, style)]
 
         if not learnt_expressions:
             logger.info(f"没有学习到{type_str}")
@@ -158,29 +206,27 @@ class ExpressionLearner:
             if chat_id not in chat_dict:
                 chat_dict[chat_id] = []
             chat_dict[chat_id].append({"situation": situation, "style": style})
+        
+        current_time = time.time()
+        
         # 存储到/data/expression/对应chat_id/expressions.json
         for chat_id, expr_list in chat_dict.items():
             dir_path = os.path.join("data", "expression", f"learnt_{type}", str(chat_id))
             os.makedirs(dir_path, exist_ok=True)
             file_path = os.path.join(dir_path, "expressions.json")
+            
             # 若已存在，先读出合并
+            old_data: List[Dict[str, Any]] = []
             if os.path.exists(file_path):
-                old_data: List[Dict[str, str, str]] = []
                 try:
                     with open(file_path, "r", encoding="utf-8") as f:
                         old_data = json.load(f)
                 except Exception:
                     old_data = []
-            else:
-                old_data = []
-            # 超过最大数量时，20%概率移除count=1的项
-            if len(old_data) >= MAX_EXPRESSION_COUNT:
-                new_old_data = []
-                for item in old_data:
-                    if item.get("count", 1) == 1 and random.random() < 0.2:
-                        continue  # 20%概率移除
-                    new_old_data.append(item)
-                old_data = new_old_data
+            
+            # 应用衰减
+            old_data = self.apply_decay_to_expressions(old_data, current_time)
+            
             # 合并逻辑
             for new_expr in expr_list:
                 found = False
@@ -194,12 +240,16 @@ class ExpressionLearner:
                             old_expr["situation"] = new_expr["situation"]
                             old_expr["style"] = new_expr["style"]
                         old_expr["count"] = old_expr.get("count", 1) + 1
+                        old_expr["last_active_time"] = current_time
                         break
                 if not found:
                     new_expr["count"] = 1
+                    new_expr["last_active_time"] = current_time
                     old_data.append(new_expr)
+            
             with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(old_data, f, ensure_ascii=False, indent=2)
+        
         return learnt_expressions
 
     async def learn_expression(self, type: str, num: int = 10) -> Optional[Tuple[List[Tuple[str, str, str]], str]]:

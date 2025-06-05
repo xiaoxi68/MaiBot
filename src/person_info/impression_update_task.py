@@ -17,12 +17,12 @@ class ImpressionUpdateTask(AsyncTask):
         super().__init__(
             task_name="impression_update",
             wait_before_start=5,  # 启动后等待10秒
-            run_interval=10,  # 每1分钟运行一次
+            run_interval=20,  # 每1分钟运行一次
         )
 
     async def run(self):
         try:
-            if random.random() < 0.5:
+            if random.random() < 0.1:
                 # 获取最近10分钟的消息
                 current_time = int(time.time())
                 start_time = current_time - 6000  # 10分钟前
@@ -30,7 +30,7 @@ class ImpressionUpdateTask(AsyncTask):
             else:
                 now = int(time.time())
                 # 30天前的时间戳
-                month_ago = now - 30 * 24 * 60 * 60
+                month_ago = now - 90 * 24 * 60 * 60
                 # 随机选择一个小时的起点
                 random_start = random.randint(month_ago, now - 3600)
                 start_time = random_start

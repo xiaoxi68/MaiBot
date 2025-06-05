@@ -49,7 +49,7 @@ class RelationshipProcessor(BaseProcessor):
         self.llm_model = LLMRequest(
             model=global_config.model.relation,
             max_tokens=800,
-            request_type="focus.processor.self_identify",
+            request_type="relation",
         )
 
         name = chat_manager.get_stream_name(self.subheartflow_id)

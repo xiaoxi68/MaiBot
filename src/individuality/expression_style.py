@@ -7,15 +7,18 @@ from typing import List, Tuple
 import os
 import json
 from datetime import datetime
+from src.individuality.individuality import individuality
 
 logger = get_logger("expressor")
 
 
 def init_prompt() -> None:
     personality_expression_prompt = """
-{personality}
+你的人物设定：{personality}
 
-请从以上人设中总结出这个角色可能的语言风格，你必须严格根据人设引申，不要输出例子
+你说话的表达方式：{expression_style}
+
+请从以上表达方式中总结出这个角色可能的语言风格，你必须严格根据人设引申，不要输出例子
 思考回复的特殊内容和情感
 思考有没有特殊的梗，一并总结成语言风格
 总结成如下格式的规律，总结的内容要详细，但具有概括性：
@@ -80,19 +83,27 @@ class PersonalityExpression:
         """
         检查data/expression/personality目录，不存在则创建。
         用peronality变量作为chat_str，调用LLM生成表达风格，解析后count=100，存储到expressions.json。
-        如果expression_style发生变化，则删除旧的expressions.json并重置计数。
+        如果expression_style、personality或identity发生变化，则删除旧的expressions.json并重置计数。
         对于相同的expression_style，最多计算self.max_calculations次。
         """
         os.makedirs(os.path.dirname(self.expressions_file_path), exist_ok=True)
 
         current_style_text = global_config.expression.expression_style
+        current_personality = individuality.get_personality_prompt(x_person=2, level=2)
+        current_identity = individuality.get_identity_prompt(x_person=2, level=2)
+        
         meta_data = self._read_meta_data()
 
         last_style_text = meta_data.get("last_style_text")
+        last_personality = meta_data.get("last_personality")
+        last_identity = meta_data.get("last_identity")
         count = meta_data.get("count", 0)
 
-        if current_style_text != last_style_text:
-            logger.info(f"表达风格已从 '{last_style_text}' 变为 '{current_style_text}'。重置计数。")
+        # 检查是否有任何变化
+        if (current_style_text != last_style_text or 
+            current_personality != last_personality or 
+            current_identity != last_identity):
+            logger.info(f"检测到变化：\n风格: '{last_style_text}' -> '{current_style_text}'\n人格: '{last_personality}' -> '{current_personality}'\n身份: '{last_identity}' -> '{current_identity}'")
             count = 0
             if os.path.exists(self.expressions_file_path):
                 try:
@@ -102,11 +113,13 @@ class PersonalityExpression:
                     logger.error(f"删除旧的表达文件 {self.expressions_file_path} 失败: {e}")
 
         if count >= self.max_calculations:
-            logger.debug(f"对于风格 '{current_style_text}' 已达到最大计算次数 ({self.max_calculations})。跳过提取。")
-            # 即使跳过，也更新元数据以反映当前风格已被识别且计数已满
+            logger.debug(f"对于当前配置已达到最大计算次数 ({self.max_calculations})。跳过提取。")
+            # 即使跳过，也更新元数据以反映当前配置已被识别且计数已满
             self._write_meta_data(
                 {
                     "last_style_text": current_style_text,
+                    "last_personality": current_personality,
+                    "last_identity": current_identity,
                     "count": count,
                     "last_update_time": meta_data.get("last_update_time"),
                 }
@@ -116,18 +129,20 @@ class PersonalityExpression:
         # 构建prompt
         prompt = await global_prompt_manager.format_prompt(
             "personality_expression_prompt",
-            personality=current_style_text,
+            personality=current_personality,
+            expression_style=current_style_text,
         )
-        # logger.info(f"个性表达方式提取prompt: {prompt}")
 
         try:
             response, _ = await self.express_learn_model.generate_response_async(prompt)
         except Exception as e:
             logger.error(f"个性表达方式提取失败: {e}")
-            # 如果提取失败，保存当前的风格和未增加的计数
+            # 如果提取失败，保存当前的配置和未增加的计数
             self._write_meta_data(
                 {
                     "last_style_text": current_style_text,
+                    "last_personality": current_personality,
+                    "last_identity": current_identity,
                     "count": count,
                     "last_update_time": meta_data.get("last_update_time"),
                 }
@@ -135,7 +150,6 @@ class PersonalityExpression:
             return
 
         logger.info(f"个性表达方式提取response: {response}")
-        # chat_id用personality
 
         # 转为dict并count=100
         if response != "":
@@ -183,9 +197,15 @@ class PersonalityExpression:
             count += 1
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             self._write_meta_data(
-                {"last_style_text": current_style_text, "count": count, "last_update_time": current_time}
+                {
+                    "last_style_text": current_style_text,
+                    "last_personality": current_personality,
+                    "last_identity": current_identity,
+                    "count": count,
+                    "last_update_time": current_time
+                }
             )
-            logger.info(f"成功处理。风格 '{current_style_text}' 的计数现在是 {count}，最后更新时间：{current_time}。")
+            logger.info(f"成功处理。当前配置的计数现在是 {count}，最后更新时间：{current_time}。")
         else:
             logger.warning(f"个性表达方式提取失败，模型返回空内容: {response}")
 

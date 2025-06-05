@@ -228,7 +228,7 @@ class RelationshipManager:
             readable_messages = build_readable_messages(
                 messages=user_messages,
                 replace_bot_name=True,
-                timestamp_mode="relative",
+                timestamp_mode="normal",
                 truncate=False)
 
 
@@ -263,7 +263,8 @@ class RelationshipManager:
 
             new_impression, _ = await self.relationship_llm.generate_response_async(prompt=prompt)
             
-            logger.debug(f"new_impression: {new_impression}")
+            logger.info(f"prompt: {prompt}")
+            logger.info(f"new_impression: {new_impression}")
             
             prompt_json = f"""
 你的名字是{global_config.bot.nickname}，别名是{alias_str}。
@@ -274,8 +275,8 @@ class RelationshipManager:
 
 请用json格式总结对{person_name}(昵称:{nickname})的印象，要求：
 1.总结出这个人的最核心的性格，可能在这段话里看不出，总结不出来的话，就输出空字符串
-2.尝试猜测这个人的性别，如果看不出来，就输出空字符串
-3.尝试猜测自己与这个人的关系，你与ta的交互，还可以思考是积极还是消极，以及具体内容
+2.尝试猜测这个人的性别
+3.尝试猜测自己与这个人的关系，你与ta的交互，思考是积极还是消极，以及具体内容
 4.尝试猜测这个人的身份，比如职业，兴趣爱好，生活状态等
 5.尝试总结你与他之间是否有一些独特的梗，如果有，就输出梗的内容，如果没有，就输出空字符串
 
