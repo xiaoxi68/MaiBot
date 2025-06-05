@@ -184,8 +184,6 @@ class ActionPlanner(BasePlanner):
             try:
                 prompt = f"{prompt}"
                 llm_content, (reasoning_content, _) = await self.planner_llm.generate_response_async(prompt=prompt)
-
-                logger.debug(f"{self.log_prefix}LLM 原始理由响应: {reasoning_content}")
                 
                 logger.info(f"{self.log_prefix}规划器原始提示词: {prompt}")
                 logger.info(f"{self.log_prefix}规划器原始响应: {llm_content}")
