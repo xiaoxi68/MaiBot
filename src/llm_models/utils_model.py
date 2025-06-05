@@ -6,6 +6,7 @@ from typing import Tuple, Union, Dict, Any
 import aiohttp
 from aiohttp.client import ClientResponse
 from src.common.logger import get_module_logger
+from src.common.tcp_connector import get_tcp_connector
 import base64
 from PIL import Image
 import io
@@ -290,7 +291,7 @@ class LLMRequest:
                 # 似乎是openai流式必须要的东西,不过阿里云的qwq-plus加了这个没有影响
                 if request_content["stream_mode"]:
                     headers["Accept"] = "text/event-stream"
-                async with aiohttp.ClientSession() as session:
+                async with aiohttp.ClientSession(connector=await get_tcp_connector()) as session:
                     async with session.post(
                         request_content["api_url"], headers=headers, json=request_content["payload"]
                     ) as response:
