@@ -78,13 +78,11 @@ class ActionPlanner(BasePlanner):
         # LLM规划器配置
         self.planner_llm = LLMRequest(
             model=global_config.model.planner,
-            max_tokens=1000,
             request_type="focus.planner",  # 用于动作规划
         )
 
         self.utils_llm = LLMRequest(
             model=global_config.model.utils_small,
-            max_tokens=1000,
             request_type="focus.planner",  # 用于动作规划
         )
 
@@ -188,6 +186,12 @@ class ActionPlanner(BasePlanner):
                 llm_content, (reasoning_content, _) = await self.planner_llm.generate_response_async(prompt=prompt)
 
                 logger.debug(f"{self.log_prefix}LLM 原始理由响应: {reasoning_content}")
+                
+                logger.info(f"{self.log_prefix}规划器原始提示词: {prompt}")
+                logger.info(f"{self.log_prefix}规划器原始响应: {llm_content}")
+                logger.info(f"{self.log_prefix}规划器推理: {reasoning_content}")
+                
+                
             except Exception as req_e:
                 logger.error(f"{self.log_prefix}LLM 请求执行失败: {req_e}")
                 reasoning = f"LLM 请求失败，你的模型出现问题: {req_e}"
