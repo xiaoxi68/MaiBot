@@ -23,8 +23,8 @@ services:
     # image: infinitycat/maibot:dev
     environment:
       - TZ=Asia/Shanghai
-#      - EULA_AGREE=35362b6ea30f12891d46ef545122e84a  # 同意EULA
-#      - PRIVACY_AGREE=2402af06e133d2d10d9c6c643fdc9333 # 同意EULA
+#      - EULA_AGREE=bda99dca873f5d8044e9987eac417e01  # 同意EULA
+#      - PRIVACY_AGREE=42dddb3cbe2b784b45a2781407b298a1 # 同意EULA
 #    ports:
 #      - "8000:8000"
     volumes:

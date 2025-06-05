@@ -6,6 +6,7 @@ from typing import Tuple, Union
 import aiohttp
 import requests
 from src.common.logger import get_module_logger
+from src.common.tcp_connector import get_tcp_connector
 from rich.traceback import install
 
 install(extra_lines=3)
@@ -94,7 +95,7 @@ class LLMRequestOff:
         max_retries = 3
         base_wait_time = 15
 
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(connector=await get_tcp_connector()) as session:
             for retry in range(max_retries):
                 try:
                     async with session.post(api_url, headers=headers, json=data) as response:
