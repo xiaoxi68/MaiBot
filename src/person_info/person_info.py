@@ -12,6 +12,7 @@ from src.individuality.individuality import individuality
 
 import json  # 新增导入
 import re
+from json_repair import repair_json
 
 
 """
@@ -41,6 +42,12 @@ person_info_default = {
     "know_time": 0,  # 修正拼写：konw_time -> know_time
     "user_cardname": None,  # 注意：此字段不在 PersonInfo Peewee 模型中
     "user_avatar": None,  # 注意：此字段不在 PersonInfo Peewee 模型中
+    "traits": None,
+    "gender": None,
+    "relation": None,
+    "identity": None,
+    "meme": None,
+    "persion_impression": None,
 }
 
 
@@ -187,44 +194,23 @@ class PersonInfoManager:
     def _extract_json_from_text(text: str) -> dict:
         """从文本中提取JSON数据的高容错方法"""
         try:
-            parsed_json = json.loads(text)
-            if isinstance(parsed_json, list):
-                if parsed_json:
-                    parsed_json = parsed_json[0]
-                else:
-                    parsed_json = None
+            fixed_json = repair_json(text)
+            if isinstance(fixed_json, str):
+                parsed_json = json.loads(fixed_json)
+            else:
+                parsed_json = fixed_json
+
+            if isinstance(parsed_json, list) and parsed_json:
+                parsed_json = parsed_json[0]
+            
             if isinstance(parsed_json, dict):
                 return parsed_json
 
-        except json.JSONDecodeError:
-            pass
         except Exception as e:
-            logger.warning(f"尝试直接解析JSON时发生意外错误: {e}")
-            pass
-
-        try:
-            json_pattern = r"\{[^{}]*\}"
-            matches = re.findall(json_pattern, text)
-            if matches:
-                parsed_obj = json.loads(matches[0])
-                if isinstance(parsed_obj, dict):
-                    return parsed_obj
-
-            nickname_pattern = r'"nickname"[:\s]+"([^"]+)"'
-            reason_pattern = r'"reason"[:\s]+"([^"]+)"'
-
-            nickname_match = re.search(nickname_pattern, text)
-            reason_match = re.search(reason_pattern, text)
-
-            if nickname_match:
-                return {
-                    "nickname": nickname_match.group(1),
-                    "reason": reason_match.group(1) if reason_match else "未提供理由",
-                }
-        except Exception as e:
-            logger.error(f"后备JSON提取失败: {str(e)}")
+            logger.warning(f"JSON提取失败: {e}")
 
         logger.warning(f"无法从文本中提取有效的JSON字典: {text}")
+        logger.info(f"文本: {text}")
         return {"nickname": "", "reason": ""}
 
     async def qv_person_name(
@@ -256,7 +242,7 @@ class PersonInfoManager:
                 qv_name_prompt += f"你之前叫他{old_name}，是因为{old_reason}，"
 
             qv_name_prompt += f"\n其他取名的要求是：{request}，不要太浮夸，简短，"
-            qv_name_prompt += "\n请根据以上用户信息，想想你叫他什么比较好，不要太浮夸，请最好使用用户的qq昵称，可以稍作修改，优先使用原文。优先使用用户的qq昵称或者群昵称原文。"
+            qv_name_prompt += "\n请根据以上用户信息，想想你叫他什么比较好，不要太浮夸，请最好使用用户的qq昵称或群昵称原文，可以稍作修改，优先使用原文。优先使用用户的qq昵称或者群昵称原文。"
 
             if existing_names_str:
                 qv_name_prompt += f"\n请注意，以下名称已被你尝试过或已知存在，请避免：{existing_names_str}。\n"
@@ -270,8 +256,8 @@ class PersonInfoManager:
                 "reason": "理由"
             }"""
             response, (reasoning_content, model_name) = await self.qv_name_llm.generate_response_async(qv_name_prompt)
-            logger.trace(f"取名提示词：{qv_name_prompt}\n取名回复：{response}")
-            result = self._extract_json_from_text(response[0])
+            # logger.info(f"取名提示词：{qv_name_prompt}\n取名回复：{response}")
+            result = self._extract_json_from_text(response)
 
             if not result or not result.get("nickname"):
                 logger.error("生成的昵称为空或结果格式不正确，重试中...")
@@ -283,6 +269,7 @@ class PersonInfoManager:
             is_duplicate = False
             if generated_nickname in current_name_set:
                 is_duplicate = True
+                logger.info(f"尝试给用户{user_nickname} {person_id} 取名，但是 {generated_nickname} 已存在，重试中...")
             else:
 
                 def _db_check_name_exists_sync(name_to_check):
@@ -295,7 +282,9 @@ class PersonInfoManager:
             if not is_duplicate:
                 await self.update_one_field(person_id, "person_name", generated_nickname)
                 await self.update_one_field(person_id, "name_reason", result.get("reason", "未提供理由"))
-
+                
+                logger.info(f"成功给用户{user_nickname} {person_id} 取名 {generated_nickname}，理由：{result.get('reason', '未提供理由')}")
+                
                 self.person_name_list[person_id] = generated_nickname
                 return result
             else:

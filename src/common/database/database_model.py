@@ -237,7 +237,14 @@ class PersonInfo(BaseModel):
     platform = TextField()  # 平台
     user_id = TextField(index=True)  # 用户ID
     nickname = TextField()  # 用户昵称
+    
     person_impression = TextField(null=True)  # 个人印象
+    traits = TextField(null=True)  # 性格
+    gender = TextField(null=True)  # 性别
+    relation = TextField(null=True)  # 关系
+    identity = TextField(null=True)  # 身份
+    meme = TextField(null=True)  # 梗
+    
     relationship_value = IntegerField(default=0)  # 关系值
     know_time = FloatField()  # 认识时间 (时间戳)
     

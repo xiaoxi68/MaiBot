@@ -576,7 +576,9 @@ class DefaultReplyer:
         if emoji_raw:
             emoji_path, description, _emotion = emoji_raw
             emoji_base64 = image_path_to_base64(emoji_path)
-        return emoji_base64, description, _emotion
+            return emoji_base64, description, _emotion
+        else:
+            return None, None, None
 
     async def _build_single_sending_message(
         self,

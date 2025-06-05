@@ -25,7 +25,7 @@ class EmojiAction(BaseAction):
     }
     action_require: list[str] = [
         "表达情绪时可以选择使用",
-        "重点：不要连续发，不要发太多[表情包]"]
+        "重点：不要连续发，如果你已经发过[表情包]，就不要选择此动作"]
 
     associated_types: list[str] = ["emoji"]
 
