@@ -1,5 +1,6 @@
+from chat.message_receive.message_recv import MessageRecv
 from src.config.config import global_config
-from src.chat.message_receive.message import MessageRecv, MessageSending, Message
+from src.chat.message_receive.message import MessageSend, Message
 from src.common.database.database_model import Message
 import time
 import traceback
@@ -79,9 +80,7 @@ class InfoCatcher:
     def catch_after_generate_response(self, response_duration: float):
         self.timing_results["make_response_time"] = response_duration
 
-    def catch_after_response(
-        self, response_duration: float, response_message: List[str], first_bot_msg: MessageSending
-    ):
+    def catch_after_response(self, response_duration: float, response_message: List[str], first_bot_msg: MessageSend):
         self.timing_results["make_response_time"] = response_duration
         self.response_time = time.time()
         self.response_messages = []

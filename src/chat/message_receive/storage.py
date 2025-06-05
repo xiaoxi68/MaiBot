@@ -1,7 +1,9 @@
 import re
 from typing import Union
 
-from .message import MessageSending, MessageRecv
+from .message_recv import MessageRecv
+
+from .message import MessageSend
 from .chat_stream import ChatStream
 from ...common.database.database_model import Message, RecalledMessages  # Import Peewee models
 from src.common.logger import get_module_logger
@@ -11,7 +13,7 @@ logger = get_module_logger("message_storage")
 
 class MessageStorage:
     @staticmethod
-    async def store_message(message: Union[MessageSending, MessageRecv], chat_stream: ChatStream) -> None:
+    async def store_message(message: Union[MessageSend, MessageRecv], chat_stream: ChatStream) -> None:
         """存储消息到数据库"""
         try:
             # 莫越权 救世啊
@@ -23,7 +25,7 @@ class MessageStorage:
             else:
                 filtered_processed_plain_text = ""
 
-            if isinstance(message, MessageSending):
+            if isinstance(message, MessageSend):
                 display_message = message.display_message
                 if display_message:
                     filtered_display_message = re.sub(pattern, "", display_message, flags=re.DOTALL)

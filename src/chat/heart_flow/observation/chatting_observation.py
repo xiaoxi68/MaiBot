@@ -11,7 +11,7 @@ from src.chat.utils.chat_message_builder import (
 from src.chat.utils.prompt_builder import global_prompt_manager
 from typing import Optional
 import difflib
-from src.chat.message_receive.message import MessageRecv  # 添加 MessageRecv 导入
+from chat.message_receive.message_recv import MessageRecv  # 添加 MessageRecv 导入
 from src.chat.heart_flow.observation.observation import Observation
 
 from src.common.logger_manager import get_logger

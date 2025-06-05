@@ -1,6 +1,6 @@
 import asyncio
 from typing import Dict, Optional  # 重新导入类型
-from src.chat.message_receive.message import MessageSending, MessageThinking
+from src.chat.message_receive.message import MessageSend, MessageThinking
 from src.common.message.api import global_api
 from src.chat.message_receive.storage import MessageStorage
 from src.chat.utils.utils import truncate_message
@@ -15,7 +15,7 @@ install(extra_lines=3)
 logger = get_logger("sender")
 
 
-async def send_message(message: MessageSending) -> str:
+async def send_message(message: MessageSend) -> str:
     """合并后的消息发送函数，包含WS发送和日志记录"""
     message_preview = truncate_message(message.processed_plain_text, max_length=40)
 
@@ -73,7 +73,7 @@ class HeartFCSender:
             thinking_message = self.thinking_messages.get(chat_id, {}).get(message_id)
             return thinking_message.thinking_start_time if thinking_message else None
 
-    async def send_message(self, message: MessageSending, has_thinking=False, typing=False, set_reply=False):
+    async def send_message(self, message: MessageSend, has_thinking=False, typing=False, set_reply=False):
         """
         处理、发送并存储一条消息。
 
@@ -109,7 +109,7 @@ class HeartFCSender:
                     message.set_reply(message.reply)
                     logger.debug(f"[{chat_id}] 应用 set_reply 逻辑: {message.processed_plain_text[:20]}...")
 
-            await message.process()
+            await message._process()
 
             if typing:
                 if has_thinking:

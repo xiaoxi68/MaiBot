@@ -24,6 +24,9 @@ class MessageDTO(DTOBase):
     message_time: Optional[datetime] = None
     """消息时间戳"""
 
+    platform_message_id: Optional[str] = None
+    """平台消息 ID（如 QQ 消息 ID）"""
+
     chat_stream_id: Optional[int] = None
     """聊天流 ID"""
 
@@ -36,7 +39,7 @@ class MessageDTO(DTOBase):
     memorized_times: Optional[int] = None
     """记忆次数（用于统计消息被用于构建记忆的次数）"""
 
-    __orm_create_rule__ = "message_time & chat_stream_id & sender_id"
+    __orm_create_rule__ = "message_time & platform_message_id & chat_stream_id & sender_id"
 
     __orm_select_rule__ = "id"
 
@@ -49,6 +52,7 @@ class MessageDTO(DTOBase):
             id=message.id,
             created_at=message.created_at,
             message_time=message.message_time,
+            platform_message_id=message.platform_message_id,
             chat_stream_id=message.chat_stream_id,
             sender_id=message.sender_id,
             processed_plain_text=message.processed_plain_text,
@@ -81,6 +85,7 @@ class MessageManager:
             message = Message(
                 created_at=datetime.now(),
                 message_time=dto.message_time,
+                platform_message_id=dto.platform_message_id,
                 chat_stream_id=dto.chat_stream_id,
                 sender_id=dto.sender_id,
                 processed_plain_text=dto.processed_plain_text,

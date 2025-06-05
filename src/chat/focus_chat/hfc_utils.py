@@ -1,6 +1,7 @@
 import time
 from typing import Optional
-from src.chat.message_receive.message import MessageRecv, BaseMessageInfo
+from chat.message_receive.message_recv import MessageRecv
+from src.chat.message_receive.message import BaseMessageInfo
 from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.message_receive.message import UserInfo
 from src.common.logger_manager import get_logger

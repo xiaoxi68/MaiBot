@@ -23,21 +23,19 @@ class ChatStreamDTO(DTOBase):
     group_id: Optional[int] = None
     """群组 ID
     （外键，指向 ChatGroup 表）
-    （不为空时表示这是一个群组聊天流）
     """
 
     user_id: Optional[int] = None
     """用户 ID
     （外键，指向 ChatUser 表）
-    （不为空时表示这是一个私聊聊天流）
     """
 
     last_active_at: Optional[datetime] = None
     """最后一次活跃的时间戳"""
 
-    __orm_create_rule__ = "((group_id & !user_id) | (user_id & !group_id)) & last_active_at"
+    __orm_create_rule__ = "(group_id | user_id) & last_active_at"
 
-    __orm_select_rule__ = "(id & !group_id & !user_id) | (!id & user_id & !group_id) | (!id & !user_id & group_id)"
+    __orm_select_rule__ = "(id & !(group_id | user_id)) | (!id & (group_id | user_id)"
 
     __orm_update_rule__ = "last_active_at"
 

@@ -1,7 +1,7 @@
 from model_manager.message import MessageManager
 from src.chat.memory_system.Hippocampus import HippocampusManager
 from src.config.config import global_config
-from src.chat.message_receive.message import MessageRecv
+from chat.message_receive.message_recv import MessageRecv
 from src.chat.message_receive.storage import MessageStorage
 from src.chat.heart_flow.heartflow import heartflow
 from src.chat.utils.timer_calculator import Timer
@@ -32,39 +32,6 @@ async def _handle_error(error: Exception, context: str, message: Optional[Messag
         logger.error(f"相关消息原始内容: {message.raw_message}")
 
 
-def is_mentioned_bot_in_message(message: MessageRecv) -> tuple[bool, float]:
-    """检查消息是否提到了机器人"""
-    reply_probability = 0.0
-    is_mentioned = False
-
-    # 来自Adapter的额外配置
-    # TODO: 该部分实现非最终实现，待议
-    if (
-        message.message_base.message_info.additional_config is not None
-        and message.message_base.message_info.additional_config.get("is_mentioned") is not None
-    ):
-        try:
-            reply_probability = float(message.message_base.message_info.additional_config.get("is_mentioned"))
-            is_mentioned = True
-            return is_mentioned, reply_probability
-        except Exception as e:
-            logger.warning(e)
-            logger.warning(
-                f"消息中包含不合理的设置 is_mentioned: {message.message_base.message_info.additional_config.get('is_mentioned')}"
-            )
-
-    if message.is_self_at or message.is_self_replied:
-        is_mentioned = True
-        if global_config.normal_chat.at_bot_inevitable_reply:
-            reply_probability = 1.0
-    elif message.is_self_mentioned:
-        is_mentioned = True
-        if global_config.normal_chat.mentioned_bot_inevitable_reply:
-            reply_probability = 1.0
-
-    return is_mentioned, reply_probability
-
-
 async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool]:
     """计算消息的兴趣度
 
@@ -74,30 +41,29 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool]:
     Returns:
         Tuple[float, bool]: (兴趣度, 是否被提及)
     """
-    is_mentioned, _ = is_mentioned_bot_in_message(message)
-    interested_rate = 0.0
 
     with Timer("记忆激活"):
         interested_rate = await HippocampusManager.get_instance().get_activate_from_text(
             message.processed_plain_text,
             fast_retrieval=True,
         )
-        text_len = len(message.processed_plain_text)
-        # 根据文本长度调整兴趣度，长度越大兴趣度越高，但增长率递减，最低0.01，最高0.05
-        # 采用对数函数实现递减增长
-
-        base_interest = 0.01 + (0.05 - 0.01) * (math.log10(text_len + 1) / math.log10(1000 + 1))
-        base_interest = min(max(base_interest, 0.01), 0.05)
-
-        interested_rate += base_interest
-
         logger.trace(f"记忆激活率: {interested_rate:.2f}")
 
-    if is_mentioned:
-        interest_increase_on_mention = 1
-        interested_rate += interest_increase_on_mention
+    # 根据文本长度调整兴趣度，长度越大兴趣度越高，但增长率递减，最低0.01，最高0.05
+    # 采用对数函数实现递减增长
+    text_len = len(message.processed_plain_text)
+    base_interest = 0.01 + (0.05 - 0.01) * (math.log10(text_len + 1) / math.log10(1000 + 1))
+    base_interest = min(max(base_interest, 0.01), 0.05)
 
-    return interested_rate, is_mentioned
+    interested_rate += base_interest
+
+    if message.is_self_mentioned:
+        # 如果提及了自己，则计算兴趣度偏置
+        interested_rate += message.interest_bias
+        return interested_rate, True
+    else:
+        # 如果没有提及自己，则兴趣度不受偏置影响
+        return interested_rate, False
 
 
 class HeartFCMessageReceiver:
@@ -176,6 +142,8 @@ class HeartFCMessageReceiver:
 
             # 5. 兴趣度计算与更新
             interested_rate, is_mentioned = await _calculate_interest(message)
+
+            # 6. 将消息添加到子心流的聊天缓存中
             subheartflow.add_message_to_normal_chat_cache(message, interested_rate, is_mentioned)
 
             # 7. 日志记录

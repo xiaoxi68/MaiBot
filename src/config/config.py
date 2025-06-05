@@ -24,6 +24,7 @@ from src.config.official_configs import (
     MoodConfig,
     KeywordReactionConfig,
     ChineseTypoConfig,
+    PlatfromConfigItem,
     ResponseSplitterConfig,
     TelemetryConfig,
     ExperimentalConfig,
@@ -141,8 +142,8 @@ class Config(ConfigBase):
     MMC_VERSION: str = field(default=MMC_VERSION, repr=False, init=False)  # 硬编码的版本信息
 
     storage: StorageConfig
-    bot: BotConfig
     character: CharacterConfig
+    platforms: dict[str, PlatfromConfigItem]
     relationship: RelationshipConfig
     chat: ChatConfig
     message_receive: MessageReceiveConfig

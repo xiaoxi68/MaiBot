@@ -15,20 +15,26 @@ version = "2.7.0"
 [storage]   # 存储设置
 data_path = "data" # 数据存储目录
 
-[bot]
-qq_account = 1145141919810
-nickname = "麦麦"
-alias_names = ["麦叠", "牢麦"] #仅在 专注聊天 有效
-
 [character] # 人设信息
+# Bot名字（全名/大名）
+name = "麦麦"
+# 昵称（简称/小名）（目前仅在‘专注’模式有效）
+alias_names = ["麦叠", "牢麦"]
 # 以下内容会被用于LLM生成角色设定。
 # 你可以简略填写，由LLM进行扩写生成；也可以详细填写，LLM会根据你的设定进行概括。
 # 生成结果会存储于data/local_storage.json的特定字段（请注意log内容），如果你对生成/概括的设定不满意，可以手动修改相关字段
 personality = "用一段话描述性格特点" # 不建议写超长小作文，会影响人格概括的质量
 appearance = "用一段话描述外貌特征" # 不建议写超长小作文，会影响外貌描写的质量
 
+[platforms] # 平台设置
+# 条目格式为：平台名称={account="账号", nickname="昵称"}
+# 平台名称应与您使用的Adapter提供的platform名称一致；
+# 账号为该平台的账号ID；昵称为该平台的账号昵称。
+# 例如：qq={account="1145141919810", nickname="麦麦"}
+qq={account="1145141919810", nickname="麦麦"}
+
 [expression]
-# 表达方式
+# 表达方式  
 expression_style = "描述麦麦说话的表达风格，表达习惯，例如：(回复尽量简短一些。可以参考贴吧，知乎和微博的回复风格，回复不要浮夸，不要用夸张修辞，平淡一些。不要有额外的符号，尽量简单简短)"
 enable_expression_learning = false # 是否启用表达学习，麦麦会学习人类说话风格
 learning_interval = 600 # 学习间隔 单位秒
@@ -73,8 +79,6 @@ response_willing_amplifier = 1 # 麦麦回复意愿放大系数，一般为1
 response_interested_rate_amplifier = 1 # 麦麦回复兴趣度放大系数,听到记忆里的内容时放大系数
 
 emoji_response_penalty = 0 # 表情包回复惩罚系数，设为0为不回复单个表情包，减少单独回复表情包的概率
-mentioned_bot_inevitable_reply = true # 提及 bot 必然回复
-at_bot_inevitable_reply = true # @bot 必然回复
 
 down_frequency_rate = 3 # 降低回复频率的群组回复意愿降低系数 除法
 talk_frequency_down_groups = []  #降低回复频率的群号码
@@ -179,4 +183,3 @@ enable = true
 [experimental] #实验性功能
 debug_show_chat_mode = false # 是否在回复后显示当前聊天模式
 enable_friend_chat = false # 是否启用好友聊天
-pfc_chatting = false # 是否启用PFC聊天，该功能仅作用于私聊，与回复模式独立

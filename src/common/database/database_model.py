@@ -196,7 +196,6 @@ class ChatStream(SQLModel, table=True, table_name="chat_streams"):
     )
     """群组 ID
     （外键，指向 ChatGroup 表）
-    （不为空时表示这是一个群组聊天流）
     """
 
     user_id: Optional[int] = Field(
@@ -207,7 +206,6 @@ class ChatStream(SQLModel, table=True, table_name="chat_streams"):
     )
     """用户 ID
     （外键，指向 ChatUser 表）
-    （不为空时表示这是一个私聊聊天流）
     """
 
     last_active_at: datetime
@@ -227,6 +225,16 @@ class ChatStream(SQLModel, table=True, table_name="chat_streams"):
     user: Optional["ChatUser"] = Relationship(back_populates="chat_stream")
     """用户对象（与 ChatUser 关联）"""
 
+    # -- 以下为SQLAlchemy配置 --
+
+    __table_args__ = (
+        UniqueConstraint(
+            "group_id",
+            "user_id",
+            name="uq_group_user_stream",
+        ),
+    )
+
 
 class Message(SQLModel, table=True):
     """
@@ -241,6 +249,9 @@ class Message(SQLModel, table=True):
 
     message_time: datetime = Field(index=True)
     """消息时间戳"""
+
+    platform_message_id: str
+    """平台消息 ID（如 QQ 消息 ID）"""
 
     chat_stream_id: int = Field(foreign_key="chat_streams.id", index=True)
     """聊天流 ID"""

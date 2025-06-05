@@ -2,7 +2,7 @@ from src.person_info.person_identity import person_identity_manager
 from src.common.logger_manager import get_logger
 import asyncio
 from dataclasses import dataclass, field
-from .message import MessageRecv
+from .message_recv import MessageRecv
 from maim_message import BaseMessageInfo, GroupInfo
 import hashlib
 from typing import Dict

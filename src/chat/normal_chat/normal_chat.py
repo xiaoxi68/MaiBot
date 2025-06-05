@@ -4,6 +4,7 @@ import traceback
 from random import random
 from typing import List, Optional  # 导入 Optional
 from maim_message import UserInfo, Seg
+from ..message_receive.message_recv import MessageRecv
 from src.common.logger_manager import get_logger
 from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
 from src.manager.mood_manager import mood_manager
@@ -12,7 +13,7 @@ from src.chat.utils.info_catcher import info_catcher_manager
 from src.chat.utils.timer_calculator import Timer
 from src.chat.utils.prompt_builder import global_prompt_manager
 from .normal_chat_generator import NormalChatGenerator
-from ..message_receive.message import MessageSending, MessageRecv, MessageThinking, MessageSet
+from ..message_receive.message import MessageSend, MessageThinking, MessageSet
 from src.chat.message_receive.message_sender import message_manager
 from src.chat.utils.emoji_manager import chat_emoji_manager
 from src.chat.normal_chat.willing.willing_manager import willing_manager
@@ -93,7 +94,7 @@ class NormalChat:
     # 改为实例方法
     async def _add_messages_to_manager(
         self, message: MessageRecv, response_set: List[str], thinking_id
-    ) -> Optional[MessageSending]:
+    ) -> Optional[MessageSend]:
         """发送回复消息"""
         container = await message_manager.get_container(self.stream_id)  # 使用 self.stream_id
         thinking_message = None
@@ -117,7 +118,7 @@ class NormalChat:
             if global_config.experimental.debug_show_chat_mode:
                 msg += "ⁿ"
             message_segment = Seg(type="text", data=msg)
-            bot_message = MessageSending(
+            bot_message = MessageSend(
                 message_id=thinking_id,
                 chat_stream=self.chat_stream,  # 使用 self.chat_stream
                 bot_user_info=UserInfo(
@@ -153,7 +154,7 @@ class NormalChat:
                 thinking_time_point = round(message.message_info.time, 2)
 
                 message_segment = Seg(type="emoji", data=emoji_cq)
-                bot_message = MessageSending(
+                bot_message = MessageSend(
                     message_id="mt" + str(thinking_time_point),
                     chat_stream=self.chat_stream,  # 使用 self.chat_stream
                     bot_user_info=UserInfo(

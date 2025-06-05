@@ -4,7 +4,7 @@ from src.common.logger import get_module_logger
 from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.message_receive.message import Message
 from maim_message import UserInfo, Seg
-from src.chat.message_receive.message import MessageSending, MessageSet
+from src.chat.message_receive.message import MessageSend, MessageSet
 from src.chat.message_receive.message_sender import message_manager
 from src.chat.message_receive.storage import MessageStorage
 from src.config.config import global_config
@@ -51,7 +51,7 @@ class DirectMessageSender:
             message_id = f"dm{round(time.time(), 2)}"
 
             # 构建消息对象
-            message = MessageSending(
+            message = MessageSend(
                 message_id=message_id,
                 chat_stream=chat_stream,
                 bot_user_info=bot_user_info,
@@ -64,7 +64,7 @@ class DirectMessageSender:
             )
 
             # 处理消息
-            await message.process()
+            await message._process()
 
             # 不知道有什么用，先留下来了，和之前那套sender一样
             _message_json = message.to_dict()

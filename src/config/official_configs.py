@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Any, Dict, Literal
 
 from src.config.config_base import ConfigBase
 
@@ -24,22 +24,25 @@ class StorageConfig(ConfigBase):
 
 
 @dataclass
-class BotConfig(ConfigBase):
-    """QQ机器人配置类"""
+class PlatfromConfigItem(ConfigBase):
+    """平台配置项类"""
 
-    qq_account: str
-    """QQ账号"""
+    account: str
+    """平台账号"""
 
     nickname: str
-    """昵称"""
-
-    alias_names: list[str] = field(default_factory=lambda: [])
-    """别名列表"""
+    """平台昵称"""
 
 
 @dataclass
 class CharacterConfig(ConfigBase):
     """人设配置类"""
+
+    name: str
+    """名字"""
+
+    alias_names: list[str] = field(default_factory=lambda: [])
+    """别名列表"""
 
     personality: str
     """人格描述"""
@@ -123,12 +126,6 @@ class NormalChatConfig(ConfigBase):
 
     emoji_response_penalty: float = 0.0
     """表情包回复惩罚系数"""
-
-    mentioned_bot_inevitable_reply: bool = False
-    """提及 bot 必然回复"""
-
-    at_bot_inevitable_reply: bool = False
-    """@bot 必然回复"""
 
 
 @dataclass

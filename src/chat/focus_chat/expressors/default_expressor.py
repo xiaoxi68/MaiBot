@@ -1,7 +1,8 @@
 import base64
 import traceback
 from typing import List, Optional, Dict, Any, Tuple
-from src.chat.message_receive.message import MessageRecv, MessageThinking, MessageSending
+from chat.message_receive.message_recv import MessageRecv
+from src.chat.message_receive.message import MessageThinking, MessageSend
 from src.chat.message_receive.message import Seg  # Local import needed after move
 from src.chat.message_receive.message import UserInfo
 from src.chat.message_receive.chat_stream import chat_manager
@@ -374,7 +375,7 @@ class DefaultExpressor:
         response_set: List[Tuple[str, str]],
         thinking_id: str = "",
         display_message: str = "",
-    ) -> Optional[MessageSending]:
+    ) -> Optional[MessageSend]:
         """发送回复消息 (尝试锚定到 anchor_message)，使用 HeartFCSender"""
         chat = self.chat_stream
         chat_id = self.chat_id
@@ -486,7 +487,7 @@ class DefaultExpressor:
         thinking_id: str,
         thinking_start_time: float,
         display_message: str,
-    ) -> MessageSending:
+    ) -> MessageSend:
         """构建单个发送消息"""
 
         bot_user_info = UserInfo(
@@ -495,7 +496,7 @@ class DefaultExpressor:
             platform=self.chat_stream.platform,
         )
 
-        bot_message = MessageSending(
+        bot_message = MessageSend(
             message_id=message_id,  # 使用片段的唯一ID
             chat_stream=self.chat_stream,
             bot_user_info=bot_user_info,

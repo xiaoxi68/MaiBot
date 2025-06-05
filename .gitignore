@@ -12,6 +12,9 @@ logs/
 # Configrm Files
 *.confirmed
 
+# Utils
+maibot_statistics.html
+
 # Ruff Cache
 .ruff_cache/
 
@@ -19,11 +22,7 @@ logs/
 __pycache__/
 *.py[cod]
 *$py.class
-maibot_statistics.html
-mongodb
-napcat
-run_dev.bat
-elua.confirmed
+
 # C extensions
 *.so
 /results
@@ -79,9 +78,6 @@ cover/
 
 # Django stuff:
 *.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
 
 # Flask stuff:
 instance/

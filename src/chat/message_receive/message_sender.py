@@ -5,7 +5,7 @@ from asyncio import Task
 from typing import Union
 from src.common.message.api import global_api
 
-from .message import MessageSending, MessageThinking, MessageSet
+from .message import MessageSend, MessageThinking, MessageSet
 
 from .storage import MessageStorage
 from ...config.config import global_config
@@ -20,7 +20,7 @@ install(extra_lines=3)
 logger = get_logger("sender")
 
 
-async def send_via_ws(message: MessageSending) -> None:
+async def send_via_ws(message: MessageSend) -> None:
     """通过 WebSocket 发送消息"""
     try:
         await global_api.send_message(message)
@@ -30,7 +30,7 @@ async def send_via_ws(message: MessageSending) -> None:
 
 
 async def send_message(
-    message: MessageSending,
+    message: MessageSend,
 ) -> None:
     """发送消息（核心发送逻辑）"""
 
@@ -73,7 +73,7 @@ class MessageContainer:
     def __init__(self, chat_id: str, max_size: int = 100):
         self.chat_id = chat_id
         self.max_size = max_size
-        self.messages: list[MessageThinking | MessageSending] = []  # 明确类型
+        self.messages: list[MessageThinking | MessageSend] = []  # 明确类型
         self.last_send_time = 0
         self.thinking_wait_timeout = 20  # 思考等待超时时间（秒） - 从旧 sender 合并
 
@@ -81,14 +81,14 @@ class MessageContainer:
         """计算当前容器中思考消息的数量"""
         return sum(1 for msg in self.messages if isinstance(msg, MessageThinking))
 
-    def get_timeout_sending_messages(self) -> list[MessageSending]:
+    def get_timeout_sending_messages(self) -> list[MessageSend]:
         """获取所有超时的MessageSending对象（思考时间超过20秒），按thinking_start_time排序 - 从旧 sender 合并"""
         current_time = time.time()
         timeout_messages = []
 
         for msg in self.messages:
             # 只检查 MessageSending 类型
-            if isinstance(msg, MessageSending):
+            if isinstance(msg, MessageSend):
                 # 确保 thinking_start_time 有效
                 if msg.thinking_start_time and current_time - msg.thinking_start_time > self.thinking_wait_timeout:
                     timeout_messages.append(msg)
@@ -111,7 +111,7 @@ class MessageContainer:
                 earliest_message = msg
         return earliest_message
 
-    def add_message(self, message: Union[MessageThinking, MessageSending, MessageSet]):
+    def add_message(self, message: Union[MessageThinking, MessageSend, MessageSet]):
         """添加消息到队列"""
         if isinstance(message, MessageSet):
             for single_message in message.messages:
@@ -119,7 +119,7 @@ class MessageContainer:
         else:
             self.messages.append(message)
 
-    def remove_message(self, message_to_remove: Union[MessageThinking, MessageSending]):
+    def remove_message(self, message_to_remove: Union[MessageThinking, MessageSend]):
         """移除指定的消息对象，如果消息存在则返回True，否则返回False"""
         try:
             _initial_len = len(self.messages)
@@ -141,7 +141,7 @@ class MessageContainer:
         """检查是否有待发送的消息"""
         return bool(self.messages)
 
-    def get_all_messages(self) -> list[MessageThinking | MessageSending]:
+    def get_all_messages(self) -> list[MessageThinking | MessageSend]:
         """获取所有消息"""
         return list(self.messages)  # 返回副本
 
@@ -182,7 +182,7 @@ class MessageManager:
                 self.containers[chat_id] = MessageContainer(chat_id)
             return self.containers[chat_id]
 
-    async def add_message(self, message: Union[MessageThinking, MessageSending, MessageSet]) -> None:
+    async def add_message(self, message: Union[MessageThinking, MessageSend, MessageSet]) -> None:
         """添加消息到对应容器"""
         chat_stream = message.chat_stream
         if not chat_stream:
@@ -197,7 +197,7 @@ class MessageManager:
         container = self.containers.get(chat_id)  # 直接 get，因为读取不需要锁
         if container and container.has_messages():
             for message in container.get_all_messages():
-                if isinstance(message, MessageSending):
+                if isinstance(message, MessageSend):
                     msg_id = getattr(message.message_info, "message_id", None)
                     # 检查 message_id 是否匹配 thinking_id 或以 "me" 开头 (emoji)
                     if msg_id == thinking_id or (msg_id and msg_id.startswith("me")):
@@ -205,7 +205,7 @@ class MessageManager:
                         return True
         return False
 
-    async def _handle_sending_message(self, container: MessageContainer, message: MessageSending):
+    async def _handle_sending_message(self, container: MessageContainer, message: MessageSend):
         """处理单个 MessageSending 消息 (包含 set_reply 逻辑)"""
         try:
             _ = message.update_thinking_time()  # 更新思考时间
@@ -234,7 +234,7 @@ class MessageManager:
                 message.set_reply(message.reply)
             # --- 结束条件 set_reply ---
 
-            await message.process()  # 预处理消息内容
+            await message._process()  # 预处理消息内容
 
             # logger.debug(f"{message}")
 
@@ -286,7 +286,7 @@ class MessageManager:
                     container.remove_message(message_earliest)
                     print()  # 超时后换行，避免覆盖下一条日志
 
-            elif isinstance(message_earliest, MessageSending):
+            elif isinstance(message_earliest, MessageSend):
                 # --- 处理发送消息 ---
                 await self._handle_sending_message(container, message_earliest)
 

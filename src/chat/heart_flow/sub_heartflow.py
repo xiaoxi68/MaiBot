@@ -5,7 +5,7 @@ import time
 from typing import Optional, List, Dict, Tuple
 import traceback
 from src.common.logger_manager import get_logger
-from src.chat.message_receive.message import MessageRecv
+from chat.message_receive.message_recv import MessageRecv
 from src.chat.message_receive.chat_stream import chat_manager
 from src.chat.focus_chat.heartFC_chat import HeartFChatting
 from src.chat.normal_chat.normal_chat import NormalChat
