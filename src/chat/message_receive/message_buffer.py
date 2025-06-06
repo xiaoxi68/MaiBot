@@ -1,3 +1,9 @@
+"""
+消息缓冲区管理器
+
+TODO: 用途不明，暂缓重构
+"""
+
 from src.person_info.person_identity import person_identity_manager
 from src.common.logger_manager import get_logger
 import asyncio

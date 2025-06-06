@@ -146,7 +146,7 @@ class MessageSend(MessageDTO):
 
         self.processed_plain_text = await self._process_single_segment(self.message_base.message_segment)
 
-        self.typing_time += calc_typing_time(is_enter=True)  # 回车输入时间
+        self.typing_time += _calc_typing_time(is_enter=True)  # 回车输入时间
 
         if self.replied_message:
             chat_user_dto = ChatUserManager.get_chat_user(
@@ -172,14 +172,14 @@ class MessageSend(MessageDTO):
             match seg.type:
                 case "text":
                     # 如果是文本消息
-                    self.typing_time += calc_typing_time(text=seg.data)
+                    self.typing_time += _calc_typing_time(text=seg.data)
                     return seg.data
                 case "image":
                     # 如果是base64图片数据
                     if not isinstance(seg.data, str):
                         return "[图片(加载失败)]"
 
-                    self.typing_time += calc_typing_time(is_emoji_or_image=True)
+                    self.typing_time += _calc_typing_time(is_emoji_or_image=True)
 
                     return (await chat_image_manager.get_image_description(seg.data)) or "[图片(加载失败)]"
 
@@ -187,7 +187,7 @@ class MessageSend(MessageDTO):
                     if not isinstance(seg.data, str):
                         return "[表情包(加载失败)]"
 
-                    self.typing_time += calc_typing_time(is_emoji_or_image=True)
+                    self.typing_time += _calc_typing_time(is_emoji_or_image=True)
 
                     return (await chat_emoji_manager.get_emoji_description(seg.data)) or "[表情包(加载失败)]"
 
@@ -269,7 +269,7 @@ class MessageSend(MessageDTO):
         )
 
 
-def calc_typing_time(
+def _calc_typing_time(
     text: str = None,
     is_emoji_or_image: bool = False,
     is_enter: bool = False,

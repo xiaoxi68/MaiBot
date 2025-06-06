@@ -2,7 +2,6 @@ from model_manager.message import MessageManager
 from src.chat.memory_system.Hippocampus import HippocampusManager
 from src.config.config import global_config
 from chat.message_receive.message_recv import MessageRecv
-from src.chat.message_receive.storage import MessageStorage
 from src.chat.heart_flow.heartflow import heartflow
 from src.chat.utils.timer_calculator import Timer
 from src.common.logger_manager import get_logger
@@ -68,10 +67,6 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool]:
 
 class HeartFCMessageReceiver:
     """心流处理器，负责处理接收到的消息并计算兴趣度"""
-
-    def __init__(self):
-        """初始化心流处理器，创建消息存储实例"""
-        self.storage = MessageStorage()
 
     async def process_message(self, message_base: MessageBase) -> None:
         """处理接收到的原始消息数据
