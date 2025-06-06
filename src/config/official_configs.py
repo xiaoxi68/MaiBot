@@ -53,6 +53,8 @@ class RelationshipConfig(ConfigBase):
     give_name: bool = False
     """是否给其他人取名"""
 
+    build_relationship_interval: int = 600
+    """构建关系间隔 单位秒，如果为0则不构建关系"""
 
 @dataclass
 class ChatConfig(ConfigBase):

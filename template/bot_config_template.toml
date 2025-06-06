@@ -1,5 +1,5 @@
 [inner]
-version = "2.13.0"
+version = "2.14.0"
 
 #----以下是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 #如果你想要修改配置文件，请在修改后将version的值进行变更
@@ -46,6 +46,7 @@ learning_interval = 600 # 学习间隔 单位秒
 
 [relationship]
 give_name = true # 麦麦是否给其他人取名，关闭后无法使用禁言功能
+build_relationship_interval = 600 # 构建关系间隔 单位秒
 
 [chat] #麦麦的聊天通用设置
 chat_mode = "normal" # 聊天模式 —— 普通模式：normal，专注模式：focus，在普通模式和专注模式之间自动切换
