@@ -4,7 +4,6 @@ import time
 import traceback
 from collections import deque
 from typing import List, Optional, Dict, Any, Deque, Callable, Awaitable
-from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.message_receive.chat_stream import chat_manager
 from rich.traceback import install
 from src.chat.utils.prompt_builder import global_prompt_manager
@@ -33,9 +32,7 @@ from src.chat.focus_chat.info_processors.self_processor import SelfProcessor
 from src.chat.focus_chat.planners.planner_factory import PlannerFactory
 from src.chat.focus_chat.planners.modify_actions import ActionModifier
 from src.chat.focus_chat.planners.action_manager import ActionManager
-from src.chat.focus_chat.working_memory.working_memory import WorkingMemory
 from src.config.config import global_config
-from src.common.database.database_model import ActionRecords
 
 install(extra_lines=3)
 

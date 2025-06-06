@@ -4,7 +4,6 @@ from typing import Dict, Any, Optional, List
 from src.common.logger_manager import get_logger
 from src.chat.message_receive.chat_stream import chat_manager
 from src.chat.heart_flow.sub_heartflow import SubHeartflow, ChatState
-from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 
 
 # 初始化日志记录器

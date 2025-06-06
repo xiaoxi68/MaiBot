@@ -4,8 +4,6 @@ import time
 import re
 from datetime import datetime
 from typing import Dict, List, Any
-import pandas as pd
-from pathlib import Path
 import sqlite3
 
 def clean_group_name(name: str) -> str:
@@ -194,7 +192,7 @@ def analyze_expressions():
             f.write(f"详细报告: {group_file}\n")
             f.write("-" * 40 + "\n\n")
     
-    print(f"分析报告已生成:")
+    print("分析报告已生成:")
     print(f"总报告: {summary_file}")
     print(f"人格表达报告: {personality_report}")
     print(f"各群组详细报告位于: {output_dir}")

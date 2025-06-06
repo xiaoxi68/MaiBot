@@ -24,7 +24,6 @@ from src.chat.normal_chat.normal_chat_planner import NormalChatPlanner
 from src.chat.normal_chat.normal_chat_action_modifier import NormalChatActionModifier
 from src.chat.normal_chat.normal_chat_expressor import NormalChatExpressor
 from src.chat.focus_chat.replyer.default_replyer import DefaultReplyer
-from src.common.database.database_model import ActionRecords
 
 
 logger = get_logger("normal_chat")

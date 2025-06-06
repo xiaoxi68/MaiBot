@@ -5,7 +5,6 @@ from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_before_timestamp_with_chat
 from src.person_info.relationship_manager import relationship_manager
 import time
-from typing import Optional
 from src.chat.utils.utils import get_recent_group_speaker
 from src.manager.mood_manager import mood_manager
 from src.chat.memory_system.Hippocampus import HippocampusManager

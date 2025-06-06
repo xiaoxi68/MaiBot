@@ -1,10 +1,9 @@
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Union
 import random
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.chat.message_receive.message import MessageThinking
 from src.chat.normal_chat.normal_prompt import prompt_builder
-from src.chat.utils.utils import process_llm_response
 from src.chat.utils.timer_calculator import Timer
 from src.common.logger_manager import get_logger
 from src.chat.utils.info_catcher import info_catcher_manager
@@ -58,7 +57,7 @@ class NormalChatGenerator:
 
         if model_response:
             logger.debug(f"{global_config.bot.nickname}的原始回复是：{model_response}")
-            model_response = await self._process_response(model_response)
+            model_response = await self.process_llm_response(model_response)
 
             return model_response
         else:
@@ -167,15 +166,3 @@ class NormalChatGenerator:
         except Exception as e:
             logger.debug(f"获取情感标签时出错: {e}")
             return "中立", "平静"  # 出错时返回默认值
-
-    @staticmethod
-    async def _process_response(content: str) -> Tuple[List[str], List[str]]:
-        """处理响应内容，返回处理后的内容和情感标签"""
-        if not content:
-            return None, []
-
-        processed_response = process_llm_response(content)
-
-        # print(f"得到了处理后的llm返回{processed_response}")
-
-        return processed_response

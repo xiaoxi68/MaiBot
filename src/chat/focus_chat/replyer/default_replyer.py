@@ -363,14 +363,14 @@ class DefaultReplyer:
         # 1. learnt_expressions加权随机选3条
         if learnt_style_expressions:
             weights = [expr["count"] for expr in learnt_style_expressions]
-            selected_learnt = weighted_sample_no_replacement(learnt_style_expressions, weights, 3)
+            selected_learnt = weighted_sample_no_replacement(learnt_style_expressions, weights, 4)
             for expr in selected_learnt:
                 if isinstance(expr, dict) and "situation" in expr and "style" in expr:
                     style_habbits.append(f"当{expr['situation']}时，使用 {expr['style']}")
         # 2. learnt_grammar_expressions加权随机选3条
         if learnt_grammar_expressions:
             weights = [expr["count"] for expr in learnt_grammar_expressions]
-            selected_learnt = weighted_sample_no_replacement(learnt_grammar_expressions, weights, 3)
+            selected_learnt = weighted_sample_no_replacement(learnt_grammar_expressions, weights, 4)
             for expr in selected_learnt:
                 if isinstance(expr, dict) and "situation" in expr and "style" in expr:
                     grammar_habbits.append(f"当{expr['situation']}时，使用 {expr['style']}")

@@ -8,7 +8,6 @@ from src.common.logger_manager import get_logger
 from src.individuality.individuality import individuality
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.message_receive.chat_stream import chat_manager
-from src.person_info.relationship_manager import relationship_manager
 from .base_processor import BaseProcessor
 from typing import List, Optional
 from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
