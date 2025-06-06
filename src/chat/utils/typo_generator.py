@@ -13,6 +13,7 @@ from pathlib import Path
 import jieba
 from pypinyin import Style, pinyin
 
+from config import global_config
 from src.common.logger import get_module_logger
 
 logger = get_module_logger("typo_gen")
@@ -447,16 +448,24 @@ class ChineseTypoGenerator:
                 print(f"警告: 参数 {key} 不存在")
 
 
+typo_generator = ChineseTypoGenerator(
+    error_rate=global_config.chinese_typo.error_rate,
+    min_freq=global_config.chinese_typo.min_freq,
+    tone_error_rate=global_config.chinese_typo.tone_error_rate,
+    word_replace_rate=global_config.chinese_typo.word_replace_rate,
+)
+
+
 def main():
     # 创建错别字生成器实例
-    typo_generator = ChineseTypoGenerator(error_rate=0.03, min_freq=7, tone_error_rate=0.02, word_replace_rate=0.3)
+    test_typo_generator = ChineseTypoGenerator(error_rate=0.03, min_freq=7, tone_error_rate=0.02, word_replace_rate=0.3)
 
     # 获取用户输入
     sentence = input("请输入中文句子：")
 
     # 创建包含错别字的句子
     start_time = time.time()
-    typo_sentence, correction_suggestion = typo_generator.create_typo_sentence(sentence)
+    typo_sentence, correction_suggestion = test_typo_generator.create_typo_sentence(sentence)
 
     # 打印结果
     print("\n原句：", sentence)

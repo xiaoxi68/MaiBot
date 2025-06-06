@@ -5,6 +5,7 @@ from rich.traceback import install
 
 from chat.utils.emoji_manager import chat_emoji_manager
 from chat.utils.image_manager import chat_image_manager
+from manager.mood_manager import mood_manager
 from individuality.self_construction import self_record
 from maim_message import BaseMessageInfo, GroupInfo, MessageBase, Seg, UserInfo
 from chat.message_receive.message_recv import MessageRecv
@@ -35,11 +36,11 @@ class MessageSend(MessageDTO):
     replied_message: Optional[MessageRecv] = None
     """回复的消息对象（可选）"""
 
-    thinking_start_time: float = 0.0
-    """思考开始时间戳，用于计算思考时间"""
-
     chat_mode: Literal["normal", "focus"] = "normal"
     """聊天模式（Debug显示用），默认为"normal"，可选"focus"专注模式"""
+
+    typing_time: float = 0.0
+    """打字时间，单位为秒"""
 
     @classmethod
     def build_normal_message(
@@ -128,6 +129,7 @@ class MessageSend(MessageDTO):
             sender_id=self_record.platform_user_id[platform],
             chat_mode=chat_mode,
             # processed_plain_text 会通过process()填入
+            # typing_time 会通过process()填入
             # 需在存入数据库前调用process()
         )
 
@@ -143,6 +145,8 @@ class MessageSend(MessageDTO):
             return
 
         self.processed_plain_text = await self._process_single_segment(self.message_base.message_segment)
+
+        self.typing_time += calc_typing_time(is_enter=True)  # 回车输入时间
 
         if self.replied_message:
             chat_user_dto = ChatUserManager.get_chat_user(
@@ -167,18 +171,23 @@ class MessageSend(MessageDTO):
         try:
             match seg.type:
                 case "text":
+                    # 如果是文本消息
+                    self.typing_time += calc_typing_time(text=seg.data)
                     return seg.data
-
                 case "image":
                     # 如果是base64图片数据
                     if not isinstance(seg.data, str):
                         return "[图片(加载失败)]"
+
+                    self.typing_time += calc_typing_time(is_emoji_or_image=True)
 
                     return (await chat_image_manager.get_image_description(seg.data)) or "[图片(加载失败)]"
 
                 case "emoji":
                     if not isinstance(seg.data, str):
                         return "[表情包(加载失败)]"
+
+                    self.typing_time += calc_typing_time(is_emoji_or_image=True)
 
                     return (await chat_emoji_manager.get_emoji_description(seg.data)) or "[表情包(加载失败)]"
 
@@ -258,3 +267,69 @@ class MessageSend(MessageDTO):
             sender_id=self_record.platform_user_id[platform],
             processed_plain_text=in_prompt_display,
         )
+
+
+def calc_typing_time(
+    text: str = None,
+    is_emoji_or_image: bool = False,
+    is_enter: bool = False,
+    chinese_typing_speed_per_word: float = 0.6,
+    english_typing_speed_per_word: float = 0.5,
+    other_typing_speed_per_char: float = 0.1,
+    emoji_or_image_speed: float = 1.0,
+    enter_speed: float = 0.2,
+) -> float:
+    """计算打字时间
+
+    :param text: 要计算的文本内容
+    :param is_emoji_or_image: 是否为表情或图片
+    :param is_enter: 是否为回车输入
+    :param chinese_typing_speed_per_word: 中文打字速度，默认为0.8秒/字
+    :param english_typing_speed_per_word: 英文打字速度，默认为0.5秒/词
+    :param other_typing_speed_per_char: 其他字符打字速度，默认为0.2秒/字符
+    :param emoji_speed: 表情输入速度，默认为1.0秒
+    :param enter_speed: 回车输入速度，默认为0.3秒
+
+    :return: 计算出的打字时间，单位为秒
+    """
+
+    if is_emoji_or_image:
+        total_time = emoji_or_image_speed
+    elif is_enter:
+        total_time = enter_speed
+    elif not text:
+        return 0.0
+    else:
+        # 计算中文字符数和英文单词数
+        # 中文字符逐字符计算，英文单词视为连续字母或数字
+        chinese_chars = 0
+        english_words = 0
+        other_chars = 0
+        for idx, char in enumerate(text):
+            if "\u4e00" <= char <= "\u9fff":  # 检查是否为中文字符
+                chinese_chars += 1
+            elif char.isalpha() or char in ["-", "_"]:  # 检查是否为英文字符，允许连字符和下划线
+                if idx == 0 or not text[idx - 1].isalpha():
+                    english_words += 1
+            else:
+                other_chars += 1
+
+        # 计算总打字时间
+        if chinese_chars <= 5 and english_words == 0 and other_chars == 0:
+            # 如果只有少量中文字符，直接返回
+            total_time = 1
+        else:
+            total_time = (
+                chinese_chars * chinese_typing_speed_per_word
+                + english_words * english_typing_speed_per_word
+                + other_chars * other_typing_speed_per_char
+            )
+
+    # 根据心情的唤醒度调整打字时间
+    mood_arousal = mood_manager.current_mood.arousal  # -1.0 ~ 1.0
+    # -1.0 ~ 0.0 -> x0.5 ~ x1.0
+    # 0.0 ~ 1.0 -> x1.0 ~ x2.0
+    arousal_factor = 2**mood_arousal
+    total_time /= arousal_factor
+
+    return total_time

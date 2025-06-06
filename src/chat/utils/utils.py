@@ -10,9 +10,9 @@ from maim_message import UserInfo
 from src.common.logger import get_module_logger
 from src.manager.mood_manager import mood_manager
 from src.llm_models.utils_model import LLMRequest
-from .typo_generator import ChineseTypoGenerator
 from ...config.config import global_config
 from ...common.message_repository import find_messages, count_messages
+from .typo_generator import typo_generator
 
 logger = get_module_logger("chat_utils")
 
@@ -281,13 +281,6 @@ def process_llm_response(text: str) -> list[str]:
         if len(cleaned_text) > max_length:
             logger.warning(f"回复过长 ({len(cleaned_text)} 字符)，返回默认回复")
             return ["懒得说"]
-
-    typo_generator = ChineseTypoGenerator(
-        error_rate=global_config.chinese_typo.error_rate,
-        min_freq=global_config.chinese_typo.min_freq,
-        tone_error_rate=global_config.chinese_typo.tone_error_rate,
-        word_replace_rate=global_config.chinese_typo.word_replace_rate,
-    )
 
     if global_config.response_splitter.enable:
         split_sentences = split_into_sentences_w_remove_punctuation(cleaned_text)
