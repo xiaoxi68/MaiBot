@@ -10,8 +10,6 @@ services:
     volumes:
       - ./docker-config/adapters/config.toml:/adapters/config.toml
     restart: always
-    depends_on:
-      - mongodb
     networks:
       - maim_bot
   core:
@@ -32,23 +30,6 @@ services:
       - ./docker-config/mmc:/MaiMBot/config # 持久化bot配置文件
       - ./data/MaiMBot:/MaiMBot/data # NapCat 和 NoneBot 共享此卷，否则发送图片会有问题
     restart: always
-    depends_on:
-      - mongodb
-    networks:
-      - maim_bot
-  mongodb:
-    container_name: maim-bot-mongo
-    environment:
-      - TZ=Asia/Shanghai
-#      - MONGO_INITDB_ROOT_USERNAME=your_username # 此处配置mongo用户
-#      - MONGO_INITDB_ROOT_PASSWORD=your_password # 此处配置mongo密码
-#    ports:
-#      - "27017:27017"
-    restart: always
-    volumes:
-      - mongodb:/data/db #  持久化mongodb数据
-      - mongodbCONFIG:/data/configdb # 持久化mongodb配置文件
-    image: mongo:latest
     networks:
       - maim_bot
   napcat:
@@ -70,6 +51,3 @@ services:
 networks:
   maim_bot:
     driver: bridge
-volumes:
-  mongodb:
-  mongodbCONFIG:

@@ -14,6 +14,12 @@ import toml  # 导入 toml 库
 from src.common.database.database_model import ActionRecords
 import time
 
+# 以下为类型注解需要
+from src.chat.message_receive.chat_stream import ChatStream
+from src.chat.focus_chat.expressors.default_expressor import DefaultExpressor
+from src.chat.focus_chat.replyer.default_replyer import DefaultReplyer
+from src.chat.focus_chat.info.obs_info import ObsInfo
+
 logger = get_logger("plugin_action")
 
 
@@ -125,8 +131,8 @@ class PluginAction(BaseAction):
             bool: 是否发送成功
         """
         try:
-            expressor = self._services.get("expressor")
-            chat_stream = self._services.get("chat_stream")
+            expressor: DefaultExpressor = self._services.get("expressor")
+            chat_stream: ChatStream = self._services.get("chat_stream")
 
             if not expressor or not chat_stream:
                 logger.error(f"{self.log_prefix} 无法发送消息：缺少必要的内部服务")
@@ -183,8 +189,8 @@ class PluginAction(BaseAction):
         Returns:
             bool: 是否发送成功
         """
-        expressor = self._services.get("expressor")
-        chat_stream = self._services.get("chat_stream")
+        expressor: DefaultExpressor = self._services.get("expressor")
+        chat_stream: ChatStream = self._services.get("chat_stream")
 
         if not expressor or not chat_stream:
             logger.error(f"{self.log_prefix} 无法发送消息：缺少必要的内部服务")
@@ -239,8 +245,8 @@ class PluginAction(BaseAction):
         Returns:
             bool: 是否发送成功
         """
-        replyer = self._services.get("replyer")
-        chat_stream = self._services.get("chat_stream")
+        replyer: DefaultReplyer = self._services.get("replyer")
+        chat_stream: ChatStream = self._services.get("chat_stream")
 
         if not replyer or not chat_stream:
             logger.error(f"{self.log_prefix} 无法发送消息：缺少必要的内部服务")
@@ -291,7 +297,7 @@ class PluginAction(BaseAction):
         Returns:
             str: 聊天类型 ("group" 或 "private")
         """
-        chat_stream = self._services.get("chat_stream")
+        chat_stream: ChatStream = self._services.get("chat_stream")
         if chat_stream and hasattr(chat_stream, "group_info"):
             return "group" if chat_stream.group_info else "private"
         return "unknown"
@@ -311,6 +317,7 @@ class PluginAction(BaseAction):
         if observations and len(observations) > 0:
             obs = observations[0]
             if hasattr(obs, "get_talking_message"):
+                obs: ObsInfo
                 raw_messages = obs.get_talking_message()
                 # 转换为简化格式
                 for msg in raw_messages[-count:]:
@@ -402,7 +409,7 @@ class PluginAction(BaseAction):
             action_prompt_display: 动作显示内容
         """
         try:
-            chat_stream = self._services.get("chat_stream")
+            chat_stream: ChatStream = self._services.get("chat_stream")
             if not chat_stream:
                 logger.error(f"{self.log_prefix} 无法存储action信息：缺少chat_stream服务")
                 return
