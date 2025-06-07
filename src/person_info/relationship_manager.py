@@ -121,9 +121,15 @@ class RelationshipManager:
         person_name = await person_info_manager.get_value(person_id, "person_name")
         impression = await person_info_manager.get_value(person_id, "impression")
         interaction = await person_info_manager.get_value(person_id, "interaction")
-        points = await person_info_manager.get_value(person_id, "points")
+        points = await person_info_manager.get_value(person_id, "points") or []
         
-        random_points = random.sample(points, min(3, len(points)))
+        if isinstance(points, str):
+            try:
+                points = ast.literal_eval(points)
+            except (SyntaxError, ValueError):
+                points = []
+        
+        random_points = random.sample(points, min(3, len(points))) if points else []
         
         nickname_str = await person_info_manager.get_value(person_id, "nickname")
         platform = await person_info_manager.get_value(person_id, "platform")
@@ -138,6 +144,9 @@ class RelationshipManager:
             
         if random_points:
             for point in random_points:
+                # print(f"point: {point}")
+                # print(f"point[2]: {point[2]}")
+                # print(f"point[0]: {point[0]}")
                 point_str = f"时间：{point[2]}。内容：{point[0]}"
             relation_prompt += f"你记得{person_name}最近的点是：{point_str}。"
             
@@ -223,7 +232,7 @@ class RelationshipManager:
         )
         
         for original_name, mapped_name in name_mapping.items():
-            print(f"original_name: {original_name}, mapped_name: {mapped_name}")
+            # print(f"original_name: {original_name}, mapped_name: {mapped_name}")
             readable_messages = readable_messages.replace(f"{original_name}", f"{mapped_name}")
         
         prompt = f"""
@@ -502,8 +511,8 @@ class RelationshipManager:
             keep_indices = set()
             for idx in target_indices:
                 # 获取前后5条消息的索引
-                start_idx = max(0, idx - 10)
-                end_idx = min(len(messages), idx + 11)
+                start_idx = max(0, idx - 5)
+                end_idx = min(len(messages), idx + 6)
                 keep_indices.update(range(start_idx, end_idx))
                 
             print(keep_indices)

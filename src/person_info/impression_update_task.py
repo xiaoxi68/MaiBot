@@ -24,10 +24,10 @@ class ImpressionUpdateTask(AsyncTask):
         try:
             # 获取最近的消息
             current_time = int(time.time())
-            start_time = current_time - 360000  # 1小时前
+            start_time = current_time - 600  # 1小时前
             
             # 获取所有消息
-            messages = get_raw_msg_by_timestamp(timestamp_start=start_time, timestamp_end=current_time, limit=200)
+            messages = get_raw_msg_by_timestamp(timestamp_start=start_time, timestamp_end=current_time, limit=300)
             
             if not messages:
                 logger.info("没有找到需要处理的消息")
@@ -66,11 +66,11 @@ class ImpressionUpdateTask(AsyncTask):
                 
                 # 获取第一条bot消息前15条消息
                 first_bot_index = sorted_messages.index(first_bot_msg)
-                start_index = max(0, first_bot_index - 15)
+                start_index = max(0, first_bot_index - 25)
                 
                 # 获取最后一条bot消息后15条消息
                 last_bot_index = sorted_messages.index(last_bot_msg)
-                end_index = min(len(sorted_messages), last_bot_index + 16)
+                end_index = min(len(sorted_messages), last_bot_index + 26)
                 
                 # 获取相关消息
                 relevant_messages = sorted_messages[start_index:end_index]

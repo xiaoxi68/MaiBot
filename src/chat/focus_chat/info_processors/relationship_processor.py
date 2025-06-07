@@ -20,9 +20,12 @@ logger = get_logger("processor")
 def init_prompt():
     relationship_prompt = """
 {name_block}
-你是一个AI，但是你伪装成了一个人类，你不想让别人知道你是一个AI
 
+你和别人的关系信息是，请从这些信息中提取出你和别人的关系的原文：
 {relation_prompt}
+请只从上面这些信息中提取出。
+
+
 现在是{time_now}，你正在上网，和qq群里的网友们聊天，以下是正在进行的聊天内容：
 {chat_observe_info}
 
