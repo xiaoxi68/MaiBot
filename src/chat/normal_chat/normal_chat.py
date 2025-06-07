@@ -383,11 +383,14 @@ class NormalChat:
                 logger.error(f"[{self.stream_name}] 动作规划异常: {plan_result}")
             elif plan_result:
                 logger.debug(f"[{self.stream_name}] 额外动作处理完成: {plan_result['action_type']}")
-
+            
             if not response_set or (
                 self.enable_planner and self.action_type not in ["no_action", "change_to_focus_chat"]
             ):
-                logger.info(f"[{self.stream_name}] 模型未生成回复内容")
+                if not response_set:
+                    logger.info(f"[{self.stream_name}] 模型未生成回复内容")
+                elif self.enable_planner and self.action_type not in ["no_action", "change_to_focus_chat"]:
+                    logger.info(f"[{self.stream_name}] 模型选择其他动作")
                 # 如果模型未生成回复，移除思考消息
                 container = await message_manager.get_container(self.stream_id)  # 使用 self.stream_id
                 for msg in container.messages[:]:
@@ -443,7 +446,7 @@ class NormalChat:
                             logger.warning(f"[{self.stream_name}] 没有设置切换到focus聊天模式的回调函数，无法执行切换")
                         return
                     else:
-                        # await self._check_switch_to_focus()
+                        await self._check_switch_to_focus()
                         pass
 
             info_catcher.done_catch()

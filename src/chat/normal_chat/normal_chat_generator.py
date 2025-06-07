@@ -57,7 +57,7 @@ class NormalChatGenerator:
         )
 
         if model_response:
-            logger.debug(f"{global_config.bot.nickname}的原始回复是：{model_response}")
+            logger.debug(f"{global_config.bot.nickname}的备选回复是：{model_response}")
             model_response = process_llm_response(model_response)
 
             return model_response

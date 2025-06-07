@@ -13,6 +13,9 @@ from json_repair import repair_json
 from datetime import datetime
 from difflib import SequenceMatcher
 import ast
+import jieba
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 logger = get_logger("relation")
 
@@ -119,6 +122,8 @@ class RelationshipManager:
             person_id = person_info_manager.get_person_id(person[0], person[1])
 
         person_name = await person_info_manager.get_value(person_id, "person_name")
+        if not person_name or person_name == "none":
+            return ""
         impression = await person_info_manager.get_value(person_id, "impression")
         interaction = await person_info_manager.get_value(person_id, "interaction")
         points = await person_info_manager.get_value(person_id, "points") or []
@@ -324,8 +329,8 @@ class RelationshipManager:
                 
                 # 在现有points中查找相似的点
                 for i, existing_point in enumerate(current_points):
-                    similarity = SequenceMatcher(None, new_point[0], existing_point[0]).ratio()
-                    if similarity > 0.8:
+                    # 使用组合的相似度检查方法
+                    if self.check_similarity(new_point[0], existing_point[0]):
                         similar_points.append(existing_point)
                         similar_indices.append(i)
                 
@@ -355,7 +360,7 @@ class RelationshipManager:
             current_points = points_list
 
 # 如果points超过30条，按权重随机选择多余的条目移动到forgotten_points
-        if len(current_points) > 5:
+        if len(current_points) > 10:
             # 获取现有forgotten_points
             forgotten_points = await person_info_manager.get_value(person_id, "forgotten_points") or []
             if isinstance(forgotten_points, str):
@@ -575,6 +580,57 @@ class RelationshipManager:
         except Exception as e:
             self.logger.error(f"计算时间权重失败: {e}")
             return 0.5  # 发生错误时返回中等权重
+
+    def tfidf_similarity(self, s1, s2):
+        """
+        使用 TF-IDF 和余弦相似度计算两个句子的相似性。
+        """
+        # 1. 使用 jieba 进行分词
+        s1_words = " ".join(jieba.cut(s1))
+        s2_words = " ".join(jieba.cut(s2))
+        
+        # 2. 将两句话放入一个列表中
+        corpus = [s1_words, s2_words]
+        
+        # 3. 创建 TF-IDF 向量化器并进行计算
+        try:
+            vectorizer = TfidfVectorizer()
+            tfidf_matrix = vectorizer.fit_transform(corpus)
+        except ValueError:
+            # 如果句子完全由停用词组成，或者为空，可能会报错
+            return 0.0
+
+        # 4. 计算余弦相似度
+        similarity_matrix = cosine_similarity(tfidf_matrix)
+        
+        # 返回 s1 和 s2 的相似度
+        return similarity_matrix[0, 1]
+
+    def sequence_similarity(self, s1, s2):
+        """
+        使用 SequenceMatcher 计算两个句子的相似性。
+        """
+        return SequenceMatcher(None, s1, s2).ratio()
+
+    def check_similarity(self, text1, text2, tfidf_threshold=0.5, seq_threshold=0.6):
+        """
+        使用两种方法检查文本相似度，只要其中一种方法达到阈值就认为是相似的。
+        
+        Args:
+            text1: 第一个文本
+            text2: 第二个文本
+            tfidf_threshold: TF-IDF相似度阈值
+            seq_threshold: SequenceMatcher相似度阈值
+            
+        Returns:
+            bool: 如果任一方法达到阈值则返回True
+        """
+        # 计算两种相似度
+        tfidf_sim = self.tfidf_similarity(text1, text2)
+        seq_sim = self.sequence_similarity(text1, text2)
+        
+        # 只要其中一种方法达到阈值就认为是相似的
+        return tfidf_sim > tfidf_threshold or seq_sim > seq_threshold
 
 
 relationship_manager = RelationshipManager()
