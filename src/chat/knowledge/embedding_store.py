@@ -12,7 +12,7 @@ import faiss
 
 from .llm_client import LLMClient
 from .lpmmconfig import ENT_NAMESPACE, PG_NAMESPACE, REL_NAMESPACE, global_config
-from .utils.hash import get_sha256
+from src.chat.knowledge.utils import get_sha256
 from .global_logger import logger
 from rich.traceback import install
 from rich.progress import (

@@ -18,7 +18,7 @@ from rich.progress import (
 from quick_algo import di_graph, pagerank
 
 
-from .utils.hash import get_sha256
+from src.chat.knowledge.utils import get_sha256
 from .embedding_store import EmbeddingManager, EmbeddingStoreItem
 from .lpmmconfig import (
     ENT_NAMESPACE,

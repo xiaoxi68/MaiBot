@@ -8,7 +8,7 @@ from .embedding_store import EmbeddingManager
 from .llm_client import LLMClient
 from .kg_manager import KGManager
 from .lpmmconfig import global_config
-from .utils.dyn_topk import dyn_select_top_k
+from src.chat.knowledge.utils import dyn_select_top_k
 
 
 MAX_KNOWLEDGE_LENGTH = 10000  # 最大知识长度
