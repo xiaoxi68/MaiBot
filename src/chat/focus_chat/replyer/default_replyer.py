@@ -41,6 +41,8 @@ def init_prompt():
 你现在正在群里聊天，以下是群里正在进行的聊天内容：
 {chat_info}
 
+{relation_info_block}
+
 以上是聊天内容，你需要了解聊天记录中的内容
 
 {chat_target}
@@ -262,6 +264,7 @@ class DefaultReplyer:
             target_message = action_data.get("target", "")
             identity = action_data.get("identity", "")
             extra_info_block = action_data.get("extra_info_block", "")
+            relation_info_block = action_data.get("relation_info_block", "")
 
             # 3. 构建 Prompt
             with Timer("构建Prompt", {}):  # 内部计时器，可选保留
@@ -270,6 +273,7 @@ class DefaultReplyer:
                     # in_mind_reply=in_mind_reply,
                     identity=identity,
                     extra_info_block=extra_info_block,
+                    relation_info_block=relation_info_block,
                     reason=reason,
                     sender_name=sender_name_for_prompt,  # Pass determined name
                     target_message=target_message,
@@ -286,8 +290,7 @@ class DefaultReplyer:
 
             try:
                 with Timer("LLM生成", {}):  # 内部计时器，可选保留
-                    # TODO: API-Adapter修改标记
-                    # logger.info(f"{self.log_prefix}[Replier-{thinking_id}]\nPrompt:\n{prompt}\n")
+                    logger.info(f"{self.log_prefix}Prompt:\n{prompt}\n")
                     content, (reasoning_content, model_name) = await self.express_model.generate_response_async(prompt)
 
                     # logger.info(f"prompt: {prompt}")
@@ -331,6 +334,7 @@ class DefaultReplyer:
         sender_name,
         # in_mind_reply,
         extra_info_block,
+        relation_info_block,
         identity,
         target_message,
         config_expression_style,
@@ -428,6 +432,7 @@ class DefaultReplyer:
                 chat_target=chat_target_1,
                 chat_info=chat_talking_prompt,
                 extra_info_block=extra_info_block,
+                relation_info_block=relation_info_block,
                 time_block=time_block,
                 # bot_name=global_config.bot.nickname,
                 # prompt_personality="",
@@ -448,6 +453,7 @@ class DefaultReplyer:
                 chat_target=chat_target_1,
                 chat_info=chat_talking_prompt,
                 extra_info_block=extra_info_block,
+                relation_info_block=relation_info_block,
                 time_block=time_block,
                 # bot_name=global_config.bot.nickname,
                 # prompt_personality="",

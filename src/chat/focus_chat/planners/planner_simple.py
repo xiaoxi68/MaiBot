@@ -31,8 +31,6 @@ def init_prompt():
 {self_info_block}
 请记住你的性格，身份和特点。
 
-{relation_info_block}
-
 {extra_info_block}
 {memory_str}
 
@@ -41,6 +39,8 @@ def init_prompt():
 你是群内的一员，你现在正在参与群内的闲聊，以下是群内的聊天内容：
 
 {chat_content_block}
+
+{relation_info_block}
 
 {cycle_info_block}
 
@@ -181,7 +181,7 @@ class ActionPlanner(BasePlanner):
                 prompt = f"{prompt}"
                 llm_content, (reasoning_content, _) = await self.planner_llm.generate_response_async(prompt=prompt)
                 
-                logger.info(f"{self.log_prefix}规划器原始提示词: {prompt}")
+                logger.debug(f"{self.log_prefix}规划器原始提示词: {prompt}")
                 logger.info(f"{self.log_prefix}规划器原始响应: {llm_content}")
                 logger.info(f"{self.log_prefix}规划器推理: {reasoning_content}")
                 
@@ -225,7 +225,10 @@ class ActionPlanner(BasePlanner):
                         extra_info_block = ""
 
                     action_data["extra_info_block"] = extra_info_block
-
+                    
+                    if relation_info:
+                        action_data["relation_info_block"] = relation_info
+                    
                     # 对于reply动作不需要额外处理，因为相关字段已经在上面的循环中添加到action_data
 
                     if extracted_action not in current_available_actions:

@@ -13,27 +13,39 @@ from typing import List, Optional
 from typing import Dict
 from src.chat.focus_chat.info.info_base import InfoBase
 from src.chat.focus_chat.info.relation_info import RelationInfo
+from json_repair import repair_json
+from src.person_info.person_info import person_info_manager
+import json
 
 logger = get_logger("processor")
 
 
 def init_prompt():
     relationship_prompt = """
-{name_block}
-
-你和别人的关系信息是，请从这些信息中提取出你和别人的关系的原文：
-{relation_prompt}
-请只从上面这些信息中提取出内容。
-
+<聊天记录>
 {chat_observe_info}
+</聊天记录>
 
-现在请你根据现有的信息，总结你和群里的人的关系
-1. 根据聊天记录的需要，精简你和其他人的关系并输出
-2. 根据聊天记录，如果需要提及你和某个人的关系，请输出你和这个人之间的关系
-3. 如果没有特别需要提及的关系，就不用输出这个人的关系
+<人物信息>
+{relation_prompt}
+</人物信息>
 
-输出内容平淡一些，说中文。
-请注意不要输出多余内容(包括前后缀，括号()，表情包，at或 @等 )。只输出关系内容，记得明确说明这是你的关系。
+请区分聊天记录的内容和你之前对人的了解，聊天记录是现在发生的事情，人物信息是之前对某个人的持久的了解。
+
+{name_block}
+现在请你总结提取某人的信息，提取成一串文本
+1. 根据聊天记录的需求，如果需要你和某个人的信息，请输出你和这个人之间精简的信息
+2. 如果没有特别需要提及的信息，就不用输出这个人的信息
+3. 如果有人问你对他的看法或者关系，请输出你和这个人之间的信息
+
+请从这些信息中提取出你对某人的了解信息，信息提取成一串文本：
+
+请严格按照以下输出格式，不要输出多余内容，person_name可以有多个：
+{{
+    "person_name": "信息",
+    "person_name2": "信息",
+    "person_name3": "信息",
+}}
 
 """
     Prompt(relationship_prompt, "relationship_prompt")
@@ -122,8 +134,10 @@ class RelationshipProcessor(BaseProcessor):
             relation_prompt_init = "你对对方的印象是：\n"
         
         relation_prompt = ""
+        person_name_list = []
         for person in person_list:
-            relation_prompt += f"{await relationship_manager.build_relationship_info(person, is_id=True)}\n"
+            relation_prompt += f"{await relationship_manager.build_relationship_info(person, is_id=True)}\n\n"
+            person_name_list.append(await person_info_manager.get_value(person, "person_name"))
             
         if relation_prompt:
             relation_prompt = relation_prompt_init + relation_prompt
@@ -141,22 +155,41 @@ class RelationshipProcessor(BaseProcessor):
 
         content = ""
         try:
+            logger.info(f"{self.log_prefix} 关系识别prompt: \n{prompt}\n")
             content, _ = await self.llm_model.generate_response_async(prompt=prompt)
             if not content:
                 logger.warning(f"{self.log_prefix} LLM返回空结果，关系识别失败。")
+            
+            print(f"content: {content}")
+            
+            content = repair_json(content)
+            content = json.loads(content)
+            
+            person_info_str = ""
+            
+            for person_name, person_info in content.items():
+                # print(f"person_name: {person_name}, person_info: {person_info}")
+                # print(f"person_list: {person_name_list}")
+                if person_name not in person_name_list:
+                    continue
+                person_str = f"你对 {person_name} 的了解：{person_info}\n"
+                person_info_str += person_str
+                
+                
         except Exception as e:
             # 处理总体异常
             logger.error(f"{self.log_prefix} 执行LLM请求或处理响应时出错: {e}")
             logger.error(traceback.format_exc())
-            content = "关系识别过程中出现错误"
+            person_info_str = "关系识别过程中出现错误"
 
-        if content == "None":
-            content = ""
+        if person_info_str == "None":
+            person_info_str = ""
+            
         # 记录初步思考结果
-        logger.info(f"{self.log_prefix} 关系识别prompt: \n{prompt}\n")
-        logger.info(f"{self.log_prefix} 关系识别: {content}")
+        
+        logger.info(f"{self.log_prefix} 关系识别: {person_info_str}")
 
-        return content
+        return person_info_str
 
 
 init_prompt()

@@ -134,7 +134,7 @@ class RelationshipManager:
             except (SyntaxError, ValueError):
                 points = []
         
-        random_points = random.sample(points, min(3, len(points))) if points else []
+        random_points = random.sample(points, min(5, len(points))) if points else []
         
         nickname_str = await person_info_manager.get_value(person_id, "nickname")
         platform = await person_info_manager.get_value(person_id, "platform")
@@ -312,13 +312,14 @@ class RelationshipManager:
         current_points = await person_info_manager.get_value(person_id, "points") or []
         if isinstance(current_points, str):
             try:
-                current_points = ast.literal_eval(current_points)
-            except (SyntaxError, ValueError):
+                current_points = json.loads(current_points)
+            except json.JSONDecodeError:
+                logger.error(f"解析points JSON失败: {current_points}")
                 current_points = []
         elif not isinstance(current_points, list):
             current_points = []
         current_points.extend(points_list)
-        await person_info_manager.update_one_field(person_id, "points", str(current_points).replace("(", "[").replace(")", "]"))
+        await person_info_manager.update_one_field(person_id, "points", json.dumps(current_points, ensure_ascii=False, indent=None))
 
         # 将新记录添加到现有记录中
         if isinstance(current_points, list):
@@ -365,8 +366,9 @@ class RelationshipManager:
             forgotten_points = await person_info_manager.get_value(person_id, "forgotten_points") or []
             if isinstance(forgotten_points, str):
                 try:
-                    forgotten_points = ast.literal_eval(forgotten_points)
-                except (SyntaxError, ValueError):
+                    forgotten_points = json.loads(forgotten_points)
+                except json.JSONDecodeError:
+                    logger.error(f"解析forgotten_points JSON失败: {forgotten_points}")
                     forgotten_points = []
             elif not isinstance(forgotten_points, list):
                 forgotten_points = []
@@ -487,10 +489,12 @@ class RelationshipManager:
                     return
 
             # 更新数据库
-            await person_info_manager.update_one_field(person_id, "forgotten_points", str(forgotten_points).replace("(", "[").replace(")", "]"))
+            await person_info_manager.update_one_field(person_id, "forgotten_points", json.dumps(forgotten_points, ensure_ascii=False, indent=None))
         
         # 更新数据库
-        await person_info_manager.update_one_field(person_id, "points", str(current_points).replace("(", "[").replace(")", "]"))
+        await person_info_manager.update_one_field(person_id, "points", json.dumps(current_points, ensure_ascii=False, indent=None))
+        know_times = await person_info_manager.get_value(person_id, "know_times") or 0
+        await person_info_manager.update_one_field(person_id, "know_times", know_times + 1)
         await person_info_manager.update_one_field(person_id, "last_know", timestamp)
 
 
