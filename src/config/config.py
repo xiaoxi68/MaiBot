@@ -32,6 +32,7 @@ from src.config.official_configs import (
     FocusChatProcessorConfig,
     MessageReceiveConfig,
     MaimMessageConfig,
+    LPMMKnowledgeConfig,
     RelationshipConfig,
 )
 
@@ -161,6 +162,7 @@ class Config(ConfigBase):
     experimental: ExperimentalConfig
     model: ModelConfig
     maim_message: MaimMessageConfig
+    lpmm_knowledge: LPMMKnowledgeConfig
 
 
 def load_config(config_path: str) -> Config:
