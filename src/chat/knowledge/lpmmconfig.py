@@ -45,7 +45,7 @@ def _load_config(config, config_file_path):
     if "llm_providers" in file_config:
         for provider in file_config["llm_providers"]:
             if provider["name"] not in config["llm_providers"]:
-                config["llm_providers"][provider["name"]] = dict()
+                config["llm_providers"][provider["name"]] = {}
             config["llm_providers"][provider["name"]]["base_url"] = provider["base_url"]
             config["llm_providers"][provider["name"]]["api_key"] = provider["api_key"]
 
@@ -135,6 +135,6 @@ global_config = dict(
 # _load_config(global_config, parser.parse_args().config_path)
 # file_path = os.path.abspath(__file__)
 # dir_path = os.path.dirname(file_path)
-ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
+ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 config_path = os.path.join(ROOT_PATH, "config", "lpmm_config.toml")
 _load_config(global_config, config_path)

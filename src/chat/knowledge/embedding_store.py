@@ -12,7 +12,7 @@ import faiss
 
 from .llm_client import LLMClient
 from .lpmmconfig import ENT_NAMESPACE, PG_NAMESPACE, REL_NAMESPACE, global_config
-from src.chat.knowledge.utils import get_sha256
+from .utils.hash import get_sha256
 from .global_logger import logger
 from rich.traceback import install
 from rich.progress import (
@@ -27,7 +27,7 @@ from rich.progress import (
 )
 
 install(extra_lines=3)
-ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
+ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 EMBEDDING_DATA_DIR = (
     os.path.join(ROOT_PATH, "data", "embedding")
     if global_config["persistence"]["embedding_data_dir"] is None

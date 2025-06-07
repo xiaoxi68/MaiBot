@@ -18,7 +18,7 @@ from rich.progress import (
 from quick_algo import di_graph, pagerank
 
 
-from src.chat.knowledge.utils import get_sha256
+from .utils.hash import get_sha256
 from .embedding_store import EmbeddingManager, EmbeddingStoreItem
 from .lpmmconfig import (
     ENT_NAMESPACE,
@@ -31,7 +31,7 @@ from .lpmmconfig import (
 
 from .global_logger import logger
 
-ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
+ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 KG_DIR = (
     os.path.join(ROOT_PATH, "data/rag")
     if global_config["persistence"]["rag_data_dir"] is None
