@@ -1,10 +1,10 @@
-from .src.lpmmconfig import PG_NAMESPACE, global_config
-from .src.embedding_store import EmbeddingManager
-from .src.llm_client import LLMClient
-from .src.mem_active_manager import MemoryActiveManager
-from .src.qa_manager import QAManager
-from .src.kg_manager import KGManager
-from .src.global_logger import logger
+from src.chat.knowledge.lpmmconfig import PG_NAMESPACE, global_config
+from src.chat.knowledge.embedding_store import EmbeddingManager
+from src.chat.knowledge.llm_client import LLMClient
+from src.chat.knowledge.mem_active_manager import MemoryActiveManager
+from src.chat.knowledge.qa_manager import QAManager
+from src.chat.knowledge.kg_manager import KGManager
+from src.chat.knowledge.global_logger import logger
 # try:
 #     import quick_algo
 # except ImportError:

@@ -13,11 +13,11 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from rich.progress import Progress  # 替换为 rich 进度条
 
 from src.common.logger import get_module_logger
-from src.chat.knowledge.src.lpmmconfig import global_config
-from src.chat.knowledge.src.ie_process import info_extract_from_str
-from src.chat.knowledge.src.llm_client import LLMClient
-from src.chat.knowledge.src.open_ie import OpenIE
-from src.chat.knowledge.src.raw_processing import load_raw_data
+from src.chat.knowledge.lpmmconfig import global_config
+from src.chat.knowledge.ie_process import info_extract_from_str
+from src.chat.knowledge.llm_client import LLMClient
+from src.chat.knowledge.open_ie import OpenIE
+from src.chat.knowledge.raw_processing import load_raw_data
 from rich.progress import (
     BarColumn,
     TimeElapsedColumn,

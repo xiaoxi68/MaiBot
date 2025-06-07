@@ -27,7 +27,7 @@ from rich.progress import (
 )
 
 install(extra_lines=3)
-ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
+ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 EMBEDDING_DATA_DIR = (
     os.path.join(ROOT_PATH, "data", "embedding")
     if global_config["persistence"]["embedding_data_dir"] is None

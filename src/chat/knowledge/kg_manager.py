@@ -31,7 +31,7 @@ from .lpmmconfig import (
 
 from .global_logger import logger
 
-ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
+ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 KG_DIR = (
     os.path.join(ROOT_PATH, "data/rag")
     if global_config["persistence"]["rag_data_dir"] is None
