@@ -372,7 +372,7 @@ class DefaultReplyer:
             # 使用相似度匹配选择最相似的表达
             similar_exprs = find_similar_expressions(target_message, learnt_style_expressions, 3)
             for expr in similar_exprs:
-                print(f"expr: {expr}")
+                # print(f"expr: {expr}")
                 if isinstance(expr, dict) and "situation" in expr and "style" in expr:
                     style_habbits.append(f"当{expr['situation']}时，使用 {expr['style']}")
         # 2. learnt_grammar_expressions加权随机选2条
@@ -390,6 +390,8 @@ class DefaultReplyer:
 
         style_habbits_str = "\n".join(style_habbits)
         grammar_habbits_str = "\n".join(grammar_habbits)
+        
+        
 
         # 关键词检测与反应
         keywords_reaction_prompt = ""

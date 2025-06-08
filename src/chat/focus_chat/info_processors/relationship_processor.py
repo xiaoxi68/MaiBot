@@ -222,7 +222,7 @@ class RelationshipProcessor(BaseProcessor):
                             "start_time": time.time(),
                             "forget": False,
                         })
-                        if len(self.info_fetching_cache) > 30:
+                        if len(self.info_fetching_cache) > 20:
                             self.info_fetching_cache.pop(0)
                     else:
                         logger.warning(f"{self.log_prefix} 未找到用户 {person_name} 的ID，跳过调取信息。")
