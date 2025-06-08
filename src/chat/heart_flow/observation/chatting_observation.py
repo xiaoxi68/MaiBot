@@ -132,10 +132,11 @@ class ChattingObservation(Observation):
                 # logger.debug(f"找到的锚定消息：find_msg: {find_msg}")
                 break
             else:
-                if message["raw_message"]:
-                    similarity = difflib.SequenceMatcher(None, text, message["raw_message"]).ratio()
+                raw_message = message.get("raw_message")
+                if raw_message:
+                    similarity = difflib.SequenceMatcher(None, text, raw_message).ratio()
                 else:
-                    similarity = difflib.SequenceMatcher(None, text, message["processed_plain_text"]).ratio()
+                    similarity = difflib.SequenceMatcher(None, text, message.get("processed_plain_text", "")).ratio()
                 msg_list.append({"message": message, "similarity": similarity})
             # logger.debug(f"对锚定消息检查：message: {message['processed_plain_text']},similarity: {similarity}")
         if not find_msg:
