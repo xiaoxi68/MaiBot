@@ -282,8 +282,8 @@ class RelationshipManager:
         for original_name, mapped_name in name_mapping.items():
             points = points.replace(mapped_name, original_name)
         
-        logger.info(f"prompt: {prompt}")
-        logger.info(f"points: {points}")
+        # logger.info(f"prompt: {prompt}")
+        # logger.info(f"points: {points}")
         
         if not points:
             logger.warning(f"未能从LLM获取 {person_name} 的新印象")
@@ -296,6 +296,7 @@ class RelationshipManager:
             if points_data == "none" or not points_data or points_data.get("point") == "none":
                 points_list = []
             else:
+                logger.info(f"points_data: {points_data}")
                 if isinstance(points_data, dict) and "points" in points_data:
                     points_data = points_data["points"]
                 if not isinstance(points_data, list):

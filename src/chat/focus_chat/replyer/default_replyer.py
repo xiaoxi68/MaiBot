@@ -37,11 +37,13 @@ def init_prompt():
         
 {extra_info_block}
 
+{relation_info_block}
+
 {time_block}
 你现在正在群里聊天，以下是群里正在进行的聊天内容：
 {chat_info}
 
-{relation_info_block}
+
 
 以上是聊天内容，你需要了解聊天记录中的内容
 
@@ -604,6 +606,8 @@ class DefaultReplyer:
             user_nickname=global_config.bot.nickname,
             platform=self.chat_stream.platform,
         )
+
+        # await anchor_message.process()
 
         bot_message = MessageSending(
             message_id=message_id,  # 使用片段的唯一ID

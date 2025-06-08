@@ -11,12 +11,12 @@ from collections import defaultdict
 
 logger = get_logger("relation")
 
-
+# 暂时弃用，改为实时更新
 class ImpressionUpdateTask(AsyncTask):
     def __init__(self):
         super().__init__(
             task_name="impression_update",
-            wait_before_start=5,
+            wait_before_start=60,
             run_interval=global_config.relationship.build_relationship_interval,
         )
 
@@ -24,10 +24,10 @@ class ImpressionUpdateTask(AsyncTask):
         try:
             # 获取最近的消息
             current_time = int(time.time())
-            start_time = current_time - 600  # 1小时前
+            start_time = current_time - global_config.relationship.build_relationship_interval  # 100分钟前
             
             # 获取所有消息
-            messages = get_raw_msg_by_timestamp(timestamp_start=start_time, timestamp_end=current_time, limit=300)
+            messages = get_raw_msg_by_timestamp(timestamp_start=start_time, timestamp_end=current_time)
             
             if not messages:
                 logger.info("没有找到需要处理的消息")
@@ -45,6 +45,10 @@ class ImpressionUpdateTask(AsyncTask):
             # 处理每个聊天组
             for chat_id, msgs in chat_messages.items():
                 # 获取chat_stream
+                if len(msgs) < 30:
+                    logger.info(f"聊天组 {chat_id} 消息数小于30，跳过处理")
+                    continue
+                
                 chat_stream = chat_manager.get_stream(chat_id)
                 if not chat_stream:
                     logger.warning(f"未找到聊天组 {chat_id} 的chat_stream，跳过处理")
@@ -168,7 +172,3 @@ class ImpressionUpdateTask(AsyncTask):
 
         except Exception as e:
             logger.exception(f"更新印象任务失败: {str(e)}")
-
-
-# 创建任务实例
-impression_update_task = ImpressionUpdateTask()

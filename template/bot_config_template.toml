@@ -41,12 +41,11 @@ identity_detail = [
 [expression]
 # 表达方式
 expression_style = "描述麦麦说话的表达风格，表达习惯，例如：(回复尽量简短一些。可以参考贴吧，知乎和微博的回复风格，回复不要浮夸，不要用夸张修辞，平淡一些。不要有额外的符号，尽量简单简短)"
-enable_expression_learning = false # 是否启用表达学习，麦麦会学习人类说话风格
+enable_expression_learning = false # 是否启用表达学习，麦麦会学习不同群里人类说话风格（群之间不互通）
 learning_interval = 600 # 学习间隔 单位秒
 
 [relationship]
-give_name = true # 麦麦是否给其他人取名，关闭后无法使用禁言功能
-build_relationship_interval = 600 # 构建关系间隔 单位秒
+give_name = true # 麦麦是否给其他人取名
 
 [chat] #麦麦的聊天通用设置
 chat_mode = "normal" # 聊天模式 —— 普通模式：normal，专注模式：focus，在普通模式和专注模式之间自动切换
