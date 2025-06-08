@@ -348,7 +348,6 @@ class PluginAction(BaseAction):
         self,
         prompt: str,
         model_config: Dict[str, Any],
-        max_tokens: int = 2000,
         request_type: str = "plugin.generate",
         **kwargs
     ) -> Tuple[bool, str]:
@@ -372,7 +371,6 @@ class PluginAction(BaseAction):
             
             llm_request = LLMRequest(
                 model=model_config,
-                max_tokens=max_tokens,
                 request_type=request_type,
                 **kwargs
             )

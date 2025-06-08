@@ -56,7 +56,6 @@ class PersonInfoManager:
         # TODO: API-Adapter修改标记
         self.qv_name_llm = LLMRequest(
             model=global_config.model.utils,
-            max_tokens=256,
             request_type="relation.qv_name",
         )
         try:

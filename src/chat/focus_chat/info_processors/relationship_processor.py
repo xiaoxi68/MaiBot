@@ -37,7 +37,7 @@ def init_prompt():
 你不同程度上认识群聊里的人，你可以根据聊天记录，回忆起有关他们的信息，帮助你参与聊天
 1.你需要提供用户名，以及你想要提取的信息名称类型来进行调取
 2.你也可以完全不输出任何信息
-3.如果短期内已经回忆过某个人的信息，请不要重复调取，除非你忘记了
+3.阅读调取记录，如果已经回忆过某个人的信息，请不要重复调取，除非你忘记了
 
 请以json格式输出，例如：
 
@@ -95,7 +95,7 @@ class RelationshipProcessor(BaseProcessor):
         self.llm_model = LLMRequest(
             model=global_config.model.relation,
             max_tokens=800,
-            request_type="relation",
+            request_type="focus.relationship",
         )
 
         name = chat_manager.get_stream_name(self.subheartflow_id)
@@ -206,10 +206,10 @@ class RelationshipProcessor(BaseProcessor):
         )
         
         try:
-            logger.info(f"{self.log_prefix} 人物信息prompt: \n{prompt}\n")
+            # logger.info(f"{self.log_prefix} 人物信息prompt: \n{prompt}\n")
             content, _ = await self.llm_model.generate_response_async(prompt=prompt)
             if content:
-                print(f"content: {content}")
+                # print(f"content: {content}")
                 content_json = json.loads(repair_json(content))
 
                 for person_name, info_type in content_json.items():
@@ -347,7 +347,7 @@ class RelationshipProcessor(BaseProcessor):
         try:
             content, _ = await self.llm_model.generate_response_async(prompt=prompt)
             
-            logger.info(f"{self.log_prefix} fetch_person_info prompt: \n{prompt}\n")
+            # logger.info(f"{self.log_prefix} fetch_person_info prompt: \n{prompt}\n")
             logger.info(f"{self.log_prefix} fetch_person_info 结果: {content}")
             
             if content:

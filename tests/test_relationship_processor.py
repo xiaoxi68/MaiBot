@@ -128,7 +128,6 @@ class RelationshipProcessor:
 
         self.llm_model = LLMRequest(
             model=global_config.model.relation,
-            max_tokens=800,
             request_type="relation",
         )
 

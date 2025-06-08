@@ -70,7 +70,6 @@ class ExpressionLearner:
         self.express_learn_model: LLMRequest = LLMRequest(
             model=global_config.model.replyer_1,
             temperature=0.1,
-            max_tokens=256,
             request_type="expressor.learner",
         )
 

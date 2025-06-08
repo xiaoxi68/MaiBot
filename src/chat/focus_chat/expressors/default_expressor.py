@@ -77,7 +77,6 @@ class DefaultExpressor:
         # TODO: API-Adapter修改标记
         self.express_model = LLMRequest(
             model=global_config.model.replyer_1,
-            max_tokens=256,
             request_type="focus.expressor",
         )
         self.heart_fc_sender = HeartFCSender()
