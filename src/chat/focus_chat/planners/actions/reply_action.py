@@ -11,6 +11,7 @@ from src.chat.focus_chat.hfc_utils import create_empty_anchor_message
 import time
 import traceback
 from src.common.database.database_model import ActionRecords
+import re
 
 logger = get_logger("action_taken")
 
@@ -109,19 +110,29 @@ class ReplyAction(BaseAction):
         chatting_observation: ChattingObservation = next(
             obs for obs in self.observations if isinstance(obs, ChattingObservation)
         )
-        if reply_data.get("target"):
-            anchor_message = chatting_observation.search_message_by_text(reply_data["target"])
+        
+        reply_to = reply_data.get("reply_to", "none")
+            
+        # sender = ""
+        target = ""
+        if ":" in reply_to or "：" in reply_to:
+            # 使用正则表达式匹配中文或英文冒号
+            parts = re.split(pattern=r'[:：]', string=reply_to, maxsplit=1)
+            if len(parts) == 2:
+                # sender = parts[0].strip()
+                target = parts[1].strip()
+                anchor_message = chatting_observation.search_message_by_text(target)
         else:
             anchor_message = None
-
-        # 如果没有找到锚点消息，创建一个占位符
-        if not anchor_message:
+        
+        if anchor_message:  
+            anchor_message.update_chat_stream(self.chat_stream)
+        else:
             logger.info(f"{self.log_prefix} 未找到锚点消息，创建占位符")
             anchor_message = await create_empty_anchor_message(
                 self.chat_stream.platform, self.chat_stream.group_info, self.chat_stream
             )
-        else:
-            anchor_message.update_chat_stream(self.chat_stream)
+
 
         success, reply_set = await self.replyer.deal_reply(
             cycle_timers=cycle_timers,
