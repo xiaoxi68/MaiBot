@@ -25,7 +25,8 @@ class ReplyAction(BaseAction):
     action_name: str = "reply"
     action_description: str = "当你想要参与回复或者聊天"
     action_parameters: dict[str:str] = {
-        "target": "如果你要明确回复特定某人的某句话，请在target参数中中指定那句话的原始文本（非必须，仅文本，不包含发送者)（可选）",
+        "reply_to": "如果是明确回复某个人的发言，请在reply_to参数中指定，格式：（用户名:发言内容），如果不是，reply_to的值设为none",
+        "emoji": "如果你想用表情包辅助你的回答，请在emoji参数中用文字描述你想要发送的表情包内容，如果没有，值设为空",
     }
     action_require: list[str] = [
         "你想要闲聊或者随便附和",
