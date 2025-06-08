@@ -64,7 +64,7 @@ class ChattingInfoProcessor(BaseProcessor):
                     obs_info = ObsInfo()
 
                     # 改为异步任务，不阻塞主流程
-                    asyncio.create_task(self.chat_compress(obs))
+                    # asyncio.create_task(self.chat_compress(obs))
 
                     # 设置说话消息
                     if hasattr(obs, "talking_message_str"):
