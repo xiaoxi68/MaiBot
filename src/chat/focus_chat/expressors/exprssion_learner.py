@@ -280,6 +280,21 @@ class ExpressionLearner:
                     new_expr["last_active_time"] = current_time
                     old_data.append(new_expr)
             
+            # 处理超限问题
+            if len(old_data) > MAX_EXPRESSION_COUNT:
+                # 计算每个表达方式的权重（count的倒数，这样count越小的越容易被选中）
+                weights = [1 / (expr.get("count", 1) + 0.1) for expr in old_data]
+                # 归一化权重
+                total_weight = sum(weights)
+                weights = [w / total_weight for w in weights]
+                
+                # 随机选择要移除的表达方式
+                remove_count = len(old_data) - MAX_EXPRESSION_COUNT
+                remove_indices = random.choices(range(len(old_data)), weights=weights, k=remove_count)
+                # 从后往前删除，避免索引变化
+                for idx in sorted(remove_indices, reverse=True):
+                    old_data.pop(idx)
+            
             with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(old_data, f, ensure_ascii=False, indent=2)
         

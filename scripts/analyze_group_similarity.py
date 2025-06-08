@@ -60,9 +60,9 @@ def load_group_data(group_dir):
 
     for item in data:
         count = item["count"]
-        situations.extend([item["situation"]] * count)
-        styles.extend([item["style"]] * count)
-        combined.extend([f"{item['situation']} {item['style']}"] * count)
+        situations.extend([item["situation"]] * int(count))
+        styles.extend([item["style"]] * int(count))
+        combined.extend([f"{item['situation']} {item['style']}"] * int(count))
 
     return situations, styles, combined, total_count
 
