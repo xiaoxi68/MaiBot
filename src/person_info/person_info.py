@@ -28,7 +28,7 @@ PersonInfoManager 类方法功能摘要：
 
 logger = get_logger("person_info")
 
-JSON_SERIALIZED_FIELDS = ["points", "forgotten_points"]
+JSON_SERIALIZED_FIELDS = ["points", "forgotten_points", "info_list"]
 
 person_info_default = {
     "person_id": None,
@@ -43,7 +43,7 @@ person_info_default = {
     # "user_cardname": None, # This field is not in Peewee model PersonInfo
     # "user_avatar": None,   # This field is not in Peewee model PersonInfo
     "impression": None, # Corrected from persion_impression
-    "interaction": None,
+    "info_list": None,
     "points": None,
     "forgotten_points": None,
     

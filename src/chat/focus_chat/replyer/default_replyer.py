@@ -153,8 +153,12 @@ class DefaultReplyer:
 
             with Timer("选择表情", cycle_timers):
                 emoji_keyword = action_data.get("emoji", "")
+                print(f"emoji_keyword: {emoji_keyword}")
                 if emoji_keyword:
-                    emoji_base64 = await self._choose_emoji(emoji_keyword)
+                    emoji_base64, _description, _emotion = await self._choose_emoji(emoji_keyword)
+                    # print(f"emoji_base64: {emoji_base64}")
+                    # print(f"emoji_description: {_description}")
+                    # print(f"emoji_emotion: {emotion}")
                     if emoji_base64:
                         reply.append(("emoji", emoji_base64))
 
