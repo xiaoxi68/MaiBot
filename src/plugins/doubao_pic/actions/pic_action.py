@@ -5,8 +5,8 @@ import urllib.error
 import base64  # 新增：用于Base64编码
 import traceback  # 新增：用于打印堆栈跟踪
 from typing import Tuple
-from src.chat.focus_chat.planners.actions.plugin_action import PluginAction, register_action
-from src.chat.focus_chat.planners.actions.base_action import ActionActivationType, ChatMode
+from src.chat.actions.plugin_action import PluginAction, register_action
+from src.chat.actions.base_action import ActionActivationType, ChatMode
 from src.common.logger_manager import get_logger
 from .generate_pic_config import generate_config
 

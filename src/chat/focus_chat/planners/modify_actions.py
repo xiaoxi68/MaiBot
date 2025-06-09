@@ -6,7 +6,7 @@ from src.chat.heart_flow.observation.chatting_observation import ChattingObserva
 from src.chat.message_receive.chat_stream import chat_manager
 from src.config.config import global_config
 from src.llm_models.utils_model import LLMRequest
-from src.chat.focus_chat.planners.actions.base_action import ActionActivationType, ChatMode
+from src.chat.actions.base_action import ActionActivationType, ChatMode
 import random
 import asyncio
 import hashlib
@@ -560,9 +560,9 @@ class ActionModifier:
             reply_sequence.append(action_type == "reply")
 
         # 检查no_reply比例
-        if len(recent_cycles) >= (5 * global_config.chat.exit_focus_threshold) and (
+        if len(recent_cycles) >= (4 * global_config.chat.exit_focus_threshold) and (
             no_reply_count / len(recent_cycles)
-        ) >= (0.8 * global_config.chat.exit_focus_threshold):
+        ) >= (0.7 * global_config.chat.exit_focus_threshold):
             if global_config.chat.chat_mode == "auto":
                 result["add"].append("exit_focus_chat")
                 result["remove"].append("no_reply")

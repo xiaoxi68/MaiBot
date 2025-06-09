@@ -139,6 +139,8 @@ class DefaultReplyer:
             # 处理文本部分
             # text_part = action_data.get("text", [])
             # if text_part:
+            sent_msg_list = []
+            
             with Timer("生成回复", cycle_timers):
                 # 可以保留原有的文本处理逻辑或进行适当调整
                 reply = await self.reply(

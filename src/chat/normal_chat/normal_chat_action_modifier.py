@@ -1,7 +1,7 @@
 from typing import List, Any, Dict
 from src.common.logger_manager import get_logger
 from src.chat.focus_chat.planners.action_manager import ActionManager
-from src.chat.focus_chat.planners.actions.base_action import ActionActivationType, ChatMode
+from src.chat.actions.base_action import ActionActivationType, ChatMode
 from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_before_timestamp_with_chat
 from src.config.config import global_config
 import random
@@ -204,7 +204,7 @@ class NormalChatActionModifier:
             should_activate = random.random() < probability
             if should_activate:
                 activated_actions[action_name] = action_info
-                logger.info(f"{self.log_prefix}激活动作: {action_name}，原因: RANDOM类型触发（概率{probability}）")
+                logger.debug(f"{self.log_prefix}激活动作: {action_name}，原因: RANDOM类型触发（概率{probability}）")
             else:
                 logger.debug(f"{self.log_prefix}未激活动作: {action_name}，原因: RANDOM类型未触发（概率{probability}）")
         
@@ -219,10 +219,10 @@ class NormalChatActionModifier:
             if should_activate:
                 activated_actions[action_name] = action_info
                 keywords = action_info.get("activation_keywords", [])
-                logger.info(f"{self.log_prefix}激活动作: {action_name}，原因: KEYWORD类型匹配关键词（{keywords}）")
+                logger.debug(f"{self.log_prefix}激活动作: {action_name}，原因: KEYWORD类型匹配关键词（{keywords}）")
             else:
                 keywords = action_info.get("activation_keywords", [])
-                logger.info(f"{self.log_prefix}未激活动作: {action_name}，原因: KEYWORD类型未匹配关键词（{keywords}）")
+                logger.debug(f"{self.log_prefix}未激活动作: {action_name}，原因: KEYWORD类型未匹配关键词（{keywords}）")
                 # print(f"keywords: {keywords}")
                 # print(f"chat_content: {chat_content}")
         
@@ -274,10 +274,10 @@ class NormalChatActionModifier:
         # print(f"activation_keywords: {activation_keywords}")
         
         if matched_keywords:
-            logger.info(f"{self.log_prefix}动作 {action_name} 匹配到关键词: {matched_keywords}")
+            logger.debug(f"{self.log_prefix}动作 {action_name} 匹配到关键词: {matched_keywords}")
             return True
         else:
-            logger.info(f"{self.log_prefix}动作 {action_name} 未匹配到任何关键词: {activation_keywords}")
+            logger.debug(f"{self.log_prefix}动作 {action_name} 未匹配到任何关键词: {activation_keywords}")
             return False
 
     def get_available_actions_count(self) -> int:

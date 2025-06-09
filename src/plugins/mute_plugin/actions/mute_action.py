@@ -1,6 +1,6 @@
 from src.common.logger_manager import get_logger
-from src.chat.focus_chat.planners.actions.plugin_action import PluginAction, register_action, ActionActivationType
-from src.chat.focus_chat.planners.actions.base_action import ChatMode
+from src.chat.actions.plugin_action import PluginAction, register_action, ActionActivationType
+from src.chat.actions.base_action import ChatMode
 from typing import Tuple
 
 logger = get_logger("mute_action")

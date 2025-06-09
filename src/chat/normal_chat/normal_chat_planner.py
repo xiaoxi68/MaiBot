@@ -7,7 +7,7 @@ from src.common.logger_manager import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.individuality.individuality import individuality
 from src.chat.focus_chat.planners.action_manager import ActionManager
-from src.chat.focus_chat.planners.actions.base_action import ChatMode
+from src.chat.actions.base_action import ChatMode
 from src.chat.message_receive.message import MessageThinking
 from json_repair import repair_json
 from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_before_timestamp_with_chat
@@ -26,6 +26,11 @@ def init_prompt():
 {self_info_block}
 请记住你的性格，身份和特点。
 
+你是群内的一员，你现在正在参与群内的闲聊，以下是群内的聊天内容：
+{chat_context}
+
+基于以上聊天上下文和用户的最新消息，选择最合适的action。
+
 注意，除了下面动作选项之外，你在聊天中不能做其他任何事情，这是你能力的边界，现在请你选择合适的action:
 
 {action_options_text}
@@ -37,11 +42,6 @@ def init_prompt():
 
 你必须从上面列出的可用action中选择一个，并说明原因。
 {moderation_prompt}
-
-你是群内的一员，你现在正在参与群内的闲聊，以下是群内的聊天内容：
-{chat_context}
-
-基于以上聊天上下文和用户的最新消息，选择最合适的action。
 
 请以动作的输出要求，以严格的 JSON 格式输出，且仅包含 JSON 内容。不要有任何其他文字或解释：
 """,

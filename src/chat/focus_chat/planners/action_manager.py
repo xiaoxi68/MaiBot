@@ -1,5 +1,5 @@
 from typing import Dict, List, Optional, Type, Any
-from src.chat.focus_chat.planners.actions.base_action import BaseAction, _ACTION_REGISTRY
+from src.chat.actions.base_action import BaseAction, _ACTION_REGISTRY
 from src.chat.heart_flow.observation.observation import Observation
 from src.chat.focus_chat.replyer.default_replyer import DefaultReplyer
 from src.chat.focus_chat.expressors.default_expressor import DefaultExpressor
@@ -9,8 +9,8 @@ import importlib
 import pkgutil
 import os
 
-# 导入动作类，确保装饰器被执行
-import src.chat.focus_chat.planners.actions  # noqa
+# 不再需要导入动作类，因为已经在main.py中导入
+# import src.chat.actions.default_actions  # noqa
 
 logger = get_logger("action_manager")
 
@@ -114,42 +114,13 @@ class ActionManager:
     def _load_plugin_actions(self) -> None:
         """
         加载所有插件目录中的动作
+        
+        注意：插件动作的实际导入已经在main.py中完成，这里只需要从_ACTION_REGISTRY获取
         """
         try:
-            # 检查插件目录是否存在
-            plugin_path = "src.plugins"
-            plugin_dir = plugin_path.replace(".", os.path.sep)
-            if not os.path.exists(plugin_dir):
-                logger.info(f"插件目录 {plugin_dir} 不存在，跳过插件动作加载")
-                return
-
-            # 导入插件包
-            try:
-                plugins_package = importlib.import_module(plugin_path)
-            except ImportError as e:
-                logger.error(f"导入插件包失败: {e}")
-                return
-
-            # 遍历插件包中的所有子包
-            for _, plugin_name, is_pkg in pkgutil.iter_modules(
-                plugins_package.__path__, plugins_package.__name__ + "."
-            ):
-                if not is_pkg:
-                    continue
-
-                # 检查插件是否有actions子包
-                plugin_actions_path = f"{plugin_name}.actions"
-                try:
-                    # 尝试导入插件的actions包
-                    importlib.import_module(plugin_actions_path)
-                    logger.info(f"成功加载插件动作模块: {plugin_actions_path}")
-                except ImportError as e:
-                    logger.debug(f"插件 {plugin_name} 没有actions子包或导入失败: {e}")
-                    continue
-
-            # 再次从_ACTION_REGISTRY获取所有动作（包括刚刚从插件加载的）
+            # 插件动作已在main.py中加载，这里只需要从_ACTION_REGISTRY获取
             self._load_registered_actions()
-
+            logger.info(f"从注册表加载插件动作成功")
         except Exception as e:
             logger.error(f"加载插件动作失败: {e}")
 
@@ -251,7 +222,7 @@ class ActionManager:
             else:
                 logger.debug(f"动作 {action_name} 在模式 {mode} 下不可用 (mode_enable: {action_mode})")
         
-        logger.info(f"模式 {mode} 下可用动作: {list(filtered_actions.keys())}")
+        logger.debug(f"模式 {mode} 下可用动作: {list(filtered_actions.keys())}")
         return filtered_actions
 
     def add_action_to_using(self, action_name: str) -> bool:
@@ -291,7 +262,7 @@ class ActionManager:
             return False
 
         del self._using_actions[action_name]
-        logger.info(f"已从使用集中移除动作 {action_name}")
+        logger.debug(f"已从使用集中移除动作 {action_name}")
         return True
 
     def add_action(self, action_name: str, description: str, parameters: Dict = None, require: List = None) -> bool:
@@ -358,7 +329,7 @@ class ActionManager:
         for action_name in system_core_actions:
             if action_name in self._registered_actions and action_name not in self._using_actions:
                 self._using_actions[action_name] = self._registered_actions[action_name]
-                logger.info(f"添加系统核心动作到使用集: {action_name}")
+                logger.debug(f"添加系统核心动作到使用集: {action_name}")
 
     def add_system_action_if_needed(self, action_name: str) -> bool:
         """

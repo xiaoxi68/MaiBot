@@ -1,6 +1,6 @@
 from src.common.logger_manager import get_logger
-from src.chat.focus_chat.planners.actions.base_action import ActionActivationType
-from src.chat.focus_chat.planners.actions.plugin_action import PluginAction, register_action
+from src.chat.actions.base_action import ActionActivationType
+from src.chat.actions.plugin_action import PluginAction, register_action
 from typing import Tuple
 
 logger = get_logger("tts_action")

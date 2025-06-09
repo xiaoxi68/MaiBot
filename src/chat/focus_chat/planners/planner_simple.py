@@ -15,8 +15,7 @@ from src.common.logger_manager import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.individuality.individuality import individuality
 from src.chat.focus_chat.planners.action_manager import ActionManager
-from src.chat.focus_chat.planners.modify_actions import ActionModifier
-from src.chat.focus_chat.planners.actions.base_action import ChatMode
+from src.chat.actions.base_action import ChatMode
 from json_repair import repair_json
 from src.chat.focus_chat.planners.base_planner import BasePlanner
 from datetime import datetime

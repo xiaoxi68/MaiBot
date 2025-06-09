@@ -437,7 +437,7 @@ class NormalChat:
                             logger.warning(f"[{self.stream_name}] 没有设置切换到focus聊天模式的回调函数，无法执行切换")
                         return
                     else:
-                        # await self._check_switch_to_focus()
+                        await self._check_switch_to_focus()
                         pass
 
             with Timer("处理表情包", timing_results):
