@@ -10,7 +10,7 @@ from src.experimental.PFC.pfc_manager import PFCManager
 from src.chat.focus_chat.heartflow_message_processor import HeartFCMessageReceiver
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.config.config import global_config
-from src.chat.message_receive.command_handler import command_manager  # 导入命令管理器
+from src.chat.command.command_handler import command_manager  # 导入命令管理器
 
 # 定义日志配置
 

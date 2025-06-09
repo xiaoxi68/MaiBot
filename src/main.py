@@ -144,7 +144,7 @@ class MainSystem:
             # 加载命令处理系统
             try:
                 # 导入命令处理系统
-                from src.chat.message_receive.command_handler import command_manager
+                from src.chat.command.command_handler import command_manager
                 logger.success("命令处理系统加载成功")
             except Exception as e:
                 logger.error(f"加载命令处理系统失败: {e}")

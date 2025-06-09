@@ -1,5 +1,5 @@
 from src.common.logger_manager import get_logger
-from src.chat.message_receive.command_handler import BaseCommand, register_command, _COMMAND_REGISTRY
+from src.chat.command.command_handler import BaseCommand, register_command, _COMMAND_REGISTRY
 from typing import Tuple, Optional
 
 logger = get_logger("help_command")

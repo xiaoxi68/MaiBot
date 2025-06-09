@@ -1,5 +1,5 @@
 from src.common.logger_manager import get_logger
-from src.chat.message_receive.command_handler import BaseCommand, register_command
+from src.chat.command.command_handler import BaseCommand, register_command
 from src.chat.actions.plugin_api.message_api import MessageAPI
 from typing import Tuple, Optional
 import time
