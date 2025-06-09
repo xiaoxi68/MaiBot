@@ -413,7 +413,7 @@ class RelationshipManager:
             forgotten_points.extend(points_to_move)
             
             # 检查forgotten_points是否达到5条
-            if len(forgotten_points) >= 20:
+            if len(forgotten_points) >= 10:
                 # 构建压缩总结提示词
                 alias_str = ", ".join(global_config.bot.alias_names)
                 

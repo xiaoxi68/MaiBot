@@ -496,7 +496,7 @@ class MessageRetrievalScript:
             logger.info(f"将 {len(points_to_move)} 个记忆点移动到forgotten_points")
             
             # 检查forgotten_points是否达到5条
-            if len(forgotten_points) >= 20:
+            if len(forgotten_points) >= 10:
                 print(f"forgotten_points: {forgotten_points}")
                 # 构建压缩总结提示词
                 alias_str = ", ".join(global_config.bot.alias_names)
