@@ -10,6 +10,7 @@ from src.experimental.PFC.pfc_manager import PFCManager
 from src.chat.focus_chat.heartflow_message_processor import HeartFCMessageReceiver
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.config.config import global_config
+from src.chat.message_receive.command_handler import command_manager  # 导入命令管理器
 
 # 定义日志配置
 
@@ -78,6 +79,25 @@ class ChatBot:
             group_info = message.message_info.group_info
             user_info = message.message_info.user_info
             chat_manager.register_message(message)
+            
+            # 创建聊天流
+            chat = await chat_manager.get_or_create_stream(
+                platform=message.message_info.platform,
+                user_info=user_info,
+                group_info=group_info,
+            )
+            message.update_chat_stream(chat)
+            
+            # 处理消息内容，生成纯文本
+            await message.process()
+            
+            # 命令处理 - 在消息处理的早期阶段检查并处理命令
+            is_command, cmd_result, continue_process = await command_manager.process_command(message)
+            
+            # 如果是命令且不需要继续处理，则直接返回
+            if is_command and not continue_process:
+                logger.info(f"命令处理完成，跳过后续消息处理: {cmd_result}")
+                return
 
             # 确认从接口发来的message是否有自定义的prompt模板信息
             if message.message_info.template_info and not message.message_info.template_info.template_default:
@@ -100,12 +120,6 @@ class ChatBot:
                         logger.trace("进入PFC私聊处理流程")
                         # 创建聊天流
                         logger.trace(f"为{user_info.user_id}创建/获取聊天流")
-                        chat = await chat_manager.get_or_create_stream(
-                            platform=message.message_info.platform,
-                            user_info=user_info,
-                            group_info=group_info,
-                        )
-                        message.update_chat_stream(chat)
                         await self.only_process_chat.process_message(message)
                         await self._create_pfc_chat(message)
                     # 禁止PFC，进入普通的心流消息处理逻辑

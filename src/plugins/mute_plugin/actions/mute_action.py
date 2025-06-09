@@ -24,7 +24,7 @@ class MuteAction(PluginAction):
         "当有人要求禁言自己时使用",
         "如果某人已经被禁言了，就不要再次禁言了，除非你想追加时间！！"
     ]
-    enable_plugin = True  # 启用插件
+    enable_plugin = False  # 启用插件
     associated_types = ["command", "text"]
     action_config_file_name = "mute_action_config.toml"
     

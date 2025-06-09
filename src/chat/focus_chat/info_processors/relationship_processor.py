@@ -205,7 +205,7 @@ class RelationshipProcessor(BaseProcessor):
         )
         
         try:
-            logger.info(f"{self.log_prefix} 人物信息prompt: \n{prompt}\n")
+            logger.debug(f"{self.log_prefix} 人物信息prompt: \n{prompt}\n")
             content, _ = await self.llm_model.generate_response_async(prompt=prompt)
             if content:
                 print(f"content: {content}")

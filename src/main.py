@@ -186,6 +186,16 @@ class MainSystem:
             logger.error(f"加载actions失败: {e}")
             import traceback
             logger.error(traceback.format_exc())
+            
+            # 加载命令处理系统
+            try:
+                # 导入命令处理系统
+                from src.chat.message_receive.command_handler import command_manager
+                logger.success("命令处理系统加载成功")
+            except Exception as e:
+                logger.error(f"加载命令处理系统失败: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
 
     async def schedule_tasks(self):
         """调度定时任务"""
