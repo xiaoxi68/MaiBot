@@ -149,50 +149,6 @@ class NormalChat:
 
         return first_bot_msg
 
-    # 改为实例方法
-    async def _handle_emoji(self, message: MessageRecv, response: str):
-        """处理表情包"""
-        if random() < global_config.normal_chat.emoji_chance:
-            emoji_raw = await emoji_manager.get_emoji_for_text(response)
-            if emoji_raw:
-                emoji_path, description, _emotion = emoji_raw
-                emoji_cq = image_path_to_base64(emoji_path)
-
-                thinking_time_point = round(message.message_info.time, 2)
-
-                message_segment = Seg(type="emoji", data=emoji_cq)
-                bot_message = MessageSending(
-                    message_id="mt" + str(thinking_time_point),
-                    chat_stream=self.chat_stream,  # 使用 self.chat_stream
-                    bot_user_info=UserInfo(
-                        user_id=global_config.bot.qq_account,
-                        user_nickname=global_config.bot.nickname,
-                        platform=message.message_info.platform,
-                    ),
-                    sender_info=message.message_info.user_info,
-                    message_segment=message_segment,
-                    reply=message,
-                    is_head=False,
-                    is_emoji=True,
-                    apply_set_reply_logic=True,
-                )
-                await message_manager.add_message(bot_message)
-
-    # 改为实例方法 (虽然它只用 message.chat_stream, 但逻辑上属于实例)
-    # async def _update_relationship(self, message: MessageRecv, response_set):
-    #     """更新关系情绪"""
-    #     ori_response = ",".join(response_set)
-    #     stance, emotion = await self.gpt._get_emotion_tags(ori_response, message.processed_plain_text)
-    #     user_info = message.message_info.user_info
-    #     platform = user_info.platform
-    #     await relationship_manager.calculate_update_relationship_value(
-    #         user_info,
-    #         platform,
-    #         label=emotion,
-    #         stance=stance,  # 使用 self.chat_stream
-    #     )
-    #     self.mood_manager.update_mood_from_emotion(emotion, global_config.mood.mood_intensity_factor)
-
     async def _reply_interested_message(self) -> None:
         """
         后台任务方法，轮询当前实例关联chat的兴趣消息
@@ -440,8 +396,6 @@ class NormalChat:
                         await self._check_switch_to_focus()
                         pass
 
-            with Timer("处理表情包", timing_results):
-                await self._handle_emoji(message, response_set[0])
 
             # with Timer("关系更新", timing_results):
             #     await self._update_relationship(message, response_set)

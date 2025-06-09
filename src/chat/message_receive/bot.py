@@ -74,7 +74,7 @@ class ChatBot:
                 message_data["message_info"]["user_info"]["user_id"]
             )
             # print(message_data)
-            logger.trace(f"处理消息:{str(message_data)[:120]}...")
+            # logger.debug(str(message_data))
             message = MessageRecv(message_data)
             group_info = message.message_info.group_info
             user_info = message.message_info.user_info
