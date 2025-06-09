@@ -413,7 +413,7 @@ class RelationshipManager:
             forgotten_points.extend(points_to_move)
             
             # 检查forgotten_points是否达到5条
-            if len(forgotten_points) >= 5:
+            if len(forgotten_points) >= 20:
                 # 构建压缩总结提示词
                 alias_str = ", ".join(global_config.bot.alias_names)
                 
@@ -454,9 +454,11 @@ class RelationshipManager:
                 compressed_summary = f"截至{current_time}，你对{person_name}的了解：{compressed_summary}"
                 
                 await person_info_manager.update_one_field(person_id, "impression", compressed_summary)
+                
+                forgotten_points = []
 
 
-            # 更新数据库
+            # 这句代码的作用是：将更新后的 forgotten_points（遗忘的记忆点）列表，序列化为 JSON 字符串后，写回到数据库中的 forgotten_points 字段
             await person_info_manager.update_one_field(person_id, "forgotten_points", json.dumps(forgotten_points, ensure_ascii=False, indent=None))
         
         # 更新数据库
