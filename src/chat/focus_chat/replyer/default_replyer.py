@@ -12,7 +12,6 @@ from src.chat.utils.timer_calculator import Timer  # <--- Import Timer
 from src.chat.emoji_system.emoji_manager import emoji_manager
 from src.chat.focus_chat.heartFC_sender import HeartFCSender
 from src.chat.utils.utils import process_llm_response
-from src.chat.utils.info_catcher import info_catcher_manager
 from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
 from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.focus_chat.hfc_utils import parse_thinking_id_to_timestamp
@@ -238,8 +237,6 @@ class DefaultReplyer:
             # current_temp = float(global_config.model.normal["temp"]) * arousal_multiplier
             # self.express_model.params["temperature"] = current_temp  # 动态调整温度
 
-            # 2. 获取信息捕捉器
-            info_catcher = info_catcher_manager.get_info_catcher(thinking_id)
             
             reply_to = action_data.get("reply_to", "none")
             
@@ -285,10 +282,6 @@ class DefaultReplyer:
 
                     # logger.info(f"prompt: {prompt}")
                     logger.info(f"最终回复: {content}")
-
-                info_catcher.catch_after_llm_generated(
-                    prompt=prompt, response=content, reasoning_content=reasoning_content, model_name=model_name
-                )
 
             except Exception as llm_e:
                 # 精简报错信息

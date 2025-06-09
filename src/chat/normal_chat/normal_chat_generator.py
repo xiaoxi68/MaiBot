@@ -6,7 +6,6 @@ from src.chat.message_receive.message import MessageThinking
 from src.chat.normal_chat.normal_prompt import prompt_builder
 from src.chat.utils.timer_calculator import Timer
 from src.common.logger_manager import get_logger
-from src.chat.utils.info_catcher import info_catcher_manager
 from src.person_info.person_info import person_info_manager
 from src.chat.utils.utils import process_llm_response
 
@@ -69,7 +68,6 @@ class NormalChatGenerator:
         enable_planner: bool = False,
         available_actions=None,
     ):
-        info_catcher = info_catcher_manager.get_info_catcher(thinking_id)
 
         person_id = person_info_manager.get_person_id(
             message.chat_stream.user_info.platform, message.chat_stream.user_info.user_id
@@ -105,9 +103,6 @@ class NormalChatGenerator:
 
             logger.info(f"对  {message.processed_plain_text}  的回复：{content}")
 
-            info_catcher.catch_after_llm_generated(
-                prompt=prompt, response=content, reasoning_content=reasoning_content, model_name=self.current_model_name
-            )
 
         except Exception:
             logger.exception("生成回复时出错")

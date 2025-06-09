@@ -8,7 +8,6 @@ from src.common.logger_manager import get_logger
 from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
 from src.manager.mood_manager import mood_manager
 from src.chat.message_receive.chat_stream import ChatStream, chat_manager
-from src.chat.utils.info_catcher import info_catcher_manager
 from src.chat.utils.timer_calculator import Timer
 from src.chat.utils.prompt_builder import global_prompt_manager
 from .normal_chat_generator import NormalChatGenerator
@@ -277,9 +276,6 @@ class NormalChat:
 
             logger.debug(f"[{self.stream_name}] 创建捕捉器，thinking_id:{thinking_id}")
 
-            info_catcher = info_catcher_manager.get_info_catcher(thinking_id)
-            info_catcher.catch_decide_to_response(message)
-
             # 如果启用planner，预先修改可用actions（避免在并行任务中重复调用）
             available_actions = None
             if self.enable_planner:
@@ -373,8 +369,6 @@ class NormalChat:
             if isinstance(response_set, Exception):
                 logger.error(f"[{self.stream_name}] 回复生成异常: {response_set}")
                 response_set = None
-            elif response_set:
-                info_catcher.catch_after_generate_response(timing_results["并行生成回复和规划"])
 
             # 处理规划结果（可选，不影响回复）
             if isinstance(plan_result, Exception):
@@ -414,7 +408,6 @@ class NormalChat:
 
             # 检查 first_bot_msg 是否为 None (例如思考消息已被移除的情况)
             if first_bot_msg:
-                info_catcher.catch_after_response(timing_results["消息发送"], response_set, first_bot_msg)
 
                 # 记录回复信息到最近回复列表中
                 reply_info = {
@@ -446,8 +439,6 @@ class NormalChat:
                     else:
                         # await self._check_switch_to_focus()
                         pass
-
-            info_catcher.done_catch()
 
             with Timer("处理表情包", timing_results):
                 await self._handle_emoji(message, response_set[0])

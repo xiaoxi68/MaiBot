@@ -22,6 +22,7 @@ class MuteAction(PluginAction):
         "当有人刷屏时使用",
         "当有人发了擦边，或者色情内容时使用",
         "当有人要求禁言自己时使用",
+        "如果某人已经被禁言了，就不要再次禁言了，除非你想追加时间！！"
     ]
     enable_plugin = True  # 启用插件
     associated_types = ["command", "text"]
@@ -66,7 +67,7 @@ class MuteAction(PluginAction):
     mode_enable = ChatMode.ALL
     
     # 并行执行设置 - 禁言动作可以与回复并行执行，不覆盖回复内容
-    parallel_action = True
+    parallel_action = False
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
