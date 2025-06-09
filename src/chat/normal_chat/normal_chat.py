@@ -70,7 +70,7 @@ class NormalChat:
         self.on_switch_to_focus_callback = on_switch_to_focus_callback
 
         self._disabled = False  # 增加停用标志
-        
+
         logger.debug(f"[{self.stream_name}] NormalChat 初始化完成 (异步部分)。")
 
     # 改为实例方法
@@ -211,8 +211,9 @@ class NormalChat:
                 if not items_to_process:
                     continue
 
-                # 处理每条兴趣消息
-                for msg_id, (message, interest_value, is_mentioned) in items_to_process:
+                # 并行处理兴趣消息
+                async def process_single_message(msg_id, message, interest_value, is_mentioned):
+                    """处理单个兴趣消息"""
                     try:
                         # 处理消息
                         if time.time() - self.start_time > 300:
@@ -230,6 +231,24 @@ class NormalChat:
                     finally:
                         self.interest_dict.pop(msg_id, None)
 
+                # 创建并行任务列表
+                tasks = []
+                for msg_id, (message, interest_value, is_mentioned) in items_to_process:
+                    task = process_single_message(msg_id, message, interest_value, is_mentioned)
+                    tasks.append(task)
+
+                # 并行执行所有任务，限制并发数量避免资源过度消耗
+                if tasks:
+                    # 使用信号量控制并发数，最多同时处理5个消息
+                    semaphore = asyncio.Semaphore(5)
+
+                    async def limited_process(task):
+                        async with semaphore:
+                            await task
+
+                    limited_tasks = [limited_process(task) for task in tasks]
+                    await asyncio.gather(*limited_tasks, return_exceptions=True)
+
     # 改为实例方法, 移除 chat 参数
     async def normal_response(self, message: MessageRecv, is_mentioned: bool, interested_rate: float) -> None:
         # 新增：如果已停用，直接返回
@@ -238,7 +257,9 @@ class NormalChat:
             return
 
         timing_results = {}
-        reply_probability = 1.0 if is_mentioned and global_config.normal_chat.mentioned_bot_inevitable_reply else 0.0  # 如果被提及，且开启了提及必回复，则基础概率为1，否则需要意愿判断
+        reply_probability = (
+            1.0 if is_mentioned and global_config.normal_chat.mentioned_bot_inevitable_reply else 0.0
+        )  # 如果被提及，且开启了提及必回复，则基础概率为1，否则需要意愿判断
 
         # 意愿管理器：设置当前message信息
         willing_manager.setup(message, self.chat_stream, is_mentioned, interested_rate)
@@ -659,7 +680,7 @@ class NormalChat:
                 # 执行动作
                 result = await action_handler.handle_action()
                 success = False
-                
+
                 if result and isinstance(result, tuple) and len(result) >= 2:
                     # handle_action返回 (success: bool, message: str)
                     success = result[0]
