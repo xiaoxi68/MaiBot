@@ -19,19 +19,15 @@ class NormalChatGenerator:
         # TODO: API-Adapter修改标记
         self.model_reasoning = LLMRequest(
             model=global_config.model.replyer_1,
-            # temperature=0.7,
-            max_tokens=3000,
             request_type="normal.chat_1",
         )
         self.model_normal = LLMRequest(
             model=global_config.model.replyer_2,
-            # temperature=global_config.model.replyer_2["temp"],
-            max_tokens=256,
             request_type="normal.chat_2",
         )
 
         self.model_sum = LLMRequest(
-            model=global_config.model.memory_summary, temperature=0.7, max_tokens=3000, request_type="relation"
+            model=global_config.model.memory_summary, temperature=0.7, request_type="relation"
         )
         self.current_model_type = "r1"  # 默认使用 R1
         self.current_model_name = "unknown model"
@@ -57,7 +53,7 @@ class NormalChatGenerator:
         )
 
         if model_response:
-            logger.debug(f"{global_config.bot.nickname}的原始回复是：{model_response}")
+            logger.debug(f"{global_config.bot.nickname}的备选回复是：{model_response}")
             model_response = process_llm_response(model_response)
 
             return model_response

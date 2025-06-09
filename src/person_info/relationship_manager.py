@@ -13,6 +13,9 @@ from json_repair import repair_json
 from datetime import datetime
 from difflib import SequenceMatcher
 import ast
+import jieba
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 logger = get_logger("relation")
 
@@ -119,8 +122,9 @@ class RelationshipManager:
             person_id = person_info_manager.get_person_id(person[0], person[1])
 
         person_name = await person_info_manager.get_value(person_id, "person_name")
+        if not person_name or person_name == "none":
+            return ""
         impression = await person_info_manager.get_value(person_id, "impression")
-        interaction = await person_info_manager.get_value(person_id, "interaction")
         points = await person_info_manager.get_value(person_id, "points") or []
         
         if isinstance(points, str):
@@ -129,18 +133,16 @@ class RelationshipManager:
             except (SyntaxError, ValueError):
                 points = []
         
-        random_points = random.sample(points, min(3, len(points))) if points else []
+        random_points = random.sample(points, min(5, len(points))) if points else []
         
         nickname_str = await person_info_manager.get_value(person_id, "nickname")
         platform = await person_info_manager.get_value(person_id, "platform")
         relation_prompt = f"'{person_name}' ，ta在{platform}上的昵称是{nickname_str}。"
         
 
-        if impression:
-            relation_prompt += f"你对ta的印象是：{impression}。"
-            
-        if interaction:
-            relation_prompt += f"你与ta的关系是：{interaction}。"
+        # if impression:
+            # relation_prompt += f"你对ta的印象是：{impression}。"
+
             
         if random_points:
             for point in random_points:
@@ -236,7 +238,8 @@ class RelationshipManager:
             readable_messages = readable_messages.replace(f"{original_name}", f"{mapped_name}")
         
         prompt = f"""
-你的名字是{global_config.bot.nickname}，别名是{alias_str}。
+你的名字是{global_config.bot.nickname}，{global_config.bot.nickname}的别名是{alias_str}。
+请不要混淆你自己和{global_config.bot.nickname}和{person_name}。
 请你基于用户 {person_name}(昵称:{nickname}) 的最近发言，总结出其中是否有有关{person_name}的内容引起了你的兴趣，或者有什么需要你记忆的点。
 如果没有，就输出none
 
@@ -277,8 +280,8 @@ class RelationshipManager:
         for original_name, mapped_name in name_mapping.items():
             points = points.replace(mapped_name, original_name)
         
-        logger.info(f"prompt: {prompt}")
-        logger.info(f"points: {points}")
+        # logger.info(f"prompt: {prompt}")
+        # logger.info(f"points: {points}")
         
         if not points:
             logger.warning(f"未能从LLM获取 {person_name} 的新印象")
@@ -291,6 +294,7 @@ class RelationshipManager:
             if points_data == "none" or not points_data or points_data.get("point") == "none":
                 points_list = []
             else:
+                logger.info(f"points_data: {points_data}")
                 if isinstance(points_data, dict) and "points" in points_data:
                     points_data = points_data["points"]
                 if not isinstance(points_data, list):
@@ -307,13 +311,14 @@ class RelationshipManager:
         current_points = await person_info_manager.get_value(person_id, "points") or []
         if isinstance(current_points, str):
             try:
-                current_points = ast.literal_eval(current_points)
-            except (SyntaxError, ValueError):
+                current_points = json.loads(current_points)
+            except json.JSONDecodeError:
+                logger.error(f"解析points JSON失败: {current_points}")
                 current_points = []
         elif not isinstance(current_points, list):
             current_points = []
         current_points.extend(points_list)
-        await person_info_manager.update_one_field(person_id, "points", str(current_points).replace("(", "[").replace(")", "]"))
+        await person_info_manager.update_one_field(person_id, "points", json.dumps(current_points, ensure_ascii=False, indent=None))
 
         # 将新记录添加到现有记录中
         if isinstance(current_points, list):
@@ -324,8 +329,8 @@ class RelationshipManager:
                 
                 # 在现有points中查找相似的点
                 for i, existing_point in enumerate(current_points):
-                    similarity = SequenceMatcher(None, new_point[0], existing_point[0]).ratio()
-                    if similarity > 0.8:
+                    # 使用组合的相似度检查方法
+                    if self.check_similarity(new_point[0], existing_point[0]):
                         similar_points.append(existing_point)
                         similar_indices.append(i)
                 
@@ -355,13 +360,14 @@ class RelationshipManager:
             current_points = points_list
 
 # 如果points超过30条，按权重随机选择多余的条目移动到forgotten_points
-        if len(current_points) > 5:
+        if len(current_points) > 10:
             # 获取现有forgotten_points
             forgotten_points = await person_info_manager.get_value(person_id, "forgotten_points") or []
             if isinstance(forgotten_points, str):
                 try:
-                    forgotten_points = ast.literal_eval(forgotten_points)
-                except (SyntaxError, ValueError):
+                    forgotten_points = json.loads(forgotten_points)
+                except json.JSONDecodeError:
+                    logger.error(f"解析forgotten_points JSON失败: {forgotten_points}")
                     forgotten_points = []
             elif not isinstance(forgotten_points, list):
                 forgotten_points = []
@@ -422,70 +428,34 @@ class RelationshipManager:
                 
                 
                 impression = await person_info_manager.get_value(person_id, "impression") or ""
-                interaction = await person_info_manager.get_value(person_id, "interaction") or ""
-                
                 
                 compress_prompt = f"""
-你的名字是{global_config.bot.nickname}，别名是{alias_str}。
-请根据以下历史记录，修改原有的印象和关系，总结出对{person_name}(昵称:{nickname})的印象和特点，以及你和他/她的关系。
+你的名字是{global_config.bot.nickname}，{global_config.bot.nickname}的别名是{alias_str}。
+请不要混淆你自己和{global_config.bot.nickname}和{person_name}。
+
+请根据以下历史记录，添加，修改，整合，原有的印象和关系，总结出对用户 {person_name}(昵称:{nickname})的信息。
 
 你之前对他的印象和关系是：
 印象impression：{impression}
-关系relationship：{interaction}
 
-历史记录：
+你记得ta最近做的事：
 {points_text}
 
-请用json格式输出，包含以下字段：
-1. impression: 对这个人的总体印象和性格特点
-2. relationship: 你和他/她的关系和互动方式
-3. key_moments: 重要的互动时刻，如果历史记录中没有，则输出none
-
-格式示例：
-{{
-    "impression": "总体印象描述",
-    "relationship": "关系描述",
-    "key_moments": "时刻描述，如果历史记录中没有，则输出none"
-}}
+请输出：impression:，对这个人的总体印象，你对ta的感觉，你们的交互方式，对方的性格特点，身份，外貌，年龄，性别，习惯，爱好等等内容
 """
-                
                 # 调用LLM生成压缩总结
                 compressed_summary, _ = await self.relationship_llm.generate_response_async(prompt=compress_prompt)
-                compressed_summary = compressed_summary.strip()
                 
-                try:
-                    # 修复并解析JSON
-                    compressed_summary = repair_json(compressed_summary)
-                    summary_data = json.loads(compressed_summary)
-                    print(f"summary_data: {summary_data}")
-                    
-                    # 验证必要字段
-                    required_fields = ['impression', 'relationship']
-                    for field in required_fields:
-                        if field not in summary_data:
-                            raise KeyError(f"缺少必要字段: {field}")
-                    
-                    # 更新数据库
-                    await person_info_manager.update_one_field(person_id, "impression", summary_data['impression'])
-                    await person_info_manager.update_one_field(person_id, "interaction", summary_data['relationship'])
-                    
-                    # 将key_moments添加到points中
-                    current_time = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
-                    if summary_data['key_moments'] != "none":
-                        current_points.append((summary_data['key_moments'], 10.0, current_time))
-                    
-                    # 清空forgotten_points
-                    forgotten_points = []
-                    logger.info(f"已完成对 {person_name} 的forgotten_points压缩总结")
-                except Exception as e:
-                    logger.error(f"处理压缩总结失败: {e}")
-                    return
+                await person_info_manager.update_one_field(person_id, "impression", compressed_summary)
+
 
             # 更新数据库
-            await person_info_manager.update_one_field(person_id, "forgotten_points", str(forgotten_points).replace("(", "[").replace(")", "]"))
+            await person_info_manager.update_one_field(person_id, "forgotten_points", json.dumps(forgotten_points, ensure_ascii=False, indent=None))
         
         # 更新数据库
-        await person_info_manager.update_one_field(person_id, "points", str(current_points).replace("(", "[").replace(")", "]"))
+        await person_info_manager.update_one_field(person_id, "points", json.dumps(current_points, ensure_ascii=False, indent=None))
+        know_times = await person_info_manager.get_value(person_id, "know_times") or 0
+        await person_info_manager.update_one_field(person_id, "know_times", know_times + 1)
         await person_info_manager.update_one_field(person_id, "last_know", timestamp)
 
 
@@ -575,6 +545,67 @@ class RelationshipManager:
         except Exception as e:
             self.logger.error(f"计算时间权重失败: {e}")
             return 0.5  # 发生错误时返回中等权重
+
+    def tfidf_similarity(self, s1, s2):
+        """
+        使用 TF-IDF 和余弦相似度计算两个句子的相似性。
+        """
+        # 确保输入是字符串类型
+        if isinstance(s1, list):
+            s1 = " ".join(str(x) for x in s1)
+        if isinstance(s2, list):
+            s2 = " ".join(str(x) for x in s2)
+            
+        # 转换为字符串类型
+        s1 = str(s1)
+        s2 = str(s2)
+        
+        # 1. 使用 jieba 进行分词
+        s1_words = " ".join(jieba.cut(s1))
+        s2_words = " ".join(jieba.cut(s2))
+        
+        # 2. 将两句话放入一个列表中
+        corpus = [s1_words, s2_words]
+        
+        # 3. 创建 TF-IDF 向量化器并进行计算
+        try:
+            vectorizer = TfidfVectorizer()
+            tfidf_matrix = vectorizer.fit_transform(corpus)
+        except ValueError:
+            # 如果句子完全由停用词组成，或者为空，可能会报错
+            return 0.0
+
+        # 4. 计算余弦相似度
+        similarity_matrix = cosine_similarity(tfidf_matrix)
+        
+        # 返回 s1 和 s2 的相似度
+        return similarity_matrix[0, 1]
+
+    def sequence_similarity(self, s1, s2):
+        """
+        使用 SequenceMatcher 计算两个句子的相似性。
+        """
+        return SequenceMatcher(None, s1, s2).ratio()
+
+    def check_similarity(self, text1, text2, tfidf_threshold=0.5, seq_threshold=0.6):
+        """
+        使用两种方法检查文本相似度，只要其中一种方法达到阈值就认为是相似的。
+        
+        Args:
+            text1: 第一个文本
+            text2: 第二个文本
+            tfidf_threshold: TF-IDF相似度阈值
+            seq_threshold: SequenceMatcher相似度阈值
+            
+        Returns:
+            bool: 如果任一方法达到阈值则返回True
+        """
+        # 计算两种相似度
+        tfidf_sim = self.tfidf_similarity(text1, text2)
+        seq_sim = self.sequence_similarity(text1, text2)
+        
+        # 只要其中一种方法达到阈值就认为是相似的
+        return tfidf_sim > tfidf_threshold or seq_sim > seq_threshold
 
 
 relationship_manager = RelationshipManager()

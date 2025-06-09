@@ -6,7 +6,7 @@ from .global_logger import logger
 from . import prompt_template
 from .lpmmconfig import global_config, INVALID_ENTITY
 from .llm_client import LLMClient
-from .utils.json_fix import new_fix_broken_generated_json
+from src.chat.knowledge.utils.json_fix import new_fix_broken_generated_json
 
 
 def _entity_extract(llm_client: LLMClient, paragraph: str) -> List[str]:

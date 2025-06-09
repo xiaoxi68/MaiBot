@@ -32,6 +32,7 @@ from src.config.official_configs import (
     FocusChatProcessorConfig,
     MessageReceiveConfig,
     MaimMessageConfig,
+    LPMMKnowledgeConfig,
     RelationshipConfig,
 )
 
@@ -46,7 +47,7 @@ TEMPLATE_DIR = "template"
 
 # 考虑到，实际上配置文件中的mai_version是不会自动更新的,所以采用硬编码
 # 对该字段的更新，请严格参照语义化版本规范：https://semver.org/lang/zh-CN/
-MMC_VERSION = "0.7.2-snapshot.1"
+MMC_VERSION = "0.7.3-snapshot.1"
 
 
 def update_config():
@@ -161,6 +162,7 @@ class Config(ConfigBase):
     experimental: ExperimentalConfig
     model: ModelConfig
     maim_message: MaimMessageConfig
+    lpmm_knowledge: LPMMKnowledgeConfig
 
 
 def load_config(config_path: str) -> Config:

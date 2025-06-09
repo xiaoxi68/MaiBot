@@ -10,13 +10,13 @@ from time import sleep
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from src.chat.knowledge.src.lpmmconfig import PG_NAMESPACE, global_config
-from src.chat.knowledge.src.embedding_store import EmbeddingManager
-from src.chat.knowledge.src.llm_client import LLMClient
-from src.chat.knowledge.src.open_ie import OpenIE
-from src.chat.knowledge.src.kg_manager import KGManager
+from src.chat.knowledge.lpmmconfig import PG_NAMESPACE, global_config
+from src.chat.knowledge.embedding_store import EmbeddingManager
+from src.chat.knowledge.llm_client import LLMClient
+from src.chat.knowledge.open_ie import OpenIE
+from src.chat.knowledge.kg_manager import KGManager
 from src.common.logger import get_module_logger
-from src.chat.knowledge.src.utils.hash import get_sha256
+from src.chat.knowledge.utils.hash import get_sha256
 
 
 # 添加项目根目录到 sys.path

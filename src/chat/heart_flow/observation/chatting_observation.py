@@ -132,13 +132,17 @@ class ChattingObservation(Observation):
                 # logger.debug(f"找到的锚定消息：find_msg: {find_msg}")
                 break
             else:
-                similarity = difflib.SequenceMatcher(None, text, message["processed_plain_text"]).ratio()
+                raw_message = message.get("raw_message")
+                if raw_message:
+                    similarity = difflib.SequenceMatcher(None, text, raw_message).ratio()
+                else:
+                    similarity = difflib.SequenceMatcher(None, text, message.get("processed_plain_text", "")).ratio()
                 msg_list.append({"message": message, "similarity": similarity})
             # logger.debug(f"对锚定消息检查：message: {message['processed_plain_text']},similarity: {similarity}")
         if not find_msg:
             if msg_list:
                 msg_list.sort(key=lambda x: x["similarity"], reverse=True)
-                if msg_list[0]["similarity"] >= 0.5:  # 只返回相似度大于等于0.5的消息
+                if msg_list[0]["similarity"] >= 0.9:  # 只返回相似度大于等于0.5的消息
                     find_msg = msg_list[0]["message"]
                 else:
                     logger.debug("没有找到锚定消息,相似度低")
@@ -191,6 +195,7 @@ class ChattingObservation(Observation):
             "detailed_plain_text": find_msg.get("processed_plain_text"),
             "processed_plain_text": find_msg.get("processed_plain_text"),
         }
+        # print(f"message_dict: {message_dict}")
         find_rec_msg = MessageRecv(message_dict)
         # logger.debug(f"锚定消息处理后：find_rec_msg: {find_rec_msg}")
         return find_rec_msg

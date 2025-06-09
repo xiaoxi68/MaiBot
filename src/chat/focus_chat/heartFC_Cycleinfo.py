@@ -96,13 +96,14 @@ class CycleDetail:
                 or "group"
             )
 
-        current_time_minute = time.strftime("%Y%m%d_%H%M", time.localtime())
-        try:
-            self.log_cycle_to_file(
-                log_dir + self.prefix + f"/{current_time_minute}_cycle_" + str(self.cycle_id) + ".json"
-            )
-        except Exception as e:
-            logger.warning(f"写入文件日志，可能是群名称包含非法字符: {e}")
+        # current_time_minute = time.strftime("%Y%m%d_%H%M", time.localtime())
+        
+        # try:
+        #     self.log_cycle_to_file(
+        #         log_dir + self.prefix + f"/{current_time_minute}_cycle_" + str(self.cycle_id) + ".json"
+        #     )
+        # except Exception as e:
+        #     logger.warning(f"写入文件日志，可能是群名称包含非法字符: {e}")
 
     def log_cycle_to_file(self, file_path: str):
         """将循环信息写入文件"""

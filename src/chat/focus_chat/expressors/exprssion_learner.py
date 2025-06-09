@@ -29,13 +29,13 @@ def init_prompt() -> None:
 4. 思考有没有特殊的梗，一并总结成语言风格
 5. 例子仅供参考，请严格根据群聊内容总结!!!
 注意：总结成如下格式的规律，总结的内容要详细，但具有概括性：
-当"xxx"时，可以"xxx", xxx不超过10个字
+当"xxxxxx"时，可以"xxxxxx", xxxxxx不超过20个字
 
 例如：
-当"表示十分惊叹，有些意外"时，使用"我嘞个xxxx"
+当"对某件事表示十分惊叹，有些意外"时，使用"我嘞个xxxx"
 当"表示讽刺的赞同，不想讲道理"时，使用"对对对"
-当"想说明某个观点，但懒得明说，或者不便明说"，使用"懂的都懂"
-当"表示意外的夸赞，略带戏谑意味"时，使用"这么强！"
+当"想说明某个具体的事实观点，但懒得明说，或者不便明说，或表达一种默契"，使用"懂的都懂"
+当"当涉及游戏相关时，表示意外的夸赞，略带戏谑意味"时，使用"这么强！"
 
 注意不要总结你自己（SELF）的发言
 现在请你概括
@@ -70,7 +70,6 @@ class ExpressionLearner:
         self.express_learn_model: LLMRequest = LLMRequest(
             model=global_config.model.replyer_1,
             temperature=0.1,
-            max_tokens=256,
             request_type="expressor.learner",
         )
 
@@ -279,6 +278,39 @@ class ExpressionLearner:
                     new_expr["count"] = 1
                     new_expr["last_active_time"] = current_time
                     old_data.append(new_expr)
+            
+            # 处理超限问题
+            if len(old_data) > MAX_EXPRESSION_COUNT:
+                # 计算每个表达方式的权重（count的倒数，这样count越小的越容易被选中）
+                weights = [1 / (expr.get("count", 1) + 0.1) for expr in old_data]
+                
+                # 随机选择要移除的表达方式，避免重复索引
+                remove_count = len(old_data) - MAX_EXPRESSION_COUNT
+                
+                # 使用一种不会选到重复索引的方法
+                indices = list(range(len(old_data)))
+                
+                # 方法1：使用numpy.random.choice
+                # 把列表转成一个映射字典，保证不会有重复
+                remove_set = set()
+                total_attempts = 0
+                
+                # 尝试按权重随机选择，直到选够数量
+                while len(remove_set) < remove_count and total_attempts < len(old_data) * 2:
+                    idx = random.choices(indices, weights=weights, k=1)[0]
+                    remove_set.add(idx)
+                    total_attempts += 1
+                
+                # 如果没选够，随机补充
+                if len(remove_set) < remove_count:
+                    remaining = set(indices) - remove_set
+                    remove_set.update(random.sample(list(remaining), remove_count - len(remove_set)))
+                
+                remove_indices = list(remove_set)
+                
+                # 从后往前删除，避免索引变化
+                for idx in sorted(remove_indices, reverse=True):
+                    old_data.pop(idx)
             
             with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(old_data, f, ensure_ascii=False, indent=2)

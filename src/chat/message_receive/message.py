@@ -108,8 +108,8 @@ class MessageRecv(Message):
         self.raw_message = message_dict.get("raw_message")
 
         # 处理消息内容
-        self.processed_plain_text = ""  # 初始化为空字符串
-        self.detailed_plain_text = ""  # 初始化为空字符串
+        self.processed_plain_text = message_dict.get("processed_plain_text", "")  # 初始化为空字符串
+        self.detailed_plain_text = message_dict.get("detailed_plain_text", "")  # 初始化为空字符串
         self.is_emoji = False
 
     def update_chat_stream(self, chat_stream: "ChatStream"):
@@ -217,7 +217,9 @@ class MessageProcessBase(Message):
                 return f"[@{seg.data}]"
             elif seg.type == "reply":
                 if self.reply and hasattr(self.reply, "processed_plain_text"):
-                    return f"[回复：{self.reply.processed_plain_text}]"
+                    # print(f"self.reply.processed_plain_text: {self.reply.processed_plain_text}")
+                    # print(f"reply: {self.reply}")
+                    return f"[回复<{self.reply.message_info.user_info.user_nickname}:{self.reply.message_info.user_info.user_id}> 的消息：{self.reply.processed_plain_text}]"
                 return None
             else:
                 return f"[{seg.type}:{str(seg.data)}]"

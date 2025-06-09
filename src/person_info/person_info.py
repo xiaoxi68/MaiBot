@@ -8,7 +8,6 @@ import datetime
 import asyncio
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
-from src.individuality.individuality import individuality
 
 import json  # 新增导入
 from json_repair import repair_json
@@ -29,7 +28,7 @@ PersonInfoManager 类方法功能摘要：
 
 logger = get_logger("person_info")
 
-JSON_SERIALIZED_FIELDS = ["hobby", "hates", "meme", "relationship_others", "interaction"]
+JSON_SERIALIZED_FIELDS = ["points", "forgotten_points", "info_list"]
 
 person_info_default = {
     "person_id": None,
@@ -44,7 +43,7 @@ person_info_default = {
     # "user_cardname": None, # This field is not in Peewee model PersonInfo
     # "user_avatar": None,   # This field is not in Peewee model PersonInfo
     "impression": None, # Corrected from persion_impression
-    "interaction": None,
+    "info_list": None,
     "points": None,
     "forgotten_points": None,
     
@@ -57,7 +56,6 @@ class PersonInfoManager:
         # TODO: API-Adapter修改标记
         self.qv_name_llm = LLMRequest(
             model=global_config.model.utils,
-            max_tokens=256,
             request_type="relation.qv_name",
         )
         try:
@@ -169,9 +167,9 @@ class PersonInfoManager:
         processed_value = value
         if field_name in JSON_SERIALIZED_FIELDS:
             if isinstance(value, (list, dict)):
-                processed_value = json.dumps(value, ensure_ascii=False)
+                processed_value = json.dumps(value, ensure_ascii=False, indent=None)
             elif value is None: # Store None as "[]" for JSON list fields
-                processed_value = json.dumps([], ensure_ascii=False)
+                processed_value = json.dumps([], ensure_ascii=False, indent=None)
             # If value is already a string, assume it's pre-serialized or a non-JSON string.
 
         def _db_update_sync(p_id: str, f_name: str, val_to_set):
@@ -280,7 +278,7 @@ class PersonInfoManager:
 
         while current_try < max_retries:
             # prompt_personality = individuality.get_prompt(x_person=2, level=1)
-            bot_name = individuality.personality.bot_nickname
+            bot_name = global_config.bot.nickname
 
             qv_name_prompt = f"你是{bot_name}，一个伪装成人类的AI，你不能让别人发现这一点，"
             qv_name_prompt += f"现在你想给一个用户取一个昵称，用户的qq昵称是{user_nickname}，"
@@ -533,7 +531,6 @@ class PersonInfoManager:
                 "know_since": int(datetime.datetime.now().timestamp()),
                 "last_know": int(datetime.datetime.now().timestamp()),
                 "impression": None,
-                "interaction": None,
                 "points": [],
                 "forgotten_points": []
             }
