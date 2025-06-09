@@ -568,48 +568,72 @@ class MessageRetrievalScript:
         print(f"\n开始分析用户 {target_person_name} (QQ: {user_qq}) 的消息...")
         
         total_segments_processed = 0
-        total_memory_points = 0
         
-        # 为每个chat_id处理消息
+        # 收集所有分段并按时间排序
+        all_segments = []
+        
+        # 为每个chat_id处理消息，收集所有分段
         for chat_id, messages in grouped_messages.items():
             first_msg = messages[0]
             group_name = first_msg.get('chat_info_group_name', '私聊')
             
-            print(f"\n处理聊天: {group_name} (共{len(messages)}条消息)")
+            print(f"准备聊天: {group_name} (共{len(messages)}条消息)")
             
             # 将消息按50条分段
             message_chunks = self.split_messages_by_count(messages, 50)
             
             for i, chunk in enumerate(message_chunks):
-                print(f"  分析第 {i+1}/{len(message_chunks)} 段消息 (共{len(chunk)}条)")
-                
-                # 构建名称映射
-                name_mapping = await self.build_name_mapping(chunk, target_person_id, target_person_name)
-                
-                # 构建可读消息
-                readable_messages = self.build_focus_readable_messages(
-                    messages=chunk,
-                    target_person_id=target_person_id
-                )
-                
-                if not readable_messages:
-                    print(f"    跳过：该段落没有目标用户的消息")
-                    continue
-                
-                # 应用名称映射
-                for original_name, mapped_name in name_mapping.items():
-                    readable_messages = readable_messages.replace(f"{original_name}", f"{mapped_name}")
-                
-                # 使用最后一条消息的时间作为段落时间
+                # 将分段信息添加到列表中，包含分段时间用于排序
                 segment_time = chunk[-1]['time']
-                
-                # 更新用户印象
-                try:
-                    await self.update_person_impression_from_segment(target_person_id, readable_messages, segment_time)
-                    total_segments_processed += 1
-                except Exception as e:
-                    logger.error(f"处理段落时出错: {e}")
-                    print(f"    错误：处理该段落时出现异常")
+                all_segments.append({
+                    'chunk': chunk,
+                    'chat_id': chat_id,
+                    'group_name': group_name,
+                    'segment_index': i + 1,
+                    'total_segments': len(message_chunks),
+                    'segment_time': segment_time
+                })
+        
+        # 按时间排序所有分段
+        all_segments.sort(key=lambda x: x['segment_time'])
+        
+        print(f"\n按时间顺序处理 {len(all_segments)} 个分段:")
+        
+        # 按时间顺序处理所有分段
+        for segment_idx, segment_info in enumerate(all_segments, 1):
+            chunk = segment_info['chunk']
+            group_name = segment_info['group_name']
+            segment_index = segment_info['segment_index']
+            total_segments = segment_info['total_segments']
+            segment_time = segment_info['segment_time']
+            
+            segment_time_str = datetime.fromtimestamp(segment_time).strftime('%Y-%m-%d %H:%M:%S')
+            print(f"  [{segment_idx}/{len(all_segments)}] {group_name} 第{segment_index}/{total_segments}段 ({segment_time_str}) (共{len(chunk)}条)")
+            
+            # 构建名称映射
+            name_mapping = await self.build_name_mapping(chunk, target_person_id, target_person_name)
+            
+            # 构建可读消息
+            readable_messages = self.build_focus_readable_messages(
+                messages=chunk,
+                target_person_id=target_person_id
+            )
+            
+            if not readable_messages:
+                print(f"    跳过：该段落没有目标用户的消息")
+                continue
+            
+            # 应用名称映射
+            for original_name, mapped_name in name_mapping.items():
+                readable_messages = readable_messages.replace(f"{original_name}", f"{mapped_name}")
+            
+            # 更新用户印象
+            try:
+                await self.update_person_impression_from_segment(target_person_id, readable_messages, segment_time)
+                total_segments_processed += 1
+            except Exception as e:
+                logger.error(f"处理段落时出错: {e}")
+                print(f"    错误：处理该段落时出现异常")
         
         # 获取最终统计
         final_points = await person_info_manager.get_value(target_person_id, "points") or []
