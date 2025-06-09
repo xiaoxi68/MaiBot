@@ -146,9 +146,9 @@ class RelationshipProcessor(BaseProcessor):
             time_elapsed = current_time - record["start_time"]
             message_count = len(get_raw_msg_by_timestamp_with_chat(self.subheartflow_id, record["start_time"], current_time))
             
-            if (record["rounds"] > 20 or 
+            if (record["rounds"] > 50 or 
                 time_elapsed > 1800 or  # 30分钟
-                message_count > 50):
+                message_count > 75):
                 logger.info(f"{self.log_prefix} 用户 {record['person_id']} 满足关系构建条件，开始构建关系。")
                 asyncio.create_task(
                     self.update_impression_on_cache_expiry(

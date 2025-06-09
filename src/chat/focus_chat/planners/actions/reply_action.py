@@ -32,6 +32,7 @@ class ReplyAction(BaseAction):
     action_require: list[str] = [
         "你想要闲聊或者随便附和",
         "有人提到你",
+        "如果你刚刚回复，不要对同一个话题重复回应"
     ]
 
     associated_types: list[str] = ["text", "emoji"]

@@ -241,7 +241,8 @@ class RelationshipManager:
             readable_messages = readable_messages.replace(f"{original_name}", f"{mapped_name}")
         
         prompt = f"""
-你的名字是{global_config.bot.nickname}，别名是{alias_str}。
+你的名字是{global_config.bot.nickname}，{global_config.bot.nickname}的别名是{alias_str}。
+请不要混淆你自己和{global_config.bot.nickname}和{person_name}。
 请你基于用户 {person_name}(昵称:{nickname}) 的最近发言，总结出其中是否有有关{person_name}的内容引起了你的兴趣，或者有什么需要你记忆的点。
 如果没有，就输出none
 
@@ -432,8 +433,10 @@ class RelationshipManager:
                 impression = await person_info_manager.get_value(person_id, "impression") or ""
                 
                 compress_prompt = f"""
-你的名字是{global_config.bot.nickname}，别名是{alias_str}。
-请根据以下历史记录，添加，修改，整合，原有的印象和关系，总结出对{person_name}(昵称:{nickname})的信息。
+你的名字是{global_config.bot.nickname}，{global_config.bot.nickname}的别名是{alias_str}。
+请不要混淆你自己和{global_config.bot.nickname}和{person_name}。
+
+请根据以下历史记录，添加，修改，整合，原有的印象和关系，总结出对用户 {person_name}(昵称:{nickname})的信息。
 
 你之前对他的印象和关系是：
 印象impression：{impression}
