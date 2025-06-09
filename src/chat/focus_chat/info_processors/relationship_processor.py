@@ -146,10 +146,18 @@ class RelationshipProcessor(BaseProcessor):
             time_elapsed = current_time - record["start_time"]
             message_count = len(get_raw_msg_by_timestamp_with_chat(self.subheartflow_id, record["start_time"], current_time))
             
-            if (record["rounds"] > 50 or 
-                time_elapsed > 1800 or  # 30分钟
-                message_count > 75):
-                logger.info(f"{self.log_prefix} 用户 {record['person_id']} 满足关系构建条件，开始构建关系。")
+            print(record)
+            
+            # 根据消息数量和时间设置不同的触发条件
+            should_trigger = (
+                message_count >= 50 or  # 50条消息必定满足
+                (message_count >= 35 and time_elapsed >= 600) or  # 35条且10分钟
+                (message_count >= 25 and time_elapsed >= 1800) or  # 25条且30分钟
+                (message_count >= 10 and time_elapsed >= 3600)  # 10条且1小时
+            )
+            
+            if should_trigger:
+                logger.info(f"{self.log_prefix} 用户 {record['person_id']} 满足关系构建条件，开始构建关系。消息数：{message_count}，时长：{time_elapsed:.0f}秒")
                 asyncio.create_task(
                     self.update_impression_on_cache_expiry(
                         record["person_id"], 
@@ -228,11 +236,14 @@ class RelationshipProcessor(BaseProcessor):
                     
                     logger.info(f"{self.log_prefix} 调取用户 {person_name} 的 {info_type} 信息。")
                     
-                    self.person_engaged_cache.append({
-                        "person_id": person_id,
-                        "start_time": time.time(),
-                        "rounds": 0
-                    })
+                    # 检查person_engaged_cache中是否已存在该person_id
+                    person_exists = any(record["person_id"] == person_id for record in self.person_engaged_cache)
+                    if not person_exists:
+                        self.person_engaged_cache.append({
+                            "person_id": person_id,
+                            "start_time": time.time(),
+                            "rounds": 0
+                        })
                     asyncio.create_task(self.fetch_person_info(person_id, [info_type], start_time=time.time()))
 
             else:

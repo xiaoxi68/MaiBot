@@ -315,3 +315,4 @@ run_pet.bat
 !/src/plugins/tts_plugin/
 !/src/plugins/vtb_action/
 !/src/plugins/__init__.py
+!/src/plugins/example_commands/
