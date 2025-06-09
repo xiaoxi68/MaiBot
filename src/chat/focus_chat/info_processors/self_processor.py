@@ -133,6 +133,9 @@ class SelfProcessor(BaseProcessor):
         name_block = f"你的名字是{global_config.bot.nickname},你的昵称有{nickname_str}，有人也会用这些昵称称呼你。"
 
         personality_block = individuality.get_personality_prompt(x_person=2, level=2)
+        
+    
+        
         identity_block = individuality.get_identity_prompt(x_person=2, level=2)
 
         prompt = (await global_prompt_manager.get_prompt_async("indentify_prompt")).format(
