@@ -193,8 +193,9 @@ class MindProcessor(BaseProcessor):
         # 获取个性化信息
 
         relation_prompt = ""
-        for person in person_list:
-            relation_prompt += await relationship_manager.build_relationship_info(person, is_id=True)
+        if global_config.relationship.enable_relationship:
+            for person in person_list:
+                relation_prompt += await relationship_manager.build_relationship_info(person, is_id=True)
 
         template_name = "sub_heartflow_prompt_before" if is_group_chat else "sub_heartflow_prompt_private_before"
         logger.debug(f"{self.log_prefix} 使用{'群聊' if is_group_chat else '私聊'}思考模板")

@@ -49,6 +49,8 @@ class IdentityConfig(ConfigBase):
 @dataclass
 class RelationshipConfig(ConfigBase):
     """关系配置类"""
+    
+    enable_relationship: bool = True
 
     give_name: bool = False
     """是否给其他人取名"""
@@ -220,6 +222,8 @@ class EmojiConfig(ConfigBase):
 @dataclass
 class MemoryConfig(ConfigBase):
     """记忆配置类"""
+    
+    enable_memory: bool = True
 
     memory_build_interval: int = 600
     """记忆构建间隔（秒）"""

@@ -1655,21 +1655,9 @@ class ParahippocampalGyrus:
 
 
 class HippocampusManager:
-    _instance = None
-    _hippocampus = None
-    _initialized = False
-
-    @classmethod
-    def get_instance(cls):
-        if cls._instance is None:
-            cls._instance = cls()
-        return cls._instance
-
-    @classmethod
-    def get_hippocampus(cls):
-        if not cls._initialized:
-            raise RuntimeError("HippocampusManager 尚未初始化，请先调用 initialize 方法")
-        return cls._hippocampus
+    def __init__(self):
+        self._hippocampus = None
+        self._initialized = False
 
     def initialize(self):
         """初始化海马体实例"""
@@ -1693,6 +1681,11 @@ class HippocampusManager:
                     记忆图统计信息: 节点数量: {node_count}, 连接数量: {edge_count}
                     --------------------------------""")  # noqa: E501
 
+        return self._hippocampus
+
+    def get_hippocampus(self):
+        if not self._initialized:
+            raise RuntimeError("HippocampusManager 尚未初始化，请先调用 initialize 方法")
         return self._hippocampus
 
     async def build_memory(self):
@@ -1772,3 +1765,7 @@ class HippocampusManager:
         if not self._initialized:
             raise RuntimeError("HippocampusManager 尚未初始化，请先调用 initialize 方法")
         return self._hippocampus.get_all_node_names()
+
+
+# 创建全局实例
+hippocampus_manager = HippocampusManager()

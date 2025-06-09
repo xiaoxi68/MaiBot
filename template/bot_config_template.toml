@@ -1,5 +1,5 @@
 [inner]
-version = "2.16.0"
+version = "2.17.0"
 
 #----以下是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 #如果你想要修改配置文件，请在修改后将version的值进行变更
@@ -45,7 +45,7 @@ enable_expression_learning = false # 是否启用表达学习，麦麦会学习�
 learning_interval = 600 # 学习间隔 单位秒
 
 [relationship]
-give_name = true # 麦麦是否给其他人取名
+enable_relationship = true # 是否启用关系系统
 
 [chat] #麦麦的聊天通用设置
 chat_mode = "normal" # 聊天模式 —— 普通模式：normal，专注模式：focus，在普通模式和专注模式之间自动切换
@@ -114,6 +114,7 @@ content_filtration = false  # 是否启用表情包过滤，只有符合该要�
 filtration_prompt = "符合公序良俗" # 表情包过滤要求，只有符合该要求的表情包才会被保存
 
 [memory]
+enable_memory = true # 是否启用记忆系统
 memory_build_interval = 1000 # 记忆构建间隔 单位秒   间隔越低，麦麦学习越多，但是冗余信息也会增多
 memory_build_distribution = [6.0, 3.0, 0.6, 32.0, 12.0, 0.4] # 记忆构建分布，参数：分布1均值，标准差，权重，分布2均值，标准差，权重
 memory_build_sample_num = 4 # 采样数量，数值越高记忆采样次数越多

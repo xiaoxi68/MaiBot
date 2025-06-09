@@ -51,7 +51,7 @@ PROCESSOR_CLASSES = {
     "ToolProcessor": (ToolProcessor, "tool_use_processor"),
     "WorkingMemoryProcessor": (WorkingMemoryProcessor, "working_memory_processor"),
     "SelfProcessor": (SelfProcessor, "self_identify_processor"),
-    "RelationshipProcessor": (RelationshipProcessor, "relationship_processor"),
+    "RelationshipProcessor": (RelationshipProcessor, "relation_processor"),
 }
 
 logger = get_logger("hfc")  # Logger Name Changed
@@ -108,10 +108,18 @@ class HeartFChatting:
         
         # 根据配置文件和默认规则确定启用的处理器
         config_processor_settings = global_config.focus_chat_processor
-        self.enabled_processor_names = [
-            proc_name for proc_name, (_proc_class, config_key) in PROCESSOR_CLASSES.items()
-            if not config_key or getattr(config_processor_settings, config_key, True)
-        ]
+        self.enabled_processor_names = []
+        
+        for proc_name, (_proc_class, config_key) in PROCESSOR_CLASSES.items():
+            # 对于关系处理器，需要同时检查两个配置项
+            if proc_name == "RelationshipProcessor":
+                if (global_config.relationship.enable_relationship and 
+                    getattr(config_processor_settings, config_key, True)):
+                    self.enabled_processor_names.append(proc_name)
+            else:
+                # 其他处理器的原有逻辑
+                if not config_key or getattr(config_processor_settings, config_key, True):
+                    self.enabled_processor_names.append(proc_name)
 
         # logger.info(f"{self.log_prefix} 将启用的处理器: {self.enabled_processor_names}")
         

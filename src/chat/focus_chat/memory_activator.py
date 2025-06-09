@@ -6,7 +6,7 @@ from src.config.config import global_config
 from src.common.logger_manager import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from datetime import datetime
-from src.chat.memory_system.Hippocampus import HippocampusManager
+from src.chat.memory_system.Hippocampus import hippocampus_manager
 from typing import List, Dict
 import difflib
 import json
@@ -87,6 +87,10 @@ class MemoryActivator:
         Returns:
             List[Dict]: 激活的记忆列表
         """
+        # 如果记忆系统被禁用，直接返回空列表
+        if not global_config.memory.enable_memory:
+            return []
+            
         obs_info_text = ""
         for observation in observations:
             if isinstance(observation, ChattingObservation):
@@ -128,10 +132,10 @@ class MemoryActivator:
             logger.debug(f"当前激活的记忆关键词: {self.cached_keywords}")
 
         # 调用记忆系统获取相关记忆
-        related_memory = await HippocampusManager.get_instance().get_memory_from_topic(
+        related_memory = await hippocampus_manager.get_memory_from_topic(
             valid_keywords=keywords, max_memory_num=3, max_memory_length=2, max_depth=3
         )
-        # related_memory = await HippocampusManager.get_instance().get_memory_from_text(
+        # related_memory = await hippocampus_manager.get_memory_from_text(
         #     text=obs_info_text, max_memory_num=5, max_memory_length=2, max_depth=3, fast_retrieval=False
         # )
 

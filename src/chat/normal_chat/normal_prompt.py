@@ -7,7 +7,7 @@ from src.person_info.relationship_manager import relationship_manager
 import time
 from src.chat.utils.utils import get_recent_group_speaker
 from src.manager.mood_manager import mood_manager
-from src.chat.memory_system.Hippocampus import HippocampusManager
+from src.chat.memory_system.Hippocampus import hippocampus_manager
 from src.chat.knowledge.knowledge_lib import qa_manager
 from src.chat.focus_chat.expressors.exprssion_learner import expression_learner
 import random
@@ -112,8 +112,9 @@ class PromptBuilder:
             )
 
         relation_prompt = ""
-        for person in who_chat_in_group:
-            relation_prompt += await relationship_manager.build_relationship_info(person)
+        if global_config.relationship.enable_relationship:
+            for person in who_chat_in_group:
+                relation_prompt += await relationship_manager.build_relationship_info(person)
 
         mood_prompt = mood_manager.get_mood_prompt()
 
@@ -159,17 +160,18 @@ class PromptBuilder:
         )[0]
         memory_prompt = ""
 
-        related_memory = await HippocampusManager.get_instance().get_memory_from_text(
-            text=message_txt, max_memory_num=2, max_memory_length=2, max_depth=3, fast_retrieval=False
-        )
-
-        related_memory_info = ""
-        if related_memory:
-            for memory in related_memory:
-                related_memory_info += memory[1]
-            memory_prompt = await global_prompt_manager.format_prompt(
-                "memory_prompt", related_memory_info=related_memory_info
+        if global_config.memory.enable_memory:
+            related_memory = await hippocampus_manager.get_memory_from_text(
+                text=message_txt, max_memory_num=2, max_memory_length=2, max_depth=3, fast_retrieval=False
             )
+
+            related_memory_info = ""
+            if related_memory:
+                for memory in related_memory:
+                    related_memory_info += memory[1]
+                memory_prompt = await global_prompt_manager.format_prompt(
+                    "memory_prompt", related_memory_info=related_memory_info
+                )
 
         message_list_before_now = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_stream.stream_id,

@@ -9,7 +9,6 @@ from .chat.emoji_system.emoji_manager import emoji_manager
 from .chat.normal_chat.willing.willing_manager import willing_manager
 from .chat.message_receive.chat_stream import chat_manager
 from src.chat.heart_flow.heartflow import heartflow
-from .chat.memory_system.Hippocampus import HippocampusManager
 from .chat.message_receive.message_sender import message_manager
 from .chat.message_receive.storage import MessageStorage
 from .config.config import global_config
@@ -23,6 +22,10 @@ from .api.main import start_api_server
 # 导入actions模块，确保装饰器被执行
 import src.chat.actions.default_actions  # noqa
 
+# 条件导入记忆系统
+if global_config.memory.enable_memory:
+    from .chat.memory_system.Hippocampus import hippocampus_manager
+
 # 加载插件actions
 import importlib
 import pkgutil
@@ -35,7 +38,12 @@ logger = get_logger("main")
 
 class MainSystem:
     def __init__(self):
-        self.hippocampus_manager: HippocampusManager = HippocampusManager.get_instance()
+        # 根据配置条件性地初始化记忆系统
+        if global_config.memory.enable_memory:
+            self.hippocampus_manager = hippocampus_manager
+        else:
+            self.hippocampus_manager = None
+            
         self.individuality: Individuality = individuality
 
         # 使用消息API替代直接的FastAPI实例
@@ -90,8 +98,14 @@ class MainSystem:
         await chat_manager._initialize()
         asyncio.create_task(chat_manager._auto_save_task())
 
-        # 使用HippocampusManager初始化海马体
-        self.hippocampus_manager.initialize()
+        # 根据配置条件性地初始化记忆系统
+        if global_config.memory.enable_memory:
+            if self.hippocampus_manager:
+                self.hippocampus_manager.initialize()
+                logger.success("记忆系统初始化成功")
+        else:
+            logger.info("记忆系统已禁用，跳过初始化")
+
         # await asyncio.sleep(0.5) #防止logger输出飞了
 
         # 将bot.py中的chat_bot.message_process消息处理函数注册到api.py的消息处理基类中
@@ -201,43 +215,47 @@ class MainSystem:
         """调度定时任务"""
         while True:
             tasks = [
-                self.build_memory_task(),
-                self.forget_memory_task(),
-                self.consolidate_memory_task(),
-                self.learn_and_store_expression_task(),
-                self.remove_recalled_message_task(),
                 emoji_manager.start_periodic_check_register(),
+                self.remove_recalled_message_task(),
                 self.app.run(),
                 self.server.run(),
             ]
+            
+            # 根据配置条件性地添加记忆系统相关任务
+            if global_config.memory.enable_memory and self.hippocampus_manager:
+                tasks.extend([
+                    self.build_memory_task(),
+                    self.forget_memory_task(),
+                    self.consolidate_memory_task(),
+                ])
+            
+            tasks.append(self.learn_and_store_expression_task())
+            
             await asyncio.gather(*tasks)
 
-    @staticmethod
-    async def build_memory_task():
+    async def build_memory_task(self):
         """记忆构建任务"""
         while True:
             await asyncio.sleep(global_config.memory.memory_build_interval)
             logger.info("正在进行记忆构建")
-            await HippocampusManager.get_instance().build_memory()
+            await self.hippocampus_manager.build_memory()
 
-    @staticmethod
-    async def forget_memory_task():
+    async def forget_memory_task(self):
         """记忆遗忘任务"""
         while True:
             await asyncio.sleep(global_config.memory.forget_memory_interval)
             logger.info("[记忆遗忘] 开始遗忘记忆...")
-            await HippocampusManager.get_instance().forget_memory(
+            await self.hippocampus_manager.forget_memory(
                 percentage=global_config.memory.memory_forget_percentage
             )
             logger.info("[记忆遗忘] 记忆遗忘完成")
 
-    @staticmethod
-    async def consolidate_memory_task():
+    async def consolidate_memory_task(self):
         """记忆整合任务"""
         while True:
             await asyncio.sleep(global_config.memory.consolidate_memory_interval)
             logger.info("[记忆整合] 开始整合记忆...")
-            await HippocampusManager.get_instance().consolidate_memory()
+            await self.hippocampus_manager.consolidate_memory()
             logger.info("[记忆整合] 记忆整合完成")
 
     @staticmethod
