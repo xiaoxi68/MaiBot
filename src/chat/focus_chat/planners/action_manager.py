@@ -60,6 +60,13 @@ class ActionManager:
                 action_require: list[str] = getattr(action_class, "action_require", [])
                 associated_types: list[str] = getattr(action_class, "associated_types", [])
                 is_default: bool = getattr(action_class, "default", False)
+                
+                # 获取激活类型相关属性
+                activation_type: str = getattr(action_class, "action_activation_type", "always")
+                random_probability: float = getattr(action_class, "random_activation_probability", 0.3)
+                llm_judge_prompt: str = getattr(action_class, "llm_judge_prompt", "")
+                activation_keywords: list[str] = getattr(action_class, "activation_keywords", [])
+                keyword_case_sensitive: bool = getattr(action_class, "keyword_case_sensitive", False)
 
                 if action_name and action_description:
                     # 创建动作信息字典
@@ -68,6 +75,11 @@ class ActionManager:
                         "parameters": action_parameters,
                         "require": action_require,
                         "associated_types": associated_types,
+                        "activation_type": activation_type,
+                        "random_probability": random_probability,
+                        "llm_judge_prompt": llm_judge_prompt,
+                        "activation_keywords": activation_keywords,
+                        "keyword_case_sensitive": keyword_case_sensitive,
                     }
 
                     # 添加到所有已注册的动作

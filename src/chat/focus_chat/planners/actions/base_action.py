@@ -8,6 +8,12 @@ logger = get_logger("base_action")
 _ACTION_REGISTRY: Dict[str, Type["BaseAction"]] = {}
 _DEFAULT_ACTIONS: Dict[str, str] = {}
 
+# 动作激活类型枚举
+class ActionActivationType:
+    ALWAYS = "always"  # 默认参与到planner
+    LLM_JUDGE = "llm_judge"  # LLM判定是否启动该action到planner  
+    RANDOM = "random"  # 随机启用action到planner
+    KEYWORD = "keyword"  # 关键词触发启用action到planner
 
 def register_action(cls):
     """
@@ -18,6 +24,7 @@ def register_action(cls):
         class MyAction(BaseAction):
             action_name = "my_action"
             action_description = "我的动作"
+            action_activation_type = ActionActivationType.ALWAYS
             ...
     """
     # 检查类是否有必要的属性
@@ -65,6 +72,17 @@ class BaseAction(ABC):
         self.action_description: str = "基础动作"
         self.action_parameters: dict = {}
         self.action_require: list[str] = []
+        
+        # 动作激活类型，默认为always
+        self.action_activation_type: str = ActionActivationType.ALWAYS
+        # 随机激活的概率(0.0-1.0)，仅当activation_type为random时有效
+        self.random_activation_probability: float = 0.3
+        # LLM判定的提示词，仅当activation_type为llm_judge时有效
+        self.llm_judge_prompt: str = ""
+        # 关键词触发列表，仅当activation_type为keyword时有效
+        self.activation_keywords: list[str] = []
+        # 关键词匹配是否区分大小写
+        self.keyword_case_sensitive: bool = False
 
         self.associated_types: list[str] = []
 

@@ -2,7 +2,7 @@ import asyncio
 import traceback
 from src.common.logger_manager import get_logger
 from src.chat.utils.timer_calculator import Timer
-from src.chat.focus_chat.planners.actions.base_action import BaseAction, register_action
+from src.chat.focus_chat.planners.actions.base_action import BaseAction, register_action, ActionActivationType
 from typing import Tuple, List
 from src.chat.heart_flow.observation.observation import Observation
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
@@ -29,6 +29,9 @@ class NoReplyAction(BaseAction):
         "想要休息一下",
     ]
     default = True
+    
+    # 激活类型设置
+    action_activation_type = ActionActivationType.ALWAYS
 
     def __init__(
         self,

@@ -15,6 +15,7 @@ from src.common.logger_manager import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.individuality.individuality import individuality
 from src.chat.focus_chat.planners.action_manager import ActionManager
+from src.chat.focus_chat.planners.modify_actions import ActionModifier
 from json_repair import repair_json
 from src.chat.focus_chat.planners.base_planner import BasePlanner
 from datetime import datetime
@@ -141,8 +142,18 @@ class ActionPlanner(BasePlanner):
                 # elif not isinstance(info, ActionInfo):  # 跳过已处理的ActionInfo
                 # extra_info.append(info.get_processed_info())
 
-            # 获取当前可用的动作
-            current_available_actions = self.action_manager.get_using_actions()
+            # 获取经过modify_actions处理后的最终可用动作集
+            # 注意：动作的激活判定现在在主循环的modify_actions中完成
+            current_available_actions_dict = self.action_manager.get_using_actions()
+            
+            # 获取完整的动作信息
+            all_registered_actions = self.action_manager.get_registered_actions()
+            current_available_actions = {}
+            for action_name in current_available_actions_dict.keys():
+                if action_name in all_registered_actions:
+                    current_available_actions[action_name] = all_registered_actions[action_name]
+                else:
+                    logger.warning(f"{self.log_prefix}使用中的动作 {action_name} 未在已注册动作中找到")
 
             # 如果没有可用动作或只有no_reply动作，直接返回no_reply
             if not current_available_actions or (

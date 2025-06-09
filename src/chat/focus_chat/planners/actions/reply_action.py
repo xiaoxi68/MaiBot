@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 from src.common.logger_manager import get_logger
-from src.chat.focus_chat.planners.actions.base_action import BaseAction, register_action
+from src.chat.focus_chat.planners.actions.base_action import BaseAction, register_action, ActionActivationType
 from typing import Tuple, List
 from src.chat.heart_flow.observation.observation import Observation
 from src.chat.focus_chat.replyer.default_replyer import DefaultReplyer
@@ -38,6 +38,9 @@ class ReplyAction(BaseAction):
     associated_types: list[str] = ["text", "emoji"]
 
     default = True
+    
+    # 激活类型设置
+    action_activation_type = ActionActivationType.ALWAYS
 
     def __init__(
         self,

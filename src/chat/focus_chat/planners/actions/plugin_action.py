@@ -1,6 +1,6 @@
 import traceback
 from typing import Tuple, Dict, List, Any, Optional, Union, Type
-from src.chat.focus_chat.planners.actions.base_action import BaseAction, register_action  # noqa F401
+from src.chat.focus_chat.planners.actions.base_action import BaseAction, register_action, ActionActivationType  # noqa F401
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 from src.chat.focus_chat.hfc_utils import create_empty_anchor_message
 from src.common.logger_manager import get_logger
@@ -33,6 +33,13 @@ class PluginAction(BaseAction):
     """
 
     action_config_file_name: Optional[str] = None  # 插件可以覆盖此属性来指定配置文件名
+    
+    # 默认激活类型设置，插件可以覆盖
+    action_activation_type = ActionActivationType.ALWAYS
+    random_activation_probability: float = 0.3
+    llm_judge_prompt: str = ""
+    activation_keywords: list[str] = []
+    keyword_case_sensitive: bool = False
 
     def __init__(
         self,
