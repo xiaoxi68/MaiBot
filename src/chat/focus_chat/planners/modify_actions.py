@@ -6,7 +6,7 @@ from src.chat.heart_flow.observation.chatting_observation import ChattingObserva
 from src.chat.message_receive.chat_stream import chat_manager
 from src.config.config import global_config
 from src.llm_models.utils_model import LLMRequest
-from src.chat.focus_chat.planners.actions.base_action import ActionActivationType
+from src.chat.focus_chat.planners.actions.base_action import ActionActivationType, ChatMode
 import random
 import asyncio
 import hashlib
@@ -29,7 +29,7 @@ class ActionModifier:
     def __init__(self, action_manager: ActionManager):
         """初始化动作处理器"""
         self.action_manager = action_manager
-        self.all_actions = self.action_manager.get_registered_actions()
+        self.all_actions = self.action_manager.get_using_actions_for_mode(ChatMode.FOCUS)
         
         # 用于LLM判定的小模型
         self.llm_judge = LLMRequest(
@@ -78,7 +78,8 @@ class ActionModifier:
             # 处理HFCloopObservation - 传统的循环历史分析
             if hfc_obs:
                 obs = hfc_obs
-                all_actions = self.all_actions
+                # 获取适用于FOCUS模式的动作
+                all_actions = self.action_manager.get_using_actions_for_mode(ChatMode.FOCUS)
                 action_changes = await self.analyze_loop_actions(obs)
                 if action_changes["add"] or action_changes["remove"]:
                     # 合并动作变更
@@ -129,9 +130,9 @@ class ActionModifier:
         if chat_content is not None:
             logger.debug(f"{self.log_prefix}开始激活类型判定阶段")
             
-            # 获取当前使用的动作集（经过第一阶段处理）
+            # 获取当前使用的动作集（经过第一阶段处理，且适用于FOCUS模式）
             current_using_actions = self.action_manager.get_using_actions()
-            all_registered_actions = self.action_manager.get_registered_actions()
+            all_registered_actions = self.action_manager.get_using_actions_for_mode(ChatMode.FOCUS)
             
             # 构建完整的动作信息
             current_actions_with_info = {}
@@ -157,7 +158,7 @@ class ActionModifier:
                     # 确定移除原因
                     if action_name in all_registered_actions:
                         action_info = all_registered_actions[action_name]
-                        activation_type = action_info.get("activation_type", ActionActivationType.ALWAYS)
+                        activation_type = action_info.get("focus_activation_type", ActionActivationType.ALWAYS)
                         
                         if activation_type == ActionActivationType.RANDOM:
                             probability = action_info.get("random_probability", 0.3)
@@ -207,7 +208,7 @@ class ActionModifier:
         keyword_actions = {}
         
         for action_name, action_info in actions_with_info.items():
-            activation_type = action_info.get("activation_type", ActionActivationType.ALWAYS)
+            activation_type = action_info.get("focus_activation_type", ActionActivationType.ALWAYS)
             
             if activation_type == ActionActivationType.ALWAYS:
                 always_actions[action_name] = action_info
@@ -433,6 +434,7 @@ class ActionModifier:
             action_require = action_info.get("require", [])
             custom_prompt = action_info.get("llm_judge_prompt", "")
             
+            
             # 构建基础判定提示词
             base_prompt = f"""
 你需要判断在当前聊天情况下，是否应该激活名为"{action_name}"的动作。
@@ -462,7 +464,7 @@ class ActionModifier:
             # 解析响应
             response = response.strip().lower()
             
-            print(base_prompt)
+            # print(base_prompt)
             print(f"LLM判定动作 {action_name}：响应='{response}'")
             
             

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 from src.common.logger_manager import get_logger
-from src.chat.focus_chat.planners.actions.base_action import BaseAction, register_action, ActionActivationType
+from src.chat.focus_chat.planners.actions.base_action import BaseAction, register_action, ActionActivationType, ChatMode
 from typing import Tuple, List
 from src.chat.heart_flow.observation.observation import Observation
 from src.chat.focus_chat.replyer.default_replyer import DefaultReplyer
@@ -26,21 +26,23 @@ class ReplyAction(BaseAction):
     action_name: str = "reply"
     action_description: str = "当你想要参与回复或者聊天"
     action_parameters: dict[str:str] = {
-        "reply_to": "如果是明确回复某个人的发言，请在reply_to参数中指定，格式：（用户名:发言内容），如果不是，reply_to的值设为none",
-        "emoji": "如果你想用表情包辅助你的回答，请在emoji参数中用文字描述你想要发送的表情包内容，如果没有，值设为空",
+        "reply_to": "如果是明确回复某个人的发言，请在reply_to参数中指定，格式：（用户名:发言内容），如果不是，reply_to的值设为none"
     }
     action_require: list[str] = [
         "你想要闲聊或者随便附和",
         "有人提到你",
-        "如果你刚刚回复，不要对同一个话题重复回应"
+        "如果你刚刚进行了回复，不要对同一个话题重复回应"
     ]
 
-    associated_types: list[str] = ["text", "emoji"]
+    associated_types: list[str] = ["text"]
 
-    default = True
+    enable_plugin = True
     
     # 激活类型设置
-    action_activation_type = ActionActivationType.ALWAYS
+    focus_activation_type = ActionActivationType.ALWAYS
+    
+    # 模式启用设置 - 回复动作只在Focus模式下使用
+    mode_enable = ChatMode.FOCUS
 
     def __init__(
         self,
@@ -105,7 +107,6 @@ class ReplyAction(BaseAction):
         {
             "text": "你好啊"  # 文本内容列表（可选）
             "target": "锚定消息",  # 锚定消息的文本内容
-            "emojis": "微笑"  # 表情关键词列表（可选）
         }
         """
         logger.info(f"{self.log_prefix} 决定回复: {self.reasoning}")

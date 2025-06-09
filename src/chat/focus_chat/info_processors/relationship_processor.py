@@ -33,8 +33,8 @@ def init_prompt():
 </调取记录>
 
 {name_block}
-请你阅读聊天记录，查看是否需要调取某个人的信息。
-你不同程度上认识群聊里的人，你可以根据聊天记录，回忆起有关他们的信息，帮助你参与聊天
+请你阅读聊天记录，查看是否需要调取某个人的信息，这个人可以是出现在聊天记录中的，也可以是记录中提到的人。
+你不同程度上认识群聊里的人，以及他们谈论到的人，你可以根据聊天记录，回忆起有关他们的信息，帮助你参与聊天
 1.你需要提供用户名，以及你想要提取的信息名称类型来进行调取
 2.你也可以完全不输出任何信息
 3.阅读调取记录，如果已经回忆过某个人的信息，请不要重复调取，除非你忘记了
@@ -205,10 +205,10 @@ class RelationshipProcessor(BaseProcessor):
         )
         
         try:
-            # logger.info(f"{self.log_prefix} 人物信息prompt: \n{prompt}\n")
+            logger.info(f"{self.log_prefix} 人物信息prompt: \n{prompt}\n")
             content, _ = await self.llm_model.generate_response_async(prompt=prompt)
             if content:
-                # print(f"content: {content}")
+                print(f"content: {content}")
                 content_json = json.loads(repair_json(content))
 
                 for person_name, info_type in content_json.items():

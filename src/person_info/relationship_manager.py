@@ -125,7 +125,6 @@ class RelationshipManager:
         if not person_name or person_name == "none":
             return ""
         impression = await person_info_manager.get_value(person_id, "impression")
-        interaction = await person_info_manager.get_value(person_id, "interaction")
         points = await person_info_manager.get_value(person_id, "points") or []
         
         if isinstance(points, str):
@@ -141,11 +140,9 @@ class RelationshipManager:
         relation_prompt = f"'{person_name}' ，ta在{platform}上的昵称是{nickname_str}。"
         
 
-        if impression:
-            relation_prompt += f"你对ta的印象是：{impression}。"
-            
-        if interaction:
-            relation_prompt += f"你与ta的关系是：{interaction}。"
+        # if impression:
+            # relation_prompt += f"你对ta的印象是：{impression}。"
+
             
         if random_points:
             for point in random_points:

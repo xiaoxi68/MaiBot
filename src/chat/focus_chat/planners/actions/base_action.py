@@ -15,6 +15,12 @@ class ActionActivationType:
     RANDOM = "random"  # 随机启用action到planner
     KEYWORD = "keyword"  # 关键词触发启用action到planner
 
+# 聊天模式枚举
+class ChatMode:
+    FOCUS = "focus"  # Focus聊天模式
+    NORMAL = "normal"  # Normal聊天模式
+    ALL = "all"  # 所有聊天模式
+
 def register_action(cls):
     """
     动作注册装饰器
@@ -24,7 +30,10 @@ def register_action(cls):
         class MyAction(BaseAction):
             action_name = "my_action"
             action_description = "我的动作"
-            action_activation_type = ActionActivationType.ALWAYS
+            focus_activation_type = ActionActivationType.ALWAYS
+            normal_activation_type = ActionActivationType.ALWAYS
+            mode_enable = ChatMode.ALL
+            parallel_action = False
             ...
     """
     # 检查类是否有必要的属性
@@ -34,7 +43,7 @@ def register_action(cls):
 
     action_name = cls.action_name
     action_description = cls.action_description
-    is_default = getattr(cls, "default", False)
+    is_enabled = getattr(cls, "enable_plugin", True)  # 默认启用插件
 
     if not action_name or not action_description:
         logger.error(f"动作类 {cls.__name__} 的 action_name 或 action_description 为空")
@@ -43,11 +52,11 @@ def register_action(cls):
     # 将动作类注册到全局注册表
     _ACTION_REGISTRY[action_name] = cls
 
-    # 如果是默认动作，添加到默认动作集
-    if is_default:
+    # 如果启用插件，添加到默认动作集
+    if is_enabled:
         _DEFAULT_ACTIONS[action_name] = action_description
 
-    logger.info(f"已注册动作: {action_name} -> {cls.__name__}，默认: {is_default}")
+    logger.info(f"已注册动作: {action_name} -> {cls.__name__}，插件启用: {is_enabled}")
     return cls
 
 
@@ -73,20 +82,32 @@ class BaseAction(ABC):
         self.action_parameters: dict = {}
         self.action_require: list[str] = []
         
-        # 动作激活类型，默认为always
-        self.action_activation_type: str = ActionActivationType.ALWAYS
-        # 随机激活的概率(0.0-1.0)，仅当activation_type为random时有效
+        # 动作激活类型设置
+        # Focus模式下的激活类型，默认为always
+        self.focus_activation_type: str = ActionActivationType.ALWAYS
+        # Normal模式下的激活类型，默认为always  
+        self.normal_activation_type: str = ActionActivationType.ALWAYS
+        
+        # 随机激活的概率(0.0-1.0)，用于RANDOM激活类型
         self.random_activation_probability: float = 0.3
-        # LLM判定的提示词，仅当activation_type为llm_judge时有效
+        # LLM判定的提示词，用于LLM_JUDGE激活类型
         self.llm_judge_prompt: str = ""
-        # 关键词触发列表，仅当activation_type为keyword时有效
+        # 关键词触发列表，用于KEYWORD激活类型
         self.activation_keywords: list[str] = []
         # 关键词匹配是否区分大小写
         self.keyword_case_sensitive: bool = False
 
+        # 模式启用设置：指定在哪些聊天模式下启用此动作
+        # 可选值: "focus"(仅Focus模式), "normal"(仅Normal模式), "all"(所有模式)
+        self.mode_enable: str = ChatMode.ALL
+
+        # 并行执行设置：仅在Normal模式下生效，设置为True的动作可以与回复动作并行执行
+        # 而不是替代回复动作，适用于图片生成、TTS、禁言等不需要覆盖回复的动作
+        self.parallel_action: bool = False
+
         self.associated_types: list[str] = []
 
-        self.default: bool = False
+        self.enable_plugin: bool = True  # 是否启用插件，默认启用
 
         self.action_data = action_data
         self.reasoning = reasoning

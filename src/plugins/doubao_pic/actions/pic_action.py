@@ -6,7 +6,7 @@ import base64  # 新增：用于Base64编码
 import traceback  # 新增：用于打印堆栈跟踪
 from typing import Tuple
 from src.chat.focus_chat.planners.actions.plugin_action import PluginAction, register_action
-from src.chat.focus_chat.planners.actions.base_action import ActionActivationType
+from src.chat.focus_chat.planners.actions.base_action import ActionActivationType, ChatMode
 from src.common.logger_manager import get_logger
 from .generate_pic_config import generate_config
 
@@ -35,11 +35,18 @@ class PicAction(PluginAction):
         "当有人要求你生成并发送一张图片时使用",
         "当有人让你画一张图时使用",
     ]
-    default = True
+    enable_plugin = True
     action_config_file_name = "pic_action_config.toml"
     
-    # 激活类型设置 - 使用LLM判定，能更好理解用户意图
-    action_activation_type = ActionActivationType.LLM_JUDGE
+    # 激活类型设置
+    focus_activation_type = ActionActivationType.LLM_JUDGE  # Focus模式使用LLM判定，精确理解需求
+    normal_activation_type = ActionActivationType.KEYWORD   # Normal模式使用关键词激活，快速响应
+    
+    # 关键词设置（用于Normal模式）
+    activation_keywords = ["画", "绘制", "生成图片", "画图", "draw", "paint", "图片生成"]
+    keyword_case_sensitive = False
+    
+    # LLM判定提示词（用于Focus模式）
     llm_judge_prompt = """
 判定是否需要使用图片生成动作的条件：
 1. 用户明确要求画图、生成图片或创作图像
@@ -60,10 +67,19 @@ class PicAction(PluginAction):
 4. 技术讨论中提到绘图概念但无生成需求
 5. 用户明确表示不需要图片时
 """
-
+    
+    # Random激活概率（备用）
+    random_activation_probability = 0.15  # 适中概率，图片生成比较有趣
+    
     # 简单的请求缓存，避免短时间内重复请求
     _request_cache = {}
     _cache_max_size = 10
+    
+    # 模式启用设置 - 图片生成在所有模式下可用
+    mode_enable = ChatMode.ALL
+    
+    # 并行执行设置 - 图片生成可以与回复并行执行，不覆盖回复内容
+    parallel_action = False
     
     @classmethod
     def _get_cache_key(cls, description: str, model: str, size: str) -> str:

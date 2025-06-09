@@ -531,7 +531,6 @@ class PersonInfoManager:
                 "know_since": int(datetime.datetime.now().timestamp()),
                 "last_know": int(datetime.datetime.now().timestamp()),
                 "impression": None,
-                "interaction": None,
                 "points": [],
                 "forgotten_points": []
             }

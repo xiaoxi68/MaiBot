@@ -1,5 +1,6 @@
 from src.common.logger_manager import get_logger
 from src.chat.focus_chat.planners.actions.plugin_action import PluginAction, register_action, ActionActivationType
+from src.chat.focus_chat.planners.actions.base_action import ChatMode
 from typing import Tuple
 
 logger = get_logger("mute_action")
@@ -22,12 +23,20 @@ class MuteAction(PluginAction):
         "当有人发了擦边，或者色情内容时使用",
         "当有人要求禁言自己时使用",
     ]
-    default = True  # 默认动作，是否手动添加到使用集
+    enable_plugin = True  # 启用插件
     associated_types = ["command", "text"]
     action_config_file_name = "mute_action_config.toml"
     
-    # 激活类型设置 - 使用LLM判定，因为禁言是严肃的管理动作，需要谨慎判断
-    action_activation_type = ActionActivationType.LLM_JUDGE
+    # 激活类型设置
+    focus_activation_type = ActionActivationType.LLM_JUDGE  # Focus模式使用LLM判定，确保谨慎
+    normal_activation_type = ActionActivationType.KEYWORD   # Normal模式使用关键词激活，快速响应
+    
+    
+    # 关键词设置（用于Normal模式）
+    activation_keywords = ["禁言", "mute", "ban", "silence"]
+    keyword_case_sensitive = False
+    
+    # LLM判定提示词（用于Focus模式）
     llm_judge_prompt = """
 判定是否需要使用禁言动作的严格条件：
 
@@ -49,6 +58,15 @@ class MuteAction(PluginAction):
 注意：禁言是严厉措施，只在明确违规或用户主动要求时使用。
 宁可保守也不要误判，保护用户的发言权利。
 """
+    
+    # Random激活概率（备用）
+    random_activation_probability = 0.05  # 设置很低的概率作为兜底
+
+    # 模式启用设置 - 禁言功能在所有模式下都可用
+    mode_enable = ChatMode.ALL
+    
+    # 并行执行设置 - 禁言动作可以与回复并行执行，不覆盖回复内容
+    parallel_action = True
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

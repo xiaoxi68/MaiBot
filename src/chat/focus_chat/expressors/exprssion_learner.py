@@ -304,7 +304,7 @@ class ExpressionLearner:
                 # 如果没选够，随机补充
                 if len(remove_set) < remove_count:
                     remaining = set(indices) - remove_set
-                    remove_set.update(random.sample(remaining, remove_count - len(remove_set)))
+                    remove_set.update(random.sample(list(remaining), remove_count - len(remove_set)))
                 
                 remove_indices = list(remove_set)
                 
