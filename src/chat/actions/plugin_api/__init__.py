@@ -4,6 +4,7 @@ from src.chat.actions.plugin_api.database_api import DatabaseAPI
 from src.chat.actions.plugin_api.config_api import ConfigAPI
 from src.chat.actions.plugin_api.utils_api import UtilsAPI
 from src.chat.actions.plugin_api.stream_api import StreamAPI
+from src.chat.actions.plugin_api.hearflow_api import HearflowAPI
 
 __all__ = [
     'MessageAPI',
@@ -12,4 +13,5 @@ __all__ = [
     'ConfigAPI',
     'UtilsAPI',
     'StreamAPI',
+    'HearflowAPI',
 ] 

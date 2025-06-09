@@ -26,10 +26,7 @@ import src.chat.actions.default_actions  # noqa
 if global_config.memory.enable_memory:
     from .chat.memory_system.Hippocampus import hippocampus_manager
 
-# 加载插件actions
-import importlib
-import pkgutil
-import os
+# 插件系统现在使用统一的插件加载器
 
 install(extra_lines=3)
 
@@ -136,70 +133,13 @@ class MainSystem:
             raise
 
     def _load_all_actions(self):
-        """加载所有actions，包括默认的和插件的"""
+        """加载所有actions和commands，使用统一的插件加载器"""
         try:
-            # 导入默认actions以确保装饰器被执行
+            # 导入统一的插件加载器
+            from src.plugins.plugin_loader import plugin_loader
             
-            # 检查插件目录是否存在
-            plugin_path = "src.plugins"
-            plugin_dir = os.path.join("src", "plugins")
-            if not os.path.exists(plugin_dir):
-                logger.info(f"插件目录 {plugin_dir} 不存在，跳过插件动作加载")
-                return
-                
-            # 导入插件包
-            try:
-                plugins_package = importlib.import_module(plugin_path)
-                logger.info(f"成功导入插件包: {plugin_path}")
-            except ImportError as e:
-                logger.error(f"导入插件包失败: {e}")
-                return
-                
-            # 遍历插件包中的所有子包
-            loaded_plugins = 0
-            for _, plugin_name, is_pkg in pkgutil.iter_modules(
-                plugins_package.__path__, plugins_package.__name__ + "."
-            ):
-                if not is_pkg:
-                    continue
-                    
-                logger.debug(f"检测到插件: {plugin_name}")
-                    
-                # 检查插件是否有actions子包
-                plugin_actions_path = f"{plugin_name}.actions"
-                plugin_actions_dir = plugin_name.replace(".", os.path.sep) + os.path.sep + "actions"
-                
-                if not os.path.exists(plugin_actions_dir):
-                    logger.debug(f"插件 {plugin_name} 没有actions目录: {plugin_actions_dir}")
-                    continue
-                
-                try:
-                    # 尝试导入插件的actions包
-                    actions_module = importlib.import_module(plugin_actions_path)
-                    logger.info(f"成功加载插件动作模块: {plugin_actions_path}")
-                    
-                    # 遍历actions目录中的所有Python文件
-                    actions_dir = os.path.dirname(actions_module.__file__)
-                    for file in os.listdir(actions_dir):
-                        if file.endswith('.py') and file != '__init__.py':
-                            action_module_name = f"{plugin_actions_path}.{file[:-3]}"
-                            try:
-                                importlib.import_module(action_module_name)
-                                logger.info(f"成功加载动作: {action_module_name}")
-                                loaded_plugins += 1
-                            except Exception as e:
-                                logger.error(f"加载动作失败: {action_module_name}, 错误: {e}")
-                    
-                except ImportError as e:
-                    logger.debug(f"插件 {plugin_name} 的actions子包导入失败: {e}")
-                    continue
-            
-            logger.success(f"成功加载 {loaded_plugins} 个插件动作")
-                    
-        except Exception as e:
-            logger.error(f"加载actions失败: {e}")
-            import traceback
-            logger.error(traceback.format_exc())
+            # 使用统一的插件加载器加载所有插件组件
+            loaded_actions, loaded_commands = plugin_loader.load_all_plugins()
             
             # 加载命令处理系统
             try:
@@ -210,6 +150,11 @@ class MainSystem:
                 logger.error(f"加载命令处理系统失败: {e}")
                 import traceback
                 logger.error(traceback.format_exc())
+                    
+        except Exception as e:
+            logger.error(f"加载插件失败: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
 
     async def schedule_tasks(self):
         """调度定时任务"""

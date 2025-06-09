@@ -17,6 +17,7 @@ from src.chat.actions.plugin_api.database_api import DatabaseAPI
 from src.chat.actions.plugin_api.config_api import ConfigAPI
 from src.chat.actions.plugin_api.utils_api import UtilsAPI
 from src.chat.actions.plugin_api.stream_api import StreamAPI
+from src.chat.actions.plugin_api.hearflow_api import HearflowAPI
 
 # 以下为类型注解需要
 from src.chat.message_receive.chat_stream import ChatStream # noqa
@@ -27,7 +28,7 @@ from src.chat.focus_chat.info.obs_info import ObsInfo # noqa
 logger = get_logger("plugin_action")
 
 
-class PluginAction(BaseAction, MessageAPI, LLMAPI, DatabaseAPI, ConfigAPI, UtilsAPI, StreamAPI):
+class PluginAction(BaseAction, MessageAPI, LLMAPI, DatabaseAPI, ConfigAPI, UtilsAPI, StreamAPI, HearflowAPI):
     """插件动作基类
 
     封装了主程序内部依赖，提供简化的API接口给插件开发者

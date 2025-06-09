@@ -1,7 +1,4 @@
 import re
-import importlib
-import pkgutil
-import os
 from abc import ABC, abstractmethod
 from typing import Dict, List, Type, Optional, Tuple, Pattern
 from src.common.logger_manager import get_logger
@@ -145,76 +142,12 @@ def register_command(cls):
 
 
 class CommandManager:
-    """命令管理器，负责加载和处理命令"""
+    """命令管理器，负责处理命令（不再负责加载，加载由统一的插件加载器处理）"""
     
     def __init__(self):
         """初始化命令管理器"""
-        self._load_commands()
-    
-    def _load_commands(self) -> None:
-        """加载所有命令"""
-        try:
-            # 检查插件目录是否存在
-            plugin_path = "src.plugins"
-            plugin_dir = os.path.join("src", "plugins")
-            if not os.path.exists(plugin_dir):
-                logger.info(f"插件目录 {plugin_dir} 不存在，跳过插件命令加载")
-                return
-            
-            # 导入插件包
-            try:
-                plugins_package = importlib.import_module(plugin_path)
-                logger.info(f"成功导入插件包: {plugin_path}")
-            except ImportError as e:
-                logger.error(f"导入插件包失败: {e}")
-                return
-            
-            # 遍历插件包中的所有子包
-            loaded_commands = 0
-            for _, plugin_name, is_pkg in pkgutil.iter_modules(
-                plugins_package.__path__, plugins_package.__name__ + "."
-            ):
-                if not is_pkg:
-                    continue
-                
-                logger.debug(f"检测到插件: {plugin_name}")
-                
-                # 检查插件是否有commands子包
-                plugin_commands_path = f"{plugin_name}.commands"
-                plugin_commands_dir = plugin_name.replace(".", os.path.sep) + os.path.sep + "commands"
-                
-                if not os.path.exists(plugin_commands_dir):
-                    logger.debug(f"插件 {plugin_name} 没有commands目录: {plugin_commands_dir}")
-                    continue
-                
-                try:
-                    # 尝试导入插件的commands包
-                    commands_module = importlib.import_module(plugin_commands_path)
-                    logger.info(f"成功加载插件命令模块: {plugin_commands_path}")
-                    
-                    # 遍历commands目录中的所有Python文件
-                    commands_dir = os.path.dirname(commands_module.__file__)
-                    for file in os.listdir(commands_dir):
-                        if file.endswith('.py') and file != '__init__.py':
-                            command_module_name = f"{plugin_commands_path}.{file[:-3]}"
-                            try:
-                                importlib.import_module(command_module_name)
-                                logger.info(f"成功加载命令: {command_module_name}")
-                                loaded_commands += 1
-                            except Exception as e:
-                                logger.error(f"加载命令失败: {command_module_name}, 错误: {e}")
-                    
-                except ImportError as e:
-                    logger.debug(f"插件 {plugin_name} 的commands子包导入失败: {e}")
-                    continue
-            
-            logger.success(f"成功加载 {loaded_commands} 个插件命令")
-            logger.info(f"已注册的命令: {list(_COMMAND_REGISTRY.keys())}")
-        
-        except Exception as e:
-            logger.error(f"加载命令失败: {e}")
-            import traceback
-            logger.error(traceback.format_exc())
+        # 命令加载现在由统一的插件加载器处理，这里只需要初始化
+        logger.info("命令管理器初始化完成")
     
     async def process_command(self, message: MessageRecv) -> Tuple[bool, Optional[str], bool]:
         """处理消息中的命令
