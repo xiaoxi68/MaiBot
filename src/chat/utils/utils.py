@@ -324,6 +324,9 @@ def random_remove_punctuation(text: str) -> str:
 
 
 def process_llm_response(text: str) -> list[str]:
+    if not global_config.response_post_process.enable_response_post_process:
+        return [text]
+
     # 先保护颜文字
     if global_config.response_splitter.enable_kaomoji_protection:
         protected_text, kaomoji_mapping = protect_kaomoji(text)

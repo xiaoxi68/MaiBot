@@ -25,6 +25,7 @@ from src.config.official_configs import (
     MoodConfig,
     KeywordReactionConfig,
     ChineseTypoConfig,
+    ResponsePostProcessConfig,
     ResponseSplitterConfig,
     TelemetryConfig,
     ExperimentalConfig,
@@ -157,6 +158,7 @@ class Config(ConfigBase):
     mood: MoodConfig
     keyword_reaction: KeywordReactionConfig
     chinese_typo: ChineseTypoConfig
+    response_post_process: ResponsePostProcessConfig
     response_splitter: ResponseSplitterConfig
     telemetry: TelemetryConfig
     experimental: ExperimentalConfig

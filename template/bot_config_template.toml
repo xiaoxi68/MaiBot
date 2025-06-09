@@ -1,5 +1,5 @@
 [inner]
-version = "2.17.0"
+version = "2.18.0"
 
 #----以下是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 #如果你想要修改配置文件，请在修改后将version的值进行变更
@@ -166,6 +166,9 @@ keyword_rules = [
 regex_rules = [
     { regex = ["^(?P<n>\\S{1,20})是这样的$"], reaction = "请按照以下模板造句：[n]是这样的，xx只要xx就可以，可是[n]要考虑的事情就很多了，比如什么时候xx，什么时候xx，什么时候xx。（请自由发挥替换xx部分，只需保持句式结构，同时表达一种将[n]过度重视的反讽意味）" }
 ]
+
+[response_post_process]
+enable_response_post_process = true # 是否启用回复后处理，包括错别字生成器，回复分割器
 
 [chinese_typo]
 enable = true # 是否启用中文错别字生成器

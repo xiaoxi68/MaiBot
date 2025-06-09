@@ -329,6 +329,13 @@ class KeywordReactionConfig(ConfigBase):
             if not isinstance(rule, KeywordRuleConfig):
                 raise ValueError(f"规则必须是KeywordRuleConfig类型，而不是{type(rule).__name__}")
 
+@dataclass
+class ResponsePostProcessConfig(ConfigBase):
+    """回复后处理配置类"""
+
+    enable_response_post_process: bool = True
+    """是否启用回复后处理，包括错别字生成器，回复分割器"""
+
 
 @dataclass
 class ChineseTypoConfig(ConfigBase):
