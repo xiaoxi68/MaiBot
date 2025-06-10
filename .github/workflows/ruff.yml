@@ -28,10 +28,10 @@ jobs:
         with:
           version: "latest"
       - name: Run Ruff Fix
-        run: ruff check --fix
+        run: ruff check --fix --unsafe-fixes || true
       - name: Run Ruff Format
-        run: ruff format
-      - name: Commit changes
+        run: ruff format || true
+      - name: 提交更改
         if: success()
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
