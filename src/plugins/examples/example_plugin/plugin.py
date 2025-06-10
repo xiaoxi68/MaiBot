@@ -21,8 +21,7 @@
 - 日志和错误处理
 """
 
-from typing import List, Tuple, Type, Optional, Dict, Any
-import re
+from typing import List, Tuple, Type, Optional
 import time
 import random
 # 导入新插件系统
@@ -344,13 +343,13 @@ class MessageInfoCommand(BaseCommand):
             info_parts = [
                 "📋 消息信息详情",
                 "",
-                f"👤 用户信息:",
+                "👤 用户信息:",
                 f"  • ID: {user_info.user_id}",
                 f"  • 昵称: {user_info.user_nickname}",
                 f"  • 群名片: {getattr(user_info, 'user_cardname', '无')}",
                 f"  • 平台: {message.message_info.platform}",
                 "",
-                f"💬 消息信息:",
+                "💬 消息信息:",
                 f"  • 消息ID: {message.message_info.message_id}",
                 f"  • 时间戳: {message.message_info.time}",
                 f"  • 原始内容: {message.processed_plain_text[:100]}{'...' if len(message.processed_plain_text) > 100 else ''}",
@@ -361,15 +360,15 @@ class MessageInfoCommand(BaseCommand):
             if group_info:
                 info_parts.extend([
                     "",
-                    f"👥 群聊信息:",
+                    "👥 群聊信息:",
                     f"  • 群ID: {group_info.group_id}",
                     f"  • 群名: {getattr(group_info, 'group_name', '未知')}",
-                    f"  • 聊天类型: 群聊"
+                    "  • 聊天类型: 群聊"
                 ])
             else:
                 info_parts.extend([
                     "",
-                    f"💭 聊天类型: 私聊"
+                    "💭 聊天类型: 私聊"
                 ])
             
             # 流信息
@@ -377,7 +376,7 @@ class MessageInfoCommand(BaseCommand):
                 stream = message.chat_stream
                 info_parts.extend([
                     "",
-                    f"🌊 聊天流信息:",
+                    "🌊 聊天流信息:",
                     f"  • 流ID: {stream.stream_id}",
                     f"  • 创建时间: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(stream.create_time))}",
                     f"  • 最后活跃: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(stream.last_active_time))}"

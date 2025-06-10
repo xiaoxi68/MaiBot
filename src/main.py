@@ -25,7 +25,6 @@ from src.plugin_system.core.plugin_manager import plugin_manager
 
 # 导入消息API和traceback模块
 from src.common.message import global_api
-import traceback
 
 # 条件导入记忆系统
 if global_config.memory.enable_memory:

@@ -21,7 +21,6 @@ import urllib.request
 import urllib.error
 import base64
 import traceback
-import random
 from typing import List, Tuple, Type, Optional
 
 # 导入新插件系统

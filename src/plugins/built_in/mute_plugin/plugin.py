@@ -15,7 +15,7 @@
 - 禁言命令Command - 手动执行禁言操作
 """
 
-from typing import List, Tuple, Type, Optional, Dict, Any
+from typing import List, Tuple, Type, Optional
 import random
 
 # 导入新插件系统
@@ -169,7 +169,7 @@ class MuteAction(BaseAction):
         else:
             error_msg = "发送禁言命令失败"
             logger.error(f"{self.log_prefix} {error_msg}")
-            await self.send_reply(f"执行禁言动作失败")
+            await self.send_reply("执行禁言动作失败")
             return False, error_msg
 
     def _get_template_message(self, target: str, duration_str: str, reason: str) -> str:

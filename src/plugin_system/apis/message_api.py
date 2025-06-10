@@ -1,14 +1,11 @@
 import traceback
 import time
-from typing import Optional, List, Dict, Any
+from typing import List, Dict, Any
 from src.common.logger_manager import get_logger
-from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 from src.chat.focus_chat.hfc_utils import create_empty_anchor_message
 
 # 以下为类型注解需要
 from src.chat.message_receive.chat_stream import ChatStream, chat_manager
-from src.chat.focus_chat.expressors.default_expressor import DefaultExpressor
-from src.chat.focus_chat.replyer.default_replyer import DefaultReplyer
 from src.chat.focus_chat.info.obs_info import ObsInfo
 
 # 新增导入

@@ -2,7 +2,6 @@ from typing import Dict, List, Optional, Any, TYPE_CHECKING
 import os
 import importlib
 import importlib.util
-import inspect
 from pathlib import Path
 
 if TYPE_CHECKING:
@@ -57,7 +56,7 @@ class PluginManager:
         logger.debug(f"插件模块加载完成 - 成功: {total_loaded_modules}, 失败: {total_failed_modules}")
 
         # 第二阶段：实例化所有已注册的插件类
-        from src.plugin_system.base.base_plugin import get_registered_plugin_classes, instantiate_and_register_plugin
+        from src.plugin_system.base.base_plugin import get_registered_plugin_classes
 
         plugin_classes = get_registered_plugin_classes()
         total_registered = 0
