@@ -79,7 +79,6 @@ class PluginManager:
                 # 📊 显示插件详细信息
                 plugin_info = component_registry.get_plugin_info(plugin_name)
                 if plugin_info:
-                    component_count = len(plugin_info.components)
                     component_types = {}
                     for comp in plugin_info.components:
                         comp_type = comp.component_type.name
@@ -108,7 +107,7 @@ class PluginManager:
             
             # 显示详细的插件列表
             logger.info("📋 已加载插件详情:")
-            for plugin_name, plugin_class in self.loaded_plugins.items():
+            for plugin_name, _plugin_class in self.loaded_plugins.items():
                 plugin_info = component_registry.get_plugin_info(plugin_name)
                 if plugin_info:
                     # 插件基本信息

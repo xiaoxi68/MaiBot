@@ -5,26 +5,19 @@
 这是系统的内置插件，提供基础的聊天交互功能
 """
 
-import asyncio
 import re
-import time
-import traceback
 from typing import List, Tuple, Type, Optional
 
 # 导入新插件系统
 from src.plugin_system import (
     BasePlugin, register_plugin, BaseAction,
-    ComponentInfo, ActionInfo, ActionActivationType, ChatMode
+    ComponentInfo, ActionActivationType, ChatMode
 )
 
 # 导入依赖的系统组件
 from src.common.logger_manager import get_logger
-from src.chat.heart_flow.observation.observation import Observation
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
-from src.chat.focus_chat.hfc_utils import create_empty_anchor_message, parse_thinking_id_to_timestamp
-from src.chat.utils.timer_calculator import Timer
-from src.common.database.database_model import ActionRecords
-from src.config.config import global_config
+from src.chat.focus_chat.hfc_utils import create_empty_anchor_message
 
 logger = get_logger("core_actions")
 
