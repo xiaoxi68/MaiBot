@@ -177,15 +177,15 @@ class BasePlugin(ABC):
             Any: 配置值或默认值
         """
         # 支持嵌套键访问
-        keys = key.split('.')
+        keys = key.split(".")
         current = self.config
-        
+
         for k in keys:
             if isinstance(current, dict) and k in current:
                 current = current[k]
             else:
                 return default
-                
+
         return current
 
 

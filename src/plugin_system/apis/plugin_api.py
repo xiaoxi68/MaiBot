@@ -33,7 +33,13 @@ class PluginAPI(MessageAPI, LLMAPI, DatabaseAPI, ConfigAPI, UtilsAPI, StreamAPI,
     """
 
     def __init__(
-        self, chat_stream=None, expressor=None, replyer=None, observations=None, log_prefix: str = "[PluginAPI]", plugin_config: dict = None
+        self,
+        chat_stream=None,
+        expressor=None,
+        replyer=None,
+        observations=None,
+        log_prefix: str = "[PluginAPI]",
+        plugin_config: dict = None,
     ):
         """
         初始化插件API
@@ -109,7 +115,12 @@ class PluginAPI(MessageAPI, LLMAPI, DatabaseAPI, ConfigAPI, UtilsAPI, StreamAPI,
 
 # 便捷的工厂函数
 def create_plugin_api(
-    chat_stream=None, expressor=None, replyer=None, observations=None, log_prefix: str = "[Plugin]", plugin_config: dict = None
+    chat_stream=None,
+    expressor=None,
+    replyer=None,
+    observations=None,
+    log_prefix: str = "[Plugin]",
+    plugin_config: dict = None,
 ) -> PluginAPI:
     """
     创建插件API实例的便捷函数
@@ -126,7 +137,12 @@ def create_plugin_api(
         PluginAPI: 配置好的插件API实例
     """
     return PluginAPI(
-        chat_stream=chat_stream, expressor=expressor, replyer=replyer, observations=observations, log_prefix=log_prefix, plugin_config=plugin_config
+        chat_stream=chat_stream,
+        expressor=expressor,
+        replyer=replyer,
+        observations=observations,
+        log_prefix=log_prefix,
+        plugin_config=plugin_config,
     )
 
 

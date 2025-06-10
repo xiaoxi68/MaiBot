@@ -157,8 +157,6 @@ class MessageAPI:
             message_type="text", content=text, platform=platform, target_id=user_id, is_group=False
         )
 
-
-
     def get_chat_type(self) -> str:
         """获取当前聊天类型
 

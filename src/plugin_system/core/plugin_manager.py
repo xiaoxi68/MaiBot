@@ -291,10 +291,10 @@ class PluginManager:
 
     def get_plugin_instance(self, plugin_name: str) -> Optional["BasePlugin"]:
         """获取插件实例
-        
+
         Args:
             plugin_name: 插件名称
-            
+
         Returns:
             Optional[BasePlugin]: 插件实例或None
         """

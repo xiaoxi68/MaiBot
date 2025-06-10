@@ -342,62 +342,48 @@ class CoreActionsPlugin(BasePlugin):
 
         return [
             # 回复动作
-            (ReplyAction.get_action_info(
-                name="reply",
-                description="参与聊天回复，处理文本和表情的发送"
-            ), ReplyAction),
-            
+            (ReplyAction.get_action_info(name="reply", description="参与聊天回复，处理文本和表情的发送"), ReplyAction),
             # 不回复动作
-            (NoReplyAction.get_action_info(
-                name="no_reply", 
-                description="暂时不回复消息，等待新消息或超时"
-            ), NoReplyAction),
-            
+            (
+                NoReplyAction.get_action_info(name="no_reply", description="暂时不回复消息，等待新消息或超时"),
+                NoReplyAction,
+            ),
             # 表情动作
-            (EmojiAction.get_action_info(
-                name="emoji",
-                description="发送表情包辅助表达情绪"
-            ), EmojiAction),
-            
+            (EmojiAction.get_action_info(name="emoji", description="发送表情包辅助表达情绪"), EmojiAction),
             # 退出专注聊天动作
-            (ExitFocusChatAction.get_action_info(
-                name="exit_focus_chat",
-                description="退出专注聊天，从专注模式切换到普通模式"
-            ), ExitFocusChatAction),
-            
+            (
+                ExitFocusChatAction.get_action_info(
+                    name="exit_focus_chat", description="退出专注聊天，从专注模式切换到普通模式"
+                ),
+                ExitFocusChatAction,
+            ),
             # 示例Command - Ping命令
-            (PingCommand.get_command_info(
-                name="ping",
-                description="测试机器人响应，拦截后续处理"
-            ), PingCommand),
-            
+            (PingCommand.get_command_info(name="ping", description="测试机器人响应，拦截后续处理"), PingCommand),
             # 示例Command - Log命令
-            (LogCommand.get_command_info(
-                name="log", 
-                description="记录消息到日志，不拦截后续处理"
-            ), LogCommand)
+            (LogCommand.get_command_info(name="log", description="记录消息到日志，不拦截后续处理"), LogCommand),
         ]
 
 
 # ===== 示例Command组件 =====
 
+
 class PingCommand(BaseCommand):
     """Ping命令 - 测试响应，拦截消息处理"""
-    
+
     command_pattern = r"^/ping(\s+(?P<message>.+))?$"
     command_help = "测试机器人响应 - 拦截后续处理"
     command_examples = ["/ping", "/ping 测试消息"]
     intercept_message = True  # 拦截消息，不继续处理
-    
+
     async def execute(self) -> Tuple[bool, Optional[str]]:
         """执行ping命令"""
         try:
             message = self.matched_groups.get("message", "")
             reply_text = f"🏓 Pong! {message}" if message else "🏓 Pong!"
-            
+
             await self.send_reply(reply_text)
             return True, f"发送ping响应: {reply_text}"
-            
+
         except Exception as e:
             logger.error(f"Ping命令执行失败: {e}")
             return False, f"执行失败: {str(e)}"
@@ -405,34 +391,34 @@ class PingCommand(BaseCommand):
 
 class LogCommand(BaseCommand):
     """日志命令 - 记录消息但不拦截后续处理"""
-    
+
     command_pattern = r"^/log(\s+(?P<level>debug|info|warn|error))?$"
     command_help = "记录当前消息到日志 - 不拦截后续处理"
     command_examples = ["/log", "/log info", "/log debug"]
     intercept_message = False  # 不拦截消息，继续后续处理
-    
+
     async def execute(self) -> Tuple[bool, Optional[str]]:
         """执行日志命令"""
         try:
             level = self.matched_groups.get("level", "info")
             user_nickname = self.message.message_info.user_info.user_nickname
             content = self.message.processed_plain_text
-            
+
             log_message = f"[{level.upper()}] 用户 {user_nickname}: {content}"
-            
+
             # 根据级别记录日志
             if level == "debug":
                 logger.debug(log_message)
             elif level == "warn":
-                logger.warning(log_message) 
+                logger.warning(log_message)
             elif level == "error":
                 logger.error(log_message)
             else:
                 logger.info(log_message)
-            
+
             # 不发送回复，让消息继续处理
             return True, f"已记录到{level}级别日志"
-            
+
         except Exception as e:
             logger.error(f"Log命令执行失败: {e}")
             return False, f"执行失败: {str(e)}"

@@ -165,7 +165,7 @@ class HeartFChatting:
                     if not global_config.focus_chat_processor.working_memory_processor:
                         logger.debug(f"{self.log_prefix} 工作记忆处理器已禁用，跳过注册观察器 {name}")
                         continue
-                
+
                 # 根据参数名使用正确的参数
                 kwargs = {param_name: self.stream_id}
                 observation = observation_class(**kwargs)

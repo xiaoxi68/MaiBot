@@ -164,7 +164,12 @@ class ComponentRegistry:
                 if command_name:
                     command_info = self.get_command_info(command_name)
                     if command_info and command_info.enabled:
-                        return command_class, match.groupdict(), command_info.intercept_message, command_info.plugin_name
+                        return (
+                            command_class,
+                            match.groupdict(),
+                            command_info.intercept_message,
+                            command_info.plugin_name,
+                        )
         return None
 
     # === 插件管理方法 ===
@@ -207,15 +212,16 @@ class ComponentRegistry:
 
     def get_plugin_config(self, plugin_name: str) -> Optional[dict]:
         """获取插件配置
-        
+
         Args:
             plugin_name: 插件名称
-            
+
         Returns:
             Optional[dict]: 插件配置字典或None
         """
         # 从插件管理器获取插件实例的配置
         from src.plugin_system.core.plugin_manager import plugin_manager
+
         plugin_instance = plugin_manager.get_plugin_instance(plugin_name)
         return plugin_instance.config if plugin_instance else None
 

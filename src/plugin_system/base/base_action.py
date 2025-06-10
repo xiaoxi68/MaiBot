@@ -121,53 +121,45 @@ class BaseAction(ABC):
         Returns:
             bool: 是否发送成功
         """
-        chat_stream = self.api.get_service('chat_stream')
+        chat_stream = self.api.get_service("chat_stream")
         if not chat_stream:
             logger.error(f"{self.log_prefix} 没有可用的聊天流发送回复")
             return False
-            
+
         if chat_stream.group_info:
             # 群聊
             return await self.api.send_text_to_group(
-                text=content,
-                group_id=str(chat_stream.group_info.group_id),
-                platform=chat_stream.platform
+                text=content, group_id=str(chat_stream.group_info.group_id), platform=chat_stream.platform
             )
         else:
             # 私聊
             return await self.api.send_text_to_user(
-                text=content,
-                user_id=str(chat_stream.user_info.user_id),
-                platform=chat_stream.platform
+                text=content, user_id=str(chat_stream.user_info.user_id), platform=chat_stream.platform
             )
 
     async def send_command(self, command_name: str, args: dict = None, display_message: str = None) -> bool:
         """发送命令消息
-        
+
         使用和send_reply相同的方式通过MessageAPI发送命令
-        
+
         Args:
             command_name: 命令名称
             args: 命令参数
             display_message: 显示消息
-            
+
         Returns:
             bool: 是否发送成功
         """
         try:
             # 构造命令数据
-            command_data = {
-                "name": command_name,
-                "args": args or {}
-            }
-            
+            command_data = {"name": command_name, "args": args or {}}
+
             # 使用send_message_to_target方法发送命令
-            chat_stream = self.api.get_service('chat_stream')
+            chat_stream = self.api.get_service("chat_stream")
             if not chat_stream:
                 logger.error(f"{self.log_prefix} 没有可用的聊天流发送命令")
                 return False
-            
-            
+
             if chat_stream.group_info:
                 # 群聊
                 success = await self.api.send_message_to_target(
@@ -176,7 +168,7 @@ class BaseAction(ABC):
                     platform=chat_stream.platform,
                     target_id=str(chat_stream.group_info.group_id),
                     is_group=True,
-                    display_message=display_message or f"执行命令: {command_name}"
+                    display_message=display_message or f"执行命令: {command_name}",
                 )
             else:
                 # 私聊
@@ -186,16 +178,16 @@ class BaseAction(ABC):
                     platform=chat_stream.platform,
                     target_id=str(chat_stream.user_info.user_id),
                     is_group=False,
-                    display_message=display_message or f"执行命令: {command_name}"
+                    display_message=display_message or f"执行命令: {command_name}",
                 )
-            
+
             if success:
                 logger.info(f"{self.log_prefix} 成功发送命令: {command_name}")
             else:
                 logger.error(f"{self.log_prefix} 发送命令失败: {command_name}")
-                
+
             return success
-                
+
         except Exception as e:
             logger.error(f"{self.log_prefix} 发送命令时出错: {e}")
             return False
@@ -213,7 +205,7 @@ class BaseAction(ABC):
         try:
             from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
             from src.chat.focus_chat.hfc_utils import create_empty_anchor_message
-            
+
             # 获取服务
             expressor = self.api.get_service("expressor")
             chat_stream = self.api.get_service("chat_stream")
@@ -281,7 +273,7 @@ class BaseAction(ABC):
         try:
             from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
             from src.chat.focus_chat.hfc_utils import create_empty_anchor_message
-            
+
             # 获取服务
             replyer = self.api.get_service("replyer")
             chat_stream = self.api.get_service("chat_stream")

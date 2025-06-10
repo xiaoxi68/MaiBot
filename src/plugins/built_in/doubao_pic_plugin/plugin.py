@@ -35,21 +35,24 @@ logger = get_logger("doubao_pic_plugin")
 
 # ===== Action组件 =====
 
+
 class DoubaoImageGenerationAction(BaseAction):
     """豆包图片生成Action - 根据描述使用火山引擎API生成图片"""
-    
+
     # Action基本信息
     action_name = "doubao_image_generation"
-    action_description = "可以根据特定的描述，生成并发送一张图片，如果没提供描述，就根据聊天内容生成,你可以立刻画好，不用等待"
-    
+    action_description = (
+        "可以根据特定的描述，生成并发送一张图片，如果没提供描述，就根据聊天内容生成,你可以立刻画好，不用等待"
+    )
+
     # 激活设置
     focus_activation_type = ActionActivationType.LLM_JUDGE  # Focus模式使用LLM判定，精确理解需求
-    normal_activation_type = ActionActivationType.KEYWORD   # Normal模式使用关键词激活，快速响应
-    
+    normal_activation_type = ActionActivationType.KEYWORD  # Normal模式使用关键词激活，快速响应
+
     # 关键词设置（用于Normal模式）
     activation_keywords = ["画", "绘制", "生成图片", "画图", "draw", "paint", "图片生成"]
     keyword_case_sensitive = False
-    
+
     # LLM判定提示词（用于Focus模式）
     llm_judge_prompt = """
 判定是否需要使用图片生成动作的条件：
@@ -71,23 +74,23 @@ class DoubaoImageGenerationAction(BaseAction):
 4. 技术讨论中提到绘图概念但无生成需求
 5. 用户明确表示不需要图片时
 """
-    
+
     mode_enable = ChatMode.ALL
     parallel_action = True
-    
+
     # Action参数定义
     action_parameters = {
         "description": "图片描述，输入你想要生成并发送的图片的描述，必填",
         "size": "图片尺寸，例如 '1024x1024' (可选, 默认从配置或 '1024x1024')",
     }
-    
+
     # Action使用场景
     action_require = [
         "当有人让你画东西时使用，你可以立刻画好，不用等待",
         "当有人要求你生成并发送一张图片时使用",
         "当有人让你画一张图时使用",
     ]
-    
+
     # 简单的请求缓存，避免短时间内重复请求
     _request_cache = {}
     _cache_max_size = 10
@@ -95,7 +98,7 @@ class DoubaoImageGenerationAction(BaseAction):
     async def execute(self) -> Tuple[bool, Optional[str]]:
         """执行图片生成动作"""
         logger.info(f"{self.log_prefix} 执行豆包图片生成动作")
-        
+
         # 配置验证
         http_base_url = self.api.get_config("base_url")
         http_api_key = self.api.get_config("volcano_generate_api_key")
@@ -141,7 +144,7 @@ class DoubaoImageGenerationAction(BaseAction):
             cached_result = self._request_cache[cache_key]
             logger.info(f"{self.log_prefix} 使用缓存的图片结果")
             await self.send_reply("我之前画过类似的图片，用之前的结果~")
-            
+
             # 直接发送缓存的结果
             send_success = await self._send_image(cached_result)
             if send_success:
@@ -195,7 +198,7 @@ class DoubaoImageGenerationAction(BaseAction):
                     # 缓存成功的结果
                     self._request_cache[cache_key] = base64_image_string
                     self._cleanup_cache()
-                    
+
                     await self.send_message_by_expressor("图片已发送！")
                     return True, "图片已发送"
                 else:
@@ -243,11 +246,11 @@ class DoubaoImageGenerationAction(BaseAction):
         """发送图片"""
         try:
             # 使用聊天流信息确定发送目标
-            chat_stream = self.api.get_service('chat_stream')
+            chat_stream = self.api.get_service("chat_stream")
             if not chat_stream:
                 logger.error(f"{self.log_prefix} 没有可用的聊天流发送图片")
                 return False
-                
+
             if chat_stream.group_info:
                 # 群聊
                 return await self.api.send_message_to_target(
@@ -256,7 +259,7 @@ class DoubaoImageGenerationAction(BaseAction):
                     platform=chat_stream.platform,
                     target_id=str(chat_stream.group_info.group_id),
                     is_group=True,
-                    display_message="发送生成的图片"
+                    display_message="发送生成的图片",
                 )
             else:
                 # 私聊
@@ -266,7 +269,7 @@ class DoubaoImageGenerationAction(BaseAction):
                     platform=chat_stream.platform,
                     target_id=str(chat_stream.user_info.user_id),
                     is_group=False,
-                    display_message="发送生成的图片"
+                    display_message="发送生成的图片",
                 )
         except Exception as e:
             logger.error(f"{self.log_prefix} 发送图片时出错: {e}")
@@ -281,14 +284,14 @@ class DoubaoImageGenerationAction(BaseAction):
     def _cleanup_cache(cls):
         """清理缓存，保持大小在限制内"""
         if len(cls._request_cache) > cls._cache_max_size:
-            keys_to_remove = list(cls._request_cache.keys())[:-cls._cache_max_size//2]
+            keys_to_remove = list(cls._request_cache.keys())[: -cls._cache_max_size // 2]
             for key in keys_to_remove:
                 del cls._request_cache[key]
 
     def _validate_image_size(self, image_size: str) -> bool:
         """验证图片尺寸格式"""
         try:
-            width, height = map(int, image_size.split('x'))
+            width, height = map(int, image_size.split("x"))
             return 100 <= width <= 10000 and 100 <= height <= 10000
         except (ValueError, TypeError):
             return False
@@ -380,14 +383,15 @@ class DoubaoImageGenerationAction(BaseAction):
 
 # ===== 插件主类 =====
 
+
 @register_plugin
 class DoubaoImagePlugin(BasePlugin):
     """豆包图片生成插件
-    
+
     基于火山引擎豆包模型的AI图片生成插件：
     - 图片生成Action：根据描述使用火山引擎API生成图片
     """
-    
+
     # 插件基本信息
     plugin_name = "doubao_pic_plugin"
     plugin_description = "基于火山引擎豆包模型的AI图片生成插件"
@@ -395,20 +399,17 @@ class DoubaoImagePlugin(BasePlugin):
     plugin_author = "MaiBot开发团队"
     enable_plugin = True
     config_file_name = "config.toml"
-    
+
     def get_plugin_components(self) -> List[Tuple[ComponentInfo, Type]]:
         """返回插件包含的组件列表"""
-        
+
         # 从配置获取组件启用状态
         enable_image_generation = self.get_config("components.enable_image_generation", True)
-        
+
         components = []
-        
+
         # 添加图片生成Action
         if enable_image_generation:
-            components.append((
-                DoubaoImageGenerationAction.get_action_info(),
-                DoubaoImageGenerationAction
-            ))
-        
-        return components 
+            components.append((DoubaoImageGenerationAction.get_action_info(), DoubaoImageGenerationAction))
+
+        return components
