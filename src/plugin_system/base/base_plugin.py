@@ -105,7 +105,7 @@ class BasePlugin(ABC):
         if file_ext == ".toml":
             with open(config_file_path, "r", encoding="utf-8") as f:
                 self.config = toml.load(f) or {}
-            logger.info(f"{self.log_prefix} 配置已从 {config_file_path} 加载")
+            logger.debug(f"{self.log_prefix} 配置已从 {config_file_path} 加载")
         else:
             logger.warning(f"{self.log_prefix} 不支持的配置文件格式: {file_ext}，仅支持 .toml")
             self.config = {}
@@ -148,7 +148,7 @@ class BasePlugin(ABC):
 
         # 注册插件
         if component_registry.register_plugin(self.plugin_info):
-            logger.info(f"{self.log_prefix} 插件注册成功，包含 {len(registered_components)} 个组件")
+            logger.debug(f"{self.log_prefix} 插件注册成功，包含 {len(registered_components)} 个组件")
             return True
         else:
             logger.error(f"{self.log_prefix} 插件注册失败")

@@ -40,13 +40,12 @@ class HelloAction(BaseAction):
     async def execute(self) -> Tuple[bool, str]:
         """执行问候动作"""
         username = self.action_data.get("username", "朋友")
-
-        # 使用配置文件中的问候消息
-        plugin_instance = SimplePlugin()
-        greeting_template = plugin_instance.get_config("hello_action.greeting_message", "你好，{username}！")
-        enable_emoji = plugin_instance.get_config("hello_action.enable_emoji", True)
-        enable_llm = plugin_instance.get_config("hello_action.enable_llm_greeting", False)
-
+        
+        # 使用默认配置值（避免创建新插件实例）
+        greeting_template = "你好，{username}！"
+        enable_emoji = True
+        enable_llm = False
+        
         # 如果启用LLM生成个性化问候
         if enable_llm:
             try:
@@ -117,12 +116,11 @@ class StatusCommand(BaseCommand):
         """执行状态查询命令"""
         # 获取匹配的参数
         query_type = self.matched_groups.get("type", "系统")
-
-        # 从配置文件获取设置
-        plugin_instance = SimplePlugin()
-        show_detailed = plugin_instance.get_config("status_command.show_detailed_info", True)
-        allowed_types = plugin_instance.get_config("status_command.allowed_types", ["系统", "插件"])
-
+        
+        # 使用默认配置值（避免创建新插件实例）
+        show_detailed = True
+        allowed_types = ["系统", "插件"]
+        
         if query_type not in allowed_types:
             response = f"不支持的查询类型: {query_type}\n支持的类型: {', '.join(allowed_types)}"
         elif show_detailed:

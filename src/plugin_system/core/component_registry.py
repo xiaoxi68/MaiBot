@@ -69,8 +69,8 @@ class ComponentRegistry:
             self._register_action_component(component_info, component_class)
         elif component_type == ComponentType.COMMAND:
             self._register_command_component(component_info, component_class)
-
-        logger.info(f"已注册{component_type.value}组件: {component_name} ({component_class.__name__})")
+        
+        logger.debug(f"已注册{component_type.value}组件: {component_name} ({component_class.__name__})")
         return True
 
     def _register_action_component(self, action_info: ActionInfo, action_class: Type):
@@ -185,7 +185,7 @@ class ComponentRegistry:
             return False
 
         self._plugins[plugin_name] = plugin_info
-        logger.info(f"已注册插件: {plugin_name} (组件数量: {len(plugin_info.components)})")
+        logger.debug(f"已注册插件: {plugin_name} (组件数量: {len(plugin_info.components)})")
         return True
 
     def get_plugin_info(self, plugin_name: str) -> Optional[PluginInfo]:
@@ -215,7 +215,7 @@ class ComponentRegistry:
             component_info = self._components[component_name]
             if isinstance(component_info, ActionInfo):
                 self._default_actions[component_name] = component_info.description
-            logger.info(f"已启用组件: {component_name}")
+            logger.debug(f"已启用组件: {component_name}")
             return True
         return False
 
@@ -226,7 +226,7 @@ class ComponentRegistry:
             # 如果是Action，从默认动作集中移除
             if component_name in self._default_actions:
                 del self._default_actions[component_name]
-            logger.info(f"已禁用组件: {component_name}")
+            logger.debug(f"已禁用组件: {component_name}")
             return True
         return False
 

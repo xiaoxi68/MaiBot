@@ -16,29 +16,36 @@ class DatabaseAPI:
     """
 
     async def store_action_info(
-        self, action_build_into_prompt: bool = False, action_prompt_display: str = "", action_done: bool = True
+        self, 
+        action_build_into_prompt: bool = False, 
+        action_prompt_display: str = "", 
+        action_done: bool = True,
+        thinking_id: str = "",
+        action_data: dict = None
     ) -> None:
-        """存储action执行信息到数据库
-
+        """存储action信息到数据库
+        
         Args:
             action_build_into_prompt: 是否构建到提示中
-            action_prompt_display: 动作显示内容
-            action_done: 动作是否已完成
+            action_prompt_display: 显示的action提示信息
+            action_done: action是否完成
+            thinking_id: 思考ID
+            action_data: action数据，如果不提供则使用空字典
         """
         try:
-            chat_stream = self._services.get("chat_stream")
+            chat_stream = self.get_service("chat_stream")
             if not chat_stream:
                 logger.error(f"{self.log_prefix} 无法存储action信息：缺少chat_stream服务")
                 return
 
             action_time = time.time()
-            action_id = f"{action_time}_{self.thinking_id}"
+            action_id = f"{action_time}_{thinking_id}"
 
             ActionRecords.create(
                 action_id=action_id,
                 time=action_time,
                 action_name=self.__class__.__name__,
-                action_data=str(self.action_data),
+                action_data=str(action_data or {}),
                 action_done=action_done,
                 action_build_into_prompt=action_build_into_prompt,
                 action_prompt_display=action_prompt_display,
