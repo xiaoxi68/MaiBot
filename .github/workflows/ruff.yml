@@ -26,6 +26,7 @@ jobs:
       - name: Install the latest version of ruff
         uses: astral-sh/ruff-action@v3
         with:
+          args: "--version"
           version: "latest"
       - name: Run Ruff Fix
         run: ruff check --fix --unsafe-fixes || true
