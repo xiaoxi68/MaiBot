@@ -8,6 +8,6 @@ from src.plugin_system.core.plugin_manager import plugin_manager
 from src.plugin_system.core.component_registry import component_registry
 
 __all__ = [
-    'plugin_manager',
-    'component_registry',
-] 
+    "plugin_manager",
+    "component_registry",
+]

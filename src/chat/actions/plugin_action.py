@@ -28,7 +28,7 @@ class PluginAction(BaseAction, MessageAPI, LLMAPI, DatabaseAPI, ConfigAPI, Utils
     """插件动作基类（旧版兼容）
 
     封装了主程序内部依赖，提供简化的API接口给插件开发者
-    
+
     ⚠️ 此类已弃用，建议使用新的插件系统：
     - 新基类：src.plugin_system.base.BaseAction
     - 新API：src.plugin_system.plugin_api

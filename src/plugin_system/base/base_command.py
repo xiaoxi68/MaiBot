@@ -7,107 +7,100 @@ from src.chat.message_receive.message import MessageRecv
 
 logger = get_logger("base_command")
 
+
 class BaseCommand(ABC):
     """Command组件基类
-    
+
     Command是插件的一种组件类型，用于处理命令请求
-    
+
     子类可以通过类属性定义命令模式：
     - command_pattern: 命令匹配的正则表达式
     - command_help: 命令帮助信息
     - command_examples: 命令使用示例列表
     """
-    
+
     # 默认命令设置（子类可以覆盖）
     command_pattern: str = ""
     command_help: str = ""
     command_examples: List[str] = []
-    
+
     def __init__(self, message: MessageRecv):
         """初始化Command组件
-        
+
         Args:
             message: 接收到的消息对象
         """
         self.message = message
         self.matched_groups: Dict[str, str] = {}  # 存储正则表达式匹配的命名组
-        
+
         # 创建API实例
-        self.api = PluginAPI(
-            chat_stream=message.chat_stream,
-            log_prefix=f"[Command]"
-        )
-        
-        self.log_prefix = f"[Command]"
-        
+        self.api = PluginAPI(chat_stream=message.chat_stream, log_prefix="[Command]")
+
+        self.log_prefix = "[Command]"
+
         logger.debug(f"{self.log_prefix} Command组件初始化完成")
-    
+
     def set_matched_groups(self, groups: Dict[str, str]) -> None:
         """设置正则表达式匹配的命名组
-        
+
         Args:
             groups: 正则表达式匹配的命名组
         """
         self.matched_groups = groups
-    
+
     @abstractmethod
     async def execute(self) -> Tuple[bool, Optional[str]]:
         """执行Command的抽象方法，子类必须实现
-        
+
         Returns:
             Tuple[bool, Optional[str]]: (是否执行成功, 可选的回复消息)
         """
         pass
-    
+
     async def send_reply(self, content: str) -> None:
         """发送回复消息
-        
+
         Args:
             content: 回复内容
         """
         # 获取聊天流信息
         chat_stream = self.message.chat_stream
-        
+
         if chat_stream.group_info:
             # 群聊
             await self.api.send_text_to_group(
-                text=content,
-                group_id=str(chat_stream.group_info.group_id),
-                platform=chat_stream.platform
+                text=content, group_id=str(chat_stream.group_info.group_id), platform=chat_stream.platform
             )
         else:
             # 私聊
             await self.api.send_text_to_user(
-                text=content,
-                user_id=str(chat_stream.user_info.user_id),
-                platform=chat_stream.platform
+                text=content, user_id=str(chat_stream.user_info.user_id), platform=chat_stream.platform
             )
-    
+
     @classmethod
-    def get_command_info(cls, name: str = None, description: str = None) -> 'CommandInfo':
+    def get_command_info(cls, name: str = None, description: str = None) -> "CommandInfo":
         """从类属性生成CommandInfo
-        
+
         Args:
             name: Command名称，如果不提供则使用类名
             description: Command描述，如果不提供则使用类文档字符串
-            
+
         Returns:
             CommandInfo: 生成的Command信息对象
         """
 
-        
         # 自动生成名称和描述
         if name is None:
-            name = cls.__name__.lower().replace('command', '')
+            name = cls.__name__.lower().replace("command", "")
         if description is None:
             description = cls.__doc__ or f"{cls.__name__} Command组件"
-            description = description.strip().split('\n')[0]  # 取第一行作为描述
-        
+            description = description.strip().split("\n")[0]  # 取第一行作为描述
+
         return CommandInfo(
             name=name,
             component_type=ComponentType.COMMAND,
             description=description,
             command_pattern=cls.command_pattern,
             command_help=cls.command_help,
-            command_examples=cls.command_examples.copy() if cls.command_examples else []
+            command_examples=cls.command_examples.copy() if cls.command_examples else [],
         )

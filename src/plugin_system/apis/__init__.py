@@ -19,19 +19,19 @@ from src.plugin_system.apis.independent_apis import IndependentAPI, StaticAPI
 
 __all__ = [
     # 原有统一API
-    'PluginAPI',
-    'create_plugin_api', 
-    'create_command_api',
+    "PluginAPI",
+    "create_plugin_api",
+    "create_command_api",
     # 原有单独API
-    'MessageAPI',
-    'LLMAPI',
-    'DatabaseAPI',
-    'ConfigAPI',
-    'UtilsAPI',
-    'StreamAPI',
-    'HearflowAPI',
+    "MessageAPI",
+    "LLMAPI",
+    "DatabaseAPI",
+    "ConfigAPI",
+    "UtilsAPI",
+    "StreamAPI",
+    "HearflowAPI",
     # 新增分类API
-    'ActionAPI',      # 需要Action依赖的API
-    'IndependentAPI', # 独立API
-    'StaticAPI',      # 静态API
-] 
+    "ActionAPI",  # 需要Action依赖的API
+    "IndependentAPI",  # 独立API
+    "StaticAPI",  # 静态API
+]

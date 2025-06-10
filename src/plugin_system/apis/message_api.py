@@ -174,9 +174,9 @@ class MessageAPI:
         """
         try:
             # 安全获取服务和日志前缀
-            services = getattr(self, '_services', {})
-            log_prefix = getattr(self, 'log_prefix', '[MessageAPI]')
-            
+            services = getattr(self, "_services", {})
+            log_prefix = getattr(self, "log_prefix", "[MessageAPI]")
+
             expressor: DefaultExpressor = services.get("expressor")
             chat_stream: ChatStream = services.get("chat_stream")
 
@@ -221,7 +221,7 @@ class MessageAPI:
 
             return success
         except Exception as e:
-            log_prefix = getattr(self, 'log_prefix', '[MessageAPI]')
+            log_prefix = getattr(self, "log_prefix", "[MessageAPI]")
             logger.error(f"{log_prefix} 发送消息时出错: {e}")
             traceback.print_exc()
             return False
@@ -237,9 +237,9 @@ class MessageAPI:
             bool: 是否发送成功
         """
         # 安全获取服务和日志前缀
-        services = getattr(self, '_services', {})
-        log_prefix = getattr(self, 'log_prefix', '[MessageAPI]')
-        
+        services = getattr(self, "_services", {})
+        log_prefix = getattr(self, "log_prefix", "[MessageAPI]")
+
         expressor: DefaultExpressor = services.get("expressor")
         chat_stream: ChatStream = services.get("chat_stream")
 
@@ -276,10 +276,10 @@ class MessageAPI:
                 anchor_message.update_chat_stream(chat_stream)
 
         # 调用内部方法发送消息
-        cycle_timers = getattr(self, 'cycle_timers', {})
-        reasoning = getattr(self, 'reasoning', '插件生成')
-        thinking_id = getattr(self, 'thinking_id', 'plugin_thinking')
-        
+        cycle_timers = getattr(self, "cycle_timers", {})
+        reasoning = getattr(self, "reasoning", "插件生成")
+        thinking_id = getattr(self, "thinking_id", "plugin_thinking")
+
         success, _ = await expressor.deal_reply(
             cycle_timers=cycle_timers,
             action_data=reply_data,
@@ -303,9 +303,9 @@ class MessageAPI:
             bool: 是否发送成功
         """
         # 安全获取服务和日志前缀
-        services = getattr(self, '_services', {})
-        log_prefix = getattr(self, 'log_prefix', '[MessageAPI]')
-        
+        services = getattr(self, "_services", {})
+        log_prefix = getattr(self, "log_prefix", "[MessageAPI]")
+
         replyer: DefaultReplyer = services.get("replyer")
         chat_stream: ChatStream = services.get("chat_stream")
 
@@ -342,10 +342,10 @@ class MessageAPI:
                 anchor_message.update_chat_stream(chat_stream)
 
         # 调用内部方法发送消息
-        cycle_timers = getattr(self, 'cycle_timers', {})
-        reasoning = getattr(self, 'reasoning', '插件生成')
-        thinking_id = getattr(self, 'thinking_id', 'plugin_thinking')
-        
+        cycle_timers = getattr(self, "cycle_timers", {})
+        reasoning = getattr(self, "reasoning", "插件生成")
+        thinking_id = getattr(self, "thinking_id", "plugin_thinking")
+
         success, _ = await replyer.deal_reply(
             cycle_timers=cycle_timers,
             action_data=reply_data,
@@ -362,7 +362,7 @@ class MessageAPI:
         Returns:
             str: 聊天类型 ("group" 或 "private")
         """
-        services = getattr(self, '_services', {})
+        services = getattr(self, "_services", {})
         chat_stream: ChatStream = services.get("chat_stream")
         if chat_stream and hasattr(chat_stream, "group_info"):
             return "group" if chat_stream.group_info else "private"
@@ -378,7 +378,7 @@ class MessageAPI:
             List[Dict]: 消息列表，每个消息包含发送者、内容等信息
         """
         messages = []
-        services = getattr(self, '_services', {})
+        services = getattr(self, "_services", {})
         observations = services.get("observations", [])
 
         if observations and len(observations) > 0:

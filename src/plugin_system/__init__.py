@@ -9,8 +9,13 @@ from src.plugin_system.base.base_plugin import BasePlugin, register_plugin
 from src.plugin_system.base.base_action import BaseAction
 from src.plugin_system.base.base_command import BaseCommand
 from src.plugin_system.base.component_types import (
-    ComponentType, ActionActivationType, ChatMode,
-    ComponentInfo, ActionInfo, CommandInfo, PluginInfo
+    ComponentType,
+    ActionActivationType,
+    ChatMode,
+    ComponentInfo,
+    ActionInfo,
+    CommandInfo,
+    PluginInfo,
 )
 from src.plugin_system.apis.plugin_api import PluginAPI, create_plugin_api, create_command_api
 from src.plugin_system.core.plugin_manager import plugin_manager
@@ -20,28 +25,24 @@ __version__ = "1.0.0"
 
 __all__ = [
     # 基础类
-    'BasePlugin',
-    'BaseAction', 
-    'BaseCommand',
-    
+    "BasePlugin",
+    "BaseAction",
+    "BaseCommand",
     # 类型定义
-    'ComponentType',
-    'ActionActivationType',
-    'ChatMode',
-    'ComponentInfo',
-    'ActionInfo',
-    'CommandInfo',
-    'PluginInfo',
-    
+    "ComponentType",
+    "ActionActivationType",
+    "ChatMode",
+    "ComponentInfo",
+    "ActionInfo",
+    "CommandInfo",
+    "PluginInfo",
     # API接口
-    'PluginAPI',
-    'create_plugin_api',
-    'create_command_api',
-    
+    "PluginAPI",
+    "create_plugin_api",
+    "create_command_api",
     # 管理器
-    'plugin_manager',
-    'component_registry',
-    
+    "plugin_manager",
+    "component_registry",
     # 装饰器
-    'register_plugin',
-] 
+    "register_plugin",
+]
