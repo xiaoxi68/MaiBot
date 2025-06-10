@@ -1,10 +1,10 @@
 # 综合示例插件配置文件
 
 [plugin]
-name = "example_comprehensive"
+name = "example_plugin"
 version = "2.0.0"
 enabled = true
-description = "展示新插件系统完整功能的综合示例插件"
+description = "展示新插件系统完整功能的示例插件"
 
 # 组件启用控制
 [components]

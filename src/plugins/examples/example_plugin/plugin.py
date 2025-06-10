@@ -408,7 +408,7 @@ class ExampleComprehensivePlugin(BasePlugin):
     """
     
     # 插件基本信息
-    plugin_name = "example_comprehensive"
+    plugin_name = "example_plugin"
     plugin_description = "综合示例插件，展示新插件系统的完整功能"
     plugin_version = "2.0.0"
     plugin_author = "MaiBot开发团队"

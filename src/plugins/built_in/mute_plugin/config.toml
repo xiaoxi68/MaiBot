@@ -9,7 +9,7 @@ description = "群聊禁言管理插件，提供智能禁言功能"
 # 组件启用控制
 [components]
 enable_smart_mute = true      # 启用智能禁言Action
-enable_mute_command = true    # 启用禁言命令Command
+enable_mute_command = false    # 启用禁言命令Command
 
 # 禁言配置
 [mute]
@@ -29,9 +29,9 @@ templates = [
     "好的，禁言 {target} {duration}，理由：{reason}",
     "收到，对 {target} 执行禁言 {duration}，因为{reason}",
     "明白了，禁言 {target} {duration}，原因是{reason}",
-    "✅ 已禁言 {target} {duration}，理由：{reason}",
-    "🔇 对 {target} 执行禁言 {duration}，因为{reason}",
-    "⛔ 禁言 {target} {duration}，原因：{reason}"
+    "哇哈哈哈哈哈，已禁言 {target} {duration}，理由：{reason}",
+    "哎呦我去，对 {target} 执行禁言 {duration}，因为{reason}",
+    "{target}，你完蛋了，我要禁言你 {duration} 秒，原因：{reason}"
 ]
 
 # 错误消息模板
@@ -57,9 +57,6 @@ allow_parallel = false
 
 # 禁言命令配置  
 [mute_command]
-# 是否需要管理员权限
-require_admin = true
-
 # 最大批量禁言数量
 max_batch_size = 5
 

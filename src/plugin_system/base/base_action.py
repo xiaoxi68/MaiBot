@@ -166,14 +166,13 @@ class BaseAction(ABC):
             if not chat_stream:
                 logger.error(f"{self.log_prefix} 没有可用的聊天流发送命令")
                 return False
-                
-            command_content = str(command_data)
+            
             
             if chat_stream.group_info:
                 # 群聊
                 success = await self.api.send_message_to_target(
                     message_type="command",
-                    content=command_content,
+                    content=command_data,
                     platform=chat_stream.platform,
                     target_id=str(chat_stream.group_info.group_id),
                     is_group=True,
@@ -183,7 +182,7 @@ class BaseAction(ABC):
                 # 私聊
                 success = await self.api.send_message_to_target(
                     message_type="command",
-                    content=command_content,
+                    content=command_data,
                     platform=chat_stream.platform,
                     target_id=str(chat_stream.user_info.user_id),
                     is_group=False,
@@ -213,7 +212,7 @@ class BaseAction(ABC):
         """
         try:
             from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
-            from src.chat.message_receive.message import create_empty_anchor_message
+            from src.chat.focus_chat.hfc_utils import create_empty_anchor_message
             
             # 获取服务
             expressor = self.api.get_service("expressor")
@@ -281,7 +280,7 @@ class BaseAction(ABC):
         """
         try:
             from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
-            from src.chat.message_receive.message import create_empty_anchor_message
+            from src.chat.focus_chat.hfc_utils import create_empty_anchor_message
             
             # 获取服务
             replyer = self.api.get_service("replyer")

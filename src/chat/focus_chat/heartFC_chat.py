@@ -159,6 +159,13 @@ class HeartFChatting:
 
         for name, (observation_class, param_name) in OBSERVATION_CLASSES.items():
             try:
+                # 检查是否需要跳过WorkingMemoryObservation
+                if name == "WorkingMemoryObservation":
+                    # 如果工作记忆处理器被禁用，则跳过WorkingMemoryObservation
+                    if not global_config.focus_chat_processor.working_memory_processor:
+                        logger.debug(f"{self.log_prefix} 工作记忆处理器已禁用，跳过注册观察器 {name}")
+                        continue
+                
                 # 根据参数名使用正确的参数
                 kwargs = {param_name: self.stream_id}
                 observation = observation_class(**kwargs)

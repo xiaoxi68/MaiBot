@@ -1,51 +1,56 @@
+"""
+豆包图片生成插件
+
+基于火山引擎豆包模型的AI图片生成插件。
+
+功能特性：
+- 智能LLM判定：根据聊天内容智能判断是否需要生成图片
+- 高质量图片生成：使用豆包Seed Dream模型生成图片
+- 结果缓存：避免重复生成相同内容的图片
+- 配置验证：自动验证和修复配置文件
+- 参数验证：完整的输入参数验证和错误处理
+- 多尺寸支持：支持多种图片尺寸生成
+
+包含组件：
+- 图片生成Action - 根据描述使用火山引擎API生成图片
+"""
+
 import asyncio
 import json
 import urllib.request
 import urllib.error
-import base64  # 新增：用于Base64编码
-import traceback  # 新增：用于打印堆栈跟踪
-from typing import Tuple
-from src.chat.actions.plugin_action import PluginAction, register_action
-from src.chat.actions.base_action import ActionActivationType, ChatMode
+import base64
+import traceback
+import random
+from typing import List, Tuple, Type, Optional
+
+# 导入新插件系统
+from src.plugin_system.base.base_plugin import BasePlugin
+from src.plugin_system.base.base_plugin import register_plugin
+from src.plugin_system.base.base_action import BaseAction
+from src.plugin_system.base.component_types import ComponentInfo, ActionActivationType, ChatMode
 from src.common.logger_manager import get_logger
-from .generate_pic_config import generate_config
 
-logger = get_logger("pic_action")
-
-# 当此模块被加载时，尝试生成配置文件（如果它不存在）
-# 注意：在某些插件加载机制下，这可能会在每次机器人启动或插件重载时执行
-# 考虑是否需要更复杂的逻辑来决定何时运行 (例如，仅在首次安装时)
-generate_config()
+logger = get_logger("doubao_pic_plugin")
 
 
-@register_action
-class PicAction(PluginAction):
-    """根据描述使用火山引擎HTTP API生成图片的动作处理类"""
+# ===== Action组件 =====
 
-    action_name = "pic_action"
-    action_description = (
-        "可以根据特定的描述，生成并发送一张图片，如果没提供描述，就根据聊天内容生成,你可以立刻画好，不用等待"
-    )
-    action_parameters = {
-        "description": "图片描述，输入你想要生成并发送的图片的描述，必填",
-        "size": "图片尺寸，例如 '1024x1024' (可选, 默认从配置或 '1024x1024')",
-    }
-    action_require = [
-        "当有人让你画东西时使用，你可以立刻画好，不用等待",
-        "当有人要求你生成并发送一张图片时使用",
-        "当有人让你画一张图时使用",
-    ]
-    enable_plugin = False
-    action_config_file_name = "pic_action_config.toml"
-
-    # 激活类型设置
+class DoubaoImageGenerationAction(BaseAction):
+    """豆包图片生成Action - 根据描述使用火山引擎API生成图片"""
+    
+    # Action基本信息
+    action_name = "doubao_image_generation"
+    action_description = "可以根据特定的描述，生成并发送一张图片，如果没提供描述，就根据聊天内容生成,你可以立刻画好，不用等待"
+    
+    # 激活设置
     focus_activation_type = ActionActivationType.LLM_JUDGE  # Focus模式使用LLM判定，精确理解需求
-    normal_activation_type = ActionActivationType.KEYWORD  # Normal模式使用关键词激活，快速响应
-
+    normal_activation_type = ActionActivationType.KEYWORD   # Normal模式使用关键词激活，快速响应
+    
     # 关键词设置（用于Normal模式）
     activation_keywords = ["画", "绘制", "生成图片", "画图", "draw", "paint", "图片生成"]
     keyword_case_sensitive = False
-
+    
     # LLM判定提示词（用于Focus模式）
     llm_judge_prompt = """
 判定是否需要使用图片生成动作的条件：
@@ -67,77 +72,45 @@ class PicAction(PluginAction):
 4. 技术讨论中提到绘图概念但无生成需求
 5. 用户明确表示不需要图片时
 """
-
-    # Random激活概率（备用）
-    random_activation_probability = 0.15  # 适中概率，图片生成比较有趣
-
+    
+    mode_enable = ChatMode.ALL
+    parallel_action = True
+    
+    # Action参数定义
+    action_parameters = {
+        "description": "图片描述，输入你想要生成并发送的图片的描述，必填",
+        "size": "图片尺寸，例如 '1024x1024' (可选, 默认从配置或 '1024x1024')",
+    }
+    
+    # Action使用场景
+    action_require = [
+        "当有人让你画东西时使用，你可以立刻画好，不用等待",
+        "当有人要求你生成并发送一张图片时使用",
+        "当有人让你画一张图时使用",
+    ]
+    
     # 简单的请求缓存，避免短时间内重复请求
     _request_cache = {}
     _cache_max_size = 10
 
-    # 模式启用设置 - 图片生成在所有模式下可用
-    mode_enable = ChatMode.ALL
-
-    # 并行执行设置 - 图片生成可以与回复并行执行，不覆盖回复内容
-    parallel_action = False
-
-    @classmethod
-    def _get_cache_key(cls, description: str, model: str, size: str) -> str:
-        """生成缓存键"""
-        return f"{description[:100]}|{model}|{size}"  # 限制描述长度避免键过长
-
-    @classmethod
-    def _cleanup_cache(cls):
-        """清理缓存，保持大小在限制内"""
-        if len(cls._request_cache) > cls._cache_max_size:
-            # 简单的FIFO策略，移除最旧的条目
-            keys_to_remove = list(cls._request_cache.keys())[: -cls._cache_max_size // 2]
-            for key in keys_to_remove:
-                del cls._request_cache[key]
-
-    def __init__(
-        self,
-        action_data: dict,
-        reasoning: str,
-        cycle_timers: dict,
-        thinking_id: str,
-        global_config: dict = None,
-        **kwargs,
-    ):
-        super().__init__(action_data, reasoning, cycle_timers, thinking_id, global_config, **kwargs)
-
-        logger.info(f"{self.log_prefix} 开始绘图！原因是：{self.reasoning}")
-
-        http_base_url = self.config.get("base_url")
-        http_api_key = self.config.get("volcano_generate_api_key")
-
-        if not (http_base_url and http_api_key):
-            logger.error(
-                f"{self.log_prefix} PicAction初始化, 但HTTP配置 (base_url 或 volcano_generate_api_key) 缺失. HTTP图片生成将失败."
-            )
-        else:
-            logger.info(f"{self.log_prefix} HTTP方式初始化完成. Base URL: {http_base_url}, API Key已配置.")
-
-    # _restore_env_vars 方法不再需要，已移除
-
-    async def process(self) -> Tuple[bool, str]:
-        """处理图片生成动作（通过HTTP API）"""
-        logger.info(f"{self.log_prefix} 执行 pic_action (HTTP): {self.reasoning}")
-
+    async def execute(self) -> Tuple[bool, Optional[str]]:
+        """执行图片生成动作"""
+        logger.info(f"{self.log_prefix} 执行豆包图片生成动作")
+        
         # 配置验证
-        http_base_url = self.config.get("base_url")
-        http_api_key = self.config.get("volcano_generate_api_key")
+        http_base_url = self.api.get_config("base_url")
+        http_api_key = self.api.get_config("volcano_generate_api_key")
 
         if not (http_base_url and http_api_key):
             error_msg = "抱歉，图片生成功能所需的HTTP配置（如API地址或密钥）不完整，无法提供服务。"
-            await self.send_message_by_expressor(error_msg)
+            await self.send_reply(error_msg)
             logger.error(f"{self.log_prefix} HTTP调用配置缺失: base_url 或 volcano_generate_api_key.")
             return False, "HTTP配置不完整"
 
         # API密钥验证
-        if http_api_key == "YOUR_VOLCANO_GENERATE_API_KEY_HERE":
+        if http_api_key == "YOUR_DOUBAO_API_KEY_HERE":
             error_msg = "图片生成功能尚未配置，请设置正确的API密钥。"
-            await self.send_message_by_expressor(error_msg)
+            await self.send_reply(error_msg)
             logger.error(f"{self.log_prefix} API密钥未配置")
             return False, "API密钥未配置"
 
@@ -145,7 +118,7 @@ class PicAction(PluginAction):
         description = self.action_data.get("description")
         if not description or not description.strip():
             logger.warning(f"{self.log_prefix} 图片描述为空，无法生成图片。")
-            await self.send_message_by_expressor("你需要告诉我想要画什么样的图片哦~ 比如说'画一只可爱的小猫'")
+            await self.send_reply("你需要告诉我想要画什么样的图片哦~ 比如说'画一只可爱的小猫'")
             return False, "图片描述为空"
 
         # 清理和验证描述
@@ -155,8 +128,8 @@ class PicAction(PluginAction):
             logger.info(f"{self.log_prefix} 图片描述过长，已截断")
 
         # 获取配置
-        default_model = self.config.get("default_model", "doubao-seedream-3-0-t2i-250415")
-        image_size = self.action_data.get("size", self.config.get("default_size", "1024x1024"))
+        default_model = self.api.get_config("default_model", "doubao-seedream-3-0-t2i-250415")
+        image_size = self.action_data.get("size", self.api.get_config("default_size", "1024x1024"))
 
         # 验证图片尺寸格式
         if not self._validate_image_size(image_size):
@@ -168,58 +141,23 @@ class PicAction(PluginAction):
         if cache_key in self._request_cache:
             cached_result = self._request_cache[cache_key]
             logger.info(f"{self.log_prefix} 使用缓存的图片结果")
-            await self.send_message_by_expressor("我之前画过类似的图片，用之前的结果~")
-
+            await self.send_reply("我之前画过类似的图片，用之前的结果~")
+            
             # 直接发送缓存的结果
-            send_success = await self.send_message(type="image", data=cached_result)
+            send_success = await self._send_image(cached_result)
             if send_success:
-                await self.send_message_by_expressor("图片表情已发送！")
-                return True, "图片表情已发送(缓存)"
+                await self.send_reply("图片已发送！")
+                return True, "图片已发送(缓存)"
             else:
                 # 缓存失败，清除这个缓存项并继续正常流程
                 del self._request_cache[cache_key]
 
-        # guidance_scale 现在完全由配置文件控制
-        guidance_scale_input = self.config.get("default_guidance_scale", 2.5)  # 默认2.5
-        guidance_scale_val = 2.5  # Fallback default
-        try:
-            guidance_scale_val = float(guidance_scale_input)
-        except (ValueError, TypeError):
-            logger.warning(
-                f"{self.log_prefix} 配置文件中的 default_guidance_scale 值 '{guidance_scale_input}' 无效 (应为浮点数)，使用默认值 2.5。"
-            )
-            guidance_scale_val = 2.5
+        # 获取其他配置参数
+        guidance_scale_val = self._get_guidance_scale()
+        seed_val = self._get_seed()
+        watermark_val = self._get_watermark()
 
-        # Seed parameter - ensure it's always an integer
-        seed_config_value = self.config.get("default_seed")
-        seed_val = 42  # Default seed if not configured or invalid
-        if seed_config_value is not None:
-            try:
-                seed_val = int(seed_config_value)
-            except (ValueError, TypeError):
-                logger.warning(
-                    f"{self.log_prefix} 配置文件中的 default_seed ('{seed_config_value}') 无效，将使用默认种子 42。"
-                )
-                # seed_val is already 42
-        else:
-            logger.info(
-                f"{self.log_prefix} 未在配置中找到 default_seed，将使用默认种子 42。建议在配置文件中添加 default_seed。"
-            )
-            # seed_val is already 42
-
-        # Watermark 现在完全由配置文件控制
-        effective_watermark_source = self.config.get("default_watermark", True)  # 默认True
-        if isinstance(effective_watermark_source, bool):
-            watermark_val = effective_watermark_source
-        elif isinstance(effective_watermark_source, str):
-            watermark_val = effective_watermark_source.lower() == "true"
-        else:
-            logger.warning(
-                f"{self.log_prefix} 配置文件中的 default_watermark 值 '{effective_watermark_source}' 无效 (应为布尔值或 'true'/'false')，使用默认值 True。"
-            )
-            watermark_val = True
-
-        await self.send_message_by_expressor(
+        await self.send_reply(
             f"收到！正在为您生成关于 '{description}' 的图片，请稍候...（模型: {default_model}, 尺寸: {image_size}）"
         )
 
@@ -253,17 +191,17 @@ class PicAction(PluginAction):
 
             if encode_success:
                 base64_image_string = encode_result
-                send_success = await self.send_message(type="image", data=base64_image_string)
+                send_success = await self._send_image(base64_image_string)
                 if send_success:
                     # 缓存成功的结果
                     self._request_cache[cache_key] = base64_image_string
                     self._cleanup_cache()
-
-                    await self.send_message_by_expressor("图片表情已发送！")
-                    return True, "图片表情已发送"
+                    
+                    await self.send_message_by_expressor("图片已发送！")
+                    return True, "图片已发送"
                 else:
-                    await self.send_message_by_expressor("图片已处理为Base64，但作为表情发送失败了。")
-                    return False, "图片表情发送失败 (Base64)"
+                    await self.send_message_by_expressor("图片已处理为Base64，但发送失败了。")
+                    return False, "图片发送失败 (Base64)"
             else:
                 await self.send_message_by_expressor(f"获取到图片URL，但在处理图片时失败了：{encode_result}")
                 return False, f"图片处理失败(Base64): {encode_result}"
@@ -271,6 +209,90 @@ class PicAction(PluginAction):
             error_message = result
             await self.send_message_by_expressor(f"哎呀，生成图片时遇到问题：{error_message}")
             return False, f"图片生成失败: {error_message}"
+
+    def _get_guidance_scale(self) -> float:
+        """获取guidance_scale配置值"""
+        guidance_scale_input = self.api.get_config("default_guidance_scale", 2.5)
+        try:
+            return float(guidance_scale_input)
+        except (ValueError, TypeError):
+            logger.warning(f"{self.log_prefix} default_guidance_scale 值无效，使用默认值 2.5")
+            return 2.5
+
+    def _get_seed(self) -> int:
+        """获取seed配置值"""
+        seed_config_value = self.api.get_config("default_seed")
+        if seed_config_value is not None:
+            try:
+                return int(seed_config_value)
+            except (ValueError, TypeError):
+                logger.warning(f"{self.log_prefix} default_seed 值无效，使用默认值 42")
+        return 42
+
+    def _get_watermark(self) -> bool:
+        """获取watermark配置值"""
+        watermark_source = self.api.get_config("default_watermark", True)
+        if isinstance(watermark_source, bool):
+            return watermark_source
+        elif isinstance(watermark_source, str):
+            return watermark_source.lower() == "true"
+        else:
+            logger.warning(f"{self.log_prefix} default_watermark 值无效，使用默认值 True")
+            return True
+
+    async def _send_image(self, base64_image: str) -> bool:
+        """发送图片"""
+        try:
+            # 使用聊天流信息确定发送目标
+            chat_stream = self.api.get_service('chat_stream')
+            if not chat_stream:
+                logger.error(f"{self.log_prefix} 没有可用的聊天流发送图片")
+                return False
+                
+            if chat_stream.group_info:
+                # 群聊
+                return await self.api.send_message_to_target(
+                    message_type="image",
+                    content=base64_image,
+                    platform=chat_stream.platform,
+                    target_id=str(chat_stream.group_info.group_id),
+                    is_group=True,
+                    display_message="发送生成的图片"
+                )
+            else:
+                # 私聊
+                return await self.api.send_message_to_target(
+                    message_type="image",
+                    content=base64_image,
+                    platform=chat_stream.platform,
+                    target_id=str(chat_stream.user_info.user_id),
+                    is_group=False,
+                    display_message="发送生成的图片"
+                )
+        except Exception as e:
+            logger.error(f"{self.log_prefix} 发送图片时出错: {e}")
+            return False
+
+    @classmethod
+    def _get_cache_key(cls, description: str, model: str, size: str) -> str:
+        """生成缓存键"""
+        return f"{description[:100]}|{model}|{size}"
+
+    @classmethod
+    def _cleanup_cache(cls):
+        """清理缓存，保持大小在限制内"""
+        if len(cls._request_cache) > cls._cache_max_size:
+            keys_to_remove = list(cls._request_cache.keys())[:-cls._cache_max_size//2]
+            for key in keys_to_remove:
+                del cls._request_cache[key]
+
+    def _validate_image_size(self, image_size: str) -> bool:
+        """验证图片尺寸格式"""
+        try:
+            width, height = map(int, image_size.split('x'))
+            return 100 <= width <= 10000 and 100 <= height <= 10000
+        except (ValueError, TypeError):
+            return False
 
     def _download_and_encode_base64(self, image_url: str) -> Tuple[bool, str]:
         """下载图片并将其编码为Base64字符串"""
@@ -286,16 +308,17 @@ class PicAction(PluginAction):
                     error_msg = f"下载图片失败 (状态: {response.status})"
                     logger.error(f"{self.log_prefix} (B64) {error_msg} URL: {image_url}")
                     return False, error_msg
-        except Exception as e:  # Catches all exceptions from urlopen, b64encode, etc.
+        except Exception as e:
             logger.error(f"{self.log_prefix} (B64) 下载或编码时错误: {e!r}", exc_info=True)
             traceback.print_exc()
             return False, f"下载或编码图片时发生错误: {str(e)[:100]}"
 
     def _make_http_image_request(
-        self, prompt: str, model: str, size: str, seed: int | None, guidance_scale: float, watermark: bool
+        self, prompt: str, model: str, size: str, seed: int, guidance_scale: float, watermark: bool
     ) -> Tuple[bool, str]:
-        base_url = self.config.get("base_url")
-        generate_api_key = self.config.get("volcano_generate_api_key")
+        """发送HTTP请求生成图片"""
+        base_url = self.api.get_config("base_url")
+        generate_api_key = self.api.get_config("volcano_generate_api_key")
 
         endpoint = f"{base_url.rstrip('/')}/images/generations"
 
@@ -306,11 +329,9 @@ class PicAction(PluginAction):
             "size": size,
             "guidance_scale": guidance_scale,
             "watermark": watermark,
-            "seed": seed,  # seed is now always an int from process()
+            "seed": seed,
             "api-key": generate_api_key,
         }
-        # if seed is not None: # No longer needed, seed is always an int
-        #     payload_dict["seed"] = seed
 
         data = json.dumps(payload_dict).encode("utf-8")
         headers = {
@@ -320,12 +341,6 @@ class PicAction(PluginAction):
         }
 
         logger.info(f"{self.log_prefix} (HTTP) 发起图片请求: {model}, Prompt: {prompt[:30]}... To: {endpoint}")
-        logger.debug(
-            f"{self.log_prefix} (HTTP) Request Headers: {{...Authorization: Bearer {generate_api_key[:10]}...}}"
-        )
-        logger.debug(
-            f"{self.log_prefix} (HTTP) Request Body (api-key omitted): {json.dumps({k: v for k, v in payload_dict.items() if k != 'api-key'})}"
-        )
 
         req = urllib.request.Request(endpoint, data=data, headers=headers, method="POST")
 
@@ -353,24 +368,48 @@ class PicAction(PluginAction):
                         logger.info(f"{self.log_prefix} (HTTP) 图片生成成功，URL: {image_url[:70]}...")
                         return True, image_url
                     else:
-                        logger.error(
-                            f"{self.log_prefix} (HTTP) API成功但无图片URL. 响应预览: {response_body_str[:300]}..."
-                        )
+                        logger.error(f"{self.log_prefix} (HTTP) API成功但无图片URL")
                         return False, "图片生成API响应成功但未找到图片URL"
                 else:
-                    logger.error(
-                        f"{self.log_prefix} (HTTP) API请求失败. 状态: {response.status}. 正文: {response_body_str[:300]}..."
-                    )
+                    logger.error(f"{self.log_prefix} (HTTP) API请求失败. 状态: {response.status}")
                     return False, f"图片API请求失败(状态码 {response.status})"
         except Exception as e:
             logger.error(f"{self.log_prefix} (HTTP) 图片生成时意外错误: {e!r}", exc_info=True)
             traceback.print_exc()
             return False, f"图片生成HTTP请求时发生意外错误: {str(e)[:100]}"
 
-    def _validate_image_size(self, image_size: str) -> bool:
-        """验证图片尺寸格式"""
-        try:
-            width, height = map(int, image_size.split("x"))
-            return 100 <= width <= 10000 and 100 <= height <= 10000
-        except (ValueError, TypeError):
-            return False
+
+# ===== 插件主类 =====
+
+@register_plugin
+class DoubaoImagePlugin(BasePlugin):
+    """豆包图片生成插件
+    
+    基于火山引擎豆包模型的AI图片生成插件：
+    - 图片生成Action：根据描述使用火山引擎API生成图片
+    """
+    
+    # 插件基本信息
+    plugin_name = "doubao_pic_plugin"
+    plugin_description = "基于火山引擎豆包模型的AI图片生成插件"
+    plugin_version = "2.0.0"
+    plugin_author = "MaiBot开发团队"
+    enable_plugin = True
+    config_file_name = "config.toml"
+    
+    def get_plugin_components(self) -> List[Tuple[ComponentInfo, Type]]:
+        """返回插件包含的组件列表"""
+        
+        # 从配置获取组件启用状态
+        enable_image_generation = self.get_config("components.enable_image_generation", True)
+        
+        components = []
+        
+        # 添加图片生成Action
+        if enable_image_generation:
+            components.append((
+                DoubaoImageGenerationAction.get_action_info(),
+                DoubaoImageGenerationAction
+            ))
+        
+        return components 

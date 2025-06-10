@@ -2,6 +2,7 @@ from typing import List, Any, Optional
 import asyncio
 from src.common.logger_manager import get_logger
 from src.chat.focus_chat.working_memory.memory_manager import MemoryManager, MemoryItem
+from src.config.config import global_config
 
 logger = get_logger(__name__)
 
@@ -33,8 +34,11 @@ class WorkingMemory:
         # 衰减任务
         self.decay_task = None
 
-        # 启动自动衰减任务
-        self._start_auto_decay()
+        # 只有在工作记忆处理器启用时才启动自动衰减任务
+        if global_config.focus_chat_processor.working_memory_processor:
+            self._start_auto_decay()
+        else:
+            logger.debug(f"工作记忆处理器已禁用，跳过启动自动衰减任务 (chat_id: {chat_id})")
 
     def _start_auto_decay(self):
         """启动自动衰减任务"""

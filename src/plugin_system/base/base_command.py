@@ -102,7 +102,7 @@ class BaseCommand(ABC):
             
             # 使用send_message_to_target方法发送命令
             chat_stream = self.message.chat_stream
-            command_content = str(command_data)
+            command_content = command_data
             
             if chat_stream.group_info:
                 # 群聊

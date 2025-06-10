@@ -153,7 +153,8 @@ class MuteAction(BaseAction):
         
         # 获取模板化消息
         message = self._get_template_message(target, time_str, reason)
-        await self.send_reply(message)
+        # await self.send_reply(message)
+        await self.send_message_by_expressor(message)
         
         # 发送群聊禁言命令
         success = await self.send_command(

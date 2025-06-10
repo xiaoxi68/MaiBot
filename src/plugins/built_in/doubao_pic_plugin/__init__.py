@@ -4,7 +4,7 @@
 这是一个测试插件，用于测试图片发送功能
 """
 
-"""豆包图片生成插件
+"""豆包图片生成插件包
 
 这是一个基于火山引擎豆包模型的AI图片生成插件。
 
@@ -21,7 +21,7 @@
 - 将文字描述转换为视觉图像
 - 创意图片和艺术作品生成
 
-配置文件：src/plugins/doubao_pic/actions/pic_action_config.toml
+配置文件：config.toml
 
 配置要求：
 1. 设置火山引擎API密钥 (volcano_generate_api_key)
@@ -30,3 +30,7 @@
 
 注意：需要有效的火山引擎API访问权限才能正常使用。
 """
+
+from .plugin import DoubaoImagePlugin
+
+__all__ = ["DoubaoImagePlugin"]
