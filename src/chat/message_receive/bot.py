@@ -10,7 +10,7 @@ from src.experimental.PFC.pfc_manager import PFCManager
 from src.chat.focus_chat.heartflow_message_processor import HeartFCMessageReceiver
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.config.config import global_config
-from src.chat.command.command_handler import command_manager  # 导入命令管理器
+from src.plugin_system.core.component_registry import component_registry  # 导入新插件系统
 
 # 定义日志配置
 
@@ -47,6 +47,54 @@ class ChatBot:
 
         except Exception as e:
             logger.error(f"创建PFC聊天失败: {e}")
+    
+    async def _process_commands_with_new_system(self, message: MessageRecv):
+        """使用新插件系统处理命令"""
+        try:
+            if not message.processed_plain_text:
+                await message.process()
+            
+            text = message.processed_plain_text
+            
+            # 使用新的组件注册中心查找命令
+            command_result = component_registry.find_command_by_text(text)
+            if command_result:
+                command_class, matched_groups = command_result
+                
+                # 创建命令实例
+                command_instance = command_class(message)
+                command_instance.set_matched_groups(matched_groups)
+                
+                try:
+                    # 执行命令
+                    success, response = await command_instance.execute()
+                    
+                    # 记录命令执行结果
+                    if success:
+                        logger.info(f"命令执行成功: {command_class.__name__}")
+                    else:
+                        logger.warning(f"命令执行失败: {command_class.__name__} - {response}")
+                    
+                    return True, response, False  # 找到命令，不继续处理
+                
+                except Exception as e:
+                    logger.error(f"执行命令时出错: {command_class.__name__} - {e}")
+                    import traceback
+                    logger.error(traceback.format_exc())
+                    
+                    try:
+                        await command_instance.send_reply(f"命令执行出错: {str(e)}")
+                    except Exception as send_error:
+                        logger.error(f"发送错误消息失败: {send_error}")
+                    
+                    return True, str(e), False  # 命令出错，不继续处理
+            
+            # 没有找到命令，继续处理消息
+            return False, None, True
+        
+        except Exception as e:
+            logger.error(f"处理命令时出错: {e}")
+            return False, None, True  # 出错时继续处理消息
 
     async def message_process(self, message_data: Dict[str, Any]) -> None:
         """处理转化后的统一格式消息
@@ -90,10 +138,10 @@ class ChatBot:
 
             # 处理消息内容，生成纯文本
             await message.process()
-
-            # 命令处理 - 在消息处理的早期阶段检查并处理命令
-            is_command, cmd_result, continue_process = await command_manager.process_command(message)
-
+            
+            # 命令处理 - 使用新插件系统检查并处理命令
+            is_command, cmd_result, continue_process = await self._process_commands_with_new_system(message)
+            
             # 如果是命令且不需要继续处理，则直接返回
             if is_command and not continue_process:
                 logger.info(f"命令处理完成，跳过后续消息处理: {cmd_result}")

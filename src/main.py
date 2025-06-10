@@ -22,6 +22,11 @@ from .api.main import start_api_server
 
 # 导入actions模块，确保装饰器被执行
 import src.chat.actions.default_actions  # noqa
+# 导入新的插件管理器
+from src.plugin_system.core.plugin_manager import plugin_manager
+# 导入消息API和traceback模块
+from src.common.message import global_api
+import traceback
 
 # 条件导入记忆系统
 if global_config.memory.enable_memory:
@@ -45,8 +50,6 @@ class MainSystem:
         self.individuality: Individuality = individuality
 
         # 使用消息API替代直接的FastAPI实例
-        from src.common.message import global_api
-
         self.app: MessageServer = global_api
         self.server: Server = global_server
 
@@ -134,29 +137,15 @@ class MainSystem:
             raise
 
     def _load_all_actions(self):
-        """加载所有actions和commands，使用统一的插件加载器"""
+        """加载所有actions和commands，使用新的插件系统"""
         try:
-            # 导入统一的插件加载器
-            from src.plugins.plugin_loader import plugin_loader
-
-            # 使用统一的插件加载器加载所有插件组件
-            loaded_actions, loaded_commands = plugin_loader.load_all_plugins()
-
-            # 加载命令处理系统
-            try:
-                # 导入命令处理系统
-
-                logger.success("命令处理系统加载成功")
-            except Exception as e:
-                logger.error(f"加载命令处理系统失败: {e}")
-                import traceback
-
-                logger.error(traceback.format_exc())
-
+            # 使用新的插件管理器加载所有插件
+            plugin_count, component_count = plugin_manager.load_all_plugins()
+            
+            logger.success(f"插件系统加载成功: {plugin_count} 个插件，{component_count} 个组件")
+                    
         except Exception as e:
             logger.error(f"加载插件失败: {e}")
-            import traceback
-
             logger.error(traceback.format_exc())
 
     async def schedule_tasks(self):

@@ -173,15 +173,19 @@ class MessageAPI:
             bool: 是否发送成功
         """
         try:
-            expressor: DefaultExpressor = self._services.get("expressor")
-            chat_stream: ChatStream = self._services.get("chat_stream")
+            # 安全获取服务和日志前缀
+            services = getattr(self, '_services', {})
+            log_prefix = getattr(self, 'log_prefix', '[MessageAPI]')
+            
+            expressor: DefaultExpressor = services.get("expressor")
+            chat_stream: ChatStream = services.get("chat_stream")
 
             if not expressor or not chat_stream:
-                logger.error(f"{self.log_prefix} 无法发送消息：缺少必要的内部服务")
+                logger.error(f"{log_prefix} 无法发送消息：缺少必要的内部服务")
                 return False
 
             # 获取锚定消息（如果有）
-            observations = self._services.get("observations", [])
+            observations = services.get("observations", [])
 
             if len(observations) > 0:
                 chatting_observation: ChattingObservation = next(
@@ -197,7 +201,7 @@ class MessageAPI:
 
             # 如果没有找到锚点消息，创建一个占位符
             if not anchor_message:
-                logger.info(f"{self.log_prefix} 未找到锚点消息，创建占位符")
+                logger.info(f"{log_prefix} 未找到锚点消息，创建占位符")
                 anchor_message = await create_empty_anchor_message(
                     chat_stream.platform, chat_stream.group_info, chat_stream
                 )
@@ -217,7 +221,8 @@ class MessageAPI:
 
             return success
         except Exception as e:
-            logger.error(f"{self.log_prefix} 发送消息时出错: {e}")
+            log_prefix = getattr(self, 'log_prefix', '[MessageAPI]')
+            logger.error(f"{log_prefix} 发送消息时出错: {e}")
             traceback.print_exc()
             return False
 
@@ -231,18 +236,22 @@ class MessageAPI:
         Returns:
             bool: 是否发送成功
         """
-        expressor: DefaultExpressor = self._services.get("expressor")
-        chat_stream: ChatStream = self._services.get("chat_stream")
+        # 安全获取服务和日志前缀
+        services = getattr(self, '_services', {})
+        log_prefix = getattr(self, 'log_prefix', '[MessageAPI]')
+        
+        expressor: DefaultExpressor = services.get("expressor")
+        chat_stream: ChatStream = services.get("chat_stream")
 
         if not expressor or not chat_stream:
-            logger.error(f"{self.log_prefix} 无法发送消息：缺少必要的内部服务")
+            logger.error(f"{log_prefix} 无法发送消息：缺少必要的内部服务")
             return False
 
         # 构造简化的动作数据
         reply_data = {"text": text, "target": target or "", "emojis": []}
 
         # 获取锚定消息（如果有）
-        observations = self._services.get("observations", [])
+        observations = services.get("observations", [])
 
         # 查找 ChattingObservation 实例
         chatting_observation = None
@@ -252,14 +261,14 @@ class MessageAPI:
                 break
 
         if not chatting_observation:
-            logger.warning(f"{self.log_prefix} 未找到 ChattingObservation 实例，创建占位符")
+            logger.warning(f"{log_prefix} 未找到 ChattingObservation 实例，创建占位符")
             anchor_message = await create_empty_anchor_message(
                 chat_stream.platform, chat_stream.group_info, chat_stream
             )
         else:
             anchor_message = chatting_observation.search_message_by_text(reply_data["target"])
             if not anchor_message:
-                logger.info(f"{self.log_prefix} 未找到锚点消息，创建占位符")
+                logger.info(f"{log_prefix} 未找到锚点消息，创建占位符")
                 anchor_message = await create_empty_anchor_message(
                     chat_stream.platform, chat_stream.group_info, chat_stream
                 )
@@ -267,12 +276,16 @@ class MessageAPI:
                 anchor_message.update_chat_stream(chat_stream)
 
         # 调用内部方法发送消息
+        cycle_timers = getattr(self, 'cycle_timers', {})
+        reasoning = getattr(self, 'reasoning', '插件生成')
+        thinking_id = getattr(self, 'thinking_id', 'plugin_thinking')
+        
         success, _ = await expressor.deal_reply(
-            cycle_timers=self.cycle_timers,
+            cycle_timers=cycle_timers,
             action_data=reply_data,
             anchor_message=anchor_message,
-            reasoning=self.reasoning,
-            thinking_id=self.thinking_id,
+            reasoning=reasoning,
+            thinking_id=thinking_id,
         )
 
         return success
@@ -289,18 +302,22 @@ class MessageAPI:
         Returns:
             bool: 是否发送成功
         """
-        replyer: DefaultReplyer = self._services.get("replyer")
-        chat_stream: ChatStream = self._services.get("chat_stream")
+        # 安全获取服务和日志前缀
+        services = getattr(self, '_services', {})
+        log_prefix = getattr(self, 'log_prefix', '[MessageAPI]')
+        
+        replyer: DefaultReplyer = services.get("replyer")
+        chat_stream: ChatStream = services.get("chat_stream")
 
         if not replyer or not chat_stream:
-            logger.error(f"{self.log_prefix} 无法发送消息：缺少必要的内部服务")
+            logger.error(f"{log_prefix} 无法发送消息：缺少必要的内部服务")
             return False
 
         # 构造简化的动作数据
         reply_data = {"target": target or "", "extra_info_block": extra_info_block}
 
         # 获取锚定消息（如果有）
-        observations = self._services.get("observations", [])
+        observations = services.get("observations", [])
 
         # 查找 ChattingObservation 实例
         chatting_observation = None
@@ -310,14 +327,14 @@ class MessageAPI:
                 break
 
         if not chatting_observation:
-            logger.warning(f"{self.log_prefix} 未找到 ChattingObservation 实例，创建占位符")
+            logger.warning(f"{log_prefix} 未找到 ChattingObservation 实例，创建占位符")
             anchor_message = await create_empty_anchor_message(
                 chat_stream.platform, chat_stream.group_info, chat_stream
             )
         else:
             anchor_message = chatting_observation.search_message_by_text(reply_data["target"])
             if not anchor_message:
-                logger.info(f"{self.log_prefix} 未找到锚点消息，创建占位符")
+                logger.info(f"{log_prefix} 未找到锚点消息，创建占位符")
                 anchor_message = await create_empty_anchor_message(
                     chat_stream.platform, chat_stream.group_info, chat_stream
                 )
@@ -325,12 +342,16 @@ class MessageAPI:
                 anchor_message.update_chat_stream(chat_stream)
 
         # 调用内部方法发送消息
+        cycle_timers = getattr(self, 'cycle_timers', {})
+        reasoning = getattr(self, 'reasoning', '插件生成')
+        thinking_id = getattr(self, 'thinking_id', 'plugin_thinking')
+        
         success, _ = await replyer.deal_reply(
-            cycle_timers=self.cycle_timers,
+            cycle_timers=cycle_timers,
             action_data=reply_data,
             anchor_message=anchor_message,
-            reasoning=self.reasoning,
-            thinking_id=self.thinking_id,
+            reasoning=reasoning,
+            thinking_id=thinking_id,
         )
 
         return success
@@ -341,7 +362,8 @@ class MessageAPI:
         Returns:
             str: 聊天类型 ("group" 或 "private")
         """
-        chat_stream: ChatStream = self._services.get("chat_stream")
+        services = getattr(self, '_services', {})
+        chat_stream: ChatStream = services.get("chat_stream")
         if chat_stream and hasattr(chat_stream, "group_info"):
             return "group" if chat_stream.group_info else "private"
         return "unknown"
@@ -356,7 +378,8 @@ class MessageAPI:
             List[Dict]: 消息列表，每个消息包含发送者、内容等信息
         """
         messages = []
-        observations = self._services.get("observations", [])
+        services = getattr(self, '_services', {})
+        observations = services.get("observations", [])
 
         if observations and len(observations) > 0:
             obs = observations[0]
