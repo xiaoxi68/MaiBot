@@ -109,6 +109,7 @@ class DefaultExpressor:
         # logger.debug(f"创建思考消息thinking_message：{thinking_message}")
 
         await self.heart_fc_sender.register_thinking(thinking_message)
+        return None
 
     async def deal_reply(
         self,

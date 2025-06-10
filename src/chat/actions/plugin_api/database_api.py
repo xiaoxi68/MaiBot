@@ -195,7 +195,8 @@ class DatabaseAPI:
                 return None if single_result else []
             elif query_type in ["create", "update", "delete", "count"]:
                 return None
-                
+            raise "unknown query type"
+
     async def db_raw_query(
         self, 
         sql: str, 
