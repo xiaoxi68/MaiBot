@@ -18,69 +18,72 @@ ActionInfo = Dict[str, Any]
 class PluginActionWrapper(BaseAction):
     """
     新插件系统Action组件的兼容性包装器
-    
+
     将新插件系统的Action组件包装为旧系统兼容的BaseAction接口
     """
-    
-    def __init__(self, plugin_action, action_name: str, action_data: dict, reasoning: str, cycle_timers: dict, thinking_id: str):
+
+    def __init__(
+        self, plugin_action, action_name: str, action_data: dict, reasoning: str, cycle_timers: dict, thinking_id: str
+    ):
         """初始化包装器"""
         # 调用旧系统BaseAction初始化，只传递它能接受的参数
         super().__init__(
-            action_data=action_data, 
-            reasoning=reasoning, 
-            cycle_timers=cycle_timers, 
-            thinking_id=thinking_id
+            action_data=action_data, reasoning=reasoning, cycle_timers=cycle_timers, thinking_id=thinking_id
         )
-        
+
         # 存储插件Action实例（它已经包含了所有必要的服务对象）
         self.plugin_action = plugin_action
         self.action_name = action_name
-        
+
         # 从插件Action实例复制属性到包装器
         self._sync_attributes_from_plugin_action()
-    
+
     def _sync_attributes_from_plugin_action(self):
         """从插件Action实例同步属性到包装器"""
         # 基本属性
-        self.action_name = getattr(self.plugin_action, 'action_name', self.action_name)
-        
+        self.action_name = getattr(self.plugin_action, "action_name", self.action_name)
+
         # 设置兼容的默认值
         self.action_description = f"插件Action: {self.action_name}"
         self.action_parameters = {}
         self.action_require = []
-        
+
         # 激活类型属性（从新插件系统转换）
-        plugin_focus_type = getattr(self.plugin_action, 'focus_activation_type', None)
-        plugin_normal_type = getattr(self.plugin_action, 'normal_activation_type', None)
-        
+        plugin_focus_type = getattr(self.plugin_action, "focus_activation_type", None)
+        plugin_normal_type = getattr(self.plugin_action, "normal_activation_type", None)
+
         if plugin_focus_type:
-            self.focus_activation_type = plugin_focus_type.value if hasattr(plugin_focus_type, 'value') else str(plugin_focus_type)
+            self.focus_activation_type = (
+                plugin_focus_type.value if hasattr(plugin_focus_type, "value") else str(plugin_focus_type)
+            )
         if plugin_normal_type:
-            self.normal_activation_type = plugin_normal_type.value if hasattr(plugin_normal_type, 'value') else str(plugin_normal_type)
-        
+            self.normal_activation_type = (
+                plugin_normal_type.value if hasattr(plugin_normal_type, "value") else str(plugin_normal_type)
+            )
+
         # 其他属性
-        self.random_activation_probability = getattr(self.plugin_action, 'random_activation_probability', 0.0)
-        self.llm_judge_prompt = getattr(self.plugin_action, 'llm_judge_prompt', "")
-        self.activation_keywords = getattr(self.plugin_action, 'activation_keywords', [])
-        self.keyword_case_sensitive = getattr(self.plugin_action, 'keyword_case_sensitive', False)
-        
+        self.random_activation_probability = getattr(self.plugin_action, "random_activation_probability", 0.0)
+        self.llm_judge_prompt = getattr(self.plugin_action, "llm_judge_prompt", "")
+        self.activation_keywords = getattr(self.plugin_action, "activation_keywords", [])
+        self.keyword_case_sensitive = getattr(self.plugin_action, "keyword_case_sensitive", False)
+
         # 模式和并行设置
-        plugin_mode = getattr(self.plugin_action, 'mode_enable', None)
+        plugin_mode = getattr(self.plugin_action, "mode_enable", None)
         if plugin_mode:
-            self.mode_enable = plugin_mode.value if hasattr(plugin_mode, 'value') else str(plugin_mode)
-        
-        self.parallel_action = getattr(self.plugin_action, 'parallel_action', True)
+            self.mode_enable = plugin_mode.value if hasattr(plugin_mode, "value") else str(plugin_mode)
+
+        self.parallel_action = getattr(self.plugin_action, "parallel_action", True)
         self.enable_plugin = True
-    
+
     async def handle_action(self) -> tuple[bool, str]:
         """兼容旧系统的动作处理接口，委托给插件Action的execute方法"""
         try:
             # 调用插件Action的execute方法
             success, response = await self.plugin_action.execute()
-            
+
             logger.debug(f"插件Action {self.action_name} 执行{'成功' if success else '失败'}: {response}")
             return success, response
-            
+
         except Exception as e:
             logger.error(f"插件Action {self.action_name} 执行异常: {e}")
             return False, f"插件Action执行失败: {str(e)}"
@@ -190,36 +193,35 @@ class ActionManager:
             # 从旧的_ACTION_REGISTRY获取插件动作
             self._load_registered_actions()
             logger.debug("从旧注册表加载插件动作成功")
-            
+
             # 从新插件系统获取Action组件
             self._load_plugin_system_actions()
             logger.debug("从新插件系统加载Action组件成功")
-            
+
         except Exception as e:
             logger.error(f"加载插件动作失败: {e}")
-    
+
     def _load_plugin_system_actions(self) -> None:
         """从新插件系统的component_registry加载Action组件"""
         try:
             from src.plugin_system.core.component_registry import component_registry
             from src.plugin_system.base.component_types import ComponentType
-            
+
             # 获取所有Action组件
             action_components = component_registry.get_components_by_type(ComponentType.ACTION)
-            
+
             for action_name, action_info in action_components.items():
                 if action_name in self._registered_actions:
                     logger.debug(f"Action组件 {action_name} 已存在，跳过")
                     continue
-                
+
                 # 将新插件系统的ActionInfo转换为旧系统格式
                 converted_action_info = {
                     "description": action_info.description,
-                    "parameters": getattr(action_info, 'action_parameters', {}),
-                    "require": getattr(action_info, 'action_require', []),
-                    "associated_types": getattr(action_info, 'associated_types', []),
+                    "parameters": getattr(action_info, "action_parameters", {}),
+                    "require": getattr(action_info, "action_require", []),
+                    "associated_types": getattr(action_info, "associated_types", []),
                     "enable_plugin": action_info.enabled,
-                    
                     # 激活类型相关
                     "focus_activation_type": action_info.focus_activation_type.value,
                     "normal_activation_type": action_info.normal_activation_type.value,
@@ -227,29 +229,30 @@ class ActionManager:
                     "llm_judge_prompt": action_info.llm_judge_prompt,
                     "activation_keywords": action_info.activation_keywords,
                     "keyword_case_sensitive": action_info.keyword_case_sensitive,
-                    
                     # 模式和并行设置
                     "mode_enable": action_info.mode_enable.value,
                     "parallel_action": action_info.parallel_action,
-                    
                     # 标记这是来自新插件系统的组件
                     "_plugin_system_component": True,
-                    "_plugin_name": getattr(action_info, 'plugin_name', ''),
+                    "_plugin_name": getattr(action_info, "plugin_name", ""),
                 }
-                
+
                 self._registered_actions[action_name] = converted_action_info
-                
+
                 # 如果启用，也添加到默认动作集
                 if action_info.enabled:
                     self._default_actions[action_name] = converted_action_info
-                
-                logger.debug(f"从插件系统加载Action组件: {action_name} (插件: {getattr(action_info, 'plugin_name', 'unknown')})")
-            
+
+                logger.debug(
+                    f"从插件系统加载Action组件: {action_name} (插件: {getattr(action_info, 'plugin_name', 'unknown')})"
+                )
+
             logger.info(f"从新插件系统加载了 {len(action_components)} 个Action组件")
-            
+
         except Exception as e:
             logger.error(f"从插件系统加载Action组件失败: {e}")
             import traceback
+
             logger.error(traceback.format_exc())
 
     def create_action(
@@ -289,13 +292,22 @@ class ActionManager:
         # if action_name not in self._using_actions:
         # logger.warning(f"当前不可用的动作类型: {action_name}")
         # return None
-        
+
         # 检查是否是新插件系统的Action组件
         action_info = self._registered_actions.get(action_name)
         if action_info and action_info.get("_plugin_system_component", False):
             return self._create_plugin_system_action(
-                action_name, action_data, reasoning, cycle_timers, thinking_id,
-                observations, chat_stream, log_prefix, shutting_down, expressor, replyer
+                action_name,
+                action_data,
+                reasoning,
+                cycle_timers,
+                thinking_id,
+                observations,
+                chat_stream,
+                log_prefix,
+                shutting_down,
+                expressor,
+                replyer,
             )
 
         # 旧系统的动作创建逻辑
@@ -324,7 +336,7 @@ class ActionManager:
         except Exception as e:
             logger.error(f"创建动作处理器实例失败: {e}")
             return None
-    
+
     def _create_plugin_system_action(
         self,
         action_name: str,
@@ -338,7 +350,7 @@ class ActionManager:
         shutting_down: bool = False,
         expressor: DefaultExpressor = None,
         replyer: DefaultReplyer = None,
-    ) -> Optional['PluginActionWrapper']:
+    ) -> Optional["PluginActionWrapper"]:
         """
         创建新插件系统的Action组件实例，并包装为兼容旧系统的接口
 
@@ -347,13 +359,13 @@ class ActionManager:
         """
         try:
             from src.plugin_system.core.component_registry import component_registry
-            
+
             # 获取组件类
             component_class = component_registry.get_component_class(action_name)
             if not component_class:
                 logger.error(f"未找到插件Action组件类: {action_name}")
                 return None
-            
+
             # 创建插件Action实例
             plugin_action_instance = component_class(
                 action_data=action_data,
@@ -364,9 +376,9 @@ class ActionManager:
                 expressor=expressor,
                 replyer=replyer,
                 observations=observations,
-                log_prefix=log_prefix
+                log_prefix=log_prefix,
             )
-            
+
             # 创建兼容性包装器
             wrapper = PluginActionWrapper(
                 plugin_action=plugin_action_instance,
@@ -374,15 +386,16 @@ class ActionManager:
                 action_data=action_data,
                 reasoning=reasoning,
                 cycle_timers=cycle_timers,
-                thinking_id=thinking_id
+                thinking_id=thinking_id,
             )
-            
+
             logger.debug(f"创建插件Action实例成功: {action_name}")
             return wrapper
-            
+
         except Exception as e:
             logger.error(f"创建插件Action实例失败 {action_name}: {e}")
             import traceback
+
             logger.error(traceback.format_exc())
             return None
 

@@ -69,7 +69,7 @@ class ComponentRegistry:
             self._register_action_component(component_info, component_class)
         elif component_type == ComponentType.COMMAND:
             self._register_command_component(component_info, component_class)
-        
+
         logger.debug(f"已注册{component_type.value}组件: {component_name} ({component_class.__name__})")
         return True
 
