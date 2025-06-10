@@ -100,13 +100,6 @@ class SelfProcessor(BaseProcessor):
                 tuple: (current_mind, past_mind, prompt) 当前想法、过去的想法列表和使用的prompt
         """
 
-        for observation in observations:
-            if isinstance(observation, ChattingObservation):
-                is_group_chat = observation.is_group_chat
-                chat_target_info = observation.chat_target_info
-                chat_target_name = "对方"  # 私聊默认名称
-                person_list = observation.person_list
-
         if observations is None:
             observations = []
         for observation in observations:

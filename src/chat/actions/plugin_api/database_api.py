@@ -125,6 +125,8 @@ class DatabaseAPI:
             )
         """
         try:
+            if query_type not in ["get", "create", "update", "delete", "count"]:
+                raise ValueError("query_type must be 'get' or 'create' or 'update' or 'delete' or 'count'")
             # 构建基本查询
             if query_type in ["get", "update", "delete", "count"]:
                 query = model_class.select()
@@ -198,7 +200,7 @@ class DatabaseAPI:
                 return None if single_result else []
             elif query_type in ["create", "update", "delete", "count"]:
                 return None
-            raise "unknown query type"
+            return None
 
     async def db_raw_query(
         self, sql: str, params: List[Any] = None, fetch_results: bool = True

@@ -140,12 +140,12 @@ class ExpressionLearner:
                     continue
 
         # 学习新的表达方式（这里会进行局部衰减）
-        for i in range(3):
+        for _ in range(3):
             learnt_style: Optional[List[Tuple[str, str, str]]] = await self.learn_and_store(type="style", num=25)
             if not learnt_style:
                 return []
 
-        for j in range(1):
+        for _ in range(1):
             learnt_grammar: Optional[List[Tuple[str, str, str]]] = await self.learn_and_store(type="grammar", num=10)
             if not learnt_grammar:
                 return []

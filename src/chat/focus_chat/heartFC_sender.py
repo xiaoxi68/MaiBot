@@ -88,10 +88,10 @@ class HeartFCSender:
         """
         if not message.chat_stream:
             logger.error("消息缺少 chat_stream，无法发送")
-            raise "消息缺少 chat_stream，无法发送"
+            raise Exception("消息缺少 chat_stream，无法发送")
         if not message.message_info or not message.message_info.message_id:
             logger.error("消息缺少 message_info 或 message_id，无法发送")
-            raise "消息缺少 message_info 或 message_id，无法发送"
+            raise Exception("消息缺少 message_info 或 message_id，无法发送")
 
         chat_id = message.chat_stream.stream_id
         message_id = message.message_info.message_id

@@ -53,7 +53,7 @@ class MessageAPI:
             if is_group:
                 # 群聊：从数据库查找对应的聊天流
                 target_stream = None
-                for stream_id, stream in chat_manager.streams.items():
+                for _, stream in chat_manager.streams.items():
                     if (
                         stream.group_info
                         and str(stream.group_info.group_id) == str(target_id)
@@ -68,7 +68,7 @@ class MessageAPI:
             else:
                 # 私聊：从数据库查找对应的聊天流
                 target_stream = None
-                for stream_id, stream in chat_manager.streams.items():
+                for _, stream in chat_manager.streams.items():
                     if (
                         not stream.group_info
                         and str(stream.user_info.user_id) == str(target_id)
@@ -87,7 +87,6 @@ class MessageAPI:
             # 生成消息ID和thinking_id
             current_time = time.time()
             message_id = f"plugin_msg_{int(current_time * 1000)}"
-            thinking_id = f"plugin_thinking_{int(current_time * 1000)}"
 
             # 构建机器人用户信息
             bot_user_info = UserInfo(
