@@ -48,8 +48,8 @@ class PersonalityExpression:
     def _read_meta_data(self):
         if os.path.exists(self.meta_file_path):
             try:
-                with open(self.meta_file_path, "r", encoding="utf-8") as f:
-                    meta_data = json.load(f)
+                with open(self.meta_file_path, "r", encoding="utf-8") as meta_file:
+                    meta_data = json.load(meta_file)
                     # 检查是否有last_update_time字段
                     if "last_update_time" not in meta_data:
                         logger.warning(f"{self.meta_file_path} 中缺少last_update_time字段，将重新开始。")
@@ -57,8 +57,8 @@ class PersonalityExpression:
                         self._write_meta_data({"last_style_text": None, "count": 0, "last_update_time": None})
                         # 清空并重写表达文件
                         if os.path.exists(self.expressions_file_path):
-                            with open(self.expressions_file_path, "w", encoding="utf-8") as f:
-                                json.dump([], f, ensure_ascii=False, indent=2)
+                            with open(self.expressions_file_path, "w", encoding="utf-8") as expressions_file:
+                                json.dump([], expressions_file, ensure_ascii=False, indent=2)
                             logger.debug(f"已清空表达文件: {self.expressions_file_path}")
                         return {"last_style_text": None, "count": 0, "last_update_time": None}
                     return meta_data
@@ -68,16 +68,16 @@ class PersonalityExpression:
                 self._write_meta_data({"last_style_text": None, "count": 0, "last_update_time": None})
                 # 清空并重写表达文件
                 if os.path.exists(self.expressions_file_path):
-                    with open(self.expressions_file_path, "w", encoding="utf-8") as f:
-                        json.dump([], f, ensure_ascii=False, indent=2)
+                    with open(self.expressions_file_path, "w", encoding="utf-8") as expressions_file:
+                        json.dump([], expressions_file, ensure_ascii=False, indent=2)
                     logger.debug(f"已清空表达文件: {self.expressions_file_path}")
                 return {"last_style_text": None, "count": 0, "last_update_time": None}
         return {"last_style_text": None, "count": 0, "last_update_time": None}
 
     def _write_meta_data(self, data):
         os.makedirs(os.path.dirname(self.meta_file_path), exist_ok=True)
-        with open(self.meta_file_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+        with open(self.meta_file_path, "w", encoding="utf-8") as meta_file:
+            json.dump(data, meta_file, ensure_ascii=False, indent=2)
 
     async def extract_and_store_personality_expressions(self):
         """

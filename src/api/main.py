@@ -18,16 +18,12 @@ from src.api.apiforgui import (
 from src.chat.heart_flow.sub_heartflow import ChatState
 from src.api.basic_info_api import get_all_basic_info  # 新增导入
 
-# import uvicorn
-# import os
-
 
 router = APIRouter()
 
 
 logger = get_logger("api")
 
-# maiapi = FastAPI()
 logger.info("麦麦API服务器已启动")
 graphql_router = GraphQLRouter(schema=None, path="/")  # Replace `None` with your actual schema
 

@@ -585,14 +585,9 @@ async def build_anonymous_messages(messages: List[Dict[str, Any]]) -> str:
 
     for msg in messages:
         try:
-            # user_info = msg.get("user_info", {})
             platform = msg.get("chat_info_platform")
             user_id = msg.get("user_id")
             _timestamp = msg.get("time")
-            # print(f"msg:{msg}")
-            # print(f"platform:{platform}")
-            # print(f"user_id:{user_id}")
-            # print(f"timestamp:{timestamp}")
             if msg.get("display_message"):
                 content = msg.get("display_message")
             else:

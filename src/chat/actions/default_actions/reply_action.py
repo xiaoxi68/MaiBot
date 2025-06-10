@@ -118,13 +118,10 @@ class ReplyAction(BaseAction):
 
         reply_to = reply_data.get("reply_to", "none")
 
-        # sender = ""
-        target = ""
         if ":" in reply_to or "：" in reply_to:
             # 使用正则表达式匹配中文或英文冒号
             parts = re.split(pattern=r"[:：]", string=reply_to, maxsplit=1)
             if len(parts) == 2:
-                # sender = parts[0].strip()
                 target = parts[1].strip()
                 anchor_message = chatting_observation.search_message_by_text(target)
         else:

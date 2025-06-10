@@ -95,7 +95,6 @@ class MessageInfoCommand(BaseCommand):
                     "",
                     "🔄 聊天流信息:",
                     f"  流ID: {chat_stream.stream_id}",
-                    f"  是否激活: {'是' if chat_stream.is_active else '否'}",
                 ]
             )
 
@@ -172,7 +171,6 @@ class MessageInfoCommand(BaseCommand):
                     "🔄 聊天流详细信息:",
                     f"  流ID: {chat_stream.stream_id}",
                     f"  平台: {chat_stream.platform}",
-                    f"  是否激活: {'是' if chat_stream.is_active else '否'}",
                     f"  用户信息: {chat_stream.user_info.user_nickname} ({chat_stream.user_info.user_id})",
                     f"  群信息: {getattr(chat_stream.group_info, 'group_name', '私聊') if chat_stream.group_info else '私聊'}",
                 ]
@@ -270,7 +268,6 @@ class ChatStreamInfoCommand(BaseCommand):
                 "🔄 聊天流信息",
                 f"🆔 流ID: {chat_stream.stream_id}",
                 f"🌐 平台: {chat_stream.platform}",
-                f"⚡ 状态: {'激活' if chat_stream.is_active else '非激活'}",
             ]
 
             # 用户信息

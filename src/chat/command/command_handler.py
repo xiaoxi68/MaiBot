@@ -32,10 +32,7 @@ class BaseCommand(ABC):
         """
         self.message = message
         self.matched_groups: Dict[str, str] = {}  # 存储正则表达式匹配的命名组
-        self._services = {}  # 存储内部服务
-
-        # 设置服务
-        self._services["chat_stream"] = message.chat_stream
+        self._services = {"chat_stream": message.chat_stream}  # 存储内部服务
 
         # 日志前缀
         self.log_prefix = f"[Command:{self.command_name}]"

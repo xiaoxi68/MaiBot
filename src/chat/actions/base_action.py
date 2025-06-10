@@ -73,7 +73,6 @@ class BaseAction(ABC):
         """初始化动作
 
         Args:
-            action_name: 动作名称
             action_data: 动作数据
             reasoning: 执行该动作的理由
             cycle_timers: 计时器字典

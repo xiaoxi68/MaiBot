@@ -181,11 +181,6 @@ class DefaultExpressor:
         (已整合原 HeartFCGenerator 的功能)
         """
         try:
-            # 1. 获取情绪影响因子并调整模型温度
-            # arousal_multiplier = mood_manager.get_arousal_multiplier()
-            # current_temp = float(global_config.model.normal["temp"]) * arousal_multiplier
-            # self.express_model.params["temperature"] = current_temp  # 动态调整温度
-
             # --- Determine sender_name for private chat ---
             sender_name_for_prompt = "某人"  # Default for group or if info unavailable
             if not self.is_group_chat and self.chat_target_info:

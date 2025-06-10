@@ -247,8 +247,6 @@ def split_into_sentences_w_remove_punctuation(text: str) -> list[str]:
 
     # 如果分割后为空（例如，输入全是分隔符且不满足保留条件），恢复颜文字并返回
     if not segments:
-        # recovered_text = recover_kaomoji([text], mapping) # 恢复原文本中的颜文字 - 已移至上层处理
-        # return [s for s in recovered_text if s] # 返回非空结果
         return [text] if text else []  # 如果原始文本非空，则返回原始文本（可能只包含未被分割的字符或颜文字占位符）
 
     # 2. 概率合并
@@ -336,7 +334,6 @@ def process_llm_response(text: str) -> list[str]:
         kaomoji_mapping = {}
     # 提取被 () 或 [] 或 （）包裹且包含中文的内容
     pattern = re.compile(r"[(\[（](?=.*[一-鿿]).*?[)\]）]")
-    # _extracted_contents = pattern.findall(text)
     _extracted_contents = pattern.findall(protected_text)  # 在保护后的文本上查找
     # 去除 () 和 [] 及其包裹的内容
     cleaned_text = pattern.sub("", protected_text)

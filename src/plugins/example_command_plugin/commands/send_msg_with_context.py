@@ -219,7 +219,6 @@ class MessageContextCommand(BaseCommand):
                         "",
                         "🔄 聊天流:",
                         f"  流ID: {chat_stream.stream_id}",
-                        f"  激活状态: {'激活' if chat_stream.is_active else '非激活'}",
                     ]
                 )
 

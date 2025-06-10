@@ -198,9 +198,7 @@ class ActionModifier:
 
         Args:
             actions_with_info: 带完整信息的动作字典
-            observed_messages_str: 观察到的聊天消息
-            chat_context: 聊天上下文信息
-            extra_context: 额外的上下文信息
+            chat_content: 聊天内容
 
         Returns:
             Dict[str, Any]: 过滤后激活的actions字典
@@ -320,9 +318,7 @@ class ActionModifier:
 
         Args:
             llm_judge_actions: 需要LLM判定的actions
-            observed_messages_str: 观察到的聊天消息
-            chat_context: 聊天上下文
-            extra_context: 额外上下文
+            chat_content: 聊天内容
 
         Returns:
             Dict[str, bool]: action名称到激活结果的映射

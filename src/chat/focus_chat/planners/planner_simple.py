@@ -217,7 +217,6 @@ class ActionPlanner(BasePlanner):
 
                     # 提取决策，提供默认值
                     extracted_action = parsed_json.get("action", "no_reply")
-                    # extracted_reasoning = parsed_json.get("reasoning", "LLM未提供理由")
                     extracted_reasoning = ""
 
                     # 将所有其他属性添加到action_data

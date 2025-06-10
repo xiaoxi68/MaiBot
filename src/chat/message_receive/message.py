@@ -112,7 +112,7 @@ class MessageRecv(Message):
         self.detailed_plain_text = message_dict.get("detailed_plain_text", "")  # 初始化为空字符串
         self.is_emoji = False
 
-    def update_chat_stream(self, chat_stream: "ChatStream"):
+    def update_chat_stream(self, chat_stream: ChatStream):
         self.chat_stream = chat_stream
 
     async def process(self) -> None:

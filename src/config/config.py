@@ -185,6 +185,14 @@ def load_config(config_path: str) -> Config:
         raise e
 
 
+def get_config_dir() -> str:
+    """
+    获取配置目录
+    :return: 配置目录路径
+    """
+    return CONFIG_DIR
+
+
 # 获取配置文件路径
 logger.info(f"MaiCore当前版本: {MMC_VERSION}")
 update_config()
