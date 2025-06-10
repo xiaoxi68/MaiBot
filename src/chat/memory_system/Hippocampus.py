@@ -1240,9 +1240,8 @@ class ParahippocampalGyrus:
             logger.warning("无法从提供的消息生成可读文本，跳过记忆压缩。")
             return set(), {}
 
-        current_YMD_time = datetime.datetime.now().strftime("%Y-%m-%d")
-        current_YMD_time_str = f"当前日期: {current_YMD_time}"
-        input_text = f"{current_YMD_time_str}\n{input_text}"
+        current_date = f"当前日期: {datetime.datetime.now().isoformat()}"
+        input_text = f"{current_date}\n{input_text}"
 
         logger.debug(f"记忆来源:\n{input_text}")
 
