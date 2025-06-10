@@ -1,9 +1,9 @@
 from src.manager.async_task_manager import AsyncTask
 from src.common.logger_manager import get_logger
+from src.person_info.person_info import PersonInfoManager
 from src.person_info.relationship_manager import relationship_manager
 from src.chat.utils.chat_message_builder import get_raw_msg_by_timestamp
 from src.config.config import global_config
-from src.person_info.person_info import person_info_manager
 from src.chat.message_receive.chat_stream import chat_manager
 import time
 import random
@@ -95,7 +95,7 @@ class ImpressionUpdateTask(AsyncTask):
                         if msg["user_nickname"] == global_config.bot.nickname:
                             continue
 
-                        person_id = person_info_manager.get_person_id(msg["chat_info_platform"], msg["user_id"])
+                        person_id = PersonInfoManager.get_person_id(msg["chat_info_platform"], msg["user_id"])
                         if not person_id:
                             logger.warning(f"未找到用户 {msg['user_nickname']} 的person_id")
                             continue

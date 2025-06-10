@@ -96,7 +96,7 @@ class BaseWillingManager(ABC):
         self.logger: LoguruLogger = logger
 
     def setup(self, message: MessageRecv, chat: ChatStream, is_mentioned_bot: bool, interested_rate: float):
-        person_id = person_info_manager.get_person_id(chat.platform, chat.user_info.user_id)
+        person_id = PersonInfoManager.get_person_id(chat.platform, chat.user_info.user_id)
         self.ongoing_messages[message.message_info.message_id] = WillingInfo(
             message=message,
             chat=chat,

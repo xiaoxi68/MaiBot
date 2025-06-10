@@ -1,7 +1,7 @@
 from typing import Optional, Tuple, Dict
 from src.common.logger_manager import get_logger
 from src.chat.message_receive.chat_stream import chat_manager
-from src.person_info.person_info import person_info_manager
+from src.person_info.person_info import person_info_manager, PersonInfoManager
 
 logger = get_logger("heartflow_utils")
 
@@ -47,7 +47,7 @@ def get_chat_type_and_target_info(chat_id: str) -> Tuple[bool, Optional[Dict]]:
                 # Try to fetch person info
                 try:
                     # Assume get_person_id is sync (as per original code), keep using to_thread
-                    person_id = person_info_manager.get_person_id(platform, user_id)
+                    person_id = PersonInfoManager.get_person_id(platform, user_id)
                     person_name = None
                     if person_id:
                         # get_value is async, so await it directly

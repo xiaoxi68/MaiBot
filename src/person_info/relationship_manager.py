@@ -1,6 +1,6 @@
 from src.common.logger_manager import get_logger
 import math
-from src.person_info.person_info import person_info_manager
+from src.person_info.person_info import person_info_manager, PersonInfoManager
 import time
 import random
 from src.llm_models.utils_model import LLMRequest
@@ -91,7 +91,7 @@ class RelationshipManager:
     @staticmethod
     async def first_knowing_some_one(platform: str, user_id: str, user_nickname: str, user_cardname: str):
         """判断是否认识某人"""
-        person_id = person_info_manager.get_person_id(platform, user_id)
+        person_id = PersonInfoManager.get_person_id(platform, user_id)
         # 生成唯一的 person_name
         unique_nickname = await person_info_manager._generate_unique_person_name(user_nickname)
         data = {
@@ -116,7 +116,7 @@ class RelationshipManager:
         if is_id:
             person_id = person
         else:
-            person_id = person_info_manager.get_person_id(person[0], person[1])
+            person_id = PersonInfoManager.get_person_id(person[0], person[1])
 
         person_name = await person_info_manager.get_value(person_id, "person_name")
         if not person_name or person_name == "none":
@@ -198,7 +198,7 @@ class RelationshipManager:
             )
             replace_user_id = msg.get("user_id")
             replace_platform = msg.get("chat_info_platform")
-            replace_person_id = person_info_manager.get_person_id(replace_platform, replace_user_id)
+            replace_person_id = PersonInfoManager.get_person_id(replace_platform, replace_user_id)
             replace_person_name = await person_info_manager.get_value(replace_person_id, "person_name")
 
             # 跳过机器人自己
@@ -467,7 +467,7 @@ class RelationshipManager:
         for i, msg in enumerate(messages):
             user_id = msg.get("user_id")
             platform = msg.get("chat_info_platform")
-            person_id = person_info_manager.get_person_id(platform, user_id)
+            person_id = PersonInfoManager.get_person_id(platform, user_id)
             if person_id == target_person_id:
                 target_indices.append(i)
 

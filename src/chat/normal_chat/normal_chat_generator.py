@@ -6,7 +6,7 @@ from src.chat.message_receive.message import MessageThinking
 from src.chat.normal_chat.normal_prompt import prompt_builder
 from src.chat.utils.timer_calculator import Timer
 from src.common.logger_manager import get_logger
-from src.person_info.person_info import person_info_manager
+from src.person_info.person_info import person_info_manager, PersonInfoManager
 from src.chat.utils.utils import process_llm_response
 
 
@@ -66,7 +66,7 @@ class NormalChatGenerator:
         enable_planner: bool = False,
         available_actions=None,
     ):
-        person_id = person_info_manager.get_person_id(
+        person_id = PersonInfoManager.get_person_id(
             message.chat_stream.user_info.platform, message.chat_stream.user_info.user_id
         )
 

@@ -4,7 +4,7 @@ import time  # 导入 time 模块以获取当前时间
 import random
 import re
 from src.common.message_repository import find_messages, count_messages
-from src.person_info.person_info import person_info_manager
+from src.person_info.person_info import person_info_manager, PersonInfoManager
 from src.chat.utils.utils import translate_timestamp_to_human_readable
 from rich.traceback import install
 from src.common.database.database_model import ActionRecords
@@ -219,7 +219,7 @@ def _build_readable_messages_internal(
         if not all([platform, user_id, timestamp is not None]):
             continue
 
-        person_id = person_info_manager.get_person_id(platform, user_id)
+        person_id = PersonInfoManager.get_person_id(platform, user_id)
         # 根据 replace_bot_name 参数决定是否替换机器人名称
         if replace_bot_name and user_id == global_config.bot.qq_account:
             person_name = f"{global_config.bot.nickname}(你)"
@@ -241,7 +241,7 @@ def _build_readable_messages_internal(
         if match:
             aaa = match.group(1)
             bbb = match.group(2)
-            reply_person_id = person_info_manager.get_person_id(platform, bbb)
+            reply_person_id = PersonInfoManager.get_person_id(platform, bbb)
             reply_person_name = person_info_manager.get_value_sync(reply_person_id, "person_name")
             if not reply_person_name:
                 reply_person_name = aaa
@@ -258,7 +258,7 @@ def _build_readable_messages_internal(
                 new_content += content[last_end : m.start()]
                 aaa = m.group(1)
                 bbb = m.group(2)
-                at_person_id = person_info_manager.get_person_id(platform, bbb)
+                at_person_id = PersonInfoManager.get_person_id(platform, bbb)
                 at_person_name = person_info_manager.get_value_sync(at_person_id, "person_name")
                 if not at_person_name:
                     at_person_name = aaa
@@ -572,7 +572,7 @@ async def build_anonymous_messages(messages: List[Dict[str, Any]]) -> str:
             # print("SELF11111111111111")
             return "SELF"
         try:
-            person_id = person_info_manager.get_person_id(platform, user_id)
+            person_id = PersonInfoManager.get_person_id(platform, user_id)
         except Exception as _e:
             person_id = None
         if not person_id:
@@ -673,7 +673,7 @@ async def get_person_id_list(messages: List[Dict[str, Any]]) -> List[str]:
         if not all([platform, user_id]) or user_id == global_config.bot.qq_account:
             continue
 
-        person_id = person_info_manager.get_person_id(platform, user_id)
+        person_id = PersonInfoManager.get_person_id(platform, user_id)
 
         # 只有当获取到有效 person_id 时才添加
         if person_id:
