@@ -35,6 +35,7 @@ class BaseAction(ABC):
         chat_stream=None,
         log_prefix: str = "",
         shutting_down: bool = False,
+        plugin_config: dict = None,
         **kwargs,
     ):
         """初始化Action组件
@@ -50,6 +51,7 @@ class BaseAction(ABC):
             chat_stream: 聊天流对象
             log_prefix: 日志前缀
             shutting_down: 是否正在关闭
+            plugin_config: 插件配置字典
             **kwargs: 其他参数
         """
         self.action_data = action_data
@@ -84,6 +86,7 @@ class BaseAction(ABC):
             replyer=replyer or kwargs.get("replyer"),
             observations=observations or kwargs.get("observations", []),
             log_prefix=log_prefix,
+            plugin_config=plugin_config or kwargs.get("plugin_config"),
         )
 
         # 设置API的action上下文
@@ -118,7 +121,221 @@ class BaseAction(ABC):
         Returns:
             bool: 是否发送成功
         """
-        return await self.api.send_message("text", content)
+        chat_stream = self.api.get_service('chat_stream')
+        if not chat_stream:
+            logger.error(f"{self.log_prefix} 没有可用的聊天流发送回复")
+            return False
+            
+        if chat_stream.group_info:
+            # 群聊
+            return await self.api.send_text_to_group(
+                text=content,
+                group_id=str(chat_stream.group_info.group_id),
+                platform=chat_stream.platform
+            )
+        else:
+            # 私聊
+            return await self.api.send_text_to_user(
+                text=content,
+                user_id=str(chat_stream.user_info.user_id),
+                platform=chat_stream.platform
+            )
+
+    async def send_command(self, command_name: str, args: dict = None, display_message: str = None) -> bool:
+        """发送命令消息
+        
+        使用和send_reply相同的方式通过MessageAPI发送命令
+        
+        Args:
+            command_name: 命令名称
+            args: 命令参数
+            display_message: 显示消息
+            
+        Returns:
+            bool: 是否发送成功
+        """
+        try:
+            # 构造命令数据
+            command_data = {
+                "name": command_name,
+                "args": args or {}
+            }
+            
+            # 使用send_message_to_target方法发送命令
+            chat_stream = self.api.get_service('chat_stream')
+            if not chat_stream:
+                logger.error(f"{self.log_prefix} 没有可用的聊天流发送命令")
+                return False
+                
+            command_content = str(command_data)
+            
+            if chat_stream.group_info:
+                # 群聊
+                success = await self.api.send_message_to_target(
+                    message_type="command",
+                    content=command_content,
+                    platform=chat_stream.platform,
+                    target_id=str(chat_stream.group_info.group_id),
+                    is_group=True,
+                    display_message=display_message or f"执行命令: {command_name}"
+                )
+            else:
+                # 私聊
+                success = await self.api.send_message_to_target(
+                    message_type="command",
+                    content=command_content,
+                    platform=chat_stream.platform,
+                    target_id=str(chat_stream.user_info.user_id),
+                    is_group=False,
+                    display_message=display_message or f"执行命令: {command_name}"
+                )
+            
+            if success:
+                logger.info(f"{self.log_prefix} 成功发送命令: {command_name}")
+            else:
+                logger.error(f"{self.log_prefix} 发送命令失败: {command_name}")
+                
+            return success
+                
+        except Exception as e:
+            logger.error(f"{self.log_prefix} 发送命令时出错: {e}")
+            return False
+
+    async def send_message_by_expressor(self, text: str, target: str = "") -> bool:
+        """通过expressor发送文本消息的Action专用方法
+
+        Args:
+            text: 要发送的消息文本
+            target: 目标消息（可选）
+
+        Returns:
+            bool: 是否发送成功
+        """
+        try:
+            from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
+            from src.chat.message_receive.message import create_empty_anchor_message
+            
+            # 获取服务
+            expressor = self.api.get_service("expressor")
+            chat_stream = self.api.get_service("chat_stream")
+            observations = self.api.get_service("observations") or []
+
+            if not expressor or not chat_stream:
+                logger.error(f"{self.log_prefix} 无法通过expressor发送消息：缺少必要的服务")
+                return False
+
+            # 构造动作数据
+            reply_data = {"text": text, "target": target, "emojis": []}
+
+            # 查找 ChattingObservation 实例
+            chatting_observation = None
+            for obs in observations:
+                if isinstance(obs, ChattingObservation):
+                    chatting_observation = obs
+                    break
+
+            if not chatting_observation:
+                logger.warning(f"{self.log_prefix} 未找到 ChattingObservation 实例，创建占位符")
+                anchor_message = await create_empty_anchor_message(
+                    chat_stream.platform, chat_stream.group_info, chat_stream
+                )
+            else:
+                anchor_message = chatting_observation.search_message_by_text(target)
+                if not anchor_message:
+                    logger.info(f"{self.log_prefix} 未找到锚点消息，创建占位符")
+                    anchor_message = await create_empty_anchor_message(
+                        chat_stream.platform, chat_stream.group_info, chat_stream
+                    )
+                else:
+                    anchor_message.update_chat_stream(chat_stream)
+
+            # 使用Action上下文信息发送消息
+            success, _ = await expressor.deal_reply(
+                cycle_timers=self.cycle_timers,
+                action_data=reply_data,
+                anchor_message=anchor_message,
+                reasoning=self.reasoning,
+                thinking_id=self.thinking_id,
+            )
+
+            if success:
+                logger.info(f"{self.log_prefix} 成功通过expressor发送消息")
+            else:
+                logger.error(f"{self.log_prefix} 通过expressor发送消息失败")
+
+            return success
+
+        except Exception as e:
+            logger.error(f"{self.log_prefix} 通过expressor发送消息时出错: {e}")
+            return False
+
+    async def send_message_by_replyer(self, target: str = "", extra_info_block: str = None) -> bool:
+        """通过replyer发送消息的Action专用方法
+
+        Args:
+            target: 目标消息（可选）
+            extra_info_block: 额外信息块（可选）
+
+        Returns:
+            bool: 是否发送成功
+        """
+        try:
+            from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
+            from src.chat.message_receive.message import create_empty_anchor_message
+            
+            # 获取服务
+            replyer = self.api.get_service("replyer")
+            chat_stream = self.api.get_service("chat_stream")
+            observations = self.api.get_service("observations") or []
+
+            if not replyer or not chat_stream:
+                logger.error(f"{self.log_prefix} 无法通过replyer发送消息：缺少必要的服务")
+                return False
+
+            # 构造动作数据
+            reply_data = {"target": target, "extra_info_block": extra_info_block}
+
+            # 查找 ChattingObservation 实例
+            chatting_observation = None
+            for obs in observations:
+                if isinstance(obs, ChattingObservation):
+                    chatting_observation = obs
+                    break
+
+            if not chatting_observation:
+                logger.warning(f"{self.log_prefix} 未找到 ChattingObservation 实例，创建占位符")
+                anchor_message = await create_empty_anchor_message(
+                    chat_stream.platform, chat_stream.group_info, chat_stream
+                )
+            else:
+                anchor_message = chatting_observation.search_message_by_text(target)
+                if not anchor_message:
+                    logger.info(f"{self.log_prefix} 未找到锚点消息，创建占位符")
+                    anchor_message = await create_empty_anchor_message(
+                        chat_stream.platform, chat_stream.group_info, chat_stream
+                    )
+                else:
+                    anchor_message.update_chat_stream(chat_stream)
+
+            # 使用Action上下文信息发送消息
+            success, _ = await replyer.deal_reply(
+                cycle_timers=self.cycle_timers,
+                action_data=reply_data,
+                anchor_message=anchor_message,
+                reasoning=self.reasoning,
+                thinking_id=self.thinking_id,
+            )
+
+            if success:
+                logger.info(f"{self.log_prefix} 成功通过replyer发送消息")
+            else:
+                logger.error(f"{self.log_prefix} 通过replyer发送消息失败")
+
+            return success
+
+        except Exception as e:
+            logger.error(f"{self.log_prefix} 通过replyer发送消息时出错: {e}")
+            return False
 
     @classmethod
     def get_action_info(cls, name: str = None, description: str = None) -> "ActionInfo":
@@ -132,12 +349,14 @@ class BaseAction(ABC):
             ActionInfo: 生成的Action信息对象
         """
 
-        # 自动生成名称和描述
+        # 优先使用类属性，然后自动生成
         if name is None:
-            name = cls.__name__.lower().replace("action", "")
+            name = getattr(cls, "action_name", cls.__name__.lower().replace("action", ""))
         if description is None:
-            description = cls.__doc__ or f"{cls.__name__} Action组件"
-            description = description.strip().split("\n")[0]  # 取第一行作为描述
+            description = getattr(cls, "action_description", None)
+            if description is None:
+                description = cls.__doc__ or f"{cls.__name__} Action组件"
+                description = description.strip().split("\n")[0]  # 取第一行作为描述
 
         # 安全获取激活类型值
         def get_enum_value(attr_name, default):

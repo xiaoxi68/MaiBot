@@ -26,6 +26,34 @@ class ConfigAPI:
         """
         return global_config.get(key, default)
 
+    def get_config(self, key: str, default: Any = None) -> Any:
+        """
+        从插件配置中获取值，支持嵌套键访问
+        
+        Args:
+            key: 配置键名，支持嵌套访问如 "section.subsection.key"
+            default: 如果配置不存在时返回的默认值
+            
+        Returns:
+            Any: 配置值或默认值
+        """
+        # 获取插件配置
+        plugin_config = getattr(self, '_plugin_config', {})
+        if not plugin_config:
+            return default
+            
+        # 支持嵌套键访问
+        keys = key.split('.')
+        current = plugin_config
+        
+        for k in keys:
+            if isinstance(current, dict) and k in current:
+                current = current[k]
+            else:
+                return default
+                
+        return current
+
     async def get_user_id_by_person_name(self, person_name: str) -> tuple[str, str]:
         """根据用户名获取用户ID
 

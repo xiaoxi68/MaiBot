@@ -1,0 +1,74 @@
+# 禁言插件配置文件
+
+[plugin]
+name = "mute_plugin"
+version = "2.0.0"
+enabled = true
+description = "群聊禁言管理插件，提供智能禁言功能"
+
+# 组件启用控制
+[components]
+enable_smart_mute = true      # 启用智能禁言Action
+enable_mute_command = true    # 启用禁言命令Command
+
+# 禁言配置
+[mute]
+# 时长限制（秒）
+min_duration = 60           # 最短禁言时长
+max_duration = 2592000      # 最长禁言时长（30天）
+default_duration = 300      # 默认禁言时长（5分钟）
+
+# 是否启用时长美化显示
+enable_duration_formatting = true
+
+# 是否记录禁言历史
+log_mute_history = true
+
+# 禁言消息模板
+templates = [
+    "好的，禁言 {target} {duration}，理由：{reason}",
+    "收到，对 {target} 执行禁言 {duration}，因为{reason}",
+    "明白了，禁言 {target} {duration}，原因是{reason}",
+    "✅ 已禁言 {target} {duration}，理由：{reason}",
+    "🔇 对 {target} 执行禁言 {duration}，因为{reason}",
+    "⛔ 禁言 {target} {duration}，原因：{reason}"
+]
+
+# 错误消息模板
+error_messages = [
+    "没有指定禁言对象呢~",
+    "没有指定禁言时长呢~", 
+    "禁言时长必须是正数哦~",
+    "禁言时长必须是数字哦~",
+    "找不到 {target} 这个人呢~",
+    "查找用户信息时出现问题~"
+]
+
+# 智能禁言Action配置
+[smart_mute]
+# LLM判定严格模式
+strict_mode = true
+
+# 关键词激活设置
+keyword_sensitivity = "normal"  # low, normal, high
+
+# 并行执行设置
+allow_parallel = false
+
+# 禁言命令配置  
+[mute_command]
+# 是否需要管理员权限
+require_admin = true
+
+# 最大批量禁言数量
+max_batch_size = 5
+
+# 命令冷却时间（秒）
+cooldown_seconds = 3
+
+# 日志配置
+[logging]
+level = "INFO"
+prefix = "[MutePlugin]"
+include_user_info = true
+include_duration_info = true 

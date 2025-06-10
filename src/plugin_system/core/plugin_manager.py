@@ -2,6 +2,7 @@ from typing import Dict, List, Optional, Any, TYPE_CHECKING
 import os
 import importlib
 import importlib.util
+import inspect
 from pathlib import Path
 
 if TYPE_CHECKING:
@@ -72,9 +73,10 @@ class PluginManager:
                 if plugin_dir:
                     self.plugin_paths[plugin_name] = plugin_dir
 
-            if instantiate_and_register_plugin(plugin_class, plugin_dir):
+            plugin_instance = plugin_class(plugin_dir=plugin_dir)
+            if plugin_instance.register_plugin():
                 total_registered += 1
-                self.loaded_plugins[plugin_name] = plugin_class
+                self.loaded_plugins[plugin_name] = plugin_instance
 
                 # 📊 显示插件详细信息
                 plugin_info = component_registry.get_plugin_info(plugin_name)
@@ -287,6 +289,17 @@ class PluginManager:
             logger.debug(f"已禁用插件: {plugin_name}")
             return True
         return False
+
+    def get_plugin_instance(self, plugin_name: str) -> Optional["BasePlugin"]:
+        """获取插件实例
+        
+        Args:
+            plugin_name: 插件名称
+            
+        Returns:
+            Optional[BasePlugin]: 插件实例或None
+        """
+        return self.loaded_plugins.get(plugin_name)
 
     def get_plugin_stats(self) -> Dict[str, Any]:
         """获取插件统计信息"""

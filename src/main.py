@@ -20,9 +20,6 @@ from rich.traceback import install
 from .chat.focus_chat.expressors.exprssion_learner import expression_learner
 from .api.main import start_api_server
 
-# 导入actions模块，确保装饰器被执行
-import src.chat.actions.default_actions  # noqa
-
 # 导入新的插件管理器
 from src.plugin_system.core.plugin_manager import plugin_manager
 
@@ -82,8 +79,8 @@ class MainSystem:
         logger.success("API服务器启动成功")
 
         # 加载所有actions，包括默认的和插件的
-        self._load_all_actions()
-        logger.success("动作系统加载成功")
+        plugin_count, component_count = plugin_manager.load_all_plugins()
+        logger.success(f"插件系统加载成功: {plugin_count} 个插件，{component_count} 个组件")
 
         # 初始化表情管理器
         emoji_manager.initialize()
@@ -137,18 +134,6 @@ class MainSystem:
         except Exception as e:
             logger.error(f"启动大脑和外部世界失败: {e}")
             raise
-
-    def _load_all_actions(self):
-        """加载所有actions和commands，使用新的插件系统"""
-        try:
-            # 使用新的插件管理器加载所有插件
-            plugin_count, component_count = plugin_manager.load_all_plugins()
-
-            logger.success(f"插件系统加载成功: {plugin_count} 个插件，{component_count} 个组件")
-
-        except Exception as e:
-            logger.error(f"加载插件失败: {e}")
-            logger.error(traceback.format_exc())
 
     async def schedule_tasks(self):
         """调度定时任务"""

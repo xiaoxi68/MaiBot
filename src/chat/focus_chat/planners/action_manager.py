@@ -366,6 +366,12 @@ class ActionManager:
                 logger.error(f"未找到插件Action组件类: {action_name}")
                 return None
 
+            # 获取插件配置
+            component_info = component_registry.get_component_info(action_name)
+            plugin_config = None
+            if component_info and component_info.plugin_name:
+                plugin_config = component_registry.get_plugin_config(component_info.plugin_name)
+
             # 创建插件Action实例
             plugin_action_instance = component_class(
                 action_data=action_data,
@@ -377,6 +383,7 @@ class ActionManager:
                 replyer=replyer,
                 observations=observations,
                 log_prefix=log_prefix,
+                plugin_config=plugin_config,
             )
 
             # 创建兼容性包装器

@@ -141,14 +141,14 @@ class ComponentRegistry:
         info = self.get_component_info(command_name)
         return info if isinstance(info, CommandInfo) else None
 
-    def find_command_by_text(self, text: str) -> Optional[tuple[Type, dict]]:
+    def find_command_by_text(self, text: str) -> Optional[tuple[Type, dict, bool, str]]:
         """根据文本查找匹配的命令
 
         Args:
             text: 输入文本
 
         Returns:
-            Optional[tuple[Type, dict]]: (命令类, 匹配的命名组) 或 None
+            Optional[tuple[Type, dict, bool, str]]: (命令类, 匹配的命名组, 是否拦截消息, 插件名) 或 None
         """
         for pattern, command_class in self._command_patterns.items():
             match = pattern.match(text)
@@ -164,7 +164,7 @@ class ComponentRegistry:
                 if command_name:
                     command_info = self.get_command_info(command_name)
                     if command_info and command_info.enabled:
-                        return command_class, match.groupdict()
+                        return command_class, match.groupdict(), command_info.intercept_message, command_info.plugin_name
         return None
 
     # === 插件管理方法 ===
@@ -204,6 +204,20 @@ class ComponentRegistry:
         """获取插件的所有组件"""
         plugin_info = self.get_plugin_info(plugin_name)
         return plugin_info.components if plugin_info else []
+
+    def get_plugin_config(self, plugin_name: str) -> Optional[dict]:
+        """获取插件配置
+        
+        Args:
+            plugin_name: 插件名称
+            
+        Returns:
+            Optional[dict]: 插件配置字典或None
+        """
+        # 从插件管理器获取插件实例的配置
+        from src.plugin_system.core.plugin_manager import plugin_manager
+        plugin_instance = plugin_manager.get_plugin_instance(plugin_name)
+        return plugin_instance.config if plugin_instance else None
 
     # === 状态管理方法 ===
 
