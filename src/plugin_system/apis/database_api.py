@@ -16,15 +16,15 @@ class DatabaseAPI:
     """
 
     async def store_action_info(
-        self, 
-        action_build_into_prompt: bool = False, 
-        action_prompt_display: str = "", 
+        self,
+        action_build_into_prompt: bool = False,
+        action_prompt_display: str = "",
         action_done: bool = True,
         thinking_id: str = "",
-        action_data: dict = None
+        action_data: dict = None,
     ) -> None:
         """存储action信息到数据库
-        
+
         Args:
             action_build_into_prompt: 是否构建到提示中
             action_prompt_display: 显示的action提示信息

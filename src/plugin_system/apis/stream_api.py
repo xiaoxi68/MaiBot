@@ -162,10 +162,10 @@ class StreamAPI:
 
     async def wait_for_new_message(self, timeout: int = 1200) -> Tuple[bool, str]:
         """等待新消息或超时
-        
+
         Args:
             timeout: 超时时间（秒），默认1200秒
-            
+
         Returns:
             Tuple[bool, str]: (是否收到新消息, 空字符串)
         """
@@ -175,21 +175,21 @@ class StreamAPI:
             if not observations:
                 logger.warning(f"{self.log_prefix} 无法获取observations服务，无法等待新消息")
                 return False, ""
-            
+
             # 获取第一个观察对象（通常是ChattingObservation）
             observation = observations[0] if observations else None
             if not observation:
                 logger.warning(f"{self.log_prefix} 无观察对象，无法等待新消息")
                 return False, ""
-            
+
             # 从action上下文获取thinking_id
             thinking_id = self.get_action_context("thinking_id")
             if not thinking_id:
                 logger.warning(f"{self.log_prefix} 无thinking_id，无法等待新消息")
                 return False, ""
-            
+
             logger.info(f"{self.log_prefix} 开始等待新消息... (超时: {timeout}秒)")
-            
+
             wait_start_time = asyncio.get_event_loop().time()
             while True:
                 # 检查关闭标志
@@ -197,21 +197,21 @@ class StreamAPI:
                 if shutting_down:
                     logger.info(f"{self.log_prefix} 等待新消息时检测到关闭信号，中断等待")
                     return False, ""
-                
+
                 # 检查新消息
                 thinking_id_timestamp = parse_thinking_id_to_timestamp(thinking_id)
                 if await observation.has_new_messages_since(thinking_id_timestamp):
                     logger.info(f"{self.log_prefix} 检测到新消息")
                     return True, ""
-                
+
                 # 检查超时
                 if asyncio.get_event_loop().time() - wait_start_time > timeout:
                     logger.warning(f"{self.log_prefix} 等待新消息超时({timeout}秒)")
                     return False, ""
-                
+
                 # 短暂休眠
                 await asyncio.sleep(0.5)
-                
+
         except asyncio.CancelledError:
             logger.info(f"{self.log_prefix} 等待新消息被中断 (CancelledError)")
             return False, ""

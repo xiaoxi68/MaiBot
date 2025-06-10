@@ -54,10 +54,10 @@ class PluginAPI(MessageAPI, LLMAPI, DatabaseAPI, ConfigAPI, UtilsAPI, StreamAPI,
         }
 
         self.log_prefix = log_prefix
-        
+
         # 存储action上下文信息
         self._action_context = {}
-        
+
         # 调用所有父类的初始化
         super().__init__()
 
@@ -97,7 +97,7 @@ class PluginAPI(MessageAPI, LLMAPI, DatabaseAPI, ConfigAPI, UtilsAPI, StreamAPI,
             self._action_context["thinking_id"] = thinking_id
         self._action_context["shutting_down"] = shutting_down
         self._action_context.update(kwargs)
-        
+
     def get_action_context(self, key: str, default=None):
         """获取action上下文信息"""
         return self._action_context.get(key, default)

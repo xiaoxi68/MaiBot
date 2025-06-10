@@ -40,12 +40,12 @@ class HelloAction(BaseAction):
     async def execute(self) -> Tuple[bool, str]:
         """执行问候动作"""
         username = self.action_data.get("username", "朋友")
-        
+
         # 使用默认配置值（避免创建新插件实例）
         greeting_template = "你好，{username}！"
         enable_emoji = True
         enable_llm = False
-        
+
         # 如果启用LLM生成个性化问候
         if enable_llm:
             try:
@@ -116,11 +116,11 @@ class StatusCommand(BaseCommand):
         """执行状态查询命令"""
         # 获取匹配的参数
         query_type = self.matched_groups.get("type", "系统")
-        
+
         # 使用默认配置值（避免创建新插件实例）
         show_detailed = True
         allowed_types = ["系统", "插件"]
-        
+
         if query_type not in allowed_types:
             response = f"不支持的查询类型: {query_type}\n支持的类型: {', '.join(allowed_types)}"
         elif show_detailed:
