@@ -11,7 +11,6 @@ from datetime import datetime
 from typing import Dict
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
-import asyncio
 
 logger = get_logger("processor")
 

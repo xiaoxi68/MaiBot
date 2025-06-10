@@ -49,7 +49,7 @@ class IdentityConfig(ConfigBase):
 @dataclass
 class RelationshipConfig(ConfigBase):
     """关系配置类"""
-    
+
     enable_relationship: bool = True
 
     give_name: bool = False
@@ -57,6 +57,7 @@ class RelationshipConfig(ConfigBase):
 
     build_relationship_interval: int = 600
     """构建关系间隔 单位秒，如果为0则不构建关系"""
+
 
 @dataclass
 class ChatConfig(ConfigBase):
@@ -222,7 +223,7 @@ class EmojiConfig(ConfigBase):
 @dataclass
 class MemoryConfig(ConfigBase):
     """记忆配置类"""
-    
+
     enable_memory: bool = True
 
     memory_build_interval: int = 600
@@ -328,6 +329,7 @@ class KeywordReactionConfig(ConfigBase):
         for rule in self.keyword_rules + self.regex_rules:
             if not isinstance(rule, KeywordRuleConfig):
                 raise ValueError(f"规则必须是KeywordRuleConfig类型，而不是{type(rule).__name__}")
+
 
 @dataclass
 class ResponsePostProcessConfig(ConfigBase):
@@ -461,7 +463,7 @@ class LPMMKnowledgeConfig(ConfigBase):
 
     qa_res_top_k: int = 10
     """QA最终结果的Top K数量"""
-    
+
 
 @dataclass
 class ModelConfig(ConfigBase):

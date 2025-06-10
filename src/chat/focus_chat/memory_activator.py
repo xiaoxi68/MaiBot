@@ -90,7 +90,7 @@ class MemoryActivator:
         # 如果记忆系统被禁用，直接返回空列表
         if not global_config.memory.enable_memory:
             return []
-            
+
         obs_info_text = ""
         for observation in observations:
             if isinstance(observation, ChattingObservation):

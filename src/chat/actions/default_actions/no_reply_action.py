@@ -29,10 +29,10 @@ class NoReplyAction(BaseAction):
         "想要休息一下",
     ]
     enable_plugin = True
-    
+
     # 激活类型设置
     focus_activation_type = ActionActivationType.ALWAYS
-    
+
     # 模式启用设置 - no_reply动作只在Focus模式下使用
     mode_enable = ChatMode.FOCUS
 

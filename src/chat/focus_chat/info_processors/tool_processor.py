@@ -118,7 +118,7 @@ class ToolProcessor(BaseProcessor):
         is_group_chat = observation.is_group_chat
 
         chat_observe_info = observation.get_observe_info()
-        person_list = observation.person_list
+        # person_list = observation.person_list
 
         memory_str = ""
         if running_memorys:
@@ -141,9 +141,7 @@ class ToolProcessor(BaseProcessor):
 
         # 调用LLM，专注于工具使用
         # logger.info(f"开始执行工具调用{prompt}")
-        response, other_info = await self.llm_model.generate_response_async(
-            prompt=prompt, tools=tools
-        )
+        response, other_info = await self.llm_model.generate_response_async(prompt=prompt, tools=tools)
 
         if len(other_info) == 3:
             reasoning_content, model_name, tool_calls = other_info

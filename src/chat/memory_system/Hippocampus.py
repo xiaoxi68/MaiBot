@@ -346,7 +346,9 @@ class Hippocampus:
             # 使用LLM提取关键词
             topic_num = min(5, max(1, int(len(text) * 0.1)))  # 根据文本长度动态调整关键词数量
             # logger.info(f"提取关键词数量: {topic_num}")
-            topics_response, (reasoning_content, model_name) = await self.model_summary.generate_response_async(self.find_topic_llm(text, topic_num))
+            topics_response, (reasoning_content, model_name) = await self.model_summary.generate_response_async(
+                self.find_topic_llm(text, topic_num)
+            )
 
             # 提取关键词
             keywords = re.findall(r"<([^>]+)>", topics_response)
@@ -701,7 +703,9 @@ class Hippocampus:
             # 使用LLM提取关键词
             topic_num = min(5, max(1, int(len(text) * 0.1)))  # 根据文本长度动态调整关键词数量
             # logger.info(f"提取关键词数量: {topic_num}")
-            topics_response, (reasoning_content, model_name) = await self.model_summary.generate_response_async(self.find_topic_llm(text, topic_num))
+            topics_response, (reasoning_content, model_name) = await self.model_summary.generate_response_async(
+                self.find_topic_llm(text, topic_num)
+            )
 
             # 提取关键词
             keywords = re.findall(r"<([^>]+)>", topics_response)
@@ -893,7 +897,7 @@ class EntorhinalCortex:
         # 获取数据库中所有节点和内存中所有节点
         db_nodes = {node.concept: node for node in GraphNodes.select()}
         memory_nodes = list(self.memory_graph.G.nodes(data=True))
-        
+
         # 批量准备节点数据
         nodes_to_create = []
         nodes_to_update = []
@@ -929,22 +933,26 @@ class EntorhinalCortex:
                 continue
 
             if concept not in db_nodes:
-                nodes_to_create.append({
-                    "concept": concept,
-                    "memory_items": memory_items_json,
-                    "hash": memory_hash,
-                    "created_time": created_time,
-                    "last_modified": last_modified,
-                })
-            else:
-                db_node = db_nodes[concept]
-                if db_node.hash != memory_hash:
-                    nodes_to_update.append({
+                nodes_to_create.append(
+                    {
                         "concept": concept,
                         "memory_items": memory_items_json,
                         "hash": memory_hash,
+                        "created_time": created_time,
                         "last_modified": last_modified,
-                    })
+                    }
+                )
+            else:
+                db_node = db_nodes[concept]
+                if db_node.hash != memory_hash:
+                    nodes_to_update.append(
+                        {
+                            "concept": concept,
+                            "memory_items": memory_items_json,
+                            "hash": memory_hash,
+                            "last_modified": last_modified,
+                        }
+                    )
 
         # 计算需要删除的节点
         memory_concepts = {concept for concept, _ in memory_nodes}
@@ -954,13 +962,13 @@ class EntorhinalCortex:
         if nodes_to_create:
             batch_size = 100
             for i in range(0, len(nodes_to_create), batch_size):
-                batch = nodes_to_create[i:i + batch_size]
+                batch = nodes_to_create[i : i + batch_size]
                 GraphNodes.insert_many(batch).execute()
 
         if nodes_to_update:
             batch_size = 100
             for i in range(0, len(nodes_to_update), batch_size):
-                batch = nodes_to_update[i:i + batch_size]
+                batch = nodes_to_update[i : i + batch_size]
                 for node_data in batch:
                     GraphNodes.update(**{k: v for k, v in node_data.items() if k != "concept"}).where(
                         GraphNodes.concept == node_data["concept"]
@@ -992,22 +1000,26 @@ class EntorhinalCortex:
             last_modified = data.get("last_modified", current_time)
 
             if edge_key not in db_edge_dict:
-                edges_to_create.append({
-                    "source": source,
-                    "target": target,
-                    "strength": strength,
-                    "hash": edge_hash,
-                    "created_time": created_time,
-                    "last_modified": last_modified,
-                })
+                edges_to_create.append(
+                    {
+                        "source": source,
+                        "target": target,
+                        "strength": strength,
+                        "hash": edge_hash,
+                        "created_time": created_time,
+                        "last_modified": last_modified,
+                    }
+                )
             elif db_edge_dict[edge_key]["hash"] != edge_hash:
-                edges_to_update.append({
-                    "source": source,
-                    "target": target,
-                    "strength": strength,
-                    "hash": edge_hash,
-                    "last_modified": last_modified,
-                })
+                edges_to_update.append(
+                    {
+                        "source": source,
+                        "target": target,
+                        "strength": strength,
+                        "hash": edge_hash,
+                        "last_modified": last_modified,
+                    }
+                )
 
         # 计算需要删除的边
         memory_edge_keys = {(source, target) for source, target, _ in memory_edges}
@@ -1017,13 +1029,13 @@ class EntorhinalCortex:
         if edges_to_create:
             batch_size = 100
             for i in range(0, len(edges_to_create), batch_size):
-                batch = edges_to_create[i:i + batch_size]
+                batch = edges_to_create[i : i + batch_size]
                 GraphEdges.insert_many(batch).execute()
 
         if edges_to_update:
             batch_size = 100
             for i in range(0, len(edges_to_update), batch_size):
-                batch = edges_to_update[i:i + batch_size]
+                batch = edges_to_update[i : i + batch_size]
                 for edge_data in batch:
                     GraphEdges.update(**{k: v for k, v in edge_data.items() if k not in ["source", "target"]}).where(
                         (GraphEdges.source == edge_data["source"]) & (GraphEdges.target == edge_data["target"])
@@ -1031,9 +1043,7 @@ class EntorhinalCortex:
 
         if edges_to_delete:
             for source, target in edges_to_delete:
-                GraphEdges.delete().where(
-                    (GraphEdges.source == source) & (GraphEdges.target == target)
-                ).execute()
+                GraphEdges.delete().where((GraphEdges.source == source) & (GraphEdges.target == target)).execute()
 
         end_time = time.time()
         logger.success(f"[同步] 总耗时: {end_time - start_time:.2f}秒")
@@ -1069,13 +1079,15 @@ class EntorhinalCortex:
                 if not memory_items_json:
                     continue
 
-                nodes_data.append({
-                    "concept": concept,
-                    "memory_items": memory_items_json,
-                    "hash": self.hippocampus.calculate_node_hash(concept, memory_items),
-                    "created_time": data.get("created_time", current_time),
-                    "last_modified": data.get("last_modified", current_time),
-                })
+                nodes_data.append(
+                    {
+                        "concept": concept,
+                        "memory_items": memory_items_json,
+                        "hash": self.hippocampus.calculate_node_hash(concept, memory_items),
+                        "created_time": data.get("created_time", current_time),
+                        "last_modified": data.get("last_modified", current_time),
+                    }
+                )
             except Exception as e:
                 logger.error(f"准备节点 {concept} 数据时发生错误: {e}")
                 continue
@@ -1084,14 +1096,16 @@ class EntorhinalCortex:
         edges_data = []
         for source, target, data in memory_edges:
             try:
-                edges_data.append({
-                    "source": source,
-                    "target": target,
-                    "strength": data.get("strength", 1),
-                    "hash": self.hippocampus.calculate_edge_hash(source, target),
-                    "created_time": data.get("created_time", current_time),
-                    "last_modified": data.get("last_modified", current_time),
-                })
+                edges_data.append(
+                    {
+                        "source": source,
+                        "target": target,
+                        "strength": data.get("strength", 1),
+                        "hash": self.hippocampus.calculate_edge_hash(source, target),
+                        "created_time": data.get("created_time", current_time),
+                        "last_modified": data.get("last_modified", current_time),
+                    }
+                )
             except Exception as e:
                 logger.error(f"准备边 {source}-{target} 数据时发生错误: {e}")
                 continue
@@ -1102,7 +1116,7 @@ class EntorhinalCortex:
             batch_size = 500  # 增加批量大小
             with GraphNodes._meta.database.atomic():
                 for i in range(0, len(nodes_data), batch_size):
-                    batch = nodes_data[i:i + batch_size]
+                    batch = nodes_data[i : i + batch_size]
                     GraphNodes.insert_many(batch).execute()
         node_end = time.time()
         logger.info(f"[数据库] 写入 {len(nodes_data)} 个节点耗时: {node_end - node_start:.2f}秒")
@@ -1113,7 +1127,7 @@ class EntorhinalCortex:
             batch_size = 500  # 增加批量大小
             with GraphEdges._meta.database.atomic():
                 for i in range(0, len(edges_data), batch_size):
-                    batch = edges_data[i:i + batch_size]
+                    batch = edges_data[i : i + batch_size]
                     GraphEdges.insert_many(batch).execute()
         edge_end = time.time()
         logger.info(f"[数据库] 写入 {len(edges_data)} 条边耗时: {edge_end - edge_start:.2f}秒")

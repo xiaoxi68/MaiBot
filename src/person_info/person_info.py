@@ -33,7 +33,7 @@ JSON_SERIALIZED_FIELDS = ["points", "forgotten_points", "info_list"]
 person_info_default = {
     "person_id": None,
     "person_name": None,
-    "name_reason": None, # Corrected from person_name_reason to match common usage if intended
+    "name_reason": None,  # Corrected from person_name_reason to match common usage if intended
     "platform": "unknown",
     "user_id": "unknown",
     "nickname": "Unknown",
@@ -42,11 +42,10 @@ person_info_default = {
     "last_know": None,
     # "user_cardname": None, # This field is not in Peewee model PersonInfo
     # "user_avatar": None,   # This field is not in Peewee model PersonInfo
-    "impression": None, # Corrected from persion_impression
+    "impression": None,  # Corrected from persion_impression
     "info_list": None,
     "points": None,
     "forgotten_points": None,
-    
 }
 
 
@@ -126,7 +125,7 @@ class PersonInfoManager:
         for key, default_value in _person_info_default.items():
             if key in model_fields:
                 final_data[key] = default_value
-        
+
         # Override with provided data
         if data:
             for key, value in data.items():
@@ -141,7 +140,7 @@ class PersonInfoManager:
             if key in final_data:
                 if isinstance(final_data[key], (list, dict)):
                     final_data[key] = json.dumps(final_data[key], ensure_ascii=False)
-                elif final_data[key] is None: # Default for lists is [], store as "[]"
+                elif final_data[key] is None:  # Default for lists is [], store as "[]"
                     final_data[key] = json.dumps([], ensure_ascii=False)
                 # If it's already a string, assume it's valid JSON or a non-JSON string field
 
@@ -165,12 +164,12 @@ class PersonInfoManager:
             return
 
         print(f"更新字段: {field_name}，值: {value}")
-        
+
         processed_value = value
         if field_name in JSON_SERIALIZED_FIELDS:
             if isinstance(value, (list, dict)):
                 processed_value = json.dumps(value, ensure_ascii=False, indent=None)
-            elif value is None: # Store None as "[]" for JSON list fields
+            elif value is None:  # Store None as "[]" for JSON list fields
                 processed_value = json.dumps([], ensure_ascii=False, indent=None)
             # If value is already a string, assume it's pre-serialized or a non-JSON string.
 
@@ -180,7 +179,7 @@ class PersonInfoManager:
                 setattr(record, f_name, val_to_set)
                 record.save()
                 return True, False  # Found and updated, no creation needed
-            return False, True # Not found, needs creation
+            return False, True  # Not found, needs creation
 
         found, needs_creation = await asyncio.to_thread(_db_update_sync, person_id, field_name, processed_value)
 
@@ -190,15 +189,14 @@ class PersonInfoManager:
             # Ensure platform and user_id are present for context if available from 'data'
             # but primarily, set the field that triggered the update.
             # The create_person_info will handle defaults and serialization.
-            creation_data[field_name] = value # Pass original value to create_person_info
-            
+            creation_data[field_name] = value  # Pass original value to create_person_info
+
             # Ensure platform and user_id are in creation_data if available,
             # otherwise create_person_info will use defaults.
             if data and "platform" in data:
-                 creation_data["platform"] = data["platform"]
+                creation_data["platform"] = data["platform"]
             if data and "user_id" in data:
-                 creation_data["user_id"] = data["user_id"]
-
+                creation_data["user_id"] = data["user_id"]
 
             await self.create_person_info(person_id, creation_data)
 
@@ -233,7 +231,7 @@ class PersonInfoManager:
 
             if isinstance(parsed_json, list) and parsed_json:
                 parsed_json = parsed_json[0]
-            
+
             if isinstance(parsed_json, dict):
                 return parsed_json
 
@@ -249,11 +247,11 @@ class PersonInfoManager:
         # 处理空昵称的情况
         if not base_name or base_name.isspace():
             base_name = "空格"
-            
+
         # 检查基础名称是否已存在
         if base_name not in self.person_name_list.values():
             return base_name
-            
+
         # 如果存在，添加数字后缀
         counter = 1
         while True:
@@ -331,9 +329,11 @@ class PersonInfoManager:
             if not is_duplicate:
                 await self.update_one_field(person_id, "person_name", generated_nickname)
                 await self.update_one_field(person_id, "name_reason", result.get("reason", "未提供理由"))
-                
-                logger.info(f"成功给用户{user_nickname} {person_id} 取名 {generated_nickname}，理由：{result.get('reason', '未提供理由')}")
-                
+
+                logger.info(
+                    f"成功给用户{user_nickname} {person_id} 取名 {generated_nickname}，理由：{result.get('reason', '未提供理由')}"
+                )
+
                 self.person_name_list[person_id] = generated_nickname
                 return result
             else:
@@ -379,7 +379,7 @@ class PersonInfoManager:
         """获取指定用户指定字段的值"""
         default_value_for_field = person_info_default.get(field_name)
         if field_name in JSON_SERIALIZED_FIELDS and default_value_for_field is None:
-            default_value_for_field = [] # Ensure JSON fields default to [] if not in DB
+            default_value_for_field = []  # Ensure JSON fields default to [] if not in DB
 
         def _db_get_value_sync(p_id: str, f_name: str):
             record = PersonInfo.get_or_none(PersonInfo.person_id == p_id)
@@ -391,32 +391,32 @@ class PersonInfoManager:
                             return json.loads(val)
                         except json.JSONDecodeError:
                             logger.warning(f"字段 {f_name} for {p_id} 包含无效JSON: {val}. 返回默认值.")
-                            return [] # Default for JSON fields on error
-                    elif val is None: # Field exists in DB but is None
-                        return [] # Default for JSON fields
+                            return []  # Default for JSON fields on error
+                    elif val is None:  # Field exists in DB but is None
+                        return []  # Default for JSON fields
                     # If val is already a list/dict (e.g. if somehow set without serialization)
-                    return val # Should ideally not happen if update_one_field is always used
+                    return val  # Should ideally not happen if update_one_field is always used
                 return val
-            return None # Record not found
+            return None  # Record not found
 
         try:
             value_from_db = await asyncio.to_thread(_db_get_value_sync, person_id, field_name)
             if value_from_db is not None:
                 return value_from_db
             if field_name in person_info_default:
-                return default_value_for_field 
+                return default_value_for_field
             logger.warning(f"字段 {field_name} 在 person_info_default 中未定义，且在数据库中未找到。")
-            return None # Ultimate fallback
+            return None  # Ultimate fallback
         except Exception as e:
             logger.error(f"获取字段 {field_name} for {person_id} 时出错 (Peewee): {e}")
             # Fallback to default in case of any error during DB access
             if field_name in person_info_default:
                 return default_value_for_field
             return None
-    
+
     @staticmethod
     def get_value_sync(person_id: str, field_name: str):
-        """ 同步获取指定用户指定字段的值 """
+        """同步获取指定用户指定字段的值"""
         default_value_for_field = person_info_default.get(field_name)
         if field_name in JSON_SERIALIZED_FIELDS and default_value_for_field is None:
             default_value_for_field = []
@@ -430,12 +430,12 @@ class PersonInfoManager:
                         return json.loads(val)
                     except json.JSONDecodeError:
                         logger.warning(f"字段 {field_name} for {person_id} 包含无效JSON: {val}. 返回默认值.")
-                        return [] 
+                        return []
                 elif val is None:
                     return []
-                return val 
+                return val
             return val
-        
+
         if field_name in person_info_default:
             return default_value_for_field
         logger.warning(f"字段 {field_name} 在 person_info_default 中未定义，且在数据库中未找到。")
@@ -534,7 +534,7 @@ class PersonInfoManager:
                 "last_know": int(datetime.datetime.now().timestamp()),
                 "impression": None,
                 "points": [],
-                "forgotten_points": []
+                "forgotten_points": [],
             }
             model_fields = PersonInfo._meta.fields.keys()
             filtered_initial_data = {k: v for k, v in initial_data.items() if v is not None and k in model_fields}

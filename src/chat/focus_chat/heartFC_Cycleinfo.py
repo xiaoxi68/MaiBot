@@ -97,7 +97,7 @@ class CycleDetail:
             )
 
         # current_time_minute = time.strftime("%Y%m%d_%H%M", time.localtime())
-        
+
         # try:
         #     self.log_cycle_to_file(
         #         log_dir + self.prefix + f"/{current_time_minute}_cycle_" + str(self.cycle_id) + ".json"
@@ -117,7 +117,6 @@ class CycleDetail:
         if dir_name and not os.path.exists(dir_name):
             os.makedirs(dir_name, exist_ok=True)
         # 写入文件
-        
 
         file_path = os.path.join(dir_name, os.path.basename(file_path))
         # print("file_path:", file_path)

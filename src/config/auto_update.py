@@ -84,7 +84,7 @@ def update_config():
                                     contains_regex = False
                                     if value and isinstance(value[0], dict) and "regex" in value[0]:
                                         contains_regex = True
-                                    
+
                                     if contains_regex:
                                         target[key] = value
                                     else:

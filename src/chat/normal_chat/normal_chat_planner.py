@@ -101,7 +101,7 @@ class NormalChatPlanner:
 
             # 获取当前可用的动作，使用Normal模式过滤
             current_available_actions = self.action_manager.get_using_actions_for_mode(ChatMode.NORMAL)
-            
+
             # 注意：动作的激活判定现在在 normal_chat_action_modifier 中完成
             # 这里直接使用经过 action_modifier 处理后的最终动作集
             # 符合职责分离原则：ActionModifier负责动作管理，Planner专注于决策
@@ -110,7 +110,12 @@ class NormalChatPlanner:
             if not current_available_actions:
                 logger.debug(f"{self.log_prefix}规划器: 没有可用动作，返回no_action")
                 return {
-                    "action_result": {"action_type": action, "action_data": action_data, "reasoning": reasoning, "is_parallel": True},
+                    "action_result": {
+                        "action_type": action,
+                        "action_data": action_data,
+                        "reasoning": reasoning,
+                        "is_parallel": True,
+                    },
                     "chat_context": "",
                     "action_prompt": "",
                 }
@@ -121,7 +126,7 @@ class NormalChatPlanner:
                 timestamp=time.time(),
                 limit=global_config.focus_chat.observation_context_size,
             )
-            
+
             chat_context = build_readable_messages(
                 message_list_before_now,
                 replace_bot_name=True,
@@ -130,7 +135,7 @@ class NormalChatPlanner:
                 read_mark=0.0,
                 show_actions=True,
             )
-            
+
             # 构建planner的prompt
             prompt = await self.build_planner_prompt(
                 self_info_block=self_info,
@@ -141,7 +146,12 @@ class NormalChatPlanner:
             if not prompt:
                 logger.warning(f"{self.log_prefix}规划器: 构建提示词失败")
                 return {
-                    "action_result": {"action_type": action, "action_data": action_data, "reasoning": reasoning, "is_parallel": False},
+                    "action_result": {
+                        "action_type": action,
+                        "action_data": action_data,
+                        "reasoning": reasoning,
+                        "is_parallel": False,
+                    },
                     "chat_context": chat_context,
                     "action_prompt": "",
                 }
@@ -149,7 +159,7 @@ class NormalChatPlanner:
             # 使用LLM生成动作决策
             try:
                 content, (reasoning_content, model_name) = await self.planner_llm.generate_response_async(prompt)
-                
+
                 # logger.info(f"{self.log_prefix}规划器原始提示词: {prompt}")
                 logger.info(f"{self.log_prefix}规划器原始响应: {content}")
                 logger.info(f"{self.log_prefix}规划器推理: {reasoning_content}")
@@ -201,8 +211,10 @@ class NormalChatPlanner:
         if action in current_available_actions:
             action_info = current_available_actions[action]
             is_parallel = action_info.get("parallel_action", False)
-        
-        logger.debug(f"{self.log_prefix}规划器决策动作:{action}, 动作信息: '{action_data}', 理由: {reasoning}, 并行执行: {is_parallel}")
+
+        logger.debug(
+            f"{self.log_prefix}规划器决策动作:{action}, 动作信息: '{action_data}', 理由: {reasoning}, 并行执行: {is_parallel}"
+        )
 
         # 恢复到默认动作集
         self.action_manager.restore_actions()
@@ -216,15 +228,15 @@ class NormalChatPlanner:
             "action_data": action_data,
             "reasoning": reasoning,
             "timestamp": time.time(),
-            "model_name": model_name if 'model_name' in locals() else None
+            "model_name": model_name if "model_name" in locals() else None,
         }
 
         action_result = {
-            "action_type": action, 
-            "action_data": action_data, 
+            "action_type": action,
+            "action_data": action_data,
             "reasoning": reasoning,
             "is_parallel": is_parallel,
-            "action_record": json.dumps(action_record, ensure_ascii=False)
+            "action_record": json.dumps(action_record, ensure_ascii=False),
         }
 
         plan_result = {
@@ -248,24 +260,19 @@ class NormalChatPlanner:
 
             # 添加特殊的change_to_focus_chat动作
             action_options_text += "动作：change_to_focus_chat\n"
-            action_options_text += (
-                "该动作的描述：当聊天变得热烈、自己回复条数很多或需要深入交流时使用，正常回复消息并切换到focus_chat模式\n"
-            )
+            action_options_text += "该动作的描述：当聊天变得热烈、自己回复条数很多或需要深入交流时使用，正常回复消息并切换到focus_chat模式\n"
 
             action_options_text += "使用该动作的场景：\n"
             action_options_text += "- 聊天上下文中自己的回复条数较多（超过3-4条）\n"
             action_options_text += "- 对话进行得非常热烈活跃\n"
             action_options_text += "- 用户表现出深入交流的意图\n"
             action_options_text += "- 话题需要更专注和深入的讨论\n\n"
-            
+
             action_options_text += "输出要求：\n"
             action_options_text += "{{"
-            action_options_text += "    \"action\": \"change_to_focus_chat\""
+            action_options_text += '    "action": "change_to_focus_chat"'
             action_options_text += "}}\n\n"
-            
-            
-            
-            
+
             for action_name, action_info in current_available_actions.items():
                 action_description = action_info.get("description", "")
                 action_parameters = action_info.get("parameters", {})
@@ -276,15 +283,14 @@ class NormalChatPlanner:
                     print(action_parameters)
                     for param_name, param_description in action_parameters.items():
                         param_text += f'    "{param_name}":"{param_description}"\n'
-                    param_text = param_text.rstrip('\n')
+                    param_text = param_text.rstrip("\n")
                 else:
                     param_text = ""
-
 
                 require_text = ""
                 for require_item in action_require:
                     require_text += f"- {require_item}\n"
-                require_text = require_text.rstrip('\n')
+                require_text = require_text.rstrip("\n")
 
                 # 构建单个动作的提示
                 action_prompt = await global_prompt_manager.format_prompt(
@@ -314,8 +320,6 @@ class NormalChatPlanner:
             logger.error(f"{self.log_prefix}构建Planner提示词失败: {e}")
             traceback.print_exc()
             return ""
-
-
 
 
 init_prompt()

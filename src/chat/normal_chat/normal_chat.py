@@ -13,8 +13,6 @@ from src.chat.utils.prompt_builder import global_prompt_manager
 from .normal_chat_generator import NormalChatGenerator
 from ..message_receive.message import MessageSending, MessageRecv, MessageThinking, MessageSet
 from src.chat.message_receive.message_sender import message_manager
-from src.chat.utils.utils_image import image_path_to_base64
-from src.chat.emoji_system.emoji_manager import emoji_manager
 from src.chat.normal_chat.willing.willing_manager import willing_manager
 from src.chat.normal_chat.normal_chat_utils import get_recent_message_stats
 from src.config.config import global_config
@@ -69,7 +67,7 @@ class NormalChat:
         self.on_switch_to_focus_callback = on_switch_to_focus_callback
 
         self._disabled = False  # 增加停用标志
-        
+
         logger.debug(f"[{self.stream_name}] NormalChat 初始化完成 (异步部分)。")
 
     # 改为实例方法
@@ -193,7 +191,9 @@ class NormalChat:
             return
 
         timing_results = {}
-        reply_probability = 1.0 if is_mentioned and global_config.normal_chat.mentioned_bot_inevitable_reply else 0.0  # 如果被提及，且开启了提及必回复，则基础概率为1，否则需要意愿判断
+        reply_probability = (
+            1.0 if is_mentioned and global_config.normal_chat.mentioned_bot_inevitable_reply else 0.0
+        )  # 如果被提及，且开启了提及必回复，则基础概率为1，否则需要意愿判断
 
         # 意愿管理器：设置当前message信息
         willing_manager.setup(message, self.chat_stream, is_mentioned, interested_rate)
@@ -267,13 +267,17 @@ class NormalChat:
                 try:
                     # 获取发送者名称（动作修改已在并行执行前完成）
                     sender_name = self._get_sender_name(message)
-                    
+
                     no_action = {
-                        "action_result": {"action_type": "no_action", "action_data": {}, "reasoning": "规划器初始化默认", "is_parallel": True},
+                        "action_result": {
+                            "action_type": "no_action",
+                            "action_data": {},
+                            "reasoning": "规划器初始化默认",
+                            "is_parallel": True,
+                        },
                         "chat_context": "",
                         "action_prompt": "",
                     }
-                    
 
                     # 检查是否应该跳过规划
                     if self.action_modifier.should_skip_planning():
@@ -288,7 +292,9 @@ class NormalChat:
                     reasoning = plan_result["action_result"]["reasoning"]
                     is_parallel = plan_result["action_result"].get("is_parallel", False)
 
-                    logger.info(f"[{self.stream_name}] Planner决策: {action_type}, 理由: {reasoning}, 并行执行: {is_parallel}")
+                    logger.info(
+                        f"[{self.stream_name}] Planner决策: {action_type}, 理由: {reasoning}, 并行执行: {is_parallel}"
+                    )
                     self.action_type = action_type  # 更新实例属性
                     self.is_parallel_action = is_parallel  # 新增：保存并行执行标志
 
@@ -307,7 +313,12 @@ class NormalChat:
                     else:
                         logger.warning(f"[{self.stream_name}] 额外动作 {action_type} 执行失败")
 
-                    return {"action_type": action_type, "action_data": action_data, "reasoning": reasoning, "is_parallel": is_parallel}
+                    return {
+                        "action_type": action_type,
+                        "action_data": action_data,
+                        "reasoning": reasoning,
+                        "is_parallel": is_parallel,
+                    }
 
                 except Exception as e:
                     logger.error(f"[{self.stream_name}] Planner执行失败: {e}")
@@ -331,13 +342,19 @@ class NormalChat:
                 logger.error(f"[{self.stream_name}] 动作规划异常: {plan_result}")
             elif plan_result:
                 logger.debug(f"[{self.stream_name}] 额外动作处理完成: {self.action_type}")
-            
+
             if not response_set or (
-                self.enable_planner and self.action_type not in ["no_action", "change_to_focus_chat"] and not self.is_parallel_action
+                self.enable_planner
+                and self.action_type not in ["no_action", "change_to_focus_chat"]
+                and not self.is_parallel_action
             ):
                 if not response_set:
                     logger.info(f"[{self.stream_name}] 模型未生成回复内容")
-                elif self.enable_planner and self.action_type not in ["no_action", "change_to_focus_chat"] and not self.is_parallel_action:
+                elif (
+                    self.enable_planner
+                    and self.action_type not in ["no_action", "change_to_focus_chat"]
+                    and not self.is_parallel_action
+                ):
                     logger.info(f"[{self.stream_name}] 模型选择其他动作（非并行动作）")
                 # 如果模型未生成回复，移除思考消息
                 container = await message_manager.get_container(self.stream_id)  # 使用 self.stream_id
@@ -364,7 +381,6 @@ class NormalChat:
 
             # 检查 first_bot_msg 是否为 None (例如思考消息已被移除的情况)
             if first_bot_msg:
-
                 # 记录回复信息到最近回复列表中
                 reply_info = {
                     "time": time.time(),
@@ -395,7 +411,6 @@ class NormalChat:
                     else:
                         await self._check_switch_to_focus()
                         pass
-
 
             # with Timer("关系更新", timing_results):
             #     await self._update_relationship(message, response_set)
@@ -605,7 +620,7 @@ class NormalChat:
                 # 执行动作
                 result = await action_handler.handle_action()
                 success = False
-                
+
                 if result and isinstance(result, tuple) and len(result) >= 2:
                     # handle_action返回 (success: bool, message: str)
                     success = result[0]

@@ -79,7 +79,7 @@ class ChatBot:
             group_info = message.message_info.group_info
             user_info = message.message_info.user_info
             chat_manager.register_message(message)
-            
+
             # 创建聊天流
             chat = await chat_manager.get_or_create_stream(
                 platform=message.message_info.platform,
@@ -87,13 +87,13 @@ class ChatBot:
                 group_info=group_info,
             )
             message.update_chat_stream(chat)
-            
+
             # 处理消息内容，生成纯文本
             await message.process()
-            
+
             # 命令处理 - 在消息处理的早期阶段检查并处理命令
             is_command, cmd_result, continue_process = await command_manager.process_command(message)
-            
+
             # 如果是命令且不需要继续处理，则直接返回
             if is_command and not continue_process:
                 logger.info(f"命令处理完成，跳过后续消息处理: {cmd_result}")

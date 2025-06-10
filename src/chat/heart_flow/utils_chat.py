@@ -23,7 +23,7 @@ def get_chat_type_and_target_info(chat_id: str) -> Tuple[bool, Optional[Dict]]:
     chat_target_info = None
 
     try:
-        chat_stream = chat_manager.get_stream(chat_id) 
+        chat_stream = chat_manager.get_stream(chat_id)
 
         if chat_stream:
             if chat_stream.group_info:

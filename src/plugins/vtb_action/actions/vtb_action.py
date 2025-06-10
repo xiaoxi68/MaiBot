@@ -22,11 +22,11 @@ class VTBAction(PluginAction):
     ]
     enable_plugin = True  # 启用插件
     associated_types = ["vtb_text"]
-    
+
     # 激活类型设置
     focus_activation_type = ActionActivationType.LLM_JUDGE  # Focus模式使用LLM判定，精确识别情感表达需求
-    normal_activation_type = ActionActivationType.RANDOM    # Normal模式使用随机激活，增加趣味性
-    
+    normal_activation_type = ActionActivationType.RANDOM  # Normal模式使用随机激活，增加趣味性
+
     # LLM判定提示词（用于Focus模式）
     llm_judge_prompt = """
 判定是否需要使用VTB虚拟主播动作的条件：
@@ -41,7 +41,7 @@ class VTBAction(PluginAction):
 3. 不涉及情感的日常对话
 4. 已经有足够的情感表达
 """
-    
+
     # Random激活概率（用于Normal模式）
     random_activation_probability = 0.08  # 较低概率，避免过度使用
 

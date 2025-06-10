@@ -146,7 +146,7 @@ class ActionPlanner(BasePlanner):
             # 注意：动作的激活判定现在在主循环的modify_actions中完成
             # 使用Focus模式过滤动作
             current_available_actions_dict = self.action_manager.get_using_actions_for_mode(ChatMode.FOCUS)
-            
+
             # 获取完整的动作信息
             all_registered_actions = self.action_manager.get_registered_actions()
             current_available_actions = {}
@@ -192,12 +192,11 @@ class ActionPlanner(BasePlanner):
             try:
                 prompt = f"{prompt}"
                 llm_content, (reasoning_content, _) = await self.planner_llm.generate_response_async(prompt=prompt)
-                
+
                 logger.info(f"{self.log_prefix}规划器原始提示词: {prompt}")
                 logger.info(f"{self.log_prefix}规划器原始响应: {llm_content}")
                 logger.info(f"{self.log_prefix}规划器推理: {reasoning_content}")
-                
-                
+
             except Exception as req_e:
                 logger.error(f"{self.log_prefix}LLM 请求执行失败: {req_e}")
                 reasoning = f"LLM 请求失败，你的模型出现问题: {req_e}"
@@ -237,10 +236,10 @@ class ActionPlanner(BasePlanner):
                         extra_info_block = ""
 
                     action_data["extra_info_block"] = extra_info_block
-                    
+
                     if relation_info:
                         action_data["relation_info_block"] = relation_info
-                    
+
                     # 对于reply动作不需要额外处理，因为相关字段已经在上面的循环中添加到action_data
 
                     if extracted_action not in current_available_actions:
@@ -303,12 +302,11 @@ class ActionPlanner(BasePlanner):
     ) -> str:
         """构建 Planner LLM 的提示词 (获取模板并填充数据)"""
         try:
-
             if relation_info_block:
                 relation_info_block = f"以下是你和别人的关系描述：\n{relation_info_block}"
             else:
                 relation_info_block = ""
-                
+
             memory_str = ""
             if running_memorys:
                 memory_str = "以下是当前在聊天中，你回忆起的记忆：\n"
@@ -331,9 +329,9 @@ class ActionPlanner(BasePlanner):
 
             # mind_info_block = ""
             # if current_mind:
-                # mind_info_block = f"对聊天的规划：{current_mind}"
+            # mind_info_block = f"对聊天的规划：{current_mind}"
             # else:
-                # mind_info_block = "你刚参与聊天"
+            # mind_info_block = "你刚参与聊天"
 
             personality_block = individuality.get_prompt(x_person=2, level=2)
 
@@ -351,16 +349,14 @@ class ActionPlanner(BasePlanner):
                     param_text = "\n"
                     for param_name, param_description in using_actions_info["parameters"].items():
                         param_text += f'    "{param_name}":"{param_description}"\n'
-                    param_text = param_text.rstrip('\n')
+                    param_text = param_text.rstrip("\n")
                 else:
                     param_text = ""
-
 
                 require_text = ""
                 for require_item in using_actions_info["require"]:
                     require_text += f"- {require_item}\n"
-                require_text = require_text.rstrip('\n')
-
+                require_text = require_text.rstrip("\n")
 
                 using_action_prompt = using_action_prompt.format(
                     action_name=using_actions_name,

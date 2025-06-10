@@ -93,7 +93,7 @@ class DefaultReplyer:
 
         self.chat_id = chat_stream.stream_id
         self.chat_stream = chat_stream
-        self.is_group_chat, self.chat_target_info = get_chat_type_and_target_info(self.chat_id)        
+        self.is_group_chat, self.chat_target_info = get_chat_type_and_target_info(self.chat_id)
 
     async def _create_thinking_message(self, anchor_message: Optional[MessageRecv], thinking_id: str):
         """创建思考消息 (尝试锚定到 anchor_message)"""
@@ -141,7 +141,7 @@ class DefaultReplyer:
             # text_part = action_data.get("text", [])
             # if text_part:
             sent_msg_list = []
-            
+
             with Timer("生成回复", cycle_timers):
                 # 可以保留原有的文本处理逻辑或进行适当调整
                 reply = await self.reply(
@@ -240,22 +240,21 @@ class DefaultReplyer:
             # current_temp = float(global_config.model.normal["temp"]) * arousal_multiplier
             # self.express_model.params["temperature"] = current_temp  # 动态调整温度
 
-            
             reply_to = action_data.get("reply_to", "none")
-            
+
             sender = ""
             targer = ""
             if ":" in reply_to or "：" in reply_to:
                 # 使用正则表达式匹配中文或英文冒号
-                parts = re.split(pattern=r'[:：]', string=reply_to, maxsplit=1)
+                parts = re.split(pattern=r"[:：]", string=reply_to, maxsplit=1)
                 if len(parts) == 2:
                     sender = parts[0].strip()
                     targer = parts[1].strip()
-            
+
             identity = action_data.get("identity", "")
             extra_info_block = action_data.get("extra_info_block", "")
             relation_info_block = action_data.get("relation_info_block", "")
-            
+
             # 3. 构建 Prompt
             with Timer("构建Prompt", {}):  # 内部计时器，可选保留
                 prompt = await self.build_prompt_focus(
@@ -374,8 +373,6 @@ class DefaultReplyer:
 
         style_habbits_str = "\n".join(style_habbits)
         grammar_habbits_str = "\n".join(grammar_habbits)
-        
-        
 
         # 关键词检测与反应
         keywords_reaction_prompt = ""
@@ -407,16 +404,15 @@ class DefaultReplyer:
         time_block = f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
 
         # logger.debug("开始构建 focus prompt")
-        
+
         if sender_name:
-            reply_target_block = f"现在{sender_name}说的:{target_message}。引起了你的注意，你想要在群里发言或者回复这条消息。"
+            reply_target_block = (
+                f"现在{sender_name}说的:{target_message}。引起了你的注意，你想要在群里发言或者回复这条消息。"
+            )
         elif target_message:
             reply_target_block = f"现在{target_message}引起了你的注意，你想要在群里发言或者回复这条消息。"
         else:
             reply_target_block = "现在，你想要在群里发言或者回复消息。"
-        
-        
-        
 
         # --- Choose template based on chat type ---
         if is_group_chat:
@@ -665,30 +661,30 @@ def find_similar_expressions(input_text: str, expressions: List[Dict], top_k: in
     """使用TF-IDF和余弦相似度找出与输入文本最相似的top_k个表达方式"""
     if not expressions:
         return []
-        
+
     # 准备文本数据
-    texts = [expr['situation'] for expr in expressions]
+    texts = [expr["situation"] for expr in expressions]
     texts.append(input_text)  # 添加输入文本
-    
+
     # 使用TF-IDF向量化
     vectorizer = TfidfVectorizer()
     tfidf_matrix = vectorizer.fit_transform(texts)
-    
+
     # 计算余弦相似度
     similarity_matrix = cosine_similarity(tfidf_matrix)
-    
+
     # 获取输入文本的相似度分数（最后一行）
     scores = similarity_matrix[-1][:-1]  # 排除与自身的相似度
-    
+
     # 获取top_k的索引
     top_indices = np.argsort(scores)[::-1][:top_k]
-    
+
     # 获取相似表达
     similar_exprs = []
     for idx in top_indices:
         if scores[idx] > 0:  # 只保留有相似度的
             similar_exprs.append(expressions[idx])
-            
+
     return similar_exprs
 
 

@@ -90,7 +90,7 @@ class PersonalityExpression:
 
         current_style_text = global_config.expression.expression_style
         current_personality = global_config.personality.personality_core
-        
+
         meta_data = self._read_meta_data()
 
         last_style_text = meta_data.get("last_style_text")
@@ -98,9 +98,10 @@ class PersonalityExpression:
         count = meta_data.get("count", 0)
 
         # 检查是否有任何变化
-        if (current_style_text != last_style_text or 
-            current_personality != last_personality):
-            logger.info(f"检测到变化：\n风格: '{last_style_text}' -> '{current_style_text}'\n人格: '{last_personality}' -> '{current_personality}'")
+        if current_style_text != last_style_text or current_personality != last_personality:
+            logger.info(
+                f"检测到变化：\n风格: '{last_style_text}' -> '{current_style_text}'\n人格: '{last_personality}' -> '{current_personality}'"
+            )
             count = 0
             if os.path.exists(self.expressions_file_path):
                 try:
@@ -196,7 +197,7 @@ class PersonalityExpression:
                     "last_style_text": current_style_text,
                     "last_personality": current_personality,
                     "count": count,
-                    "last_update_time": current_time
+                    "last_update_time": current_time,
                 }
             )
             logger.info(f"成功处理。当前配置的计数现在是 {count}，最后更新时间：{current_time}。")

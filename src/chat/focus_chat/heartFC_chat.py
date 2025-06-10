@@ -99,22 +99,23 @@ class HeartFChatting:
         self.stream_id: str = chat_id  # 聊天流ID
         self.chat_stream = chat_manager.get_stream(self.stream_id)
         self.log_prefix = f"[{chat_manager.get_stream_name(self.stream_id) or self.stream_id}]"
-        
+
         self.memory_activator = MemoryActivator()
-        
+
         # 初始化观察器
         self.observations: List[Observation] = []
         self._register_observations()
-        
+
         # 根据配置文件和默认规则确定启用的处理器
         config_processor_settings = global_config.focus_chat_processor
         self.enabled_processor_names = []
-        
+
         for proc_name, (_proc_class, config_key) in PROCESSOR_CLASSES.items():
             # 对于关系处理器，需要同时检查两个配置项
             if proc_name == "RelationshipProcessor":
-                if (global_config.relationship.enable_relationship and 
-                    getattr(config_processor_settings, config_key, True)):
+                if global_config.relationship.enable_relationship and getattr(
+                    config_processor_settings, config_key, True
+                ):
                     self.enabled_processor_names.append(proc_name)
             else:
                 # 其他处理器的原有逻辑
@@ -122,14 +123,13 @@ class HeartFChatting:
                     self.enabled_processor_names.append(proc_name)
 
         # logger.info(f"{self.log_prefix} 将启用的处理器: {self.enabled_processor_names}")
-        
+
         self.processors: List[BaseProcessor] = []
         self._register_default_processors()
 
         self.expressor = DefaultExpressor(chat_stream=self.chat_stream)
         self.replyer = DefaultReplyer(chat_stream=self.chat_stream)
-        
-        
+
         self.action_manager = ActionManager()
         self.action_planner = PlannerFactory.create_planner(
             log_prefix=self.log_prefix, action_manager=self.action_manager
@@ -137,7 +137,6 @@ class HeartFChatting:
         self.action_modifier = ActionModifier(action_manager=self.action_manager)
         self.action_observation = ActionObservation(observe_id=self.stream_id)
         self.action_observation.set_action_manager(self.action_manager)
-
 
         self._processing_lock = asyncio.Lock()
 
@@ -182,7 +181,13 @@ class HeartFChatting:
             if processor_info:
                 processor_actual_class = processor_info[0]  # 获取实际的类定义
                 # 根据处理器类名判断是否需要 subheartflow_id
-                if name in ["MindProcessor", "ToolProcessor", "WorkingMemoryProcessor", "SelfProcessor", "RelationshipProcessor"]:
+                if name in [
+                    "MindProcessor",
+                    "ToolProcessor",
+                    "WorkingMemoryProcessor",
+                    "SelfProcessor",
+                    "RelationshipProcessor",
+                ]:
                     self.processors.append(processor_actual_class(subheartflow_id=self.stream_id))
                 elif name == "ChattingInfoProcessor":
                     self.processors.append(processor_actual_class())
@@ -203,9 +208,7 @@ class HeartFChatting:
                 )
 
         if self.processors:
-            logger.info(
-                f"{self.log_prefix} 已注册处理器: {[p.__class__.__name__ for p in self.processors]}"
-            )
+            logger.info(f"{self.log_prefix} 已注册处理器: {[p.__class__.__name__ for p in self.processors]}")
         else:
             logger.warning(f"{self.log_prefix} 没有注册任何处理器。这可能是由于配置错误或所有处理器都被禁用了。")
 
@@ -292,7 +295,9 @@ class HeartFChatting:
                     self._current_cycle_detail.set_loop_info(loop_info)
 
                     # 从observations列表中获取HFCloopObservation
-                    hfcloop_observation = next((obs for obs in self.observations if isinstance(obs, HFCloopObservation)), None)
+                    hfcloop_observation = next(
+                        (obs for obs in self.observations if isinstance(obs, HFCloopObservation)), None
+                    )
                     if hfcloop_observation:
                         hfcloop_observation.add_loop_info(self._current_cycle_detail)
                     else:
@@ -451,19 +456,19 @@ class HeartFChatting:
 
             # 根据配置决定是否并行执行调整动作、回忆和处理器阶段
 
-                # 并行执行调整动作、回忆和处理器阶段
+            # 并行执行调整动作、回忆和处理器阶段
             with Timer("并行调整动作、处理", cycle_timers):
                 # 创建并行任务
-                async def modify_actions_task():                    
+                async def modify_actions_task():
                     # 调用完整的动作修改流程
                     await self.action_modifier.modify_actions(
                         observations=self.observations,
                     )
-                    
+
                     await self.action_observation.observe()
                     self.observations.append(self.action_observation)
                     return True
-                
+
                 # 创建三个并行任务
                 action_modify_task = asyncio.create_task(modify_actions_task())
                 memory_task = asyncio.create_task(self.memory_activator.activate_memory(self.observations))
@@ -473,9 +478,6 @@ class HeartFChatting:
                 _, running_memorys, (all_plan_info, processor_time_costs) = await asyncio.gather(
                     action_modify_task, memory_task, processor_task
                 )
-
-
-
 
             loop_processor_info = {
                 "all_plan_info": all_plan_info,
@@ -594,9 +596,7 @@ class HeartFChatting:
             else:
                 success, reply_text = result
                 command = ""
-            logger.debug(
-                f"{self.log_prefix} 麦麦执行了'{action}', 返回结果'{success}', '{reply_text}', '{command}'"
-            )
+            logger.debug(f"{self.log_prefix} 麦麦执行了'{action}', 返回结果'{success}', '{reply_text}', '{command}'")
 
             return success, reply_text, command
 

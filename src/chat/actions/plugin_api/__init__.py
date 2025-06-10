@@ -7,11 +7,11 @@ from src.chat.actions.plugin_api.stream_api import StreamAPI
 from src.chat.actions.plugin_api.hearflow_api import HearflowAPI
 
 __all__ = [
-    'MessageAPI',
-    'LLMAPI',
-    'DatabaseAPI',
-    'ConfigAPI',
-    'UtilsAPI',
-    'StreamAPI',
-    'HearflowAPI',
-] 
+    "MessageAPI",
+    "LLMAPI",
+    "DatabaseAPI",
+    "ConfigAPI",
+    "UtilsAPI",
+    "StreamAPI",
+    "HearflowAPI",
+]

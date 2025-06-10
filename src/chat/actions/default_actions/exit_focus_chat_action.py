@@ -27,7 +27,7 @@ class ExitFocusChatAction(BaseAction):
     ]
     # 退出专注聊天是系统核心功能，不是插件，但默认不启用（需要特定条件触发）
     enable_plugin = False
-    
+
     # 模式启用设置 - 退出专注聊天动作只在Focus模式下使用
     mode_enable = ChatMode.FOCUS
 

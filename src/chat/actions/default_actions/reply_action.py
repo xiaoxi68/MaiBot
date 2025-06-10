@@ -31,16 +31,16 @@ class ReplyAction(BaseAction):
     action_require: list[str] = [
         "你想要闲聊或者随便附和",
         "有人提到你",
-        "如果你刚刚进行了回复，不要对同一个话题重复回应"
+        "如果你刚刚进行了回复，不要对同一个话题重复回应",
     ]
 
     associated_types: list[str] = ["text"]
 
     enable_plugin = True
-    
+
     # 激活类型设置
     focus_activation_type = ActionActivationType.ALWAYS
-    
+
     # 模式启用设置 - 回复动作只在Focus模式下使用
     mode_enable = ChatMode.FOCUS
 
@@ -89,12 +89,12 @@ class ReplyAction(BaseAction):
             cycle_timers=self.cycle_timers,
             thinking_id=self.thinking_id,
         )
-        
+
         await self.store_action_info(
             action_build_into_prompt=False,
             action_prompt_display=f"{reply_text}",
         )
-        
+
         return success, reply_text
 
     async def _handle_reply(
@@ -115,29 +115,28 @@ class ReplyAction(BaseAction):
         chatting_observation: ChattingObservation = next(
             obs for obs in self.observations if isinstance(obs, ChattingObservation)
         )
-        
+
         reply_to = reply_data.get("reply_to", "none")
-            
+
         # sender = ""
         target = ""
         if ":" in reply_to or "：" in reply_to:
             # 使用正则表达式匹配中文或英文冒号
-            parts = re.split(pattern=r'[:：]', string=reply_to, maxsplit=1)
+            parts = re.split(pattern=r"[:：]", string=reply_to, maxsplit=1)
             if len(parts) == 2:
                 # sender = parts[0].strip()
                 target = parts[1].strip()
                 anchor_message = chatting_observation.search_message_by_text(target)
         else:
             anchor_message = None
-        
-        if anchor_message:  
+
+        if anchor_message:
             anchor_message.update_chat_stream(self.chat_stream)
         else:
             logger.info(f"{self.log_prefix} 未找到锚点消息，创建占位符")
             anchor_message = await create_empty_anchor_message(
                 self.chat_stream.platform, self.chat_stream.group_info, self.chat_stream
             )
-
 
         success, reply_set = await self.replyer.deal_reply(
             cycle_timers=cycle_timers,
@@ -158,8 +157,9 @@ class ReplyAction(BaseAction):
 
         return success, reply_text
 
-
-    async def store_action_info(self, action_build_into_prompt: bool = False, action_prompt_display: str = "", action_done: bool = True) -> None:
+    async def store_action_info(
+        self, action_build_into_prompt: bool = False, action_prompt_display: str = "", action_done: bool = True
+    ) -> None:
         """存储action执行信息到数据库
 
         Args:
@@ -188,7 +188,7 @@ class ReplyAction(BaseAction):
                 chat_info_platform=chat_stream.platform,
                 user_id=chat_stream.user_info.user_id if chat_stream.user_info else "",
                 user_nickname=chat_stream.user_info.user_nickname if chat_stream.user_info else "",
-                user_cardname=chat_stream.user_info.user_cardname if chat_stream.user_info else ""
+                user_cardname=chat_stream.user_info.user_cardname if chat_stream.user_info else "",
             )
             logger.debug(f"{self.log_prefix} 已存储action信息: {action_prompt_display}")
         except Exception as e:

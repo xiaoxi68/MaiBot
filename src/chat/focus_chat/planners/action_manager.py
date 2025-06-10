@@ -5,9 +5,6 @@ from src.chat.focus_chat.replyer.default_replyer import DefaultReplyer
 from src.chat.focus_chat.expressors.default_expressor import DefaultExpressor
 from src.chat.message_receive.chat_stream import ChatStream
 from src.common.logger_manager import get_logger
-import importlib
-import pkgutil
-import os
 
 # 不再需要导入动作类，因为已经在main.py中导入
 # import src.chat.actions.default_actions  # noqa
@@ -41,7 +38,7 @@ class ActionManager:
 
         # 初始化时将默认动作加载到使用中的动作
         self._using_actions = self._default_actions.copy()
-        
+
         # 添加系统核心动作
         self._add_system_core_actions()
 
@@ -63,19 +60,19 @@ class ActionManager:
                 action_require: list[str] = getattr(action_class, "action_require", [])
                 associated_types: list[str] = getattr(action_class, "associated_types", [])
                 is_enabled: bool = getattr(action_class, "enable_plugin", True)
-                
+
                 # 获取激活类型相关属性
                 focus_activation_type: str = getattr(action_class, "focus_activation_type", "always")
                 normal_activation_type: str = getattr(action_class, "normal_activation_type", "always")
-                
+
                 random_probability: float = getattr(action_class, "random_activation_probability", 0.3)
                 llm_judge_prompt: str = getattr(action_class, "llm_judge_prompt", "")
                 activation_keywords: list[str] = getattr(action_class, "activation_keywords", [])
                 keyword_case_sensitive: bool = getattr(action_class, "keyword_case_sensitive", False)
-                
+
                 # 获取模式启用属性
                 mode_enable: str = getattr(action_class, "mode_enable", "all")
-                
+
                 # 获取并行执行属性
                 parallel_action: bool = getattr(action_class, "parallel_action", False)
 
@@ -114,13 +111,13 @@ class ActionManager:
     def _load_plugin_actions(self) -> None:
         """
         加载所有插件目录中的动作
-        
+
         注意：插件动作的实际导入已经在main.py中完成，这里只需要从_ACTION_REGISTRY获取
         """
         try:
             # 插件动作已在main.py中加载，这里只需要从_ACTION_REGISTRY获取
             self._load_registered_actions()
-            logger.info(f"从注册表加载插件动作成功")
+            logger.info("从注册表加载插件动作成功")
         except Exception as e:
             logger.error(f"加载插件动作失败: {e}")
 
@@ -203,25 +200,25 @@ class ActionManager:
     def get_using_actions_for_mode(self, mode: str) -> Dict[str, ActionInfo]:
         """
         根据聊天模式获取可用的动作集合
-        
+
         Args:
             mode: 聊天模式 ("focus", "normal", "all")
-            
+
         Returns:
             Dict[str, ActionInfo]: 在指定模式下可用的动作集合
         """
         filtered_actions = {}
-        
+
         for action_name, action_info in self._using_actions.items():
             action_mode = action_info.get("mode_enable", "all")
-            
+
             # 检查动作是否在当前模式下启用
             if action_mode == "all" or action_mode == mode:
                 filtered_actions[action_name] = action_info
                 logger.debug(f"动作 {action_name} 在模式 {mode} 下可用 (mode_enable: {action_mode})")
             else:
                 logger.debug(f"动作 {action_name} 在模式 {mode} 下不可用 (mode_enable: {action_mode})")
-        
+
         logger.debug(f"模式 {mode} 下可用动作: {list(filtered_actions.keys())}")
         return filtered_actions
 
@@ -325,7 +322,7 @@ class ActionManager:
         系统核心动作是那些enable_plugin为False但是系统必需的动作
         """
         system_core_actions = ["exit_focus_chat"]  # 可以根据需要扩展
-        
+
         for action_name in system_core_actions:
             if action_name in self._registered_actions and action_name not in self._using_actions:
                 self._using_actions[action_name] = self._registered_actions[action_name]
@@ -334,10 +331,10 @@ class ActionManager:
     def add_system_action_if_needed(self, action_name: str) -> bool:
         """
         根据需要添加系统动作到使用集
-        
+
         Args:
             action_name: 动作名称
-            
+
         Returns:
             bool: 是否成功添加
         """

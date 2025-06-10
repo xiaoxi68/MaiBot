@@ -23,14 +23,14 @@ class TTSAction(PluginAction):
     ]
     enable_plugin = True  # 启用插件
     associated_types = ["tts_text"]
-    
+
     focus_activation_type = ActionActivationType.LLM_JUDGE
     normal_activation_type = ActionActivationType.KEYWORD
-    
+
     # 关键词配置 - Normal模式下使用关键词触发
     activation_keywords = ["语音", "tts", "播报", "读出来", "语音播放", "听", "朗读"]
     keyword_case_sensitive = False
-    
+
     # 并行执行设置 - TTS可以与回复并行执行，不覆盖回复内容
     parallel_action = False
 

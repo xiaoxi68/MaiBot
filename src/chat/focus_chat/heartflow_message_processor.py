@@ -51,8 +51,8 @@ async def _process_relationship(message: MessageRecv) -> None:
         logger.info(f"首次认识用户: {nickname}")
         await relationship_manager.first_knowing_some_one(platform, user_id, nickname, cardname)
     # elif not await relationship_manager.is_qved_name(platform, user_id):
-        # logger.info(f"给用户({nickname},{cardname})取名: {nickname}")
-        # await relationship_manager.first_knowing_some_one(platform, user_id, nickname, cardname, "")
+    # logger.info(f"给用户({nickname},{cardname})取名: {nickname}")
+    # await relationship_manager.first_knowing_some_one(platform, user_id, nickname, cardname, "")
 
 
 async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool]:
@@ -74,7 +74,7 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool]:
                 fast_retrieval=True,
             )
             logger.trace(f"记忆激活率: {interested_rate:.2f}")
-    
+
     text_len = len(message.processed_plain_text)
     # 根据文本长度调整兴趣度，长度越大兴趣度越高，但增长率递减，最低0.01，最高0.05
     # 采用对数函数实现递减增长
@@ -180,7 +180,6 @@ class HeartFCMessageReceiver:
             groupinfo = message.message_info.group_info
             userinfo = message.message_info.user_info
             messageinfo = message.message_info
-
 
             chat = await chat_manager.get_or_create_stream(
                 platform=messageinfo.platform,

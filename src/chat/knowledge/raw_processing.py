@@ -3,7 +3,7 @@ import os
 
 from .global_logger import logger
 from .lpmmconfig import global_config
-from src.chat.knowledge.utils import get_sha256
+from src.chat.knowledge.utils.hash import get_sha256
 
 
 def load_raw_data(path: str = None) -> tuple[list[str], list[str]]:

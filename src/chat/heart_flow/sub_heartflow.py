@@ -42,9 +42,7 @@ class SubHeartflow:
         self.history_chat_state: List[Tuple[ChatState, float]] = []
 
         self.is_group_chat, self.chat_target_info = get_chat_type_and_target_info(self.chat_id)
-        self.log_prefix = (
-            chat_manager.get_stream_name(self.subheartflow_id) or self.subheartflow_id
-        ) 
+        self.log_prefix = chat_manager.get_stream_name(self.subheartflow_id) or self.subheartflow_id
         # 兴趣消息集合
         self.interest_dict: Dict[str, tuple[MessageRecv, float, bool]] = {}
 
@@ -199,7 +197,6 @@ class SubHeartflow:
         # 如果实例不存在，则创建并启动
         logger.info(f"{log_prefix} 麦麦准备开始专注聊天...")
         try:
-
             self.heart_fc_instance = HeartFChatting(
                 chat_id=self.subheartflow_id,
                 # observations=self.observations,

@@ -19,6 +19,7 @@ from .common.server import global_server, Server
 from rich.traceback import install
 from .chat.focus_chat.expressors.exprssion_learner import expression_learner
 from .api.main import start_api_server
+
 # 导入actions模块，确保装饰器被执行
 import src.chat.actions.default_actions  # noqa
 
@@ -40,7 +41,7 @@ class MainSystem:
             self.hippocampus_manager = hippocampus_manager
         else:
             self.hippocampus_manager = None
-            
+
         self.individuality: Individuality = individuality
 
         # 使用消息API替代直接的FastAPI实例
@@ -74,11 +75,11 @@ class MainSystem:
         # 启动API服务器
         start_api_server()
         logger.success("API服务器启动成功")
-        
+
         # 加载所有actions，包括默认的和插件的
         self._load_all_actions()
         logger.success("动作系统加载成功")
-        
+
         # 初始化表情管理器
         emoji_manager.initialize()
         logger.success("表情包管理器初始化成功")
@@ -137,23 +138,25 @@ class MainSystem:
         try:
             # 导入统一的插件加载器
             from src.plugins.plugin_loader import plugin_loader
-            
+
             # 使用统一的插件加载器加载所有插件组件
             loaded_actions, loaded_commands = plugin_loader.load_all_plugins()
-            
+
             # 加载命令处理系统
             try:
                 # 导入命令处理系统
-                from src.chat.command.command_handler import command_manager
+
                 logger.success("命令处理系统加载成功")
             except Exception as e:
                 logger.error(f"加载命令处理系统失败: {e}")
                 import traceback
+
                 logger.error(traceback.format_exc())
-                    
+
         except Exception as e:
             logger.error(f"加载插件失败: {e}")
             import traceback
+
             logger.error(traceback.format_exc())
 
     async def schedule_tasks(self):
@@ -165,17 +168,19 @@ class MainSystem:
                 self.app.run(),
                 self.server.run(),
             ]
-            
+
             # 根据配置条件性地添加记忆系统相关任务
             if global_config.memory.enable_memory and self.hippocampus_manager:
-                tasks.extend([
-                    self.build_memory_task(),
-                    self.forget_memory_task(),
-                    self.consolidate_memory_task(),
-                ])
-            
+                tasks.extend(
+                    [
+                        self.build_memory_task(),
+                        self.forget_memory_task(),
+                        self.consolidate_memory_task(),
+                    ]
+                )
+
             tasks.append(self.learn_and_store_expression_task())
-            
+
             await asyncio.gather(*tasks)
 
     async def build_memory_task(self):
@@ -190,9 +195,7 @@ class MainSystem:
         while True:
             await asyncio.sleep(global_config.memory.forget_memory_interval)
             logger.info("[记忆遗忘] 开始遗忘记忆...")
-            await self.hippocampus_manager.forget_memory(
-                percentage=global_config.memory.memory_forget_percentage
-            )
+            await self.hippocampus_manager.forget_memory(percentage=global_config.memory.memory_forget_percentage)
             logger.info("[记忆遗忘] 记忆遗忘完成")
 
     async def consolidate_memory_task(self):

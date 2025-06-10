@@ -8,18 +8,21 @@ logger = get_logger("base_action")
 _ACTION_REGISTRY: Dict[str, Type["BaseAction"]] = {}
 _DEFAULT_ACTIONS: Dict[str, str] = {}
 
+
 # 动作激活类型枚举
 class ActionActivationType:
     ALWAYS = "always"  # 默认参与到planner
-    LLM_JUDGE = "llm_judge"  # LLM判定是否启动该action到planner  
+    LLM_JUDGE = "llm_judge"  # LLM判定是否启动该action到planner
     RANDOM = "random"  # 随机启用action到planner
     KEYWORD = "keyword"  # 关键词触发启用action到planner
+
 
 # 聊天模式枚举
 class ChatMode:
     FOCUS = "focus"  # Focus聊天模式
     NORMAL = "normal"  # Normal聊天模式
     ALL = "all"  # 所有聊天模式
+
 
 def register_action(cls):
     """
@@ -81,13 +84,13 @@ class BaseAction(ABC):
         self.action_description: str = "基础动作"
         self.action_parameters: dict = {}
         self.action_require: list[str] = []
-        
+
         # 动作激活类型设置
         # Focus模式下的激活类型，默认为always
         self.focus_activation_type: str = ActionActivationType.ALWAYS
-        # Normal模式下的激活类型，默认为always  
+        # Normal模式下的激活类型，默认为always
         self.normal_activation_type: str = ActionActivationType.ALWAYS
-        
+
         # 随机激活的概率(0.0-1.0)，用于RANDOM激活类型
         self.random_activation_probability: float = 0.3
         # LLM判定的提示词，用于LLM_JUDGE激活类型

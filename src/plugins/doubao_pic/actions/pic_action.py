@@ -37,15 +37,15 @@ class PicAction(PluginAction):
     ]
     enable_plugin = False
     action_config_file_name = "pic_action_config.toml"
-    
+
     # 激活类型设置
     focus_activation_type = ActionActivationType.LLM_JUDGE  # Focus模式使用LLM判定，精确理解需求
-    normal_activation_type = ActionActivationType.KEYWORD   # Normal模式使用关键词激活，快速响应
-    
+    normal_activation_type = ActionActivationType.KEYWORD  # Normal模式使用关键词激活，快速响应
+
     # 关键词设置（用于Normal模式）
     activation_keywords = ["画", "绘制", "生成图片", "画图", "draw", "paint", "图片生成"]
     keyword_case_sensitive = False
-    
+
     # LLM判定提示词（用于Focus模式）
     llm_judge_prompt = """
 判定是否需要使用图片生成动作的条件：
@@ -67,31 +67,31 @@ class PicAction(PluginAction):
 4. 技术讨论中提到绘图概念但无生成需求
 5. 用户明确表示不需要图片时
 """
-    
+
     # Random激活概率（备用）
     random_activation_probability = 0.15  # 适中概率，图片生成比较有趣
-    
+
     # 简单的请求缓存，避免短时间内重复请求
     _request_cache = {}
     _cache_max_size = 10
-    
+
     # 模式启用设置 - 图片生成在所有模式下可用
     mode_enable = ChatMode.ALL
-    
+
     # 并行执行设置 - 图片生成可以与回复并行执行，不覆盖回复内容
     parallel_action = False
-    
+
     @classmethod
     def _get_cache_key(cls, description: str, model: str, size: str) -> str:
         """生成缓存键"""
         return f"{description[:100]}|{model}|{size}"  # 限制描述长度避免键过长
-    
+
     @classmethod
     def _cleanup_cache(cls):
         """清理缓存，保持大小在限制内"""
         if len(cls._request_cache) > cls._cache_max_size:
             # 简单的FIFO策略，移除最旧的条目
-            keys_to_remove = list(cls._request_cache.keys())[:-cls._cache_max_size//2]
+            keys_to_remove = list(cls._request_cache.keys())[: -cls._cache_max_size // 2]
             for key in keys_to_remove:
                 del cls._request_cache[key]
 
@@ -169,7 +169,7 @@ class PicAction(PluginAction):
             cached_result = self._request_cache[cache_key]
             logger.info(f"{self.log_prefix} 使用缓存的图片结果")
             await self.send_message_by_expressor("我之前画过类似的图片，用之前的结果~")
-            
+
             # 直接发送缓存的结果
             send_success = await self.send_message(type="image", data=cached_result)
             if send_success:
@@ -258,7 +258,7 @@ class PicAction(PluginAction):
                     # 缓存成功的结果
                     self._request_cache[cache_key] = base64_image_string
                     self._cleanup_cache()
-                    
+
                     await self.send_message_by_expressor("图片表情已发送！")
                     return True, "图片表情已发送"
                 else:
@@ -370,7 +370,7 @@ class PicAction(PluginAction):
     def _validate_image_size(self, image_size: str) -> bool:
         """验证图片尺寸格式"""
         try:
-            width, height = map(int, image_size.split('x'))
+            width, height = map(int, image_size.split("x"))
             return 100 <= width <= 10000 and 100 <= height <= 10000
         except (ValueError, TypeError):
             return False

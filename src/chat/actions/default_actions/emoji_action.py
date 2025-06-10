@@ -22,29 +22,26 @@ class EmojiAction(BaseAction):
     action_parameters: dict[str:str] = {
         "description": "文字描述你想要发送的表情包内容",
     }
-    action_require: list[str] = [
-        "表达情绪时可以选择使用",
-        "重点：不要连续发，如果你已经发过[表情包]，就不要选择此动作"]
+    action_require: list[str] = ["表达情绪时可以选择使用", "重点：不要连续发，如果你已经发过[表情包]，就不要选择此动作"]
 
     associated_types: list[str] = ["emoji"]
 
     enable_plugin = True
-    
+
     focus_activation_type = ActionActivationType.LLM_JUDGE
     normal_activation_type = ActionActivationType.RANDOM
-    
+
     random_activation_probability = global_config.normal_chat.emoji_chance
-    
+
     parallel_action = True
-    
-    
+
     llm_judge_prompt = """
     判定是否需要使用表情动作的条件：
     1. 用户明确要求使用表情包
     2. 这是一个适合表达强烈情绪的场合
     3. 不要发送太多表情包，如果你已经发送过多个表情包
     """
-    
+
     # 模式启用设置 - 表情动作只在Focus模式下使用
     mode_enable = ChatMode.ALL
 

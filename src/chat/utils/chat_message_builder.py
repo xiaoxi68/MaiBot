@@ -286,7 +286,7 @@ def _build_readable_messages_internal(
         message_details_with_flags.append((timestamp, name, content, is_action))
         # print(f"content:{content}")
         # print(f"is_action:{is_action}")
-        
+
     # print(f"message_details_with_flags:{message_details_with_flags}")
 
     # 应用截断逻辑 (如果 truncate 为 True)
@@ -324,7 +324,7 @@ def _build_readable_messages_internal(
     else:
         # 如果不截断，直接使用原始列表
         message_details = message_details_with_flags
-        
+
     # print(f"message_details:{message_details}")
 
     # 3: 合并连续消息 (如果 merge_messages 为 True)
@@ -336,12 +336,12 @@ def _build_readable_messages_internal(
             "start_time": message_details[0][0],
             "end_time": message_details[0][0],
             "content": [message_details[0][2]],
-            "is_action": message_details[0][3]
+            "is_action": message_details[0][3],
         }
 
         for i in range(1, len(message_details)):
             timestamp, name, content, is_action = message_details[i]
-            
+
             # 对于动作记录，不进行合并
             if is_action or current_merge["is_action"]:
                 # 保存当前的合并块
@@ -352,7 +352,7 @@ def _build_readable_messages_internal(
                     "start_time": timestamp,
                     "end_time": timestamp,
                     "content": [content],
-                    "is_action": is_action
+                    "is_action": is_action,
                 }
                 continue
 
@@ -365,11 +365,11 @@ def _build_readable_messages_internal(
                 merged_messages.append(current_merge)
                 # 开始新的合并块
                 current_merge = {
-                    "name": name, 
-                    "start_time": timestamp, 
-                    "end_time": timestamp, 
+                    "name": name,
+                    "start_time": timestamp,
+                    "end_time": timestamp,
                     "content": [content],
-                    "is_action": is_action
+                    "is_action": is_action,
                 }
         # 添加最后一个合并块
         merged_messages.append(current_merge)
@@ -381,10 +381,9 @@ def _build_readable_messages_internal(
                     "start_time": timestamp,  # 起始和结束时间相同
                     "end_time": timestamp,
                     "content": [content],  # 内容只有一个元素
-                    "is_action": is_action
+                    "is_action": is_action,
                 }
             )
-            
 
     # 4 & 5: 格式化为字符串
     output_lines = []
@@ -451,7 +450,7 @@ def build_readable_messages(
     将消息列表转换为可读的文本格式。
     如果提供了 read_mark，则在相应位置插入已读标记。
     允许通过参数控制格式化行为。
-    
+
     Args:
         messages: 消息列表
         replace_bot_name: 是否替换机器人名称为"你"
@@ -463,22 +462,24 @@ def build_readable_messages(
     """
     # 创建messages的深拷贝，避免修改原始列表
     copy_messages = [msg.copy() for msg in messages]
-    
+
     if show_actions and copy_messages:
         # 获取所有消息的时间范围
         min_time = min(msg.get("time", 0) for msg in copy_messages)
         max_time = max(msg.get("time", 0) for msg in copy_messages)
-        
+
         # 从第一条消息中获取chat_id
         chat_id = copy_messages[0].get("chat_id") if copy_messages else None
-        
+
         # 获取这个时间范围内的动作记录，并匹配chat_id
-        actions = ActionRecords.select().where(
-            (ActionRecords.time >= min_time) & 
-            (ActionRecords.time <= max_time) &
-            (ActionRecords.chat_id == chat_id)
-        ).order_by(ActionRecords.time)
-        
+        actions = (
+            ActionRecords.select()
+            .where(
+                (ActionRecords.time >= min_time) & (ActionRecords.time <= max_time) & (ActionRecords.chat_id == chat_id)
+            )
+            .order_by(ActionRecords.time)
+        )
+
         # 将动作记录转换为消息格式
         for action in actions:
             # 只有当build_into_prompt为True时才添加动作记录
@@ -495,25 +496,22 @@ def build_readable_messages(
                     "action_name": action.action_name,  # 保存动作名称
                 }
                 copy_messages.append(action_msg)
-        
+
         # 重新按时间排序
         copy_messages.sort(key=lambda x: x.get("time", 0))
 
     if read_mark <= 0:
         # 没有有效的 read_mark，直接格式化所有消息
-        
+
         # for message in messages:
-            # print(f"message:{message}")
-            
-            
+        # print(f"message:{message}")
+
         formatted_string, _ = _build_readable_messages_internal(
             copy_messages, replace_bot_name, merge_messages, timestamp_mode, truncate
         )
-        
+
         # print(f"formatted_string:{formatted_string}")
-        
-        
-        
+
         return formatted_string
     else:
         # 按 read_mark 分割消息
@@ -521,10 +519,10 @@ def build_readable_messages(
         messages_after_mark = [msg for msg in copy_messages if msg.get("time", 0) > read_mark]
 
         # for message in messages_before_mark:
-            # print(f"message:{message}")
-            
+        # print(f"message:{message}")
+
         # for message in messages_after_mark:
-            # print(f"message:{message}")
+        # print(f"message:{message}")
 
         # 分别格式化
         formatted_before, _ = _build_readable_messages_internal(
@@ -536,7 +534,7 @@ def build_readable_messages(
             merge_messages,
             timestamp_mode,
         )
-        
+
         # print(f"formatted_before:{formatted_before}")
         # print(f"formatted_after:{formatted_after}")
 

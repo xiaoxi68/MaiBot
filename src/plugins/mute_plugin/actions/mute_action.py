@@ -22,21 +22,20 @@ class MuteAction(PluginAction):
         "当有人刷屏时使用",
         "当有人发了擦边，或者色情内容时使用",
         "当有人要求禁言自己时使用",
-        "如果某人已经被禁言了，就不要再次禁言了，除非你想追加时间！！"
+        "如果某人已经被禁言了，就不要再次禁言了，除非你想追加时间！！",
     ]
     enable_plugin = False  # 启用插件
     associated_types = ["command", "text"]
     action_config_file_name = "mute_action_config.toml"
-    
+
     # 激活类型设置
     focus_activation_type = ActionActivationType.LLM_JUDGE  # Focus模式使用LLM判定，确保谨慎
-    normal_activation_type = ActionActivationType.KEYWORD   # Normal模式使用关键词激活，快速响应
-    
-    
+    normal_activation_type = ActionActivationType.KEYWORD  # Normal模式使用关键词激活，快速响应
+
     # 关键词设置（用于Normal模式）
     activation_keywords = ["禁言", "mute", "ban", "silence"]
     keyword_case_sensitive = False
-    
+
     # LLM判定提示词（用于Focus模式）
     llm_judge_prompt = """
 判定是否需要使用禁言动作的严格条件：
@@ -59,13 +58,13 @@ class MuteAction(PluginAction):
 注意：禁言是严厉措施，只在明确违规或用户主动要求时使用。
 宁可保守也不要误判，保护用户的发言权利。
 """
-    
+
     # Random激活概率（备用）
     random_activation_probability = 0.05  # 设置很低的概率作为兜底
 
     # 模式启用设置 - 禁言功能在所有模式下都可用
     mode_enable = ChatMode.ALL
-    
+
     # 并行执行设置 - 禁言动作可以与回复并行执行，不覆盖回复内容
     parallel_action = False
 
@@ -73,15 +72,15 @@ class MuteAction(PluginAction):
         super().__init__(*args, **kwargs)
         # 生成配置文件（如果不存在）
         self._generate_config_if_needed()
-    
+
     def _generate_config_if_needed(self):
         """生成配置文件（如果不存在）"""
         import os
-        
+
         # 获取动作文件所在目录
         current_dir = os.path.dirname(os.path.abspath(__file__))
         config_path = os.path.join(current_dir, "mute_action_config.toml")
-        
+
         if not os.path.exists(config_path):
             config_content = """\
 # 禁言动作配置文件
@@ -130,11 +129,10 @@ log_mute_history = true
 
     def _get_template_message(self, target: str, duration_str: str, reason: str) -> str:
         """获取模板化的禁言消息"""
-        templates = self.config.get("templates", [
-            "好的，禁言 {target} {duration}，理由：{reason}"
-        ])
-        
+        templates = self.config.get("templates", ["好的，禁言 {target} {duration}，理由：{reason}"])
+
         import random
+
         template = random.choice(templates)
         return template.format(target=target, duration=duration_str, reason=reason)
 
@@ -162,7 +160,7 @@ log_mute_history = true
 
         # 获取时长限制配置
         min_duration, max_duration, default_duration = self._get_duration_limits()
-        
+
         # 验证时长格式并转换
         try:
             duration_int = int(duration)
@@ -170,9 +168,11 @@ log_mute_history = true
                 error_msg = "禁言时长必须大于0"
                 logger.error(f"{self.log_prefix} {error_msg}")
                 error_templates = self.config.get("error_messages", ["禁言时长必须是正数哦~"])
-                await self.send_message_by_expressor(error_templates[2] if len(error_templates) > 2 else "禁言时长必须是正数哦~")
+                await self.send_message_by_expressor(
+                    error_templates[2] if len(error_templates) > 2 else "禁言时长必须是正数哦~"
+                )
                 return False, error_msg
-                
+
             # 限制禁言时长范围
             if duration_int < min_duration:
                 duration_int = min_duration
@@ -180,12 +180,14 @@ log_mute_history = true
             elif duration_int > max_duration:
                 duration_int = max_duration
                 logger.info(f"{self.log_prefix} 禁言时长过长，调整为{max_duration}秒")
-                
-        except (ValueError, TypeError) as e:
+
+        except (ValueError, TypeError):
             error_msg = f"禁言时长格式无效: {duration}"
             logger.error(f"{self.log_prefix} {error_msg}")
             error_templates = self.config.get("error_messages", ["禁言时长必须是数字哦~"])
-            await self.send_message_by_expressor(error_templates[3] if len(error_templates) > 3 else "禁言时长必须是数字哦~")
+            await self.send_message_by_expressor(
+                error_templates[3] if len(error_templates) > 3 else "禁言时长必须是数字哦~"
+            )
             return False, error_msg
 
         # 获取用户ID
@@ -206,7 +208,7 @@ log_mute_history = true
         # 发送表达情绪的消息
         enable_formatting = self.config.get("enable_duration_formatting", True)
         time_str = self._format_duration(duration_int) if enable_formatting else f"{duration_int}秒"
-        
+
         # 使用模板化消息
         message = self._get_template_message(target, time_str, reason)
         await self.send_message_by_expressor(message)

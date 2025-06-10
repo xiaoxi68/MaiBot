@@ -154,7 +154,8 @@ class Messages(BaseModel):
     class Meta:
         # database = db # 继承自 BaseModel
         table_name = "messages"
-        
+
+
 class ActionRecords(BaseModel):
     """
     用于存储动作记录数据的模型。
@@ -162,11 +163,11 @@ class ActionRecords(BaseModel):
 
     action_id = TextField(index=True)  # 消息 ID (更改自 IntegerField)
     time = DoubleField()  # 消息时间戳
-    
+
     action_name = TextField()
     action_data = TextField()
     action_done = BooleanField(default=False)
-    
+
     action_build_into_prompt = BooleanField(default=False)
     action_prompt_display = TextField()
 
@@ -241,11 +242,10 @@ class PersonInfo(BaseModel):
     points = TextField(null=True)  # 个人印象的点
     forgotten_points = TextField(null=True)  # 被遗忘的点
     info_list = TextField(null=True)  # 与Bot的互动
-    
+
     know_times = FloatField(null=True)  # 认识时间 (时间戳)
     know_since = FloatField(null=True)  # 首次印象总结时间
     last_know = FloatField(null=True)  # 最后一次印象总结时间
-    
 
     class Meta:
         # database = db # 继承自 BaseModel
@@ -403,20 +403,20 @@ def initialize_database():
                         logger.info(f"表 '{table_name}' 缺失字段 '{field_name}'，正在添加...")
                         field_type = field_obj.__class__.__name__
                         sql_type = {
-                            'TextField': 'TEXT',
-                            'IntegerField': 'INTEGER',
-                            'FloatField': 'FLOAT',
-                            'DoubleField': 'DOUBLE',
-                            'BooleanField': 'INTEGER',
-                            'DateTimeField': 'DATETIME'
-                        }.get(field_type, 'TEXT')
-                        alter_sql = f'ALTER TABLE {table_name} ADD COLUMN {field_name} {sql_type}'
+                            "TextField": "TEXT",
+                            "IntegerField": "INTEGER",
+                            "FloatField": "FLOAT",
+                            "DoubleField": "DOUBLE",
+                            "BooleanField": "INTEGER",
+                            "DateTimeField": "DATETIME",
+                        }.get(field_type, "TEXT")
+                        alter_sql = f"ALTER TABLE {table_name} ADD COLUMN {field_name} {sql_type}"
                         if field_obj.null:
-                            alter_sql += ' NULL'
+                            alter_sql += " NULL"
                         else:
-                            alter_sql += ' NOT NULL'
-                        if hasattr(field_obj, 'default') and field_obj.default is not None:
-                            alter_sql += f' DEFAULT {field_obj.default}'
+                            alter_sql += " NOT NULL"
+                        if hasattr(field_obj, "default") and field_obj.default is not None:
+                            alter_sql += f" DEFAULT {field_obj.default}"
                         db.execute_sql(alter_sql)
                         logger.info(f"字段 '{field_name}' 添加成功")
 

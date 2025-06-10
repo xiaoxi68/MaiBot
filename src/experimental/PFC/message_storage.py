@@ -1,9 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Callable
 
-# from src.common.database.database import db  # Peewee db 导入
+from playhouse import shortcuts
+
+# from src.common.database.database import db # Peewee db 导入
 from src.common.database.database_model import Messages  # Peewee Messages 模型导入
-from playhouse.shortcuts import model_to_dict  # 用于将模型实例转换为字典
+
+model_to_dict: Callable[..., dict] = shortcuts.model_to_dict  # Peewee 模型转换为字典的快捷函数
 
 
 class MessageStorage(ABC):

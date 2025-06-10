@@ -227,8 +227,6 @@ class DefaultExpressor:
                     logger.info(f"想要表达：{in_mind_reply}||理由：{reason}")
                     logger.info(f"最终回复: {content}\n")
 
-
-
             except Exception as llm_e:
                 # 精简报错信息
                 logger.error(f"{self.log_prefix}LLM 生成失败: {llm_e}")

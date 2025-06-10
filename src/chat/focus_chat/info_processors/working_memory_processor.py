@@ -118,9 +118,7 @@ class WorkingMemoryProcessor(BaseProcessor):
             memory_str=memory_choose_str,
         )
 
-
         # print(f"prompt: {prompt}")
-        
 
         # 调用LLM处理记忆
         content = ""

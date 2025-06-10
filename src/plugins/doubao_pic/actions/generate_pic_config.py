@@ -40,7 +40,7 @@ DEFAULT_CONFIG = {
     "default_guidance_scale": 2.5,
     "default_seed": 42,
     "cache_enabled": True,
-    "cache_max_size": 10
+    "cache_max_size": 10,
 }
 
 
@@ -49,37 +49,37 @@ def validate_and_fix_config(config_path: str) -> bool:
     try:
         with open(config_path, "r", encoding="utf-8") as f:
             config = toml.load(f)
-        
+
         # 检查缺失的配置项
         missing_keys = []
         fixed = False
-        
+
         for key, default_value in DEFAULT_CONFIG.items():
             if key not in config:
                 missing_keys.append(key)
                 config[key] = default_value
                 fixed = True
                 logger.info(f"添加缺失的配置项: {key} = {default_value}")
-        
+
         # 验证配置值的类型和范围
         if isinstance(config.get("default_guidance_scale"), (int, float)):
             if not 0.1 <= config["default_guidance_scale"] <= 20.0:
                 config["default_guidance_scale"] = 2.5
                 fixed = True
                 logger.info("修复无效的 default_guidance_scale 值")
-        
+
         if isinstance(config.get("default_seed"), (int, float)):
             config["default_seed"] = int(config["default_seed"])
         else:
             config["default_seed"] = 42
             fixed = True
             logger.info("修复无效的 default_seed 值")
-        
+
         if config.get("cache_max_size") and not isinstance(config["cache_max_size"], int):
             config["cache_max_size"] = 10
             fixed = True
             logger.info("修复无效的 cache_max_size 值")
-        
+
         # 如果有修复，写回文件
         if fixed:
             # 创建备份
@@ -87,14 +87,14 @@ def validate_and_fix_config(config_path: str) -> bool:
             if os.path.exists(config_path):
                 os.rename(config_path, backup_path)
                 logger.info(f"已创建配置备份: {backup_path}")
-            
+
             # 写入修复后的配置
             with open(config_path, "w", encoding="utf-8") as f:
                 toml.dump(config, f)
             logger.info(f"配置文件已修复: {config_path}")
-        
+
         return True
-        
+
     except Exception as e:
         logger.error(f"验证配置文件时出错: {e}")
         return False

@@ -9,7 +9,7 @@ import time
 from typing import List, Optional, Tuple, Dict, Any
 from src.chat.message_receive.message import MessageRecv, MessageSending, MessageThinking, Seg
 from src.chat.message_receive.message import UserInfo
-from src.chat.message_receive.chat_stream import ChatStream,chat_manager
+from src.chat.message_receive.chat_stream import ChatStream, chat_manager
 from src.chat.message_receive.message_sender import message_manager
 from src.config.config import global_config
 from src.common.logger_manager import get_logger
@@ -37,7 +37,7 @@ class NormalChatExpressor:
         self.chat_stream = chat_stream
         self.stream_name = chat_manager.get_stream_name(self.chat_stream.stream_id) or self.chat_stream.stream_id
         self.log_prefix = f"[{self.stream_name}]Normal表达器"
-        
+
         logger.debug(f"{self.log_prefix} 初始化完成")
 
     async def create_thinking_message(
