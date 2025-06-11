@@ -3,7 +3,7 @@ from typing import Optional
 from src.chat.message_receive.message import MessageRecv, BaseMessageInfo
 from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.message_receive.message import UserInfo
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 import json
 
 logger = get_logger(__name__)

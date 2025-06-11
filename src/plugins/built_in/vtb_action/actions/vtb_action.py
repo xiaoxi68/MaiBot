@@ -1,4 +1,4 @@
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.chat.actions.plugin_action import PluginAction, register_action, ActionActivationType
 from typing import Tuple
 

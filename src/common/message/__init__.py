@@ -2,9 +2,9 @@
 
 __version__ = "0.1.0"
 
-from .api import global_api
+from .api import get_global_api
 
 
 __all__ = [
-    "global_api",
+    "get_global_api",
 ]

@@ -1,5 +1,5 @@
 from src.manager.async_task_manager import AsyncTask
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.person_info.person_info import PersonInfoManager
 from src.person_info.relationship_manager import relationship_manager
 from src.chat.utils.chat_message_builder import get_raw_msg_by_timestamp

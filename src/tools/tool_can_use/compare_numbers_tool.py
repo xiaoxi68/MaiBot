@@ -1,8 +1,8 @@
 from src.tools.tool_can_use.base_tool import BaseTool
-from src.common.logger import get_module_logger
+from src.common.logger import get_logger
 from typing import Any
 
-logger = get_module_logger("compare_numbers_tool")
+logger = get_logger("compare_numbers_tool")
 
 
 class CompareNumbersTool(BaseTool):

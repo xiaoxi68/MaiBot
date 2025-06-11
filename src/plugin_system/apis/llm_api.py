@@ -1,5 +1,5 @@
 from typing import Tuple, Dict, Any
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 

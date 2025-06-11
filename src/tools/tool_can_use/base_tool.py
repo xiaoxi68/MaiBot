@@ -3,7 +3,7 @@ import inspect
 import importlib
 import pkgutil
 import os
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from rich.traceback import install
 
 install(extra_lines=3)

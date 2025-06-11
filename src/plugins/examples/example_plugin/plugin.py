@@ -31,7 +31,7 @@ from src.plugin_system.base.base_plugin import register_plugin
 from src.plugin_system.base.base_action import BaseAction
 from src.plugin_system.base.base_command import BaseCommand
 from src.plugin_system.base.component_types import ComponentInfo, ActionActivationType, ChatMode
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 
 logger = get_logger("example_comprehensive")
 

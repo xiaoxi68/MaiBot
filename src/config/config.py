@@ -8,7 +8,7 @@ from datetime import datetime
 from tomlkit import TOMLDocument
 from tomlkit.items import Table
 
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from rich.traceback import install
 
 from src.config.config_base import ConfigBase

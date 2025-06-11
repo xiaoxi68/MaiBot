@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Tuple
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.plugin_system.apis.plugin_api import PluginAPI
 from src.plugin_system.base.component_types import ActionActivationType, ChatMode, ActionInfo, ComponentType
 

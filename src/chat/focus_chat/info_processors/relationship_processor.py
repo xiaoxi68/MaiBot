@@ -4,7 +4,7 @@ from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 import time
 import traceback
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.message_receive.chat_stream import chat_manager
 from src.person_info.relationship_manager import relationship_manager

@@ -2,7 +2,7 @@ import time
 import asyncio
 import traceback
 from typing import Optional, Dict, Any, List
-from src.common.logger import get_module_logger
+from src.common.logger import get_logger
 from maim_message import UserInfo
 from src.config.config import global_config
 from src.experimental.PFC.chat_states import (
@@ -15,7 +15,7 @@ from rich.traceback import install
 
 install(extra_lines=3)
 
-logger = get_module_logger("chat_observer")
+logger = get_logger("chat_observer")
 
 
 class ChatObserver:

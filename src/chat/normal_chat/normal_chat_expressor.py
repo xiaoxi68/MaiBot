@@ -12,7 +12,7 @@ from src.chat.message_receive.message import UserInfo
 from src.chat.message_receive.chat_stream import ChatStream, chat_manager
 from src.chat.message_receive.message_sender import message_manager
 from src.config.config import global_config
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 
 logger = get_logger("normal_chat_expressor")
 

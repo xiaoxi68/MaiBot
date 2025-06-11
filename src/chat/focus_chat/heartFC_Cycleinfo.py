@@ -1,7 +1,7 @@
 import time
 import os
 from typing import Optional, Dict, Any
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 import json
 
 logger = get_logger("hfc")  # Logger Name Changed

@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 from rich.traceback import install
 from src.config.config import get_config_dir, load_config
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 import os
 
 install(extra_lines=3)

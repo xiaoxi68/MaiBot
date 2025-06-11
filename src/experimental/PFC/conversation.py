@@ -11,7 +11,7 @@ from src.chat.message_receive.message import Message
 from .pfc_types import ConversationState
 from .pfc import ChatObserver, GoalAnalyzer
 from .message_sender import DirectMessageSender
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from .action_planner import ActionPlanner
 from .observation_info import ObservationInfo
 from .conversation_info import ConversationInfo  # 确保导入 ConversationInfo

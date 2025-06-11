@@ -1,6 +1,6 @@
 from typing import List, Optional, Any, Dict
 from src.chat.heart_flow.observation.observation import Observation
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 from src.chat.message_receive.chat_stream import chat_manager

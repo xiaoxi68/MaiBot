@@ -2,7 +2,7 @@ from src.chat.heart_flow.observation.chatting_observation import ChattingObserva
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 import time
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.individuality.individuality import individuality
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.tools.tool_use import ToolUser

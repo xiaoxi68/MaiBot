@@ -1,7 +1,7 @@
 import re
 from abc import ABC, abstractmethod
 from typing import Dict, List, Type, Optional, Tuple, Pattern
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.chat.message_receive.message import MessageRecv
 from src.chat.focus_chat.hfc_utils import create_empty_anchor_message
 from src.chat.focus_chat.expressors.default_expressor import DefaultExpressor

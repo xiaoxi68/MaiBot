@@ -1,5 +1,5 @@
 from datetime import datetime
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 
 # Import the new utility function
 

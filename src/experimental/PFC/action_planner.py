@@ -1,6 +1,6 @@
 import time
 from typing import Tuple, Optional  # 增加了 Optional
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.experimental.PFC.chat_observer import ChatObserver

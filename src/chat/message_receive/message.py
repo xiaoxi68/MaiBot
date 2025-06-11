@@ -5,7 +5,7 @@ from typing import Optional, Any, TYPE_CHECKING
 
 import urllib3
 
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 
 if TYPE_CHECKING:
     from .chat_stream import ChatStream

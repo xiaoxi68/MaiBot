@@ -1,6 +1,6 @@
 from typing import Tuple, Dict, Any, Optional
 from src.chat.actions.base_action import BaseAction, register_action, ActionActivationType, ChatMode  # noqa F401
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 import os
 import inspect
 import toml  # 导入 toml 库

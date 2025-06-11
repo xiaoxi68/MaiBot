@@ -13,7 +13,7 @@ from maim_message import GroupInfo, UserInfo
 if TYPE_CHECKING:
     from .message import MessageRecv
 
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from rich.traceback import install
 
 install(extra_lines=3)
@@ -135,7 +135,7 @@ class ChatManager:
         """异步初始化"""
         try:
             await self.load_all_streams()
-            logger.success(f"聊天管理器已启动，已加载 {len(self.streams)} 个聊天流")
+            logger.info(f"聊天管理器已启动，已加载 {len(self.streams)} 个聊天流")
         except Exception as e:
             logger.error(f"聊天管理器启动失败: {str(e)}")
 

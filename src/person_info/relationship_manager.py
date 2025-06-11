@@ -1,4 +1,4 @@
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 import math
 from src.person_info.person_info import person_info_manager, PersonInfoManager
 import time

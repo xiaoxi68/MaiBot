@@ -90,4 +90,12 @@ class Server:
         return self.app
 
 
-global_server = Server(host=os.environ["HOST"], port=int(os.environ["PORT"]))
+global_server = None
+
+
+def get_global_server() -> Server:
+    """获取全局服务器实例"""
+    global global_server
+    if global_server is None:
+        global_server = Server(host=os.environ["HOST"], port=int(os.environ["PORT"]))
+    return global_server

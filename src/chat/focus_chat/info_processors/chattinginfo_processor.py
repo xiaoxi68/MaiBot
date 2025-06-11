@@ -3,7 +3,7 @@ from src.chat.focus_chat.info.obs_info import ObsInfo
 from src.chat.heart_flow.observation.observation import Observation
 from src.chat.focus_chat.info.info_base import InfoBase
 from .base_processor import BaseProcessor
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
 from src.chat.focus_chat.info.cycle_info import CycleInfo

@@ -1,5 +1,5 @@
 from typing import Optional, Tuple, Dict
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.chat.message_receive.chat_stream import chat_manager
 from src.person_info.person_info import person_info_manager, PersonInfoManager
 

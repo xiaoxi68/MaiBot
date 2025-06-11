@@ -2,7 +2,7 @@ import os
 import json
 import time
 from typing import Any, Optional
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 
 logger = get_logger("utils_api")
 

@@ -13,7 +13,7 @@ from src.plugin_system import BasePlugin, register_plugin, BaseAction, Component
 from src.plugin_system.base.base_command import BaseCommand
 
 # 导入依赖的系统组件
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 from src.chat.focus_chat.hfc_utils import create_empty_anchor_message
 

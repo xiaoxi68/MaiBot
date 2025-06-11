@@ -1,4 +1,4 @@
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.common.database.database import db
 from src.common.database.database_model import PersonInfo  # 新增导入
 import copy

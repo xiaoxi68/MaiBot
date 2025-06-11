@@ -1,4 +1,4 @@
-from src.common.logger import get_module_logger
+from src.common.logger import get_logger
 from .chat_observer import ChatObserver
 from .conversation_info import ConversationInfo
 
@@ -7,7 +7,7 @@ from src.config.config import global_config
 import time
 import asyncio
 
-logger = get_module_logger("waiter")
+logger = get_logger("waiter")
 
 # --- 在这里设定你想要的超时时间（秒） ---
 # 例如： 120 秒 = 2 分钟

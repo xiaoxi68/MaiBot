@@ -1,5 +1,5 @@
 from typing import Optional, List, Dict, Any, Tuple
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.chat.message_receive.chat_stream import ChatManager, ChatStream
 from src.chat.focus_chat.hfc_utils import parse_thinking_id_to_timestamp
 import asyncio

@@ -1,34 +1,34 @@
 import asyncio
 import time
 from maim_message import MessageServer
-from .common.remote import TelemetryHeartBeatTask
-from .manager.async_task_manager import async_task_manager
-from .chat.utils.statistic import OnlineTimeRecordTask, StatisticOutputTask
-from .manager.mood_manager import MoodPrintTask, MoodUpdateTask
-from .chat.emoji_system.emoji_manager import emoji_manager
-from .chat.normal_chat.willing.willing_manager import willing_manager
-from .chat.message_receive.chat_stream import chat_manager
+from src.common.remote import TelemetryHeartBeatTask
+from src.manager.async_task_manager import async_task_manager
+from src.chat.utils.statistic import OnlineTimeRecordTask, StatisticOutputTask
+from src.manager.mood_manager import MoodPrintTask, MoodUpdateTask
+from src.chat.emoji_system.emoji_manager import emoji_manager
+from src.chat.normal_chat.willing.willing_manager import willing_manager
+from src.chat.message_receive.chat_stream import chat_manager
 from src.chat.heart_flow.heartflow import heartflow
-from .chat.message_receive.message_sender import message_manager
-from .chat.message_receive.storage import MessageStorage
-from .config.config import global_config
-from .chat.message_receive.bot import chat_bot
-from .common.logger_manager import get_logger
-from .individuality.individuality import individuality, Individuality
-from .common.server import global_server, Server
+from src.chat.message_receive.message_sender import message_manager
+from src.chat.message_receive.storage import MessageStorage
+from src.config.config import global_config
+from src.chat.message_receive.bot import chat_bot
+from src.common.logger import get_logger
+from src.individuality.individuality import individuality, Individuality
+from src.common.server import get_global_server, Server
 from rich.traceback import install
-from .chat.focus_chat.expressors.exprssion_learner import expression_learner
-from .api.main import start_api_server
+from src.chat.focus_chat.expressors.exprssion_learner import expression_learner
+from src.api.main import start_api_server
 
 # 导入新的插件管理器
 from src.plugin_system.core.plugin_manager import plugin_manager
 
 # 导入消息API和traceback模块
-from src.common.message import global_api
+from src.common.message import get_global_api
 
 # 条件导入记忆系统
 if global_config.memory.enable_memory:
-    from .chat.memory_system.Hippocampus import hippocampus_manager
+    from src.chat.memory_system.Hippocampus import hippocampus_manager
 
 # 插件系统现在使用统一的插件加载器
 
@@ -48,8 +48,8 @@ class MainSystem:
         self.individuality: Individuality = individuality
 
         # 使用消息API替代直接的FastAPI实例
-        self.app: MessageServer = global_api
-        self.server: Server = global_server
+        self.app: MessageServer = get_global_api()
+        self.server: Server = get_global_server()
 
     async def initialize(self):
         """初始化系统组件"""
@@ -75,15 +75,15 @@ class MainSystem:
 
         # 启动API服务器
         start_api_server()
-        logger.success("API服务器启动成功")
+        logger.info("API服务器启动成功")
 
         # 加载所有actions，包括默认的和插件的
         plugin_count, component_count = plugin_manager.load_all_plugins()
-        logger.success(f"插件系统加载成功: {plugin_count} 个插件，{component_count} 个组件")
+        logger.info(f"插件系统加载成功: {plugin_count} 个插件，{component_count} 个组件")
 
         # 初始化表情管理器
         emoji_manager.initialize()
-        logger.success("表情包管理器初始化成功")
+        logger.info("表情包管理器初始化成功")
 
         # 添加情绪衰减任务
         await async_task_manager.add_task(MoodUpdateTask())
@@ -101,7 +101,7 @@ class MainSystem:
         if global_config.memory.enable_memory:
             if self.hippocampus_manager:
                 self.hippocampus_manager.initialize()
-                logger.success("记忆系统初始化成功")
+                logger.info("记忆系统初始化成功")
         else:
             logger.info("记忆系统已禁用，跳过初始化")
 
@@ -117,19 +117,19 @@ class MainSystem:
             personality_sides=global_config.personality.personality_sides,
             identity_detail=global_config.identity.identity_detail,
         )
-        logger.success("个体特征初始化成功")
+        logger.info("个体特征初始化成功")
 
         try:
             # 启动全局消息管理器 (负责消息发送/排队)
             await message_manager.start()
-            logger.success("全局消息管理器启动成功")
+            logger.info("全局消息管理器启动成功")
 
             # 启动心流系统主循环
             asyncio.create_task(heartflow.heartflow_start_working())
-            logger.success("心流系统启动成功")
+            logger.info("心流系统启动成功")
 
             init_time = int(1000 * (time.time() - init_start_time))
-            logger.success(f"初始化完成，神经元放电{init_time}次")
+            logger.info(f"初始化完成，神经元放电{init_time}次")
         except Exception as e:
             logger.error(f"启动大脑和外部世界失败: {e}")
             raise

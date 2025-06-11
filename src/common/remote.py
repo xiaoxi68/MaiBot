@@ -3,8 +3,7 @@ import asyncio
 import requests
 import platform
 
-# from loguru import logger
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.config.config import global_config
 from src.manager.async_task_manager import AsyncTask
 from src.manager.local_store_manager import local_storage

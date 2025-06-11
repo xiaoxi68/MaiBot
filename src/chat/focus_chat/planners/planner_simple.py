@@ -11,7 +11,7 @@ from src.chat.focus_chat.info.action_info import ActionInfo
 from src.chat.focus_chat.info.structured_info import StructuredInfo
 from src.chat.focus_chat.info.self_info import SelfInfo
 from src.chat.focus_chat.info.relation_info import RelationInfo
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.individuality.individuality import individuality
 from src.chat.focus_chat.planners.action_manager import ActionManager

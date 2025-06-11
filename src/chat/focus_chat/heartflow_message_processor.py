@@ -6,7 +6,7 @@ from src.chat.heart_flow.heartflow import heartflow
 from src.chat.message_receive.chat_stream import chat_manager, ChatStream
 from src.chat.utils.utils import is_mentioned_bot_in_message
 from src.chat.utils.timer_calculator import Timer
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.person_info.relationship_manager import relationship_manager
 
 import math

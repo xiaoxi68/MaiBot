@@ -12,7 +12,7 @@ import networkx as nx
 import numpy as np
 from collections import Counter
 from ...llm_models.utils_model import LLMRequest
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.chat.memory_system.sample_distribution import MemoryBuildScheduler  # 分布生成器
 from ..utils.chat_message_builder import (
     get_raw_msg_by_timestamp,
@@ -829,7 +829,7 @@ class EntorhinalCortex:
             )
             if messages:
                 time_diff = (datetime.datetime.now().timestamp() - timestamp) / 3600
-                logger.success(f"成功抽取 {time_diff:.1f} 小时前的消息样本，共{len(messages)}条")
+                logger.info(f"成功抽取 {time_diff:.1f} 小时前的消息样本，共{len(messages)}条")
                 chat_samples.append(messages)
             else:
                 logger.debug(f"时间戳 {timestamp} 的消息无需记忆")
@@ -1046,8 +1046,8 @@ class EntorhinalCortex:
                 GraphEdges.delete().where((GraphEdges.source == source) & (GraphEdges.target == target)).execute()
 
         end_time = time.time()
-        logger.success(f"[同步] 总耗时: {end_time - start_time:.2f}秒")
-        logger.success(f"[同步] 同步了 {len(memory_nodes)} 个节点和 {len(memory_edges)} 条边")
+        logger.info(f"[同步] 总耗时: {end_time - start_time:.2f}秒")
+        logger.info(f"[同步] 同步了 {len(memory_nodes)} 个节点和 {len(memory_edges)} 条边")
 
     async def resync_memory_to_db(self):
         """清空数据库并重新同步所有记忆数据"""
@@ -1133,8 +1133,8 @@ class EntorhinalCortex:
         logger.info(f"[数据库] 写入 {len(edges_data)} 条边耗时: {edge_end - edge_start:.2f}秒")
 
         end_time = time.time()
-        logger.success(f"[数据库] 重新同步完成，总耗时: {end_time - start_time:.2f}秒")
-        logger.success(f"[数据库] 同步了 {len(nodes_data)} 个节点和 {len(edges_data)} 条边")
+        logger.info(f"[数据库] 重新同步完成，总耗时: {end_time - start_time:.2f}秒")
+        logger.info(f"[数据库] 同步了 {len(nodes_data)} 个节点和 {len(edges_data)} 条边")
 
     def sync_memory_from_db(self):
         """从数据库同步数据到内存中的图结构"""
@@ -1209,7 +1209,7 @@ class EntorhinalCortex:
                 )
 
         if need_update:
-            logger.success("[数据库] 已为缺失的时间字段进行补充")
+            logger.info("[数据库] 已为缺失的时间字段进行补充")
 
 
 # 负责整合，遗忘，合并记忆
@@ -1387,7 +1387,7 @@ class ParahippocampalGyrus:
             logger.debug(f"进度: [{bar}] {progress:.1f}% ({i}/{len(memory_samples)})")
 
         if all_added_nodes:
-            logger.success(f"更新记忆: {', '.join(all_added_nodes)}")
+            logger.info(f"更新记忆: {', '.join(all_added_nodes)}")
         if all_added_edges:
             logger.debug(f"强化连接: {', '.join(all_added_edges)}")
         if all_connected_nodes:
@@ -1396,7 +1396,7 @@ class ParahippocampalGyrus:
         await self.hippocampus.entorhinal_cortex.sync_memory_to_db()
 
         end_time = time.time()
-        logger.success(f"---------------------记忆构建耗时: {end_time - start_time:.2f} 秒---------------------")
+        logger.info(f"---------------------记忆构建耗时: {end_time - start_time:.2f} 秒---------------------")
 
     async def operation_forget_topic(self, percentage=0.005):
         start_time = time.time()
@@ -1686,7 +1686,7 @@ class HippocampusManager:
         node_count = len(memory_graph.nodes())
         edge_count = len(memory_graph.edges())
 
-        logger.success(f"""--------------------------------
+        logger.info(f"""--------------------------------
                     记忆系统参数配置:
                     构建间隔: {global_config.memory.memory_build_interval}秒|样本数: {global_config.memory.memory_build_sample_num},长度: {global_config.memory.memory_build_sample_length}|压缩率: {global_config.memory.memory_compress_rate}
                     记忆构建分布: {global_config.memory.memory_build_distribution}

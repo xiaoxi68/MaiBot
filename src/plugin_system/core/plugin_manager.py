@@ -7,7 +7,7 @@ from pathlib import Path
 if TYPE_CHECKING:
     from src.plugin_system.base.base_plugin import BasePlugin
 
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.plugin_system.core.component_registry import component_registry
 from src.plugin_system.base.component_types import ComponentType, PluginInfo
 

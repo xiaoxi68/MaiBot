@@ -1,5 +1,5 @@
 from typing import List, Tuple, TYPE_CHECKING
-from src.common.logger import get_module_logger
+from src.common.logger import get_logger
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.experimental.PFC.chat_observer import ChatObserver
@@ -15,7 +15,7 @@ install(extra_lines=3)
 if TYPE_CHECKING:
     pass
 
-logger = get_module_logger("pfc")
+logger = get_logger("pfc")
 
 
 def _calculate_similarity(goal1: str, goal2: str) -> float:
@@ -289,13 +289,13 @@ class GoalAnalyzer:
 #     """直接发送消息到平台的发送器"""
 
 #     def __init__(self, private_name: str):
-#         self.logger = get_module_logger("direct_sender")
+#         self.logger = get_logger("direct_sender")
 #         self.storage = MessageStorage()
 #         self.private_name = private_name
 
 #     async def send_via_ws(self, message: MessageSending) -> None:
 #         try:
-#             await global_api.send_message(message)
+#             await get_global_api().send_message(message)
 #         except Exception as e:
 #             raise ValueError(f"未找到平台：{message.message_info.platform} 的url配置，请检查配置文件") from e
 
@@ -341,6 +341,6 @@ class GoalAnalyzer:
 #         try:
 #             await self.send_via_ws(message)
 #             await self.storage.store_message(message, chat_stream)
-#             logger.success(f"[私聊][{self.private_name}]PFC消息已发送: {content}")
+#             logger.info(f"[私聊][{self.private_name}]PFC消息已发送: {content}")
 #         except Exception as e:
 #             logger.error(f"[私聊][{self.private_name}]PFC消息发送失败: {str(e)}")
