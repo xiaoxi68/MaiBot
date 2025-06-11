@@ -85,7 +85,7 @@ class MainSystem:
         logger.info(f"插件系统加载成功: {plugin_count} 个插件，{component_count} 个组件")
 
         # 初始化表情管理器
-        get_emoji_manager.initialize()
+        get_emoji_manager().initialize()
         logger.info("表情包管理器初始化成功")
 
         # 添加情绪衰减任务
