@@ -1,7 +1,6 @@
 import asyncio
 import json
 import re
-import sys
 from datetime import datetime
 from typing import Tuple, Union, Dict, Any
 import aiohttp
@@ -116,8 +115,10 @@ class LLMRequest:
             logger.error(f"原始 model dict 信息：{model}")
             logger.error(f"配置错误：找不到对应的配置项 - {str(e)}")
             raise ValueError(f"配置错误：找不到对应的配置项 - {str(e)}") from e
-        except KeyError as e:
-            logger.warn(f"找不到{model['provider']}_KEY或{model['provider']}_BASE_URL环境变量，请检查配置文件或环境变量设置。")
+        except KeyError:
+            logger.warn(
+                f"找不到{model['provider']}_KEY或{model['provider']}_BASE_URL环境变量，请检查配置文件或环境变量设置。"
+            )
         self.model_name: str = model["name"]
         self.params = kwargs
 

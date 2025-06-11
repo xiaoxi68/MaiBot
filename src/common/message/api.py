@@ -7,6 +7,7 @@ from src.config.config import global_config
 
 global_api = None
 
+
 def get_global_api() -> MessageServer:
     """获取全局MessageServer实例"""
     global global_api

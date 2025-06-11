@@ -92,6 +92,7 @@ class Server:
 
 global_server = None
 
+
 def get_global_server() -> Server:
     """获取全局服务器实例"""
     global global_server
