@@ -39,7 +39,7 @@ from src.plugin_system import (
     BasePlugin, register_plugin, BaseAction, BaseCommand,
     ComponentInfo, ActionInfo, CommandInfo, ActionActivationType, ChatMode
 )
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 
 logger = get_logger("my_first_plugin")
 

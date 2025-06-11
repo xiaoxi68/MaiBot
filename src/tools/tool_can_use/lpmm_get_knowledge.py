@@ -1,7 +1,7 @@
 from src.tools.tool_can_use.base_tool import BaseTool
 
 # from src.common.database import db
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from typing import Dict, Any
 from src.chat.knowledge.knowledge_lib import qa_manager
 

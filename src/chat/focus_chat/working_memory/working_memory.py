@@ -1,6 +1,6 @@
 from typing import List, Any, Optional
 import asyncio
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.chat.focus_chat.working_memory.memory_manager import MemoryManager, MemoryItem
 from src.config.config import global_config
 

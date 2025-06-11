@@ -1,7 +1,7 @@
 import asyncio
 import traceback
 from typing import Optional, Coroutine, Callable, Any, List
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.chat.heart_flow.subheartflow_manager import SubHeartflowManager
 from src.config.config import global_config
 

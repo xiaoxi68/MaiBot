@@ -3,14 +3,14 @@ import re
 from contextlib import asynccontextmanager
 import asyncio
 import contextvars
-from src.common.logger import get_module_logger
+from src.common.logger import get_logger
 
 # import traceback
 from rich.traceback import install
 
 install(extra_lines=3)
 
-logger = get_module_logger("prompt_build")
+logger = get_logger("prompt_build")
 
 
 class PromptContext:

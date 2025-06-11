@@ -1,7 +1,7 @@
 from peewee import Model, DoubleField, IntegerField, BooleanField, TextField, FloatField, DateTimeField
 from .database import db
 import datetime
-from ..logger_manager import get_logger
+from src.common.logger import get_logger
 
 logger = get_logger("database_model")
 # 请在此处定义您的数据库实例。

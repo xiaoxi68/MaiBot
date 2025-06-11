@@ -5,7 +5,7 @@
 提供所有插件API功能的统一访问入口
 """
 
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 
 # 导入所有API模块
 from src.plugin_system.apis.message_api import MessageAPI

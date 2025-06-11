@@ -4,7 +4,7 @@ from src.chat.heart_flow.observation.observation import Observation
 from src.chat.focus_chat.replyer.default_replyer import DefaultReplyer
 from src.chat.focus_chat.expressors.default_expressor import DefaultExpressor
 from src.chat.message_receive.chat_stream import ChatStream
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 
 # 不再需要导入动作类，因为已经在main.py中导入
 # import src.chat.actions.default_actions  # noqa

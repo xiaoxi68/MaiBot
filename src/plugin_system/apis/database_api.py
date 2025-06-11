@@ -1,7 +1,7 @@
 import traceback
 import time
 from typing import Dict, List, Any, Union, Type
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.common.database.database_model import ActionRecords
 from src.common.database.database import db
 from peewee import Model, DoesNotExist

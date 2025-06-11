@@ -7,7 +7,7 @@ import jieba
 import numpy as np
 from maim_message import UserInfo
 
-from src.common.logger import get_module_logger
+from src.common.logger import get_logger
 from src.manager.mood_manager import mood_manager
 from ..message_receive.message import MessageRecv
 from src.llm_models.utils_model import LLMRequest
@@ -15,7 +15,7 @@ from .typo_generator import ChineseTypoGenerator
 from ...config.config import global_config
 from ...common.message_repository import find_messages, count_messages
 
-logger = get_module_logger("chat_utils")
+logger = get_logger("chat_utils")
 
 
 def is_english_letter(char: str) -> bool:

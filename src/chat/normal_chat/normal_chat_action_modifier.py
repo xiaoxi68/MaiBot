@@ -1,5 +1,5 @@
 from typing import List, Any, Dict
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.chat.focus_chat.planners.action_manager import ActionManager
 from src.chat.actions.base_action import ActionActivationType, ChatMode
 from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_before_timestamp_with_chat

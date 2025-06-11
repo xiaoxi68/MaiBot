@@ -7,7 +7,7 @@ from typing import List, Optional, Dict, Any, Deque, Callable, Awaitable
 from src.chat.message_receive.chat_stream import chat_manager
 from rich.traceback import install
 from src.chat.utils.prompt_builder import global_prompt_manager
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.chat.utils.timer_calculator import Timer
 from src.chat.heart_flow.observation.observation import Observation
 from src.chat.focus_chat.heartFC_Cycleinfo import CycleDetail

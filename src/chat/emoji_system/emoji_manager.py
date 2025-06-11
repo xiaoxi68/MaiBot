@@ -17,7 +17,7 @@ from src.common.database.database import db as peewee_db
 from src.config.config import global_config
 from src.chat.utils.utils_image import image_path_to_base64, image_manager
 from src.llm_models.utils_model import LLMRequest
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from rich.traceback import install
 
 install(extra_lines=3)
@@ -163,7 +163,7 @@ class MaiEmoji:
                     last_used_time=self.last_used_time,
                 )
 
-                logger.success(f"[注册] 表情包信息保存到数据库: {self.filename} ({self.emotion})")
+                logger.info(f"[注册] 表情包信息保存到数据库: {self.filename} ({self.emotion})")
 
                 return True
 
@@ -317,7 +317,7 @@ async def clear_temp_emoji() -> None:
                         os.remove(file_path)
                         logger.debug(f"[清理] 删除: {filename}")
 
-    logger.success("[清理] 完成")
+    logger.info("[清理] 完成")
 
 
 async def clean_unused_emojis(emoji_dir: str, emoji_objects: List["MaiEmoji"]) -> None:
@@ -349,7 +349,7 @@ async def clean_unused_emojis(emoji_dir: str, emoji_objects: List["MaiEmoji"]) -
                     logger.error(f"[错误] 删除文件时出错 ({file_full_path}): {str(e)}")
 
         if cleaned_count > 0:
-            logger.success(f"[清理] 在目录 {emoji_dir} 中清理了 {cleaned_count} 个破损表情包。")
+            logger.info(f"[清理] 在目录 {emoji_dir} 中清理了 {cleaned_count} 个破损表情包。")
         else:
             logger.info(f"[清理] 目录 {emoji_dir} 中没有需要清理的。")
 
@@ -568,7 +568,7 @@ class EmojiManager:
 
             # 输出清理结果
             if removed_count > 0:
-                logger.success(f"[清理] 已清理 {removed_count} 个失效/文件丢失的表情包记录")
+                logger.info(f"[清理] 已清理 {removed_count} 个失效/文件丢失的表情包记录")
                 logger.info(f"[统计] 清理前记录数: {total_count} | 清理后有效记录数: {len(self.emoji_objects)}")
             else:
                 logger.info(f"[检查] 已检查 {total_count} 个表情包记录，全部完好")
@@ -645,7 +645,7 @@ class EmojiManager:
             self.emoji_objects = emoji_objects
             self.emoji_num = len(emoji_objects)
 
-            logger.success(f"[数据库] 加载完成: 共加载 {self.emoji_num} 个表情包记录。")
+            logger.info(f"[数据库] 加载完成: 共加载 {self.emoji_num} 个表情包记录。")
             if load_errors > 0:
                 logger.warning(f"[数据库] 加载过程中出现 {load_errors} 个错误。")
 
@@ -808,7 +808,7 @@ class EmojiManager:
                         if register_success:
                             self.emoji_objects.append(new_emoji)
                             self.emoji_num += 1
-                            logger.success(f"[成功] 注册: {new_emoji.filename}")
+                            logger.info(f"[成功] 注册: {new_emoji.filename}")
                             return True
                         else:
                             logger.error(f"[错误] 注册表情包到数据库失败: {new_emoji.filename}")
@@ -973,7 +973,7 @@ class EmojiManager:
                     # 注册成功后，添加到内存列表
                     self.emoji_objects.append(new_emoji)
                     self.emoji_num += 1
-                    logger.success(f"[成功] 注册新表情包: {filename} (当前: {self.emoji_num}/{self.emoji_num_max})")
+                    logger.info(f"[成功] 注册新表情包: {filename} (当前: {self.emoji_num}/{self.emoji_num_max})")
                     return True
                 else:
                     logger.error(f"[注册失败] 保存表情包到数据库/移动文件失败: {filename}")

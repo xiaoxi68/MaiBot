@@ -4,7 +4,7 @@ import asyncio
 from asyncio import Task, Event, Lock
 from typing import Callable, Dict
 
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 
 logger = get_logger("async_task_manager")
 

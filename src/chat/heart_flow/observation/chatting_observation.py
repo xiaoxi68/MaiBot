@@ -14,7 +14,7 @@ import difflib
 from src.chat.message_receive.message import MessageRecv  # 添加 MessageRecv 导入
 from src.chat.heart_flow.observation.observation import Observation
 
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
 from src.chat.utils.prompt_builder import Prompt
 

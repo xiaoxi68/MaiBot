@@ -1,7 +1,7 @@
 import traceback
 import time
 from typing import List, Dict, Any
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.chat.focus_chat.hfc_utils import create_empty_anchor_message
 
 # 以下为类型注解需要

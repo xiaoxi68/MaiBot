@@ -6,9 +6,9 @@ import sys
 # from src.chat.heart_flow.heartflow import heartflow
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 # from src.config.config import BotConfig
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.api.reload_config import reload_config as reload_config_func
-from src.common.server import global_server
+from src.common.server import get_global_server
 from src.api.apiforgui import (
     get_all_subheartflow_ids,
     forced_change_subheartflow_status,
@@ -108,4 +108,4 @@ async def get_system_basic_info():
 
 def start_api_server():
     """启动API服务器"""
-    global_server.register_router(router, prefix="/api/v1")
+    get_global_server().register_router(router, prefix="/api/v1")

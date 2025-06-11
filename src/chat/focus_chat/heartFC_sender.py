@@ -1,10 +1,10 @@
 import asyncio
 from typing import Dict, Optional  # 重新导入类型
 from src.chat.message_receive.message import MessageSending, MessageThinking
-from src.common.message.api import global_api
+from src.common.message.api import get_global_api
 from src.chat.message_receive.storage import MessageStorage
 from src.chat.utils.utils import truncate_message
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.chat.utils.utils import calculate_typing_time
 from rich.traceback import install
 import traceback
@@ -21,8 +21,8 @@ async def send_message(message: MessageSending) -> str:
 
     try:
         # 直接调用API发送消息
-        await global_api.send_message(message)
-        logger.success(f"已将消息  '{message_preview}'  发往平台'{message.message_info.platform}'")
+        await get_global_api().send_message(message)
+        logger.info(f"已将消息  '{message_preview}'  发往平台'{message.message_info.platform}'")
         return message.processed_plain_text
 
     except Exception as e:

@@ -1,7 +1,7 @@
 import asyncio
 import time
 from typing import Dict, Any, Optional, List
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.chat.message_receive.chat_stream import chat_manager
 from src.chat.heart_flow.sub_heartflow import SubHeartflow, ChatState
 

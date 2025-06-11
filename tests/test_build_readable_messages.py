@@ -10,10 +10,10 @@ import copy
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.chat.utils.chat_message_builder import get_raw_msg_by_timestamp_with_chat, build_readable_messages
-from src.common.logger import get_module_logger
+from src.common.logger import get_logger
 
 # 创建测试日志记录器
-logger = get_module_logger("test_readable_msg")
+logger = get_logger("test_readable_msg")
 
 
 class TestBuildReadableMessages(unittest.TestCase):

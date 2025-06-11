@@ -1,7 +1,7 @@
 import time
 import random
 from typing import List, Dict, Optional, Any, Tuple
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.chat.utils.chat_message_builder import get_raw_msg_by_timestamp_random, build_anonymous_messages

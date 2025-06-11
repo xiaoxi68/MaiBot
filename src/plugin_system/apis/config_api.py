@@ -1,5 +1,5 @@
 from typing import Any
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.config.config import global_config
 from src.person_info.person_info import person_info_manager
 

@@ -7,7 +7,7 @@ import time
 import platform
 import traceback
 from dotenv import load_dotenv
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 
 # from src.common.logger import LogConfig, CONFIRM_STYLE_CONFIG
 from src.common.crash_logger import install_crash_handler
@@ -69,10 +69,9 @@ def load_env():
     # 直接加载生产环境变量配置
     if os.path.exists(".env"):
         load_dotenv(".env", override=True)
-        logger.success("成功加载环境变量配置")
+        logger.info("成功加载环境变量配置")
     else:
-        logger.error("未找到.env文件，请确保文件存在")
-        raise FileNotFoundError("未找到.env文件，请确保文件存在")
+        logger.warn("未找到.env文件，请确保程序所需的环境变量被正确设置")
 
 
 def scan_provider(env_config: dict):
@@ -199,6 +198,7 @@ def check_eula():
 
 
 def raw_main():
+    load_env()
     # 利用 TZ 环境变量设定程序工作的时区
     if platform.system().lower() != "windows":
         time.tzset()
@@ -210,8 +210,6 @@ def raw_main():
     print("检查EULA和隐私条款完成")
 
     easter_egg()
-
-    load_env()
 
     env_config = {key: os.getenv(key) for key in os.environ}
     scan_provider(env_config)
@@ -235,7 +233,7 @@ if __name__ == "__main__":
             loop.run_until_complete(main_system.initialize())
             loop.run_until_complete(main_system.schedule_tasks())
         except KeyboardInterrupt:
-            # loop.run_until_complete(global_api.stop())
+            # loop.run_until_complete(get_global_api().stop())
             logger.warning("收到中断信号，正在优雅关闭...")
             if loop and not loop.is_closed():
                 try:

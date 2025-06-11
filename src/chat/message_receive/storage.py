@@ -5,9 +5,9 @@ from typing import Union
 from .message import MessageSending, MessageRecv
 from .chat_stream import ChatStream
 from ...common.database.database_model import Messages, RecalledMessages  # Import Peewee models
-from src.common.logger import get_module_logger
+from src.common.logger import get_logger
 
-logger = get_module_logger("message_storage")
+logger = get_logger("message_storage")
 
 
 class MessageStorage:

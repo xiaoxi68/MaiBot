@@ -1,7 +1,7 @@
 from src.tools.tool_can_use.base_tool import BaseTool
 from src.chat.utils.utils import get_embedding
 from src.common.database.database_model import Knowledges  # Updated import
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from typing import Any, Union, List  # Added List
 import json  # Added for parsing embedding
 import math  # Added for cosine similarity

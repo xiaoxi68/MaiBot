@@ -10,7 +10,7 @@ from src.plugin_system.apis.config_api import ConfigAPI
 from src.plugin_system.apis.utils_api import UtilsAPI
 from src.plugin_system.apis.stream_api import StreamAPI
 from src.plugin_system.apis.hearflow_api import HearflowAPI
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 
 logger = get_logger("independent_apis")
 

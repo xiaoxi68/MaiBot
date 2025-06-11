@@ -1,6 +1,6 @@
 from typing import Any
 
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.config.config import global_config
 from src.tools.tool_can_use.base_tool import BaseTool
 from src.manager.mood_manager import mood_manager

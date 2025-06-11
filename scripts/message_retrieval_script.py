@@ -32,7 +32,7 @@ sys.path.insert(0, str(project_root))
 
 from src.chat.utils.chat_message_builder import build_readable_messages
 from src.common.database.database_model import Messages
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.common.database.database import db
 from src.config.config import global_config
 from src.llm_models.utils_model import LLMRequest

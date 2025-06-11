@@ -5,7 +5,7 @@ from src.config.config import global_config
 from src.chat.message_receive.message import MessageThinking
 from src.chat.normal_chat.normal_prompt import prompt_builder
 from src.chat.utils.timer_calculator import Timer
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.person_info.person_info import person_info_manager, PersonInfoManager
 from src.chat.utils.utils import process_llm_response
 

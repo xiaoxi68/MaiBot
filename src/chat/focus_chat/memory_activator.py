@@ -3,7 +3,7 @@ from src.chat.heart_flow.observation.structure_observation import StructureObser
 from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from datetime import datetime
 from src.chat.memory_system.Hippocampus import hippocampus_manager

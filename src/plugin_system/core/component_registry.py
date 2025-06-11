@@ -1,6 +1,6 @@
 from typing import Dict, List, Type, Optional, Any, Pattern
 import re
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.plugin_system.base.component_types import (
     ComponentInfo,
     ActionInfo,

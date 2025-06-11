@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Tuple, Dict, Type
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 
 logger = get_logger("base_action")
 

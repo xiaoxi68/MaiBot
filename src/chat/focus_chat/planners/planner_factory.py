@@ -3,7 +3,7 @@ from src.chat.focus_chat.planners.base_planner import BasePlanner
 from src.chat.focus_chat.planners.planner_simple import ActionPlanner as SimpleActionPlanner
 from src.chat.focus_chat.planners.action_manager import ActionManager
 from src.config.config import global_config
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 
 logger = get_logger("planner_factory")
 

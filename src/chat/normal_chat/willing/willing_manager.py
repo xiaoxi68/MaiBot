@@ -1,4 +1,4 @@
-from src.common.logger import LogConfig, WILLING_STYLE_CONFIG, LoguruLogger, get_module_logger
+from src.common.logger import get_logger
 from dataclasses import dataclass
 from src.config.config import global_config
 from src.chat.message_receive.chat_stream import ChatStream, GroupInfo
@@ -33,12 +33,7 @@ set_willing 设置某聊天流意愿
 示例: 在 `mode_aggressive.py` 中，类名应为 `AggressiveWillingManager`
 """
 
-willing_config = LogConfig(
-    # 使用消息发送专用样式
-    console_format=WILLING_STYLE_CONFIG["console_format"],
-    file_format=WILLING_STYLE_CONFIG["file_format"],
-)
-logger = get_module_logger("willing", config=willing_config)
+logger = get_logger("willing")
 
 
 @dataclass
@@ -93,7 +88,7 @@ class BaseWillingManager(ABC):
         self.chat_reply_willing: Dict[str, float] = {}  # 存储每个聊天流的回复意愿(chat_id)
         self.ongoing_messages: Dict[str, WillingInfo] = {}  # 当前正在进行的消息(message_id)
         self.lock = asyncio.Lock()
-        self.logger: LoguruLogger = logger
+        self.logger = logger
 
     def setup(self, message: MessageRecv, chat: ChatStream, is_mentioned_bot: bool, interested_rate: float):
         person_id = PersonInfoManager.get_person_id(chat.platform, chat.user_info.user_id)

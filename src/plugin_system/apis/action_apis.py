@@ -7,7 +7,7 @@ Action相关API聚合模块
 
 from src.plugin_system.apis.message_api import MessageAPI
 from src.plugin_system.apis.database_api import DatabaseAPI
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 
 logger = get_logger("action_apis")
 
