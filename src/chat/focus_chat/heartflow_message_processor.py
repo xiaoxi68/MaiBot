@@ -75,7 +75,7 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool]:
                 message.processed_plain_text,
                 fast_retrieval=True,
             )
-            logger.trace(f"记忆激活率: {interested_rate:.2f}")
+            logger.debug(f"记忆激活率: {interested_rate:.2f}")
 
     text_len = len(message.processed_plain_text)
     # 根据文本长度调整兴趣度，长度越大兴趣度越高，但增长率递减，最低0.01，最高0.05

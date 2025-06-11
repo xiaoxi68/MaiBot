@@ -228,7 +228,7 @@ class ImageManager:
                         description=description,
                         timestamp=current_timestamp,
                     )
-                logger.trace(f"保存图片元数据: {file_path}")
+                logger.debug(f"保存图片元数据: {file_path}")
             except Exception as e:
                 logger.error(f"保存图片文件或元数据失败: {str(e)}")
 
@@ -288,7 +288,7 @@ class ImageManager:
                 # 计算和上一张选中帧的差异（均方误差 MSE）
                 if last_selected_frame_np is not None:
                     mse = np.mean((current_frame_np - last_selected_frame_np) ** 2)
-                    # logger.trace(f"帧 {i} 与上一选中帧的 MSE: {mse}") # 可以取消注释来看差异值
+                    # logger.debug(f"帧 {i} 与上一选中帧的 MSE: {mse}") # 可以取消注释来看差异值
 
                     # 如果差异够大，就选它！
                     if mse > similarity_threshold:

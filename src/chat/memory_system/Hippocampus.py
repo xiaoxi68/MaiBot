@@ -409,7 +409,7 @@ class Hippocampus:
                         activation_values[neighbor] = new_activation
                         visited_nodes.add(neighbor)
                         nodes_to_process.append((neighbor, new_activation, current_depth + 1))
-                        logger.trace(
+                        logger.debug(
                             f"节点 '{neighbor}' 被激活，激活值: {new_activation:.2f} (通过 '{current_node}' 连接，强度: {strength}, 深度: {current_depth + 1})"
                         )  # noqa: E501
 
@@ -580,7 +580,7 @@ class Hippocampus:
                         activation_values[neighbor] = new_activation
                         visited_nodes.add(neighbor)
                         nodes_to_process.append((neighbor, new_activation, current_depth + 1))
-                        logger.trace(
+                        logger.debug(
                             f"节点 '{neighbor}' 被激活，激活值: {new_activation:.2f} (通过 '{current_node}' 连接，强度: {strength}, 深度: {current_depth + 1})"
                         )  # noqa: E501
 
@@ -733,7 +733,7 @@ class Hippocampus:
 
         # 对每个关键词进行扩散式检索
         for keyword in valid_keywords:
-            logger.trace(f"开始以关键词 '{keyword}' 为中心进行扩散检索 (最大深度: {max_depth}):")
+            logger.debug(f"开始以关键词 '{keyword}' 为中心进行扩散检索 (最大深度: {max_depth}):")
             # 初始化激活值
             activation_values = {keyword: 1.0}
             # 记录已访问的节点
@@ -784,7 +784,7 @@ class Hippocampus:
 
         # 计算激活节点数与总节点数的比值
         total_activation = sum(activate_map.values())
-        logger.trace(f"总激活值: {total_activation:.2f}")
+        logger.debug(f"总激活值: {total_activation:.2f}")
         total_nodes = len(self.memory_graph.G.nodes())
         # activated_nodes = len(activate_map)
         activation_ratio = total_activation / total_nodes if total_nodes > 0 else 0
@@ -1605,8 +1605,8 @@ class ParahippocampalGyrus:
 
                 if similarity >= similarity_threshold:
                     logger.debug(f"[整合] 节点 '{node}' 中发现相似项 (相似度: {similarity:.2f}):")
-                    logger.trace(f"  - '{item1}'")
-                    logger.trace(f"  - '{item2}'")
+                    logger.debug(f"  - '{item1}'")
+                    logger.debug(f"  - '{item2}'")
 
                     # 比较信息量
                     info1 = calculate_information_content(item1)

@@ -328,7 +328,7 @@ def process_llm_response(text: str) -> list[str]:
     # 先保护颜文字
     if global_config.response_splitter.enable_kaomoji_protection:
         protected_text, kaomoji_mapping = protect_kaomoji(text)
-        logger.trace(f"保护颜文字后的文本: {protected_text}")
+        logger.debug(f"保护颜文字后的文本: {protected_text}")
     else:
         protected_text = text
         kaomoji_mapping = {}

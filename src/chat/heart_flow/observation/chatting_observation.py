@@ -287,7 +287,7 @@ class ChattingObservation(Observation):
 
         # print(f"构建中：self.person_list: {self.person_list}")
 
-        logger.trace(
+        logger.debug(
             f"Chat {self.chat_id} - 压缩早期记忆：{self.mid_memory_info}\n现在聊天内容：{self.talking_message_str}"
         )
 

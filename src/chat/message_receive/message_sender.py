@@ -41,9 +41,9 @@ async def send_message(
         thinking_start_time=message.thinking_start_time,
         is_emoji=message.is_emoji,
     )
-    # logger.trace(f"{message.processed_plain_text},{typing_time},计算输入时间结束") # 减少日志
+    # logger.debug(f"{message.processed_plain_text},{typing_time},计算输入时间结束") # 减少日志
     await asyncio.sleep(typing_time)
-    # logger.trace(f"{message.processed_plain_text},{typing_time},等待输入时间结束") # 减少日志
+    # logger.debug(f"{message.processed_plain_text},{typing_time},等待输入时间结束") # 减少日志
     # --- 结束打字延迟 ---
 
     message_preview = truncate_message(message.processed_plain_text)

@@ -459,7 +459,7 @@ class PersonInfoManager:
             if field_name not in PersonInfo._meta.fields:
                 if field_name in person_info_default:
                     result[field_name] = copy.deepcopy(person_info_default[field_name])
-                    logger.trace(f"字段'{field_name}'不在Peewee模型中，使用默认配置值。")
+                    logger.debug(f"字段'{field_name}'不在Peewee模型中，使用默认配置值。")
                 else:
                     logger.debug(f"get_values查询失败：字段'{field_name}'未在Peewee模型和默认配置中定义。")
                     result[field_name] = None

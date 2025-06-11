@@ -33,7 +33,7 @@ class ChatBot:
     async def _ensure_started(self):
         """确保所有任务已启动"""
         if not self._started:
-            logger.trace("确保ChatBot所有任务已启动")
+            logger.debug("确保ChatBot所有任务已启动")
 
             self._started = True
 
@@ -166,23 +166,23 @@ class ChatBot:
                 template_group_name = None
 
             async def preprocess():
-                logger.trace("开始预处理消息...")
+                logger.debug("开始预处理消息...")
                 # 如果在私聊中
                 if group_info is None:
-                    logger.trace("检测到私聊消息")
+                    logger.debug("检测到私聊消息")
                     if global_config.experimental.pfc_chatting:
-                        logger.trace("进入PFC私聊处理流程")
+                        logger.debug("进入PFC私聊处理流程")
                         # 创建聊天流
-                        logger.trace(f"为{user_info.user_id}创建/获取聊天流")
+                        logger.debug(f"为{user_info.user_id}创建/获取聊天流")
                         await self.only_process_chat.process_message(message)
                         await self._create_pfc_chat(message)
                     # 禁止PFC，进入普通的心流消息处理逻辑
                     else:
-                        logger.trace("进入普通心流私聊处理")
+                        logger.debug("进入普通心流私聊处理")
                         await self.heartflow_message_receiver.process_message(message_data)
                 # 群聊默认进入心流消息处理逻辑
                 else:
-                    logger.trace(f"检测到群聊消息，群ID: {group_info.group_id}")
+                    logger.debug(f"检测到群聊消息，群ID: {group_info.group_id}")
                     await self.heartflow_message_receiver.process_message(message_data)
 
             if template_group_name:
