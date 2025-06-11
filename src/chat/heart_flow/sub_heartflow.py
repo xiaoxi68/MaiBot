@@ -6,7 +6,7 @@ from typing import Optional, List, Dict, Tuple
 import traceback
 from src.common.logger import get_logger
 from src.chat.message_receive.message import MessageRecv
-from src.chat.message_receive.chat_stream import chat_manager
+from src.chat.message_receive.chat_stream import get_chat_manager
 from src.chat.focus_chat.heartFC_chat import HeartFChatting
 from src.chat.normal_chat.normal_chat import NormalChat
 from src.chat.heart_flow.chat_state_info import ChatState, ChatStateInfo
@@ -42,7 +42,7 @@ class SubHeartflow:
         self.history_chat_state: List[Tuple[ChatState, float]] = []
 
         self.is_group_chat, self.chat_target_info = get_chat_type_and_target_info(self.chat_id)
-        self.log_prefix = chat_manager.get_stream_name(self.subheartflow_id) or self.subheartflow_id
+        self.log_prefix = get_chat_manager().get_stream_name(self.subheartflow_id) or self.subheartflow_id
         # 兴趣消息集合
         self.interest_dict: Dict[str, tuple[MessageRecv, float, bool]] = {}
 
@@ -103,7 +103,7 @@ class SubHeartflow:
         log_prefix = self.log_prefix
         try:
             # 获取聊天流并创建 NormalChat 实例 (同步部分)
-            chat_stream = chat_manager.get_stream(self.chat_id)
+            chat_stream = get_chat_manager().get_stream(self.chat_id)
             if not chat_stream:
                 logger.error(f"{log_prefix} 无法获取 chat_stream，无法启动 NormalChat。")
                 return False

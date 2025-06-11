@@ -377,5 +377,11 @@ class ChatManager:
             logger.error(f"从数据库加载所有聊天流失败 (Peewee): {e}", exc_info=True)
 
 
-# 创建全局单例
-chat_manager = ChatManager()
+chat_manager = None
+
+
+def get_chat_manager():
+    global chat_manager
+    if chat_manager is None:
+        chat_manager = ChatManager()
+    return chat_manager

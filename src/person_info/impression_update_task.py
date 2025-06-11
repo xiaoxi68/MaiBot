@@ -1,13 +1,14 @@
 from src.manager.async_task_manager import AsyncTask
 from src.common.logger import get_logger
 from src.person_info.person_info import PersonInfoManager
-from src.person_info.relationship_manager import relationship_manager
 from src.chat.utils.chat_message_builder import get_raw_msg_by_timestamp
 from src.config.config import global_config
-from src.chat.message_receive.chat_stream import chat_manager
+from src.chat.message_receive.chat_stream import get_chat_manager
 import time
 import random
 from collections import defaultdict
+
+from src.person_info.relationship_manager import get_relationship_manager
 
 logger = get_logger("relation")
 
@@ -50,7 +51,7 @@ class ImpressionUpdateTask(AsyncTask):
                     logger.info(f"聊天组 {chat_id} 消息数小于30，跳过处理")
                     continue
 
-                chat_stream = chat_manager.get_stream(chat_id)
+                chat_stream = get_chat_manager().get_stream(chat_id)
                 if not chat_stream:
                     logger.warning(f"未找到聊天组 {chat_id} 的chat_stream，跳过处理")
                     continue
@@ -149,7 +150,7 @@ class ImpressionUpdateTask(AsyncTask):
                     logger.info(
                         f"开始进一步了解用户: {[msg[1]['messages'][0]['user_nickname'] for msg in selected_users]}"
                     )
-
+                relationship_manager = get_relationship_manager()
                 # 更新选中用户的印象
                 for person_id, data in selected_users:
                     user_nickname = data["messages"][0]["user_nickname"]

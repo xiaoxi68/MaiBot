@@ -5,11 +5,11 @@ from src.config.config import global_config
 import time
 import traceback
 from src.common.logger import get_logger
-from src.individuality.individuality import individuality
+from src.individuality.individuality import get_individuality
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.utils.json_utils import safe_json_dumps
-from src.chat.message_receive.chat_stream import chat_manager
-from src.person_info.relationship_manager import relationship_manager
+from src.chat.message_receive.chat_stream import get_chat_manager
+from src.person_info.relationship_manager import get_relationship_manager
 from .base_processor import BaseProcessor
 from src.chat.focus_chat.info.mind_info import MindInfo
 from typing import List, Optional
@@ -77,7 +77,7 @@ class MindProcessor(BaseProcessor):
         self.structured_info = []
         self.structured_info_str = ""
 
-        name = chat_manager.get_stream_name(self.subheartflow_id)
+        name = get_chat_manager().get_stream_name(self.subheartflow_id)
         self.log_prefix = f"[{name}] "
         self._update_structured_info_str()
 
@@ -195,13 +195,14 @@ class MindProcessor(BaseProcessor):
         relation_prompt = ""
         if global_config.relationship.enable_relationship:
             for person in person_list:
+                relationship_manager = get_relationship_manager()
                 relation_prompt += await relationship_manager.build_relationship_info(person, is_id=True)
 
         template_name = "sub_heartflow_prompt_before" if is_group_chat else "sub_heartflow_prompt_private_before"
         logger.debug(f"{self.log_prefix} 使用{'群聊' if is_group_chat else '私聊'}思考模板")
 
         prompt = (await global_prompt_manager.get_prompt_async(template_name)).format(
-            bot_name=individuality.name,
+            bot_name=get_individuality().name,
             memory_str=memory_str,
             extra_info=self.structured_info_str,
             relation_prompt=relation_prompt,

@@ -3,7 +3,7 @@ from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 import time
 from src.common.logger import get_logger
-from src.individuality.individuality import individuality
+from src.individuality.individuality import get_individuality
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.tools.tool_use import ToolUser
 from src.chat.utils.json_utils import process_llm_tool_calls
@@ -132,7 +132,7 @@ class ToolProcessor(BaseProcessor):
             memory_str=memory_str,
             chat_observe_info=chat_observe_info,
             is_group_chat=is_group_chat,
-            bot_name=individuality.name,
+            bot_name=get_individuality().name,
             time_now=time_now,
         )
 

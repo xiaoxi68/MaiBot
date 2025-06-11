@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from src.config.config import global_config
 from src.chat.message_receive.chat_stream import ChatStream, GroupInfo
 from src.chat.message_receive.message import MessageRecv
-from src.person_info.person_info import person_info_manager, PersonInfoManager
+from src.person_info.person_info import PersonInfoManager, get_person_info_manager
 from abc import ABC, abstractmethod
 import importlib
 from typing import Dict, Optional
@@ -32,6 +32,7 @@ set_willing 设置某聊天流意愿
 类命名: `{manager_type}WillingManager` (首字母大写)
 示例: 在 `mode_aggressive.py` 中，类名应为 `AggressiveWillingManager`
 """
+
 
 logger = get_logger("willing")
 
@@ -95,7 +96,7 @@ class BaseWillingManager(ABC):
         self.ongoing_messages[message.message_info.message_id] = WillingInfo(
             message=message,
             chat=chat,
-            person_info_manager=person_info_manager,
+            person_info_manager=get_person_info_manager(),
             chat_id=chat.stream_id,
             person_id=person_id,
             group_info=chat.group_info,
@@ -172,4 +173,11 @@ def init_willing_manager() -> BaseWillingManager:
 
 
 # 全局willing_manager对象
-willing_manager = init_willing_manager()
+willing_manager = None
+
+
+def get_willing_manager():
+    global willing_manager
+    if willing_manager is None:
+        willing_manager = init_willing_manager()
+    return willing_manager

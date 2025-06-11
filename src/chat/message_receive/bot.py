@@ -3,7 +3,7 @@ from typing import Dict, Any
 
 from src.common.logger import get_logger
 from src.manager.mood_manager import mood_manager  # 导入情绪管理器
-from src.chat.message_receive.chat_stream import chat_manager
+from src.chat.message_receive.chat_stream import get_chat_manager
 from src.chat.message_receive.message import MessageRecv
 from src.experimental.only_message_process import MessageProcessor
 from src.experimental.PFC.pfc_manager import PFCManager
@@ -132,10 +132,10 @@ class ChatBot:
             message = MessageRecv(message_data)
             group_info = message.message_info.group_info
             user_info = message.message_info.user_info
-            chat_manager.register_message(message)
+            get_chat_manager().register_message(message)
 
             # 创建聊天流
-            chat = await chat_manager.get_or_create_stream(
+            chat = await get_chat_manager().get_or_create_stream(
                 platform=message.message_info.platform,
                 user_info=user_info,
                 group_info=group_info,

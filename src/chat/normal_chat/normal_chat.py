@@ -7,13 +7,13 @@ from maim_message import UserInfo, Seg
 from src.common.logger import get_logger
 from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
 from src.manager.mood_manager import mood_manager
-from src.chat.message_receive.chat_stream import ChatStream, chat_manager
+from src.chat.message_receive.chat_stream import ChatStream, get_chat_manager
 from src.chat.utils.timer_calculator import Timer
 from src.chat.utils.prompt_builder import global_prompt_manager
 from .normal_chat_generator import NormalChatGenerator
 from ..message_receive.message import MessageSending, MessageRecv, MessageThinking, MessageSet
 from src.chat.message_receive.message_sender import message_manager
-from src.chat.normal_chat.willing.willing_manager import willing_manager
+from src.chat.normal_chat.willing.willing_manager import get_willing_manager
 from src.chat.normal_chat.normal_chat_utils import get_recent_message_stats
 from src.config.config import global_config
 from src.chat.focus_chat.planners.action_manager import ActionManager
@@ -22,6 +22,7 @@ from src.chat.normal_chat.normal_chat_action_modifier import NormalChatActionMod
 from src.chat.normal_chat.normal_chat_expressor import NormalChatExpressor
 from src.chat.focus_chat.replyer.default_replyer import DefaultReplyer
 
+willing_manager = get_willing_manager()
 
 logger = get_logger("normal_chat")
 
@@ -32,7 +33,7 @@ class NormalChat:
 
         self.chat_stream = chat_stream
         self.stream_id = chat_stream.stream_id
-        self.stream_name = chat_manager.get_stream_name(self.stream_id) or self.stream_id
+        self.stream_name = get_chat_manager().get_stream_name(self.stream_id) or self.stream_id
 
         # 初始化Normal Chat专用表达器
         self.expressor = NormalChatExpressor(self.chat_stream)

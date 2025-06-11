@@ -3,7 +3,7 @@ from src.chat.heart_flow.observation.observation import Observation
 from src.common.logger import get_logger
 from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
-from src.chat.message_receive.chat_stream import chat_manager
+from src.chat.message_receive.chat_stream import get_chat_manager
 from src.config.config import global_config
 from src.llm_models.utils_model import LLMRequest
 from src.chat.actions.base_action import ActionActivationType, ChatMode
@@ -97,7 +97,7 @@ class ActionModifier:
             if chat_obs:
                 obs = chat_obs
                 # 检查动作的关联类型
-                chat_context = chat_manager.get_stream(obs.chat_id).context
+                chat_context = get_chat_manager().get_stream(obs.chat_id).context
                 type_mismatched_actions = []
 
                 for action_name in all_actions.keys():

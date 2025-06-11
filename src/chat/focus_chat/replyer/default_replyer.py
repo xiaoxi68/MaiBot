@@ -1,15 +1,17 @@
 import traceback
 from typing import List, Optional, Dict, Any, Tuple
+
+from src.chat.focus_chat.expressors.exprssion_learner import get_expression_learner
 from src.chat.message_receive.message import MessageRecv, MessageThinking, MessageSending
 from src.chat.message_receive.message import Seg  # Local import needed after move
 from src.chat.message_receive.message import UserInfo
-from src.chat.message_receive.chat_stream import chat_manager
+from src.chat.message_receive.chat_stream import get_chat_manager
 from src.common.logger import get_logger
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.chat.utils.utils_image import image_path_to_base64  # Local import needed after move
 from src.chat.utils.timer_calculator import Timer  # <--- Import Timer
-from src.chat.emoji_system.emoji_manager import emoji_manager
+from src.chat.emoji_system.emoji_manager import get_emoji_manager
 from src.chat.focus_chat.heartFC_sender import HeartFCSender
 from src.chat.utils.utils import process_llm_response
 from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
@@ -18,7 +20,6 @@ from src.chat.focus_chat.hfc_utils import parse_thinking_id_to_timestamp
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_before_timestamp_with_chat
 import time
-from src.chat.focus_chat.expressors.exprssion_learner import expression_learner
 import random
 from datetime import datetime
 import re
@@ -342,6 +343,7 @@ class DefaultReplyer:
             show_actions=True,
         )
 
+        expression_learner = get_expression_learner()
         (
             learnt_style_expressions,
             learnt_grammar_expressions,
@@ -486,7 +488,7 @@ class DefaultReplyer:
             logger.error(f"{self.log_prefix} 无法发送回复，anchor_message 为空。")
             return None
 
-        stream_name = chat_manager.get_stream_name(chat_id) or chat_id  # 获取流名称用于日志
+        stream_name = get_chat_manager().get_stream_name(chat_id) or chat_id  # 获取流名称用于日志
 
         # 检查思考过程是否仍在进行，并获取开始时间
         if thinking_id:
@@ -578,7 +580,7 @@ class DefaultReplyer:
         """
         emoji_base64 = ""
         description = ""
-        emoji_raw = await emoji_manager.get_emoji_for_text(send_emoji)
+        emoji_raw = await get_emoji_manager().get_emoji_for_text(send_emoji)
         if emoji_raw:
             emoji_path, description, _emotion = emoji_raw
             emoji_base64 = image_path_to_base64(emoji_path)

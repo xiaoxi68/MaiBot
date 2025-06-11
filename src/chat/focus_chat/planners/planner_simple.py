@@ -13,7 +13,7 @@ from src.chat.focus_chat.info.self_info import SelfInfo
 from src.chat.focus_chat.info.relation_info import RelationInfo
 from src.common.logger import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
-from src.individuality.individuality import individuality
+from src.individuality.individuality import get_individuality
 from src.chat.focus_chat.planners.action_manager import ActionManager
 from src.chat.actions.base_action import ChatMode
 from json_repair import repair_json
@@ -109,8 +109,8 @@ class ActionPlanner(BasePlanner):
                 nickname_str += f"{nicknames},"
             name_block = f"你的名字是{global_config.bot.nickname},你的昵称有{nickname_str}，有人也会用这些昵称称呼你。"
 
-            personality_block = individuality.get_personality_prompt(x_person=2, level=2)
-            identity_block = individuality.get_identity_prompt(x_person=2, level=2)
+            personality_block = get_individuality().get_personality_prompt(x_person=2, level=2)
+            identity_block = get_individuality().get_identity_prompt(x_person=2, level=2)
 
             self_info = name_block + personality_block + identity_block
             current_mind = "你思考了很久，没有想清晰要做什么"
@@ -332,7 +332,7 @@ class ActionPlanner(BasePlanner):
             # else:
             # mind_info_block = "你刚参与聊天"
 
-            personality_block = individuality.get_prompt(x_person=2, level=2)
+            personality_block = get_individuality().get_prompt(x_person=2, level=2)
 
             action_options_block = ""
             for using_actions_name, using_actions_info in current_available_actions.items():

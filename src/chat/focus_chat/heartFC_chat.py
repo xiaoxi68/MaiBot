@@ -4,7 +4,7 @@ import time
 import traceback
 from collections import deque
 from typing import List, Optional, Dict, Any, Deque, Callable, Awaitable
-from src.chat.message_receive.chat_stream import chat_manager
+from src.chat.message_receive.chat_stream import get_chat_manager
 from rich.traceback import install
 from src.chat.utils.prompt_builder import global_prompt_manager
 from src.common.logger import get_logger
@@ -97,8 +97,8 @@ class HeartFChatting:
         """
         # 基础属性
         self.stream_id: str = chat_id  # 聊天流ID
-        self.chat_stream = chat_manager.get_stream(self.stream_id)
-        self.log_prefix = f"[{chat_manager.get_stream_name(self.stream_id) or self.stream_id}]"
+        self.chat_stream = get_chat_manager().get_stream(self.stream_id)
+        self.log_prefix = f"[{get_chat_manager().get_stream_name(self.stream_id) or self.stream_id}]"
 
         self.memory_activator = MemoryActivator()
 

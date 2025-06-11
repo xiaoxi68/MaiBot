@@ -15,7 +15,7 @@ import re
 from src.common.database.database_model import Emoji
 from src.common.database.database import db as peewee_db
 from src.config.config import global_config
-from src.chat.utils.utils_image import image_path_to_base64, image_manager
+from src.chat.utils.utils_image import image_path_to_base64, get_image_manager
 from src.llm_models.utils_model import LLMRequest
 from src.common.logger import get_logger
 from rich.traceback import install
@@ -844,7 +844,7 @@ class EmojiManager:
 
             # 调用AI获取描述
             if image_format == "gif" or image_format == "GIF":
-                image_base64 = image_manager.transform_gif(image_base64)
+                image_base64 = get_image_manager().transform_gif(image_base64)
                 prompt = "这是一个动态图表情包，每一张图代表了动态图的某一帧，黑色背景代表透明，描述一下表情包表达的情感和内容，描述细节，从互联网梗,meme的角度去分析"
                 description, _ = await self.vlm.generate_response_for_image(prompt, image_base64, "jpg")
             else:
@@ -1000,5 +1000,11 @@ class EmojiManager:
             return False
 
 
-# 创建全局单例
-emoji_manager = EmojiManager()
+emoji_manager = None
+
+
+def get_emoji_manager():
+    global emoji_manager
+    if emoji_manager is None:
+        emoji_manager = EmojiManager()
+    return emoji_manager

@@ -1,7 +1,7 @@
 from typing import Any
 from src.common.logger import get_logger
 from src.config.config import global_config
-from src.person_info.person_info import person_info_manager
+from src.person_info.person_info import get_person_info_manager
 
 logger = get_logger("config_api")
 
@@ -63,6 +63,7 @@ class ConfigAPI:
         Returns:
             tuple[str, str]: (平台, 用户ID)
         """
+        person_info_manager = get_person_info_manager()
         person_id = person_info_manager.get_person_id_by_person_name(person_name)
         user_id = await person_info_manager.get_value(person_id, "user_id")
         platform = await person_info_manager.get_value(person_id, "platform")
@@ -79,4 +80,5 @@ class ConfigAPI:
         Returns:
             Any: 用户信息值或默认值
         """
+        person_info_manager = get_person_info_manager()
         return await person_info_manager.get_value(person_id, key, default)

@@ -16,6 +16,15 @@ from rich.traceback import install
 
 from src.manager.async_task_manager import async_task_manager
 
+logger = get_logger("main")
+
+# 直接加载生产环境变量配置
+if os.path.exists(".env"):
+    load_dotenv(".env", override=True)
+    logger.info("成功加载环境变量配置")
+else:
+    logger.warning("未找到.env文件，请确保程序所需的环境变量被正确设置")
+
 install(extra_lines=3)
 
 # 设置工作目录为脚本所在目录
@@ -24,7 +33,6 @@ os.chdir(script_dir)
 print(f"已设置工作目录为: {script_dir}")
 
 
-logger = get_logger("main")
 confirm_logger = get_logger("confirm")
 # 获取没有加载env时的环境变量
 env_mask = {key: os.getenv(key) for key in os.environ}
@@ -63,15 +71,6 @@ def easter_egg():
     for i, char in enumerate(text):
         rainbow_text += rainbow_colors[i % len(rainbow_colors)] + char
     print(rainbow_text)
-
-
-def load_env():
-    # 直接加载生产环境变量配置
-    if os.path.exists(".env"):
-        load_dotenv(".env", override=True)
-        logger.info("成功加载环境变量配置")
-    else:
-        logger.warning("未找到.env文件，请确保程序所需的环境变量被正确设置")
 
 
 def scan_provider(env_config: dict):
@@ -198,7 +197,6 @@ def check_eula():
 
 
 def raw_main():
-    load_env()
     # 利用 TZ 环境变量设定程序工作的时区
     if platform.system().lower() != "windows":
         time.tzset()

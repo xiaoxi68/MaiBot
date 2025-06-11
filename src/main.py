@@ -1,23 +1,24 @@
 import asyncio
 import time
 from maim_message import MessageServer
+
+from src.chat.focus_chat.expressors.exprssion_learner import get_expression_learner
 from src.common.remote import TelemetryHeartBeatTask
 from src.manager.async_task_manager import async_task_manager
 from src.chat.utils.statistic import OnlineTimeRecordTask, StatisticOutputTask
 from src.manager.mood_manager import MoodPrintTask, MoodUpdateTask
-from src.chat.emoji_system.emoji_manager import emoji_manager
-from src.chat.normal_chat.willing.willing_manager import willing_manager
-from src.chat.message_receive.chat_stream import chat_manager
+from src.chat.emoji_system.emoji_manager import get_emoji_manager
+from src.chat.normal_chat.willing.willing_manager import get_willing_manager
+from src.chat.message_receive.chat_stream import get_chat_manager
 from src.chat.heart_flow.heartflow import heartflow
 from src.chat.message_receive.message_sender import message_manager
 from src.chat.message_receive.storage import MessageStorage
 from src.config.config import global_config
 from src.chat.message_receive.bot import chat_bot
 from src.common.logger import get_logger
-from src.individuality.individuality import individuality, Individuality
+from src.individuality.individuality import get_individuality, Individuality
 from src.common.server import get_global_server, Server
 from rich.traceback import install
-from src.chat.focus_chat.expressors.exprssion_learner import expression_learner
 from src.api.main import start_api_server
 
 # 导入新的插件管理器
@@ -34,6 +35,8 @@ if global_config.memory.enable_memory:
 
 install(extra_lines=3)
 
+willing_manager = get_willing_manager()
+
 logger = get_logger("main")
 
 
@@ -45,7 +48,7 @@ class MainSystem:
         else:
             self.hippocampus_manager = None
 
-        self.individuality: Individuality = individuality
+        self.individuality: Individuality = get_individuality()
 
         # 使用消息API替代直接的FastAPI实例
         self.app: MessageServer = get_global_api()
@@ -82,7 +85,7 @@ class MainSystem:
         logger.info(f"插件系统加载成功: {plugin_count} 个插件，{component_count} 个组件")
 
         # 初始化表情管理器
-        emoji_manager.initialize()
+        get_emoji_manager.initialize()
         logger.info("表情包管理器初始化成功")
 
         # 添加情绪衰减任务
@@ -94,8 +97,8 @@ class MainSystem:
         await willing_manager.async_task_starter()
 
         # 初始化聊天管理器
-        await chat_manager._initialize()
-        asyncio.create_task(chat_manager._auto_save_task())
+        await get_chat_manager()._initialize()
+        asyncio.create_task(get_chat_manager()._auto_save_task())
 
         # 根据配置条件性地初始化记忆系统
         if global_config.memory.enable_memory:
@@ -138,7 +141,7 @@ class MainSystem:
         """调度定时任务"""
         while True:
             tasks = [
-                emoji_manager.start_periodic_check_register(),
+                get_emoji_manager().start_periodic_check_register(),
                 self.remove_recalled_message_task(),
                 self.app.run(),
                 self.server.run(),
@@ -184,6 +187,7 @@ class MainSystem:
     @staticmethod
     async def learn_and_store_expression_task():
         """学习并存储表达方式任务"""
+        expression_learner = get_expression_learner()
         while True:
             await asyncio.sleep(global_config.expression.learning_interval)
             if global_config.expression.enable_expression_learning:

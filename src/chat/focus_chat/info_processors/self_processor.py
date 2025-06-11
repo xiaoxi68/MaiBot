@@ -5,9 +5,9 @@ from src.config.config import global_config
 import time
 import traceback
 from src.common.logger import get_logger
-from src.individuality.individuality import individuality
+from src.individuality.individuality import get_individuality
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
-from src.chat.message_receive.chat_stream import chat_manager
+from src.chat.message_receive.chat_stream import get_chat_manager
 from .base_processor import BaseProcessor
 from typing import List, Optional
 from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
@@ -59,7 +59,7 @@ class SelfProcessor(BaseProcessor):
             request_type="focus.processor.self_identify",
         )
 
-        name = chat_manager.get_stream_name(self.subheartflow_id)
+        name = get_chat_manager().get_stream_name(self.subheartflow_id)
         self.log_prefix = f"[{name}] "
 
     async def process_info(
@@ -123,9 +123,9 @@ class SelfProcessor(BaseProcessor):
             nickname_str += f"{nicknames},"
         name_block = f"你的名字是{global_config.bot.nickname},你的昵称有{nickname_str}，有人也会用这些昵称称呼你。"
 
-        personality_block = individuality.get_personality_prompt(x_person=2, level=2)
+        personality_block = get_individuality().get_personality_prompt(x_person=2, level=2)
 
-        identity_block = individuality.get_identity_prompt(x_person=2, level=2)
+        identity_block = get_individuality().get_identity_prompt(x_person=2, level=2)
 
         prompt = (await global_prompt_manager.get_prompt_async("indentify_prompt")).format(
             name_block=name_block,

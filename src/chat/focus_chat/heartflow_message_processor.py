@@ -3,17 +3,18 @@ from src.config.config import global_config
 from src.chat.message_receive.message import MessageRecv
 from src.chat.message_receive.storage import MessageStorage
 from src.chat.heart_flow.heartflow import heartflow
-from src.chat.message_receive.chat_stream import chat_manager, ChatStream
+from src.chat.message_receive.chat_stream import get_chat_manager, ChatStream
 from src.chat.utils.utils import is_mentioned_bot_in_message
 from src.chat.utils.timer_calculator import Timer
 from src.common.logger import get_logger
-from src.person_info.relationship_manager import relationship_manager
 
 import math
 import re
 import traceback
 from typing import Optional, Tuple, Dict, Any
 from maim_message import UserInfo
+
+from src.person_info.relationship_manager import get_relationship_manager
 
 # from ..message_receive.message_buffer import message_buffer
 
@@ -45,6 +46,7 @@ async def _process_relationship(message: MessageRecv) -> None:
     nickname = message.message_info.user_info.user_nickname
     cardname = message.message_info.user_info.user_cardname or nickname
 
+    relationship_manager = get_relationship_manager()
     is_known = await relationship_manager.is_known_some_one(platform, user_id)
 
     if not is_known:
@@ -181,7 +183,7 @@ class HeartFCMessageReceiver:
             userinfo = message.message_info.user_info
             messageinfo = message.message_info
 
-            chat = await chat_manager.get_or_create_stream(
+            chat = await get_chat_manager().get_or_create_stream(
                 platform=messageinfo.platform,
                 user_info=userinfo,
                 group_info=groupinfo,

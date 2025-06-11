@@ -5,7 +5,7 @@ from src.common.logger import get_logger
 from src.chat.focus_chat.hfc_utils import create_empty_anchor_message
 
 # 以下为类型注解需要
-from src.chat.message_receive.chat_stream import ChatStream, chat_manager
+from src.chat.message_receive.chat_stream import ChatStream, get_chat_manager
 from src.chat.focus_chat.info.obs_info import ObsInfo
 
 # 新增导入
@@ -50,7 +50,7 @@ class MessageAPI:
             if is_group:
                 # 群聊：从数据库查找对应的聊天流
                 target_stream = None
-                for _, stream in chat_manager.streams.items():
+                for _, stream in get_chat_manager().streams.items():
                     if (
                         stream.group_info
                         and str(stream.group_info.group_id) == str(target_id)
@@ -65,7 +65,7 @@ class MessageAPI:
             else:
                 # 私聊：从数据库查找对应的聊天流
                 target_stream = None
-                for _, stream in chat_manager.streams.items():
+                for _, stream in get_chat_manager().streams.items():
                     if (
                         not stream.group_info
                         and str(stream.user_info.user_id) == str(target_id)

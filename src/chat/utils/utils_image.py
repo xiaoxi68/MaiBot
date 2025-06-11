@@ -362,7 +362,15 @@ class ImageManager:
 
 
 # 创建全局单例
-image_manager = ImageManager()
+image_manager = None
+
+
+def get_image_manager() -> ImageManager:
+    """获取全局图片管理器单例"""
+    global image_manager
+    if image_manager is None:
+        image_manager = ImageManager()
+    return image_manager
 
 
 def image_path_to_base64(image_path: str) -> str:

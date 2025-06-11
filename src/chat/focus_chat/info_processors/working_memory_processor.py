@@ -6,7 +6,7 @@ import time
 import traceback
 from src.common.logger import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
-from src.chat.message_receive.chat_stream import chat_manager
+from src.chat.message_receive.chat_stream import get_chat_manager
 from .base_processor import BaseProcessor
 from src.chat.focus_chat.info.mind_info import MindInfo
 from typing import List, Optional
@@ -64,7 +64,7 @@ class WorkingMemoryProcessor(BaseProcessor):
             request_type="focus.processor.working_memory",
         )
 
-        name = chat_manager.get_stream_name(self.subheartflow_id)
+        name = get_chat_manager().get_stream_name(self.subheartflow_id)
         self.log_prefix = f"[{name}] "
 
     async def process_info(

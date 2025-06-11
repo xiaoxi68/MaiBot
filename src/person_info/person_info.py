@@ -277,7 +277,7 @@ class PersonInfoManager:
         current_name_set = set(self.person_name_list.values())
 
         while current_try < max_retries:
-            # prompt_personality = individuality.get_prompt(x_person=2, level=1)
+            # prompt_personality =get_individuality().get_prompt(x_person=2, level=1)
             bot_name = global_config.bot.nickname
 
             qv_name_prompt = f"你是{bot_name}，一个伪装成人类的AI，你不能让别人发现这一点，"
@@ -601,4 +601,11 @@ class PersonInfoManager:
         return None
 
 
-person_info_manager = PersonInfoManager()
+person_info_manager = None
+
+
+def get_person_info_manager():
+    global person_info_manager
+    if person_info_manager is None:
+        person_info_manager = PersonInfoManager()
+    return person_info_manager

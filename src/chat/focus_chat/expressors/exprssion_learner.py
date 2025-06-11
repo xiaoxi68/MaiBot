@@ -7,7 +7,7 @@ from src.config.config import global_config
 from src.chat.utils.chat_message_builder import get_raw_msg_by_timestamp_random, build_anonymous_messages
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 import os
-from src.chat.message_receive.chat_stream import chat_manager
+from src.chat.message_receive.chat_stream import get_chat_manager
 import json
 
 
@@ -220,7 +220,7 @@ class ExpressionLearner:
             return []
         learnt_expressions, chat_id = res
 
-        chat_stream = chat_manager.get_stream(chat_id)
+        chat_stream = get_chat_manager().get_stream(chat_id)
         if chat_stream.group_info:
             group_name = chat_stream.group_info.group_name
         else:
@@ -399,4 +399,11 @@ class ExpressionLearner:
 
 init_prompt()
 
-expression_learner = ExpressionLearner()
+expression_learner = None
+
+
+def get_expression_learner():
+    global expression_learner
+    if expression_learner is None:
+        expression_learner = ExpressionLearner()
+    return expression_learner

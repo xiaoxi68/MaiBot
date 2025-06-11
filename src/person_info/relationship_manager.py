@@ -1,6 +1,6 @@
 from src.common.logger import get_logger
 import math
-from src.person_info.person_info import person_info_manager, PersonInfoManager
+from src.person_info.person_info import PersonInfoManager, get_person_info_manager
 import time
 import random
 from src.llm_models.utils_model import LLMRequest
@@ -15,6 +15,7 @@ import ast
 import jieba
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+
 
 logger = get_logger("relation")
 
@@ -85,6 +86,7 @@ class RelationshipManager:
     @staticmethod
     async def is_known_some_one(platform, user_id):
         """判断是否认识某人"""
+        person_info_manager = get_person_info_manager()
         is_known = await person_info_manager.is_person_known(platform, user_id)
         return is_known
 
@@ -93,6 +95,7 @@ class RelationshipManager:
         """判断是否认识某人"""
         person_id = PersonInfoManager.get_person_id(platform, user_id)
         # 生成唯一的 person_name
+        person_info_manager = get_person_info_manager()
         unique_nickname = await person_info_manager._generate_unique_person_name(user_nickname)
         data = {
             "platform": platform,
@@ -117,7 +120,7 @@ class RelationshipManager:
             person_id = person
         else:
             person_id = PersonInfoManager.get_person_id(person[0], person[1])
-
+        person_info_manager = get_person_info_manager()
         person_name = await person_info_manager.get_value(person_id, "person_name")
         if not person_name or person_name == "none":
             return ""
@@ -157,6 +160,7 @@ class RelationshipManager:
             field_name: 字段名称
             new_items: 新的项目列表
         """
+        person_info_manager = get_person_info_manager()
         old_items = await person_info_manager.get_value(person_id, field_name) or []
         updated_items = list(set(old_items + [item for item in new_items if isinstance(item, str) and item]))
         await person_info_manager.update_one_field(person_id, field_name, updated_items)
@@ -171,12 +175,13 @@ class RelationshipManager:
             timestamp: 时间戳 (用于记录交互时间)
             bot_engaged_messages: bot参与的消息列表
         """
+        person_info_manager = get_person_info_manager()
         person_name = await person_info_manager.get_value(person_id, "person_name")
         nickname = await person_info_manager.get_value(person_id, "nickname")
 
         alias_str = ", ".join(global_config.bot.alias_names)
-        # personality_block = individuality.get_personality_prompt(x_person=2, level=2)
-        # identity_block = individuality.get_identity_prompt(x_person=2, level=2)
+        # personality_block =get_individuality().get_personality_prompt(x_person=2, level=2)
+        # identity_block =get_individuality().get_identity_prompt(x_person=2, level=2)
 
         user_messages = bot_engaged_messages
 
@@ -602,4 +607,11 @@ class RelationshipManager:
         return tfidf_sim > tfidf_threshold or seq_sim > seq_threshold
 
 
-relationship_manager = RelationshipManager()
+relationship_manager = None
+
+
+def get_relationship_manager():
+    global relationship_manager
+    if relationship_manager is None:
+        relationship_manager = RelationshipManager()
+    return relationship_manager

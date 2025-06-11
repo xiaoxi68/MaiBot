@@ -36,7 +36,8 @@ from src.common.logger import get_logger
 from src.common.database.database import db
 from src.config.config import global_config
 from src.llm_models.utils_model import LLMRequest
-from src.person_info.person_info import PersonInfoManager, person_info_manager
+from src.person_info.person_info import PersonInfoManager, get_person_info_manager
+
 
 logger = get_logger("message_retrieval")
 
@@ -77,7 +78,7 @@ async def build_name_mapping(messages: List[Dict[str, Any]], target_person_name:
     name_mapping = {}
     current_user = "A"
     user_count = 1
-
+    person_info_manager = get_person_info_manager()
     # 遍历消息，构建映射
     for msg in messages:
         await person_info_manager.get_or_create_person(
@@ -410,6 +411,7 @@ class MessageRetrievalScript:
 
     async def update_person_impression_from_segment(self, person_id: str, readable_messages: str, segment_time: float):
         """从消息段落更新用户印象，使用和relationship_manager相同的流程"""
+        person_info_manager = get_person_info_manager()
         person_name = await person_info_manager.get_value(person_id, "person_name")
         nickname = await person_info_manager.get_value(person_id, "nickname")
 
@@ -659,6 +661,7 @@ class MessageRetrievalScript:
         """处理分段消息并更新用户印象到数据库"""
         # 获取目标用户信息
         target_person_id = get_person_id("qq", user_qq)
+        person_info_manager = get_person_info_manager()
         target_person_name = await person_info_manager.get_value(target_person_id, "person_name")
 
         if not target_person_name:

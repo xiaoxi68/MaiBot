@@ -2,7 +2,7 @@ import asyncio
 import time
 from typing import Dict, Any, Optional, List
 from src.common.logger import get_logger
-from src.chat.message_receive.chat_stream import chat_manager
+from src.chat.message_receive.chat_stream import get_chat_manager
 from src.chat.heart_flow.sub_heartflow import SubHeartflow, ChatState
 
 
@@ -27,7 +27,7 @@ async def _try_set_subflow_absent_internal(subflow: "SubHeartflow", log_prefix: 
         bool: 如果状态成功变为 ABSENT 或原本就是 ABSENT，返回 True；否则返回 False。
     """
     flow_id = subflow.subheartflow_id
-    stream_name = chat_manager.get_stream_name(flow_id) or flow_id
+    stream_name = get_chat_manager().get_stream_name(flow_id) or flow_id
 
     if subflow.chat_state.chat_status != ChatState.ABSENT:
         logger.debug(f"{log_prefix} 设置 {stream_name} 状态为 ABSENT")
@@ -106,7 +106,7 @@ class SubHeartflowManager:
 
                 # 注册子心流
                 self.subheartflows[subheartflow_id] = new_subflow
-                heartflow_name = chat_manager.get_stream_name(subheartflow_id) or subheartflow_id
+                heartflow_name = get_chat_manager().get_stream_name(subheartflow_id) or subheartflow_id
                 logger.info(f"[{heartflow_name}] 开始接收消息")
 
                 return new_subflow
@@ -120,7 +120,7 @@ class SubHeartflowManager:
         async with self._lock:  # 加锁以安全访问字典
             subheartflow = self.subheartflows.get(subheartflow_id)
 
-            stream_name = chat_manager.get_stream_name(subheartflow_id) or subheartflow_id
+            stream_name = get_chat_manager().get_stream_name(subheartflow_id) or subheartflow_id
             logger.info(f"{log_prefix} 正在停止 {stream_name}, 原因: {reason}")
 
             # 调用内部方法处理状态变更
@@ -170,7 +170,9 @@ class SubHeartflowManager:
                         changed_count += 1
                     else:
                         # 这种情况理论上不应发生，如果内部方法返回 True 的话
-                        stream_name = chat_manager.get_stream_name(subflow.subheartflow_id) or subflow.subheartflow_id
+                        stream_name = (
+                            get_chat_manager().get_stream_name(subflow.subheartflow_id) or subflow.subheartflow_id
+                        )
                         logger.warning(f"{log_prefix} 内部方法声称成功但 {stream_name} 状态未变为 ABSENT。")
         # 锁在此处自动释放
 
@@ -183,7 +185,7 @@ class SubHeartflowManager:
     # try:
     #     for sub_hf in list(self.subheartflows.values()):
     #         flow_id = sub_hf.subheartflow_id
-    #         stream_name = chat_manager.get_stream_name(flow_id) or flow_id
+    #         stream_name = get_chat_manager().get_stream_name(flow_id) or flow_id
 
     #         # 跳过已经是FOCUSED状态的子心流
     #         if sub_hf.chat_state.chat_status == ChatState.FOCUSED:
@@ -229,7 +231,7 @@ class SubHeartflowManager:
                 logger.warning(f"[状态转换请求] 尝试转换不存在的子心流 {subflow_id} 到 NORMAL")
                 return
 
-            stream_name = chat_manager.get_stream_name(subflow_id) or subflow_id
+            stream_name = get_chat_manager().get_stream_name(subflow_id) or subflow_id
             current_state = subflow.chat_state.chat_status
 
             if current_state == ChatState.FOCUSED:
@@ -298,7 +300,7 @@ class SubHeartflowManager:
             # --- 遍历评估每个符合条件的私聊 --- #
             for sub_hf in eligible_subflows:
                 flow_id = sub_hf.subheartflow_id
-                stream_name = chat_manager.get_stream_name(flow_id) or flow_id
+                stream_name = get_chat_manager().get_stream_name(flow_id) or flow_id
                 log_prefix = f"[{stream_name}]({log_prefix_task})"
 
                 try:

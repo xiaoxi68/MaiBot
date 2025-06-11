@@ -4,7 +4,7 @@ import time  # 导入 time 模块以获取当前时间
 import random
 import re
 from src.common.message_repository import find_messages, count_messages
-from src.person_info.person_info import person_info_manager, PersonInfoManager
+from src.person_info.person_info import PersonInfoManager, get_person_info_manager
 from src.chat.utils.utils import translate_timestamp_to_human_readable
 from rich.traceback import install
 from src.common.database.database_model import ActionRecords
@@ -220,6 +220,7 @@ def _build_readable_messages_internal(
             continue
 
         person_id = PersonInfoManager.get_person_id(platform, user_id)
+        person_info_manager = get_person_info_manager()
         # 根据 replace_bot_name 参数决定是否替换机器人名称
         if replace_bot_name and user_id == global_config.bot.qq_account:
             person_name = f"{global_config.bot.nickname}(你)"
