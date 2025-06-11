@@ -71,7 +71,7 @@ def load_env():
         load_dotenv(".env", override=True)
         logger.info("成功加载环境变量配置")
     else:
-        logger.warn("未找到.env文件，请确保程序所需的环境变量被正确设置")
+        logger.warning("未找到.env文件，请确保程序所需的环境变量被正确设置")
 
 
 def scan_provider(env_config: dict):
