@@ -8,7 +8,7 @@ from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.tools.tool_use import ToolUser
 from src.chat.utils.json_utils import process_llm_tool_calls
 from .base_processor import BaseProcessor
-from typing import List, Optional, Dict
+from typing import List, Optional
 from src.chat.heart_flow.observation.observation import Observation
 from src.chat.focus_chat.info.structured_info import StructuredInfo
 from src.chat.heart_flow.observation.structure_observation import StructureObservation
@@ -47,9 +47,7 @@ class ToolProcessor(BaseProcessor):
         )
         self.structured_info = []
 
-    async def process_info(
-        self, observations: Optional[List[Observation]] = None, running_memories: Optional[List[Dict]] = None, *infos
-    ) -> List[StructuredInfo]:
+    async def process_info(self, observations: Optional[List[Observation]] = None) -> List[StructuredInfo]:
         """处理信息对象
 
         Args:
@@ -67,7 +65,7 @@ class ToolProcessor(BaseProcessor):
         if observations:
             for observation in observations:
                 if isinstance(observation, ChattingObservation):
-                    result, used_tools, prompt = await self.execute_tools(observation, running_memories)
+                    result, used_tools, prompt = await self.execute_tools(observation)
 
             logger.debug(f"工具调用结果: {result}")
             # 更新WorkingObservation中的结构化信息
@@ -87,7 +85,7 @@ class ToolProcessor(BaseProcessor):
 
         return [structured_info]
 
-    async def execute_tools(self, observation: ChattingObservation, running_memorys: Optional[List[Dict]] = None):
+    async def execute_tools(self, observation: ChattingObservation):
         """
         并行执行工具，返回结构化信息
 
@@ -117,19 +115,12 @@ class ToolProcessor(BaseProcessor):
         chat_observe_info = observation.get_observe_info()
         # person_list = observation.person_list
 
-        memory_str = ""
-        if running_memorys:
-            memory_str = "以下是当前在聊天中，你回忆起的记忆：\n"
-            for running_memory in running_memorys:
-                memory_str += f"{running_memory['topic']}: {running_memory['content']}\n"
-
         # 获取时间信息
         time_now = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
         # 构建专用于工具调用的提示词
         prompt = await global_prompt_manager.format_prompt(
             "tool_executor_prompt",
-            memory_str=memory_str,
             chat_observe_info=chat_observe_info,
             is_group_chat=is_group_chat,
             bot_name=get_individuality().name,
