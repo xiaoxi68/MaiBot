@@ -12,10 +12,9 @@ from src.chat.message_receive.chat_stream import get_chat_manager
 from src.person_info.relationship_manager import get_relationship_manager
 from .base_processor import BaseProcessor
 from src.chat.focus_chat.info.mind_info import MindInfo
-from typing import List, Optional
+from typing import List
 from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
 from src.chat.heart_flow.observation.actions_observation import ActionObservation
-from typing import Dict
 from src.chat.focus_chat.info.info_base import InfoBase
 
 logger = get_logger("processor")
@@ -110,7 +109,8 @@ class MindProcessor(BaseProcessor):
         logger.debug(f"{self.log_prefix} 更新 structured_info_str: \n{self.structured_info_str}")
 
     async def process_info(
-        self, observations: List[Observation] = None, 
+        self,
+        observations: List[Observation] = None,
     ) -> List[InfoBase]:
         """处理信息对象
 
@@ -127,9 +127,7 @@ class MindProcessor(BaseProcessor):
 
         return [mind_info]
 
-    async def do_thinking_before_reply(
-        self, observations: List[Observation] = None
-    ):
+    async def do_thinking_before_reply(self, observations: List[Observation] = None):
         """
         在回复前进行思考，生成内心想法并收集工具调用结果
 
