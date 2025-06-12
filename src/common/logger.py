@@ -157,7 +157,6 @@ MODULE_COLORS = {
     "hfc": "\033[96m",
     "base_action": "\033[96m",
     "action_manager": "\033[34m",
-    
     # 聊天相关模块
     "normal_chat": "\033[38;5;81m",  # 亮蓝绿色
     "normal_chat_response": "\033[38;5;123m",  # 青绿色
@@ -174,7 +173,6 @@ MODULE_COLORS = {
     "chat_stream": "\033[38;5;51m",  # 亮青色
     "sender": "\033[38;5;39m",  # 蓝色
     "message_storage": "\033[38;5;33m",  # 深蓝色
-    
     # 专注聊天模块
     "replyer": "\033[38;5;166m",  # 橙色
     "expressor": "\033[38;5;172m",  # 黄橙色
@@ -183,7 +181,6 @@ MODULE_COLORS = {
     "base_processor": "\033[38;5;190m",  # 绿黄色
     "working_memory": "\033[38;5;22m",  # 深绿色
     "memory_activator": "\033[38;5;28m",  # 绿色
-    
     # 插件系统
     "plugin_manager": "\033[38;5;196m",  # 红色
     "base_plugin": "\033[38;5;202m",  # 橙红色
@@ -198,20 +195,17 @@ MODULE_COLORS = {
     "database_api": "\033[38;5;10m",  # 绿色
     "utils_api": "\033[38;5;14m",  # 青色
     "message_api": "\033[38;5;6m",  # 青色
-    
     # 管理器模块
     "async_task_manager": "\033[38;5;129m",  # 紫色
     "mood": "\033[38;5;135m",  # 紫红色
     "local_storage": "\033[38;5;141m",  # 紫色
     "willing": "\033[38;5;147m",  # 浅紫色
-    
     # 工具模块
     "tool_use": "\033[38;5;64m",  # 深绿色
     "base_tool": "\033[38;5;70m",  # 绿色
     "compare_numbers_tool": "\033[38;5;76m",  # 浅绿色
     "change_mood_tool": "\033[38;5;82m",  # 绿色
     "relationship_tool": "\033[38;5;88m",  # 深红色
-    
     # 工具和实用模块
     "prompt": "\033[38;5;99m",  # 紫色
     "prompt_build": "\033[38;5;105m",  # 紫色
@@ -219,7 +213,6 @@ MODULE_COLORS = {
     "chat_image": "\033[38;5;117m",  # 浅蓝色
     "typo_gen": "\033[38;5;123m",  # 青绿色
     "maibot_statistic": "\033[38;5;129m",  # 紫色
-    
     # 特殊功能插件
     "mute_plugin": "\033[38;5;240m",  # 灰色
     "example_comprehensive": "\033[38;5;246m",  # 浅灰色
@@ -227,19 +220,15 @@ MODULE_COLORS = {
     "tts_action": "\033[38;5;58m",  # 深黄色
     "doubao_pic_plugin": "\033[38;5;64m",  # 深绿色
     "vtb_action": "\033[38;5;70m",  # 绿色
-    
     # 数据库和消息
     "database_model": "\033[38;5;94m",  # 橙褐色
     "maim_message": "\033[38;5;100m",  # 绿褐色
-    
     # 实验性模块
     "pfc": "\033[38;5;252m",  # 浅灰色
-    
     # 日志系统
     "logger": "\033[38;5;8m",  # 深灰色
     "demo": "\033[38;5;15m",  # 白色
     "confirm": "\033[1;93m",  # 黄色+粗体
-    
     # 模型相关
     "model_utils": "\033[38;5;164m",  # 紫红色
 }
@@ -358,7 +347,7 @@ class ModuleColoredConsoleRenderer:
         # 在full模式下为消息内容着色
         if self._colors and self._enable_full_content_colors and module_color:
             event_content = f"{module_color}{event_content}{RESET_COLOR}"
-        
+
         parts.append(event_content)
 
         # 处理其他字段
@@ -373,12 +362,12 @@ class ModuleColoredConsoleRenderer:
                         value_str = str(value)
                 else:
                     value_str = str(value)
-                
+
                 # 在full模式下为额外字段着色
                 extra_field = f"{key}={value_str}"
                 if self._colors and self._enable_full_content_colors and module_color:
                     extra_field = f"{module_color}{extra_field}{RESET_COLOR}"
-                
+
                 extras.append(extra_field)
 
         if extras:
