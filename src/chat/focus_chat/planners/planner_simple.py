@@ -263,10 +263,7 @@ class ActionPlanner(BasePlanner):
             action = "no_reply"
             reasoning = f"Planner 内部处理错误: {outer_e}"
 
-        # logger.debug(
-        #     f"{self.log_prefix}规划器Prompt:\n{prompt}\n\n决策动作:{action},\n动作信息: '{action_data}'\n理由: {reasoning}"
-        # )
-
+            
         # 恢复到默认动作集
         self.action_manager.restore_actions()
         logger.debug(

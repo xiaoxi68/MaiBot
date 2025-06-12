@@ -80,6 +80,9 @@ class ActionModifier:
                 obs = hfc_obs
                 # 获取适用于FOCUS模式的动作
                 all_actions = self.action_manager.get_using_actions_for_mode("focus")
+                print("=======================")
+                print(all_actions)
+                print("=======================")
                 action_changes = await self.analyze_loop_actions(obs)
                 if action_changes["add"] or action_changes["remove"]:
                     # 合并动作变更

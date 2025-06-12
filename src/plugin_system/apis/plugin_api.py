@@ -71,8 +71,6 @@ class PluginAPI(MessageAPI, LLMAPI, DatabaseAPI, ConfigAPI, UtilsAPI, StreamAPI,
         # 存储插件配置
         self._plugin_config = plugin_config or {}
 
-        logger.debug(f"{self.log_prefix} PluginAPI 初始化完成")
-
     def set_chat_stream(self, chat_stream):
         """设置聊天流对象"""
         self._services["chat_stream"] = chat_stream

@@ -442,6 +442,8 @@ class ActionManager:
         """
         filtered_actions = {}
 
+        print(self._using_actions)
+
         for action_name, action_info in self._using_actions.items():
             print(f"action_info: {action_info}")
             print(f"action_name: {action_name}")
