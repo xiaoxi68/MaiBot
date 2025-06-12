@@ -101,7 +101,7 @@ def configure_logging(
     """动态配置日志参数"""
     log_path = Path(log_dir)
     log_path.mkdir(exist_ok=True)
-    
+
     # 更新文件handler配置
     root_logger = logging.getLogger()
     for handler in root_logger.handlers:
@@ -109,18 +109,19 @@ def configure_logging(
             handler.maxBytes = max_bytes
             handler.backupCount = backup_count
             handler.baseFilename = str(log_path / "app.log.jsonl")
-    
+
     # 设置日志级别
     root_logger.setLevel(getattr(logging, level.upper()))
 
+
 def format_json_for_logging(data, indent=2, ensure_ascii=False):
     """将JSON数据格式化为可读字符串
-    
+
     Args:
         data: 要格式化的数据（字典、列表等）
         indent: 缩进空格数
         ensure_ascii: 是否确保ASCII编码
-        
+
     Returns:
         str: 格式化后的JSON字符串
     """
