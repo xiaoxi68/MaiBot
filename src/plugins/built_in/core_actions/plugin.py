@@ -289,7 +289,7 @@ class ExitFocusChatAction(BaseAction):
         try:
             # 标记状态切换请求
             self._mark_state_change()
-            
+
             status_message = "决定退出专注聊天模式"
             return True, status_message
 
