@@ -68,7 +68,7 @@ class WorkingMemoryProcessor(BaseProcessor):
         self.log_prefix = f"[{name}] "
 
     async def process_info(
-        self, observations: Optional[List[Observation]] = None, running_memorys: Optional[List[Dict]] = None, *infos
+        self, observations: List[Observation] = None, *infos
     ) -> List[InfoBase]:
         """处理信息对象
 

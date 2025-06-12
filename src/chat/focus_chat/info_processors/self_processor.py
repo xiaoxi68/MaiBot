@@ -63,7 +63,7 @@ class SelfProcessor(BaseProcessor):
         self.log_prefix = f"[{name}] "
 
     async def process_info(
-        self, observations: Optional[List[Observation]] = None, running_memorys: Optional[List[Dict]] = None, *infos
+        self, observations: List[Observation] = None, *infos
     ) -> List[InfoBase]:
         """处理信息对象
 
@@ -73,7 +73,7 @@ class SelfProcessor(BaseProcessor):
         Returns:
             List[InfoBase]: 处理后的结构化信息列表
         """
-        self_info_str = await self.self_indentify(observations, running_memorys)
+        self_info_str = await self.self_indentify(observations)
 
         if self_info_str:
             self_info = SelfInfo()
@@ -85,7 +85,7 @@ class SelfProcessor(BaseProcessor):
         return [self_info]
 
     async def self_indentify(
-        self, observations: Optional[List[Observation]] = None, running_memorys: Optional[List[Dict]] = None
+        self, observations: List[Observation] = None, 
     ):
         """
         在回复前进行思考，生成内心想法并收集工具调用结果

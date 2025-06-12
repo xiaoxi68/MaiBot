@@ -115,7 +115,7 @@ class RelationshipProcessor(BaseProcessor):
         self.log_prefix = f"[{name}] "
 
     async def process_info(
-        self, observations: Optional[List[Observation]] = None, running_memorys: Optional[List[Dict]] = None, *infos
+        self, observations: List[Observation] = None, *infos
     ) -> List[InfoBase]:
         """处理信息对象
 
@@ -138,7 +138,7 @@ class RelationshipProcessor(BaseProcessor):
 
     async def relation_identify(
         self,
-        observations: Optional[List[Observation]] = None,
+        observations: List[Observation] = None,
     ):
         """
         在回复前进行思考，生成内心想法并收集工具调用结果
