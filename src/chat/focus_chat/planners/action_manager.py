@@ -1,5 +1,5 @@
 from typing import Dict, List, Optional, Type, Any
-from src.plugin_system.base.base_action import BaseAction, _ACTION_REGISTRY
+from src.plugin_system.base.base_action import BaseAction
 from src.chat.heart_flow.observation.observation import Observation
 from src.chat.focus_chat.replyer.default_replyer import DefaultReplyer
 from src.chat.focus_chat.expressors.default_expressor import DefaultExpressor
@@ -121,8 +121,12 @@ class ActionManager:
         加载所有通过装饰器注册的动作
         """
         try:
-            # 从_ACTION_REGISTRY获取所有已注册动作
-            for action_name, action_class in _ACTION_REGISTRY.items():
+            # 从组件注册中心获取所有已注册的action
+            from src.plugin_system.core.component_registry import component_registry
+            action_registry = component_registry.get_action_registry()
+            
+            # 从action_registry获取所有已注册动作
+            for action_name, action_class in action_registry.items():
                 # 获取动作相关信息
 
                 # 不读取插件动作和基类
@@ -186,11 +190,11 @@ class ActionManager:
         """
         加载所有插件目录中的动作
 
-        注意：插件动作的实际导入已经在main.py中完成，这里只需要从_ACTION_REGISTRY获取
+        注意：插件动作的实际导入已经在main.py中完成，这里只需要从action_registry获取
         同时也从新插件系统的component_registry获取Action组件
         """
         try:
-            # 从旧的_ACTION_REGISTRY获取插件动作
+            # 从旧的action_registry获取插件动作
             self._load_registered_actions()
             logger.debug("从旧注册表加载插件动作成功")
 
@@ -311,7 +315,9 @@ class ActionManager:
             )
 
         # 旧系统的动作创建逻辑
-        handler_class = _ACTION_REGISTRY.get(action_name)
+        from src.plugin_system.core.component_registry import component_registry
+        action_registry = component_registry.get_action_registry()
+        handler_class = action_registry.get(action_name)
         if not handler_class:
             logger.warning(f"未注册的动作类型: {action_name}")
             return None
@@ -575,4 +581,6 @@ class ActionManager:
         Returns:
             Optional[Type[BaseAction]]: 动作处理器类，如果不存在则返回None
         """
-        return _ACTION_REGISTRY.get(action_name)
+        from src.plugin_system.core.component_registry import component_registry
+        action_registry = component_registry.get_action_registry()
+        return action_registry.get(action_name)
