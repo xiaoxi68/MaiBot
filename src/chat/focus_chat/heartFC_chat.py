@@ -588,12 +588,18 @@ class HeartFChatting:
                 return False, "", ""
 
             # 处理动作并获取结果
-            result = await action_handler.handle_action()
+            success, reply_text = await action_handler.handle_action()
             if len(result) == 3:
                 success, reply_text, command = result
             else:
                 success, reply_text = result
                 command = ""
+            
+            # 检查action_data中是否有系统命令，优先使用系统命令
+            if "_system_command" in action_data:
+                command = action_data["_system_command"]
+                logger.debug(f"{self.log_prefix} 从action_data中获取系统命令: {command}")
+            
             logger.debug(f"{self.log_prefix} 麦麦执行了'{action}', 返回结果'{success}', '{reply_text}', '{command}'")
 
             return success, reply_text, command

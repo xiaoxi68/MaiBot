@@ -287,13 +287,10 @@ class ExitFocusChatAction(BaseAction):
         logger.info(f"{self.log_prefix} 决定退出专注聊天: {self.reasoning}")
 
         try:
-            # 转换状态 - 这里返回特殊的命令标识
-            status_message = ""
-
-            # 通过返回值中的特殊标识来通知系统执行状态切换
-            # 系统会识别这个返回值并执行相应的状态切换逻辑
+            # 标记状态切换请求
             self._mark_state_change()
-
+            
+            status_message = "决定退出专注聊天模式"
             return True, status_message
 
         except Exception as e:
@@ -304,7 +301,7 @@ class ExitFocusChatAction(BaseAction):
         """标记状态切换请求"""
         # 通过action_data传递状态切换命令
         self.action_data["_system_command"] = "stop_focus_chat"
-        logger.debug(f"{self.log_prefix} 已标记状态切换命令: stop_focus_chat")
+        logger.info(f"{self.log_prefix} 已标记状态切换命令: stop_focus_chat")
 
 
 @register_plugin
