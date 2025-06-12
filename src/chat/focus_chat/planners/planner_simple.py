@@ -145,7 +145,7 @@ class ActionPlanner(BasePlanner):
             # 获取经过modify_actions处理后的最终可用动作集
             # 注意：动作的激活判定现在在主循环的modify_actions中完成
             # 使用Focus模式过滤动作
-            current_available_actions_dict = self.action_manager.get_using_actions_for_mode(ChatMode.FOCUS)
+            current_available_actions_dict = self.action_manager.get_using_actions_for_mode("focus")
 
             # 获取完整的动作信息
             all_registered_actions = self.action_manager.get_registered_actions()

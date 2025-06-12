@@ -29,7 +29,7 @@ class ActionModifier:
     def __init__(self, action_manager: ActionManager):
         """初始化动作处理器"""
         self.action_manager = action_manager
-        self.all_actions = self.action_manager.get_using_actions_for_mode(ChatMode.FOCUS)
+        self.all_actions = self.action_manager.get_using_actions_for_mode("focus")
 
         # 用于LLM判定的小模型
         self.llm_judge = LLMRequest(
@@ -79,7 +79,7 @@ class ActionModifier:
             if hfc_obs:
                 obs = hfc_obs
                 # 获取适用于FOCUS模式的动作
-                all_actions = self.action_manager.get_using_actions_for_mode(ChatMode.FOCUS)
+                all_actions = self.action_manager.get_using_actions_for_mode("focus")
                 action_changes = await self.analyze_loop_actions(obs)
                 if action_changes["add"] or action_changes["remove"]:
                     # 合并动作变更
@@ -136,7 +136,7 @@ class ActionModifier:
 
             # 获取当前使用的动作集（经过第一阶段处理，且适用于FOCUS模式）
             current_using_actions = self.action_manager.get_using_actions()
-            all_registered_actions = self.action_manager.get_using_actions_for_mode(ChatMode.FOCUS)
+            all_registered_actions = self.action_manager.get_using_actions_for_mode("focus")
 
             # 构建完整的动作信息
             current_actions_with_info = {}

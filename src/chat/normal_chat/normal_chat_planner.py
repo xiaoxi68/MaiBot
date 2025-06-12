@@ -100,7 +100,7 @@ class NormalChatPlanner:
             self_info = name_block + personality_block + identity_block
 
             # 获取当前可用的动作，使用Normal模式过滤
-            current_available_actions = self.action_manager.get_using_actions_for_mode(ChatMode.NORMAL)
+            current_available_actions = self.action_manager.get_using_actions_for_mode("normal")
 
             # 注意：动作的激活判定现在在 normal_chat_action_modifier 中完成
             # 这里直接使用经过 action_modifier 处理后的最终动作集
