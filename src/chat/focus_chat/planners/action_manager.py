@@ -75,8 +75,8 @@ class PluginActionWrapper(BaseAction):
         self.parallel_action = getattr(self.plugin_action, "parallel_action", True)
         self.enable_plugin = True
 
-    async def handle_action(self) -> tuple[bool, str]:
-        """兼容旧系统的动作处理接口，委托给插件Action的execute方法"""
+    async def execute(self) -> tuple[bool, str]:
+        """实现抽象方法execute，委托给插件Action的execute方法"""
         try:
             # 调用插件Action的execute方法
             success, response = await self.plugin_action.execute()
@@ -87,6 +87,10 @@ class PluginActionWrapper(BaseAction):
         except Exception as e:
             logger.error(f"插件Action {self.action_name} 执行异常: {e}")
             return False, f"插件Action执行失败: {str(e)}"
+
+    async def handle_action(self) -> tuple[bool, str]:
+        """兼容旧系统的动作处理接口，委托给execute方法"""
+        return await self.execute()
 
 
 class ActionManager:
