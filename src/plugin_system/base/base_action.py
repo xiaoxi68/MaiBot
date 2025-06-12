@@ -136,40 +136,39 @@ class BaseAction(ABC):
             return await self.api.send_text_to_user(
                 text=content, user_id=str(chat_stream.user_info.user_id), platform=chat_stream.platform
             )
-        
+
     async def send_type_reply(self, type: str, text: str) -> bool:
-            """发送回复消息
+        """发送回复消息
 
-            Args:
-                text: 回复内容
+        Args:
+            text: 回复内容
 
-            Returns:
-                bool: 是否发送成功
-            """
-            chat_stream = self.api.get_service("chat_stream")
-            if not chat_stream:
-                logger.error(f"{self.log_prefix} 没有可用的聊天流发送回复")
-                return False
+        Returns:
+            bool: 是否发送成功
+        """
+        chat_stream = self.api.get_service("chat_stream")
+        if not chat_stream:
+            logger.error(f"{self.log_prefix} 没有可用的聊天流发送回复")
+            return False
 
-            if chat_stream.group_info:
-                # 群聊
-                return await self.api.send_message_to_target(
-                    message_type=type,
-                    content=text,
-                    platform=chat_stream.platform,
-                    target_id=str(chat_stream.group_info.group_id),
-                    is_group=True
-                )
-            else:
-                # 私聊
-                return await self.api.send_message_to_target(
-                    message_type=type,
-                    content=text,
-                    platform=chat_stream.platform,
-                    target_id=str(chat_stream.user_info.user_id),
-                    is_group=False
-                    
-                )
+        if chat_stream.group_info:
+            # 群聊
+            return await self.api.send_message_to_target(
+                message_type=type,
+                content=text,
+                platform=chat_stream.platform,
+                target_id=str(chat_stream.group_info.group_id),
+                is_group=True,
+            )
+        else:
+            # 私聊
+            return await self.api.send_message_to_target(
+                message_type=type,
+                content=text,
+                platform=chat_stream.platform,
+                target_id=str(chat_stream.user_info.user_id),
+                is_group=False,
+            )
 
     async def send_command(self, command_name: str, args: dict = None, display_message: str = None) -> bool:
         """发送命令消息
