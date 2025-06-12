@@ -127,8 +127,9 @@ class ActionManager:
         try:
             # 从组件注册中心获取所有已注册的action
             from src.plugin_system.core.component_registry import component_registry
+
             action_registry = component_registry.get_action_registry()
-            
+
             # 从action_registry获取所有已注册动作
             for action_name, action_class in action_registry.items():
                 # 获取动作相关信息
@@ -320,6 +321,7 @@ class ActionManager:
 
         # 旧系统的动作创建逻辑
         from src.plugin_system.core.component_registry import component_registry
+
         action_registry = component_registry.get_action_registry()
         handler_class = action_registry.get(action_name)
         if not handler_class:
@@ -586,5 +588,6 @@ class ActionManager:
             Optional[Type[BaseAction]]: 动作处理器类，如果不存在则返回None
         """
         from src.plugin_system.core.component_registry import component_registry
+
         action_registry = component_registry.get_action_registry()
         return action_registry.get(action_name)

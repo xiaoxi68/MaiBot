@@ -7,12 +7,14 @@ logger = get_logger("hearflow_api")
 def _get_heartflow():
     """获取heartflow实例的延迟导入函数"""
     from src.chat.heart_flow.heartflow import heartflow
+
     return heartflow
 
 
 def _get_subheartflow_types():
     """获取SubHeartflow和ChatState类型的延迟导入函数"""
     from src.chat.heart_flow.sub_heartflow import SubHeartflow, ChatState
+
     return SubHeartflow, ChatState
 
 
@@ -36,7 +38,7 @@ class HearflowAPI:
         """
         # 使用延迟导入
         heartflow = _get_heartflow()
-        
+
         # 直接从subheartflow_manager获取已存在的子心流
         # 使用锁来确保线程安全
         async with heartflow.subheartflow_manager._lock:
@@ -130,7 +132,9 @@ class HearflowAPI:
 
         # 检查子心流是否处于FOCUSED状态且有HeartFC实例
         if subflow.chat_state.chat_status != ChatState.FOCUSED:
-            logger.debug(f"{self.log_prefix} 子心流 {chat_id} 未处于FOCUSED状态，当前状态: {subflow.chat_state.chat_status.value}")
+            logger.debug(
+                f"{self.log_prefix} 子心流 {chat_id} 未处于FOCUSED状态，当前状态: {subflow.chat_state.chat_status.value}"
+            )
             return None, None
 
         if not subflow.heart_fc_instance:
@@ -140,12 +144,12 @@ class HearflowAPI:
         # 返回replyer和expressor实例
         replyer = subflow.heart_fc_instance.replyer
         expressor = subflow.heart_fc_instance.expressor
-        
+
         if replyer and expressor:
             logger.debug(f"{self.log_prefix} 成功获取子心流 {chat_id} 的replyer和expressor")
         else:
             logger.warning(f"{self.log_prefix} 子心流 {chat_id} 的replyer或expressor为空")
-            
+
         return replyer, expressor
 
     async def get_sub_hearflow_replyer(self, chat_id: str) -> Optional[Any]:
