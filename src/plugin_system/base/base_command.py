@@ -60,7 +60,7 @@ class BaseCommand(ABC):
         """
         pass
 
-    async def send_reply(self, content: str) -> None:
+    async def send_text(self, content: str) -> None:
         """发送回复消息
 
         Args:
@@ -80,10 +80,45 @@ class BaseCommand(ABC):
                 text=content, user_id=str(chat_stream.user_info.user_id), platform=chat_stream.platform
             )
 
+    async def send_type(self, message_type: str, content: str, display_message: str = None) -> bool:
+        """发送指定类型的回复消息到当前聊天环境
+
+        Args:
+            message_type: 消息类型，如"text"、"image"、"emoji"等
+            content: 消息内容
+            display_message: 显示消息（可选）
+
+        Returns:
+            bool: 是否发送成功
+        """
+        # 获取聊天流信息
+        chat_stream = self.message.chat_stream
+
+        if chat_stream.group_info:
+            # 群聊
+            return await self.api.send_message_to_target(
+                message_type=message_type,
+                content=content,
+                platform=chat_stream.platform,
+                target_id=str(chat_stream.group_info.group_id),
+                is_group=True,
+                display_message=display_message,
+            )
+        else:
+            # 私聊
+            return await self.api.send_message_to_target(
+                message_type=message_type,
+                content=content,
+                platform=chat_stream.platform,
+                target_id=str(chat_stream.user_info.user_id),
+                is_group=False,
+                display_message=display_message,
+            )
+
     async def send_command(self, command_name: str, args: dict = None, display_message: str = None) -> bool:
         """发送命令消息
 
-        使用和send_reply相同的方式通过MessageAPI发送命令
+        使用和send_text相同的方式通过MessageAPI发送命令
 
         Args:
             command_name: 命令名称

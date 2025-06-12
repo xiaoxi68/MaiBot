@@ -378,7 +378,7 @@ class PingCommand(BaseCommand):
             message = self.matched_groups.get("message", "")
             reply_text = f"🏓 Pong! {message}" if message else "🏓 Pong!"
 
-            await self.send_reply(reply_text)
+            await self.send_text(reply_text)
             return True, f"发送ping响应: {reply_text}"
 
         except Exception as e:

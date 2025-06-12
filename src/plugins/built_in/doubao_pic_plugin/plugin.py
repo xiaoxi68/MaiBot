@@ -105,14 +105,14 @@ class DoubaoImageGenerationAction(BaseAction):
 
         if not (http_base_url and http_api_key):
             error_msg = "抱歉，图片生成功能所需的HTTP配置（如API地址或密钥）不完整，无法提供服务。"
-            await self.send_reply(error_msg)
+            await self.send_text(error_msg)
             logger.error(f"{self.log_prefix} HTTP调用配置缺失: base_url 或 volcano_generate_api_key.")
             return False, "HTTP配置不完整"
 
         # API密钥验证
         if http_api_key == "YOUR_DOUBAO_API_KEY_HERE":
             error_msg = "图片生成功能尚未配置，请设置正确的API密钥。"
-            await self.send_reply(error_msg)
+            await self.send_text(error_msg)
             logger.error(f"{self.log_prefix} API密钥未配置")
             return False, "API密钥未配置"
 
@@ -120,7 +120,7 @@ class DoubaoImageGenerationAction(BaseAction):
         description = self.action_data.get("description")
         if not description or not description.strip():
             logger.warning(f"{self.log_prefix} 图片描述为空，无法生成图片。")
-            await self.send_reply("你需要告诉我想要画什么样的图片哦~ 比如说'画一只可爱的小猫'")
+            await self.send_text("你需要告诉我想要画什么样的图片哦~ 比如说'画一只可爱的小猫'")
             return False, "图片描述为空"
 
         # 清理和验证描述
@@ -143,12 +143,12 @@ class DoubaoImageGenerationAction(BaseAction):
         if cache_key in self._request_cache:
             cached_result = self._request_cache[cache_key]
             logger.info(f"{self.log_prefix} 使用缓存的图片结果")
-            await self.send_reply("我之前画过类似的图片，用之前的结果~")
+            await self.send_text("我之前画过类似的图片，用之前的结果~")
 
             # 直接发送缓存的结果
             send_success = await self._send_image(cached_result)
             if send_success:
-                await self.send_reply("图片已发送！")
+                await self.send_text("图片已发送！")
                 return True, "图片已发送(缓存)"
             else:
                 # 缓存失败，清除这个缓存项并继续正常流程
@@ -159,7 +159,7 @@ class DoubaoImageGenerationAction(BaseAction):
         seed_val = self._get_seed()
         watermark_val = self._get_watermark()
 
-        await self.send_reply(
+        await self.send_text(
             f"收到！正在为您生成关于 '{description}' 的图片，请稍候...（模型: {default_model}, 尺寸: {image_size}）"
         )
 

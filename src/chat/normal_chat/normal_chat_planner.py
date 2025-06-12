@@ -7,7 +7,7 @@ from src.common.logger import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.individuality.individuality import get_individuality
 from src.chat.focus_chat.planners.action_manager import ActionManager
-from src.chat.actions.base_action import ChatMode
+from src.plugin_system.base.base_action import ChatMode
 from src.chat.message_receive.message import MessageThinking
 from json_repair import repair_json
 from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_before_timestamp_with_chat

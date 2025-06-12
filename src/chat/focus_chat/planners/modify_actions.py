@@ -6,7 +6,7 @@ from src.chat.heart_flow.observation.chatting_observation import ChattingObserva
 from src.chat.message_receive.chat_stream import get_chat_manager
 from src.config.config import global_config
 from src.llm_models.utils_model import LLMRequest
-from src.chat.actions.base_action import ActionActivationType, ChatMode
+from src.plugin_system.base.base_action import ActionActivationType, ChatMode
 import random
 import asyncio
 import hashlib

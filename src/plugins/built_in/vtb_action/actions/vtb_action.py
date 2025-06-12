@@ -1,5 +1,6 @@
 from src.common.logger import get_logger
-from src.chat.actions.plugin_action import PluginAction, register_action, ActionActivationType
+from src.plugin_system.base.base_action import BaseAction as PluginAction, ActionActivationType
+from src.plugin_system.base.base_action import register_action
 from typing import Tuple
 
 logger = get_logger("vtb_action")

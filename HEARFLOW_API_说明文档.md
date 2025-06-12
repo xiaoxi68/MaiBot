@@ -172,7 +172,7 @@ ChatState.ABSENT   # 离开模式
 
 ```python
 from typing import Tuple
-from src.chat.actions.plugin_action import PluginAction, register_action
+from src.plugin_system.base.base_action import BaseAction as PluginAction, register_action
 from src.chat.heart_flow.sub_heartflow import ChatState
 
 @register_action

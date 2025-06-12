@@ -1,5 +1,5 @@
 from typing import Dict, List, Optional, Type, Any
-from src.chat.actions.base_action import BaseAction, _ACTION_REGISTRY
+from src.plugin_system.base.base_action import BaseAction, _ACTION_REGISTRY
 from src.chat.heart_flow.observation.observation import Observation
 from src.chat.focus_chat.replyer.default_replyer import DefaultReplyer
 from src.chat.focus_chat.expressors.default_expressor import DefaultExpressor

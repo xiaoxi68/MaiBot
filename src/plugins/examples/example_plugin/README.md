@@ -157,12 +157,6 @@ src/plugins/built_in/example_comprehensive/
 
 此插件展示了从旧插件系统到新插件系统的完整升级：
 
-### 旧系统特征
-- 使用 `@register_command` 装饰器
-- 继承旧的 `BaseCommand`
-- 硬编码的消息处理逻辑
-- 有限的配置支持
-
 ### 新系统特征
 - 使用统一的组件注册机制
 - 新的 `BaseAction` 和 `BaseCommand` 基类

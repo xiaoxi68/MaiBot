@@ -97,13 +97,13 @@ class MuteAction(BaseAction):
         if not target:
             error_msg = "禁言目标不能为空"
             logger.error(f"{self.log_prefix} {error_msg}")
-            await self.send_reply("没有指定禁言对象呢~")
+            await self.send_text("没有指定禁言对象呢~")
             return False, error_msg
 
         if not duration:
             error_msg = "禁言时长不能为空"
             logger.error(f"{self.log_prefix} {error_msg}")
-            await self.send_reply("没有指定禁言时长呢~")
+            await self.send_text("没有指定禁言时长呢~")
             return False, error_msg
 
         # 获取时长限制配置
@@ -116,7 +116,7 @@ class MuteAction(BaseAction):
             if duration_int <= 0:
                 error_msg = "禁言时长必须大于0"
                 logger.error(f"{self.log_prefix} {error_msg}")
-                await self.send_reply("禁言时长必须是正数哦~")
+                await self.send_text("禁言时长必须是正数哦~")
                 return False, error_msg
 
             # 限制禁言时长范围
@@ -130,7 +130,7 @@ class MuteAction(BaseAction):
         except (ValueError, TypeError):
             error_msg = f"禁言时长格式无效: {duration}"
             logger.error(f"{self.log_prefix} {error_msg}")
-            await self.send_reply("禁言时长必须是数字哦~")
+            await self.send_text("禁言时长必须是数字哦~")
             return False, error_msg
 
         # 获取用户ID
@@ -139,12 +139,12 @@ class MuteAction(BaseAction):
         except Exception as e:
             error_msg = f"查找用户ID时出错: {e}"
             logger.error(f"{self.log_prefix} {error_msg}")
-            await self.send_reply("查找用户信息时出现问题~")
+            await self.send_text("查找用户信息时出现问题~")
             return False, error_msg
 
         if not user_id:
             error_msg = f"未找到用户 {target} 的ID"
-            await self.send_reply(f"找不到 {target} 这个人呢~")
+            await self.send_text(f"找不到 {target} 这个人呢~")
             logger.error(f"{self.log_prefix} {error_msg}")
             return False, error_msg
 
@@ -154,7 +154,7 @@ class MuteAction(BaseAction):
 
         # 获取模板化消息
         message = self._get_template_message(target, time_str, reason)
-        # await self.send_reply(message)
+        # await self.send_text(message)
         await self.send_message_by_expressor(message)
 
         # 发送群聊禁言命令
@@ -170,7 +170,7 @@ class MuteAction(BaseAction):
         else:
             error_msg = "发送禁言命令失败"
             logger.error(f"{self.log_prefix} {error_msg}")
-            await self.send_reply("执行禁言动作失败")
+            await self.send_text("执行禁言动作失败")
             return False, error_msg
 
     def _get_template_message(self, target: str, duration_str: str, reason: str) -> str:
@@ -237,7 +237,7 @@ class MuteCommand(BaseCommand):
             reason = self.matched_groups.get("reason", "管理员操作")
 
             if not all([target, duration]):
-                await self.send_reply("❌ 命令参数不完整，请检查格式")
+                await self.send_text("❌ 命令参数不完整，请检查格式")
                 return False, "参数不完整"
 
             # 获取时长限制配置
@@ -248,19 +248,19 @@ class MuteCommand(BaseCommand):
             try:
                 duration_int = int(duration)
                 if duration_int <= 0:
-                    await self.send_reply("❌ 禁言时长必须大于0")
+                    await self.send_text("❌ 禁言时长必须大于0")
                     return False, "时长无效"
 
                 # 限制禁言时长范围
                 if duration_int < min_duration:
                     duration_int = min_duration
-                    await self.send_reply(f"⚠️ 禁言时长过短，调整为{min_duration}秒")
+                    await self.send_text(f"⚠️ 禁言时长过短，调整为{min_duration}秒")
                 elif duration_int > max_duration:
                     duration_int = max_duration
-                    await self.send_reply(f"⚠️ 禁言时长过长，调整为{max_duration}秒")
+                    await self.send_text(f"⚠️ 禁言时长过长，调整为{max_duration}秒")
 
             except ValueError:
-                await self.send_reply("❌ 禁言时长必须是数字")
+                await self.send_text("❌ 禁言时长必须是数字")
                 return False, "时长格式错误"
 
             # 获取用户ID
@@ -268,11 +268,11 @@ class MuteCommand(BaseCommand):
                 platform, user_id = await self.api.get_user_id_by_person_name(target)
             except Exception as e:
                 logger.error(f"{self.log_prefix} 查找用户ID时出错: {e}")
-                await self.send_reply("❌ 查找用户信息时出现问题")
+                await self.send_text("❌ 查找用户信息时出现问题")
                 return False, str(e)
 
             if not user_id:
-                await self.send_reply(f"❌ 找不到用户: {target}")
+                await self.send_text(f"❌ 找不到用户: {target}")
                 return False, "用户不存在"
 
             # 格式化时长显示
@@ -291,17 +291,17 @@ class MuteCommand(BaseCommand):
             if success:
                 # 获取并发送模板化消息
                 message = self._get_template_message(target, time_str, reason)
-                await self.send_reply(message)
+                await self.send_text(message)
 
                 logger.info(f"{self.log_prefix} 成功禁言 {target}({user_id})，时长 {duration_int} 秒")
                 return True, f"成功禁言 {target}，时长 {time_str}"
             else:
-                await self.send_reply("❌ 发送禁言命令失败")
+                await self.send_text("❌ 发送禁言命令失败")
                 return False, "发送禁言命令失败"
 
         except Exception as e:
             logger.error(f"{self.log_prefix} 禁言命令执行失败: {e}")
-            await self.send_reply(f"❌ 禁言命令错误: {str(e)}")
+            await self.send_text(f"❌ 禁言命令错误: {str(e)}")
             return False, str(e)
 
     def _get_template_message(self, target: str, duration_str: str, reason: str) -> str:

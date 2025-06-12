@@ -15,8 +15,6 @@ from src.chat.focus_chat.info.info_base import InfoBase
 from src.chat.focus_chat.info_processors.chattinginfo_processor import ChattingInfoProcessor
 from src.chat.focus_chat.info_processors.relationship_processor import RelationshipProcessor
 from src.chat.focus_chat.info_processors.working_memory_processor import WorkingMemoryProcessor
-
-# from src.chat.focus_chat.info_processors.action_processor import ActionProcessor
 from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
 from src.chat.heart_flow.observation.working_observation import WorkingMemoryObservation
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation

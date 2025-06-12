@@ -112,7 +112,7 @@ class BaseAction(ABC):
             return attr.value
         return str(attr)
 
-    async def send_reply(self, content: str) -> bool:
+    async def send_text(self, content: str) -> bool:
         """发送回复消息
 
         Args:
@@ -137,7 +137,7 @@ class BaseAction(ABC):
                 text=content, user_id=str(chat_stream.user_info.user_id), platform=chat_stream.platform
             )
 
-    async def send_type_reply(self, type: str, text: str) -> bool:
+    async def send_type(self, type: str, text: str) -> bool:
         """发送回复消息
 
         Args:
@@ -173,7 +173,7 @@ class BaseAction(ABC):
     async def send_command(self, command_name: str, args: dict = None, display_message: str = None) -> bool:
         """发送命令消息
 
-        使用和send_reply相同的方式通过MessageAPI发送命令
+        使用和send_text相同的方式通过MessageAPI发送命令
 
         Args:
             command_name: 命令名称

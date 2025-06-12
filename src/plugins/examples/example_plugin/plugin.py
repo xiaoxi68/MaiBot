@@ -82,7 +82,7 @@ class ComprehensiveHelpCommand(BaseCommand):
 
         except Exception as e:
             logger.error(f"{self.log_prefix} 帮助命令执行失败: {e}")
-            await self.send_reply(f"❌ 帮助系统错误: {str(e)}")
+            await self.send_text(f"❌ 帮助系统错误: {str(e)}")
             return False, str(e)
 
     async def _show_specific_help(self, command_name: str) -> Tuple[bool, str]:
@@ -115,7 +115,7 @@ class ComprehensiveHelpCommand(BaseCommand):
 {chr(10).join(f"  • {example}" for example in info["examples"])}
             """.strip()
 
-        await self.send_reply(response)
+        await self.send_text(response)
         return True, response
 
     async def _show_all_commands(self) -> Tuple[bool, str]:
@@ -143,7 +143,7 @@ class ComprehensiveHelpCommand(BaseCommand):
 💡 使用 /help <命令名> 获取特定命令的详细说明
         """.strip()
 
-        await self.send_reply(help_text)
+        await self.send_text(help_text)
         return True, help_text
 
 
@@ -167,13 +167,13 @@ class MessageSendCommand(BaseCommand):
             content = self.matched_groups.get("content")
 
             if not all([target_type, target_id, content]):
-                await self.send_reply("❌ 命令参数不完整，请检查格式")
+                await self.send_text("❌ 命令参数不完整，请检查格式")
                 return False, "参数不完整"
 
             # 长度限制检查
             max_length = self.api.get_config("send.max_message_length", 500)
             if len(content) > max_length:
-                await self.send_reply(f"❌ 消息过长，最大长度: {max_length} 字符")
+                await self.send_text(f"❌ 消息过长，最大长度: {max_length} 字符")
                 return False, "消息过长"
 
             logger.info(f"{self.log_prefix} 发送消息: {target_type}:{target_id} -> {content[:50]}...")
@@ -186,23 +186,23 @@ class MessageSendCommand(BaseCommand):
                 success = await self.api.send_text_to_user(text=content, user_id=target_id, platform="qq")
                 target_desc = f"用户 {target_id}"
             else:
-                await self.send_reply(f"❌ 不支持的目标类型: {target_type}")
+                await self.send_text(f"❌ 不支持的目标类型: {target_type}")
                 return False, f"不支持的目标类型: {target_type}"
 
             # 返回结果
             if success:
                 response = f"✅ 消息已成功发送到 {target_desc}"
-                await self.send_reply(response)
+                await self.send_text(response)
                 return True, response
             else:
                 response = f"❌ 消息发送失败，目标 {target_desc} 可能不存在"
-                await self.send_reply(response)
+                await self.send_text(response)
                 return False, response
 
         except Exception as e:
             logger.error(f"{self.log_prefix} 消息发送失败: {e}")
             error_msg = f"❌ 发送失败: {str(e)}"
-            await self.send_reply(error_msg)
+            await self.send_text(error_msg)
             return False, str(e)
 
 
@@ -232,15 +232,15 @@ class DiceCommand(BaseCommand):
                     count = int(count_str)
                     if count <= 0:
                         response = "❌ 骰子数量必须大于0"
-                        await self.send_reply(response)
+                        await self.send_text(response)
                         return False, response
                     if count > 10:  # 限制最大数量
                         response = "❌ 一次最多只能掷10个骰子"
-                        await self.send_reply(response)
+                        await self.send_text(response)
                         return False, response
                 except ValueError:
                     response = "❌ 骰子数量必须是整数"
-                    await self.send_reply(response)
+                    await self.send_text(response)
                     return False, response
 
             # 生成随机数
@@ -254,13 +254,13 @@ class DiceCommand(BaseCommand):
                 total = sum(results)
                 message = f"🎲 掷出了 {count} 个骰子: [{dice_results}]，总点数: {total}"
 
-            await self.send_reply(message)
+            await self.send_text(message)
             logger.info(f"{self.log_prefix} 执行骰子命令: {message}")
             return True, message
 
         except Exception as e:
             error_msg = f"❌ 执行命令时出错: {str(e)}"
-            await self.send_reply(error_msg)
+            await self.send_text(error_msg)
             logger.error(f"{self.log_prefix} 执行骰子命令时出错: {e}")
             return False, error_msg
 
@@ -280,14 +280,14 @@ class EchoCommand(BaseCommand):
 
             if not message:
                 response = "❌ 请提供要重复的消息！用法：/echo <消息内容>"
-                await self.send_reply(response)
+                await self.send_text(response)
                 return False, response
 
             # 检查消息长度限制
             max_length = self.api.get_config("echo.max_length", 200)
             if len(message) > max_length:
                 response = f"❌ 消息过长，最大长度: {max_length} 字符"
-                await self.send_reply(response)
+                await self.send_text(response)
                 return False, response
 
             # 格式化回声消息
@@ -297,14 +297,14 @@ class EchoCommand(BaseCommand):
             else:
                 response = message
 
-            await self.send_reply(response)
+            await self.send_text(response)
             logger.info(f"{self.log_prefix} 回声消息: {message}")
             return True, response
 
         except Exception as e:
             logger.error(f"{self.log_prefix} 回声命令失败: {e}")
             error_msg = f"❌ 回声失败: {str(e)}"
-            await self.send_reply(error_msg)
+            await self.send_text(error_msg)
             return False, str(e)
 
 
@@ -369,14 +369,14 @@ class MessageInfoCommand(BaseCommand):
                 )
 
             response = "\n".join(info_parts)
-            await self.send_reply(response)
+            await self.send_text(response)
             logger.info(f"{self.log_prefix} 显示消息信息: {user_info.user_id}")
             return True, response
 
         except Exception as e:
             logger.error(f"{self.log_prefix} 消息信息查询失败: {e}")
             error_msg = f"❌ 信息查询失败: {str(e)}"
-            await self.send_reply(error_msg)
+            await self.send_text(error_msg)
             return False, str(e)
 
 
