@@ -139,7 +139,7 @@ class ActionModifier:
 
             # 获取当前使用的动作集（经过第一阶段处理，且适用于FOCUS模式）
             current_using_actions = self.action_manager.get_using_actions()
-            all_registered_actions = self.action_manager.get_using_actions_for_mode("focus")
+            all_registered_actions = self.action_manager.get_registered_actions()
 
             # 构建完整的动作信息
             current_actions_with_info = {}
@@ -165,14 +165,15 @@ class ActionModifier:
                     # 确定移除原因
                     if action_name in all_registered_actions:
                         action_info = all_registered_actions[action_name]
-                        activation_type = action_info.get("focus_activation_type", ActionActivationType.ALWAYS)
+                        activation_type = action_info.get("focus_activation_type", "always")
 
-                        if activation_type == ActionActivationType.RANDOM:
+                        # 处理字符串格式的激活类型值
+                        if activation_type == "random":
                             probability = action_info.get("random_probability", 0.3)
                             removal_reasons[action_name] = f"RANDOM类型未触发（概率{probability}）"
-                        elif activation_type == ActionActivationType.LLM_JUDGE:
+                        elif activation_type == "llm_judge":
                             removal_reasons[action_name] = "LLM判定未激活"
-                        elif activation_type == ActionActivationType.KEYWORD:
+                        elif activation_type == "keyword":
                             keywords = action_info.get("activation_keywords", [])
                             removal_reasons[action_name] = f"关键词未匹配（关键词: {keywords}）"
                         else:
@@ -215,15 +216,16 @@ class ActionModifier:
         keyword_actions = {}
 
         for action_name, action_info in actions_with_info.items():
-            activation_type = action_info.get("focus_activation_type", ActionActivationType.ALWAYS)
+            activation_type = action_info.get("focus_activation_type", "always")
 
-            if activation_type == ActionActivationType.ALWAYS:
+            # 现在统一是字符串格式的激活类型值
+            if activation_type == "always":
                 always_actions[action_name] = action_info
-            elif activation_type == ActionActivationType.RANDOM:
+            elif activation_type == "random":
                 random_actions[action_name] = action_info
-            elif activation_type == ActionActivationType.LLM_JUDGE:
+            elif activation_type == "llm_judge":
                 llm_judge_actions[action_name] = action_info
-            elif activation_type == ActionActivationType.KEYWORD:
+            elif activation_type == "keyword":
                 keyword_actions[action_name] = action_info
             else:
                 logger.warning(f"{self.log_prefix}未知的激活类型: {activation_type}，跳过处理")

@@ -184,13 +184,14 @@ class NormalChatActionModifier:
 
         for action_name, action_info in actions_with_info.items():
             # 使用normal_activation_type
-            activation_type = action_info.get("normal_activation_type", ActionActivationType.ALWAYS)
+            activation_type = action_info.get("normal_activation_type", "always")
 
-            if activation_type == ActionActivationType.ALWAYS:
+            # 现在统一是字符串格式的激活类型值
+            if activation_type == "always":
                 always_actions[action_name] = action_info
-            elif activation_type == ActionActivationType.RANDOM or activation_type == ActionActivationType.LLM_JUDGE:
+            elif activation_type == "random" or activation_type == "llm_judge":
                 random_actions[action_name] = action_info
-            elif activation_type == ActionActivationType.KEYWORD:
+            elif activation_type == "keyword":
                 keyword_actions[action_name] = action_info
             else:
                 logger.warning(f"{self.log_prefix}未知的激活类型: {activation_type}，跳过处理")

@@ -145,16 +145,22 @@ class ActionManager:
                 is_enabled: bool = getattr(action_class, "enable_plugin", True)
 
                 # 获取激活类型相关属性
-                focus_activation_type: str = getattr(action_class, "focus_activation_type", "always")
-                normal_activation_type: str = getattr(action_class, "normal_activation_type", "always")
+                focus_activation_type_attr = getattr(action_class, "focus_activation_type", "always")
+                normal_activation_type_attr = getattr(action_class, "normal_activation_type", "always")
 
+                # 处理枚举值，提取.value
+                focus_activation_type = focus_activation_type_attr.value if hasattr(focus_activation_type_attr, 'value') else str(focus_activation_type_attr)
+                normal_activation_type = normal_activation_type_attr.value if hasattr(normal_activation_type_attr, 'value') else str(normal_activation_type_attr)
+
+                # 其他属性
                 random_probability: float = getattr(action_class, "random_activation_probability", 0.3)
                 llm_judge_prompt: str = getattr(action_class, "llm_judge_prompt", "")
                 activation_keywords: list[str] = getattr(action_class, "activation_keywords", [])
                 keyword_case_sensitive: bool = getattr(action_class, "keyword_case_sensitive", False)
 
-                # 获取模式启用属性
-                mode_enable: str = getattr(action_class, "mode_enable", "all")
+                # 处理模式启用属性
+                mode_enable_attr = getattr(action_class, "mode_enable", "all")
+                mode_enable = mode_enable_attr.value if hasattr(mode_enable_attr, 'value') else str(mode_enable_attr)
 
                 # 获取并行执行属性
                 parallel_action: bool = getattr(action_class, "parallel_action", False)
@@ -442,11 +448,11 @@ class ActionManager:
         """
         filtered_actions = {}
         
-        print(self._using_actions)
+        # print(self._using_actions)
 
         for action_name, action_info in self._using_actions.items():
-            print(f"action_info: {action_info}")
-            print(f"action_name: {action_name}")
+            # print(f"action_info: {action_info}")
+            # print(f"action_name: {action_name}")
             action_mode = action_info.get("mode_enable", "all")
 
             # 检查动作是否在当前模式下启用
