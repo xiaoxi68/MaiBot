@@ -16,6 +16,7 @@ MaiBot-Napcat-Adapter
 /log_debug
 /src/test
 nonebot-maibot-adapter/
+MaiMBot-LPMM
 *.zip
 run.bat
 log_debug/

@@ -1,5 +1,5 @@
 [inner]
-version = "2.18.0"
+version = "2.19.0"
 
 #----以下是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 #如果你想要修改配置文件，请在修改后将version的值进行变更
@@ -183,7 +183,15 @@ max_length = 512 # 回复允许的最大长度
 max_sentence_num = 8 # 回复允许的最大句子数
 enable_kaomoji_protection = false # 是否启用颜文字保护
 
+[log]
+date_style = "Y-m-d H:i:s" # 日期格式
+log_level_style = "lite" # 日志级别样式,可选FULL，compact，lite
+color_text = "title" # 日志文本颜色，可选none，title，full
+log_level = "INFO"
 
+# 第三方库日志控制
+suppress_libraries = ["faiss","httpx", "urllib3", "asyncio", "websockets", "httpcore", "requests", "peewee", "openai"] # 完全屏蔽的库
+library_log_levels = { "aiohttp" = "WARNING"} # 设置特定库的日志级别
 
 #下面的模型若使用硅基流动则不需要更改，使用ds官方则改成.env自定义的宏，使用自定义模型则选择定位相似的模型自己填写
 

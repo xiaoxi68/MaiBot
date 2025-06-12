@@ -5,10 +5,271 @@ from typing import Callable, Optional
 import json
 
 import structlog
+from structlog.dev import ConsoleRenderer
+import toml
 
 # 创建logs目录
 LOG_DIR = Path("logs")
 LOG_DIR.mkdir(exist_ok=True)
+
+# 读取日志配置
+def load_log_config():
+    """从配置文件加载日志设置"""
+    config_path = Path("config/bot_config.toml")
+    default_config = {
+        "date_style": "Y-m-d H:i:s",
+        "log_level_style": "lite", 
+        "color_text": "title",
+        "log_level": "INFO",
+        "suppress_libraries": [],
+        "library_log_levels": {}
+    }
+    
+    try:
+        if config_path.exists():
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = toml.load(f)
+                return config.get('log', default_config)
+    except Exception:
+        pass
+    
+    return default_config
+
+LOG_CONFIG = load_log_config()
+
+def get_timestamp_format():
+    """将配置中的日期格式转换为Python格式"""
+    date_style = LOG_CONFIG.get("date_style", "Y-m-d H:i:s")
+    # 转换PHP风格的日期格式到Python格式
+    format_map = {
+        'Y': '%Y',  # 4位年份
+        'm': '%m',  # 月份（01-12）
+        'd': '%d',  # 日期（01-31）
+        'H': '%H',  # 小时（00-23）
+        'i': '%M',  # 分钟（00-59）
+        's': '%S',  # 秒数（00-59）
+    }
+    
+    python_format = date_style
+    for php_char, python_char in format_map.items():
+        python_format = python_format.replace(php_char, python_char)
+    
+    return python_format
+
+def configure_third_party_loggers():
+    """配置第三方库的日志级别"""
+    # 设置全局日志级别
+    global_log_level = LOG_CONFIG.get("log_level", "INFO")
+    root_logger = logging.getLogger()
+    root_logger.setLevel(getattr(logging, global_log_level.upper(), logging.INFO))
+    
+    # 完全屏蔽的库
+    suppress_libraries = LOG_CONFIG.get("suppress_libraries", [])
+    for lib_name in suppress_libraries:
+        lib_logger = logging.getLogger(lib_name)
+        lib_logger.setLevel(logging.CRITICAL + 1)  # 设置为比CRITICAL更高的级别，基本屏蔽所有日志
+        lib_logger.propagate = False  # 阻止向上传播
+    
+    # 设置特定级别的库
+    library_log_levels = LOG_CONFIG.get("library_log_levels", {})
+    for lib_name, level_name in library_log_levels.items():
+        lib_logger = logging.getLogger(lib_name)
+        level = getattr(logging, level_name.upper(), logging.WARNING)
+        lib_logger.setLevel(level)
+
+
+def reconfigure_existing_loggers():
+    """重新配置所有已存在的logger，解决加载顺序问题"""
+    # 获取根logger
+    root_logger = logging.getLogger()
+    
+    # 重新设置根logger的所有handler的格式化器
+    for handler in root_logger.handlers:
+        if isinstance(handler, logging.handlers.RotatingFileHandler):
+            handler.setFormatter(file_formatter)
+        elif isinstance(handler, logging.StreamHandler):
+            handler.setFormatter(console_formatter)
+    
+    # 遍历所有已存在的logger并重新配置
+    logger_dict = logging.getLogger().manager.loggerDict
+    for name, logger_obj in logger_dict.items():
+        if isinstance(logger_obj, logging.Logger):
+            # 检查是否是第三方库logger
+            suppress_libraries = LOG_CONFIG.get("suppress_libraries", [])
+            library_log_levels = LOG_CONFIG.get("library_log_levels", {})
+            
+            # 如果在屏蔽列表中
+            if any(name.startswith(lib) for lib in suppress_libraries):
+                logger_obj.setLevel(logging.CRITICAL + 1)
+                logger_obj.propagate = False
+                continue
+            
+            # 如果在特定级别设置中
+            for lib_name, level_name in library_log_levels.items():
+                if name.startswith(lib_name):
+                    level = getattr(logging, level_name.upper(), logging.WARNING)
+                    logger_obj.setLevel(level)
+                    break
+            
+            # 强制清除并重新设置所有handler
+            original_handlers = logger_obj.handlers[:]
+            for handler in original_handlers:
+                logger_obj.removeHandler(handler)
+            
+            # 如果logger没有handler，让它使用根logger的handler（propagate=True）
+            if not logger_obj.handlers:
+                logger_obj.propagate = True
+            
+            # 如果logger有自己的handler，重新配置它们
+            for handler in original_handlers:
+                if isinstance(handler, logging.handlers.RotatingFileHandler):
+                    handler.setFormatter(file_formatter)
+                elif isinstance(handler, logging.StreamHandler):
+                    handler.setFormatter(console_formatter)
+                logger_obj.addHandler(handler)
+
+# 定义模块颜色映射
+MODULE_COLORS = {
+    "api": "\033[92m",         # 亮绿色
+    "emoji": "\033[92m",       # 亮绿色
+    "chat": "\033[94m",        # 亮蓝色
+    "config": "\033[93m",      # 亮黄色
+    "common": "\033[95m",      # 亮紫色
+    "tools": "\033[96m",       # 亮青色
+    "lpmm": "\033[96m",
+    "plugin_system": "\033[91m", # 亮红色
+    "experimental": "\033[97m", # 亮白色
+    "person_info": "\033[32m", # 绿色
+    "individuality": "\033[34m", # 蓝色
+    "manager": "\033[35m",     # 紫色
+    "llm_models": "\033[36m",  # 青色
+    "plugins": "\033[31m",     # 红色
+    "plugin_api": "\033[33m",  # 黄色
+    "remote": "\033[38;5;93m", # 紫蓝色
+}
+
+RESET_COLOR = "\033[0m"
+
+
+class ModuleColoredConsoleRenderer:
+    """自定义控制台渲染器，为不同模块提供不同颜色"""
+    
+    def __init__(self, colors=True):
+        self._colors = colors
+        self._config = LOG_CONFIG
+        
+        # 日志级别颜色
+        self._level_colors = {
+            "debug": "\033[38;5;208m",    # 橙色
+            "info": "\033[34m",           # 蓝色
+            "success": "\033[32m",        # 绿色
+            "warning": "\033[33m",        # 黄色
+            "error": "\033[31m",          # 红色
+            "critical": "\033[35m",       # 紫色
+        }
+        
+        # 根据配置决定是否启用颜色
+        color_text = self._config.get("color_text", "title")
+        if color_text == "none":
+            self._colors = False
+        elif color_text == "title":
+            self._enable_module_colors = True
+            self._enable_level_colors = False
+        elif color_text == "full":
+            self._enable_module_colors = True
+            self._enable_level_colors = True
+        else:
+            self._enable_module_colors = True
+            self._enable_level_colors = False
+    
+    def __call__(self, logger, method_name, event_dict):
+        """渲染日志消息"""
+        # 获取基本信息
+        timestamp = event_dict.get("timestamp", "")
+        level = event_dict.get("level", "info")
+        logger_name = event_dict.get("logger_name", "")
+        event = event_dict.get("event", "")
+        
+        # 构建输出
+        parts = []
+        
+        # 日志级别样式配置
+        log_level_style = self._config.get("log_level_style", "lite")
+        level_color = self._level_colors.get(level.lower(), "") if self._colors else ""
+        
+        # 时间戳（lite模式下按级别着色）
+        if timestamp:
+            if log_level_style == "lite" and level_color:
+                timestamp_part = f"{level_color}{timestamp}{RESET_COLOR}"
+            else:
+                timestamp_part = timestamp
+            parts.append(timestamp_part)
+        
+        # 日志级别显示（根据配置样式）
+        if log_level_style == "full":
+            # 显示完整级别名并着色
+            level_text = level.upper()
+            if level_color:
+                level_part = f"{level_color}[{level_text:>8}]{RESET_COLOR}"
+            else:
+                level_part = f"[{level_text:>8}]"
+            parts.append(level_part)
+            
+        elif log_level_style == "compact":
+            # 只显示首字母并着色
+            level_text = level.upper()[0]
+            if level_color:
+                level_part = f"{level_color}[{level_text:>8}]{RESET_COLOR}"
+            else:
+                level_part = f"[{level_text:>8}]"
+            parts.append(level_part)
+            
+        # lite模式不显示级别，只给时间戳着色
+        
+        # 模块名称（带颜色）
+        if logger_name:
+            if self._colors and self._enable_module_colors:
+                module_color = MODULE_COLORS.get(logger_name, "")
+                if module_color:
+                    module_part = f"{module_color}[{logger_name}]{RESET_COLOR}"
+                else:
+                    module_part = f"[{logger_name}]"
+            else:
+                module_part = f"[{logger_name}]"
+            parts.append(module_part)
+        
+        # 消息内容（确保转换为字符串）
+        if isinstance(event, str):
+            parts.append(event)
+        elif isinstance(event, dict):
+            # 如果是字典，格式化为可读字符串
+            try:
+                parts.append(json.dumps(event, ensure_ascii=False, indent=None))
+            except (TypeError, ValueError):
+                parts.append(str(event))
+        else:
+            # 其他类型直接转换为字符串
+            parts.append(str(event))
+        
+        # 处理其他字段
+        extras = []
+        for key, value in event_dict.items():
+            if key not in ("timestamp", "level", "logger_name", "event"):
+                # 确保值也转换为字符串
+                if isinstance(value, (dict, list)):
+                    try:
+                        value_str = json.dumps(value, ensure_ascii=False, indent=None)
+                    except (TypeError, ValueError):
+                        value_str = str(value)
+                else:
+                    value_str = str(value)
+                extras.append(f"{key}={value_str}")
+        
+        if extras:
+            parts.append(" ".join(extras))
+        
+        return " ".join(parts)
+
 
 # 配置标准logging以支持文件输出和压缩
 logging.basicConfig(
@@ -27,21 +288,26 @@ logging.basicConfig(
     ],
 )
 
-structlog.configure(
-    processors=[
-        structlog.contextvars.merge_contextvars,
-        structlog.processors.add_log_level,
-        structlog.processors.StackInfoRenderer(),
-        structlog.dev.set_exc_info,
-        structlog.processors.TimeStamper(fmt="%Y-%m-%d %H:%M:%S", utc=False),
-        # 根据输出类型选择不同的渲染器
-        structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
-    ],
-    wrapper_class=structlog.stdlib.BoundLogger,
-    context_class=dict,
-    logger_factory=structlog.stdlib.LoggerFactory(),
-    cache_logger_on_first_use=True,
-)
+def configure_structlog():
+    """配置structlog"""
+    structlog.configure(
+        processors=[
+            structlog.contextvars.merge_contextvars,
+            structlog.processors.add_log_level,
+            structlog.processors.StackInfoRenderer(),
+            structlog.dev.set_exc_info,
+            structlog.processors.TimeStamper(fmt=get_timestamp_format(), utc=False),
+            # 根据输出类型选择不同的渲染器
+            structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
+        ],
+        wrapper_class=structlog.stdlib.BoundLogger,
+        context_class=dict,
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        cache_logger_on_first_use=True,
+    )
+
+# 配置structlog
+configure_structlog()
 
 # 为文件输出配置JSON格式
 file_formatter = structlog.stdlib.ProcessorFormatter(
@@ -58,12 +324,12 @@ file_formatter = structlog.stdlib.ProcessorFormatter(
 
 # 为控制台输出配置可读格式
 console_formatter = structlog.stdlib.ProcessorFormatter(
-    processor=structlog.dev.ConsoleRenderer(colors=True),
+    processor=ModuleColoredConsoleRenderer(colors=True),
     foreign_pre_chain=[
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
         structlog.stdlib.PositionalArgumentsFormatter(),
-        structlog.processors.TimeStamper(fmt="%Y-%m-%d %H:%M:%S", utc=False),
+        structlog.processors.TimeStamper(fmt=get_timestamp_format(), utc=False),
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
     ],
@@ -76,6 +342,42 @@ for handler in root_logger.handlers:
         handler.setFormatter(file_formatter)
     else:
         handler.setFormatter(console_formatter)
+
+# 立即配置日志系统，确保最早期的日志也使用正确格式
+def _immediate_setup():
+    """立即设置日志系统，在模块导入时就生效"""
+    # 重新配置structlog
+    configure_structlog()
+    
+    # 清除所有已有的handler，重新配置
+    root_logger = logging.getLogger()
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+    
+    # 重新添加配置好的handler
+    root_logger.addHandler(logging.handlers.RotatingFileHandler(
+        LOG_DIR / "app.log.jsonl",
+        maxBytes=10 * 1024 * 1024,
+        backupCount=5,
+        encoding="utf-8",
+    ))
+    root_logger.addHandler(logging.StreamHandler())
+    
+    # 设置格式化器
+    for handler in root_logger.handlers:
+        if isinstance(handler, logging.handlers.RotatingFileHandler):
+            handler.setFormatter(file_formatter)
+        else:
+            handler.setFormatter(console_formatter)
+    
+    # 配置第三方库日志
+    configure_third_party_loggers()
+    
+    # 重新配置所有已存在的logger
+    reconfigure_existing_loggers()
+
+# 立即执行配置
+_immediate_setup()
 
 raw_logger = structlog.get_logger()
 
@@ -114,6 +416,134 @@ def configure_logging(
     root_logger.setLevel(getattr(logging, level.upper()))
 
 
+def set_module_color(module_name: str, color_code: str):
+    """为指定模块设置颜色
+    
+    Args:
+        module_name: 模块名称
+        color_code: ANSI颜色代码，例如 '\033[92m' 表示亮绿色
+    """
+    MODULE_COLORS[module_name] = color_code
+
+
+def get_module_colors():
+    """获取当前模块颜色配置"""
+    return MODULE_COLORS.copy()
+
+
+def reload_log_config():
+    """重新加载日志配置"""
+    global LOG_CONFIG
+    LOG_CONFIG = load_log_config()
+    
+    # 重新配置console渲染器
+    root_logger = logging.getLogger()
+    for handler in root_logger.handlers:
+        if isinstance(handler, logging.StreamHandler) and not isinstance(handler, logging.handlers.RotatingFileHandler):
+            # 这是控制台处理器，更新其格式化器
+            handler.setFormatter(structlog.stdlib.ProcessorFormatter(
+                processor=ModuleColoredConsoleRenderer(colors=True),
+                foreign_pre_chain=[
+                    structlog.stdlib.add_logger_name,
+                    structlog.stdlib.add_log_level,
+                    structlog.stdlib.PositionalArgumentsFormatter(),
+                    structlog.processors.TimeStamper(fmt=get_timestamp_format(), utc=False),
+                    structlog.processors.StackInfoRenderer(),
+                    structlog.processors.format_exc_info,
+                ],
+            ))
+    
+    # 重新配置第三方库日志
+    configure_third_party_loggers()
+    
+    # 重新配置所有已存在的logger
+    reconfigure_existing_loggers()
+
+
+def get_log_config():
+    """获取当前日志配置"""
+    return LOG_CONFIG.copy()
+
+
+def force_reset_all_loggers():
+    """强制重置所有logger，解决格式不一致问题"""
+    # 清除所有现有的logger配置
+    logging.getLogger().manager.loggerDict.clear()
+    
+    # 重新配置根logger
+    root_logger = logging.getLogger()
+    root_logger.handlers.clear()
+    
+    # 重新添加我们的handler
+    root_logger.addHandler(logging.handlers.RotatingFileHandler(
+        LOG_DIR / "app.log.jsonl",
+        maxBytes=10 * 1024 * 1024,
+        backupCount=5,
+        encoding="utf-8",
+    ))
+    root_logger.addHandler(logging.StreamHandler())
+    
+    # 设置格式化器
+    for handler in root_logger.handlers:
+        if isinstance(handler, logging.handlers.RotatingFileHandler):
+            handler.setFormatter(file_formatter)
+        else:
+            handler.setFormatter(console_formatter)
+    
+    # 设置级别
+    global_log_level = LOG_CONFIG.get("log_level", "INFO")
+    root_logger.setLevel(getattr(logging, global_log_level.upper(), logging.INFO))
+
+
+def initialize_logging():
+    """手动初始化日志系统，确保所有logger都使用正确的配置
+    
+    在应用程序的早期调用此函数，确保所有模块都使用统一的日志配置
+    """
+    global LOG_CONFIG
+    LOG_CONFIG = load_log_config()
+    configure_third_party_loggers()
+    reconfigure_existing_loggers()
+    
+    # 输出初始化信息
+    logger = get_logger("logger")
+    log_level = LOG_CONFIG.get("log_level", "INFO")
+    logger.info(f"日志系统已重新初始化，日志级别: {log_level}，所有logger已统一配置")
+
+
+def force_initialize_logging():
+    """强制重新初始化整个日志系统，解决格式不一致问题"""
+    global LOG_CONFIG
+    LOG_CONFIG = load_log_config()
+    
+    # 强制重置所有logger
+    force_reset_all_loggers()
+    
+    # 重新配置structlog
+    configure_structlog()
+    
+    # 配置第三方库
+    configure_third_party_loggers()
+    
+    # 输出初始化信息
+    logger = get_logger("logger")
+    log_level = LOG_CONFIG.get("log_level", "INFO")
+    logger.info(f"日志系统已强制重新初始化，日志级别: {log_level}，所有logger格式已统一")
+
+
+def show_module_colors():
+    """显示所有模块的颜色效果"""
+    logger = get_logger("demo")
+    print("\n=== 模块颜色展示 ===")
+    
+    for module_name, color_code in MODULE_COLORS.items():
+        # 临时创建一个该模块的logger来展示颜色
+        demo_logger = structlog.get_logger(module_name).bind(logger_name=module_name)
+        demo_logger.info(f"这是 {module_name} 模块的颜色效果")
+    
+    print("=== 颜色展示结束 ===\n")
+
+
 def format_json_for_logging(data, indent=2, ensure_ascii=False):
     """将JSON数据格式化为可读字符串
 
@@ -126,17 +556,9 @@ def format_json_for_logging(data, indent=2, ensure_ascii=False):
         str: 格式化后的JSON字符串
     """
     if isinstance(data, str):
-        try:
-            # 如果是JSON字符串，先解析再格式化
-            parsed_data = json.loads(data)
-            return json.dumps(parsed_data, indent=indent, ensure_ascii=ensure_ascii)
-        except json.JSONDecodeError:
-            # 如果不是有效JSON，直接返回
-            return data
+        # 如果是JSON字符串，先解析再格式化
+        parsed_data = json.loads(data)
+        return json.dumps(parsed_data, indent=indent, ensure_ascii=ensure_ascii)
     else:
         # 如果是对象，直接格式化
-        try:
-            return json.dumps(data, indent=indent, ensure_ascii=ensure_ascii)
-        except (TypeError, ValueError):
-            # 如果无法序列化，返回字符串表示
-            return str(data)
+        return json.dumps(data, indent=indent, ensure_ascii=ensure_ascii)

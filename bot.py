@@ -7,9 +7,12 @@ import time
 import platform
 import traceback
 from dotenv import load_dotenv
-from src.common.logger import get_logger
 
-# from src.common.logger import LogConfig, CONFIRM_STYLE_CONFIG
+# 最早期初始化日志系统，确保所有后续模块都使用正确的日志格式
+from src.common.logger import initialize_logging
+initialize_logging()
+
+from src.common.logger import get_logger
 from src.common.crash_logger import install_crash_handler
 from src.main import MainSystem
 from rich.traceback import install
@@ -42,7 +45,6 @@ driver = None
 app = None
 loop = None
 
-# shutdown_requested = False  # 新增全局变量
 
 
 async def request_shutdown() -> bool:

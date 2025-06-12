@@ -14,7 +14,6 @@ from src.chat.focus_chat.heartFC_Cycleinfo import CycleDetail
 from src.chat.focus_chat.info.info_base import InfoBase
 from src.chat.focus_chat.info_processors.chattinginfo_processor import ChattingInfoProcessor
 from src.chat.focus_chat.info_processors.relationship_processor import RelationshipProcessor
-from src.chat.focus_chat.info_processors.mind_processor import MindProcessor
 from src.chat.focus_chat.info_processors.working_memory_processor import WorkingMemoryProcessor
 
 # from src.chat.focus_chat.info_processors.action_processor import ActionProcessor
@@ -47,7 +46,6 @@ OBSERVATION_CLASSES = {
 # 定义处理器映射：键是处理器名称，值是 (处理器类, 可选的配置键名)
 PROCESSOR_CLASSES = {
     "ChattingInfoProcessor": (ChattingInfoProcessor, None),
-    "MindProcessor": (MindProcessor, "mind_processor"),
     "ToolProcessor": (ToolProcessor, "tool_use_processor"),
     "WorkingMemoryProcessor": (WorkingMemoryProcessor, "working_memory_processor"),
     "SelfProcessor": (SelfProcessor, "self_identify_processor"),
@@ -189,7 +187,6 @@ class HeartFChatting:
                 processor_actual_class = processor_info[0]  # 获取实际的类定义
                 # 根据处理器类名判断是否需要 subheartflow_id
                 if name in [
-                    "MindProcessor",
                     "ToolProcessor",
                     "WorkingMemoryProcessor",
                     "SelfProcessor",
@@ -494,9 +491,9 @@ class HeartFChatting:
 
                 loop_plan_info = {
                     "action_result": plan_result.get("action_result", {}),
-                    "current_mind": plan_result.get("current_mind", ""),
                     "observed_messages": plan_result.get("observed_messages", ""),
                 }
+
 
             with Timer("执行动作", cycle_timers):
                 action_type, action_data, reasoning = (
@@ -504,6 +501,7 @@ class HeartFChatting:
                     plan_result.get("action_result", {}).get("action_data", {}),
                     plan_result.get("action_result", {}).get("reasoning", "未提供理由"),
                 )
+
 
                 if action_type == "reply":
                     action_str = "回复"
