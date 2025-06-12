@@ -494,14 +494,12 @@ class HeartFChatting:
                     "observed_messages": plan_result.get("observed_messages", ""),
                 }
 
-
             with Timer("执行动作", cycle_timers):
                 action_type, action_data, reasoning = (
                     plan_result.get("action_result", {}).get("action_type", "error"),
                     plan_result.get("action_result", {}).get("action_data", {}),
                     plan_result.get("action_result", {}).get("reasoning", "未提供理由"),
                 )
-
 
                 if action_type == "reply":
                     action_str = "回复"

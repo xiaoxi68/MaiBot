@@ -14,4 +14,4 @@ from common.logger import reload_log_config
 
 print("🔄 重新加载日志配置...")
 reload_log_config()
-print("✅ 配置已重新加载！faiss日志已被屏蔽。") 
+print("✅ 配置已重新加载！faiss日志已被屏蔽。")

@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 
 # 最早期初始化日志系统，确保所有后续模块都使用正确的日志格式
 from src.common.logger import initialize_logging
+
 initialize_logging()
 
 from src.common.logger import get_logger
@@ -44,7 +45,6 @@ uvicorn_server = None
 driver = None
 app = None
 loop = None
-
 
 
 async def request_shutdown() -> bool:
