@@ -47,9 +47,7 @@ class ToolProcessor(BaseProcessor):
         )
         self.structured_info = []
 
-    async def process_info(
-        self, observations: Optional[List[Observation]] = None
-    ) -> List[StructuredInfo]:
+    async def process_info(self, observations: Optional[List[Observation]] = None) -> List[StructuredInfo]:
         """处理信息对象
 
         Args:
