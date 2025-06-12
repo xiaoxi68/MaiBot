@@ -674,7 +674,9 @@ class LogViewer:
             frame = ttk.Frame(inner_frame)
             frame.pack(fill=tk.X, padx=5, pady=2)
             ttk.Label(frame, text=level).pack(side=tk.LEFT)
-            color_btn = ttk.Button(frame, text="选择颜色", command=lambda level_name=level: self.choose_color(level_name))
+            color_btn = ttk.Button(
+                frame, text="选择颜色", command=lambda level_name=level: self.choose_color(level_name)
+            )
             color_btn.pack(side=tk.RIGHT)
             # 显示当前颜色
             color_label = ttk.Label(frame, text="■", foreground=self.formatter.level_colors[level])
