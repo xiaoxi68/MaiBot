@@ -165,7 +165,7 @@ class ActionPlanner(BasePlanner):
                 logger.info(f"{self.log_prefix}{reasoning}")
                 self.action_manager.restore_actions()
                 logger.debug(
-                    f"{self.log_prefix}沉默后恢复到默认动作集, 当前可用: {list(self.action_manager.get_using_actions().keys())}"
+                    f"{self.log_prefix}[focus]沉默后恢复到默认动作集, 当前可用: {list(self.action_manager.get_using_actions().keys())}"
                 )
                 return {
                     "action_result": {"action_type": action, "action_data": action_data, "reasoning": reasoning},

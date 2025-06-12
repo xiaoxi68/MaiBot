@@ -443,6 +443,8 @@ class ActionManager:
         filtered_actions = {}
 
         for action_name, action_info in self._using_actions.items():
+            print(f"action_info: {action_info}")
+            print(f"action_name: {action_name}")
             action_mode = action_info.get("mode_enable", "all")
 
             # 检查动作是否在当前模式下启用

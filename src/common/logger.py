@@ -150,6 +150,7 @@ MODULE_COLORS = {
     "plugins": "\033[31m",  # 红色
     "plugin_api": "\033[33m",  # 黄色
     "remote": "\033[38;5;93m",  # 紫蓝色
+    "planner": "\033[31m]"
 }
 
 RESET_COLOR = "\033[0m"
