@@ -154,7 +154,7 @@ MODULE_COLORS = {
     "memory": "\033[34m",
     "hfc": "\033[96m",
     "base_action": "\033[96m",
-    "action_manager": "\033[34m]"
+    "action_manager": "\033[34m]",
 }
 
 RESET_COLOR = "\033[0m"
