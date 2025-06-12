@@ -586,7 +586,7 @@ class HeartFChatting:
                 return False, "", ""
 
             # 处理动作并获取结果
-            success, reply_text = await action_handler.handle_action()
+            result = await action_handler.handle_action()
             if len(result) == 3:
                 success, reply_text, command = result
             else:
