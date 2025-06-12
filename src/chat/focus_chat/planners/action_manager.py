@@ -149,8 +149,16 @@ class ActionManager:
                 normal_activation_type_attr = getattr(action_class, "normal_activation_type", "always")
 
                 # 处理枚举值，提取.value
-                focus_activation_type = focus_activation_type_attr.value if hasattr(focus_activation_type_attr, 'value') else str(focus_activation_type_attr)
-                normal_activation_type = normal_activation_type_attr.value if hasattr(normal_activation_type_attr, 'value') else str(normal_activation_type_attr)
+                focus_activation_type = (
+                    focus_activation_type_attr.value
+                    if hasattr(focus_activation_type_attr, "value")
+                    else str(focus_activation_type_attr)
+                )
+                normal_activation_type = (
+                    normal_activation_type_attr.value
+                    if hasattr(normal_activation_type_attr, "value")
+                    else str(normal_activation_type_attr)
+                )
 
                 # 其他属性
                 random_probability: float = getattr(action_class, "random_activation_probability", 0.3)
@@ -160,7 +168,7 @@ class ActionManager:
 
                 # 处理模式启用属性
                 mode_enable_attr = getattr(action_class, "mode_enable", "all")
-                mode_enable = mode_enable_attr.value if hasattr(mode_enable_attr, 'value') else str(mode_enable_attr)
+                mode_enable = mode_enable_attr.value if hasattr(mode_enable_attr, "value") else str(mode_enable_attr)
 
                 # 获取并行执行属性
                 parallel_action: bool = getattr(action_class, "parallel_action", False)
@@ -447,7 +455,7 @@ class ActionManager:
             Dict[str, ActionInfo]: 在指定模式下可用的动作集合
         """
         filtered_actions = {}
-        
+
         # print(self._using_actions)
 
         for action_name, action_info in self._using_actions.items():
