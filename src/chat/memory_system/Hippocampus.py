@@ -410,7 +410,7 @@ class Hippocampus:
                         visited_nodes.add(neighbor)
                         nodes_to_process.append((neighbor, new_activation, current_depth + 1))
                         # logger.debug(
-                            # f"节点 '{neighbor}' 被激活，激活值: {new_activation:.2f} (通过 '{current_node}' 连接，强度: {strength}, 深度: {current_depth + 1})"
+                        # f"节点 '{neighbor}' 被激活，激活值: {new_activation:.2f} (通过 '{current_node}' 连接，强度: {strength}, 深度: {current_depth + 1})"
                         # )  # noqa: E501
 
             # 更新激活映射
@@ -581,7 +581,7 @@ class Hippocampus:
                         visited_nodes.add(neighbor)
                         nodes_to_process.append((neighbor, new_activation, current_depth + 1))
                         # logger.debug(
-                            # f"节点 '{neighbor}' 被激活，激活值: {new_activation:.2f} (通过 '{current_node}' 连接，强度: {strength}, 深度: {current_depth + 1})"
+                        # f"节点 '{neighbor}' 被激活，激活值: {new_activation:.2f} (通过 '{current_node}' 连接，强度: {strength}, 深度: {current_depth + 1})"
                         # )  # noqa: E501
 
             # 更新激活映射
