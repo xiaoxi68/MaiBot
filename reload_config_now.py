@@ -10,7 +10,7 @@ from pathlib import Path
 src_path = Path(__file__).parent / "src"
 sys.path.insert(0, str(src_path))
 
-from common.logger import reload_log_config
+from common.logger import reload_log_config  # noqa: E402
 
 print("🔄 重新加载日志配置...")
 reload_log_config()
