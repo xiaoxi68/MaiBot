@@ -134,6 +134,8 @@ def reconfigure_existing_loggers():
 
 # 定义模块颜色映射
 MODULE_COLORS = {
+    # 核心模块
+    "main": "\033[1;97m",  # 亮白色+粗体 (主程序)
     "api": "\033[92m",  # 亮绿色
     "emoji": "\033[92m",  # 亮绿色
     "chat": "\033[94m",  # 亮蓝色
@@ -154,7 +156,92 @@ MODULE_COLORS = {
     "memory": "\033[34m",
     "hfc": "\033[96m",
     "base_action": "\033[96m",
-    "action_manager": "\033[34m]"
+    "action_manager": "\033[34m",
+    
+    # 聊天相关模块
+    "normal_chat": "\033[38;5;81m",  # 亮蓝绿色
+    "normal_chat_response": "\033[38;5;123m",  # 青绿色
+    "normal_chat_expressor": "\033[38;5;117m",  # 浅蓝色
+    "normal_chat_action_modifier": "\033[38;5;111m",  # 蓝色
+    "normal_chat_planner": "\033[38;5;75m",  # 浅蓝色
+    "heartflow": "\033[38;5;213m",  # 粉色
+    "heartflow_utils": "\033[38;5;219m",  # 浅粉色
+    "sub_heartflow": "\033[38;5;207m",  # 粉紫色
+    "subheartflow_manager": "\033[38;5;201m",  # 深粉色
+    "observation": "\033[38;5;141m",  # 紫色
+    "background_tasks": "\033[38;5;240m",  # 灰色
+    "chat_message": "\033[38;5;45m",  # 青色
+    "chat_stream": "\033[38;5;51m",  # 亮青色
+    "sender": "\033[38;5;39m",  # 蓝色
+    "message_storage": "\033[38;5;33m",  # 深蓝色
+    
+    # 专注聊天模块
+    "replyer": "\033[38;5;166m",  # 橙色
+    "expressor": "\033[38;5;172m",  # 黄橙色
+    "planner_factory": "\033[38;5;178m",  # 黄色
+    "processor": "\033[38;5;184m",  # 黄绿色
+    "base_processor": "\033[38;5;190m",  # 绿黄色
+    "working_memory": "\033[38;5;22m",  # 深绿色
+    "memory_activator": "\033[38;5;28m",  # 绿色
+    
+    # 插件系统
+    "plugin_manager": "\033[38;5;196m",  # 红色
+    "base_plugin": "\033[38;5;202m",  # 橙红色
+    "base_command": "\033[38;5;208m",  # 橙色
+    "component_registry": "\033[38;5;214m",  # 橙黄色
+    "stream_api": "\033[38;5;220m",  # 黄色
+    "config_api": "\033[38;5;226m",  # 亮黄色
+    "hearflow_api": "\033[38;5;154m",  # 黄绿色
+    "action_apis": "\033[38;5;118m",  # 绿色
+    "independent_apis": "\033[38;5;82m",  # 绿色
+    "llm_api": "\033[38;5;46m",  # 亮绿色
+    "database_api": "\033[38;5;10m",  # 绿色
+    "utils_api": "\033[38;5;14m",  # 青色
+    "message_api": "\033[38;5;6m",  # 青色
+    
+    # 管理器模块
+    "async_task_manager": "\033[38;5;129m",  # 紫色
+    "mood": "\033[38;5;135m",  # 紫红色
+    "local_storage": "\033[38;5;141m",  # 紫色
+    "willing": "\033[38;5;147m",  # 浅紫色
+    
+    # 工具模块
+    "tool_use": "\033[38;5;64m",  # 深绿色
+    "base_tool": "\033[38;5;70m",  # 绿色
+    "compare_numbers_tool": "\033[38;5;76m",  # 浅绿色
+    "change_mood_tool": "\033[38;5;82m",  # 绿色
+    "relationship_tool": "\033[38;5;88m",  # 深红色
+    
+    # 工具和实用模块
+    "prompt": "\033[38;5;99m",  # 紫色
+    "prompt_build": "\033[38;5;105m",  # 紫色
+    "chat_utils": "\033[38;5;111m",  # 蓝色
+    "chat_image": "\033[38;5;117m",  # 浅蓝色
+    "typo_gen": "\033[38;5;123m",  # 青绿色
+    "maibot_statistic": "\033[38;5;129m",  # 紫色
+    
+    # 特殊功能插件
+    "mute_plugin": "\033[38;5;240m",  # 灰色
+    "example_comprehensive": "\033[38;5;246m",  # 浅灰色
+    "core_actions": "\033[38;5;52m",  # 深红色
+    "tts_action": "\033[38;5;58m",  # 深黄色
+    "doubao_pic_plugin": "\033[38;5;64m",  # 深绿色
+    "vtb_action": "\033[38;5;70m",  # 绿色
+    
+    # 数据库和消息
+    "database_model": "\033[38;5;94m",  # 橙褐色
+    "maim_message": "\033[38;5;100m",  # 绿褐色
+    
+    # 实验性模块
+    "pfc": "\033[38;5;252m",  # 浅灰色
+    
+    # 日志系统
+    "logger": "\033[38;5;8m",  # 深灰色
+    "demo": "\033[38;5;15m",  # 白色
+    "confirm": "\033[1;93m",  # 黄色+粗体
+    
+    # 模型相关
+    "model_utils": "\033[38;5;164m",  # 紫红色
 }
 
 RESET_COLOR = "\033[0m"
@@ -184,12 +271,15 @@ class ModuleColoredConsoleRenderer:
         elif color_text == "title":
             self._enable_module_colors = True
             self._enable_level_colors = False
+            self._enable_full_content_colors = False
         elif color_text == "full":
             self._enable_module_colors = True
             self._enable_level_colors = True
+            self._enable_full_content_colors = True
         else:
             self._enable_module_colors = True
             self._enable_level_colors = False
+            self._enable_full_content_colors = False
 
     def __call__(self, logger, method_name, event_dict):
         """渲染日志消息"""
@@ -235,10 +325,14 @@ class ModuleColoredConsoleRenderer:
 
         # lite模式不显示级别，只给时间戳着色
 
+        # 获取模块颜色，用于full模式下的整体着色
+        module_color = ""
+        if self._colors and self._enable_module_colors and logger_name:
+            module_color = MODULE_COLORS.get(logger_name, "")
+
         # 模块名称（带颜色）
         if logger_name:
             if self._colors and self._enable_module_colors:
-                module_color = MODULE_COLORS.get(logger_name, "")
                 if module_color:
                     module_part = f"{module_color}[{logger_name}]{RESET_COLOR}"
                 else:
@@ -248,17 +342,24 @@ class ModuleColoredConsoleRenderer:
             parts.append(module_part)
 
         # 消息内容（确保转换为字符串）
+        event_content = ""
         if isinstance(event, str):
-            parts.append(event)
+            event_content = event
         elif isinstance(event, dict):
             # 如果是字典，格式化为可读字符串
             try:
-                parts.append(json.dumps(event, ensure_ascii=False, indent=None))
+                event_content = json.dumps(event, ensure_ascii=False, indent=None)
             except (TypeError, ValueError):
-                parts.append(str(event))
+                event_content = str(event)
         else:
             # 其他类型直接转换为字符串
-            parts.append(str(event))
+            event_content = str(event)
+
+        # 在full模式下为消息内容着色
+        if self._colors and self._enable_full_content_colors and module_color:
+            event_content = f"{module_color}{event_content}{RESET_COLOR}"
+        
+        parts.append(event_content)
 
         # 处理其他字段
         extras = []
@@ -272,7 +373,13 @@ class ModuleColoredConsoleRenderer:
                         value_str = str(value)
                 else:
                     value_str = str(value)
-                extras.append(f"{key}={value_str}")
+                
+                # 在full模式下为额外字段着色
+                extra_field = f"{key}={value_str}"
+                if self._colors and self._enable_full_content_colors and module_color:
+                    extra_field = f"{module_color}{extra_field}{RESET_COLOR}"
+                
+                extras.append(extra_field)
 
         if extras:
             parts.append(" ".join(extras))

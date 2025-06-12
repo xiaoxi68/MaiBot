@@ -31,7 +31,7 @@ install(extra_lines=3)
 # 设置工作目录为脚本所在目录
 script_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(script_dir)
-print(f"已设置工作目录为: {script_dir}")
+logger.info(f"已设置工作目录为: {script_dir}")
 
 
 confirm_logger = get_logger("confirm")
