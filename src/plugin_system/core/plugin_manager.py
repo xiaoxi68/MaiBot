@@ -136,7 +136,7 @@ class PluginManager:
                 if plugin_info:
                     # 插件基本信息
                     version_info = f"v{plugin_info.version}" if plugin_info.version else ""
-                    author_info = f"by {plugin_info.author}" if plugin_info.author else ""
+                    author_info = f"by {plugin_info.author}" if plugin_info.author else "unknown"
                     info_parts = [part for part in [version_info, author_info] if part]
                     extra_info = f" ({', '.join(info_parts)})" if info_parts else ""
 
