@@ -216,26 +216,41 @@ class HeartFChatting:
 
     async def start(self):
         """检查是否需要启动主循环，如果未激活则启动。"""
+        logger.debug(f"{self.log_prefix} 开始启动 HeartFChatting")
+        
         # 如果循环已经激活，直接返回
         if self._loop_active:
+            logger.debug(f"{self.log_prefix} HeartFChatting 已激活，无需重复启动")
             return
 
-        # 标记为活动状态，防止重复启动
-        self._loop_active = True
+        try:
+            # 标记为活动状态，防止重复启动
+            self._loop_active = True
 
-        # 检查是否已有任务在运行（理论上不应该，因为 _loop_active=False）
-        if self._loop_task and not self._loop_task.done():
-            logger.warning(f"{self.log_prefix} 发现之前的循环任务仍在运行（不符合预期）。取消旧任务。")
-            self._loop_task.cancel()
-            try:
-                # 等待旧任务确实被取消
-                await asyncio.wait_for(self._loop_task, timeout=0.5)
-            except (asyncio.CancelledError, asyncio.TimeoutError):
-                pass  # 忽略取消或超时错误
-            self._loop_task = None  # 清理旧任务引用
+            # 检查是否已有任务在运行（理论上不应该，因为 _loop_active=False）
+            if self._loop_task and not self._loop_task.done():
+                logger.warning(f"{self.log_prefix} 发现之前的循环任务仍在运行（不符合预期）。取消旧任务。")
+                self._loop_task.cancel()
+                try:
+                    # 等待旧任务确实被取消
+                    await asyncio.wait_for(self._loop_task, timeout=5.0)
+                except (asyncio.CancelledError, asyncio.TimeoutError):
+                    pass  # 忽略取消或超时错误
+                except Exception as e:
+                    logger.warning(f"{self.log_prefix} 等待旧任务取消时出错: {e}")
+                self._loop_task = None  # 清理旧任务引用
 
-        self._loop_task = asyncio.create_task(self._run_focus_chat())
-        self._loop_task.add_done_callback(self._handle_loop_completion)
+            logger.debug(f"{self.log_prefix} 创建新的 HeartFChatting 主循环任务")
+            self._loop_task = asyncio.create_task(self._run_focus_chat())
+            self._loop_task.add_done_callback(self._handle_loop_completion)
+            logger.debug(f"{self.log_prefix} HeartFChatting 启动完成")
+            
+        except Exception as e:
+            # 启动失败时重置状态
+            self._loop_active = False
+            self._loop_task = None
+            logger.error(f"{self.log_prefix} HeartFChatting 启动失败: {e}")
+            raise
 
     def _handle_loop_completion(self, task: asyncio.Task):
         """当 _hfc_loop 任务完成时执行的回调。"""
@@ -260,6 +275,8 @@ class HeartFChatting:
         try:
             while True:  # 主循环
                 logger.debug(f"{self.log_prefix} 开始第{self._cycle_counter}次循环")
+                
+                # 检查关闭标志
                 if self._shutting_down:
                     logger.info(f"{self.log_prefix} 检测到关闭标志，退出 Focus Chat 循环。")
                     break
@@ -274,73 +291,98 @@ class HeartFChatting:
                 loop_cycle_start_time = time.monotonic()
 
                 # 执行规划和处理阶段
-                async with self._get_cycle_context():
-                    thinking_id = "tid" + str(round(time.time(), 2))
-                    self._current_cycle_detail.set_thinking_id(thinking_id)
-                    # 主循环：思考->决策->执行
-                    async with global_prompt_manager.async_message_scope(self.chat_stream.context.get_template_name()):
-                        logger.debug(f"模板 {self.chat_stream.context.get_template_name()}")
-                        loop_info = await self._observe_process_plan_action_loop(cycle_timers, thinking_id)
+                try:
+                    async with self._get_cycle_context():
+                        thinking_id = "tid" + str(round(time.time(), 2))
+                        self._current_cycle_detail.set_thinking_id(thinking_id)
+                        
+                        # 使用异步上下文管理器处理消息
+                        try:
+                            async with global_prompt_manager.async_message_scope(self.chat_stream.context.get_template_name()):
+                                # 在上下文内部检查关闭状态
+                                if self._shutting_down:
+                                    logger.info(f"{self.log_prefix} 在处理上下文中检测到关闭信号，退出")
+                                    break
+                                
+                                logger.debug(f"模板 {self.chat_stream.context.get_template_name()}")
+                                loop_info = await self._observe_process_plan_action_loop(cycle_timers, thinking_id)
 
-                        if loop_info["loop_action_info"]["command"] == "stop_focus_chat":
-                            logger.info(f"{self.log_prefix} 麦麦决定停止专注聊天")
-                            # 如果设置了回调函数，则调用它
-                            if self.on_stop_focus_chat:
-                                try:
-                                    await self.on_stop_focus_chat()
-                                    logger.info(f"{self.log_prefix} 成功调用回调函数处理停止专注聊天")
-                                except Exception as e:
-                                    logger.error(f"{self.log_prefix} 调用停止专注聊天回调函数时出错: {e}")
-                                    logger.error(traceback.format_exc())
+                                if loop_info["loop_action_info"]["command"] == "stop_focus_chat":
+                                    logger.info(f"{self.log_prefix} 麦麦决定停止专注聊天")
+                                    # 如果设置了回调函数，则调用它
+                                    if self.on_stop_focus_chat:
+                                        try:
+                                            await self.on_stop_focus_chat()
+                                            logger.info(f"{self.log_prefix} 成功调用回调函数处理停止专注聊天")
+                                        except Exception as e:
+                                            logger.error(f"{self.log_prefix} 调用停止专注聊天回调函数时出错: {e}")
+                                            logger.error(traceback.format_exc())
+                                    break
+                        
+                        except asyncio.CancelledError:
+                            logger.info(f"{self.log_prefix} 处理上下文时任务被取消")
                             break
+                        except Exception as e:
+                            logger.error(f"{self.log_prefix} 处理上下文时出错: {e}")
+                            # 上下文处理失败，跳过当前循环
+                            await asyncio.sleep(1)
+                            continue
 
-                    self._current_cycle_detail.set_loop_info(loop_info)
+                        self._current_cycle_detail.set_loop_info(loop_info)
 
-                    # 从observations列表中获取HFCloopObservation
-                    hfcloop_observation = next(
-                        (obs for obs in self.observations if isinstance(obs, HFCloopObservation)), None
+                        # 从observations列表中获取HFCloopObservation
+                        hfcloop_observation = next(
+                            (obs for obs in self.observations if isinstance(obs, HFCloopObservation)), None
+                        )
+                        if hfcloop_observation:
+                            hfcloop_observation.add_loop_info(self._current_cycle_detail)
+                        else:
+                            logger.warning(f"{self.log_prefix} 未找到HFCloopObservation实例")
+
+                        self._current_cycle_detail.timers = cycle_timers
+
+                        # 防止循环过快消耗资源
+                        await _handle_cycle_delay(
+                            loop_info["loop_action_info"]["action_taken"], loop_cycle_start_time, self.log_prefix
+                        )
+
+                    # 完成当前循环并保存历史
+                    self._current_cycle_detail.complete_cycle()
+                    self._cycle_history.append(self._current_cycle_detail)
+
+                    # 记录循环信息和计时器结果
+                    timer_strings = []
+                    for name, elapsed in cycle_timers.items():
+                        formatted_time = f"{elapsed * 1000:.2f}毫秒" if elapsed < 1 else f"{elapsed:.2f}秒"
+                        timer_strings.append(f"{name}: {formatted_time}")
+
+                    # 新增：输出每个处理器的耗时
+                    processor_time_costs = self._current_cycle_detail.loop_processor_info.get("processor_time_costs", {})
+                    processor_time_strings = []
+                    for pname, ptime in processor_time_costs.items():
+                        formatted_ptime = f"{ptime * 1000:.2f}毫秒" if ptime < 1 else f"{ptime:.2f}秒"
+                        processor_time_strings.append(f"{pname}: {formatted_ptime}")
+                    processor_time_log = (
+                        ("\n各处理器耗时: " + "; ".join(processor_time_strings)) if processor_time_strings else ""
                     )
-                    if hfcloop_observation:
-                        hfcloop_observation.add_loop_info(self._current_cycle_detail)
-                    else:
-                        logger.warning(f"{self.log_prefix} 未找到HFCloopObservation实例")
 
-                    self._current_cycle_detail.timers = cycle_timers
-
-                    # 防止循环过快消耗资源
-                    await _handle_cycle_delay(
-                        loop_info["loop_action_info"]["action_taken"], loop_cycle_start_time, self.log_prefix
+                    logger.info(
+                        f"{self.log_prefix} 第{self._current_cycle_detail.cycle_id}次思考,"
+                        f"耗时: {self._current_cycle_detail.end_time - self._current_cycle_detail.start_time:.1f}秒, "
+                        f"动作: {self._current_cycle_detail.loop_plan_info['action_result']['action_type']}"
+                        + (f"\n详情: {'; '.join(timer_strings)}" if timer_strings else "")
+                        + processor_time_log
                     )
 
-                # 完成当前循环并保存历史
-                self._current_cycle_detail.complete_cycle()
-                self._cycle_history.append(self._current_cycle_detail)
-
-                # 记录循环信息和计时器结果
-                timer_strings = []
-                for name, elapsed in cycle_timers.items():
-                    formatted_time = f"{elapsed * 1000:.2f}毫秒" if elapsed < 1 else f"{elapsed:.2f}秒"
-                    timer_strings.append(f"{name}: {formatted_time}")
-
-                # 新增：输出每个处理器的耗时
-                processor_time_costs = self._current_cycle_detail.loop_processor_info.get("processor_time_costs", {})
-                processor_time_strings = []
-                for pname, ptime in processor_time_costs.items():
-                    formatted_ptime = f"{ptime * 1000:.2f}毫秒" if ptime < 1 else f"{ptime:.2f}秒"
-                    processor_time_strings.append(f"{pname}: {formatted_ptime}")
-                processor_time_log = (
-                    ("\n各处理器耗时: " + "; ".join(processor_time_strings)) if processor_time_strings else ""
-                )
-
-                logger.info(
-                    f"{self.log_prefix} 第{self._current_cycle_detail.cycle_id}次思考,"
-                    f"耗时: {self._current_cycle_detail.end_time - self._current_cycle_detail.start_time:.1f}秒, "
-                    f"动作: {self._current_cycle_detail.loop_plan_info['action_result']['action_type']}"
-                    + (f"\n详情: {'; '.join(timer_strings)}" if timer_strings else "")
-                    + processor_time_log
-                )
-
-                await asyncio.sleep(global_config.focus_chat.think_interval)
+                    await asyncio.sleep(global_config.focus_chat.think_interval)
+                    
+                except asyncio.CancelledError:
+                    logger.info(f"{self.log_prefix} 循环处理时任务被取消")
+                    break
+                except Exception as e:
+                    logger.error(f"{self.log_prefix} 循环处理时出错: {e}")
+                    logger.error(traceback.format_exc())
+                    await asyncio.sleep(1)  # 出错后等待一秒再继续
 
         except asyncio.CancelledError:
             # 设置了关闭标志位后被取消是正常流程

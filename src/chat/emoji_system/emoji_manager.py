@@ -334,6 +334,8 @@ async def clean_unused_emojis(emoji_dir: str, emoji_objects: List["MaiEmoji"],re
         # 遍历指定目录中的所有文件
         for file_name in os.listdir(emoji_dir):
             file_full_path = os.path.join(emoji_dir, file_name)
+            
+            
 
             # 确保处理的是文件而不是子目录
             if not os.path.isfile(file_full_path):
