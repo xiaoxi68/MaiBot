@@ -381,13 +381,20 @@ class ImageManager:
             existing_image = Images.get_or_none(Images.emoji_hash == image_hash)
 
             if existing_image:
-                # print(f"图片已存在: {existing_image.image_id}")
-                # print(f"图片描述: {existing_image.description}")
-                # print(f"图片计数: {existing_image.count}")
-                # 更新计数
-                existing_image.count += 1
-                existing_image.save()
-                return existing_image.image_id, f"[picid:{existing_image.image_id}]"
+                # 检查是否缺少必要字段，如果缺少则创建新记录
+                if (not hasattr(existing_image, 'image_id') or not existing_image.image_id or 
+                    not hasattr(existing_image, 'count') or existing_image.count is None or 
+                    not hasattr(existing_image, 'vlm_processed') or existing_image.vlm_processed is None):
+                    logger.debug(f"图片记录缺少必要字段，补全旧记录: {image_hash}")
+                    image_id = str(uuid.uuid4())
+                else:
+                    # print(f"图片已存在: {existing_image.image_id}")
+                    # print(f"图片描述: {existing_image.description}")
+                    # print(f"图片计数: {existing_image.count}")
+                    # 更新计数
+                    existing_image.count += 1
+                    existing_image.save()
+                    return existing_image.image_id, f"[picid:{existing_image.image_id}]"
             else:
                 # print(f"图片不存在: {image_hash}")
                 image_id = str(uuid.uuid4())
@@ -411,6 +418,7 @@ class ImageManager:
                 type="image",
                 timestamp=current_timestamp,
                 vlm_processed=False,
+                count=1,
             )
 
             # 启动异步VLM处理
