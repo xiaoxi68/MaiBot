@@ -111,29 +111,26 @@ async def graceful_shutdown():
 
         # 获取所有剩余任务，排除当前任务
         remaining_tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
-        
+
         if remaining_tasks:
             logger.info(f"正在取消 {len(remaining_tasks)} 个剩余任务...")
-            
+
             # 取消所有剩余任务
             for task in remaining_tasks:
                 if not task.done():
                     task.cancel()
-            
+
             # 等待所有任务完成，设置超时
             try:
-                await asyncio.wait_for(
-                    asyncio.gather(*remaining_tasks, return_exceptions=True),
-                    timeout=15.0
-                )
+                await asyncio.wait_for(asyncio.gather(*remaining_tasks, return_exceptions=True), timeout=15.0)
                 logger.info("所有剩余任务已成功取消")
             except asyncio.TimeoutError:
                 logger.warning("等待任务取消超时，强制继续关闭")
             except Exception as e:
                 logger.error(f"等待任务取消时发生异常: {e}")
-        
+
         logger.info("麦麦优雅关闭完成")
-        
+
     except Exception as e:
         logger.error(f"麦麦关闭失败: {e}", exc_info=True)
 
