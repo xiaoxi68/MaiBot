@@ -382,9 +382,14 @@ class ImageManager:
 
             if existing_image:
                 # 检查是否缺少必要字段，如果缺少则创建新记录
-                if (not hasattr(existing_image, 'image_id') or not existing_image.image_id or 
-                    not hasattr(existing_image, 'count') or existing_image.count is None or 
-                    not hasattr(existing_image, 'vlm_processed') or existing_image.vlm_processed is None):
+                if (
+                    not hasattr(existing_image, "image_id")
+                    or not existing_image.image_id
+                    or not hasattr(existing_image, "count")
+                    or existing_image.count is None
+                    or not hasattr(existing_image, "vlm_processed")
+                    or existing_image.vlm_processed is None
+                ):
                     logger.debug(f"图片记录缺少必要字段，补全旧记录: {image_hash}")
                     image_id = str(uuid.uuid4())
                 else:

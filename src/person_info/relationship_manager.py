@@ -11,7 +11,6 @@ import json
 from json_repair import repair_json
 from datetime import datetime
 from difflib import SequenceMatcher
-import ast
 import jieba
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -431,9 +430,6 @@ class RelationshipManager:
 
                 await person_info_manager.update_one_field(person_id, "impression", compressed_summary)
 
-                
-                
-                
                 compress_short_prompt = f"""
 你的名字是{global_config.bot.nickname}，{global_config.bot.nickname}的别名是{alias_str}。
 请不要混淆你自己和{global_config.bot.nickname}和{person_name}。
@@ -447,19 +443,15 @@ class RelationshipManager:
 3.{person_name}的关键信息
 请输出一段平文本，以陈诉自白的语气，输出你对{person_name}的概括，不要输出任何其他内容。
 """
-                compressed_short_summary, _ = await self.relationship_llm.generate_response_async(prompt=compress_short_prompt)
+                compressed_short_summary, _ = await self.relationship_llm.generate_response_async(
+                    prompt=compress_short_prompt
+                )
 
                 # current_time = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
                 # compressed_short_summary = f"截至{current_time}，你对{person_name}的了解：{compressed_short_summary}"
 
                 await person_info_manager.update_one_field(person_id, "short_impression", compressed_short_summary)
-                
-                
-                
-                
-                
-                
-                
+
                 forgotten_points = []
 
             # 这句代码的作用是：将更新后的 forgotten_points（遗忘的记忆点）列表，序列化为 JSON 字符串后，写回到数据库中的 forgotten_points 字段

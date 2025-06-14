@@ -183,7 +183,7 @@ class NormalChat:
                                 self.adjust_reply_frequency(duration=(time.time() - self.start_time) / 60)
 
                             # print(self.engaging_persons)
-                            
+
                             await self.normal_response(
                                 message=message,
                                 is_mentioned=is_mentioned,
@@ -229,7 +229,7 @@ class NormalChat:
 
         # 更新engaging_persons统计信息
         self._update_engaging_person_stats(message, is_reply=False)
-        
+
         # 检查是否有用户满足关系构建条件
         asyncio.create_task(self._check_relation_building_conditions())
 
@@ -426,7 +426,7 @@ class NormalChat:
             if first_bot_msg:
                 # 更新engaging_persons统计信息 - 标记为回复
                 self._update_engaging_person_stats(message, is_reply=True)
-                
+
                 # 记录回复信息到最近回复列表中
                 reply_info = {
                     "time": time.time(),
@@ -671,29 +671,33 @@ class NormalChat:
         user_id = message.message_info.user_info.user_id
         person_id = PersonInfoManager.get_person_id(platform, user_id)
         current_time = time.time()
-        
+
         if person_id not in self.engaging_persons:
             self.engaging_persons[person_id] = {
                 "first_time": current_time,
                 "last_time": current_time,
                 "receive_count": 0,
                 "reply_count": 0,
-                "relation_built": False
+                "relation_built": False,
             }
-        
+
         if is_reply:
             self.engaging_persons[person_id]["reply_count"] += 1
-            logger.debug(f"[{self.stream_name}] 用户 {person_id} 回复次数更新: {self.engaging_persons[person_id]['reply_count']}")
+            logger.debug(
+                f"[{self.stream_name}] 用户 {person_id} 回复次数更新: {self.engaging_persons[person_id]['reply_count']}"
+            )
         else:
             self.engaging_persons[person_id]["receive_count"] += 1
             self.engaging_persons[person_id]["last_time"] = current_time
-            logger.debug(f"[{self.stream_name}] 用户 {person_id} 消息次数更新: {self.engaging_persons[person_id]['receive_count']}")
+            logger.debug(
+                f"[{self.stream_name}] 用户 {person_id} 消息次数更新: {self.engaging_persons[person_id]['receive_count']}"
+            )
 
 
     async def _check_relation_building_conditions(self):
         """检查engaging_persons中是否有满足关系构建条件的用户"""
         current_time = time.time()
-        
+
         for person_id, stats in list(self.engaging_persons.items()):
             # 计算时间差和消息数量
             time_elapsed = current_time - stats["first_time"]
@@ -706,18 +710,18 @@ class NormalChat:
             # 检查是否满足关系构建条件
             should_build_relation = (
                 total_messages >= 50  # 50条消息必定满足
-                or (total_messages >= 35 and time_elapsed >= 600)   # 35条且10分钟
+                or (total_messages >= 35 and time_elapsed >= 600)  # 35条且10分钟
                 or (total_messages >= 25 and time_elapsed >= 1800)  # 25条且30分钟
                 or (total_messages >= 10 and time_elapsed >= 3600)  # 10条且1小时
             )
-            
+
             if should_build_relation:
                 logger.info(
                     f"[{self.stream_name}] 用户 {person_id} 满足关系构建条件。"
                     f"消息数：{total_messages}，时长：{time_elapsed:.0f}秒，"
                     f"收到消息：{stats['receive_count']}，回复次数：{stats['reply_count']}"
                 )
-                
+
                 # 计算构建概率并决定是否构建
                 await self._evaluate_and_build_relation(person_id, stats, total_messages)
                 
@@ -741,7 +745,7 @@ class NormalChat:
         
         receive_count = stats["receive_count"]
         reply_count = stats["reply_count"]
-        
+
         # 计算回复概率（reply_count在总消息中的比值）
         reply_ratio = reply_count / total_messages if total_messages > 0 else 0
         # 使用对数函数让低比率时概率上升更快：log(1 + ratio * k) / log(1 + k) + base
@@ -759,14 +763,14 @@ class NormalChat:
         
         # 取最高概率
         final_probability = max(reply_build_probability, receive_build_probability)
-        
+
         logger.info(
             f"[{self.stream_name}] 用户 {person_id} 关系构建概率评估："
             f"回复比例：{reply_ratio:.2f}(对数概率:{reply_build_probability:.2f})"
             f"，接收比例：{receive_ratio:.2f}(对数概率:{receive_build_probability:.2f})"  
             f"，最终概率：{final_probability:.2f}"
         )
-        
+
         # 使用随机数决定是否构建关系
         if random() < final_probability:
             logger.info(f"[{self.stream_name}] 决定为用户 {person_id} 构建关系")
@@ -778,26 +782,24 @@ class NormalChat:
         """为特定用户构建关系"""
         try:
             start_time = stats["first_time"]
-            end_time = stats["last_time"] 
-            
+            end_time = stats["last_time"]
+
             # 获取该时间段的所有消息用于关系构建
             messages = get_raw_msg_by_timestamp_with_chat(self.stream_id, start_time, end_time)
-            
+
             if messages:
                 logger.info(f"[{self.stream_name}] 为用户 {person_id} 获取到 {len(messages)} 条消息用于关系构建")
-                
+
                 # 调用关系管理器更新印象
                 relationship_manager = get_relationship_manager()
                 await relationship_manager.update_person_impression(
-                    person_id=person_id, 
-                    timestamp=end_time, 
-                    bot_engaged_messages=messages
+                    person_id=person_id, timestamp=end_time, bot_engaged_messages=messages
                 )
-                
+
                 logger.info(f"[{self.stream_name}] 用户 {person_id} 关系构建完成")
             else:
                 logger.warning(f"[{self.stream_name}] 未找到用户 {person_id} 的消息，关系构建跳过")
-                
+
         except Exception as e:
             logger.error(f"[{self.stream_name}] 为用户 {person_id} 构建关系时出错: {e}")
             traceback.print_exc()
