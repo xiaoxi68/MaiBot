@@ -114,7 +114,9 @@ class MessageAPI:
             )
 
             # 发送消息
-            sent_msg = await heart_fc_sender.send_message(bot_message, has_thinking=False, typing=typing, set_reply=False)
+            sent_msg = await heart_fc_sender.send_message(
+                bot_message, has_thinking=False, typing=typing, set_reply=False
+            )
 
             if sent_msg:
                 logger.info(f"{getattr(self, 'log_prefix', '')} 成功发送消息到 {platform}:{target_id}")

@@ -404,7 +404,7 @@ def initialize_database():
                 missing_fields = model_fields - existing_columns
                 if missing_fields:
                     logger.warning(f"表 '{table_name}' 缺失字段: {missing_fields}")
-                    
+
                 for field_name, field_obj in model._meta.fields.items():
                     if field_name not in existing_columns:
                         logger.info(f"表 '{table_name}' 缺失字段 '{field_name}'，正在添加...")
