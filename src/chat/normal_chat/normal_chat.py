@@ -199,11 +199,11 @@ class NormalChat:
                         # 使用信号量控制并发数，最多同时处理5个消息
                         semaphore = asyncio.Semaphore(5)
 
-                        async def limited_process(task):
-                            async with semaphore:
+                        async def limited_process(task, sem):
+                            async with sem:
                                 await task
 
-                        limited_tasks = [limited_process(task) for task in tasks]
+                        limited_tasks = [limited_process(task, semaphore) for task in tasks]
                         await asyncio.gather(*limited_tasks, return_exceptions=True)
             except asyncio.CancelledError:
                 logger.info(f"[{self.stream_name}] 兴趣监控任务被取消")

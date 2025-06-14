@@ -80,7 +80,7 @@ class BaseCommand(ABC):
                 text=content, user_id=str(chat_stream.user_info.user_id), platform=chat_stream.platform
             )
 
-    async def send_type(self, message_type: str, content: str, display_message: str = None) -> bool:
+    async def send_type(self, message_type: str, content: str, display_message: str = None, typing: bool = False) -> bool:
         """发送指定类型的回复消息到当前聊天环境
 
         Args:
@@ -103,6 +103,7 @@ class BaseCommand(ABC):
                 target_id=str(chat_stream.group_info.group_id),
                 is_group=True,
                 display_message=display_message,
+                typing=typing,
             )
         else:
             # 私聊

@@ -61,6 +61,7 @@ class WillingInfo:
     group_info: Optional[GroupInfo]
     is_mentioned_bot: bool
     is_emoji: bool
+    is_picid: bool
     interested_rate: float
     # current_mood: float  当前心情？
 
@@ -102,6 +103,7 @@ class BaseWillingManager(ABC):
             group_info=chat.group_info,
             is_mentioned_bot=is_mentioned_bot,
             is_emoji=message.is_emoji,
+            is_picid=message.is_picid,
             interested_rate=interested_rate,
         )
 

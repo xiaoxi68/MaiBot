@@ -180,6 +180,9 @@ class MxpWillingManager(BaseWillingManager):
             if w_info.is_emoji:
                 probability *= global_config.normal_chat.emoji_response_penalty
 
+            if w_info.is_picid:
+                probability = 0  # picid格式消息直接不回复
+
             if w_info.group_info and w_info.group_info.group_id in global_config.normal_chat.talk_frequency_down_groups:
                 probability /= global_config.normal_chat.down_frequency_rate
 

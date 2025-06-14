@@ -189,7 +189,7 @@ class Images(BaseModel):
     emoji_hash = TextField(index=True)  # 图像的哈希值
     description = TextField(null=True)  # 图像的描述
     path = TextField(unique=True)  # 图像文件的路径
-    base64 = TextField(null=True)  # 图片的base64编码（可选）
+    # base64 = TextField()  # 图片的base64编码
     count = IntegerField(default=1)  # 图片被引用的次数
     timestamp = FloatField()  # 时间戳
     type = TextField()  # 图像类型，例如 "emoji"
@@ -401,6 +401,10 @@ def initialize_database():
                 model_fields = set(model._meta.fields.keys())
 
                 # 检查并添加缺失字段（原有逻辑）
+                missing_fields = model_fields - existing_columns
+                if missing_fields:
+                    logger.warning(f"表 '{table_name}' 缺失字段: {missing_fields}")
+                    
                 for field_name, field_obj in model._meta.fields.items():
                     if field_name not in existing_columns:
                         logger.info(f"表 '{table_name}' 缺失字段 '{field_name}'，正在添加...")
@@ -427,11 +431,16 @@ def initialize_database():
                                 alter_sql += f" DEFAULT {int(default_value)}"
                             else:
                                 alter_sql += f" DEFAULT {default_value}"
-                        db.execute_sql(alter_sql)
-                        logger.info(f"字段 '{field_name}' 添加成功")
+                        try:
+                            db.execute_sql(alter_sql)
+                            logger.info(f"字段 '{field_name}' 添加成功")
+                        except Exception as e:
+                            logger.error(f"添加字段 '{field_name}' 失败: {e}")
 
                 # 检查并删除多余字段（新增逻辑）
                 extra_fields = existing_columns - model_fields
+                if extra_fields:
+                    logger.warning(f"表 '{table_name}' 存在多余字段: {extra_fields}")
                 for field_name in extra_fields:
                     try:
                         logger.warning(f"表 '{table_name}' 存在多余字段 '{field_name}'，正在尝试删除...")

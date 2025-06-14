@@ -137,7 +137,7 @@ class BaseAction(ABC):
                 text=content, user_id=str(chat_stream.user_info.user_id), platform=chat_stream.platform
             )
 
-    async def send_type(self, type: str, text: str) -> bool:
+    async def send_type(self, type: str, text: str, typing: bool = False) -> bool:
         """发送回复消息
 
         Args:
@@ -159,6 +159,7 @@ class BaseAction(ABC):
                 platform=chat_stream.platform,
                 target_id=str(chat_stream.group_info.group_id),
                 is_group=True,
+                typing=typing,
             )
         else:
             # 私聊
@@ -168,6 +169,7 @@ class BaseAction(ABC):
                 platform=chat_stream.platform,
                 target_id=str(chat_stream.user_info.user_id),
                 is_group=False,
+                typing=typing,
             )
 
     async def send_command(self, command_name: str, args: dict = None, display_message: str = None) -> bool:

@@ -40,6 +40,11 @@ class ClassicalWillingManager(BaseWillingManager):
             else:
                 is_emoji_not_reply = True
 
+        # 处理picid格式消息，直接不回复
+        is_picid_not_reply = False
+        if willing_info.is_picid:
+            is_picid_not_reply = True
+
         self.chat_reply_willing[chat_id] = min(current_willing, 3.0)
 
         reply_probability = min(max((current_willing - 0.5), 0.01) * 2, 1)
@@ -52,6 +57,9 @@ class ClassicalWillingManager(BaseWillingManager):
             reply_probability = reply_probability / global_config.normal_chat.down_frequency_rate
 
         if is_emoji_not_reply:
+            reply_probability = 0
+
+        if is_picid_not_reply:
             reply_probability = 0
 
         return reply_probability

@@ -31,6 +31,7 @@ class MessageAPI:
         target_id: str,
         is_group: bool = True,
         display_message: str = "",
+        typing: bool = False,
     ) -> bool:
         """直接向指定目标发送消息
 
@@ -113,7 +114,7 @@ class MessageAPI:
             )
 
             # 发送消息
-            sent_msg = await heart_fc_sender.send_message(bot_message, has_thinking=True, typing=False, set_reply=False)
+            sent_msg = await heart_fc_sender.send_message(bot_message, has_thinking=False, typing=typing, set_reply=False)
 
             if sent_msg:
                 logger.info(f"{getattr(self, 'log_prefix', '')} 成功发送消息到 {platform}:{target_id}")

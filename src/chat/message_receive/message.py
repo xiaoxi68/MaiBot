@@ -107,6 +107,7 @@ class MessageRecv(Message):
         self.processed_plain_text = message_dict.get("processed_plain_text", "")
         self.detailed_plain_text = message_dict.get("detailed_plain_text", "")
         self.is_emoji = False
+        self.is_picid = False
 
     def update_chat_stream(self, chat_stream: "ChatStream"):
         self.chat_stream = chat_stream
@@ -134,6 +135,7 @@ class MessageRecv(Message):
             elif segment.type == "image":
                 # 如果是base64图片数据
                 if isinstance(segment.data, str):
+                    self.is_picid = True
                     image_manager = get_image_manager()
                     # print(f"segment.data: {segment.data}")
                     _, processed_text = await image_manager.process_image(segment.data)
