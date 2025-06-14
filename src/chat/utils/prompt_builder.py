@@ -35,14 +35,21 @@ class PromptContext:
         """创建一个异步的临时提示模板作用域"""
         # 保存当前上下文并设置新上下文
         if context_id is not None:
-            async with self._context_lock:
-                if context_id not in self._context_prompts:
-                    self._context_prompts[context_id] = {}
+            try:
+                # 添加超时保护，避免长时间等待锁
+                async with asyncio.wait_for(self._context_lock.acquire(), timeout=5.0):
+                    if context_id not in self._context_prompts:
+                        self._context_prompts[context_id] = {}
+                    self._context_lock.release()
+            except asyncio.TimeoutError:
+                logger.warning(f"获取上下文锁超时，context_id: {context_id}")
+                # 超时时直接进入，不设置上下文
+                context_id = None
 
             # 保存当前协程的上下文值，不影响其他协程
             previous_context = self._current_context
             # 设置当前协程的新上下文
-            token = self._current_context_var.set(context_id)
+            token = self._current_context_var.set(context_id) if context_id else None
         else:
             # 如果没有提供新上下文，保持当前上下文不变
             previous_context = self._current_context
@@ -51,12 +58,17 @@ class PromptContext:
         try:
             yield self
         finally:
-            # 恢复之前的上下文
-            if context_id is not None:
-                if token:
+            # 恢复之前的上下文，添加异常保护
+            if context_id is not None and token is not None:
+                try:
                     self._current_context_var.reset(token)
-                else:
-                    self._current_context = previous_context
+                except Exception as e:
+                    logger.warning(f"恢复上下文时出错: {e}")
+                    # 如果reset失败，尝试直接设置
+                    try:
+                        self._current_context = previous_context
+                    except Exception:
+                        pass  # 静默忽略恢复失败
 
     async def get_prompt_async(self, name: str) -> Optional["Prompt"]:
         """异步获取当前作用域中的提示模板"""

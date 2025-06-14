@@ -58,6 +58,9 @@ class RelationshipConfig(ConfigBase):
     build_relationship_interval: int = 600
     """构建关系间隔 单位秒，如果为0则不构建关系"""
 
+    relation_frequency: int = 1
+    """关系频率，麦麦构建关系的速度，仅在normal_chat模式下有效"""
+
 
 @dataclass
 class ChatConfig(ConfigBase):
