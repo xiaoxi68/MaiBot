@@ -4,14 +4,13 @@ from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 import time
 import traceback
-from src.common.logger_manager import get_logger
-from src.individuality.individuality import individuality
+from src.common.logger import get_logger
+from src.individuality.individuality import get_individuality
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
-from src.chat.message_receive.chat_stream import chat_manager
+from src.chat.message_receive.chat_stream import get_chat_manager
 from .base_processor import BaseProcessor
-from typing import List, Optional
+from typing import List
 from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
-from typing import Dict
 from src.chat.focus_chat.info.info_base import InfoBase
 from src.chat.focus_chat.info.self_info import SelfInfo
 
@@ -59,12 +58,10 @@ class SelfProcessor(BaseProcessor):
             request_type="focus.processor.self_identify",
         )
 
-        name = chat_manager.get_stream_name(self.subheartflow_id)
+        name = get_chat_manager().get_stream_name(self.subheartflow_id)
         self.log_prefix = f"[{name}] "
 
-    async def process_info(
-        self, observations: Optional[List[Observation]] = None, running_memorys: Optional[List[Dict]] = None, *infos
-    ) -> List[InfoBase]:
+    async def process_info(self, observations: List[Observation] = None, *infos) -> List[InfoBase]:
         """处理信息对象
 
         Args:
@@ -73,7 +70,7 @@ class SelfProcessor(BaseProcessor):
         Returns:
             List[InfoBase]: 处理后的结构化信息列表
         """
-        self_info_str = await self.self_indentify(observations, running_memorys)
+        self_info_str = await self.self_indentify(observations)
 
         if self_info_str:
             self_info = SelfInfo()
@@ -85,7 +82,8 @@ class SelfProcessor(BaseProcessor):
         return [self_info]
 
     async def self_indentify(
-        self, observations: Optional[List[Observation]] = None, running_memorys: Optional[List[Dict]] = None
+        self,
+        observations: List[Observation] = None,
     ):
         """
         在回复前进行思考，生成内心想法并收集工具调用结果
@@ -99,13 +97,6 @@ class SelfProcessor(BaseProcessor):
             如果return_prompt为True:
                 tuple: (current_mind, past_mind, prompt) 当前想法、过去的想法列表和使用的prompt
         """
-
-        for observation in observations:
-            if isinstance(observation, ChattingObservation):
-                is_group_chat = observation.is_group_chat
-                chat_target_info = observation.chat_target_info
-                chat_target_name = "对方"  # 私聊默认名称
-                person_list = observation.person_list
 
         if observations is None:
             observations = []
@@ -122,9 +113,7 @@ class SelfProcessor(BaseProcessor):
                     )
                 # 获取聊天内容
                 chat_observe_info = observation.get_observe_info()
-                person_list = observation.person_list
             if isinstance(observation, HFCloopObservation):
-                # hfcloop_observe_info = observation.get_observe_info()
                 pass
 
         nickname_str = ""
@@ -132,8 +121,9 @@ class SelfProcessor(BaseProcessor):
             nickname_str += f"{nicknames},"
         name_block = f"你的名字是{global_config.bot.nickname},你的昵称有{nickname_str}，有人也会用这些昵称称呼你。"
 
-        personality_block = individuality.get_personality_prompt(x_person=2, level=2)
-        identity_block = individuality.get_identity_prompt(x_person=2, level=2)
+        personality_block = get_individuality().get_personality_prompt(x_person=2, level=2)
+
+        identity_block = get_individuality().get_identity_prompt(x_person=2, level=2)
 
         prompt = (await global_prompt_manager.get_prompt_async("indentify_prompt")).format(
             name_block=name_block,

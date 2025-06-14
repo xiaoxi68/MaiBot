@@ -11,12 +11,10 @@ from src.chat.focus_chat.info.action_info import ActionInfo
 from src.chat.focus_chat.info.structured_info import StructuredInfo
 from src.chat.focus_chat.info.self_info import SelfInfo
 from src.chat.focus_chat.info.relation_info import RelationInfo
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
-from src.individuality.individuality import individuality
+from src.individuality.individuality import get_individuality
 from src.chat.focus_chat.planners.action_manager import ActionManager
-from src.chat.focus_chat.planners.modify_actions import ActionModifier
-from src.chat.focus_chat.planners.actions.base_action import ChatMode
 from json_repair import repair_json
 from src.chat.focus_chat.planners.base_planner import BasePlanner
 from datetime import datetime
@@ -110,8 +108,8 @@ class ActionPlanner(BasePlanner):
                 nickname_str += f"{nicknames},"
             name_block = f"你的名字是{global_config.bot.nickname},你的昵称有{nickname_str}，有人也会用这些昵称称呼你。"
 
-            personality_block = individuality.get_personality_prompt(x_person=2, level=2)
-            identity_block = individuality.get_identity_prompt(x_person=2, level=2)
+            personality_block = get_individuality().get_personality_prompt(x_person=2, level=2)
+            identity_block = get_individuality().get_identity_prompt(x_person=2, level=2)
 
             self_info = name_block + personality_block + identity_block
             current_mind = "你思考了很久，没有想清晰要做什么"
@@ -146,8 +144,8 @@ class ActionPlanner(BasePlanner):
             # 获取经过modify_actions处理后的最终可用动作集
             # 注意：动作的激活判定现在在主循环的modify_actions中完成
             # 使用Focus模式过滤动作
-            current_available_actions_dict = self.action_manager.get_using_actions_for_mode(ChatMode.FOCUS)
-            
+            current_available_actions_dict = self.action_manager.get_using_actions_for_mode("focus")
+
             # 获取完整的动作信息
             all_registered_actions = self.action_manager.get_registered_actions()
             current_available_actions = {}
@@ -166,7 +164,7 @@ class ActionPlanner(BasePlanner):
                 logger.info(f"{self.log_prefix}{reasoning}")
                 self.action_manager.restore_actions()
                 logger.debug(
-                    f"{self.log_prefix}沉默后恢复到默认动作集, 当前可用: {list(self.action_manager.get_using_actions().keys())}"
+                    f"{self.log_prefix}[focus]沉默后恢复到默认动作集, 当前可用: {list(self.action_manager.get_using_actions().keys())}"
                 )
                 return {
                     "action_result": {"action_type": action, "action_data": action_data, "reasoning": reasoning},
@@ -193,12 +191,11 @@ class ActionPlanner(BasePlanner):
             try:
                 prompt = f"{prompt}"
                 llm_content, (reasoning_content, _) = await self.planner_llm.generate_response_async(prompt=prompt)
-                
-                # logger.info(f"{self.log_prefix}规划器原始提示词: {prompt}")
+
+                logger.info(f"{self.log_prefix}规划器原始提示词: {prompt}")
                 logger.info(f"{self.log_prefix}规划器原始响应: {llm_content}")
                 logger.info(f"{self.log_prefix}规划器推理: {reasoning_content}")
-                
-                
+
             except Exception as req_e:
                 logger.error(f"{self.log_prefix}LLM 请求执行失败: {req_e}")
                 reasoning = f"LLM 请求失败，你的模型出现问题: {req_e}"
@@ -219,7 +216,6 @@ class ActionPlanner(BasePlanner):
 
                     # 提取决策，提供默认值
                     extracted_action = parsed_json.get("action", "no_reply")
-                    # extracted_reasoning = parsed_json.get("reasoning", "LLM未提供理由")
                     extracted_reasoning = ""
 
                     # 将所有其他属性添加到action_data
@@ -238,10 +234,10 @@ class ActionPlanner(BasePlanner):
                         extra_info_block = ""
 
                     action_data["extra_info_block"] = extra_info_block
-                    
+
                     if relation_info:
                         action_data["relation_info_block"] = relation_info
-                    
+
                     # 对于reply动作不需要额外处理，因为相关字段已经在上面的循环中添加到action_data
 
                     if extracted_action not in current_available_actions:
@@ -266,10 +262,6 @@ class ActionPlanner(BasePlanner):
             traceback.print_exc()
             action = "no_reply"
             reasoning = f"Planner 内部处理错误: {outer_e}"
-
-        # logger.debug(
-        #     f"{self.log_prefix}规划器Prompt:\n{prompt}\n\n决策动作:{action},\n动作信息: '{action_data}'\n理由: {reasoning}"
-        # )
 
         # 恢复到默认动作集
         self.action_manager.restore_actions()
@@ -304,12 +296,11 @@ class ActionPlanner(BasePlanner):
     ) -> str:
         """构建 Planner LLM 的提示词 (获取模板并填充数据)"""
         try:
-
             if relation_info_block:
                 relation_info_block = f"以下是你和别人的关系描述：\n{relation_info_block}"
             else:
                 relation_info_block = ""
-                
+
             memory_str = ""
             if running_memorys:
                 memory_str = "以下是当前在聊天中，你回忆起的记忆：\n"
@@ -332,11 +323,11 @@ class ActionPlanner(BasePlanner):
 
             # mind_info_block = ""
             # if current_mind:
-                # mind_info_block = f"对聊天的规划：{current_mind}"
+            # mind_info_block = f"对聊天的规划：{current_mind}"
             # else:
-                # mind_info_block = "你刚参与聊天"
+            # mind_info_block = "你刚参与聊天"
 
-            personality_block = individuality.get_prompt(x_person=2, level=2)
+            personality_block = get_individuality().get_prompt(x_person=2, level=2)
 
             action_options_block = ""
             for using_actions_name, using_actions_info in current_available_actions.items():
@@ -352,16 +343,14 @@ class ActionPlanner(BasePlanner):
                     param_text = "\n"
                     for param_name, param_description in using_actions_info["parameters"].items():
                         param_text += f'    "{param_name}":"{param_description}"\n'
-                    param_text = param_text.rstrip('\n')
+                    param_text = param_text.rstrip("\n")
                 else:
                     param_text = ""
-
 
                 require_text = ""
                 for require_item in using_actions_info["require"]:
                     require_text += f"- {require_item}\n"
-                require_text = require_text.rstrip('\n')
-
+                require_text = require_text.rstrip("\n")
 
                 using_action_prompt = using_action_prompt.format(
                     action_name=using_actions_name,

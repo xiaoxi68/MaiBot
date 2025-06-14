@@ -8,7 +8,7 @@ from datetime import datetime
 from tomlkit import TOMLDocument
 from tomlkit.items import Table
 
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from rich.traceback import install
 
 from src.config.config_base import ConfigBase
@@ -25,6 +25,7 @@ from src.config.official_configs import (
     MoodConfig,
     KeywordReactionConfig,
     ChineseTypoConfig,
+    ResponsePostProcessConfig,
     ResponseSplitterConfig,
     TelemetryConfig,
     ExperimentalConfig,
@@ -47,7 +48,7 @@ TEMPLATE_DIR = "template"
 
 # 考虑到，实际上配置文件中的mai_version是不会自动更新的,所以采用硬编码
 # 对该字段的更新，请严格参照语义化版本规范：https://semver.org/lang/zh-CN/
-MMC_VERSION = "0.7.3-snapshot.1"
+MMC_VERSION = "0.7.4-snapshot.1"
 
 
 def update_config():
@@ -157,6 +158,7 @@ class Config(ConfigBase):
     mood: MoodConfig
     keyword_reaction: KeywordReactionConfig
     chinese_typo: ChineseTypoConfig
+    response_post_process: ResponsePostProcessConfig
     response_splitter: ResponseSplitterConfig
     telemetry: TelemetryConfig
     experimental: ExperimentalConfig
@@ -181,6 +183,14 @@ def load_config(config_path: str) -> Config:
     except Exception as e:
         logger.critical("配置文件解析失败")
         raise e
+
+
+def get_config_dir() -> str:
+    """
+    获取配置目录
+    :return: 配置目录路径
+    """
+    return CONFIG_DIR
 
 
 # 获取配置文件路径

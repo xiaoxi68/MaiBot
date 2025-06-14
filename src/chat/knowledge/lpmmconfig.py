@@ -132,9 +132,6 @@ global_config = dict(
     }
 )
 
-# _load_config(global_config, parser.parse_args().config_path)
-# file_path = os.path.abspath(__file__)
-# dir_path = os.path.dirname(file_path)
 ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 config_path = os.path.join(ROOT_PATH, "config", "lpmm_config.toml")
 _load_config(global_config, config_path)

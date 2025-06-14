@@ -71,14 +71,14 @@ def analyze_group_similarity():
     # 获取所有群组目录
     base_dir = Path("data/expression/learnt_style")
     group_dirs = [d for d in base_dir.iterdir() if d.is_dir()]
-    
+
     # 加载所有群组的数据并过滤
     valid_groups = []
     valid_names = []
     valid_situations = []
     valid_styles = []
     valid_combined = []
-    
+
     for d in group_dirs:
         situations, styles, combined, total_count = load_group_data(d)
         if total_count >= 50:  # 只保留数据量大于等于50的群组
@@ -87,11 +87,11 @@ def analyze_group_similarity():
             valid_situations.append(" ".join(situations))
             valid_styles.append(" ".join(styles))
             valid_combined.append(" ".join(combined))
-    
+
     if not valid_groups:
         print("没有找到数据量大于等于50的群组")
         return
-        
+
     # 创建TF-IDF向量化器
     vectorizer = TfidfVectorizer()
 

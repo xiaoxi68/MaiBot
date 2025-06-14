@@ -15,7 +15,7 @@ from src.chat.knowledge.embedding_store import EmbeddingManager
 from src.chat.knowledge.llm_client import LLMClient
 from src.chat.knowledge.open_ie import OpenIE
 from src.chat.knowledge.kg_manager import KGManager
-from src.common.logger import get_module_logger
+from src.common.logger import get_logger
 from src.chat.knowledge.utils.hash import get_sha256
 
 
@@ -23,7 +23,7 @@ from src.chat.knowledge.utils.hash import get_sha256
 ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 OPENIE_DIR = global_config["persistence"]["openie_data_path"] or os.path.join(ROOT_PATH, "data/openie")
 
-logger = get_module_logger("OpenIE导入")
+logger = get_logger("OpenIE导入")
 
 
 def hash_deduplicate(

@@ -213,4 +213,11 @@ class Individuality:
         return None
 
 
-individuality = Individuality()
+individuality = None
+
+
+def get_individuality():
+    global individuality
+    if individuality is None:
+        individuality = Individuality()
+    return individuality

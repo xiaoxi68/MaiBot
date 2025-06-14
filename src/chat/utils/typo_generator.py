@@ -13,9 +13,9 @@ from pathlib import Path
 import jieba
 from pypinyin import Style, pinyin
 
-from src.common.logger import get_module_logger
+from src.common.logger import get_logger
 
-logger = get_module_logger("typo_gen")
+logger = get_logger("typo_gen")
 
 
 class ChineseTypoGenerator:

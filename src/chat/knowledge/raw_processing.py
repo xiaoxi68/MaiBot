@@ -3,7 +3,7 @@ import os
 
 from .global_logger import logger
 from .lpmmconfig import global_config
-from src.chat.knowledge.utils import get_sha256
+from src.chat.knowledge.utils.hash import get_sha256
 
 
 def load_raw_data(path: str = None) -> tuple[list[str], list[str]]:
@@ -25,10 +25,10 @@ def load_raw_data(path: str = None) -> tuple[list[str], list[str]]:
             import_json = json.loads(f.read())
     else:
         raise Exception(f"原始数据文件读取失败: {json_path}")
-    # import_json内容示例：
-    # import_json = [
-    #       "The capital of China is Beijing. The capital of France is Paris.",
-    # ]
+    """
+    import_json 内容示例：
+    import_json = ["The capital of China is Beijing. The capital of France is Paris.",]
+    """
     raw_data = []
     sha256_list = []
     sha256_set = set()

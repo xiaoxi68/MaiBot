@@ -9,10 +9,10 @@ import time
 from typing import List, Optional, Tuple, Dict, Any
 from src.chat.message_receive.message import MessageRecv, MessageSending, MessageThinking, Seg
 from src.chat.message_receive.message import UserInfo
-from src.chat.message_receive.chat_stream import ChatStream,chat_manager
+from src.chat.message_receive.chat_stream import ChatStream, get_chat_manager
 from src.chat.message_receive.message_sender import message_manager
 from src.config.config import global_config
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 
 logger = get_logger("normal_chat_expressor")
 
@@ -35,9 +35,9 @@ class NormalChatExpressor:
             stream_name: 流名称
         """
         self.chat_stream = chat_stream
-        self.stream_name = chat_manager.get_stream_name(self.chat_stream.stream_id) or self.chat_stream.stream_id
+        self.stream_name = get_chat_manager().get_stream_name(self.chat_stream.stream_id) or self.chat_stream.stream_id
         self.log_prefix = f"[{self.stream_name}]Normal表达器"
-        
+
         logger.debug(f"{self.log_prefix} 初始化完成")
 
     async def create_thinking_message(
@@ -111,7 +111,6 @@ class NormalChatExpressor:
 
             # 创建消息集
 
-            first_bot_msg = None
             mark_head = False
             is_emoji = False
             if len(response_set) == 0:
@@ -133,20 +132,23 @@ class NormalChatExpressor:
                 thinking_start_time=time.time(),
                 reply_to=mark_head,
                 is_emoji=is_emoji,
+                display_message=display_message,
             )
             logger.debug(f"{self.log_prefix} 添加{response_type}类型消息: {content}")
 
             # 提交消息集
             if bot_msg:
                 await message_manager.add_message(bot_msg)
-                logger.info(f"{self.log_prefix} 成功发送 {response_type}类型消息: {content}")
+                logger.info(
+                    f"{self.log_prefix} 成功发送 {response_type}类型消息: {str(content)[:200] + '...' if len(str(content)) > 200 else content}"
+                )
                 container = await message_manager.get_container(self.chat_stream.stream_id)  # 使用 self.stream_id
                 for msg in container.messages[:]:
                     if isinstance(msg, MessageThinking) and msg.message_info.message_id == thinking_id:
                         container.messages.remove(msg)
                         logger.debug(f"[{self.stream_name}] 已移除未产生回复的思考消息 {thinking_id}")
                         break
-                return first_bot_msg
+                return bot_msg
             else:
                 logger.warning(f"{self.log_prefix} 没有有效的消息被创建")
                 return None
@@ -167,6 +169,7 @@ class NormalChatExpressor:
         thinking_start_time: float,
         reply_to: bool = False,
         is_emoji: bool = False,
+        display_message: str = "",
     ) -> MessageSending:
         """构建发送消息
 
@@ -197,6 +200,7 @@ class NormalChatExpressor:
             reply=anchor_message if reply_to else None,
             thinking_start_time=thinking_start_time,
             is_emoji=is_emoji,
+            display_message=display_message,
         )
 
         return message_sending

@@ -50,11 +50,14 @@ class IdentityConfig(ConfigBase):
 class RelationshipConfig(ConfigBase):
     """关系配置类"""
 
+    enable_relationship: bool = True
+
     give_name: bool = False
     """是否给其他人取名"""
 
     build_relationship_interval: int = 600
     """构建关系间隔 单位秒，如果为0则不构建关系"""
+
 
 @dataclass
 class ChatConfig(ConfigBase):
@@ -156,9 +159,6 @@ class FocusChatConfig(ConfigBase):
     processor_max_time: int = 25
     """处理器最大时间，单位秒，如果超过这个时间，处理器会自动停止"""
 
-    planner_type: str = "simple"
-    """规划器类型，可选值：default（默认规划器）, simple（简单规划器）"""
-
 
 @dataclass
 class FocusChatProcessorConfig(ConfigBase):
@@ -220,6 +220,8 @@ class EmojiConfig(ConfigBase):
 @dataclass
 class MemoryConfig(ConfigBase):
     """记忆配置类"""
+
+    enable_memory: bool = True
 
     memory_build_interval: int = 600
     """记忆构建间隔（秒）"""
@@ -324,6 +326,14 @@ class KeywordReactionConfig(ConfigBase):
         for rule in self.keyword_rules + self.regex_rules:
             if not isinstance(rule, KeywordRuleConfig):
                 raise ValueError(f"规则必须是KeywordRuleConfig类型，而不是{type(rule).__name__}")
+
+
+@dataclass
+class ResponsePostProcessConfig(ConfigBase):
+    """回复后处理配置类"""
+
+    enable_response_post_process: bool = True
+    """是否启用回复后处理，包括错别字生成器，回复分割器"""
 
 
 @dataclass
@@ -450,7 +460,7 @@ class LPMMKnowledgeConfig(ConfigBase):
 
     qa_res_top_k: int = 10
     """QA最终结果的Top K数量"""
-    
+
 
 @dataclass
 class ModelConfig(ConfigBase):

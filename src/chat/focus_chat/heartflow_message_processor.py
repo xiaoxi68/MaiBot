@@ -1,19 +1,20 @@
-from src.chat.memory_system.Hippocampus import HippocampusManager
+from src.chat.memory_system.Hippocampus import hippocampus_manager
 from src.config.config import global_config
 from src.chat.message_receive.message import MessageRecv
 from src.chat.message_receive.storage import MessageStorage
 from src.chat.heart_flow.heartflow import heartflow
-from src.chat.message_receive.chat_stream import chat_manager, ChatStream
+from src.chat.message_receive.chat_stream import get_chat_manager, ChatStream
 from src.chat.utils.utils import is_mentioned_bot_in_message
 from src.chat.utils.timer_calculator import Timer
-from src.common.logger_manager import get_logger
-from src.person_info.relationship_manager import relationship_manager
+from src.common.logger import get_logger
 
 import math
 import re
 import traceback
 from typing import Optional, Tuple, Dict, Any
 from maim_message import UserInfo
+
+from src.person_info.relationship_manager import get_relationship_manager
 
 # from ..message_receive.message_buffer import message_buffer
 
@@ -45,14 +46,15 @@ async def _process_relationship(message: MessageRecv) -> None:
     nickname = message.message_info.user_info.user_nickname
     cardname = message.message_info.user_info.user_cardname or nickname
 
+    relationship_manager = get_relationship_manager()
     is_known = await relationship_manager.is_known_some_one(platform, user_id)
 
     if not is_known:
         logger.info(f"首次认识用户: {nickname}")
         await relationship_manager.first_knowing_some_one(platform, user_id, nickname, cardname)
     # elif not await relationship_manager.is_qved_name(platform, user_id):
-        # logger.info(f"给用户({nickname},{cardname})取名: {nickname}")
-        # await relationship_manager.first_knowing_some_one(platform, user_id, nickname, cardname, "")
+    # logger.info(f"给用户({nickname},{cardname})取名: {nickname}")
+    # await relationship_manager.first_knowing_some_one(platform, user_id, nickname, cardname, "")
 
 
 async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool]:
@@ -67,21 +69,22 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool]:
     is_mentioned, _ = is_mentioned_bot_in_message(message)
     interested_rate = 0.0
 
-    with Timer("记忆激活"):
-        interested_rate = await HippocampusManager.get_instance().get_activate_from_text(
-            message.processed_plain_text,
-            fast_retrieval=True,
-        )
-        text_len = len(message.processed_plain_text)
-        # 根据文本长度调整兴趣度，长度越大兴趣度越高，但增长率递减，最低0.01，最高0.05
-        # 采用对数函数实现递减增长
+    if global_config.memory.enable_memory:
+        with Timer("记忆激活"):
+            interested_rate = await hippocampus_manager.get_activate_from_text(
+                message.processed_plain_text,
+                fast_retrieval=True,
+            )
+            logger.debug(f"记忆激活率: {interested_rate:.2f}")
 
-        base_interest = 0.01 + (0.05 - 0.01) * (math.log10(text_len + 1) / math.log10(1000 + 1))
-        base_interest = min(max(base_interest, 0.01), 0.05)
+    text_len = len(message.processed_plain_text)
+    # 根据文本长度调整兴趣度，长度越大兴趣度越高，但增长率递减，最低0.01，最高0.05
+    # 采用对数函数实现递减增长
 
-        interested_rate += base_interest
+    base_interest = 0.01 + (0.05 - 0.01) * (math.log10(text_len + 1) / math.log10(1000 + 1))
+    base_interest = min(max(base_interest, 0.01), 0.05)
 
-        logger.trace(f"记忆激活率: {interested_rate:.2f}")
+    interested_rate += base_interest
 
     if is_mentioned:
         interest_increase_on_mention = 1
@@ -180,8 +183,7 @@ class HeartFCMessageReceiver:
             userinfo = message.message_info.user_info
             messageinfo = message.message_info
 
-
-            chat = await chat_manager.get_or_create_stream(
+            chat = await get_chat_manager().get_or_create_stream(
                 platform=messageinfo.platform,
                 user_info=userinfo,
                 group_info=groupinfo,
@@ -210,7 +212,7 @@ class HeartFCMessageReceiver:
             logger.info(f"[{mes_name}]{userinfo.user_nickname}:{message.processed_plain_text}")
 
             # 8. 关系处理
-            if global_config.relationship.give_name:
+            if global_config.relationship.enable_relationship and global_config.relationship.give_name:
                 await _process_relationship(message)
 
         except Exception as e:

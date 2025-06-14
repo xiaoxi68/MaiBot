@@ -5,13 +5,13 @@ from typing import Tuple, Union
 
 import aiohttp
 import requests
-from src.common.logger import get_module_logger
+from src.common.logger import get_logger
 from src.common.tcp_connector import get_tcp_connector
 from rich.traceback import install
 
 install(extra_lines=3)
 
-logger = get_module_logger("offline_llm")
+logger = get_logger("offline_llm")
 
 
 class LLMRequestOff:

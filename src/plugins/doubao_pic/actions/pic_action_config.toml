@@ -1,9 +1,0 @@
-base_url = "https://ark.cn-beijing.volces.com/api/v3"
-volcano_generate_api_key = "YOUR_VOLCANO_GENERATE_API_KEY_HERE"
-default_model = "doubao-seedream-3-0-t2i-250415"
-default_size = "1024x1024"
-default_watermark = true
-default_guidance_scale = 2.5
-default_seed = 42
-cache_enabled = true
-cache_max_size = 10

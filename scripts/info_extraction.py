@@ -12,7 +12,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from rich.progress import Progress  # 替换为 rich 进度条
 
-from src.common.logger import get_module_logger
+from src.common.logger import get_logger
 from src.chat.knowledge.lpmmconfig import global_config
 from src.chat.knowledge.ie_process import info_extract_from_str
 from src.chat.knowledge.llm_client import LLMClient
@@ -28,7 +28,7 @@ from rich.progress import (
     TextColumn,
 )
 
-logger = get_module_logger("LPMM知识库-信息提取")
+logger = get_logger("LPMM知识库-信息提取")
 
 
 ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))

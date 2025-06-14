@@ -1,25 +1,25 @@
 import traceback
 from typing import List, Optional, Dict, Any, Tuple
+
+from src.chat.focus_chat.expressors.exprssion_learner import get_expression_learner
 from src.chat.message_receive.message import MessageRecv, MessageThinking, MessageSending
 from src.chat.message_receive.message import Seg  # Local import needed after move
 from src.chat.message_receive.message import UserInfo
-from src.chat.message_receive.chat_stream import chat_manager
-from src.common.logger_manager import get_logger
+from src.chat.message_receive.chat_stream import get_chat_manager
+from src.common.logger import get_logger
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.chat.utils.utils_image import image_path_to_base64  # Local import needed after move
 from src.chat.utils.timer_calculator import Timer  # <--- Import Timer
-from src.chat.emoji_system.emoji_manager import emoji_manager
+from src.chat.emoji_system.emoji_manager import get_emoji_manager
 from src.chat.focus_chat.heartFC_sender import HeartFCSender
 from src.chat.utils.utils import process_llm_response
-from src.chat.utils.info_catcher import info_catcher_manager
 from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
 from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.focus_chat.hfc_utils import parse_thinking_id_to_timestamp
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_before_timestamp_with_chat
 import time
-from src.chat.focus_chat.expressors.exprssion_learner import expression_learner
 import random
 
 logger = get_logger("expressor")
@@ -110,6 +110,7 @@ class DefaultExpressor:
         # logger.debug(f"创建思考消息thinking_message：{thinking_message}")
 
         await self.heart_fc_sender.register_thinking(thinking_message)
+        return None
 
     async def deal_reply(
         self,
@@ -181,14 +182,6 @@ class DefaultExpressor:
         (已整合原 HeartFCGenerator 的功能)
         """
         try:
-            # 1. 获取情绪影响因子并调整模型温度
-            # arousal_multiplier = mood_manager.get_arousal_multiplier()
-            # current_temp = float(global_config.model.normal["temp"]) * arousal_multiplier
-            # self.express_model.params["temperature"] = current_temp  # 动态调整温度
-
-            # 2. 获取信息捕捉器
-            info_catcher = info_catcher_manager.get_info_catcher(thinking_id)
-
             # --- Determine sender_name for private chat ---
             sender_name_for_prompt = "某人"  # Default for group or if info unavailable
             if not self.is_group_chat and self.chat_target_info:
@@ -227,14 +220,8 @@ class DefaultExpressor:
                     # logger.info(f"{self.log_prefix}[Replier-{thinking_id}]\nPrompt:\n{prompt}\n")
                     content, (reasoning_content, model_name) = await self.express_model.generate_response_async(prompt)
 
-                    # logger.info(f"{self.log_prefix}\nPrompt:\n{prompt}\n---------------------------\n")
-
                     logger.info(f"想要表达：{in_mind_reply}||理由：{reason}")
                     logger.info(f"最终回复: {content}\n")
-
-                info_catcher.catch_after_llm_generated(
-                    prompt=prompt, response=content, reasoning_content=reasoning_content, model_name=model_name
-                )
 
             except Exception as llm_e:
                 # 精简报错信息
@@ -288,6 +275,7 @@ class DefaultExpressor:
             truncate=True,
         )
 
+        expression_learner = get_expression_learner()
         (
             learnt_style_expressions,
             learnt_grammar_expressions,
@@ -379,7 +367,7 @@ class DefaultExpressor:
             logger.error(f"{self.log_prefix} 无法发送回复，anchor_message 为空。")
             return None
 
-        stream_name = chat_manager.get_stream_name(chat_id) or chat_id  # 获取流名称用于日志
+        stream_name = get_chat_manager().get_stream_name(chat_id) or chat_id  # 获取流名称用于日志
 
         # 检查思考过程是否仍在进行，并获取开始时间
         if thinking_id:
@@ -468,7 +456,7 @@ class DefaultExpressor:
         选择表情，根据send_emoji文本选择表情，返回表情base64
         """
         emoji_base64 = ""
-        emoji_raw = await emoji_manager.get_emoji_for_text(send_emoji)
+        emoji_raw = await get_emoji_manager().get_emoji_for_text(send_emoji)
         if emoji_raw:
             emoji_path, _description, _emotion = emoji_raw
             emoji_base64 = image_path_to_base64(emoji_path)

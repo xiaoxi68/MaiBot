@@ -4,19 +4,16 @@ import traceback
 from random import random
 from typing import List, Optional  # 导入 Optional
 from maim_message import UserInfo, Seg
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
 from src.manager.mood_manager import mood_manager
-from src.chat.message_receive.chat_stream import ChatStream, chat_manager
-from src.chat.utils.info_catcher import info_catcher_manager
+from src.chat.message_receive.chat_stream import ChatStream, get_chat_manager
 from src.chat.utils.timer_calculator import Timer
 from src.chat.utils.prompt_builder import global_prompt_manager
 from .normal_chat_generator import NormalChatGenerator
 from ..message_receive.message import MessageSending, MessageRecv, MessageThinking, MessageSet
 from src.chat.message_receive.message_sender import message_manager
-from src.chat.utils.utils_image import image_path_to_base64
-from src.chat.emoji_system.emoji_manager import emoji_manager
-from src.chat.normal_chat.willing.willing_manager import willing_manager
+from src.chat.normal_chat.willing.willing_manager import get_willing_manager
 from src.chat.normal_chat.normal_chat_utils import get_recent_message_stats
 from src.config.config import global_config
 from src.chat.focus_chat.planners.action_manager import ActionManager
@@ -25,6 +22,7 @@ from src.chat.normal_chat.normal_chat_action_modifier import NormalChatActionMod
 from src.chat.normal_chat.normal_chat_expressor import NormalChatExpressor
 from src.chat.focus_chat.replyer.default_replyer import DefaultReplyer
 
+willing_manager = get_willing_manager()
 
 logger = get_logger("normal_chat")
 
@@ -35,7 +33,7 @@ class NormalChat:
 
         self.chat_stream = chat_stream
         self.stream_id = chat_stream.stream_id
-        self.stream_name = chat_manager.get_stream_name(self.stream_id) or self.stream_id
+        self.stream_name = get_chat_manager().get_stream_name(self.stream_id) or self.stream_id
 
         # 初始化Normal Chat专用表达器
         self.expressor = NormalChatExpressor(self.chat_stream)
@@ -150,50 +148,6 @@ class NormalChat:
 
         return first_bot_msg
 
-    # 改为实例方法
-    async def _handle_emoji(self, message: MessageRecv, response: str):
-        """处理表情包"""
-        if random() < global_config.normal_chat.emoji_chance:
-            emoji_raw = await emoji_manager.get_emoji_for_text(response)
-            if emoji_raw:
-                emoji_path, description, _emotion = emoji_raw
-                emoji_cq = image_path_to_base64(emoji_path)
-
-                thinking_time_point = round(message.message_info.time, 2)
-
-                message_segment = Seg(type="emoji", data=emoji_cq)
-                bot_message = MessageSending(
-                    message_id="mt" + str(thinking_time_point),
-                    chat_stream=self.chat_stream,  # 使用 self.chat_stream
-                    bot_user_info=UserInfo(
-                        user_id=global_config.bot.qq_account,
-                        user_nickname=global_config.bot.nickname,
-                        platform=message.message_info.platform,
-                    ),
-                    sender_info=message.message_info.user_info,
-                    message_segment=message_segment,
-                    reply=message,
-                    is_head=False,
-                    is_emoji=True,
-                    apply_set_reply_logic=True,
-                )
-                await message_manager.add_message(bot_message)
-
-    # 改为实例方法 (虽然它只用 message.chat_stream, 但逻辑上属于实例)
-    # async def _update_relationship(self, message: MessageRecv, response_set):
-    #     """更新关系情绪"""
-    #     ori_response = ",".join(response_set)
-    #     stance, emotion = await self.gpt._get_emotion_tags(ori_response, message.processed_plain_text)
-    #     user_info = message.message_info.user_info
-    #     platform = user_info.platform
-    #     await relationship_manager.calculate_update_relationship_value(
-    #         user_info,
-    #         platform,
-    #         label=emotion,
-    #         stance=stance,  # 使用 self.chat_stream
-    #     )
-    #     self.mood_manager.update_mood_from_emotion(emotion, global_config.mood.mood_intensity_factor)
-
     async def _reply_interested_message(self) -> None:
         """
         后台任务方法，轮询当前实例关联chat的兴趣消息
@@ -298,9 +252,6 @@ class NormalChat:
 
             logger.debug(f"[{self.stream_name}] 创建捕捉器，thinking_id:{thinking_id}")
 
-            info_catcher = info_catcher_manager.get_info_catcher(thinking_id)
-            info_catcher.catch_decide_to_response(message)
-
             # 如果启用planner，预先修改可用actions（避免在并行任务中重复调用）
             available_actions = None
             if self.enable_planner:
@@ -336,13 +287,17 @@ class NormalChat:
                 try:
                     # 获取发送者名称（动作修改已在并行执行前完成）
                     sender_name = self._get_sender_name(message)
-                    
+
                     no_action = {
-                        "action_result": {"action_type": "no_action", "action_data": {}, "reasoning": "规划器初始化默认", "is_parallel": True},
+                        "action_result": {
+                            "action_type": "no_action",
+                            "action_data": {},
+                            "reasoning": "规划器初始化默认",
+                            "is_parallel": True,
+                        },
                         "chat_context": "",
                         "action_prompt": "",
                     }
-                    
 
                     # 检查是否应该跳过规划
                     if self.action_modifier.should_skip_planning():
@@ -357,7 +312,9 @@ class NormalChat:
                     reasoning = plan_result["action_result"]["reasoning"]
                     is_parallel = plan_result["action_result"].get("is_parallel", False)
 
-                    logger.info(f"[{self.stream_name}] Planner决策: {action_type}, 理由: {reasoning}, 并行执行: {is_parallel}")
+                    logger.info(
+                        f"[{self.stream_name}] Planner决策: {action_type}, 理由: {reasoning}, 并行执行: {is_parallel}"
+                    )
                     self.action_type = action_type  # 更新实例属性
                     self.is_parallel_action = is_parallel  # 新增：保存并行执行标志
 
@@ -376,7 +333,12 @@ class NormalChat:
                     else:
                         logger.warning(f"[{self.stream_name}] 额外动作 {action_type} 执行失败")
 
-                    return {"action_type": action_type, "action_data": action_data, "reasoning": reasoning, "is_parallel": is_parallel}
+                    return {
+                        "action_type": action_type,
+                        "action_data": action_data,
+                        "reasoning": reasoning,
+                        "is_parallel": is_parallel,
+                    }
 
                 except Exception as e:
                     logger.error(f"[{self.stream_name}] Planner执行失败: {e}")
@@ -394,21 +356,25 @@ class NormalChat:
             if isinstance(response_set, Exception):
                 logger.error(f"[{self.stream_name}] 回复生成异常: {response_set}")
                 response_set = None
-            elif response_set:
-                info_catcher.catch_after_generate_response(timing_results["并行生成回复和规划"])
 
             # 处理规划结果（可选，不影响回复）
             if isinstance(plan_result, Exception):
                 logger.error(f"[{self.stream_name}] 动作规划异常: {plan_result}")
             elif plan_result:
                 logger.debug(f"[{self.stream_name}] 额外动作处理完成: {self.action_type}")
-            
+
             if not response_set or (
-                self.enable_planner and self.action_type not in ["no_action", "change_to_focus_chat"] and not self.is_parallel_action
+                self.enable_planner
+                and self.action_type not in ["no_action", "change_to_focus_chat"]
+                and not self.is_parallel_action
             ):
                 if not response_set:
                     logger.info(f"[{self.stream_name}] 模型未生成回复内容")
-                elif self.enable_planner and self.action_type not in ["no_action", "change_to_focus_chat"] and not self.is_parallel_action:
+                elif (
+                    self.enable_planner
+                    and self.action_type not in ["no_action", "change_to_focus_chat"]
+                    and not self.is_parallel_action
+                ):
                     logger.info(f"[{self.stream_name}] 模型选择其他动作（非并行动作）")
                 # 如果模型未生成回复，移除思考消息
                 container = await message_manager.get_container(self.stream_id)  # 使用 self.stream_id
@@ -435,8 +401,6 @@ class NormalChat:
 
             # 检查 first_bot_msg 是否为 None (例如思考消息已被移除的情况)
             if first_bot_msg:
-                info_catcher.catch_after_response(timing_results["消息发送"], response_set, first_bot_msg)
-
                 # 记录回复信息到最近回复列表中
                 reply_info = {
                     "time": time.time(),
@@ -465,13 +429,8 @@ class NormalChat:
                             logger.warning(f"[{self.stream_name}] 没有设置切换到focus聊天模式的回调函数，无法执行切换")
                         return
                     else:
-                        # await self._check_switch_to_focus()
+                        await self._check_switch_to_focus()
                         pass
-
-            info_catcher.done_catch()
-
-            with Timer("处理表情包", timing_results):
-                await self._handle_emoji(message, response_set[0])
 
             # with Timer("关系更新", timing_results):
             #     await self._update_relationship(message, response_set)

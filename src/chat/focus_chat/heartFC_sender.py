@@ -1,10 +1,10 @@
 import asyncio
 from typing import Dict, Optional  # 重新导入类型
 from src.chat.message_receive.message import MessageSending, MessageThinking
-from src.common.message.api import global_api
+from src.common.message.api import get_global_api
 from src.chat.message_receive.storage import MessageStorage
 from src.chat.utils.utils import truncate_message
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.chat.utils.utils import calculate_typing_time
 from rich.traceback import install
 import traceback
@@ -21,8 +21,8 @@ async def send_message(message: MessageSending) -> str:
 
     try:
         # 直接调用API发送消息
-        await global_api.send_message(message)
-        logger.success(f"已将消息  '{message_preview}'  发往平台'{message.message_info.platform}'")
+        await get_global_api().send_message(message)
+        logger.info(f"已将消息  '{message_preview}'  发往平台'{message.message_info.platform}'")
         return message.processed_plain_text
 
     except Exception as e:
@@ -88,10 +88,10 @@ class HeartFCSender:
         """
         if not message.chat_stream:
             logger.error("消息缺少 chat_stream，无法发送")
-            return
+            raise Exception("消息缺少 chat_stream，无法发送")
         if not message.message_info or not message.message_info.message_id:
             logger.error("消息缺少 message_info 或 message_id，无法发送")
-            return
+            raise Exception("消息缺少 message_info 或 message_id，无法发送")
 
         chat_id = message.chat_stream.stream_id
         message_id = message.message_info.message_id
@@ -110,7 +110,9 @@ class HeartFCSender:
                     message.set_reply()
                     logger.debug(f"[{chat_id}] 应用 set_reply 逻辑: {message.processed_plain_text[:20]}...")
 
+            # print(f"message.display_message: {message.display_message}")
             await message.process()
+            # print(f"message.display_message: {message.display_message}")
 
             if typing:
                 if has_thinking:

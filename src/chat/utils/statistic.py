@@ -3,14 +3,14 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, Tuple, List
 
 
-from src.common.logger import get_module_logger
+from src.common.logger import get_logger
 from src.manager.async_task_manager import AsyncTask
 
 from ...common.database.database import db  # This db is the Peewee database instance
 from ...common.database.database_model import OnlineTime, LLMUsage, Messages  # Import the Peewee model
 from src.manager.local_store_manager import local_storage
 
-logger = get_module_logger("maibot_statistic")
+logger = get_logger("maibot_statistic")
 
 # 统计数据的键
 TOTAL_REQ_CNT = "total_requests"

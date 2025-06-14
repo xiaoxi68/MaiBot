@@ -16,6 +16,7 @@ MaiBot-Napcat-Adapter
 /log_debug
 /src/test
 nonebot-maibot-adapter/
+MaiMBot-LPMM
 *.zip
 run.bat
 log_debug/
@@ -309,9 +310,4 @@ src/plugins/test_plugin_pic/actions/pic_action_config.toml
 run_pet.bat
 
 # 忽略 /src/plugins 但保留特定目录
-/src/plugins/*
-!/src/plugins/doubao_pic/
-!/src/plugins/mute_plugin/
-!/src/plugins/tts_plugin/
-!/src/plugins/vtb_action/
-!/src/plugins/__init__.py
+plugins/*

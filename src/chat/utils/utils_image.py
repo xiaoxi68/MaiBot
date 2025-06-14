@@ -13,7 +13,7 @@ from src.common.database.database_model import Images, ImageDescriptions
 from src.config.config import global_config
 from src.llm_models.utils_model import LLMRequest
 
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from rich.traceback import install
 
 install(extra_lines=3)
@@ -228,7 +228,7 @@ class ImageManager:
                         description=description,
                         timestamp=current_timestamp,
                     )
-                logger.trace(f"保存图片元数据: {file_path}")
+                logger.debug(f"保存图片元数据: {file_path}")
             except Exception as e:
                 logger.error(f"保存图片文件或元数据失败: {str(e)}")
 
@@ -288,7 +288,7 @@ class ImageManager:
                 # 计算和上一张选中帧的差异（均方误差 MSE）
                 if last_selected_frame_np is not None:
                     mse = np.mean((current_frame_np - last_selected_frame_np) ** 2)
-                    # logger.trace(f"帧 {i} 与上一选中帧的 MSE: {mse}") # 可以取消注释来看差异值
+                    # logger.debug(f"帧 {i} 与上一选中帧的 MSE: {mse}") # 可以取消注释来看差异值
 
                     # 如果差异够大，就选它！
                     if mse > similarity_threshold:
@@ -362,7 +362,15 @@ class ImageManager:
 
 
 # 创建全局单例
-image_manager = ImageManager()
+image_manager = None
+
+
+def get_image_manager() -> ImageManager:
+    """获取全局图片管理器单例"""
+    global image_manager
+    if image_manager is None:
+        image_manager = ImageManager()
+    return image_manager
 
 
 def image_path_to_base64(image_path: str) -> str:

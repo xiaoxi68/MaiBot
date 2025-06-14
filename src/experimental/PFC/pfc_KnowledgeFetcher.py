@@ -1,13 +1,13 @@
 from typing import List, Tuple
-from src.common.logger import get_module_logger
-from src.chat.memory_system.Hippocampus import HippocampusManager
+from src.common.logger import get_logger
+from src.chat.memory_system.Hippocampus import hippocampus_manager
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.chat.message_receive.message import Message
 from src.chat.knowledge.knowledge_lib import qa_manager
 from src.chat.utils.chat_message_builder import build_readable_messages
 
-logger = get_module_logger("knowledge_fetcher")
+logger = get_logger("knowledge_fetcher")
 
 
 class KnowledgeFetcher:
@@ -62,7 +62,7 @@ class KnowledgeFetcher:
         )
 
         # 从记忆中获取相关知识
-        related_memory = await HippocampusManager.get_instance().get_memory_from_text(
+        related_memory = await hippocampus_manager.get_memory_from_text(
             text=f"{query}\n{chat_history_text}",
             max_memory_num=3,
             max_memory_length=2,

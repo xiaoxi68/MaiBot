@@ -2,13 +2,13 @@ from src.chat.heart_flow.observation.chatting_observation import ChattingObserva
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 import time
-from src.common.logger_manager import get_logger
-from src.individuality.individuality import individuality
+from src.common.logger import get_logger
+from src.individuality.individuality import get_individuality
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.tools.tool_use import ToolUser
 from src.chat.utils.json_utils import process_llm_tool_calls
 from .base_processor import BaseProcessor
-from typing import List, Optional, Dict
+from typing import List, Optional
 from src.chat.heart_flow.observation.observation import Observation
 from src.chat.focus_chat.info.structured_info import StructuredInfo
 from src.chat.heart_flow.observation.structure_observation import StructureObservation
@@ -47,12 +47,12 @@ class ToolProcessor(BaseProcessor):
         )
         self.structured_info = []
 
-    async def process_info(
-        self, observations: Optional[List[Observation]] = None, running_memorys: Optional[List[Dict]] = None, *infos
-    ) -> List[dict]:
+    async def process_info(self, observations: Optional[List[Observation]] = None) -> List[StructuredInfo]:
         """处理信息对象
 
         Args:
+            observations: 可选的观察列表，包含ChattingObservation和StructureObservation类型
+            running_memories: 可选的运行时记忆列表，包含字典类型的记忆信息
             *infos: 可变数量的InfoBase类型的信息对象
 
         Returns:
@@ -60,15 +60,15 @@ class ToolProcessor(BaseProcessor):
         """
 
         working_infos = []
+        result = []
 
         if observations:
             for observation in observations:
                 if isinstance(observation, ChattingObservation):
-                    result, used_tools, prompt = await self.execute_tools(observation, running_memorys)
+                    result, used_tools, prompt = await self.execute_tools(observation)
 
-            # 更新WorkingObservation中的结构化信息
             logger.debug(f"工具调用结果: {result}")
-
+            # 更新WorkingObservation中的结构化信息
             for observation in observations:
                 if isinstance(observation, StructureObservation):
                     for structured_info in result:
@@ -81,16 +81,11 @@ class ToolProcessor(BaseProcessor):
         structured_info = StructuredInfo()
         if working_infos:
             for working_info in working_infos:
-                # print(f"working_info: {working_info}")
-                # print(f"working_info.get('type'): {working_info.get('type')}")
-                # print(f"working_info.get('content'): {working_info.get('content')}")
                 structured_info.set_info(key=working_info.get("type"), value=working_info.get("content"))
-                # info = structured_info.get_processed_info()
-                # print(f"info: {info}")
 
         return [structured_info]
 
-    async def execute_tools(self, observation: ChattingObservation, running_memorys: Optional[List[Dict]] = None):
+    async def execute_tools(self, observation: ChattingObservation):
         """
         并行执行工具，返回结构化信息
 
@@ -118,13 +113,7 @@ class ToolProcessor(BaseProcessor):
         is_group_chat = observation.is_group_chat
 
         chat_observe_info = observation.get_observe_info()
-        person_list = observation.person_list
-
-        memory_str = ""
-        if running_memorys:
-            memory_str = "以下是当前在聊天中，你回忆起的记忆：\n"
-            for running_memory in running_memorys:
-                memory_str += f"{running_memory['topic']}: {running_memory['content']}\n"
+        # person_list = observation.person_list
 
         # 获取时间信息
         time_now = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
@@ -132,18 +121,15 @@ class ToolProcessor(BaseProcessor):
         # 构建专用于工具调用的提示词
         prompt = await global_prompt_manager.format_prompt(
             "tool_executor_prompt",
-            memory_str=memory_str,
             chat_observe_info=chat_observe_info,
             is_group_chat=is_group_chat,
-            bot_name=individuality.name,
+            bot_name=get_individuality().name,
             time_now=time_now,
         )
 
         # 调用LLM，专注于工具使用
         # logger.info(f"开始执行工具调用{prompt}")
-        response, other_info = await self.llm_model.generate_response_async(
-            prompt=prompt, tools=tools
-        )
+        response, other_info = await self.llm_model.generate_response_async(prompt=prompt, tools=tools)
 
         if len(other_info) == 3:
             reasoning_content, model_name, tool_calls = other_info

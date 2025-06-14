@@ -2,29 +2,38 @@ import asyncio
 import hashlib
 import os
 import sys
-from pathlib import Path
 import time
 import platform
 import traceback
+from pathlib import Path
 from dotenv import load_dotenv
-from src.common.logger_manager import get_logger
-
-# from src.common.logger import LogConfig, CONFIRM_STYLE_CONFIG
-from src.common.crash_logger import install_crash_handler
-from src.main import MainSystem
 from rich.traceback import install
 
+# 最早期初始化日志系统，确保所有后续模块都使用正确的日志格式
+from src.common.logger import initialize_logging, get_logger
+from src.common.crash_logger import install_crash_handler
+from src.main import MainSystem
 from src.manager.async_task_manager import async_task_manager
+
+initialize_logging()
+
+logger = get_logger("main")
+
+# 直接加载生产环境变量配置
+if os.path.exists(".env"):
+    load_dotenv(".env", override=True)
+    logger.info("成功加载环境变量配置")
+else:
+    logger.warning("未找到.env文件，请确保程序所需的环境变量被正确设置")
 
 install(extra_lines=3)
 
 # 设置工作目录为脚本所在目录
 script_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(script_dir)
-print(f"已设置工作目录为: {script_dir}")
+logger.info(f"已设置工作目录为: {script_dir}")
 
 
-logger = get_logger("main")
 confirm_logger = get_logger("confirm")
 # 获取没有加载env时的环境变量
 env_mask = {key: os.getenv(key) for key in os.environ}
@@ -33,8 +42,6 @@ uvicorn_server = None
 driver = None
 app = None
 loop = None
-
-# shutdown_requested = False  # 新增全局变量
 
 
 async def request_shutdown() -> bool:
@@ -63,16 +70,6 @@ def easter_egg():
     for i, char in enumerate(text):
         rainbow_text += rainbow_colors[i % len(rainbow_colors)] + char
     print(rainbow_text)
-
-
-def load_env():
-    # 直接加载生产环境变量配置
-    if os.path.exists(".env"):
-        load_dotenv(".env", override=True)
-        logger.success("成功加载环境变量配置")
-    else:
-        logger.error("未找到.env文件，请确保文件存在")
-        raise FileNotFoundError("未找到.env文件，请确保文件存在")
 
 
 def scan_provider(env_config: dict):
@@ -211,8 +208,6 @@ def raw_main():
 
     easter_egg()
 
-    load_env()
-
     env_config = {key: os.getenv(key) for key in os.environ}
     scan_provider(env_config)
 
@@ -235,7 +230,7 @@ if __name__ == "__main__":
             loop.run_until_complete(main_system.initialize())
             loop.run_until_complete(main_system.schedule_tasks())
         except KeyboardInterrupt:
-            # loop.run_until_complete(global_api.stop())
+            # loop.run_until_complete(get_global_api().stop())
             logger.warning("收到中断信号，正在优雅关闭...")
             if loop and not loop.is_closed():
                 try:

@@ -14,7 +14,7 @@ import difflib
 from src.chat.message_receive.message import MessageRecv  # 添加 MessageRecv 导入
 from src.chat.heart_flow.observation.observation import Observation
 
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
 from src.chat.utils.prompt_builder import Prompt
 
@@ -62,12 +62,11 @@ class ChattingObservation(Observation):
         self.oldest_messages = []
         self.oldest_messages_str = ""
         self.compressor_prompt = ""
-        
+
         initial_messages = get_raw_msg_before_timestamp_with_chat(self.chat_id, self.last_observe_time, 10)
         self.last_observe_time = initial_messages[-1]["time"] if initial_messages else self.last_observe_time
         self.talking_message = initial_messages
         self.talking_message_str = build_readable_messages(self.talking_message, show_actions=True)
-
 
     def to_dict(self) -> dict:
         """将观察对象转换为可序列化的字典"""
@@ -283,12 +282,12 @@ class ChattingObservation(Observation):
             show_actions=True,
         )
         # print(f"构建中：self.talking_message_str_truncate: {self.talking_message_str_truncate}")
-        
+
         self.person_list = await get_person_id_list(self.talking_message)
 
         # print(f"构建中：self.person_list: {self.person_list}")
 
-        logger.trace(
+        logger.debug(
             f"Chat {self.chat_id} - 压缩早期记忆：{self.mid_memory_info}\n现在聊天内容：{self.talking_message_str}"
         )
 

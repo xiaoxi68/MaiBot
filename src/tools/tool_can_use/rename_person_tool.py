@@ -1,7 +1,8 @@
 from src.tools.tool_can_use.base_tool import BaseTool, register_tool
-from src.person_info.person_info import person_info_manager
-from src.common.logger_manager import get_logger
+from src.person_info.person_info import get_person_info_manager
+from src.common.logger import get_logger
 import time
+
 
 logger = get_logger("rename_person_tool")
 
@@ -39,7 +40,7 @@ class RenamePersonTool(BaseTool):
 
         if not person_name_to_find:
             return {"name": self.name, "content": "错误：必须提供需要重命名的用户昵称 (person_name)。"}
-
+        person_info_manager = get_person_info_manager()
         try:
             # 1. 根据昵称查找用户信息
             logger.debug(f"尝试根据昵称 '{person_name_to_find}' 查找用户...")

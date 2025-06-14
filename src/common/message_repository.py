@@ -1,10 +1,10 @@
 from src.common.database.database_model import Messages  # 更改导入
-from src.common.logger import get_module_logger
+from src.common.logger import get_logger
 import traceback
 from typing import List, Any, Optional
 from peewee import Model  # 添加 Peewee Model 导入
 
-logger = get_module_logger(__name__)
+logger = get_logger(__name__)
 
 
 def _model_to_dict(model_instance: Model) -> dict[str, Any]:

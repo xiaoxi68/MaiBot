@@ -1,13 +1,13 @@
 import time
 import random
 from typing import List, Dict, Optional, Any, Tuple
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.chat.utils.chat_message_builder import get_raw_msg_by_timestamp_random, build_anonymous_messages
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 import os
-from src.chat.message_receive.chat_stream import chat_manager
+from src.chat.message_receive.chat_stream import get_chat_manager
 import json
 
 
@@ -113,25 +113,25 @@ class ExpressionLearner:
         同时对所有已存储的表达方式进行全局衰减
         """
         current_time = time.time()
-        
+
         # 全局衰减所有已存储的表达方式
         for type in ["style", "grammar"]:
             base_dir = os.path.join("data", "expression", f"learnt_{type}")
             if not os.path.exists(base_dir):
                 continue
-                
+
             for chat_id in os.listdir(base_dir):
                 file_path = os.path.join(base_dir, chat_id, "expressions.json")
                 if not os.path.exists(file_path):
                     continue
-                    
+
                 try:
                     with open(file_path, "r", encoding="utf-8") as f:
                         expressions = json.load(f)
-                    
+
                     # 应用全局衰减
                     decayed_expressions = self.apply_decay_to_expressions(expressions, current_time)
-                    
+
                     # 保存衰减后的结果
                     with open(file_path, "w", encoding="utf-8") as f:
                         json.dump(decayed_expressions, f, ensure_ascii=False, indent=2)
@@ -140,12 +140,12 @@ class ExpressionLearner:
                     continue
 
         # 学习新的表达方式（这里会进行局部衰减）
-        for i in range(3):
+        for _ in range(3):
             learnt_style: Optional[List[Tuple[str, str, str]]] = await self.learn_and_store(type="style", num=25)
             if not learnt_style:
                 return []
 
-        for j in range(1):
+        for _ in range(1):
             learnt_grammar: Optional[List[Tuple[str, str, str]]] = await self.learn_and_store(type="grammar", num=10)
             if not learnt_grammar:
                 return []
@@ -162,23 +162,25 @@ class ExpressionLearner:
         """
         if time_diff_days <= 0 or time_diff_days >= DECAY_DAYS:
             return 0.001
-            
+
         # 使用二次函数进行插值
         # 将7天作为顶点，0天和30天作为两个端点
         # 使用顶点式：y = a(x-h)^2 + k，其中(h,k)为顶点
         h = 7.0  # 顶点x坐标
         k = 0.001  # 顶点y坐标
-        
+
         # 计算a值，使得x=0和x=30时y=0.001
         # 0.001 = a(0-7)^2 + 0.001
         # 解得a = 0
         a = 0
-        
+
         # 计算衰减值
         decay = a * (time_diff_days - h) ** 2 + k
         return min(0.001, decay)
 
-    def apply_decay_to_expressions(self, expressions: List[Dict[str, Any]], current_time: float) -> List[Dict[str, Any]]:
+    def apply_decay_to_expressions(
+        self, expressions: List[Dict[str, Any]], current_time: float
+    ) -> List[Dict[str, Any]]:
         """
         对表达式列表应用衰减
         返回衰减后的表达式列表，移除count小于0的项
@@ -188,16 +190,16 @@ class ExpressionLearner:
             # 确保last_active_time存在，如果不存在则使用current_time
             if "last_active_time" not in expr:
                 expr["last_active_time"] = current_time
-                
+
             last_active = expr["last_active_time"]
             time_diff_days = (current_time - last_active) / (24 * 3600)  # 转换为天
-            
+
             decay_value = self.calculate_decay_factor(time_diff_days)
             expr["count"] = max(0.01, expr.get("count", 1) - decay_value)
-            
+
             if expr["count"] > 0:
                 result.append(expr)
-        
+
         return result
 
     async def learn_and_store(self, type: str, num: int = 10) -> List[Tuple[str, str, str]]:
@@ -211,14 +213,14 @@ class ExpressionLearner:
             type_str = "句法特点"
         else:
             raise ValueError(f"Invalid type: {type}")
-        
+
         res = await self.learn_expression(type, num)
 
         if res is None:
             return []
         learnt_expressions, chat_id = res
 
-        chat_stream = chat_manager.get_stream(chat_id)
+        chat_stream = get_chat_manager().get_stream(chat_id)
         if chat_stream.group_info:
             group_name = chat_stream.group_info.group_name
         else:
@@ -238,15 +240,15 @@ class ExpressionLearner:
             if chat_id not in chat_dict:
                 chat_dict[chat_id] = []
             chat_dict[chat_id].append({"situation": situation, "style": style})
-        
+
         current_time = time.time()
-        
+
         # 存储到/data/expression/对应chat_id/expressions.json
         for chat_id, expr_list in chat_dict.items():
             dir_path = os.path.join("data", "expression", f"learnt_{type}", str(chat_id))
             os.makedirs(dir_path, exist_ok=True)
             file_path = os.path.join(dir_path, "expressions.json")
-            
+
             # 若已存在，先读出合并
             old_data: List[Dict[str, Any]] = []
             if os.path.exists(file_path):
@@ -255,10 +257,10 @@ class ExpressionLearner:
                         old_data = json.load(f)
                 except Exception:
                     old_data = []
-            
+
             # 应用衰减
             # old_data = self.apply_decay_to_expressions(old_data, current_time)
-            
+
             # 合并逻辑
             for new_expr in expr_list:
                 found = False
@@ -278,43 +280,43 @@ class ExpressionLearner:
                     new_expr["count"] = 1
                     new_expr["last_active_time"] = current_time
                     old_data.append(new_expr)
-            
+
             # 处理超限问题
             if len(old_data) > MAX_EXPRESSION_COUNT:
                 # 计算每个表达方式的权重（count的倒数，这样count越小的越容易被选中）
                 weights = [1 / (expr.get("count", 1) + 0.1) for expr in old_data]
-                
+
                 # 随机选择要移除的表达方式，避免重复索引
                 remove_count = len(old_data) - MAX_EXPRESSION_COUNT
-                
+
                 # 使用一种不会选到重复索引的方法
                 indices = list(range(len(old_data)))
-                
+
                 # 方法1：使用numpy.random.choice
                 # 把列表转成一个映射字典，保证不会有重复
                 remove_set = set()
                 total_attempts = 0
-                
+
                 # 尝试按权重随机选择，直到选够数量
                 while len(remove_set) < remove_count and total_attempts < len(old_data) * 2:
                     idx = random.choices(indices, weights=weights, k=1)[0]
                     remove_set.add(idx)
                     total_attempts += 1
-                
+
                 # 如果没选够，随机补充
                 if len(remove_set) < remove_count:
                     remaining = set(indices) - remove_set
                     remove_set.update(random.sample(list(remaining), remove_count - len(remove_set)))
-                
+
                 remove_indices = list(remove_set)
-                
+
                 # 从后往前删除，避免索引变化
                 for idx in sorted(remove_indices, reverse=True):
                     old_data.pop(idx)
-            
+
             with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(old_data, f, ensure_ascii=False, indent=2)
-        
+
         return learnt_expressions
 
     async def learn_expression(self, type: str, num: int = 10) -> Optional[Tuple[List[Tuple[str, str, str]], str]]:
@@ -397,4 +399,11 @@ class ExpressionLearner:
 
 init_prompt()
 
-expression_learner = ExpressionLearner()
+expression_learner = None
+
+
+def get_expression_learner():
+    global expression_learner
+    if expression_learner is None:
+        expression_learner = ExpressionLearner()
+    return expression_learner

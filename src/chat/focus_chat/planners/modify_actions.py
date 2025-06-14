@@ -1,12 +1,11 @@
 from typing import List, Optional, Any, Dict
 from src.chat.heart_flow.observation.observation import Observation
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
-from src.chat.message_receive.chat_stream import chat_manager
+from src.chat.message_receive.chat_stream import get_chat_manager
 from src.config.config import global_config
 from src.llm_models.utils_model import LLMRequest
-from src.chat.focus_chat.planners.actions.base_action import ActionActivationType, ChatMode
 import random
 import asyncio
 import hashlib
@@ -29,14 +28,14 @@ class ActionModifier:
     def __init__(self, action_manager: ActionManager):
         """初始化动作处理器"""
         self.action_manager = action_manager
-        self.all_actions = self.action_manager.get_using_actions_for_mode(ChatMode.FOCUS)
-        
+        self.all_actions = self.action_manager.get_using_actions_for_mode("focus")
+
         # 用于LLM判定的小模型
         self.llm_judge = LLMRequest(
             model=global_config.model.utils_small,
             request_type="action.judge",
         )
-        
+
         # 缓存相关属性
         self._llm_judge_cache = {}  # 缓存LLM判定结果
         self._cache_expiry_time = 30  # 缓存过期时间（秒）
@@ -49,15 +48,15 @@ class ActionModifier:
     ):
         """
         完整的动作修改流程，整合传统观察处理和新的激活类型判定
-        
+
         这个方法处理完整的动作管理流程：
         1. 基于观察的传统动作修改（循环历史分析、类型匹配等）
         2. 基于激活类型的智能动作判定，最终确定可用动作集
-        
+
         处理后，ActionManager 将包含最终的可用动作集，供规划器直接使用
         """
         logger.debug(f"{self.log_prefix}开始完整动作修改流程")
-        
+
         # === 第一阶段：传统观察处理 ===
         if observations:
             hfc_obs = None
@@ -79,14 +78,17 @@ class ActionModifier:
             if hfc_obs:
                 obs = hfc_obs
                 # 获取适用于FOCUS模式的动作
-                all_actions = self.action_manager.get_using_actions_for_mode(ChatMode.FOCUS)
+                all_actions = self.action_manager.get_using_actions_for_mode("focus")
+                # print("=======================")
+                # print(all_actions)
+                # print("=======================")
                 action_changes = await self.analyze_loop_actions(obs)
                 if action_changes["add"] or action_changes["remove"]:
                     # 合并动作变更
                     merged_action_changes["add"].extend(action_changes["add"])
                     merged_action_changes["remove"].extend(action_changes["remove"])
                     reasons.append("基于循环历史分析")
-                    
+
                     # 详细记录循环历史分析的变更原因
                     for action_name in action_changes["add"]:
                         logger.info(f"{self.log_prefix}添加动作: {action_name}，原因: 循环历史分析建议添加")
@@ -97,7 +99,7 @@ class ActionModifier:
             if chat_obs:
                 obs = chat_obs
                 # 检查动作的关联类型
-                chat_context = chat_manager.get_stream(obs.chat_id).context
+                chat_context = get_chat_manager().get_stream(obs.chat_id).context
                 type_mismatched_actions = []
 
                 for action_name in all_actions.keys():
@@ -106,7 +108,9 @@ class ActionModifier:
                         if not chat_context.check_types(data["associated_types"]):
                             type_mismatched_actions.append(action_name)
                             associated_types_str = ", ".join(data["associated_types"])
-                            logger.info(f"{self.log_prefix}移除动作: {action_name}，原因: 关联类型不匹配（需要: {associated_types_str}）")
+                            logger.info(
+                                f"{self.log_prefix}移除动作: {action_name}，原因: 关联类型不匹配（需要: {associated_types_str}）"
+                            )
 
                 if type_mismatched_actions:
                     # 合并到移除列表中
@@ -123,17 +127,19 @@ class ActionModifier:
                 self.action_manager.remove_action_from_using(action_name)
                 logger.debug(f"{self.log_prefix}应用移除动作: {action_name}，原因集合: {reasons}")
 
-            logger.info(f"{self.log_prefix}传统动作修改完成，当前使用动作: {list(self.action_manager.get_using_actions().keys())}")
+            logger.info(
+                f"{self.log_prefix}传统动作修改完成，当前使用动作: {list(self.action_manager.get_using_actions().keys())}"
+            )
 
         # === 第二阶段：激活类型判定 ===
         # 如果提供了聊天上下文，则进行激活类型判定
         if chat_content is not None:
             logger.debug(f"{self.log_prefix}开始激活类型判定阶段")
-            
+
             # 获取当前使用的动作集（经过第一阶段处理，且适用于FOCUS模式）
             current_using_actions = self.action_manager.get_using_actions()
-            all_registered_actions = self.action_manager.get_using_actions_for_mode(ChatMode.FOCUS)
-            
+            all_registered_actions = self.action_manager.get_registered_actions()
+
             # 构建完整的动作信息
             current_actions_with_info = {}
             for action_name in current_using_actions.keys():
@@ -141,46 +147,49 @@ class ActionModifier:
                     current_actions_with_info[action_name] = all_registered_actions[action_name]
                 else:
                     logger.warning(f"{self.log_prefix}使用中的动作 {action_name} 未在已注册动作中找到")
-            
+
             # 应用激活类型判定
             final_activated_actions = await self._apply_activation_type_filtering(
                 current_actions_with_info,
                 chat_content,
             )
-            
+
             # 更新ActionManager，移除未激活的动作
             actions_to_remove = []
             removal_reasons = {}
-            
+
             for action_name in current_using_actions.keys():
                 if action_name not in final_activated_actions:
                     actions_to_remove.append(action_name)
                     # 确定移除原因
                     if action_name in all_registered_actions:
                         action_info = all_registered_actions[action_name]
-                        activation_type = action_info.get("focus_activation_type", ActionActivationType.ALWAYS)
-                        
-                        if activation_type == ActionActivationType.RANDOM:
+                        activation_type = action_info.get("focus_activation_type", "always")
+
+                        # 处理字符串格式的激活类型值
+                        if activation_type == "random":
                             probability = action_info.get("random_probability", 0.3)
                             removal_reasons[action_name] = f"RANDOM类型未触发（概率{probability}）"
-                        elif activation_type == ActionActivationType.LLM_JUDGE:
+                        elif activation_type == "llm_judge":
                             removal_reasons[action_name] = "LLM判定未激活"
-                        elif activation_type == ActionActivationType.KEYWORD:
+                        elif activation_type == "keyword":
                             keywords = action_info.get("activation_keywords", [])
                             removal_reasons[action_name] = f"关键词未匹配（关键词: {keywords}）"
                         else:
                             removal_reasons[action_name] = "激活判定未通过"
                     else:
                         removal_reasons[action_name] = "动作信息不完整"
-            
+
             for action_name in actions_to_remove:
                 self.action_manager.remove_action_from_using(action_name)
                 reason = removal_reasons.get(action_name, "未知原因")
                 logger.info(f"{self.log_prefix}移除动作: {action_name}，原因: {reason}")
-            
+
             logger.info(f"{self.log_prefix}激活类型判定完成，最终可用动作: {list(final_activated_actions.keys())}")
-        
-        logger.info(f"{self.log_prefix}完整动作修改流程结束，最终动作集: {list(self.action_manager.get_using_actions().keys())}")
+
+        logger.info(
+            f"{self.log_prefix}完整动作修改流程结束，最终动作集: {list(self.action_manager.get_using_actions().keys())}"
+        )
 
     async def _apply_activation_type_filtering(
         self,
@@ -189,43 +198,42 @@ class ActionModifier:
     ) -> Dict[str, Any]:
         """
         应用激活类型过滤逻辑，支持四种激活类型的并行处理
-        
+
         Args:
             actions_with_info: 带完整信息的动作字典
-            observed_messages_str: 观察到的聊天消息
-            chat_context: 聊天上下文信息
-            extra_context: 额外的上下文信息
-            
+            chat_content: 聊天内容
+
         Returns:
             Dict[str, Any]: 过滤后激活的actions字典
         """
         activated_actions = {}
-        
+
         # 分类处理不同激活类型的actions
         always_actions = {}
         random_actions = {}
         llm_judge_actions = {}
         keyword_actions = {}
-        
+
         for action_name, action_info in actions_with_info.items():
-            activation_type = action_info.get("focus_activation_type", ActionActivationType.ALWAYS)
-            
-            if activation_type == ActionActivationType.ALWAYS:
+            activation_type = action_info.get("focus_activation_type", "always")
+
+            # 现在统一是字符串格式的激活类型值
+            if activation_type == "always":
                 always_actions[action_name] = action_info
-            elif activation_type == ActionActivationType.RANDOM:
+            elif activation_type == "random":
                 random_actions[action_name] = action_info
-            elif activation_type == ActionActivationType.LLM_JUDGE:
+            elif activation_type == "llm_judge":
                 llm_judge_actions[action_name] = action_info
-            elif activation_type == ActionActivationType.KEYWORD:
+            elif activation_type == "keyword":
                 keyword_actions[action_name] = action_info
             else:
                 logger.warning(f"{self.log_prefix}未知的激活类型: {activation_type}，跳过处理")
-        
+
         # 1. 处理ALWAYS类型（直接激活）
         for action_name, action_info in always_actions.items():
             activated_actions[action_name] = action_info
             logger.debug(f"{self.log_prefix}激活动作: {action_name}，原因: ALWAYS类型直接激活")
-        
+
         # 2. 处理RANDOM类型
         for action_name, action_info in random_actions.items():
             probability = action_info.get("random_probability", 0.3)
@@ -235,7 +243,7 @@ class ActionModifier:
                 logger.debug(f"{self.log_prefix}激活动作: {action_name}，原因: RANDOM类型触发（概率{probability}）")
             else:
                 logger.debug(f"{self.log_prefix}未激活动作: {action_name}，原因: RANDOM类型未触发（概率{probability}）")
-        
+
         # 3. 处理KEYWORD类型（快速判定）
         for action_name, action_info in keyword_actions.items():
             should_activate = self._check_keyword_activation(
@@ -250,7 +258,7 @@ class ActionModifier:
             else:
                 keywords = action_info.get("activation_keywords", [])
                 logger.debug(f"{self.log_prefix}未激活动作: {action_name}，原因: KEYWORD类型未匹配关键词（{keywords}）")
-        
+
         # 4. 处理LLM_JUDGE类型（并行判定）
         if llm_judge_actions:
             # 直接并行处理所有LLM判定actions
@@ -258,7 +266,7 @@ class ActionModifier:
                 llm_judge_actions,
                 chat_content,
             )
-            
+
             # 添加激活的LLM判定actions
             for action_name, should_activate in llm_results.items():
                 if should_activate:
@@ -266,46 +274,43 @@ class ActionModifier:
                     logger.debug(f"{self.log_prefix}激活动作: {action_name}，原因: LLM_JUDGE类型判定通过")
                 else:
                     logger.debug(f"{self.log_prefix}未激活动作: {action_name}，原因: LLM_JUDGE类型判定未通过")
-        
+
         logger.debug(f"{self.log_prefix}激活类型过滤完成: {list(activated_actions.keys())}")
         return activated_actions
 
     async def process_actions_for_planner(
-        self, 
-        observed_messages_str: str = "", 
-        chat_context: Optional[str] = None,
-        extra_context: Optional[str] = None
+        self, observed_messages_str: str = "", chat_context: Optional[str] = None, extra_context: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         [已废弃] 此方法现在已被整合到 modify_actions() 中
-        
+
         为了保持向后兼容性而保留，但建议直接使用 ActionManager.get_using_actions()
         规划器应该直接从 ActionManager 获取最终的可用动作集，而不是调用此方法
-        
+
         新的架构：
         1. 主循环调用 modify_actions() 处理完整的动作管理流程
         2. 规划器直接使用 ActionManager.get_using_actions() 获取最终动作集
         """
-        logger.warning(f"{self.log_prefix}process_actions_for_planner() 已废弃，建议规划器直接使用 ActionManager.get_using_actions()")
-        
+        logger.warning(
+            f"{self.log_prefix}process_actions_for_planner() 已废弃，建议规划器直接使用 ActionManager.get_using_actions()"
+        )
+
         # 为了向后兼容，仍然返回当前使用的动作集
         current_using_actions = self.action_manager.get_using_actions()
         all_registered_actions = self.action_manager.get_registered_actions()
-        
+
         # 构建完整的动作信息
         result = {}
         for action_name in current_using_actions.keys():
             if action_name in all_registered_actions:
                 result[action_name] = all_registered_actions[action_name]
-        
+
         return result
 
     def _generate_context_hash(self, chat_content: str) -> str:
         """生成上下文的哈希值用于缓存"""
         context_content = f"{chat_content}"
-        return hashlib.md5(context_content.encode('utf-8')).hexdigest()
-
-
+        return hashlib.md5(context_content.encode("utf-8")).hexdigest()
 
     async def _process_llm_judge_actions_parallel(
         self,
@@ -314,85 +319,83 @@ class ActionModifier:
     ) -> Dict[str, bool]:
         """
         并行处理LLM判定actions，支持智能缓存
-        
+
         Args:
             llm_judge_actions: 需要LLM判定的actions
-            observed_messages_str: 观察到的聊天消息
-            chat_context: 聊天上下文
-            extra_context: 额外上下文
-            
+            chat_content: 聊天内容
+
         Returns:
             Dict[str, bool]: action名称到激活结果的映射
         """
-        
+
         # 生成当前上下文的哈希值
         current_context_hash = self._generate_context_hash(chat_content)
         current_time = time.time()
-        
+
         results = {}
         tasks_to_run = {}
-        
+
         # 检查缓存
         for action_name, action_info in llm_judge_actions.items():
             cache_key = f"{action_name}_{current_context_hash}"
-            
+
             # 检查是否有有效的缓存
-            if (cache_key in self._llm_judge_cache and 
-                current_time - self._llm_judge_cache[cache_key]["timestamp"] < self._cache_expiry_time):
-                
+            if (
+                cache_key in self._llm_judge_cache
+                and current_time - self._llm_judge_cache[cache_key]["timestamp"] < self._cache_expiry_time
+            ):
                 results[action_name] = self._llm_judge_cache[cache_key]["result"]
-                logger.debug(f"{self.log_prefix}使用缓存结果 {action_name}: {'激活' if results[action_name] else '未激活'}")
+                logger.debug(
+                    f"{self.log_prefix}使用缓存结果 {action_name}: {'激活' if results[action_name] else '未激活'}"
+                )
             else:
                 # 需要进行LLM判定
                 tasks_to_run[action_name] = action_info
-        
+
         # 如果有需要运行的任务，并行执行
         if tasks_to_run:
             logger.debug(f"{self.log_prefix}并行执行LLM判定，任务数: {len(tasks_to_run)}")
-            
+
             # 创建并行任务
             tasks = []
             task_names = []
-            
+
             for action_name, action_info in tasks_to_run.items():
                 task = self._llm_judge_action(
-                    action_name, 
-                    action_info, 
-                    chat_content, 
+                    action_name,
+                    action_info,
+                    chat_content,
                 )
                 tasks.append(task)
                 task_names.append(action_name)
-            
+
             # 并行执行所有任务
             try:
                 task_results = await asyncio.gather(*tasks, return_exceptions=True)
-                
+
                 # 处理结果并更新缓存
-                for i, (action_name, result) in enumerate(zip(task_names, task_results)):
+                for _, (action_name, result) in enumerate(zip(task_names, task_results)):
                     if isinstance(result, Exception):
                         logger.error(f"{self.log_prefix}LLM判定action {action_name} 时出错: {result}")
                         results[action_name] = False
                     else:
                         results[action_name] = result
-                        
+
                         # 更新缓存
                         cache_key = f"{action_name}_{current_context_hash}"
-                        self._llm_judge_cache[cache_key] = {
-                            "result": result,
-                            "timestamp": current_time
-                        }
-                        
+                        self._llm_judge_cache[cache_key] = {"result": result, "timestamp": current_time}
+
                 logger.debug(f"{self.log_prefix}并行LLM判定完成，耗时: {time.time() - current_time:.2f}s")
-                
+
             except Exception as e:
                 logger.error(f"{self.log_prefix}并行LLM判定失败: {e}")
                 # 如果并行执行失败，为所有任务返回False
                 for action_name in tasks_to_run.keys():
                     results[action_name] = False
-        
+
         # 清理过期缓存
         self._cleanup_expired_cache(current_time)
-        
+
         return results
 
     def _cleanup_expired_cache(self, current_time: float):
@@ -401,40 +404,39 @@ class ActionModifier:
         for cache_key, cache_data in self._llm_judge_cache.items():
             if current_time - cache_data["timestamp"] > self._cache_expiry_time:
                 expired_keys.append(cache_key)
-        
+
         for key in expired_keys:
             del self._llm_judge_cache[key]
-        
+
         if expired_keys:
             logger.debug(f"{self.log_prefix}清理了 {len(expired_keys)} 个过期缓存条目")
 
     async def _llm_judge_action(
-        self, 
-        action_name: str, 
+        self,
+        action_name: str,
         action_info: Dict[str, Any],
         chat_content: str = "",
     ) -> bool:
         """
         使用LLM判定是否应该激活某个action
-        
+
         Args:
             action_name: 动作名称
             action_info: 动作信息
             observed_messages_str: 观察到的聊天消息
             chat_context: 聊天上下文
             extra_context: 额外上下文
-            
+
         Returns:
             bool: 是否应该激活此action
         """
-        
+
         try:
             # 构建判定提示词
             action_description = action_info.get("description", "")
             action_require = action_info.get("require", [])
             custom_prompt = action_info.get("llm_judge_prompt", "")
-            
-            
+
             # 构建基础判定提示词
             base_prompt = f"""
 你需要判断在当前聊天情况下，是否应该激活名为"{action_name}"的动作。
@@ -445,34 +447,34 @@ class ActionModifier:
 """
             for req in action_require:
                 base_prompt += f"- {req}\n"
-            
+
             if custom_prompt:
                 base_prompt += f"\n额外判定条件：\n{custom_prompt}\n"
-            
+
             if chat_content:
                 base_prompt += f"\n当前聊天记录：\n{chat_content}\n"
-    
-            
+
             base_prompt += """
 请根据以上信息判断是否应该激活这个动作。
 只需要回答"是"或"否"，不要有其他内容。
 """
-            
+
             # 调用LLM进行判定
             response, _ = await self.llm_judge.generate_response_async(prompt=base_prompt)
-            
+
             # 解析响应
             response = response.strip().lower()
-            
+
             # print(base_prompt)
             print(f"LLM判定动作 {action_name}：响应='{response}'")
-            
-            
+
             should_activate = "是" in response or "yes" in response or "true" in response
-            
-            logger.debug(f"{self.log_prefix}LLM判定动作 {action_name}：响应='{response}'，结果={'激活' if should_activate else '不激活'}")
+
+            logger.debug(
+                f"{self.log_prefix}LLM判定动作 {action_name}：响应='{response}'，结果={'激活' if should_activate else '不激活'}"
+            )
             return should_activate
-            
+
         except Exception as e:
             logger.error(f"{self.log_prefix}LLM判定动作 {action_name} 时出错: {e}")
             # 出错时默认不激活
@@ -486,45 +488,45 @@ class ActionModifier:
     ) -> bool:
         """
         检查是否匹配关键词触发条件
-        
+
         Args:
             action_name: 动作名称
             action_info: 动作信息
             observed_messages_str: 观察到的聊天消息
             chat_context: 聊天上下文
             extra_context: 额外上下文
-            
+
         Returns:
             bool: 是否应该激活此action
         """
-        
+
         activation_keywords = action_info.get("activation_keywords", [])
         case_sensitive = action_info.get("keyword_case_sensitive", False)
-        
+
         if not activation_keywords:
             logger.warning(f"{self.log_prefix}动作 {action_name} 设置为关键词触发但未配置关键词")
             return False
-        
+
         # 构建检索文本
         search_text = ""
         if chat_content:
             search_text += chat_content
         # if chat_context:
-            # search_text += f" {chat_context}"
+        # search_text += f" {chat_context}"
         # if extra_context:
-            # search_text += f" {extra_context}"
-        
+        # search_text += f" {extra_context}"
+
         # 如果不区分大小写，转换为小写
         if not case_sensitive:
             search_text = search_text.lower()
-        
+
         # 检查每个关键词
         matched_keywords = []
         for keyword in activation_keywords:
             check_keyword = keyword if case_sensitive else keyword.lower()
             if check_keyword in search_text:
                 matched_keywords.append(keyword)
-        
+
         if matched_keywords:
             logger.debug(f"{self.log_prefix}动作 {action_name} 匹配到关键词: {matched_keywords}")
             return True
@@ -560,15 +562,17 @@ class ActionModifier:
             reply_sequence.append(action_type == "reply")
 
         # 检查no_reply比例
-        if len(recent_cycles) >= (5 * global_config.chat.exit_focus_threshold) and (
+        if len(recent_cycles) >= (4 * global_config.chat.exit_focus_threshold) and (
             no_reply_count / len(recent_cycles)
-        ) >= (0.8 * global_config.chat.exit_focus_threshold):
+        ) >= (0.7 * global_config.chat.exit_focus_threshold):
             if global_config.chat.chat_mode == "auto":
                 result["add"].append("exit_focus_chat")
                 result["remove"].append("no_reply")
                 result["remove"].append("reply")
                 no_reply_ratio = no_reply_count / len(recent_cycles)
-                logger.info(f"{self.log_prefix}检测到高no_reply比例: {no_reply_ratio:.2f}，达到退出聊天阈值，将添加exit_focus_chat并移除no_reply/reply动作")
+                logger.info(
+                    f"{self.log_prefix}检测到高no_reply比例: {no_reply_ratio:.2f}，达到退出聊天阈值，将添加exit_focus_chat并移除no_reply/reply动作"
+                )
 
         # 计算连续回复的相关阈值
 
@@ -593,7 +597,7 @@ class ActionModifier:
         if len(last_max_reply_num) >= max_reply_num and all(last_max_reply_num):
             # 如果最近max_reply_num次都是reply，直接移除
             result["remove"].append("reply")
-            reply_count = len(last_max_reply_num) - no_reply_count
+            # reply_count = len(last_max_reply_num) - no_reply_count
             logger.info(
                 f"{self.log_prefix}移除reply动作，原因: 连续回复过多（最近{len(last_max_reply_num)}次全是reply，超过阈值{max_reply_num}）"
             )
@@ -622,8 +626,6 @@ class ActionModifier:
                     f"{self.log_prefix}连续回复检测：最近{one_thres_reply_num}次全是reply，{removal_probability:.2f}概率移除，未触发"
                 )
         else:
-            logger.debug(
-                f"{self.log_prefix}连续回复检测：无需移除reply动作，最近回复模式正常"
-            )
+            logger.debug(f"{self.log_prefix}连续回复检测：无需移除reply动作，最近回复模式正常")
 
         return result

@@ -2,8 +2,7 @@ from typing import Dict, Type
 from src.chat.focus_chat.planners.base_planner import BasePlanner
 from src.chat.focus_chat.planners.planner_simple import ActionPlanner as SimpleActionPlanner
 from src.chat.focus_chat.planners.action_manager import ActionManager
-from src.config.config import global_config
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 
 logger = get_logger("planner_factory")
 
@@ -40,12 +39,7 @@ class PlannerFactory:
         Returns:
             BasePlanner: 规划器实例
         """
-        planner_type = global_config.focus_chat.planner_type
 
-        if planner_type not in cls._planner_types:
-            logger.warning(f"{log_prefix} 未知的规划器类型: {planner_type}，使用默认规划器")
-            planner_type = "complex"
-
-        planner_class = cls._planner_types[planner_type]
-        logger.info(f"{log_prefix} 使用{planner_type}规划器")
+        planner_class = cls._planner_types["simple"]
+        logger.info(f"{log_prefix} 使用simple规划器")
         return planner_class(log_prefix=log_prefix, action_manager=action_manager)

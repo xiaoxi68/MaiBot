@@ -42,7 +42,7 @@ from src.common.database.database_model import (
     GraphNodes,
     GraphEdges,
 )
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 
 logger = get_logger("mongodb_to_sqlite")
 

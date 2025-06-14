@@ -1,6 +1,6 @@
 import time
 from typing import Optional
-from src.common.logger import get_module_logger
+from src.common.logger import get_logger
 from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.message_receive.message import Message
 from maim_message import UserInfo, Seg
@@ -13,7 +13,7 @@ from rich.traceback import install
 install(extra_lines=3)
 
 
-logger = get_module_logger("message_sender")
+logger = get_logger("message_sender")
 
 
 class DirectMessageSender:

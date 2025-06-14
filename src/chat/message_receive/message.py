@@ -5,11 +5,11 @@ from typing import Optional, Any, TYPE_CHECKING
 
 import urllib3
 
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 
 if TYPE_CHECKING:
     from .chat_stream import ChatStream
-from ..utils.utils_image import image_manager
+from ..utils.utils_image import get_image_manager
 from maim_message import Seg, UserInfo, BaseMessageInfo, MessageBase
 from rich.traceback import install
 
@@ -138,12 +138,12 @@ class MessageRecv(Message):
             elif seg.type == "image":
                 # 如果是base64图片数据
                 if isinstance(seg.data, str):
-                    return await image_manager.get_image_description(seg.data)
+                    return await get_image_manager().get_image_description(seg.data)
                 return "[发了一张图片，网卡了加载不出来]"
             elif seg.type == "emoji":
                 self.is_emoji = True
                 if isinstance(seg.data, str):
-                    return await image_manager.get_emoji_description(seg.data)
+                    return await get_image_manager().get_emoji_description(seg.data)
                 return "[发了一个表情包，网卡了加载不出来]"
             else:
                 return f"[{seg.type}:{str(seg.data)}]"
@@ -207,11 +207,11 @@ class MessageProcessBase(Message):
             elif seg.type == "image":
                 # 如果是base64图片数据
                 if isinstance(seg.data, str):
-                    return await image_manager.get_image_description(seg.data)
+                    return await get_image_manager().get_image_description(seg.data)
                 return "[图片，网卡了加载不出来]"
             elif seg.type == "emoji":
                 if isinstance(seg.data, str):
-                    return await image_manager.get_emoji_description(seg.data)
+                    return await get_image_manager().get_emoji_description(seg.data)
                 return "[表情，网卡了加载不出来]"
             elif seg.type == "at":
                 return f"[@{seg.data}]"

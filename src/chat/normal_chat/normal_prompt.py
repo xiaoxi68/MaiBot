@@ -1,18 +1,18 @@
+from src.chat.focus_chat.expressors.exprssion_learner import get_expression_learner
 from src.config.config import global_config
-from src.common.logger_manager import get_logger
-from src.individuality.individuality import individuality
+from src.common.logger import get_logger
+from src.individuality.individuality import get_individuality
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_before_timestamp_with_chat
-from src.person_info.relationship_manager import relationship_manager
 import time
 from src.chat.utils.utils import get_recent_group_speaker
 from src.manager.mood_manager import mood_manager
-from src.chat.memory_system.Hippocampus import HippocampusManager
+from src.chat.memory_system.Hippocampus import hippocampus_manager
 from src.chat.knowledge.knowledge_lib import qa_manager
-from src.chat.focus_chat.expressors.exprssion_learner import expression_learner
 import random
 import re
 
+from src.person_info.relationship_manager import get_relationship_manager
 
 logger = get_logger("prompt")
 
@@ -96,7 +96,7 @@ class PromptBuilder:
         enable_planner: bool = False,
         available_actions=None,
     ) -> str:
-        prompt_personality = individuality.get_prompt(x_person=2, level=2)
+        prompt_personality = get_individuality().get_prompt(x_person=2, level=2)
         is_group_chat = bool(chat_stream.group_info)
 
         who_chat_in_group = []
@@ -112,11 +112,13 @@ class PromptBuilder:
             )
 
         relation_prompt = ""
-        for person in who_chat_in_group:
-            relation_prompt += await relationship_manager.build_relationship_info(person)
+        if global_config.relationship.enable_relationship:
+            for person in who_chat_in_group:
+                relationship_manager = get_relationship_manager()
+                relation_prompt += await relationship_manager.build_relationship_info(person)
 
         mood_prompt = mood_manager.get_mood_prompt()
-
+        expression_learner = get_expression_learner()
         (
             learnt_style_expressions,
             learnt_grammar_expressions,
@@ -159,17 +161,18 @@ class PromptBuilder:
         )[0]
         memory_prompt = ""
 
-        related_memory = await HippocampusManager.get_instance().get_memory_from_text(
-            text=message_txt, max_memory_num=2, max_memory_length=2, max_depth=3, fast_retrieval=False
-        )
-
-        related_memory_info = ""
-        if related_memory:
-            for memory in related_memory:
-                related_memory_info += memory[1]
-            memory_prompt = await global_prompt_manager.format_prompt(
-                "memory_prompt", related_memory_info=related_memory_info
+        if global_config.memory.enable_memory:
+            related_memory = await hippocampus_manager.get_memory_from_text(
+                text=message_txt, max_memory_num=2, max_memory_length=2, max_depth=3, fast_retrieval=False
             )
+
+            related_memory_info = ""
+            if related_memory:
+                for memory in related_memory:
+                    related_memory_info += memory[1]
+                memory_prompt = await global_prompt_manager.format_prompt(
+                    "memory_prompt", related_memory_info=related_memory_info
+                )
 
         message_list_before_now = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_stream.stream_id,
@@ -211,7 +214,6 @@ class PromptBuilder:
                         continue
         except Exception as e:
             logger.error(f"关键词检测与反应时发生异常: {str(e)}", exc_info=True)
-
 
         moderation_prompt_block = "请不要输出违法违规内容，不要输出色情，暴力，政治相关内容，如有敏感内容，请规避。"
 

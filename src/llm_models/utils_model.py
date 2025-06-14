@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Tuple, Union, Dict, Any
 import aiohttp
 from aiohttp.client import ClientResponse
-from src.common.logger import get_module_logger
+from src.common.logger import get_logger
 import base64
 from PIL import Image
 import io
@@ -18,7 +18,7 @@ from rich.traceback import install
 
 install(extra_lines=3)
 
-logger = get_module_logger("model_utils")
+logger = get_logger("model_utils")
 
 
 class PayLoadTooLargeError(Exception):
@@ -115,6 +115,10 @@ class LLMRequest:
             logger.error(f"原始 model dict 信息：{model}")
             logger.error(f"配置错误：找不到对应的配置项 - {str(e)}")
             raise ValueError(f"配置错误：找不到对应的配置项 - {str(e)}") from e
+        except KeyError:
+            logger.warning(
+                f"找不到{model['provider']}_KEY或{model['provider']}_BASE_URL环境变量，请检查配置文件或环境变量设置。"
+            )
         self.model_name: str = model["name"]
         self.params = kwargs
 
@@ -179,7 +183,7 @@ class LLMRequest:
                 status="success",
                 timestamp=datetime.now(),  # Peewee 会处理 DateTimeField
             )
-            logger.trace(
+            logger.debug(
                 f"Token使用情况 - 模型: {self.model_name}, "
                 f"用户: {user_id}, 类型: {request_type}, "
                 f"提示词: {prompt_tokens}, 完成: {completion_tokens}, "
@@ -885,7 +889,7 @@ def compress_base64_image_by_scale(base64_data: str, target_size: int = 0.8 * 10
 
         # 获取压缩后的数据并转换为base64
         compressed_data = output_buffer.getvalue()
-        logger.success(f"压缩图片: {original_width}x{original_height} -> {new_width}x{new_height}")
+        logger.info(f"压缩图片: {original_width}x{original_height} -> {new_width}x{new_height}")
         logger.info(f"压缩前大小: {len(image_data) / 1024:.1f}KB, 压缩后大小: {len(compressed_data) / 1024:.1f}KB")
 
         return base64.b64encode(compressed_data).decode("utf-8")
