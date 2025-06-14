@@ -26,7 +26,24 @@ class PluginManager:
         self.failed_plugins: Dict[str, str] = {}
         self.plugin_paths: Dict[str, str] = {}  # 记录插件名到目录路径的映射
 
+        # 确保插件目录存在
+        self._ensure_plugin_directories()
         logger.info("插件管理器初始化完成")
+
+    def _ensure_plugin_directories(self):
+        """确保所有插件目录存在，如果不存在则创建"""
+        default_directories = [
+            "src/plugins/built_in",
+            "src/plugins/examples",
+            "plugins"
+        ]
+        
+        for directory in default_directories:
+            if not os.path.exists(directory):
+                os.makedirs(directory, exist_ok=True)
+                logger.info(f"创建插件目录: {directory}")
+            self.plugin_directories.append(directory)
+            logger.debug(f"已添加插件目录: {directory}")
 
     def add_plugin_directory(self, directory: str):
         """添加插件目录"""
