@@ -137,7 +137,7 @@ class HeartFCMessageReceiver:
         """初始化心流处理器，创建消息存储实例"""
         self.storage = MessageStorage()
 
-    async def process_message(self, message_data: Dict[str, Any]) -> None:
+    async def process_message(self, message: MessageRecv) -> None:
         """处理接收到的原始消息数据
 
         主要流程:
@@ -153,7 +153,6 @@ class HeartFCMessageReceiver:
         message = None
         try:
             # 1. 消息解析与初始化
-            message = MessageRecv(message_data)
             groupinfo = message.message_info.group_info
             userinfo = message.message_info.user_info
             messageinfo = message.message_info
@@ -166,7 +165,6 @@ class HeartFCMessageReceiver:
 
             subheartflow = await heartflow.get_or_create_subheartflow(chat.stream_id)
             message.update_chat_stream(chat)
-            await message.process()
 
             # 3. 过滤检查
             if _check_ban_words(message.processed_plain_text, chat, userinfo) or _check_ban_regex(

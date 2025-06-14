@@ -101,15 +101,11 @@ class MessageRecv(Message):
         Args:
             message_dict: MessageCQ序列化后的字典
         """
-        # print(f"message_dict: {message_dict}")
         self.message_info = BaseMessageInfo.from_dict(message_dict.get("message_info", {}))
-
         self.message_segment = Seg.from_dict(message_dict.get("message_segment", {}))
         self.raw_message = message_dict.get("raw_message")
-
-        # 处理消息内容
-        self.processed_plain_text = message_dict.get("processed_plain_text", "")  # 初始化为空字符串
-        self.detailed_plain_text = message_dict.get("detailed_plain_text", "")  # 初始化为空字符串
+        self.processed_plain_text = message_dict.get("processed_plain_text", "")
+        self.detailed_plain_text = message_dict.get("detailed_plain_text", "")
         self.is_emoji = False
 
     def update_chat_stream(self, chat_stream: "ChatStream"):
@@ -123,33 +119,36 @@ class MessageRecv(Message):
         self.processed_plain_text = await self._process_message_segments(self.message_segment)
         self.detailed_plain_text = self._generate_detailed_text()
 
-    async def _process_single_segment(self, seg: Seg) -> str:
+    async def _process_single_segment(self, segment: Seg) -> str:
         """处理单个消息段
 
         Args:
-            seg: 要处理的消息段
+            segment: 消息段
 
         Returns:
             str: 处理后的文本
         """
         try:
-            if seg.type == "text":
-                return seg.data
-            elif seg.type == "image":
+            if segment.type == "text":
+                return segment.data
+            elif segment.type == "image":
                 # 如果是base64图片数据
-                if isinstance(seg.data, str):
-                    return await get_image_manager().get_image_description(seg.data)
+                if isinstance(segment.data, str):
+                    image_manager = get_image_manager()
+                    # print(f"segment.data: {segment.data}")
+                    _, processed_text = await image_manager.process_image(segment.data)
+                    return processed_text
                 return "[发了一张图片，网卡了加载不出来]"
-            elif seg.type == "emoji":
+            elif segment.type == "emoji":
                 self.is_emoji = True
-                if isinstance(seg.data, str):
-                    return await get_image_manager().get_emoji_description(seg.data)
+                if isinstance(segment.data, str):
+                    return await get_image_manager().get_emoji_description(segment.data)
                 return "[发了一个表情包，网卡了加载不出来]"
             else:
-                return f"[{seg.type}:{str(seg.data)}]"
+                return f"[{segment.type}:{str(segment.data)}]"
         except Exception as e:
-            logger.error(f"处理消息段失败: {str(e)}, 类型: {seg.type}, 数据: {seg.data}")
-            return f"[处理失败的{seg.type}消息]"
+            logger.error(f"处理消息段失败: {str(e)}, 类型: {segment.type}, 数据: {segment.data}")
+            return f"[处理失败的{segment.type}消息]"
 
     def _generate_detailed_text(self) -> str:
         """生成详细文本，包含时间和用户信息"""

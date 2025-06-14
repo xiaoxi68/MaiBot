@@ -70,7 +70,7 @@ class MuteAction(BaseAction):
 
     # Action参数定义
     action_parameters = {
-        "target": "禁言对象，必填，输入你要禁言的对象的名字",
+        "target": "禁言对象，必填，输入你要禁言的对象的名字，请仔细思考不要弄错禁言对象",
         "duration": "禁言时长，必填，输入你要禁言的时长（秒），单位为秒，必须为数字",
         "reason": "禁言理由，可选",
     }

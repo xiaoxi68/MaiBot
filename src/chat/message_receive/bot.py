@@ -51,8 +51,6 @@ class ChatBot:
     async def _process_commands_with_new_system(self, message: MessageRecv):
         """使用新插件系统处理命令"""
         try:
-            if not message.processed_plain_text:
-                await message.process()
 
             text = message.processed_plain_text
 
@@ -179,11 +177,11 @@ class ChatBot:
                     # 禁止PFC，进入普通的心流消息处理逻辑
                     else:
                         logger.debug("进入普通心流私聊处理")
-                        await self.heartflow_message_receiver.process_message(message_data)
+                        await self.heartflow_message_receiver.process_message(message)
                 # 群聊默认进入心流消息处理逻辑
                 else:
                     logger.debug(f"检测到群聊消息，群ID: {group_info.group_id}")
-                    await self.heartflow_message_receiver.process_message(message_data)
+                    await self.heartflow_message_receiver.process_message(message)
 
             if template_group_name:
                 async with global_prompt_manager.async_message_scope(template_group_name):
