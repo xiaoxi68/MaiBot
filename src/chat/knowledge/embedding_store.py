@@ -267,7 +267,7 @@ class EmbeddingStore:
             result: 最相似的k个项的(hash, 余弦相似度)列表
         """
         if self.faiss_index is None:
-            logger.warning("FaissIndex尚未构建,返回None")
+            logger.debug("FaissIndex尚未构建,返回None")
             return None
         if self.idx2hash is None:
             logger.warning("idx2hash尚未构建,返回None")

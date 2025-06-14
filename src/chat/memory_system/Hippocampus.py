@@ -366,7 +366,7 @@ class Hippocampus:
         # 过滤掉不存在于记忆图中的关键词
         valid_keywords = [keyword for keyword in keywords if keyword in self.memory_graph.G]
         if not valid_keywords:
-            logger.info("没有找到有效的关键词节点")
+            logger.debug("没有找到有效的关键词节点")
             return []
 
         logger.debug(f"有效的关键词: {', '.join(valid_keywords)}")
@@ -537,7 +537,7 @@ class Hippocampus:
         # 过滤掉不存在于记忆图中的关键词
         valid_keywords = [keyword for keyword in keywords if keyword in self.memory_graph.G]
         if not valid_keywords:
-            logger.info("没有找到有效的关键词节点")
+            logger.debug("没有找到有效的关键词节点")
             return []
 
         logger.debug(f"有效的关键词: {', '.join(valid_keywords)}")

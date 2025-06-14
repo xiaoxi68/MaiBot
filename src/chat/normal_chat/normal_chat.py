@@ -587,14 +587,14 @@ class NormalChat:
         if differ > 0.1:
             mapped = 1 + (differ - 0.1) * 4 / 0.9
             mapped = max(1, min(5, mapped))
-            logger.info(
+            logger.debug(
                 f"[{self.stream_name}] 回复频率低于{global_config.normal_chat.talk_frequency}，增加回复概率，differ={differ:.3f}，映射值={mapped:.2f}"
             )
             self.willing_amplifier += mapped * 0.1  # 你可以根据实际需要调整系数
         elif differ < -0.1:
             mapped = 1 - (differ + 0.1) * 4 / 0.9
             mapped = max(1, min(5, mapped))
-            logger.info(
+            logger.debug(
                 f"[{self.stream_name}] 回复频率高于{global_config.normal_chat.talk_frequency}，减少回复概率，differ={differ:.3f}，映射值={mapped:.2f}"
             )
             self.willing_amplifier -= mapped * 0.1
@@ -689,142 +689,19 @@ class NormalChat:
             self.engaging_persons[person_id]["last_time"] = current_time
             logger.debug(f"[{self.stream_name}] 用户 {person_id} 消息次数更新: {self.engaging_persons[person_id]['receive_count']}")
 
-    def get_engaging_persons(self) -> dict:
-        """获取所有engaging_persons统计信息
-        
-        Returns:
-            dict: person_id -> {first_time, last_time, receive_count, reply_count}
-        """
-        return self.engaging_persons.copy()
-
-    def get_engaging_person_stats(self, person_id: str) -> dict:
-        """获取特定用户的统计信息
-        
-        Args:
-            person_id: 用户ID
-            
-        Returns:
-            dict: 用户统计信息，如果用户不存在则返回None
-        """
-        return self.engaging_persons.get(person_id)
-
-    def get_top_engaging_persons(self, limit: int = 10, sort_by: str = "receive_count") -> list:
-        """获取最活跃的用户列表
-        
-        Args:
-            limit: 返回的用户数量限制
-            sort_by: 排序依据，可选值: "receive_count", "reply_count", "last_time"
-            
-        Returns:
-            list: 按指定条件排序的用户列表
-        """
-        if sort_by not in ["receive_count", "reply_count", "last_time"]:
-            sort_by = "receive_count"
-            
-        sorted_persons = sorted(
-            self.engaging_persons.items(),
-            key=lambda x: x[1][sort_by],
-            reverse=True
-        )
-        
-        return sorted_persons[:limit]
-
-    def clear_engaging_persons_stats(self):
-        """清空engaging_persons统计信息"""
-        self.engaging_persons.clear()
-        logger.info(f"[{self.stream_name}] 已清空engaging_persons统计信息")
-
-    def get_relation_building_stats(self) -> dict:
-        """获取关系构建相关统计信息
-        
-        Returns:
-            dict: 关系构建统计信息
-        """
-        total_persons = len(self.engaging_persons)
-        relation_built_count = sum(1 for stats in self.engaging_persons.values() 
-                                 if stats.get("relation_built", False))
-        pending_persons = []
-        
-        current_time = time.time()
-        for person_id, stats in self.engaging_persons.items():
-            if not stats.get("relation_built", False):
-                time_elapsed = current_time - stats["first_time"]
-                total_messages = self._get_total_messages_in_timerange(
-                    stats["first_time"], stats["last_time"]
-                )
-                
-                # 检查是否接近满足条件
-                progress_info = {
-                    "person_id": person_id,
-                    "time_elapsed": time_elapsed,
-                    "total_messages": total_messages,
-                    "receive_count": stats["receive_count"],
-                    "reply_count": stats["reply_count"],
-                    "progress": {
-                        "50_messages": f"{total_messages}/50 ({total_messages/50*100:.1f}%)",
-                        "35_msg_10min": f"{total_messages}/35 + {time_elapsed}/600s",
-                        "25_msg_30min": f"{total_messages}/25 + {time_elapsed}/1800s", 
-                        "10_msg_1hour": f"{total_messages}/10 + {time_elapsed}/3600s"
-                    }
-                }
-                pending_persons.append(progress_info)
-        
-        return {
-            "total_persons": total_persons,
-            "relation_built_count": relation_built_count,
-            "pending_count": len(pending_persons),
-            "pending_persons": pending_persons
-        }
-
-    def get_engaging_persons_summary(self) -> dict:
-        """获取engaging_persons统计摘要
-        
-        Returns:
-            dict: 包含总用户数、总消息数、总回复数等统计信息
-        """
-        if not self.engaging_persons:
-            return {
-                "total_persons": 0,
-                "total_messages": 0,
-                "total_replies": 0,
-                "most_active_person": None,
-                "most_replied_person": None
-            }
-            
-        total_messages = sum(stats["receive_count"] for stats in self.engaging_persons.values())
-        total_replies = sum(stats["reply_count"] for stats in self.engaging_persons.values())
-        
-        most_active = max(self.engaging_persons.items(), key=lambda x: x[1]["receive_count"])
-        most_replied = max(self.engaging_persons.items(), key=lambda x: x[1]["reply_count"])
-        
-        return {
-            "total_persons": len(self.engaging_persons),
-            "total_messages": total_messages,
-            "total_replies": total_replies,
-            "most_active_person": {
-                "person_id": most_active[0],
-                "message_count": most_active[1]["receive_count"]
-            },
-            "most_replied_person": {
-                "person_id": most_replied[0],
-                "reply_count": most_replied[1]["reply_count"]
-            }
-        }
 
     async def _check_relation_building_conditions(self):
         """检查engaging_persons中是否有满足关系构建条件的用户"""
         current_time = time.time()
         
         for person_id, stats in list(self.engaging_persons.items()):
-            # 跳过已经进行过关系构建的用户
-            if stats.get("relation_built", False):
-                continue
-                
             # 计算时间差和消息数量
             time_elapsed = current_time - stats["first_time"]
             total_messages = self._get_total_messages_in_timerange(
                 stats["first_time"], stats["last_time"]
             )
+            
+            print(f"person_id: {person_id}, total_messages: {total_messages}, time_elapsed: {time_elapsed}")
             
             # 检查是否满足关系构建条件
             should_build_relation = (
@@ -843,6 +720,10 @@ class NormalChat:
                 
                 # 计算构建概率并决定是否构建
                 await self._evaluate_and_build_relation(person_id, stats, total_messages)
+                
+                # 评估完成后移除该用户，重新开始统计
+                del self.engaging_persons[person_id]
+                logger.info(f"[{self.stream_name}] 用户 {person_id} 评估完成，已移除记录，将重新开始统计")
 
 
     def _get_total_messages_in_timerange(self, start_time: float, end_time: float) -> int:
@@ -856,24 +737,31 @@ class NormalChat:
 
     async def _evaluate_and_build_relation(self, person_id: str, stats: dict, total_messages: int):
         """评估并执行关系构建"""
+        import math
+        
         receive_count = stats["receive_count"]
         reply_count = stats["reply_count"]
         
         # 计算回复概率（reply_count在总消息中的比值）
         reply_ratio = reply_count / total_messages if total_messages > 0 else 0
-        reply_build_probability = reply_ratio  # 100%回复则100%构建
+        # 使用对数函数让低比率时概率上升更快：log(1 + ratio * k) / log(1 + k)
+        # k=10时，0.1比率对应约0.67概率，0.5比率对应约0.95概率
+        k_reply = 10
+        reply_build_probability = math.log(1 + reply_ratio * k_reply) / math.log(1 + k_reply) if reply_ratio > 0 else 0
         
         # 计算接收概率（receive_count的影响）
         receive_ratio = receive_count / total_messages if total_messages > 0 else 0
-        receive_build_probability = receive_ratio * 0.25  # 100%接收则25%构建
+        # 接收概率使用更温和的对数曲线，最大0.4
+        k_receive = 8
+        receive_build_probability = (math.log(1 + receive_ratio * k_receive) / math.log(1 + k_receive)) * 0.4 if receive_ratio > 0 else 0
         
         # 取最高概率
         final_probability = max(reply_build_probability, receive_build_probability)
         
         logger.info(
             f"[{self.stream_name}] 用户 {person_id} 关系构建概率评估："
-            f"回复比例：{reply_ratio:.2f}({reply_build_probability:.2f})"
-            f"，接收比例：{receive_ratio:.2f}({receive_build_probability:.2f})"  
+            f"回复比例：{reply_ratio:.2f}(对数概率:{reply_build_probability:.2f})"
+            f"，接收比例：{receive_ratio:.2f}(对数概率:{receive_build_probability:.2f})"  
             f"，最终概率：{final_probability:.2f}"
         )
         
@@ -881,12 +769,8 @@ class NormalChat:
         if random() < final_probability:
             logger.info(f"[{self.stream_name}] 决定为用户 {person_id} 构建关系")
             await self._build_relation_for_person(person_id, stats)
-            # 标记已构建
-            stats["relation_built"] = True
         else:
             logger.info(f"[{self.stream_name}] 用户 {person_id} 未通过关系构建概率判定")
-            # 即使未构建，也标记为已处理，避免重复判定
-            stats["relation_built"] = True
 
     async def _build_relation_for_person(self, person_id: str, stats: dict):
         """为特定用户构建关系"""
