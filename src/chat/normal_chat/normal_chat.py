@@ -693,7 +693,6 @@ class NormalChat:
                 f"[{self.stream_name}] 用户 {person_id} 消息次数更新: {self.engaging_persons[person_id]['receive_count']}"
             )
 
-
     async def _check_relation_building_conditions(self):
         """检查engaging_persons中是否有满足关系构建条件的用户"""
         current_time = time.time()
@@ -701,12 +700,10 @@ class NormalChat:
         for person_id, stats in list(self.engaging_persons.items()):
             # 计算时间差和消息数量
             time_elapsed = current_time - stats["first_time"]
-            total_messages = self._get_total_messages_in_timerange(
-                stats["first_time"], stats["last_time"]
-            )
-            
+            total_messages = self._get_total_messages_in_timerange(stats["first_time"], stats["last_time"])
+
             print(f"person_id: {person_id}, total_messages: {total_messages}, time_elapsed: {time_elapsed}")
-            
+
             # 检查是否满足关系构建条件
             should_build_relation = (
                 total_messages >= 50  # 50条消息必定满足
@@ -724,11 +721,10 @@ class NormalChat:
 
                 # 计算构建概率并决定是否构建
                 await self._evaluate_and_build_relation(person_id, stats, total_messages)
-                
+
                 # 评估完成后移除该用户，重新开始统计
                 del self.engaging_persons[person_id]
                 logger.info(f"[{self.stream_name}] 用户 {person_id} 评估完成，已移除记录，将重新开始统计")
-
 
     def _get_total_messages_in_timerange(self, start_time: float, end_time: float) -> int:
         """获取指定时间范围内的总消息数量"""
@@ -742,7 +738,7 @@ class NormalChat:
     async def _evaluate_and_build_relation(self, person_id: str, stats: dict, total_messages: int):
         """评估并执行关系构建"""
         import math
-        
+
         receive_count = stats["receive_count"]
         reply_count = stats["reply_count"]
 
@@ -752,22 +748,30 @@ class NormalChat:
         # k=7时，0.05比率对应约0.4概率，0.1比率对应约0.6概率，0.2比率对应约0.8概率
         k_reply = 7 * global_config.normal_chat.relation_frequency
         base_reply_prob = 0.1  # 基础概率10%
-        reply_build_probability = (math.log(1 + reply_ratio * k_reply) / math.log(1 + k_reply)) * 0.9 + base_reply_prob if reply_ratio > 0 else base_reply_prob
-        
+        reply_build_probability = (
+            (math.log(1 + reply_ratio * k_reply) / math.log(1 + k_reply)) * 0.9 + base_reply_prob
+            if reply_ratio > 0
+            else base_reply_prob
+        )
+
         # 计算接收概率（receive_count的影响）
         receive_ratio = receive_count / total_messages if total_messages > 0 else 0
         # 接收概率使用更温和的对数曲线，最大0.5，基础0.08
         k_receive = 6 * global_config.normal_chat.relation_frequency
         base_receive_prob = 0.08  # 基础概率8%
-        receive_build_probability = (math.log(1 + receive_ratio * k_receive) / math.log(1 + k_receive)) * 0.42 + base_receive_prob if receive_ratio > 0 else base_receive_prob
-        
+        receive_build_probability = (
+            (math.log(1 + receive_ratio * k_receive) / math.log(1 + k_receive)) * 0.42 + base_receive_prob
+            if receive_ratio > 0
+            else base_receive_prob
+        )
+
         # 取最高概率
         final_probability = max(reply_build_probability, receive_build_probability)
 
         logger.info(
             f"[{self.stream_name}] 用户 {person_id} 关系构建概率评估："
             f"回复比例：{reply_ratio:.2f}(对数概率:{reply_build_probability:.2f})"
-            f"，接收比例：{receive_ratio:.2f}(对数概率:{receive_build_probability:.2f})"  
+            f"，接收比例：{receive_ratio:.2f}(对数概率:{receive_build_probability:.2f})"
             f"，最终概率：{final_probability:.2f}"
         )
 
