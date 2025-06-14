@@ -189,7 +189,7 @@ class Images(BaseModel):
     emoji_hash = TextField(index=True)  # 图像的哈希值
     description = TextField(null=True)  # 图像的描述
     path = TextField(unique=True)  # 图像文件的路径
-    # base64 = TextField()  # 图片的base64编码
+    base64 = TextField(null=True)  # 图片的base64编码（可选）
     count = IntegerField(default=1)  # 图片被引用的次数
     timestamp = FloatField()  # 时间戳
     type = TextField()  # 图像类型，例如 "emoji"
@@ -419,7 +419,14 @@ def initialize_database():
                         else:
                             alter_sql += " NOT NULL"
                         if hasattr(field_obj, "default") and field_obj.default is not None:
-                            alter_sql += f" DEFAULT {field_obj.default}"
+                            # 正确处理不同类型的默认值
+                            default_value = field_obj.default
+                            if isinstance(default_value, str):
+                                alter_sql += f" DEFAULT '{default_value}'"
+                            elif isinstance(default_value, bool):
+                                alter_sql += f" DEFAULT {int(default_value)}"
+                            else:
+                                alter_sql += f" DEFAULT {default_value}"
                         db.execute_sql(alter_sql)
                         logger.info(f"字段 '{field_name}' 添加成功")
 
