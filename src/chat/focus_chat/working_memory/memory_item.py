@@ -7,12 +7,12 @@ import string
 class MemoryItem:
     """记忆项类，用于存储单个记忆的所有相关信息"""
 
-    def __init__(self, data: Any, from_source: str = "", brief: str = ""):
+    def __init__(self, summary: str, from_source: str = "", brief: str = ""):
         """
         初始化记忆项
 
         Args:
-            data: 记忆数据
+            summary: 记忆内容概括
             from_source: 数据来源
             brief: 记忆内容主题
         """
@@ -20,18 +20,12 @@ class MemoryItem:
         timestamp = int(time.time())
         random_str = "".join(random.choices(string.ascii_lowercase + string.digits, k=2))
         self.id = f"{timestamp}_{random_str}"
-        self.data = data
-        self.data_type = type(data)
         self.from_source = from_source
         self.brief = brief
         self.timestamp = time.time()
-        # 修改summary的结构说明，用于存储可能的总结信息
-        # summary结构：{
-        #   "detailed": "记忆内容概括",
-        #   "keypoints": ["关键概念1", "关键概念2"],
-        #   "events": ["事件1", "事件2"]
-        # }
-        self.summary = None
+        
+        # 记忆内容概括
+        self.summary = summary
 
         # 记忆精简次数
         self.compress_count = 0
@@ -49,10 +43,6 @@ class MemoryItem:
     def matches_source(self, source: str) -> bool:
         """检查来源是否匹配"""
         return self.from_source == source
-
-    def set_summary(self, summary: Dict[str, Any]) -> None:
-        """设置总结信息"""
-        self.summary = summary
 
     def increase_strength(self, amount: float) -> None:
         """增加记忆强度"""
@@ -85,9 +75,9 @@ class MemoryItem:
         current_time = time.time()
         self.history.append((operation_type, current_time, self.compress_count, self.memory_strength))
 
-    def to_tuple(self) -> Tuple[Any, str, float, str]:
+    def to_tuple(self) -> Tuple[str, str, float, str]:
         """转换为元组格式（为了兼容性）"""
-        return (self.data, self.from_source, self.timestamp, self.id)
+        return (self.summary, self.from_source, self.timestamp, self.id)
 
     def is_memory_valid(self) -> bool:
         """检查记忆是否有效（强度是否大于等于1）"""
