@@ -38,14 +38,20 @@ class PluginManager:
             if not os.path.exists(directory):
                 os.makedirs(directory, exist_ok=True)
                 logger.info(f"创建插件目录: {directory}")
-            self.plugin_directories.append(directory)
-            logger.debug(f"已添加插件目录: {directory}")
+            if directory not in self.plugin_directories:
+                self.plugin_directories.append(directory)
+                logger.debug(f"已添加插件目录: {directory}")
+            else:
+                logger.warning(f"插件 {directory} 重复加载")
 
     def add_plugin_directory(self, directory: str):
         """添加插件目录"""
         if os.path.exists(directory):
-            self.plugin_directories.append(directory)
-            logger.debug(f"已添加插件目录: {directory}")
+            if directory not in self.plugin_directories:
+                self.plugin_directories.append(directory)
+                logger.debug(f"已添加插件目录: {directory}")
+            else:
+                logger.warning(f"插件不可重复加载: {directory}")
         else:
             logger.warning(f"插件目录不存在: {directory}")
 
@@ -342,7 +348,9 @@ class PluginManager:
 # 全局插件管理器实例
 plugin_manager = PluginManager()
 
+# 注释掉以解决插件目录重复加载的情况
 # 默认插件目录
-plugin_manager.add_plugin_directory("src/plugins/built_in")
-plugin_manager.add_plugin_directory("src/plugins/examples")
-plugin_manager.add_plugin_directory("plugins")  # 用户插件目录
+# plugin_manager.add_plugin_directory("src/plugins/built_in")
+# plugin_manager.add_plugin_directory("src/plugins/examples")
+# 用户插件目录
+# plugin_manager.add_plugin_directory("plugins")
