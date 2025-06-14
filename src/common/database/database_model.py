@@ -242,6 +242,7 @@ class PersonInfo(BaseModel):
     user_id = TextField(index=True)  # 用户ID
     nickname = TextField()  # 用户昵称
     impression = TextField(null=True)  # 个人印象
+    short_impression = TextField(null=True)  # 个人印象的简短描述
     points = TextField(null=True)  # 个人印象的点
     forgotten_points = TextField(null=True)  # 被遗忘的点
     info_list = TextField(null=True)  # 与Bot的互动

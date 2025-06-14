@@ -43,6 +43,7 @@ person_info_default = {
     # "user_cardname": None, # This field is not in Peewee model PersonInfo
     # "user_avatar": None,   # This field is not in Peewee model PersonInfo
     "impression": None,  # Corrected from persion_impression
+    "short_impression": None,
     "info_list": None,
     "points": None,
     "forgotten_points": None,
