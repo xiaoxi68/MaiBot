@@ -189,7 +189,7 @@ class Images(BaseModel):
     emoji_hash = TextField(index=True)  # 图像的哈希值
     description = TextField(null=True)  # 图像的描述
     path = TextField(unique=True)  # 图像文件的路径
-    base64 = TextField()  # 图片的base64编码
+    # base64 = TextField()  # 图片的base64编码
     count = IntegerField(default=1)  # 图片被引用的次数
     timestamp = FloatField()  # 时间戳
     type = TextField()  # 图像类型，例如 "emoji"

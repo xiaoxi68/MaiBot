@@ -158,6 +158,7 @@ class ImageManager:
                         type="emoji",
                         description=description,
                         timestamp=current_timestamp,
+                        # base64=image_base64,
                     )
                 # logger.debug(f"保存表情包元数据: {file_path}")
             except Exception as e:
@@ -229,6 +230,7 @@ class ImageManager:
                         type="image",
                         description=description,
                         timestamp=current_timestamp,
+                        # base64=image_base64,
                     )
                 logger.debug(f"保存图片元数据: {file_path}")
             except Exception as e:
@@ -408,7 +410,7 @@ class ImageManager:
                 image_id=image_id,
                 emoji_hash=image_hash,
                 path=file_path,
-                base64=image_base64,
+                # base64=image_base64,
                 type="image",
                 timestamp=current_timestamp,
                 vlm_processed=False,
