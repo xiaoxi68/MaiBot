@@ -6,6 +6,7 @@ from typing import Tuple, List, Type
 
 logger = get_logger("tts")
 
+
 class TTSAction(BaseAction):
     """TTS语音转换动作处理类"""
 
@@ -86,13 +87,14 @@ class TTSAction(BaseAction):
 
         return processed_text
 
+
 @register_plugin
 class TTSPlugin(BasePlugin):
     """TTS插件
     - 这是文字转语音插件
     - Normal模式下依靠关键词触发
     - Focus模式下由LLM判断触发
-    - 具有一定的文本预处理能力 
+    - 具有一定的文本预处理能力
     """
 
     # 插件基本信息
@@ -114,9 +116,7 @@ class TTSPlugin(BasePlugin):
         if enable_tts:
             components.append(
                 (
-                    TTSAction.get_action_info(
-                        name="tarots_action", description="文字转语音插件"
-                    ),
+                    TTSAction.get_action_info(name="tarots_action", description="文字转语音插件"),
                     TTSAction,
                 )
             )
