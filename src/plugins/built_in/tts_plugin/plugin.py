@@ -110,13 +110,11 @@ class TTSPlugin(BasePlugin):
 
         # 从配置获取组件启用状态
         enable_tts = self.get_config("components.enable_tts", True)
-        components = []
-
-        # 添加Action组件
+        components = []        # 添加Action组件
         if enable_tts:
             components.append(
                 (
-                    TTSAction.get_action_info(name="tarots_action", description="文字转语音插件"),
+                    TTSAction.get_action_info(name="tts_action", description="文字转语音插件"),
                     TTSAction,
                 )
             )

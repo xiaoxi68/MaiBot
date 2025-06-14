@@ -8,7 +8,7 @@ description = "文字转语音插件"
 
 # 组件启用控制
 [components]
-enable_tarots = true
+enable_tts = true
 
 # 日志配置
 [logging]
