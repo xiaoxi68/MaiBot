@@ -111,7 +111,6 @@ class NormalChatExpressor:
 
             # 创建消息集
 
-            first_bot_msg = None
             mark_head = False
             is_emoji = False
             if len(response_set) == 0:
@@ -140,14 +139,14 @@ class NormalChatExpressor:
             # 提交消息集
             if bot_msg:
                 await message_manager.add_message(bot_msg)
-                logger.info(f"{self.log_prefix} 成功发送 {response_type}类型消息: {content}")
+                logger.info(f"{self.log_prefix} 成功发送 {response_type}类型消息: {str(content)[:200] + '...' if len(str(content)) > 200 else content}")
                 container = await message_manager.get_container(self.chat_stream.stream_id)  # 使用 self.stream_id
                 for msg in container.messages[:]:
                     if isinstance(msg, MessageThinking) and msg.message_info.message_id == thinking_id:
                         container.messages.remove(msg)
                         logger.debug(f"[{self.stream_name}] 已移除未产生回复的思考消息 {thinking_id}")
                         break
-                return first_bot_msg
+                return bot_msg
             else:
                 logger.warning(f"{self.log_prefix} 没有有效的消息被创建")
                 return None
