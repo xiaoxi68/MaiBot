@@ -42,7 +42,7 @@ class PluginManager:
                 self.plugin_directories.append(directory)
                 logger.debug(f"已添加插件目录: {directory}")
             else:
-                logger.warning(f"插件 {directory} 重复加载")
+                logger.warning(f"插件不可重复加载: {directory}")
 
     def add_plugin_directory(self, directory: str):
         """添加插件目录"""
