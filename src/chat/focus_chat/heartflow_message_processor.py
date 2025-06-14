@@ -11,7 +11,7 @@ from src.common.logger import get_logger
 import math
 import re
 import traceback
-from typing import Optional, Tuple, Dict, Any
+from typing import Optional, Tuple
 from maim_message import UserInfo
 
 from src.person_info.relationship_manager import get_relationship_manager

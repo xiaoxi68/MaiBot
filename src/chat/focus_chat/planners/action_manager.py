@@ -378,7 +378,7 @@ class ActionManager:
                 filtered_actions[action_name] = action_info
                 logger.debug(f"动作 {action_name} 在模式 {mode} 下可用 (mode_enable: {action_mode})")
             # else:
-                # logger.debug(f"动作 {action_name} 在模式 {mode} 下不可用 (mode_enable: {action_mode})")
+            # logger.debug(f"动作 {action_name} 在模式 {mode} 下不可用 (mode_enable: {action_mode})")
 
         logger.debug(f"模式 {mode} 下可用动作: {list(filtered_actions.keys())}")
         return filtered_actions

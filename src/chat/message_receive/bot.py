@@ -51,7 +51,6 @@ class ChatBot:
     async def _process_commands_with_new_system(self, message: MessageRecv):
         """使用新插件系统处理命令"""
         try:
-
             text = message.processed_plain_text
 
             # 使用新的组件注册中心查找命令
