@@ -309,7 +309,7 @@ class NormalChatActionModifier:
         if container:
             thinking_count = sum(1 for msg in container.messages if isinstance(msg, MessageThinking))
             print(f"thinking_count: {thinking_count}")
-            if thinking_count >= 4 / global_config.chat.auto_focus_threshold:  # 如果堆积超过3条思考消息
+            if thinking_count >= 4 * global_config.chat.auto_focus_threshold:  # 如果堆积超过3条思考消息
                 logger.debug(f"{self.log_prefix} 检测到思考消息堆积({thinking_count}条)，切换到focus模式")
                 return True
 

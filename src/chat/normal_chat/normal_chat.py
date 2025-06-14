@@ -750,14 +750,14 @@ class NormalChat:
         reply_ratio = reply_count / total_messages if total_messages > 0 else 0
         # 使用对数函数让低比率时概率上升更快：log(1 + ratio * k) / log(1 + k) + base
         # k=7时，0.05比率对应约0.4概率，0.1比率对应约0.6概率，0.2比率对应约0.8概率
-        k_reply = 7
+        k_reply = 7 * global_config.normal_chat.relation_frequency
         base_reply_prob = 0.1  # 基础概率10%
         reply_build_probability = (math.log(1 + reply_ratio * k_reply) / math.log(1 + k_reply)) * 0.9 + base_reply_prob if reply_ratio > 0 else base_reply_prob
         
         # 计算接收概率（receive_count的影响）
         receive_ratio = receive_count / total_messages if total_messages > 0 else 0
         # 接收概率使用更温和的对数曲线，最大0.5，基础0.08
-        k_receive = 6
+        k_receive = 6 * global_config.normal_chat.relation_frequency
         base_receive_prob = 0.08  # 基础概率8%
         receive_build_probability = (math.log(1 + receive_ratio * k_receive) / math.log(1 + k_receive)) * 0.42 + base_receive_prob if receive_ratio > 0 else base_receive_prob
         
