@@ -154,54 +154,61 @@ class NormalChat:
         通常由start_monitoring_interest()启动
         """
         while True:
-            async with global_prompt_manager.async_message_scope(self.chat_stream.context.get_template_name()):
-                await asyncio.sleep(0.5)  # 每秒检查一次
-                # 检查任务是否已被取消
-                if self._chat_task is None or self._chat_task.cancelled():
-                    logger.info(f"[{self.stream_name}] 兴趣监控任务被取消或置空，退出")
-                    break
+            try:
+                async with global_prompt_manager.async_message_scope(self.chat_stream.context.get_template_name()):
+                    await asyncio.sleep(0.5)  # 每秒检查一次
+                    # 检查任务是否已被取消
+                    if self._chat_task is None or self._chat_task.cancelled():
+                        logger.info(f"[{self.stream_name}] 兴趣监控任务被取消或置空，退出")
+                        break
 
-                items_to_process = list(self.interest_dict.items())
-                if not items_to_process:
-                    continue
+                    items_to_process = list(self.interest_dict.items())
+                    if not items_to_process:
+                        continue
 
-                # 并行处理兴趣消息
-                async def process_single_message(msg_id, message, interest_value, is_mentioned):
-                    """处理单个兴趣消息"""
-                    try:
-                        # 处理消息
-                        if time.time() - self.start_time > 300:
-                            self.adjust_reply_frequency(duration=300 / 60)
-                        else:
-                            self.adjust_reply_frequency(duration=(time.time() - self.start_time) / 60)
+                    # 并行处理兴趣消息
+                    async def process_single_message(msg_id, message, interest_value, is_mentioned):
+                        """处理单个兴趣消息"""
+                        try:
+                            # 处理消息
+                            if time.time() - self.start_time > 300:
+                                self.adjust_reply_frequency(duration=300 / 60)
+                            else:
+                                self.adjust_reply_frequency(duration=(time.time() - self.start_time) / 60)
 
-                        await self.normal_response(
-                            message=message,
-                            is_mentioned=is_mentioned,
-                            interested_rate=interest_value * self.willing_amplifier,
-                        )
-                    except Exception as e:
-                        logger.error(f"[{self.stream_name}] 处理兴趣消息{msg_id}时出错: {e}\n{traceback.format_exc()}")
-                    finally:
-                        self.interest_dict.pop(msg_id, None)
+                            await self.normal_response(
+                                message=message,
+                                is_mentioned=is_mentioned,
+                                interested_rate=interest_value * self.willing_amplifier,
+                            )
+                        except Exception as e:
+                            logger.error(f"[{self.stream_name}] 处理兴趣消息{msg_id}时出错: {e}\n{traceback.format_exc()}")
+                        finally:
+                            self.interest_dict.pop(msg_id, None)
 
-                # 创建并行任务列表
-                tasks = []
-                for msg_id, (message, interest_value, is_mentioned) in items_to_process:
-                    task = process_single_message(msg_id, message, interest_value, is_mentioned)
-                    tasks.append(task)
+                    # 创建并行任务列表
+                    tasks = []
+                    for msg_id, (message, interest_value, is_mentioned) in items_to_process:
+                        task = process_single_message(msg_id, message, interest_value, is_mentioned)
+                        tasks.append(task)
 
-                # 并行执行所有任务，限制并发数量避免资源过度消耗
-                if tasks:
-                    # 使用信号量控制并发数，最多同时处理5个消息
-                    semaphore = asyncio.Semaphore(5)
+                    # 并行执行所有任务，限制并发数量避免资源过度消耗
+                    if tasks:
+                        # 使用信号量控制并发数，最多同时处理5个消息
+                        semaphore = asyncio.Semaphore(5)
 
-                    async def limited_process(task):
-                        async with semaphore:
-                            await task
+                        async def limited_process(task):
+                            async with semaphore:
+                                await task
 
-                    limited_tasks = [limited_process(task) for task in tasks]
-                    await asyncio.gather(*limited_tasks, return_exceptions=True)
+                        limited_tasks = [limited_process(task) for task in tasks]
+                        await asyncio.gather(*limited_tasks, return_exceptions=True)
+            except asyncio.CancelledError:
+                logger.info(f"[{self.stream_name}] 兴趣监控任务被取消")
+                break
+            except Exception as e:
+                logger.error(f"[{self.stream_name}] 兴趣监控任务出错: {e}\n{traceback.format_exc()}")
+                await asyncio.sleep(1)  # 出错后等待一秒再继续
 
     # 改为实例方法, 移除 chat 参数
     async def normal_response(self, message: MessageRecv, is_mentioned: bool, interested_rate: float) -> None:
@@ -259,7 +266,7 @@ class NormalChat:
                     await self.action_modifier.modify_actions_for_normal_chat(
                         self.chat_stream, self.recent_replies, message.processed_plain_text
                     )
-                    available_actions = self.action_manager.get_using_actions()
+                    available_actions = self.action_manager.get_using_actions_for_mode("normal")
                 except Exception as e:
                     logger.warning(f"[{self.stream_name}] 获取available_actions失败: {e}")
                     available_actions = None
@@ -428,12 +435,6 @@ class NormalChat:
                         else:
                             logger.warning(f"[{self.stream_name}] 没有设置切换到focus聊天模式的回调函数，无法执行切换")
                         return
-                    else:
-                        await self._check_switch_to_focus()
-                        pass
-
-            # with Timer("关系更新", timing_results):
-            #     await self._update_relationship(message, response_set)
 
             # 回复后处理
             await willing_manager.after_generate_reply_handle(message.message_info.message_id)
@@ -494,7 +495,10 @@ class NormalChat:
             logger.debug(f"[{self.stream_name}] 尝试取消normal聊天任务。")
             task.cancel()
             try:
-                await task  # 等待任务响应取消
+                # 添加超时机制，最多等待2秒
+                await asyncio.wait_for(task, timeout=2.0)
+            except asyncio.TimeoutError:
+                logger.warning(f"[{self.stream_name}] 等待任务取消超时，强制结束")
             except asyncio.CancelledError:
                 logger.info(f"[{self.stream_name}] 结束一般聊天模式。")
             except Exception as e:
@@ -538,29 +542,6 @@ class NormalChat:
         """
         # 返回最近的limit条记录，按时间倒序排列
         return sorted(self.recent_replies[-limit:], key=lambda x: x["time"], reverse=True)
-
-    async def _check_switch_to_focus(self) -> None:
-        """检查是否满足切换到focus模式的条件"""
-        if not self.on_switch_to_focus_callback:
-            return  # 如果没有设置回调函数，直接返回
-        current_time = time.time()
-
-        time_threshold = 120 / global_config.chat.auto_focus_threshold
-        reply_threshold = 6 * global_config.chat.auto_focus_threshold
-
-        one_minute_ago = current_time - time_threshold
-
-        # 统计1分钟内的回复数量
-        recent_reply_count = sum(1 for reply in self.recent_replies if reply["time"] > one_minute_ago)
-        if recent_reply_count > reply_threshold:
-            logger.info(
-                f"[{self.stream_name}] 检测到1分钟内回复数量({recent_reply_count})大于{reply_threshold}，触发切换到focus模式"
-            )
-            try:
-                # 调用回调函数通知上层切换到focus模式
-                await self.on_switch_to_focus_callback()
-            except Exception as e:
-                logger.error(f"[{self.stream_name}] 触发切换到focus模式时出错: {e}\n{traceback.format_exc()}")
 
     def adjust_reply_frequency(self, duration: int = 10):
         """

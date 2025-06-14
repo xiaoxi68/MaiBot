@@ -219,7 +219,7 @@ class PromptBuilder:
 
         # 构建action描述 (如果启用planner)
         action_descriptions = ""
-        logger.debug(f"Enable planner {enable_planner}, available actions: {available_actions}")
+        # logger.debug(f"Enable planner {enable_planner}, available actions: {available_actions}")
         if enable_planner and available_actions:
             action_descriptions = "你有以下的动作能力，但执行这些动作不由你决定，由另外一个模型同步决定，因此你只需要知道有如下能力即可：\n"
             for action_name, action_info in available_actions.items():

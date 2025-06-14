@@ -250,11 +250,38 @@ class EmojiAction(BaseAction):
         return reply_text
 
 
+class ChangeToFocusChatAction(BaseAction):
+    """切换到专注聊天动作 - 从普通模式切换到专注模式"""
+
+    focus_activation_type = ActionActivationType.NEVER
+    normal_activation_type = ActionActivationType.NEVER
+    mode_enable = ChatMode.NORMAL
+    parallel_action = False
+
+    # 动作参数定义
+    action_parameters = {}
+
+    # 动作使用场景
+    action_require = [
+        "你想要进入专注聊天模式",
+        "聊天上下文中自己的回复条数较多（超过3-4条）",
+        "对话进行得非常热烈活跃",
+        "用户表现出深入交流的意图",
+        "话题需要更专注和深入的讨论"
+    ]
+
+    async def execute(self) -> Tuple[bool, str]:
+        """执行切换到专注聊天动作"""
+        logger.info(f"{self.log_prefix} 决定切换到专注聊天: {self.reasoning}")
+        # 这里只做决策标记，具体切换逻辑由上层管理器处理
+        return True, "决定切换到专注聊天模式"
+
+
 class ExitFocusChatAction(BaseAction):
     """退出专注聊天动作 - 从专注模式切换到普通模式"""
 
     # 激活设置
-    focus_activation_type = ActionActivationType.LLM_JUDGE
+    focus_activation_type = ActionActivationType.NEVER
     normal_activation_type = ActionActivationType.NEVER
     mode_enable = ChatMode.FOCUS
     parallel_action = False
@@ -353,6 +380,13 @@ class CoreActionsPlugin(BasePlugin):
                     name="exit_focus_chat", description="退出专注聊天，从专注模式切换到普通模式"
                 ),
                 ExitFocusChatAction,
+            ),
+            # 切换到专注聊天动作
+            (
+                ChangeToFocusChatAction.get_action_info(
+                    name="change_to_focus_chat", description="切换到专注聊天，从普通模式切换到专注模式"
+                ),
+                ChangeToFocusChatAction,
             ),
             # 示例Command - Ping命令
             (PingCommand.get_command_info(name="ping", description="测试机器人响应，拦截后续处理"), PingCommand),

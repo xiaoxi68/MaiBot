@@ -110,8 +110,8 @@ class WorkingMemoryProcessor(BaseProcessor):
             try:
                 content, _ = await self.llm_model.generate_response_async(prompt=prompt)
 
-                print(f"prompt: {prompt}---------------------------------")
-                print(f"content: {content}---------------------------------")
+                # print(f"prompt: {prompt}---------------------------------")
+                # print(f"content: {content}---------------------------------")
 
                 if not content:
                     logger.warning(f"{self.log_prefix} LLM返回空结果，处理工作记忆失败。")

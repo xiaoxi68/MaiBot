@@ -136,6 +136,13 @@ class ActionModifier:
         if chat_content is not None:
             logger.debug(f"{self.log_prefix}开始激活类型判定阶段")
 
+            # 保存exit_focus_chat动作（如果存在）
+            exit_focus_action = None
+            if "exit_focus_chat" in self.action_manager.get_using_actions():
+                exit_focus_action = self.action_manager.get_using_actions()["exit_focus_chat"]
+                self.action_manager.remove_action_from_using("exit_focus_chat")
+                logger.debug(f"{self.log_prefix}临时移除exit_focus_chat动作以进行激活类型判定")
+
             # 获取当前使用的动作集（经过第一阶段处理，且适用于FOCUS模式）
             current_using_actions = self.action_manager.get_using_actions()
             all_registered_actions = self.action_manager.get_registered_actions()
@@ -184,6 +191,11 @@ class ActionModifier:
                 self.action_manager.remove_action_from_using(action_name)
                 reason = removal_reasons.get(action_name, "未知原因")
                 logger.info(f"{self.log_prefix}移除动作: {action_name}，原因: {reason}")
+
+            # 恢复exit_focus_chat动作（如果之前存在）
+            if exit_focus_action:
+                self.action_manager.add_action_to_using("exit_focus_chat")
+                logger.debug(f"{self.log_prefix}恢复exit_focus_chat动作")
 
             logger.info(f"{self.log_prefix}激活类型判定完成，最终可用动作: {list(final_activated_actions.keys())}")
 

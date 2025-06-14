@@ -120,7 +120,7 @@ class ActionManager:
         self._using_actions = self._default_actions.copy()
 
         # 添加系统核心动作
-        self._add_system_core_actions()
+        # self._add_system_core_actions()
 
     def _load_plugin_actions(self) -> None:
         """
@@ -377,8 +377,8 @@ class ActionManager:
             if action_mode == "all" or action_mode == mode:
                 filtered_actions[action_name] = action_info
                 logger.debug(f"动作 {action_name} 在模式 {mode} 下可用 (mode_enable: {action_mode})")
-            else:
-                logger.debug(f"动作 {action_name} 在模式 {mode} 下不可用 (mode_enable: {action_mode})")
+            # else:
+                # logger.debug(f"动作 {action_name} 在模式 {mode} 下不可用 (mode_enable: {action_mode})")
 
         logger.debug(f"模式 {mode} 下可用动作: {list(filtered_actions.keys())}")
         return filtered_actions
@@ -475,19 +475,19 @@ class ActionManager:
         """恢复默认动作集到使用集"""
         self._using_actions = self._default_actions.copy()
         # 添加系统核心动作（即使enable_plugin为False的系统动作）
-        self._add_system_core_actions()
+        # self._add_system_core_actions()
 
-    def _add_system_core_actions(self) -> None:
-        """
-        添加系统核心动作到使用集
-        系统核心动作是那些enable_plugin为False但是系统必需的动作
-        """
-        system_core_actions = ["exit_focus_chat"]  # 可以根据需要扩展
+    # def _add_system_core_actions(self) -> None:
+    #     """
+    #     添加系统核心动作到使用集
+    #     系统核心动作是那些enable_plugin为False但是系统必需的动作
+    #     """
+    #     system_core_actions = ["exit_focus_chat"]  # 可以根据需要扩展
 
-        for action_name in system_core_actions:
-            if action_name in self._registered_actions and action_name not in self._using_actions:
-                self._using_actions[action_name] = self._registered_actions[action_name]
-                logger.debug(f"添加系统核心动作到使用集: {action_name}")
+    #     for action_name in system_core_actions:
+    #         if action_name in self._registered_actions and action_name not in self._using_actions:
+    #             self._using_actions[action_name] = self._registered_actions[action_name]
+    #             logger.debug(f"添加系统核心动作到使用集: {action_name}")
 
     def add_system_action_if_needed(self, action_name: str) -> bool:
         """

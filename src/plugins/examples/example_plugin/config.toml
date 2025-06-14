@@ -8,11 +8,11 @@ description = "展示新插件系统完整功能的示例插件"
 
 # 组件启用控制
 [components]
-enable_greeting = true
-enable_help = true
-enable_send = true
-enable_echo = true
-enable_info = true
+enable_greeting = false
+enable_help = false
+enable_send = false
+enable_echo = false
+enable_info = false
 
 # 智能问候配置
 [greeting]

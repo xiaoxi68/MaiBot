@@ -55,14 +55,6 @@ class SubHeartflow:
         self.heart_fc_instance: Optional[HeartFChatting] = None  # 该sub_heartflow的HeartFChatting实例
         self.normal_chat_instance: Optional[NormalChat] = None  # 该sub_heartflow的NormalChat实例
 
-        # 观察，目前只有聊天观察，可以载入多个
-        # 负责对处理过的消息进行观察
-        # self.observations: List[ChattingObservation] = []  # 观察列表
-        # self.running_knowledges = []  # 运行中的知识，待完善
-
-        # 日志前缀 - Moved determination to initialize
-        self.log_prefix = str(subheartflow_id)  # Initial default prefix
-
     async def initialize(self):
         """异步初始化方法，创建兴趣流并确定聊天类型"""
 
@@ -83,7 +75,7 @@ class SubHeartflow:
         切出 CHAT 状态时使用
         """
         if self.normal_chat_instance:
-            logger.info(f"{self.log_prefix} 离开CHAT模式，结束 随便水群")
+            logger.info(f"{self.log_prefix} 离开normal模式")
             try:
                 await self.normal_chat_instance.stop_chat()  # 调用 stop_chat
             except Exception as e:
@@ -223,7 +215,7 @@ class SubHeartflow:
         log_prefix = f"[{self.log_prefix}]"
 
         if new_state == ChatState.NORMAL:
-            logger.debug(f"{log_prefix} 准备进入或保持 普通聊天 状态")
+            logger.debug(f"{log_prefix} 准备进入 normal聊天 状态")
             if await self._start_normal_chat():
                 logger.debug(f"{log_prefix} 成功进入或保持 NormalChat 状态。")
                 state_changed = True
@@ -233,7 +225,7 @@ class SubHeartflow:
                 return
 
         elif new_state == ChatState.FOCUSED:
-            logger.debug(f"{log_prefix} 准备进入或保持 专注聊天 状态")
+            logger.debug(f"{log_prefix} 准备进入 focus聊天 状态")
             if await self._start_heart_fc_chat():
                 logger.debug(f"{log_prefix} 成功进入或保持 HeartFChatting 状态。")
                 state_changed = True
