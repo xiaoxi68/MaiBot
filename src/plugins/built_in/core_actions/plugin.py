@@ -83,6 +83,9 @@ class ReplyAction(BaseAction):
                 action_data=self.action_data,
             )
 
+            # 重置NoReplyAction的连续计数器
+            NoReplyAction.reset_consecutive_count()
+
             return success, reply_text
 
         except Exception as e:
@@ -142,6 +145,12 @@ class NoReplyAction(BaseAction):
 
     # 默认超时时间，将由插件在注册时设置
     waiting_timeout = 1200
+    
+    # 连续no_reply计数器
+    _consecutive_count = 0
+    
+    # 分级等待时间
+    _waiting_stages = [10, 60, 600]  # 第1、2、3次的等待时间
 
     # 动作参数定义
     action_parameters = {}
@@ -155,17 +164,41 @@ class NoReplyAction(BaseAction):
     async def execute(self) -> Tuple[bool, str]:
         """执行不回复动作，等待新消息或超时"""
         try:
-            # 使用类属性中的超时时间
-            timeout = self.waiting_timeout
+            # 增加连续计数
+            NoReplyAction._consecutive_count += 1
+            count = NoReplyAction._consecutive_count
+            
+            # 计算本次等待时间
+            timeout = self._calculate_waiting_time(count)
 
-            logger.info(f"{self.log_prefix} 选择不回复，等待新消息中... (超时: {timeout}秒)")
+            logger.info(f"{self.log_prefix} 选择不回复(第{count}次连续)，等待新消息中... (超时: {timeout}秒)")
 
             # 等待新消息或达到时间上限
-            return await self.api.wait_for_new_message(timeout)
+            result = await self.api.wait_for_new_message(timeout)
+            
+            # 如果有新消息或者超时，都不重置计数器，因为可能还会继续no_reply
+            return result
 
         except Exception as e:
             logger.error(f"{self.log_prefix} 不回复动作执行失败: {e}")
             return False, f"不回复动作执行失败: {e}"
+    
+    def _calculate_waiting_time(self, consecutive_count: int) -> int:
+        """根据连续次数计算等待时间"""
+        if consecutive_count <= len(self._waiting_stages):
+            # 前3次使用预设时间
+            stage_time = self._waiting_stages[consecutive_count - 1]
+            # 如果WAITING_TIME_THRESHOLD更小，则使用它
+            return min(stage_time, self.waiting_timeout)
+        else:
+            # 第4次及以后使用WAITING_TIME_THRESHOLD
+            return self.waiting_timeout
+    
+    @classmethod
+    def reset_consecutive_count(cls):
+        """重置连续计数器"""
+        cls._consecutive_count = 0
+        logger.debug("NoReplyAction连续计数器已重置")
 
 
 class EmojiAction(BaseAction):
@@ -224,6 +257,9 @@ class EmojiAction(BaseAction):
             # 构建回复文本
             reply_text = self._build_reply_text(reply_set)
 
+            # 重置NoReplyAction的连续计数器
+            NoReplyAction.reset_consecutive_count()
+
             return success, reply_text
 
         except Exception as e:
@@ -273,6 +309,10 @@ class ChangeToFocusChatAction(BaseAction):
     async def execute(self) -> Tuple[bool, str]:
         """执行切换到专注聊天动作"""
         logger.info(f"{self.log_prefix} 决定切换到专注聊天: {self.reasoning}")
+        
+        # 重置NoReplyAction的连续计数器
+        NoReplyAction.reset_consecutive_count()
+        
         # 这里只做决策标记，具体切换逻辑由上层管理器处理
         return True, "决定切换到专注聊天模式"
 
@@ -316,6 +356,9 @@ class ExitFocusChatAction(BaseAction):
         try:
             # 标记状态切换请求
             self._mark_state_change()
+
+            # 重置NoReplyAction的连续计数器
+            NoReplyAction.reset_consecutive_count()
 
             status_message = "决定退出专注聊天模式"
             return True, status_message

@@ -150,7 +150,6 @@ class HeartFCMessageReceiver:
         Args:
             message_data: 原始消息字符串
         """
-        message = None
         try:
             # 1. 消息解析与初始化
             groupinfo = message.message_info.group_info
