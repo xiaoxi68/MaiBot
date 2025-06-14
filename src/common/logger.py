@@ -490,18 +490,19 @@ def _immediate_setup():
 # 立即执行配置
 _immediate_setup()
 
-raw_logger = structlog.get_logger()
+raw_logger: structlog.stdlib.BoundLogger = structlog.get_logger()
 
 binds: dict[str, Callable] = {}
 
 
-def get_logger(name: Optional[str]):
+def get_logger(name: Optional[str]) -> structlog.stdlib.BoundLogger:
     """获取logger实例，支持按名称绑定"""
     if name is None:
         return raw_logger
     logger = binds.get(name)
     if logger is None:
-        binds[name] = logger = structlog.get_logger(name).bind(logger_name=name)
+        logger: structlog.stdlib.BoundLogger = structlog.get_logger(name).bind(logger_name=name)
+        binds[name] = logger
     return logger
 
 
