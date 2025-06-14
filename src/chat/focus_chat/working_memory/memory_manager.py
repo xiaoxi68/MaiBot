@@ -1,4 +1,4 @@
-from typing import Dict, Any, Type, TypeVar, List, Optional
+from typing import Dict, TypeVar, List, Optional
 import traceback
 from json_repair import repair_json
 from rich.traceback import install
@@ -224,7 +224,7 @@ class MemoryManager:
         except Exception as e:
             logger.error(f"生成总结时出错: {str(e)}")
             return default_summary
-        
+
     def decay_memory(self, memory_id: str, decay_factor: float = 0.8) -> bool:
         """
         使单个记忆衰减
@@ -263,7 +263,7 @@ class MemoryManager:
             return False
 
         # 获取要删除的项
-        item = self._id_map[memory_id]
+        self._id_map[memory_id]
 
         # 从内存中删除
         self._memories = [i for i in self._memories if i.id != memory_id]
@@ -376,7 +376,9 @@ class MemoryManager:
         )
 
         # 创建新的记忆项
-        merged_memory = MemoryItem(summary=merged_data["summary"], from_source=merged_source, brief=merged_data["brief"])
+        merged_memory = MemoryItem(
+            summary=merged_data["summary"], from_source=merged_source, brief=merged_data["brief"]
+        )
 
         # 记忆强度取两者最大值
         merged_memory.memory_strength = max(memory_item1.memory_strength, memory_item2.memory_strength)

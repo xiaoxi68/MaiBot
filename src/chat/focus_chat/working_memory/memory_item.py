@@ -1,4 +1,4 @@
-from typing import Dict, Any, Tuple
+from typing import Tuple
 import time
 import random
 import string
@@ -23,7 +23,7 @@ class MemoryItem:
         self.from_source = from_source
         self.brief = brief
         self.timestamp = time.time()
-        
+
         # 记忆内容概括
         self.summary = summary
 

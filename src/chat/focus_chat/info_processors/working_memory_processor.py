@@ -8,7 +8,6 @@ from src.common.logger import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.message_receive.chat_stream import get_chat_manager
 from .base_processor import BaseProcessor
-from src.chat.focus_chat.info.mind_info import MindInfo
 from typing import List
 from src.chat.heart_flow.observation.working_observation import WorkingMemoryObservation
 from src.chat.focus_chat.working_memory.working_memory import WorkingMemory
@@ -110,10 +109,10 @@ class WorkingMemoryProcessor(BaseProcessor):
             content = ""
             try:
                 content, _ = await self.llm_model.generate_response_async(prompt=prompt)
-                
+
                 print(f"prompt: {prompt}---------------------------------")
-                print(f"content: {content}---------------------------------")   
-                
+                print(f"content: {content}---------------------------------")
+
                 if not content:
                     logger.warning(f"{self.log_prefix} LLM返回空结果，处理工作记忆失败。")
                     return []
@@ -138,12 +137,14 @@ class WorkingMemoryProcessor(BaseProcessor):
                 logger.error(traceback.format_exc())
                 return []
 
-            logger.debug(f"{self.log_prefix} 解析LLM返回的JSON,selected_memory_ids: {selected_memory_ids}, merge_memory: {merge_memory}")
+            logger.debug(
+                f"{self.log_prefix} 解析LLM返回的JSON,selected_memory_ids: {selected_memory_ids}, merge_memory: {merge_memory}"
+            )
 
             # 根据selected_memory_ids，调取记忆
             memory_str = ""
             selected_ids = set(selected_memory_ids)  # 转换为集合以便快速查找
-            
+
             # 遍历所有记忆
             for memory in all_memory:
                 if memory.id in selected_ids:
@@ -187,45 +188,41 @@ class WorkingMemoryProcessor(BaseProcessor):
             if not summary_result:
                 logger.debug(f"{self.log_prefix} 压缩聊天记忆失败: 没有生成摘要")
                 return
-            
+
             print(f"compressor_prompt: {obs.compressor_prompt}")
             print(f"summary_result: {summary_result}")
-            
+
             # 修复并解析JSON
             try:
                 fixed_json = repair_json(summary_result)
                 summary_data = json.loads(fixed_json)
-                
+
                 if not isinstance(summary_data, dict):
                     logger.error(f"{self.log_prefix} 解析压缩结果失败: 不是有效的JSON对象")
                     return
-                
+
                 theme = summary_data.get("theme", "")
                 content = summary_data.get("content", "")
-                
+
                 if not theme or not content:
                     logger.error(f"{self.log_prefix} 解析压缩结果失败: 缺少必要字段")
                     return
-                
+
                 # 创建新记忆
-                await working_memory.add_memory(
-                    from_source="chat_compress",
-                    summary=content,
-                    brief=theme
-                )
-                
+                await working_memory.add_memory(from_source="chat_compress", summary=content, brief=theme)
+
                 logger.debug(f"{self.log_prefix} 压缩聊天记忆成功: {theme} - {content}")
-                
+
             except Exception as e:
                 logger.error(f"{self.log_prefix} 解析压缩结果失败: {e}")
                 logger.error(traceback.format_exc())
                 return
-            
+
             # 清理压缩状态
             obs.compressor_prompt = ""
             obs.oldest_messages = []
             obs.oldest_messages_str = ""
-            
+
         except Exception as e:
             logger.error(f"{self.log_prefix} 压缩聊天记忆失败: {e}")
             logger.error(traceback.format_exc())

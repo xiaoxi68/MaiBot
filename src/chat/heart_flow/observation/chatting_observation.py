@@ -1,6 +1,5 @@
 from datetime import datetime
 from src.config.config import global_config
-import traceback
 from src.chat.utils.chat_message_builder import (
     get_raw_msg_before_timestamp_with_chat,
     build_readable_messages,
@@ -49,6 +48,7 @@ Prompt(
 }}""",
     "chat_summary_private_prompt",  # Template for private chat
 )
+
 
 class ChattingObservation(Observation):
     def __init__(self, chat_id):
@@ -192,19 +192,13 @@ class ChattingObservation(Observation):
 
             # 构建压缩提示
             oldest_messages_str = build_readable_messages(
-                messages=oldest_messages, 
-                timestamp_mode="normal_no_YMD", 
-                read_mark=0, 
-                show_actions=True
+                messages=oldest_messages, timestamp_mode="normal_no_YMD", read_mark=0, show_actions=True
             )
 
             # 根据聊天类型选择提示模板
             if self.is_group_chat:
                 prompt_template_name = "chat_summary_group_prompt"
-                prompt = await global_prompt_manager.format_prompt(
-                    prompt_template_name, 
-                    chat_logs=oldest_messages_str
-                )
+                prompt = await global_prompt_manager.format_prompt(prompt_template_name, chat_logs=oldest_messages_str)
             else:
                 prompt_template_name = "chat_summary_private_prompt"
                 chat_target_name = "对方"

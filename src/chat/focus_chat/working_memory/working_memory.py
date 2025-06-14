@@ -54,7 +54,7 @@ class WorkingMemory:
             except Exception as e:
                 print(f"自动衰减记忆时出错: {str(e)}")
 
-    async def add_memory(self, summary: Any, from_source: str = "",brief: str = ""):
+    async def add_memory(self, summary: Any, from_source: str = "", brief: str = ""):
         """
         添加一段记忆到指定聊天
 
