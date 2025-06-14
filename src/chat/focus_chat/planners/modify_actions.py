@@ -135,7 +135,9 @@ class ActionModifier:
         if global_config.chat.chat_mode != "auto":
             if "exit_focus_chat" in self.action_manager.get_using_actions():
                 self.action_manager.remove_action_from_using("exit_focus_chat")
-                logger.info(f"{self.log_prefix}移除动作: exit_focus_chat，原因: chat_mode不为auto（当前模式: {global_config.chat.chat_mode}）")
+                logger.info(
+                    f"{self.log_prefix}移除动作: exit_focus_chat，原因: chat_mode不为auto（当前模式: {global_config.chat.chat_mode}）"
+                )
 
         # === 第二阶段：激活类型判定 ===
         # 如果提供了聊天上下文，则进行激活类型判定
@@ -205,7 +207,9 @@ class ActionModifier:
                     self.action_manager.add_action_to_using("exit_focus_chat")
                     logger.debug(f"{self.log_prefix}恢复exit_focus_chat动作")
                 else:
-                    logger.debug(f"{self.log_prefix}跳过恢复exit_focus_chat动作，原因: chat_mode不为auto（当前模式: {global_config.chat.chat_mode}）")
+                    logger.debug(
+                        f"{self.log_prefix}跳过恢复exit_focus_chat动作，原因: chat_mode不为auto（当前模式: {global_config.chat.chat_mode}）"
+                    )
 
             logger.info(f"{self.log_prefix}激活类型判定完成，最终可用动作: {list(final_activated_actions.keys())}")
 

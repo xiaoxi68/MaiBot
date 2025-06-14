@@ -145,10 +145,10 @@ class NoReplyAction(BaseAction):
 
     # 默认超时时间，将由插件在注册时设置
     waiting_timeout = 1200
-    
+
     # 连续no_reply计数器
     _consecutive_count = 0
-    
+
     # 分级等待时间
     _waiting_stages = [10, 60, 600]  # 第1、2、3次的等待时间
 
@@ -167,7 +167,7 @@ class NoReplyAction(BaseAction):
             # 增加连续计数
             NoReplyAction._consecutive_count += 1
             count = NoReplyAction._consecutive_count
-            
+
             # 计算本次等待时间
             timeout = self._calculate_waiting_time(count)
 
@@ -175,14 +175,14 @@ class NoReplyAction(BaseAction):
 
             # 等待新消息或达到时间上限
             result = await self.api.wait_for_new_message(timeout)
-            
+
             # 如果有新消息或者超时，都不重置计数器，因为可能还会继续no_reply
             return result
 
         except Exception as e:
             logger.error(f"{self.log_prefix} 不回复动作执行失败: {e}")
             return False, f"不回复动作执行失败: {e}"
-    
+
     def _calculate_waiting_time(self, consecutive_count: int) -> int:
         """根据连续次数计算等待时间"""
         if consecutive_count <= len(self._waiting_stages):
@@ -193,7 +193,7 @@ class NoReplyAction(BaseAction):
         else:
             # 第4次及以后使用WAITING_TIME_THRESHOLD
             return self.waiting_timeout
-    
+
     @classmethod
     def reset_consecutive_count(cls):
         """重置连续计数器"""
@@ -309,10 +309,10 @@ class ChangeToFocusChatAction(BaseAction):
     async def execute(self) -> Tuple[bool, str]:
         """执行切换到专注聊天动作"""
         logger.info(f"{self.log_prefix} 决定切换到专注聊天: {self.reasoning}")
-        
+
         # 重置NoReplyAction的连续计数器
         NoReplyAction.reset_consecutive_count()
-        
+
         # 这里只做决策标记，具体切换逻辑由上层管理器处理
         return True, "决定切换到专注聊天模式"
 
