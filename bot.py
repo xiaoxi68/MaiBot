@@ -11,7 +11,6 @@ from rich.traceback import install
 
 # 最早期初始化日志系统，确保所有后续模块都使用正确的日志格式
 from src.common.logger import initialize_logging, get_logger
-from src.common.crash_logger import install_crash_handler
 from src.main import MainSystem
 from src.manager.async_task_manager import async_task_manager
 
@@ -200,11 +199,8 @@ def raw_main():
     if platform.system().lower() != "windows":
         time.tzset()
 
-    # 安装崩溃日志处理器
-    install_crash_handler()
-
     check_eula()
-    print("检查EULA和隐私条款完成")
+    logger.info("检查EULA和隐私条款完成")
 
     easter_egg()
 

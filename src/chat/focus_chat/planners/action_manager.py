@@ -98,6 +98,11 @@ class ActionManager:
     动作管理器，用于管理各种类型的动作
     """
 
+    # 类常量
+    DEFAULT_RANDOM_PROBABILITY = 0.3
+    DEFAULT_MODE = "all"
+    DEFAULT_ACTIVATION_TYPE = "always"
+
     def __init__(self):
         """初始化动作管理器"""
         # 所有注册的动作集合
@@ -108,9 +113,6 @@ class ActionManager:
         # 默认动作集，仅作为快照，用于恢复默认
         self._default_actions: Dict[str, ActionInfo] = {}
 
-        # 加载所有已注册动作
-        self._load_registered_actions()
-
         # 加载插件动作
         self._load_plugin_actions()
 
@@ -120,103 +122,11 @@ class ActionManager:
         # 添加系统核心动作
         self._add_system_core_actions()
 
-    def _load_registered_actions(self) -> None:
-        """
-        加载所有通过装饰器注册的动作
-        """
-        try:
-            # 从组件注册中心获取所有已注册的action
-            from src.plugin_system.core.component_registry import component_registry
-
-            action_registry = component_registry.get_action_registry()
-
-            # 从action_registry获取所有已注册动作
-            for action_name, action_class in action_registry.items():
-                # 获取动作相关信息
-
-                # 不读取插件动作和基类
-                if action_name == "base_action" or action_name == "plugin_action":
-                    continue
-
-                action_description: str = getattr(action_class, "action_description", "")
-                action_parameters: dict[str:str] = getattr(action_class, "action_parameters", {})
-                action_require: list[str] = getattr(action_class, "action_require", [])
-                associated_types: list[str] = getattr(action_class, "associated_types", [])
-                is_enabled: bool = getattr(action_class, "enable_plugin", True)
-
-                # 获取激活类型相关属性
-                focus_activation_type_attr = getattr(action_class, "focus_activation_type", "always")
-                normal_activation_type_attr = getattr(action_class, "normal_activation_type", "always")
-
-                # 处理枚举值，提取.value
-                focus_activation_type = (
-                    focus_activation_type_attr.value
-                    if hasattr(focus_activation_type_attr, "value")
-                    else str(focus_activation_type_attr)
-                )
-                normal_activation_type = (
-                    normal_activation_type_attr.value
-                    if hasattr(normal_activation_type_attr, "value")
-                    else str(normal_activation_type_attr)
-                )
-
-                # 其他属性
-                random_probability: float = getattr(action_class, "random_activation_probability", 0.3)
-                llm_judge_prompt: str = getattr(action_class, "llm_judge_prompt", "")
-                activation_keywords: list[str] = getattr(action_class, "activation_keywords", [])
-                keyword_case_sensitive: bool = getattr(action_class, "keyword_case_sensitive", False)
-
-                # 处理模式启用属性
-                mode_enable_attr = getattr(action_class, "mode_enable", "all")
-                mode_enable = mode_enable_attr.value if hasattr(mode_enable_attr, "value") else str(mode_enable_attr)
-
-                # 获取并行执行属性
-                parallel_action: bool = getattr(action_class, "parallel_action", False)
-
-                if action_name and action_description:
-                    # 创建动作信息字典
-                    action_info = {
-                        "description": action_description,
-                        "parameters": action_parameters,
-                        "require": action_require,
-                        "associated_types": associated_types,
-                        "focus_activation_type": focus_activation_type,
-                        "normal_activation_type": normal_activation_type,
-                        "random_probability": random_probability,
-                        "llm_judge_prompt": llm_judge_prompt,
-                        "activation_keywords": activation_keywords,
-                        "keyword_case_sensitive": keyword_case_sensitive,
-                        "mode_enable": mode_enable,
-                        "parallel_action": parallel_action,
-                    }
-
-                    # 添加到所有已注册的动作
-                    self._registered_actions[action_name] = action_info
-
-                    # 添加到默认动作（如果启用插件）
-                    if is_enabled:
-                        self._default_actions[action_name] = action_info
-
-            # logger.info(f"所有注册动作: {list(self._registered_actions.keys())}")
-            # logger.info(f"默认动作: {list(self._default_actions.keys())}")
-            # for action_name, action_info in self._default_actions.items():
-            # logger.info(f"动作名称: {action_name}, 动作信息: {action_info}")
-
-        except Exception as e:
-            logger.error(f"加载已注册动作失败: {e}")
-
     def _load_plugin_actions(self) -> None:
         """
         加载所有插件目录中的动作
-
-        注意：插件动作的实际导入已经在main.py中完成，这里只需要从action_registry获取
-        同时也从新插件系统的component_registry获取Action组件
         """
         try:
-            # 从旧的action_registry获取插件动作
-            self._load_registered_actions()
-            logger.debug("从旧注册表加载插件动作成功")
-
             # 从新插件系统获取Action组件
             self._load_plugin_system_actions()
             logger.debug("从新插件系统加载Action组件成功")

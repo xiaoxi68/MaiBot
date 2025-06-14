@@ -52,9 +52,6 @@ async def _process_relationship(message: MessageRecv) -> None:
     if not is_known:
         logger.info(f"首次认识用户: {nickname}")
         await relationship_manager.first_knowing_some_one(platform, user_id, nickname, cardname)
-    # elif not await relationship_manager.is_qved_name(platform, user_id):
-    # logger.info(f"给用户({nickname},{cardname})取名: {nickname}")
-    # await relationship_manager.first_knowing_some_one(platform, user_id, nickname, cardname, "")
 
 
 async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool]:
@@ -91,28 +88,6 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool]:
         interested_rate += interest_increase_on_mention
 
     return interested_rate, is_mentioned
-
-
-# def _get_message_type(message: MessageRecv) -> str:
-#     """获取消息类型
-
-#     Args:
-#         message: 消息对象
-
-#     Returns:
-#         str: 消息类型
-#     """
-#     if message.message_segment.type != "seglist":
-#         return message.message_segment.type
-
-#     if (
-#         isinstance(message.message_segment.data, list)
-#         and all(isinstance(x, Seg) for x in message.message_segment.data)
-#         and len(message.message_segment.data) == 1
-#     ):
-#         return message.message_segment.data[0].type
-
-#     return "seglist"
 
 
 def _check_ban_words(text: str, chat: ChatStream, userinfo: UserInfo) -> bool:
@@ -212,7 +187,7 @@ class HeartFCMessageReceiver:
             logger.info(f"[{mes_name}]{userinfo.user_nickname}:{message.processed_plain_text}")
 
             # 8. 关系处理
-            if global_config.relationship.enable_relationship and global_config.relationship.give_name:
+            if global_config.relationship.enable_relationship:
                 await _process_relationship(message)
 
         except Exception as e:
