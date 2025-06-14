@@ -77,10 +77,21 @@ class SubHeartflow:
         if self.normal_chat_instance:
             logger.info(f"{self.log_prefix} 离开normal模式")
             try:
-                await self.normal_chat_instance.stop_chat()  # 调用 stop_chat
+                logger.debug(f"{self.log_prefix} 开始调用 stop_chat()")
+                # 添加超时保护，避免无限等待
+                await asyncio.wait_for(self.normal_chat_instance.stop_chat(), timeout=10.0)
+                logger.debug(f"{self.log_prefix} stop_chat() 调用完成")
+            except asyncio.TimeoutError:
+                logger.warning(f"{self.log_prefix} 停止 NormalChat 超时，强制清理")
+                # 超时时强制清理
+                self.normal_chat_instance = None
             except Exception as e:
                 logger.error(f"{self.log_prefix} 停止 NormalChat 监控任务时出错: {e}")
                 logger.error(traceback.format_exc())
+                # 出错时也要清理实例
+                self.normal_chat_instance = None
+            finally:
+                logger.debug(f"{self.log_prefix} _stop_normal_chat 完成")
 
     async def _start_normal_chat(self, rewind=False) -> bool:
         """

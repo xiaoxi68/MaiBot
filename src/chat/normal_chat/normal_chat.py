@@ -161,58 +161,86 @@ class NormalChat:
         """
         while True:
             try:
-                async with global_prompt_manager.async_message_scope(self.chat_stream.context.get_template_name()):
-                    await asyncio.sleep(0.5)  # 每秒检查一次
-                    # 检查任务是否已被取消
-                    if self._chat_task is None or self._chat_task.cancelled():
-                        logger.info(f"[{self.stream_name}] 兴趣监控任务被取消或置空，退出")
-                        break
+                # 检查任务是否已被取消 - 移动到try块最开始
+                if self._chat_task is None or self._chat_task.cancelled():
+                    logger.info(f"[{self.stream_name}] 兴趣监控任务被取消或置空，退出")
+                    break
+                
+                # 检查是否已停用
+                if self._disabled:
+                    logger.info(f"[{self.stream_name}] 已停用，退出兴趣监控")
+                    break
 
-                    items_to_process = list(self.interest_dict.items())
-                    if not items_to_process:
-                        continue
+                await asyncio.sleep(0.5)  # 每0.5秒检查一次
+                
+                # 再次检查取消状态
+                if self._chat_task is None or self._chat_task.cancelled() or self._disabled:
+                    logger.info(f"[{self.stream_name}] 检测到停止信号，退出")
+                    break
 
-                    # 并行处理兴趣消息
-                    async def process_single_message(msg_id, message, interest_value, is_mentioned):
-                        """处理单个兴趣消息"""
-                        try:
-                            # 处理消息
-                            if time.time() - self.start_time > 300:
-                                self.adjust_reply_frequency(duration=300 / 60)
-                            else:
-                                self.adjust_reply_frequency(duration=(time.time() - self.start_time) / 60)
+                items_to_process = list(self.interest_dict.items())
+                if not items_to_process:
+                    continue
 
-                            # print(self.engaging_persons)
+                # 使用异步上下文管理器处理消息
+                try:
+                    async with global_prompt_manager.async_message_scope(self.chat_stream.context.get_template_name()):
+                        # 在上下文内部再次检查取消状态
+                        if self._chat_task is None or self._chat_task.cancelled() or self._disabled:
+                            logger.info(f"[{self.stream_name}] 在处理上下文中检测到停止信号，退出")
+                            break
 
-                            await self.normal_response(
-                                message=message,
-                                is_mentioned=is_mentioned,
-                                interested_rate=interest_value * self.willing_amplifier,
-                            )
-                        except Exception as e:
-                            logger.error(
-                                f"[{self.stream_name}] 处理兴趣消息{msg_id}时出错: {e}\n{traceback.format_exc()}"
-                            )
-                        finally:
-                            self.interest_dict.pop(msg_id, None)
+                        # 并行处理兴趣消息
+                        async def process_single_message(msg_id, message, interest_value, is_mentioned):
+                            """处理单个兴趣消息"""
+                            try:
+                                # 在处理每个消息前检查停止状态
+                                if self._disabled or (self._chat_task and self._chat_task.cancelled()):
+                                    return
 
-                    # 创建并行任务列表
-                    tasks = []
-                    for msg_id, (message, interest_value, is_mentioned) in items_to_process:
-                        task = process_single_message(msg_id, message, interest_value, is_mentioned)
-                        tasks.append(task)
+                                # 处理消息
+                                if time.time() - self.start_time > 300:
+                                    self.adjust_reply_frequency(duration=300 / 60)
+                                else:
+                                    self.adjust_reply_frequency(duration=(time.time() - self.start_time) / 60)
 
-                    # 并行执行所有任务，限制并发数量避免资源过度消耗
-                    if tasks:
-                        # 使用信号量控制并发数，最多同时处理5个消息
-                        semaphore = asyncio.Semaphore(5)
+                                await self.normal_response(
+                                    message=message,
+                                    is_mentioned=is_mentioned,
+                                    interested_rate=interest_value * self.willing_amplifier,
+                                )
+                            except Exception as e:
+                                logger.error(
+                                    f"[{self.stream_name}] 处理兴趣消息{msg_id}时出错: {e}\n{traceback.format_exc()}"
+                                )
+                            finally:
+                                self.interest_dict.pop(msg_id, None)
 
-                        async def limited_process(task, sem):
-                            async with sem:
-                                await task
+                        # 创建并行任务列表
+                        tasks = []
+                        for msg_id, (message, interest_value, is_mentioned) in items_to_process:
+                            task = process_single_message(msg_id, message, interest_value, is_mentioned)
+                            tasks.append(task)
 
-                        limited_tasks = [limited_process(task, semaphore) for task in tasks]
-                        await asyncio.gather(*limited_tasks, return_exceptions=True)
+                        # 并行执行所有任务，限制并发数量避免资源过度消耗
+                        if tasks:
+                            # 使用信号量控制并发数，最多同时处理5个消息
+                            semaphore = asyncio.Semaphore(5)
+
+                            async def limited_process(task, sem):
+                                async with sem:
+                                    await task
+
+                            limited_tasks = [limited_process(task, semaphore) for task in tasks]
+                            await asyncio.gather(*limited_tasks, return_exceptions=True)
+                
+                except asyncio.CancelledError:
+                    logger.info(f"[{self.stream_name}] 处理上下文时任务被取消")
+                    break
+                except Exception as e:
+                    logger.error(f"[{self.stream_name}] 处理上下文时出错: {e}")
+                    await asyncio.sleep(1)
+
             except asyncio.CancelledError:
                 logger.info(f"[{self.stream_name}] 兴趣监控任务被取消")
                 break
