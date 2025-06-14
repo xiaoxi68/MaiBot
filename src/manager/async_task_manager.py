@@ -92,7 +92,7 @@ class AsyncTaskManager:
                 logger.warning(f"已存在名称为 '{task.task_name}' 的任务，正在尝试取消并替换")
                 old_task = self.tasks[task.task_name]
                 old_task.cancel()  # 取消已存在的任务
-                
+
                 # 添加超时保护，避免无限等待
                 try:
                     await asyncio.wait_for(old_task, timeout=5.0)
@@ -102,7 +102,7 @@ class AsyncTaskManager:
                     logger.info(f"任务 '{task.task_name}' 已成功取消")
                 except Exception as e:
                     logger.error(f"等待任务 '{task.task_name}' 完成时发生异常: {e}")
-                
+
                 logger.info(f"成功结束任务 '{task.task_name}'")
 
             # 创建新任务
@@ -134,10 +134,10 @@ class AsyncTaskManager:
         async with self._lock:  # 由于可能需要await等待任务完成，所以需要加异步锁
             # 设置中止标志
             self.abort_flag.set()
-            
+
             # 首先收集所有任务的引用，避免在迭代过程中字典被修改
             task_items = list(self.tasks.items())
-            
+
             # 取消所有任务
             for name, inst in task_items:
                 if not inst.done():
@@ -172,7 +172,7 @@ class AsyncTaskManager:
         logger.info("=== 异步任务状态调试信息 ===")
         logger.info(f"当前管理的任务数量: {len(self.tasks)}")
         logger.info(f"中止标志状态: {self.abort_flag.is_set()}")
-        
+
         for task_name, task in self.tasks.items():
             status = []
             if task.done():
@@ -185,9 +185,9 @@ class AsyncTaskManager:
                     status.append("正常完成")
             else:
                 status.append("运行中")
-            
+
             logger.info(f"任务 '{task_name}': {', '.join(status)}")
-        
+
         # 检查所有asyncio任务
         all_tasks = asyncio.all_tasks()
         logger.info(f"当前事件循环中的所有任务数量: {len(all_tasks)}")

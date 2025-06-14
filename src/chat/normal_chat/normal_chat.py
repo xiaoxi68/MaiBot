@@ -165,14 +165,14 @@ class NormalChat:
                 if self._chat_task is None or self._chat_task.cancelled():
                     logger.info(f"[{self.stream_name}] 兴趣监控任务被取消或置空，退出")
                     break
-                
+
                 # 检查是否已停用
                 if self._disabled:
                     logger.info(f"[{self.stream_name}] 已停用，退出兴趣监控")
                     break
 
                 await asyncio.sleep(0.5)  # 每0.5秒检查一次
-                
+
                 # 再次检查取消状态
                 if self._chat_task is None or self._chat_task.cancelled() or self._disabled:
                     logger.info(f"[{self.stream_name}] 检测到停止信号，退出")
@@ -233,7 +233,7 @@ class NormalChat:
 
                             limited_tasks = [limited_process(task, semaphore) for task in tasks]
                             await asyncio.gather(*limited_tasks, return_exceptions=True)
-                
+
                 except asyncio.CancelledError:
                     logger.info(f"[{self.stream_name}] 处理上下文时任务被取消")
                     break
