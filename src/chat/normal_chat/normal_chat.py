@@ -182,7 +182,9 @@ class NormalChat:
                                 interested_rate=interest_value * self.willing_amplifier,
                             )
                         except Exception as e:
-                            logger.error(f"[{self.stream_name}] 处理兴趣消息{msg_id}时出错: {e}\n{traceback.format_exc()}")
+                            logger.error(
+                                f"[{self.stream_name}] 处理兴趣消息{msg_id}时出错: {e}\n{traceback.format_exc()}"
+                            )
                         finally:
                             self.interest_dict.pop(msg_id, None)
 

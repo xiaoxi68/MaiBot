@@ -303,7 +303,7 @@ class ChangeToFocusChatAction(BaseAction):
         "聊天上下文中自己的回复条数较多（超过3-4条）",
         "对话进行得非常热烈活跃",
         "用户表现出深入交流的意图",
-        "话题需要更专注和深入的讨论"
+        "话题需要更专注和深入的讨论",
     ]
 
     async def execute(self) -> Tuple[bool, str]:

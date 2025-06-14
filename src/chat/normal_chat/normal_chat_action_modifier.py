@@ -324,14 +324,16 @@ class NormalChatActionModifier:
 
         # 统计1分钟内的回复数量
         recent_reply_count = sum(1 for reply in recent_replies if reply["time"] > one_minute_ago)
-        
+
         print(f"recent_reply_count: {recent_reply_count}")
         print(f"reply_threshold: {reply_threshold}")
-        
+
         should_switch = recent_reply_count > reply_threshold
         if should_switch:
-            logger.debug(f"{self.log_prefix} 检测到1分钟内回复数量({recent_reply_count})大于{reply_threshold}，满足切换到focus模式条件")
-        
+            logger.debug(
+                f"{self.log_prefix} 检测到1分钟内回复数量({recent_reply_count})大于{reply_threshold}，满足切换到focus模式条件"
+            )
+
         return should_switch
 
     def get_available_actions_count(self) -> int:

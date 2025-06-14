@@ -372,14 +372,14 @@ class ImageManager:
             Tuple[str, str]: (图片ID, 描述)
         """
         try:
-            # 生成图片ID            
+            # 生成图片ID
             # 计算图片哈希
             image_bytes = base64.b64decode(image_base64)
             image_hash = hashlib.md5(image_bytes).hexdigest()
-            
+
             # 检查图片是否已存在
             existing_image = Images.get_or_none(Images.emoji_hash == image_hash)
-            
+
             if existing_image:
                 # print(f"图片已存在: {existing_image.image_id}")
                 # print(f"图片描述: {existing_image.description}")
@@ -391,18 +391,18 @@ class ImageManager:
             else:
                 # print(f"图片不存在: {image_hash}")
                 image_id = str(uuid.uuid4())
-            
+
             # 保存新图片
             current_timestamp = time.time()
             image_dir = os.path.join(self.IMAGE_DIR, "images")
             os.makedirs(image_dir, exist_ok=True)
             filename = f"{image_id}.png"
             file_path = os.path.join(image_dir, filename)
-            
+
             # 保存文件
             with open(file_path, "wb") as f:
                 f.write(image_bytes)
-            
+
             # 保存到数据库
             Images.create(
                 image_id=image_id,
@@ -411,14 +411,14 @@ class ImageManager:
                 base64=image_base64,
                 type="image",
                 timestamp=current_timestamp,
-                vlm_processed=False
+                vlm_processed=False,
             )
-            
+
             # 启动异步VLM处理
             asyncio.create_task(self._process_image_with_vlm(image_id, image_base64))
-            
+
             return image_id, f"[picid:{image_id}]"
-            
+
         except Exception as e:
             logger.error(f"处理图片失败: {str(e)}")
             return "", "[图片]"
@@ -434,7 +434,7 @@ class ImageManager:
             # 计算图片哈希
             image_bytes = base64.b64decode(image_base64)
             image_hash = hashlib.md5(image_bytes).hexdigest()
-            
+
             # 先检查缓存的描述
             cached_description = self._get_description_from_db(image_hash, "image")
             if cached_description:
@@ -445,39 +445,35 @@ class ImageManager:
                 image.vlm_processed = True
                 image.save()
                 return
-            
+
             # 获取图片格式
             image_format = Image.open(io.BytesIO(image_bytes)).format.lower()
-            
+
             # 构建prompt
             prompt = """请用中文描述这张图片的内容。如果有文字，请把文字描述概括出来，请留意其主题，直观感受，输出为一段平文本，最多50字"""
-            
+
             # 获取VLM描述
-            description, _ = await self._llm.generate_response_for_image(
-                prompt, 
-                image_base64,
-                image_format
-            )
-            
+            description, _ = await self._llm.generate_response_for_image(prompt, image_base64, image_format)
+
             if description is None:
                 logger.warning("VLM未能生成图片描述")
                 description = "无法生成描述"
-            
+
             # 再次检查缓存，防止并发写入时重复生成
             cached_description = self._get_description_from_db(image_hash, "image")
             if cached_description:
                 logger.warning(f"虽然生成了描述，但是找到缓存图片描述: {cached_description}")
                 description = cached_description
-            
+
             # 更新数据库
             image = Images.get(Images.image_id == image_id)
             image.description = description
             image.vlm_processed = True
             image.save()
-            
+
             # 保存描述到ImageDescriptions表
             self._save_description_to_db(image_hash, description, "image")
-            
+
         except Exception as e:
             logger.error(f"VLM处理图片失败: {str(e)}")
 

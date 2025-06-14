@@ -180,7 +180,7 @@ def _build_readable_messages_internal(
         return "", [], pic_id_mapping or {}, pic_counter
 
     message_details_raw: List[Tuple[float, str, str]] = []
-    
+
     # 使用传入的映射字典，如果没有则创建新的
     if pic_id_mapping is None:
         pic_id_mapping = {}
@@ -189,20 +189,20 @@ def _build_readable_messages_internal(
     def process_pic_ids(content: str) -> str:
         """处理内容中的图片ID，将其替换为[图片x]格式"""
         nonlocal current_pic_counter
-        
+
         # 匹配 [picid:xxxxx] 格式
-        pic_pattern = r'\[picid:([^\]]+)\]'
-        
+        pic_pattern = r"\[picid:([^\]]+)\]"
+
         def replace_pic_id(match):
             nonlocal current_pic_counter
             pic_id = match.group(1)
-            
+
             if pic_id not in pic_id_mapping:
                 pic_id_mapping[pic_id] = f"图片{current_pic_counter}"
                 current_pic_counter += 1
-            
+
             return f"[{pic_id_mapping[pic_id]}]"
-        
+
         return re.sub(pic_pattern, replace_pic_id, content)
 
     # 1 & 2: 获取发送者信息并提取消息组件
@@ -415,7 +415,7 @@ def _build_readable_messages_internal(
 
     # 4 & 5: 格式化为字符串
     output_lines = []
-    
+
     for _i, merged in enumerate(merged_messages):
         # 使用指定的 timestamp_mode 格式化时间
         readable_time = translate_timestamp_to_human_readable(merged["start_time"], mode=timestamp_mode)
@@ -445,29 +445,32 @@ def _build_readable_messages_internal(
     formatted_string = "".join(output_lines).strip()
 
     # 返回格式化后的字符串、消息详情列表、图片映射字典和更新后的计数器
-    return formatted_string, [(t, n, c) for t, n, c, is_action in message_details if not is_action], pic_id_mapping, current_pic_counter
+    return (
+        formatted_string,
+        [(t, n, c) for t, n, c, is_action in message_details if not is_action],
+        pic_id_mapping,
+        current_pic_counter,
+    )
 
 
 def build_pic_mapping_info(pic_id_mapping: Dict[str, str]) -> str:
     """
     构建图片映射信息字符串，显示图片的具体描述内容
-    
+
     Args:
         pic_id_mapping: 图片ID到显示名称的映射字典
-        
+
     Returns:
         格式化的映射信息字符串
     """
     if not pic_id_mapping:
         return ""
-    
 
-    
     mapping_lines = []
-    
+
     # 按图片编号排序
     sorted_items = sorted(pic_id_mapping.items(), key=lambda x: int(x[1].replace("图片", "")))
-    
+
     for pic_id, display_name in sorted_items:
         # 从数据库中获取图片描述
         description = "内容正在阅读"
@@ -475,12 +478,12 @@ def build_pic_mapping_info(pic_id_mapping: Dict[str, str]) -> str:
             image = Images.get_or_none(Images.image_id == pic_id)
             if image and image.description:
                 description = image.description
-        except Exception as e:
+        except Exception:
             # 如果查询失败，保持默认描述
             pass
-        
+
         mapping_lines.append(f"[{display_name}] 的内容：{description}")
-    
+
     return "\n".join(mapping_lines)
 
 
@@ -498,12 +501,12 @@ async def build_readable_messages_with_list(
     formatted_string, details_list, pic_id_mapping, _ = _build_readable_messages_internal(
         messages, replace_bot_name, merge_messages, timestamp_mode, truncate
     )
-    
+
     # 生成图片映射信息并添加到最前面
     pic_mapping_info = build_pic_mapping_info(pic_id_mapping)
     if pic_mapping_info:
         formatted_string = f"{pic_mapping_info}\n\n{formatted_string}"
-    
+
     return formatted_string, details_list
 
 
@@ -575,7 +578,7 @@ def build_readable_messages(
         formatted_string, _, pic_id_mapping, _ = _build_readable_messages_internal(
             copy_messages, replace_bot_name, merge_messages, timestamp_mode, truncate
         )
-        
+
         # 生成图片映射信息并添加到最前面
         pic_mapping_info = build_pic_mapping_info(pic_id_mapping)
         if pic_mapping_info:
@@ -593,25 +596,29 @@ def build_readable_messages(
 
         # 分别格式化，但使用共享的图片映射
         formatted_before, _, pic_id_mapping, pic_counter = _build_readable_messages_internal(
-            messages_before_mark, replace_bot_name, merge_messages, timestamp_mode, truncate,
-            pic_id_mapping, pic_counter
+            messages_before_mark,
+            replace_bot_name,
+            merge_messages,
+            timestamp_mode,
+            truncate,
+            pic_id_mapping,
+            pic_counter,
         )
         formatted_after, _, pic_id_mapping, _ = _build_readable_messages_internal(
-            messages_after_mark, replace_bot_name, merge_messages, timestamp_mode, False,
-            pic_id_mapping, pic_counter
+            messages_after_mark, replace_bot_name, merge_messages, timestamp_mode, False, pic_id_mapping, pic_counter
         )
 
         read_mark_line = "\n--- 以上消息是你已经看过---\n--- 请关注以下未读的新消息---\n"
 
         # 生成图片映射信息
         pic_mapping_info = f"图片信息：\n{build_pic_mapping_info(pic_id_mapping)}\n聊天记录信息：\n"
-        
+
         # 组合结果
         result_parts = []
         if pic_mapping_info:
             result_parts.append(pic_mapping_info)
             result_parts.append("\n")
-        
+
         if formatted_before and formatted_after:
             result_parts.extend([formatted_before, read_mark_line, formatted_after])
         elif formatted_before:
@@ -620,7 +627,7 @@ def build_readable_messages(
             result_parts.extend([read_mark_line, formatted_after])
         else:
             result_parts.append(read_mark_line.strip())
-        
+
         return "".join(result_parts)
 
 
@@ -636,7 +643,7 @@ async def build_anonymous_messages(messages: List[Dict[str, Any]]) -> str:
     person_map = {}
     current_char = ord("A")
     output_lines = []
-    
+
     # 图片ID映射字典
     pic_id_mapping = {}
     pic_counter = 1
@@ -644,20 +651,20 @@ async def build_anonymous_messages(messages: List[Dict[str, Any]]) -> str:
     def process_pic_ids(content: str) -> str:
         """处理内容中的图片ID，将其替换为[图片x]格式"""
         nonlocal pic_counter
-        
+
         # 匹配 [picid:xxxxx] 格式
-        pic_pattern = r'\[picid:([^\]]+)\]'
-        
+        pic_pattern = r"\[picid:([^\]]+)\]"
+
         def replace_pic_id(match):
             nonlocal pic_counter
             pic_id = match.group(1)
-            
+
             if pic_id not in pic_id_mapping:
                 pic_id_mapping[pic_id] = f"图片{pic_counter}"
                 pic_counter += 1
-            
+
             return f"[{pic_id_mapping[pic_id]}]"
-        
+
         return re.sub(pic_pattern, replace_pic_id, content)
 
     def get_anon_name(platform, user_id):
@@ -754,7 +761,7 @@ async def build_anonymous_messages(messages: List[Dict[str, Any]]) -> str:
     if pic_mapping_info:
         final_output_lines.append(pic_mapping_info)
         final_output_lines.append("\n\n")
-    
+
     final_output_lines.extend(output_lines)
     formatted_string = "".join(final_output_lines).strip()
     return formatted_string
