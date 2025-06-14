@@ -110,7 +110,7 @@ class TTSPlugin(BasePlugin):
 
         # 从配置获取组件启用状态
         enable_tts = self.get_config("components.enable_tts", True)
-        components = []        # 添加Action组件
+        components = []  # 添加Action组件
         if enable_tts:
             components.append(
                 (
