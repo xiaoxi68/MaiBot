@@ -225,9 +225,9 @@ class MessageManager:
             if (
                 # message.apply_set_reply_logic  # 检查标记
                 # and message.is_head
-                message.is_head
-                and (thinking_messages_count > 3 or thinking_messages_length > 200)
-                and not message.is_private_message()
+                # message.is_head
+                # and (thinking_messages_count > 3 or thinking_messages_length > 200) and
+                not message.is_private_message()
             ):
                 logger.debug(
                     f"[{message.chat_stream.stream_id}] 应用 set_reply 逻辑: {message.processed_plain_text[:20]}..."

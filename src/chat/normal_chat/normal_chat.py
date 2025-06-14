@@ -165,8 +165,9 @@ class NormalChat:
                 if not items_to_process:
                     continue
 
-                # 处理每条兴趣消息
-                for msg_id, (message, interest_value, is_mentioned) in items_to_process:
+                # 并行处理兴趣消息
+                async def process_single_message(msg_id, message, interest_value, is_mentioned):
+                    """处理单个兴趣消息"""
                     try:
                         # 处理消息
                         if time.time() - self.start_time > 300:
@@ -183,6 +184,24 @@ class NormalChat:
                         logger.error(f"[{self.stream_name}] 处理兴趣消息{msg_id}时出错: {e}\n{traceback.format_exc()}")
                     finally:
                         self.interest_dict.pop(msg_id, None)
+
+                # 创建并行任务列表
+                tasks = []
+                for msg_id, (message, interest_value, is_mentioned) in items_to_process:
+                    task = process_single_message(msg_id, message, interest_value, is_mentioned)
+                    tasks.append(task)
+
+                # 并行执行所有任务，限制并发数量避免资源过度消耗
+                if tasks:
+                    # 使用信号量控制并发数，最多同时处理5个消息
+                    semaphore = asyncio.Semaphore(5)
+
+                    async def limited_process(task):
+                        async with semaphore:
+                            await task
+
+                    limited_tasks = [limited_process(task) for task in tasks]
+                    await asyncio.gather(*limited_tasks, return_exceptions=True)
 
     # 改为实例方法, 移除 chat 参数
     async def normal_response(self, message: MessageRecv, is_mentioned: bool, interested_rate: float) -> None:

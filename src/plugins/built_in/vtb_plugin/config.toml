@@ -1,0 +1,26 @@
+# 虚拟主播情感表达插件配置文件
+
+[plugin]
+name = "vtb_plugin"
+version = "0.1.0"
+enabled = true
+description = "虚拟主播情感表达插件"
+
+# 组件启用控制
+[components]
+enable_vtb = true
+
+# VTB动作配置
+[vtb_action]
+# 情感表达增强选项
+enable_emotion_enhancement = true
+max_text_length = 100
+default_emotion = "平静"
+
+# 激活概率控制（Normal模式）
+random_activation_probability = 0.08
+
+# 日志配置
+[logging]
+level = "INFO"
+prefix = "[VTB]"

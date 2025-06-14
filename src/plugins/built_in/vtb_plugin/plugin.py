@@ -1,13 +1,13 @@
+from src.plugin_system.base.base_plugin import BasePlugin, register_plugin
+from src.plugin_system.base.component_types import ComponentInfo
 from src.common.logger import get_logger
-from src.plugin_system.base.base_action import BaseAction as PluginAction, ActionActivationType
-from src.plugin_system.base.base_action import register_action
-from typing import Tuple
+from src.plugin_system.base.base_action import BaseAction, ActionActivationType, ChatMode
+from typing import Tuple, List, Type
 
-logger = get_logger("vtb_action")
+logger = get_logger("vtb")
 
 
-@register_action
-class VTBAction(PluginAction):
+class VTBAction(BaseAction):
     """VTB虚拟主播动作处理类"""
 
     action_name = "vtb_action"
@@ -24,9 +24,13 @@ class VTBAction(PluginAction):
     enable_plugin = True  # 启用插件
     associated_types = ["vtb_text"]
 
+    # 模式和并行控制
+    mode_enable = ChatMode.ALL
+    parallel_action = True  # VTB动作可以与回复并行执行，增强表达效果
+
     # 激活类型设置
     focus_activation_type = ActionActivationType.LLM_JUDGE  # Focus模式使用LLM判定，精确识别情感表达需求
-    normal_activation_type = ActionActivationType.RANDOM  # Normal模式使用随机激活，增加趣味性
+    normal_activation_type = ActionActivationType.ALWAYS  # Normal模式使用随机激活，增加趣味性
 
     # LLM判定提示词（用于Focus模式）
     llm_judge_prompt = """
@@ -35,18 +39,13 @@ class VTBAction(PluginAction):
 2. 用户询问或讨论情感相关话题
 3. 场景需要生动的情感回应
 4. 当前回复内容可以通过VTB动作增强表达效果
-
-不需要使用的情况：
-1. 纯粹的信息查询
-2. 技术性问题讨论
-3. 不涉及情感的日常对话
 4. 已经有足够的情感表达
 """
 
     # Random激活概率（用于Normal模式）
     random_activation_probability = 0.08  # 较低概率，避免过度使用
 
-    async def process(self) -> Tuple[bool, str]:
+    async def execute(self) -> Tuple[bool, str]:
         """处理VTB虚拟主播动作"""
         logger.info(f"{self.log_prefix} 执行VTB动作: {self.reasoning}")
 
@@ -61,8 +60,8 @@ class VTBAction(PluginAction):
         processed_text = self._process_text_for_vtb(text)
 
         try:
-            # 发送VTB动作消息
-            await self.send_message(type="vtb_text", data=processed_text)
+            # 发送VTB动作消息 - 使用新版本的send_type方法
+            await self.send_type(type="vtb_text", text=processed_text)
 
             logger.info(f"{self.log_prefix} VTB动作执行成功，文本内容: {processed_text}")
             return True, "VTB动作执行成功"
@@ -95,3 +94,39 @@ class VTBAction(PluginAction):
             processed_text = "平静"
 
         return processed_text
+
+
+@register_plugin
+class VTBPlugin(BasePlugin):
+    """VTB虚拟主播插件
+    - 这是虚拟主播情感表达插件
+    - Normal模式下依靠随机触发增加趣味性
+    - Focus模式下由LLM判断触发，精确识别情感表达需求
+    - 具有情感文本处理和优化能力
+    """
+
+    # 插件基本信息
+    plugin_name = "vtb_plugin"
+    plugin_description = "虚拟主播情感表达插件"
+    plugin_version = "0.1.0"
+    plugin_author = "MaiBot开发团队"
+    enable_plugin = True
+    config_file_name = "config.toml"
+
+    def get_plugin_components(self) -> List[Tuple[ComponentInfo, Type]]:
+        """返回插件包含的组件列表"""
+
+        # 从配置获取组件启用状态
+        enable_vtb = self.get_config("components.enable_vtb", True)
+        components = []
+
+        # 添加Action组件
+        if enable_vtb:
+            components.append(
+                (
+                    VTBAction.get_action_info(name="vtb_action", description="虚拟主播情感表达插件"),
+                    VTBAction,
+                )
+            )
+
+        return components
