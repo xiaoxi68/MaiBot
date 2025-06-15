@@ -582,7 +582,8 @@ class ActionModifier:
         reply_sequence = []  # 记录最近的动作序列
 
         for cycle in recent_cycles:
-            action_type = cycle.loop_plan_info["action_result"]["action_type"]
+            action_result = cycle.loop_plan_info.get("action_result", {})
+            action_type = action_result.get("action_type", "unknown")
             if action_type == "no_reply":
                 no_reply_count += 1
             reply_sequence.append(action_type == "reply")

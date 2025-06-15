@@ -3,6 +3,11 @@ import logging.handlers
 from pathlib import Path
 from typing import Callable, Optional
 import json
+import gzip
+import shutil
+import threading
+import time
+from datetime import datetime, timedelta
 
 import structlog
 import toml
@@ -19,11 +24,14 @@ def get_file_handler():
     """获取文件handler单例"""
     global _file_handler
     if _file_handler is None:
-        _file_handler = logging.handlers.RotatingFileHandler(
+        # 使用带压缩功能的handler，使用硬编码的默认值
+        _file_handler = CompressedRotatingFileHandler(
             LOG_DIR / "app.log.jsonl",
             maxBytes=10 * 1024 * 1024,  # 10MB
             backupCount=5,
             encoding="utf-8",
+            compress=True,
+            compress_level=6,
         )
         # 设置文件handler的日志级别
         file_level = LOG_CONFIG.get("file_log_level", LOG_CONFIG.get("log_level", "INFO"))
@@ -39,6 +47,90 @@ def get_console_handler():
         console_level = LOG_CONFIG.get("console_log_level", LOG_CONFIG.get("log_level", "INFO"))
         _console_handler.setLevel(getattr(logging, console_level.upper(), logging.INFO))
     return _console_handler
+
+class CompressedRotatingFileHandler(logging.handlers.RotatingFileHandler):
+    """支持压缩的轮转文件处理器"""
+    
+    def __init__(self, filename, maxBytes=0, backupCount=0, encoding=None, 
+                 compress=True, compress_level=6):
+        super().__init__(filename, 'a', maxBytes, backupCount, encoding)
+        self.compress = compress
+        self.compress_level = compress_level
+    
+    def doRollover(self):
+        """执行日志轮转，并压缩旧文件"""
+        if self.stream:
+            self.stream.close()
+            self.stream = None
+
+        # 如果有备份文件数量限制
+        if self.backupCount > 0:
+            # 删除最旧的压缩文件
+            old_gz = f"{self.baseFilename}.{self.backupCount}.gz"
+            old_file = f"{self.baseFilename}.{self.backupCount}"
+            
+            if Path(old_gz).exists():
+                Path(old_gz).unlink()
+            if Path(old_file).exists():
+                Path(old_file).unlink()
+            
+            # 重命名现有的备份文件
+            for i in range(self.backupCount - 1, 0, -1):
+                source_gz = f"{self.baseFilename}.{i}.gz"
+                dest_gz = f"{self.baseFilename}.{i + 1}.gz"
+                source_file = f"{self.baseFilename}.{i}"
+                dest_file = f"{self.baseFilename}.{i + 1}"
+                
+                if Path(source_gz).exists():
+                    Path(source_gz).rename(dest_gz)
+                elif Path(source_file).exists():
+                    Path(source_file).rename(dest_file)
+            
+            # 处理当前日志文件
+            dest_file = f"{self.baseFilename}.1"
+            if Path(self.baseFilename).exists():
+                Path(self.baseFilename).rename(dest_file)
+                
+                # 在后台线程中压缩文件
+                if self.compress:
+                    threading.Thread(
+                        target=self._compress_file, 
+                        args=(dest_file,), 
+                        daemon=True
+                    ).start()
+        
+        # 重新创建日志文件
+        if not self.delay:
+            self.stream = self._open()
+    
+    def _compress_file(self, filepath):
+        """在后台压缩文件"""
+        try:
+            source_path = Path(filepath)
+            if not source_path.exists():
+                return
+                
+            compressed_path = Path(f"{filepath}.gz")
+            
+            with open(source_path, 'rb') as f_in:
+                with gzip.open(compressed_path, 'wb', compresslevel=self.compress_level) as f_out:
+                    shutil.copyfileobj(f_in, f_out)
+            
+            # 删除原文件
+            source_path.unlink()
+            
+            # 记录压缩完成，使用标准print避免循环日志
+            if source_path.exists():
+                original_size = source_path.stat().st_size
+            else:
+                original_size = 0
+            compressed_size = compressed_path.stat().st_size
+            ratio = (1 - compressed_size / original_size) * 100 if original_size > 0 else 0
+            print(f"[日志压缩] {source_path.name} -> {compressed_path.name} (压缩率: {ratio:.1f}%)")
+                
+        except Exception as e:
+            print(f"[日志压缩] 压缩失败 {filepath}: {e}")
+
 
 def close_handlers():
     """安全关闭所有handler"""
@@ -750,11 +842,19 @@ def initialize_logging():
     configure_third_party_loggers()
     reconfigure_existing_loggers()
 
+    # 启动日志清理任务
+    start_log_cleanup_task()
+
     # 输出初始化信息
     logger = get_logger("logger")
     console_level = LOG_CONFIG.get("console_log_level", LOG_CONFIG.get("log_level", "INFO"))
     file_level = LOG_CONFIG.get("file_log_level", LOG_CONFIG.get("log_level", "INFO"))
-    logger.info(f"日志系统已重新初始化，控制台级别: {console_level}，文件级别: {file_level}，所有logger已统一配置")
+    
+    logger.info(f"日志系统已重新初始化:")
+    logger.info(f"  - 控制台级别: {console_level}")
+    logger.info(f"  - 文件级别: {file_level}")
+    logger.info(f"  - 压缩功能: 启用")
+    logger.info(f"  - 自动清理: 30天前的日志")
 
 
 def force_initialize_logging():
@@ -809,6 +909,91 @@ def format_json_for_logging(data, indent=2, ensure_ascii=False):
     else:
         # 如果是对象，直接格式化
         return json.dumps(data, indent=indent, ensure_ascii=ensure_ascii)
+
+
+def cleanup_old_logs():
+    """清理过期的日志文件"""
+    try:
+        cleanup_days = 30  # 硬编码30天
+        cutoff_date = datetime.now() - timedelta(days=cleanup_days)
+        deleted_count = 0
+        deleted_size = 0
+        
+        # 遍历日志目录
+        for log_file in LOG_DIR.glob("*.log*"):
+            try:
+                file_time = datetime.fromtimestamp(log_file.stat().st_mtime)
+                if file_time < cutoff_date:
+                    file_size = log_file.stat().st_size
+                    log_file.unlink()
+                    deleted_count += 1
+                    deleted_size += file_size
+            except Exception as e:
+                logger = get_logger("logger")
+                logger.warning(f"清理日志文件 {log_file} 时出错: {e}")
+        
+        if deleted_count > 0:
+            logger = get_logger("logger")
+            logger.info(f"清理了 {deleted_count} 个过期日志文件，释放空间 {deleted_size / 1024 / 1024:.2f} MB")
+            
+    except Exception as e:
+        logger = get_logger("logger")
+        logger.error(f"清理旧日志文件时出错: {e}")
+
+
+def start_log_cleanup_task():
+    """启动日志清理任务"""
+    def cleanup_task():
+        while True:
+            time.sleep(24 * 60 * 60)  # 每24小时执行一次
+            cleanup_old_logs()
+    
+    cleanup_thread = threading.Thread(target=cleanup_task, daemon=True)
+    cleanup_thread.start()
+    
+    logger = get_logger("logger")
+    logger.info("已启动日志清理任务，将自动清理30天前的日志文件")
+
+
+def get_log_stats():
+    """获取日志文件统计信息"""
+    stats = {
+        "total_files": 0,
+        "total_size": 0,
+        "compressed_files": 0,
+        "uncompressed_files": 0,
+        "files": []
+    }
+    
+    try:
+        if not LOG_DIR.exists():
+            return stats
+            
+        for log_file in LOG_DIR.glob("*.log*"):
+            file_info = {
+                "name": log_file.name,
+                "size": log_file.stat().st_size,
+                "modified": datetime.fromtimestamp(log_file.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
+                "compressed": log_file.suffix == ".gz"
+            }
+            
+            stats["files"].append(file_info)
+            stats["total_files"] += 1
+            stats["total_size"] += file_info["size"]
+            
+            if file_info["compressed"]:
+                stats["compressed_files"] += 1
+            else:
+                stats["uncompressed_files"] += 1
+                
+        # 按修改时间排序
+        stats["files"].sort(key=lambda x: x["modified"], reverse=True)
+        
+    except Exception as e:
+        logger = get_logger("logger")
+        logger.error(f"获取日志统计信息时出错: {e}")
+    
+    return stats
 
 
 def shutdown_logging():

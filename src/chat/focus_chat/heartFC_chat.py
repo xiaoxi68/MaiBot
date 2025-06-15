@@ -326,6 +326,23 @@ class HeartFChatting:
                             break
                         except Exception as e:
                             logger.error(f"{self.log_prefix} 处理上下文时出错: {e}")
+                            # 为当前循环设置错误状态，防止后续重复报错
+                            error_loop_info = {
+                                "loop_observation_info": {},
+                                "loop_processor_info": {},
+                                "loop_plan_info": {
+                                    "action_result": {
+                                        "action_type": "error", 
+                                        "action_data": {}, 
+                                        "reasoning": f"上下文处理失败: {e}"
+                                    },
+                                    "observed_messages": ""
+                                },
+                                "loop_action_info": {"action_taken": False, "reply_text": "", "command": ""},
+                            }
+                            self._current_cycle_detail.set_loop_info(error_loop_info)
+                            self._current_cycle_detail.complete_cycle()
+                            
                             # 上下文处理失败，跳过当前循环
                             await asyncio.sleep(1)
                             continue
@@ -373,7 +390,7 @@ class HeartFChatting:
                     logger.info(
                         f"{self.log_prefix} 第{self._current_cycle_detail.cycle_id}次思考,"
                         f"耗时: {self._current_cycle_detail.end_time - self._current_cycle_detail.start_time:.1f}秒, "
-                        f"动作: {self._current_cycle_detail.loop_plan_info['action_result']['action_type']}"
+                        f"动作: {self._current_cycle_detail.loop_plan_info.get('action_result', {}).get('action_type', '未知动作')}"
                         + (f"\n详情: {'; '.join(timer_strings)}" if timer_strings else "")
                         + processor_time_log
                     )
@@ -386,6 +403,28 @@ class HeartFChatting:
                 except Exception as e:
                     logger.error(f"{self.log_prefix} 循环处理时出错: {e}")
                     logger.error(traceback.format_exc())
+                    
+                    # 如果_current_cycle_detail存在但未完成，为其设置错误状态
+                    if self._current_cycle_detail and not hasattr(self._current_cycle_detail, 'end_time'):
+                        error_loop_info = {
+                            "loop_observation_info": {},
+                            "loop_processor_info": {},
+                            "loop_plan_info": {
+                                "action_result": {
+                                    "action_type": "error", 
+                                    "action_data": {}, 
+                                    "reasoning": f"循环处理失败: {e}"
+                                },
+                                "observed_messages": ""
+                            },
+                            "loop_action_info": {"action_taken": False, "reply_text": "", "command": ""},
+                        }
+                        try:
+                            self._current_cycle_detail.set_loop_info(error_loop_info)
+                            self._current_cycle_detail.complete_cycle()
+                        except Exception as inner_e:
+                            logger.error(f"{self.log_prefix} 设置错误状态时出错: {inner_e}")
+                    
                     await asyncio.sleep(1)  # 出错后等待一秒再继续
 
         except asyncio.CancelledError:
@@ -580,7 +619,14 @@ class HeartFChatting:
             return {
                 "loop_observation_info": {},
                 "loop_processor_info": {},
-                "loop_plan_info": {},
+                "loop_plan_info": {
+                    "action_result": {
+                        "action_type": "error", 
+                        "action_data": {}, 
+                        "reasoning": f"处理失败: {e}"
+                    },
+                    "observed_messages": ""
+                },
                 "loop_action_info": {"action_taken": False, "reply_text": "", "command": ""},
             }
 
