@@ -32,7 +32,7 @@ class PluginManager:
 
     def _ensure_plugin_directories(self):
         """确保所有插件目录存在，如果不存在则创建"""
-        default_directories = ["src/plugins/built_in", "src/plugins/examples", "plugins"]
+        default_directories = ["src/plugins/built_in", "plugins"]
 
         for directory in default_directories:
             if not os.path.exists(directory):

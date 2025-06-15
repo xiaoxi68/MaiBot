@@ -42,19 +42,270 @@ logger = get_logger("example_comprehensive")
 class SmartGreetingAction(BaseAction):
     """智能问候Action - 基于关键词触发的问候系统"""
 
-    # 激活设置
+    # ===== 激活控制必须项 =====
     focus_activation_type = ActionActivationType.KEYWORD
     normal_activation_type = ActionActivationType.KEYWORD
-    activation_keywords = ["你好", "hello", "hi", "嗨", "问候", "早上好", "晚上好"]
-    keyword_case_sensitive = False
     mode_enable = ChatMode.ALL
     parallel_action = False
 
-    # Action参数定义
-    action_parameters = {"username": "要问候的用户名（可选）"}
+    # ===== 基本信息必须项 =====
+    action_name = "smart_greeting"
+    action_description = "智能问候系统，基于关键词触发，支持个性化问候消息"
 
-    # Action使用场景
-    action_require = ["用户发送包含问候词汇的消息", "检测到新用户加入时", "响应友好交流需求"]
+    # 关键词配置
+    activation_keywords = ["你好", "hello", "hi", "嗨", "问候", "早上好", "晚上好"]
+    keyword_case_sensitive = False
+
+    # ===== 功能定义必须项 =====
+    action_parameters = {
+        "username": "要问候的用户名（可选）",
+        "greeting_style": "问候风格：casual(随意)、formal(正式)、friendly(友好)，默认casual"
+    }
+
+    action_require = [
+        "用户发送包含问候词汇的消息时使用",
+        "检测到新用户加入时使用", 
+        "响应友好交流需求时使用",
+        "避免在短时间内重复问候同一用户"
+    ]
+
+    associated_types = ["text", "emoji"]
+
+    async def execute(self) -> Tuple[bool, str]:
+        """执行智能问候"""
+        logger.info(f"{self.log_prefix} 执行智能问候动作: {self.reasoning}")
+
+        try:
+            # 获取参数
+            username = self.action_data.get("username", "")
+            greeting_style = self.action_data.get("greeting_style", "casual")
+
+            # 获取配置
+            template = self.api.get_config("greeting.template", "你好，{username}！欢迎使用MaiBot综合插件系统！")
+            enable_emoji = self.api.get_config("greeting.enable_emoji", True)
+            enable_llm = self.api.get_config("greeting.enable_llm", False)
+
+            # 构建问候消息
+            if enable_llm:
+                # 使用LLM生成个性化问候
+                greeting_message = await self._generate_llm_greeting(username, greeting_style)
+            else:
+                # 使用模板生成问候
+                greeting_message = await self._generate_template_greeting(template, username, greeting_style)
+
+            # 发送问候消息
+            await self.send_text(greeting_message)
+
+            # 可选发送表情
+            if enable_emoji:
+                emojis = ["😊", "👋", "🎉", "✨", "🌟"]
+                selected_emoji = random.choice(emojis)
+                await self.send_type("emoji", selected_emoji)
+
+            logger.info(f"{self.log_prefix} 智能问候执行成功")
+            return True, f"向{username or '用户'}发送了{greeting_style}风格的问候"
+
+        except Exception as e:
+            logger.error(f"{self.log_prefix} 智能问候执行失败: {e}")
+            return False, f"问候失败: {str(e)}"
+
+    async def _generate_template_greeting(self, template: str, username: str, style: str) -> str:
+        """使用模板生成问候消息"""
+        # 根据风格调整问候语
+        style_templates = {
+            "casual": "嗨{username}！很开心见到你～",
+            "formal": "您好{username}，很荣幸为您服务！",
+            "friendly": "你好{username}！欢迎来到这里，希望我们能成为好朋友！😊"
+        }
+
+        selected_template = style_templates.get(style, template)
+        username_display = f" {username}" if username else ""
+        
+        return selected_template.format(username=username_display)
+
+    async def _generate_llm_greeting(self, username: str, style: str) -> str:
+        """使用LLM生成个性化问候"""
+        try:
+            # 获取可用模型
+            models = self.api.get_available_models()
+            if not models:
+                logger.warning(f"{self.log_prefix} 无可用LLM模型，使用默认问候")
+                return await self._generate_template_greeting("你好{username}！", username, style)
+
+            # 构建提示词
+            prompt = f"""
+请生成一个{style}风格的问候消息。
+用户名: {username or "用户"}
+要求: 
+- 风格: {style}
+- 简洁友好
+- 不超过50字
+- 符合中文表达习惯
+"""
+
+            # 调用LLM
+            model_config = next(iter(models.values()))
+            success, response, reasoning, model_name = await self.api.generate_with_model(
+                prompt=prompt,
+                model_config=model_config,
+                request_type="plugin.greeting",
+                temperature=0.7,
+                max_tokens=100
+            )
+
+            if success and response:
+                return response.strip()
+            else:
+                logger.warning(f"{self.log_prefix} LLM生成失败，使用默认问候")
+                return await self._generate_template_greeting("你好{username}！", username, style)
+
+        except Exception as e:
+            logger.error(f"{self.log_prefix} LLM问候生成异常: {e}")
+            return await self._generate_template_greeting("你好{username}！", username, style)
+
+
+class HelpfulAction(BaseAction):
+    """智能帮助Action - 展示LLM_JUDGE激活类型和随机激活的综合示例"""
+
+    # ===== 激活控制必须项 =====
+    focus_activation_type = ActionActivationType.LLM_JUDGE
+    normal_activation_type = ActionActivationType.RANDOM
+    mode_enable = ChatMode.ALL
+    parallel_action = True
+
+    # ===== 基本信息必须项 =====
+    action_name = "helpful_assistant"
+    action_description = "智能助手Action，主动提供帮助和建议，展示LLM判断激活"
+
+    # LLM判断提示词
+    llm_judge_prompt = """
+    判定是否需要使用智能帮助动作的条件：
+    1. 用户表达了困惑或需要帮助
+    2. 用户提出了问题但没有得到满意答案
+    3. 对话中出现了技术术语或复杂概念
+    4. 用户似乎在寻找解决方案
+    5. 适合提供额外信息或建议的场合
+
+    不要使用的情况：
+    1. 用户明确表示不需要帮助
+    2. 对话进行得很顺利，无需干预
+    3. 用户只是在闲聊，没有实际需求
+
+    请回答"是"或"否"。
+    """
+
+    # 随机激活概率
+    random_activation_probability = 0.15
+
+    # ===== 功能定义必须项 =====
+    action_parameters = {
+        "help_type": "帮助类型：explanation(解释)、suggestion(建议)、guidance(指导)、tips(提示)",
+        "topic": "帮助主题或用户关心的问题",
+        "complexity": "复杂度：simple(简单)、medium(中等)、advanced(高级)"
+    }
+
+    action_require = [
+        "用户表达困惑或寻求帮助时使用",
+        "检测到用户遇到技术问题时使用",
+        "对话中出现知识盲点时主动提供帮助",
+        "避免过度频繁地提供帮助，要恰到好处"
+    ]
+
+    associated_types = ["text", "emoji"]
+
+    async def execute(self) -> Tuple[bool, str]:
+        """执行智能帮助"""
+        logger.info(f"{self.log_prefix} 执行智能帮助动作: {self.reasoning}")
+
+        try:
+            # 获取参数
+            help_type = self.action_data.get("help_type", "suggestion")
+            topic = self.action_data.get("topic", "")
+            complexity = self.action_data.get("complexity", "simple")
+
+            # 根据帮助类型生成响应
+            help_message = await self._generate_help_message(help_type, topic, complexity)
+
+            # 发送帮助消息
+            await self.send_text(help_message)
+
+            # 可选发送鼓励表情
+            if self.api.get_config("help.enable_emoji", True):
+                emojis = ["💡", "🤔", "💪", "🎯", "✨"]
+                selected_emoji = random.choice(emojis)
+                await self.send_type("emoji", selected_emoji)
+
+            logger.info(f"{self.log_prefix} 智能帮助执行成功")
+            return True, f"提供了{help_type}类型的帮助，主题：{topic}"
+
+        except Exception as e:
+            logger.error(f"{self.log_prefix} 智能帮助执行失败: {e}")
+            return False, f"帮助失败: {str(e)}"
+
+    async def _generate_help_message(self, help_type: str, topic: str, complexity: str) -> str:
+        """生成帮助消息"""
+        # 获取配置
+        enable_llm = self.api.get_config("help.enable_llm", False)
+        
+        if enable_llm:
+            return await self._generate_llm_help(help_type, topic, complexity)
+        else:
+            return await self._generate_template_help(help_type, topic, complexity)
+
+    async def _generate_template_help(self, help_type: str, topic: str, complexity: str) -> str:
+        """使用模板生成帮助消息"""
+        help_templates = {
+            "explanation": f"关于{topic}，我来为你解释一下：这是一个{complexity}级别的概念...",
+            "suggestion": f"针对{topic}，我建议你可以尝试以下方法...",
+            "guidance": f"在{topic}方面，我可以为你提供一些指导...",
+            "tips": f"关于{topic}，这里有一些实用的小贴士..."
+        }
+
+        base_message = help_templates.get(help_type, f"关于{topic}，我很乐意为你提供帮助！")
+        
+        # 根据复杂度调整消息
+        if complexity == "advanced":
+            base_message += "\n\n这个话题比较深入，需要一些基础知识。"
+        elif complexity == "simple":
+            base_message += "\n\n这个概念其实很简单，让我用通俗的话来说明。"
+
+        return base_message
+
+    async def _generate_llm_help(self, help_type: str, topic: str, complexity: str) -> str:
+        """使用LLM生成个性化帮助"""
+        try:
+            models = self.api.get_available_models()
+            if not models:
+                return await self._generate_template_help(help_type, topic, complexity)
+
+            prompt = f"""
+请生成一个{help_type}类型的帮助消息。
+主题: {topic}
+复杂度: {complexity}
+要求:
+- 风格友好、耐心
+- 内容准确、有用
+- 长度适中(100-200字)
+- 根据复杂度调整语言难度
+"""
+
+            model_config = next(iter(models.values()))
+            success, response, reasoning, model_name = await self.api.generate_with_model(
+                prompt=prompt,
+                model_config=model_config,
+                request_type="plugin.help",
+                temperature=0.7,
+                max_tokens=300
+            )
+
+            if success and response:
+                return response.strip()
+            else:
+                return await self._generate_template_help(help_type, topic, complexity)
+
+        except Exception as e:
+            logger.error(f"{self.log_prefix} LLM帮助生成异常: {e}")
+            return await self._generate_template_help(help_type, topic, complexity)
 
 
 # ===== Command组件 =====
@@ -405,6 +656,7 @@ class ExampleComprehensivePlugin(BasePlugin):
 
         # 从配置获取组件启用状态
         enable_greeting = self.get_config("components.enable_greeting", True)
+        enable_helpful = self.get_config("components.enable_helpful", True)
         enable_help = self.get_config("components.enable_help", True)
         enable_send = self.get_config("components.enable_send", True)
         enable_echo = self.get_config("components.enable_echo", True)
@@ -412,16 +664,12 @@ class ExampleComprehensivePlugin(BasePlugin):
         enable_dice = self.get_config("components.enable_dice", True)
         components = []
 
-        # 添加Action组件
+        # 添加Action组件 - 使用类中定义的所有属性
         if enable_greeting:
-            components.append(
-                (
-                    SmartGreetingAction.get_action_info(
-                        name="smart_greeting", description="智能问候系统，基于关键词触发"
-                    ),
-                    SmartGreetingAction,
-                )
-            )
+            components.append((SmartGreetingAction.get_action_info(), SmartGreetingAction))
+
+        if enable_helpful:
+            components.append((HelpfulAction.get_action_info(), HelpfulAction))
 
         # 添加Command组件
         if enable_help:

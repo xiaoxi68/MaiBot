@@ -8,11 +8,13 @@ description = "展示新插件系统完整功能的示例插件"
 
 # 组件启用控制
 [components]
-enable_greeting = false
-enable_help = false
-enable_send = false
-enable_echo = false
-enable_info = false
+enable_greeting = true
+enable_helpful = true
+enable_help = true
+enable_send = true
+enable_echo = true
+enable_info = true
+enable_dice = true
 
 # 智能问候配置
 [greeting]
@@ -37,11 +39,19 @@ show_detailed_info = true
 include_stream_info = true
 max_content_preview = 100
 
+# 智能帮助配置
+[helpful]
+enable_llm = false
+enable_emoji = true
+random_activation_probability = 0.15
+
 # 帮助系统配置
 [help]
 show_extended_help = true
 include_action_info = true
 include_config_info = true
+enable_llm = false
+enable_emoji = true
 
 # 骰子命令配置
 [dice]
