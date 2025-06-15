@@ -25,9 +25,23 @@ def get_file_handler():
     """获取文件handler单例"""
     global _file_handler
     if _file_handler is None:
+        # 确保日志目录存在
+        LOG_DIR.mkdir(exist_ok=True)
+        
+        # 检查是否已有其他handler在使用同一个文件
+        log_file_path = LOG_DIR / "app.log.jsonl"
+        root_logger = logging.getLogger()
+        
+        # 检查现有handler，避免重复创建
+        for handler in root_logger.handlers:
+            if isinstance(handler, logging.handlers.RotatingFileHandler):
+                if hasattr(handler, 'baseFilename') and Path(handler.baseFilename) == log_file_path:
+                    _file_handler = handler
+                    return _file_handler
+        
         # 使用带压缩功能的handler，使用硬编码的默认值
         _file_handler = CompressedRotatingFileHandler(
-            LOG_DIR / "app.log.jsonl",
+            log_file_path,
             maxBytes=10 * 1024 * 1024,  # 10MB
             backupCount=5,
             encoding="utf-8",
@@ -58,51 +72,99 @@ class CompressedRotatingFileHandler(logging.handlers.RotatingFileHandler):
         super().__init__(filename, "a", maxBytes, backupCount, encoding)
         self.compress = compress
         self.compress_level = compress_level
+        self._rollover_lock = threading.Lock()  # 添加轮转锁
 
     def doRollover(self):
         """执行日志轮转，并压缩旧文件"""
-        if self.stream:
-            self.stream.close()
-            self.stream = None
+        with self._rollover_lock:
+            if self.stream:
+                self.stream.close()
+                self.stream = None
 
-        # 如果有备份文件数量限制
-        if self.backupCount > 0:
-            # 删除最旧的压缩文件
-            old_gz = f"{self.baseFilename}.{self.backupCount}.gz"
-            old_file = f"{self.baseFilename}.{self.backupCount}"
+            # 如果有备份文件数量限制
+            if self.backupCount > 0:
+                # 删除最旧的压缩文件
+                old_gz = f"{self.baseFilename}.{self.backupCount}.gz"
+                old_file = f"{self.baseFilename}.{self.backupCount}"
 
-            if Path(old_gz).exists():
-                Path(old_gz).unlink()
-            if Path(old_file).exists():
-                Path(old_file).unlink()
+                if Path(old_gz).exists():
+                    self._safe_remove(old_gz)
+                if Path(old_file).exists():
+                    self._safe_remove(old_file)
 
-            # 重命名现有的备份文件
-            for i in range(self.backupCount - 1, 0, -1):
-                source_gz = f"{self.baseFilename}.{i}.gz"
-                dest_gz = f"{self.baseFilename}.{i + 1}.gz"
-                source_file = f"{self.baseFilename}.{i}"
-                dest_file = f"{self.baseFilename}.{i + 1}"
+                # 重命名现有的备份文件
+                for i in range(self.backupCount - 1, 0, -1):
+                    source_gz = f"{self.baseFilename}.{i}.gz"
+                    dest_gz = f"{self.baseFilename}.{i + 1}.gz"
+                    source_file = f"{self.baseFilename}.{i}"
+                    dest_file = f"{self.baseFilename}.{i + 1}"
 
-                if Path(source_gz).exists():
-                    Path(source_gz).rename(dest_gz)
-                elif Path(source_file).exists():
-                    Path(source_file).rename(dest_file)
+                    if Path(source_gz).exists():
+                        self._safe_rename(source_gz, dest_gz)
+                    elif Path(source_file).exists():
+                        self._safe_rename(source_file, dest_file)
 
-            # 处理当前日志文件
-            dest_file = f"{self.baseFilename}.1"
-            if Path(self.baseFilename).exists():
-                Path(self.baseFilename).rename(dest_file)
+                # 处理当前日志文件
+                dest_file = f"{self.baseFilename}.1"
+                if Path(self.baseFilename).exists():
+                    if self._safe_rename(self.baseFilename, dest_file):
+                        # 在后台线程中压缩文件
+                        if self.compress:
+                            threading.Thread(target=self._compress_file, args=(dest_file,), daemon=True).start()
 
-                # 在后台线程中压缩文件
-                if self.compress:
-                    threading.Thread(target=self._compress_file, args=(dest_file,), daemon=True).start()
+            # 重新创建日志文件
+            if not self.delay:
+                self.stream = self._open()
 
-        # 重新创建日志文件
-        if not self.delay:
-            self.stream = self._open()
+    def _safe_rename(self, source, dest):
+        """安全重命名文件，处理Windows文件占用问题"""
+        max_retries = 5
+        retry_delay = 0.1
+        
+        for attempt in range(max_retries):
+            try:
+                Path(source).rename(dest)
+                return True
+            except PermissionError as e:
+                if attempt < max_retries - 1:
+                    print(f"[日志轮转] 重命名失败，重试 {attempt + 1}/{max_retries}: {source} -> {dest}")
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # 指数退避
+                else:
+                    print(f"[日志轮转] 重命名最终失败: {source} -> {dest}, 错误: {e}")
+                    return False
+            except Exception as e:
+                print(f"[日志轮转] 重命名错误: {source} -> {dest}, 错误: {e}")
+                return False
+        return False
+
+    def _safe_remove(self, filepath):
+        """安全删除文件，处理Windows文件占用问题"""
+        max_retries = 3
+        retry_delay = 0.1
+        
+        for attempt in range(max_retries):
+            try:
+                Path(filepath).unlink()
+                return True
+            except PermissionError as e:
+                if attempt < max_retries - 1:
+                    print(f"[日志轮转] 删除失败，重试 {attempt + 1}/{max_retries}: {filepath}")
+                    time.sleep(retry_delay)
+                    retry_delay *= 2
+                else:
+                    print(f"[日志轮转] 删除最终失败: {filepath}, 错误: {e}")
+                    return False
+            except Exception as e:
+                print(f"[日志轮转] 删除错误: {filepath}, 错误: {e}")
+                return False
+        return False
 
     def _compress_file(self, filepath):
         """在后台压缩文件"""
+        # 等待一段时间确保文件写入完成
+        time.sleep(0.5)
+        
         try:
             source_path = Path(filepath)
             if not source_path.exists():
@@ -110,21 +172,20 @@ class CompressedRotatingFileHandler(logging.handlers.RotatingFileHandler):
 
             compressed_path = Path(f"{filepath}.gz")
 
+            # 记录原始大小
+            original_size = source_path.stat().st_size
+
             with open(source_path, "rb") as f_in:
                 with gzip.open(compressed_path, "wb", compresslevel=self.compress_level) as f_out:
                     shutil.copyfileobj(f_in, f_out)
 
-            # 删除原文件
-            source_path.unlink()
-
-            # 记录压缩完成，使用标准print避免循环日志
-            if source_path.exists():
-                original_size = source_path.stat().st_size
+            # 安全删除原文件
+            if self._safe_remove(filepath):
+                compressed_size = compressed_path.stat().st_size
+                ratio = (1 - compressed_size / original_size) * 100 if original_size > 0 else 0
+                print(f"[日志压缩] {source_path.name} -> {compressed_path.name} (压缩率: {ratio:.1f}%)")
             else:
-                original_size = 0
-            compressed_size = compressed_path.stat().st_size
-            ratio = (1 - compressed_size / original_size) * 100 if original_size > 0 else 0
-            print(f"[日志压缩] {source_path.name} -> {compressed_path.name} (压缩率: {ratio:.1f}%)")
+                print(f"[日志压缩] 压缩完成但原文件删除失败: {filepath}")
 
         except Exception as e:
             print(f"[日志压缩] 压缩失败 {filepath}: {e}")
@@ -141,6 +202,31 @@ def close_handlers():
     if _console_handler:
         _console_handler.close()
         _console_handler = None
+
+
+def remove_duplicate_handlers():
+    """移除重复的handler，特别是文件handler"""
+    root_logger = logging.getLogger()
+    log_file_path = str(LOG_DIR / "app.log.jsonl")
+    
+    # 收集所有文件handler
+    file_handlers = []
+    for handler in root_logger.handlers[:]:
+        if isinstance(handler, logging.handlers.RotatingFileHandler):
+            if hasattr(handler, 'baseFilename') and handler.baseFilename == log_file_path:
+                file_handlers.append(handler)
+    
+    # 如果有多个文件handler，保留第一个，关闭其他的
+    if len(file_handlers) > 1:
+        print(f"[日志系统] 检测到 {len(file_handlers)} 个重复的文件handler，正在清理...")
+        for i, handler in enumerate(file_handlers[1:], 1):
+            print(f"[日志系统] 关闭重复的文件handler {i}")
+            root_logger.removeHandler(handler)
+            handler.close()
+        
+        # 更新全局引用
+        global _file_handler
+        _file_handler = file_handlers[0]
 
 
 # 读取日志配置
@@ -611,6 +697,9 @@ def _immediate_setup():
     # 设置格式化器
     file_handler.setFormatter(file_formatter)
     console_handler.setFormatter(console_formatter)
+
+    # 清理重复的handler
+    remove_duplicate_handlers()
 
     # 配置第三方库日志
     configure_third_party_loggers()
