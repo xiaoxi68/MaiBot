@@ -33,6 +33,7 @@ def get_file_handler():
         root_logger = logging.getLogger()
 
         # 检查现有handler，避免重复创建
+        root_logger = logging.getLogger()
         for handler in root_logger.handlers:
             if isinstance(handler, logging.handlers.RotatingFileHandler):
                 if hasattr(handler, "baseFilename") and Path(handler.baseFilename) == log_file_path:
@@ -65,56 +66,51 @@ def get_console_handler():
     return _console_handler
 
 
-class CompressedRotatingFileHandler(logging.handlers.RotatingFileHandler):
-    """支持压缩的轮转文件处理器"""
+class TimestampedFileHandler(logging.Handler):
+    """基于时间戳的文件处理器，避免重命名操作"""
 
-    def __init__(self, filename, maxBytes=0, backupCount=0, encoding=None, compress=True, compress_level=6):
-        super().__init__(filename, "a", maxBytes, backupCount, encoding)
+    def __init__(self, log_dir, max_bytes=10*1024*1024, backup_count=5, encoding='utf-8', compress=True, compress_level=6):
+        super().__init__()
+        self.log_dir = Path(log_dir)
+        self.log_dir.mkdir(exist_ok=True)
+        self.max_bytes = max_bytes
+        self.backup_count = backup_count
+        self.encoding = encoding
         self.compress = compress
         self.compress_level = compress_level
-        self._rollover_lock = threading.Lock()  # 添加轮转锁
+        self._lock = threading.Lock()
+        
+        # 当前活跃的日志文件
+        self.current_file = None
+        self.current_stream = None
+        self._init_current_file()
 
-    def doRollover(self):
-        """执行日志轮转，并压缩旧文件"""
-        with self._rollover_lock:
-            if self.stream:
-                self.stream.close()
-                self.stream = None
+    def _init_current_file(self):
+        """初始化当前日志文件"""
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.current_file = self.log_dir / f"app_{timestamp}.log.jsonl"
+        self.current_stream = open(self.current_file, 'a', encoding=self.encoding)
 
-            # 如果有备份文件数量限制
-            if self.backupCount > 0:
-                # 删除最旧的压缩文件
-                old_gz = f"{self.baseFilename}.{self.backupCount}.gz"
-                old_file = f"{self.baseFilename}.{self.backupCount}"
+    def _should_rollover(self):
+        """检查是否需要轮转"""
+        if self.current_file and self.current_file.exists():
+            return self.current_file.stat().st_size >= self.max_bytes
+        return False
 
-                if Path(old_gz).exists():
-                    self._safe_remove(old_gz)
-                if Path(old_file).exists():
-                    self._safe_remove(old_file)
-
-                # 重命名现有的备份文件
-                for i in range(self.backupCount - 1, 0, -1):
-                    source_gz = f"{self.baseFilename}.{i}.gz"
-                    dest_gz = f"{self.baseFilename}.{i + 1}.gz"
-                    source_file = f"{self.baseFilename}.{i}"
-                    dest_file = f"{self.baseFilename}.{i + 1}"
-
-                    if Path(source_gz).exists():
-                        self._safe_rename(source_gz, dest_gz)
-                    elif Path(source_file).exists():
-                        self._safe_rename(source_file, dest_file)
-
-                # 处理当前日志文件
-                dest_file = f"{self.baseFilename}.1"
-                if Path(self.baseFilename).exists():
-                    if self._safe_rename(self.baseFilename, dest_file):
-                        # 在后台线程中压缩文件
-                        if self.compress:
-                            threading.Thread(target=self._compress_file, args=(dest_file,), daemon=True).start()
-
-            # 重新创建日志文件
-            if not self.delay:
-                self.stream = self._open()
+    def _do_rollover(self):
+        """执行轮转：关闭当前文件，创建新文件"""
+        if self.current_stream:
+            self.current_stream.close()
+            
+        # 压缩旧文件
+        if self.compress and self.current_file:
+            threading.Thread(target=self._compress_file, args=(self.current_file,), daemon=True).start()
+        
+        # 清理旧文件
+        self._cleanup_old_files()
+        
+        # 创建新文件
+        self._init_current_file()
 
     def _safe_rename(self, source, dest):
         """安全重命名文件，处理Windows文件占用问题"""
@@ -205,7 +201,7 @@ def close_handlers():
 
 
 def remove_duplicate_handlers():
-    """移除重复的handler，特别是文件handler"""
+    """移除重复的文件handler"""
     root_logger = logging.getLogger()
     log_file_path = str(LOG_DIR / "app.log.jsonl")
 
@@ -314,7 +310,7 @@ def reconfigure_existing_loggers():
 
     # 重新设置根logger的所有handler的格式化器
     for handler in root_logger.handlers:
-        if isinstance(handler, logging.handlers.RotatingFileHandler):
+        if isinstance(handler, TimestampedFileHandler):
             handler.setFormatter(file_formatter)
         elif isinstance(handler, logging.StreamHandler):
             handler.setFormatter(console_formatter)
@@ -354,7 +350,7 @@ def reconfigure_existing_loggers():
 
             # 如果logger有自己的handler，重新配置它们（避免重复创建文件handler）
             for handler in original_handlers:
-                if isinstance(handler, logging.handlers.RotatingFileHandler):
+                if isinstance(handler, TimestampedFileHandler):
                     # 不重新添加，让它使用根logger的文件handler
                     continue
                 elif isinstance(handler, logging.StreamHandler):
