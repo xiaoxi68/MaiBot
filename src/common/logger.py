@@ -20,6 +20,7 @@ LOG_DIR.mkdir(exist_ok=True)
 _file_handler = None
 _console_handler = None
 
+
 def get_file_handler():
     """获取文件handler单例"""
     global _file_handler
@@ -37,6 +38,7 @@ def get_file_handler():
         file_level = LOG_CONFIG.get("file_log_level", LOG_CONFIG.get("log_level", "INFO"))
         _file_handler.setLevel(getattr(logging, file_level.upper(), logging.INFO))
     return _file_handler
+
 
 def get_console_handler():
     """获取控制台handler单例"""
@@ -135,11 +137,11 @@ class CompressedRotatingFileHandler(logging.handlers.RotatingFileHandler):
 def close_handlers():
     """安全关闭所有handler"""
     global _file_handler, _console_handler
-    
+
     if _file_handler:
         _file_handler.close()
         _file_handler = None
-    
+
     if _console_handler:
         _console_handler.close()
         _console_handler = None
@@ -155,7 +157,7 @@ def load_log_config():
         "color_text": "title",
         "log_level": "INFO",  # 全局日志级别（向下兼容）
         "console_log_level": "INFO",  # 控制台日志级别
-        "file_log_level": "DEBUG",    # 文件日志级别
+        "file_log_level": "DEBUG",  # 文件日志级别
         "suppress_libraries": [],
         "library_log_levels": {},
     }
@@ -199,12 +201,12 @@ def configure_third_party_loggers():
     # 设置根logger级别为所有handler中最低的级别，确保所有日志都能被捕获
     console_level = LOG_CONFIG.get("console_log_level", LOG_CONFIG.get("log_level", "INFO"))
     file_level = LOG_CONFIG.get("file_log_level", LOG_CONFIG.get("log_level", "INFO"))
-    
+
     # 获取最低级别（DEBUG < INFO < WARNING < ERROR < CRITICAL）
     console_level_num = getattr(logging, console_level.upper(), logging.INFO)
     file_level_num = getattr(logging, file_level.upper(), logging.INFO)
     min_level = min(console_level_num, file_level_num)
-    
+
     root_logger = logging.getLogger()
     root_logger.setLevel(min_level)
 
@@ -260,7 +262,7 @@ def reconfigure_existing_loggers():
             original_handlers = logger_obj.handlers[:]
             for handler in original_handlers:
                 # 安全关闭handler
-                if hasattr(handler, 'close'):
+                if hasattr(handler, "close"):
                     handler.close()
                 logger_obj.removeHandler(handler)
 
@@ -605,7 +607,7 @@ def _immediate_setup():
     # 使用单例handler避免重复创建
     file_handler = get_file_handler()
     console_handler = get_console_handler()
-    
+
     # 重新添加配置好的handler
     root_logger.addHandler(file_handler)
     root_logger.addHandler(console_handler)
@@ -658,7 +660,7 @@ def configure_logging(
         file_handler.maxBytes = max_bytes
         file_handler.backupCount = backup_count
         file_handler.baseFilename = str(log_path / "app.log.jsonl")
-        
+
         # 更新文件handler日志级别
         if file_level:
             file_handler.setLevel(getattr(logging, file_level.upper(), logging.INFO))
@@ -744,40 +746,40 @@ def get_log_config():
 
 def set_console_log_level(level: str):
     """设置控制台日志级别
-    
+
     Args:
         level: 日志级别 ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
     """
     global LOG_CONFIG
     LOG_CONFIG["console_log_level"] = level.upper()
-    
+
     console_handler = get_console_handler()
     if console_handler:
         console_handler.setLevel(getattr(logging, level.upper(), logging.INFO))
-    
+
     # 重新设置root logger级别
     configure_third_party_loggers()
-    
+
     logger = get_logger("logger")
     logger.info(f"控制台日志级别已设置为: {level.upper()}")
 
 
 def set_file_log_level(level: str):
     """设置文件日志级别
-    
+
     Args:
         level: 日志级别 ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
     """
     global LOG_CONFIG
     LOG_CONFIG["file_log_level"] = level.upper()
-    
+
     file_handler = get_file_handler()
     if file_handler:
         file_handler.setLevel(getattr(logging, level.upper(), logging.INFO))
-    
+
     # 重新设置root logger级别
     configure_third_party_loggers()
-    
+
     logger = get_logger("logger")
     logger.info(f"文件日志级别已设置为: {level.upper()}")
 
@@ -786,14 +788,14 @@ def get_current_log_levels():
     """获取当前的日志级别设置"""
     file_handler = get_file_handler()
     console_handler = get_console_handler()
-    
+
     file_level = logging.getLevelName(file_handler.level) if file_handler else "UNKNOWN"
     console_level = logging.getLevelName(console_handler.level) if console_handler else "UNKNOWN"
-    
+
     return {
         "console_level": console_level,
         "file_level": file_level,
-        "root_level": logging.getLevelName(logging.getLogger().level)
+        "root_level": logging.getLevelName(logging.getLogger().level),
     }
 
 
@@ -801,7 +803,7 @@ def force_reset_all_loggers():
     """强制重置所有logger，解决格式不一致问题"""
     # 先关闭现有的handler
     close_handlers()
-    
+
     # 清除所有现有的logger配置
     logging.getLogger().manager.loggerDict.clear()
 
@@ -812,7 +814,7 @@ def force_reset_all_loggers():
     # 使用单例handler避免重复创建
     file_handler = get_file_handler()
     console_handler = get_console_handler()
-    
+
     # 重新添加我们的handler
     root_logger.addHandler(file_handler)
     root_logger.addHandler(console_handler)
@@ -824,11 +826,11 @@ def force_reset_all_loggers():
     # 设置根logger级别为所有handler中最低的级别
     console_level = LOG_CONFIG.get("console_log_level", LOG_CONFIG.get("log_level", "INFO"))
     file_level = LOG_CONFIG.get("file_log_level", LOG_CONFIG.get("log_level", "INFO"))
-    
+
     console_level_num = getattr(logging, console_level.upper(), logging.INFO)
     file_level_num = getattr(logging, file_level.upper(), logging.INFO)
     min_level = min(console_level_num, file_level_num)
-    
+
     root_logger.setLevel(min_level)
 
 
@@ -1000,24 +1002,24 @@ def shutdown_logging():
     """优雅关闭日志系统，释放所有文件句柄"""
     logger = get_logger("logger")
     logger.info("正在关闭日志系统...")
-    
+
     # 关闭所有handler
     root_logger = logging.getLogger()
     for handler in root_logger.handlers[:]:
-        if hasattr(handler, 'close'):
+        if hasattr(handler, "close"):
             handler.close()
         root_logger.removeHandler(handler)
-    
+
     # 关闭全局handler
     close_handlers()
-    
+
     # 关闭所有其他logger的handler
     logger_dict = logging.getLogger().manager.loggerDict
-    for name, logger_obj in logger_dict.items():
+    for _name, logger_obj in logger_dict.items():
         if isinstance(logger_obj, logging.Logger):
             for handler in logger_obj.handlers[:]:
-                if hasattr(handler, 'close'):
+                if hasattr(handler, "close"):
                     handler.close()
                 logger_obj.removeHandler(handler)
-    
+
     logger.info("日志系统已关闭")
