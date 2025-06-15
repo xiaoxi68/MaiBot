@@ -1,4 +1,5 @@
 import logging
+
 # 不再需要logging.handlers，已切换到基于时间戳的处理器
 from pathlib import Path
 from typing import Callable, Optional
@@ -27,14 +28,14 @@ def get_file_handler():
     if _file_handler is None:
         # 确保日志目录存在
         LOG_DIR.mkdir(exist_ok=True)
-        
+
         # 检查现有handler，避免重复创建
         root_logger = logging.getLogger()
         for handler in root_logger.handlers:
             if isinstance(handler, TimestampedFileHandler):
                 _file_handler = handler
                 return _file_handler
-        
+
         # 使用新的基于时间戳的handler，避免重命名操作
         _file_handler = TimestampedFileHandler(
             log_dir=LOG_DIR,
@@ -113,24 +114,24 @@ class TimestampedFileHandler(logging.Handler):
         """在后台压缩文件"""
         try:
             time.sleep(0.5)  # 等待文件写入完成
-            
+
             if not file_path.exists():
                 return
-                
-            compressed_path = file_path.with_suffix(file_path.suffix + '.gz')
+
+            compressed_path = file_path.with_suffix(file_path.suffix + ".gz")
             original_size = file_path.stat().st_size
-            
-            with open(file_path, 'rb') as f_in:
-                with gzip.open(compressed_path, 'wb', compresslevel=self.compress_level) as f_out:
+
+            with open(file_path, "rb") as f_in:
+                with gzip.open(compressed_path, "wb", compresslevel=self.compress_level) as f_out:
                     shutil.copyfileobj(f_in, f_out)
-            
+
             # 删除原文件
             file_path.unlink()
-            
+
             compressed_size = compressed_path.stat().st_size
             ratio = (1 - compressed_size / original_size) * 100 if original_size > 0 else 0
             print(f"[日志压缩] {file_path.name} -> {compressed_path.name} (压缩率: {ratio:.1f}%)")
-            
+
         except Exception as e:
             print(f"[日志压缩] 压缩失败 {file_path}: {e}")
 
@@ -141,18 +142,18 @@ class TimestampedFileHandler(logging.Handler):
             log_files = []
             for pattern in ["app_*.log.jsonl", "app_*.log.jsonl.gz"]:
                 log_files.extend(self.log_dir.glob(pattern))
-            
+
             # 按修改时间排序
             log_files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
-            
+
             # 删除超出数量限制的文件
-            for old_file in log_files[self.backup_count:]:
+            for old_file in log_files[self.backup_count :]:
                 try:
                     old_file.unlink()
                     print(f"[日志清理] 删除旧文件: {old_file.name}")
                 except Exception as e:
                     print(f"[日志清理] 删除失败 {old_file}: {e}")
-                    
+
         except Exception as e:
             print(f"[日志清理] 清理过程出错: {e}")
 
@@ -163,13 +164,13 @@ class TimestampedFileHandler(logging.Handler):
                 # 检查是否需要轮转
                 if self._should_rollover():
                     self._do_rollover()
-                
+
                 # 写入日志
                 if self.current_stream:
                     msg = self.format(record)
-                    self.current_stream.write(msg + '\n')
+                    self.current_stream.write(msg + "\n")
                     self.current_stream.flush()
-                    
+
         except Exception:
             self.handleError(record)
 
@@ -201,13 +202,13 @@ def close_handlers():
 def remove_duplicate_handlers():
     """移除重复的handler，特别是文件handler"""
     root_logger = logging.getLogger()
-    
+
     # 收集所有时间戳文件handler
     file_handlers = []
     for handler in root_logger.handlers[:]:
         if isinstance(handler, TimestampedFileHandler):
             file_handlers.append(handler)
-    
+
     # 如果有多个文件handler，保留第一个，关闭其他的
     if len(file_handlers) > 1:
         print(f"[日志系统] 检测到 {len(file_handlers)} 个重复的文件handler，正在清理...")
@@ -215,7 +216,7 @@ def remove_duplicate_handlers():
             print(f"[日志系统] 关闭重复的文件handler {i}")
             root_logger.removeHandler(handler)
             handler.close()
-        
+
         # 更新全局引用
         global _file_handler
         _file_handler = file_handlers[0]
