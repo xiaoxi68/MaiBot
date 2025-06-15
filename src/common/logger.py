@@ -64,7 +64,9 @@ def get_console_handler():
 class TimestampedFileHandler(logging.Handler):
     """基于时间戳的文件处理器，避免重命名操作"""
 
-    def __init__(self, log_dir, max_bytes=10*1024*1024, backup_count=5, encoding='utf-8', compress=True, compress_level=6):
+    def __init__(
+        self, log_dir, max_bytes=10 * 1024 * 1024, backup_count=5, encoding="utf-8", compress=True, compress_level=6
+    ):
         super().__init__()
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(exist_ok=True)
@@ -74,7 +76,7 @@ class TimestampedFileHandler(logging.Handler):
         self.compress = compress
         self.compress_level = compress_level
         self._lock = threading.Lock()
-        
+
         # 当前活跃的日志文件
         self.current_file = None
         self.current_stream = None
@@ -84,7 +86,7 @@ class TimestampedFileHandler(logging.Handler):
         """初始化当前日志文件"""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.current_file = self.log_dir / f"app_{timestamp}.log.jsonl"
-        self.current_stream = open(self.current_file, 'a', encoding=self.encoding)
+        self.current_stream = open(self.current_file, "a", encoding=self.encoding)
 
     def _should_rollover(self):
         """检查是否需要轮转"""
@@ -96,14 +98,14 @@ class TimestampedFileHandler(logging.Handler):
         """执行轮转：关闭当前文件，创建新文件"""
         if self.current_stream:
             self.current_stream.close()
-            
+
         # 压缩旧文件
         if self.compress and self.current_file:
             threading.Thread(target=self._compress_file, args=(self.current_file,), daemon=True).start()
-        
+
         # 清理旧文件
         self._cleanup_old_files()
-        
+
         # 创建新文件
         self._init_current_file()
 
