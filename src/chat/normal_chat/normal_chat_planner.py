@@ -67,7 +67,7 @@ class NormalChatPlanner:
         # LLM规划器配置
         self.planner_llm = LLMRequest(
             model=global_config.model.planner,
-            request_type="normal_chat.planner",  # 用于normal_chat动作规划
+            request_type="normal.planner",  # 用于normal_chat动作规划
         )
 
         self.action_manager = action_manager

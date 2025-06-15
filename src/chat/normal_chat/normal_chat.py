@@ -811,10 +811,10 @@ class NormalChat:
 
             # 检查是否满足关系构建条件
             should_build_relation = (
-                total_messages >= 50  # 50条消息必定满足
-                or (total_messages >= 35 and time_elapsed >= 600)  # 35条且10分钟
-                or (total_messages >= 25 and time_elapsed >= 1800)  # 25条且30分钟
-                or (total_messages >= 10 and time_elapsed >= 3600)  # 10条且1小时
+                total_messages >= 40  # 40条消息必定满足
+                or (total_messages >= 25 and time_elapsed >= 600)  # 25条且10分钟
+                or (total_messages >= 20 and time_elapsed >= 900)  # 20条且30分钟
+                or (total_messages >= 10 and time_elapsed >= 1800)  # 10条且1小时
             )
 
             if should_build_relation:

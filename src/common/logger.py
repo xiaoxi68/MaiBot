@@ -326,7 +326,7 @@ MODULE_COLORS = {
     "working_memory": "\033[38;5;22m",  # 深绿色
     "memory_activator": "\033[38;5;28m",  # 绿色
     # 插件系统
-    "plugin_manager": "\033[38;5;196m",  # 红色
+    "plugin_manager": "\033[38;5;208m",  # 红色
     "base_plugin": "\033[38;5;202m",  # 橙红色
     "base_command": "\033[38;5;208m",  # 橙色
     "component_registry": "\033[38;5;214m",  # 橙黄色
