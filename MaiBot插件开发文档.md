@@ -32,51 +32,16 @@ MaiBot支持两个插件目录：
 - [📋 开发规范](docs/plugins/development-standards.md) - 代码规范和最佳实践
 
 ### 📖 核心概念
-- [🧩 插件系统概述](docs/plugins/plugin-system-overview.md) - 插件架构和组件类型
 - [⚡ Action组件详解](docs/plugins/action-components.md) - 智能动作组件开发指南
 - [💻 Command组件详解](docs/plugins/command-components.md) - 命令组件开发指南
 - [🔧 工具系统详解](docs/plugins/tool-system.md) - 扩展麦麦信息获取能力的工具组件
 
 ### 🔌 API参考
 - [📡 消息API](docs/plugins/api/message-api.md) - 消息发送和处理接口
-- [💾 数据库API](docs/plugins/api/database-api.md) - 数据持久化接口
-- [🤖 LLM API](docs/plugins/api/llm-api.md) - 大语言模型调用接口
-- [⚙️ 配置API](docs/plugins/api/config-api.md) - 配置管理接口
-- [🛠️ 工具API](docs/plugins/api/utility-api.md) - 实用工具接口
-
-### 🔧 高级功能
-- [🔗 插件依赖管理](docs/plugins/advanced/dependency-management.md) - 插件间依赖处理
-- [⏱️ 插件生命周期](docs/plugins/advanced/plugin-lifecycle.md) - 加载、执行、卸载流程
-- [🎛️ 动态配置](docs/plugins/advanced/dynamic-configuration.md) - 运行时配置更新
-
-### 📋 开发指南
-- [🏗️ 项目结构](docs/plugins/guides/project-structure.md) - 推荐的插件项目结构
-- [🐛 调试和测试](docs/plugins/guides/debugging-testing.md) - 插件调试技巧
-- [📊 性能优化](docs/plugins/guides/performance-optimization.md) - 插件性能最佳实践
 
 ### 💡 示例和模板
 - [📚 完整示例](docs/plugins/examples/complete-examples.md) - 各种类型的插件示例
-- [🏗️ 插件模板](docs/plugins/templates/) - 快速开始的插件模板
 
-## 🎯 推荐学习路径
-
-### 🌟 新手入门
-1. 阅读 [🚀 快速开始指南](docs/plugins/quick-start.md)
-2. 了解 [🧩 插件系统概述](docs/plugins/plugin-system-overview.md)
-3. 学习 [⚡ Action组件详解](docs/plugins/action-components.md)
-4. 了解 [🔧 工具系统详解](docs/plugins/tool-system.md)
-5. 实践 [📚 完整示例](docs/plugins/examples/complete-examples.md)
-
-### 💪 进阶开发
-1. 掌握 [💻 Command组件详解](docs/plugins/command-components.md)
-2. 学习 [🔌 API参考](docs/plugins/api/) 各模块
-3. 了解 [🔧 高级功能](docs/plugins/advanced/)
-4. 遵循 [📋 开发规范](docs/plugins/development-standards.md)
-
-### 🚀 专家级别
-1. 深入 [🔗 插件依赖管理](docs/plugins/advanced/dependency-management.md)
-2. 掌握 [📊 性能优化](docs/plugins/guides/performance-optimization.md)
-3. 贡献 [🏗️ 插件模板](docs/plugins/templates/)
 
 ## 🎉 快速开始
 
