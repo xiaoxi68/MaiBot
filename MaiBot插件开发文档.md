@@ -33,22 +33,177 @@ class MyPlugin(BasePlugin):
 
 ### 2. Action组件
 
-Action是给麦麦在回复之外提供额外功能的组件，由麦麦的决策系统自主选择是否使用，具有随机性和拟人化的调用特点。Action不是直接响应用户命令，而是让麦麦根据聊天情境智能地选择合适的动作，使其行为更加自然和真实。
+#### Action的核心概念
+
+Action是给麦麦在回复之外提供额外功能的智能组件，**由麦麦的决策系统自主选择是否使用**，具有随机性和拟人化的调用特点。Action不是直接响应用户命令，而是让麦麦根据聊天情境智能地选择合适的动作，使其行为更加自然和真实。
+
+**Action的特点**：
+- 🧠 **智能激活**：麦麦根据多种条件智能判断是否使用
+- 🎲 **随机性**：增加行为的不可预测性，更接近真人交流
+- 🤖 **拟人化**：让麦麦的回应更自然、更有个性
+- 🔄 **情境感知**：基于聊天上下文做出合适的反应
+
+#### Action的两层决策机制
+
+Action采用**两层决策机制**来优化性能和决策质量：
+
+##### 第一层：激活控制（Activation Control）
+**激活决定麦麦是否"知道"这个Action的存在**，即这个Action是否进入决策候选池。**不被激活的Action麦麦永远不会选择**。
+
+> 🎯 **设计目的**：在加载许多插件的时候降低LLM决策压力，避免让麦麦在过多的选项中纠结。
+
+**激活类型说明**：
+- `NEVER`：从不激活，Action对麦麦不可见
+- `ALWAYS`：永远激活，Action总是在麦麦的候选池中
+- `LLM_JUDGE`：通过LLM智能判断当前情境是否需要激活此Action
+- `RANDOM`：基于随机概率决定是否激活
+- `KEYWORD`：当检测到特定关键词时激活
+
+**聊天模式控制**：
+- `FOCUS`：仅在专注聊天模式下可激活
+- `NORMAL`：仅在普通聊天模式下可激活
+- `ALL`：所有模式下都可激活
+
+##### 第二层：使用决策（Usage Decision）
+**在Action被激活后，使用条件决定麦麦什么时候会"选择"使用这个Action**。
+
+这一层由以下因素综合决定：
+- `action_require`：使用场景描述，帮助LLM判断何时选择
+- `action_parameters`：所需参数，影响Action的可执行性
+- 当前聊天上下文和麦麦的决策逻辑
+
+##### 两层决策机制示例
+
+假设有一个"发送表情"Action：
+
+```python
+class EmojiAction(BaseAction):
+    # 第一层：激活控制
+    focus_activation_type = ActionActivationType.RANDOM  # 专注模式下随机激活
+    normal_activation_type = ActionActivationType.KEYWORD  # 普通模式下关键词激活
+    activation_keywords = ["表情", "emoji", "😊"]
+    
+    # 第二层：使用决策
+    action_require = [
+        "表达情绪时可以选择使用",
+        "增加聊天趣味性",
+        "不要连续发送多个表情"
+    ]
+```
+
+**决策流程**：
+1. **第一层激活判断**：
+   - 普通模式：只有当用户消息包含"表情"、"emoji"或"😊"时，麦麦才"知道"可以使用这个Action
+   - 专注模式：随机激活，有概率让麦麦"看到"这个Action
+
+2. **第二层使用决策**：
+   - 即使Action被激活，麦麦还会根据`action_require`中的条件判断是否真正选择使用
+   - 例如：如果刚刚已经发过表情，根据"不要连续发送多个表情"的要求，麦麦可能不会选择这个Action
+
+> 💡 **性能优化**：这种设计确保了当插件数量很多时，LLM只需要在少数被激活的Action中做选择，而不是在所有Action中纠结。
+
+#### Action必须项清单
+
+每个Action类都**必须**包含以下属性，缺少任何一项都可能导致Action无法正常工作：
+
+##### 1. 激活控制必须项（第一层决策）
+```python
+# 专注模式下的激活类型 - 控制何时让麦麦"看到"这个Action
+focus_activation_type = ActionActivationType.LLM_JUDGE
+
+# 普通模式下的激活类型 - 控制何时让麦麦"看到"这个Action
+normal_activation_type = ActionActivationType.KEYWORD
+
+# 启用的聊天模式 - 限制Action在哪些模式下可激活
+mode_enable = ChatMode.ALL
+
+# 是否允许与其他Action并行执行
+parallel_action = False
+```
+
+##### 2. 基本信息必须项
+```python
+# Action的唯一标识名称
+action_name = "my_action"
+
+# Action的功能描述
+action_description = "描述这个Action的具体功能和用途"
+```
+
+##### 3. 使用决策必须项（第二层决策）
+```python
+# Action参数定义 - 告诉LLM执行时需要什么参数
+action_parameters = {
+    "param1": "参数1的说明",
+    "param2": "参数2的说明"
+}
+
+# Action使用场景描述 - 帮助LLM判断何时"选择"使用
+action_require = [
+    "使用场景描述1",
+    "使用场景描述2"
+]
+
+# 关联的消息类型 - 说明Action能处理什么类型的内容
+associated_types = ["text", "emoji", "image"]
+```
+
+#### 完整的Action示例
 
 ```python
 from src.plugin_system import BaseAction, ActionActivationType, ChatMode
 
-class MyAction(BaseAction):
-    # 激活设置 - 麦麦会根据这些条件决定是否使用此Action
-    focus_activation_type = ActionActivationType.KEYWORD
-    normal_activation_type = ActionActivationType.RANDOM
-    activation_keywords = ["关键词1", "关键词2"]
+class GreetingAction(BaseAction):
+    # ===== 激活控制必须项 =====
+    focus_activation_type = ActionActivationType.LLM_JUDGE
+    normal_activation_type = ActionActivationType.KEYWORD
     mode_enable = ChatMode.ALL
+    parallel_action = False
+
+    # ===== 基本信息必须项 =====
+    action_name = "greeting"
+    action_description = "向用户发送问候消息，增加互动友好性"
+
+    # 关键词配置（用于KEYWORD激活类型）
+    activation_keywords = ["你好", "hello", "hi"]
+    keyword_case_sensitive = False
+
+    # LLM判断提示词（用于LLM_JUDGE激活类型）
+    llm_judge_prompt = """
+    判定是否需要使用问候动作的条件：
+    1. 用户刚加入群聊或开始对话
+    2. 用户表达了友好的问候意图
+    3. 适合增加互动友好性的场合
     
+    请回答"是"或"否"。
+    """
+
+    # ===== 功能定义必须项 =====
+    action_parameters = {
+        "greeting_type": "问候类型，如formal(正式)或casual(随意)",
+        "target_user": "问候的目标用户，可选"
+    }
+
+    action_require = [
+        "用户刚进入聊天",
+        "检测到问候关键词",
+        "适合增加友好互动的场合"
+    ]
+
+    associated_types = ["text", "emoji"]
+
     async def execute(self) -> Tuple[bool, str]:
         # 麦麦决定使用此Action时执行的逻辑
-        await self.send_text("这是麦麦主动执行的动作")
-        return True, "执行成功"
+        greeting_type = self.action_data.get("greeting_type", "casual")
+        target_user = self.action_data.get("target_user", "")
+        
+        if greeting_type == "formal":
+            message = f"您好{target_user}！很高兴见到您！"
+        else:
+            message = f"嗨{target_user}～很开心见到你！😊"
+        
+        await self.send_text(message)
+        return True, "执行问候动作成功"
 ```
 
 ### 3. Command组件
@@ -70,9 +225,17 @@ class MyCommand(BaseCommand):
         return True, f"已向{name}问候"
 ```
 
-> **Action vs Command 区别**：
-> - **Action**：麦麦主动决策使用，具有随机性和智能性，让麦麦行为更拟人化
-> - **Command**：用户主动触发，确定性执行，用于提供具体功能和服务
+> **Action vs Command 核心区别**：
+> - **Action**：
+>   - 采用**两层决策机制**（激活控制 + 使用决策）
+>   - 麦麦主动决策使用，具有随机性和智能性
+>   - 需要通过激活控制来管理LLM的决策负担
+>   - **必须在类中定义所有必须项**
+> - **Command**：
+>   - 用户主动触发，确定性执行
+>   - 通过正则表达式直接匹配用户输入
+>   - 无需激活机制，匹配即执行
+>   - 用于提供具体功能和服务
 
 ## 🚀 快速开始
 
@@ -101,8 +264,24 @@ from src.plugin_system import (
 
 # 定义一个简单的Action
 class GreetingAction(BaseAction):
+    # 激活控制必须项
     focus_activation_type = ActionActivationType.KEYWORD
+    normal_activation_type = ActionActivationType.KEYWORD
+    mode_enable = ChatMode.ALL
+    parallel_action = False
+    
+    # 基本信息必须项
+    action_name = "greeting"
+    action_description = "向用户发送问候消息"
+    
+    # 关键词配置
     activation_keywords = ["你好", "hello"]
+    keyword_case_sensitive = False
+    
+    # 功能定义必须项
+    action_parameters = {}
+    action_require = ["用户发送问候语时使用"]
+    associated_types = ["text"]
     
     async def execute(self) -> Tuple[bool, str]:
         await self.send_text("你好！很高兴见到你！")
@@ -128,10 +307,9 @@ class MyFirstPlugin(BasePlugin):
     
     def get_plugin_components(self) -> List[Tuple[ComponentInfo, Type]]:
         return [
-            (GreetingAction.get_action_info(
-                name="greeting", 
-                description="问候用户"
-            ), GreetingAction),
+            # Action组件 - 所有信息从类属性读取
+            (GreetingAction.get_action_info(), GreetingAction),
+            # Command组件 - 仍需要手动指定name和description
             (InfoCommand.get_command_info(
                 name="info", 
                 description="显示插件信息"
@@ -195,25 +373,37 @@ Action的激活类型决定了麦麦在什么情况下会考虑使用该Action�
 
 ```python
 class AdvancedAction(BaseAction):
-    # 激活设置
+    # ===== 激活控制必须项 =====
     focus_activation_type = ActionActivationType.LLM_JUDGE
     normal_activation_type = ActionActivationType.KEYWORD
-    activation_keywords = ["帮助", "help"]
-    llm_judge_prompt = "当用户需要帮助时回答'是'，否则回答'否'"
-    random_activation_probability = 0.3
     mode_enable = ChatMode.ALL
     parallel_action = True
     
-    # 动作参数（用于LLM规划）
+    # ===== 基本信息必须项 =====
+    action_name = "advanced_help"
+    action_description = "智能帮助系统，主动为用户提供帮助和指导"
+    
+    # 关键词配置
+    activation_keywords = ["帮助", "help"]
+    keyword_case_sensitive = False
+    
+    # LLM判断提示词
+    llm_judge_prompt = "当用户需要帮助时回答'是'，否则回答'否'"
+    
+    # 随机激活概率
+    random_activation_probability = 0.3
+    
+    # ===== 功能定义必须项 =====
     action_parameters = {
         "query": "用户的问题或需求"
     }
     
-    # 使用场景描述
     action_require = [
         "用户明确请求帮助",
         "检测到用户遇到困难"
     ]
+    
+    associated_types = ["text", "emoji"]
     
     async def execute(self) -> Tuple[bool, str]:
         query = self.action_data.get("query", "")
