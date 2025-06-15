@@ -2,7 +2,7 @@ import asyncio
 import time
 import traceback
 from random import random
-from typing import List, Optional  # 导入 Optional
+from typing import List, Optional, Dict, Any  # 导入类型提示
 from maim_message import UserInfo, Seg
 from src.common.logger import get_logger
 from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
@@ -811,10 +811,10 @@ class NormalChat:
 
             # 检查是否满足关系构建条件
             should_build_relation = (
-                total_messages >= 40  # 40条消息必定满足
-                or (total_messages >= 25 and time_elapsed >= 600)  # 25条且10分钟
-                or (total_messages >= 20 and time_elapsed >= 900)  # 20条且30分钟
-                or (total_messages >= 10 and time_elapsed >= 1800)  # 10条且1小时
+                total_messages >= 30  # 30条消息必定满足
+                or (total_messages >= 15 and time_elapsed >= 600)  # 15条且10分钟
+                or (total_messages >= 10 and time_elapsed >= 900)  # 10条且15分钟
+                or (total_messages >= 5 and time_elapsed >= 1800)  # 5条且30
             )
 
             if should_build_relation:
@@ -894,21 +894,73 @@ class NormalChat:
             end_time = stats["last_time"]
 
             # 获取该时间段的所有消息用于关系构建
-            messages = get_raw_msg_by_timestamp_with_chat(self.stream_id, start_time, end_time)
+            main_messages = get_raw_msg_by_timestamp_with_chat(self.stream_id, start_time, end_time)
 
-            if messages:
-                logger.info(f"[{self.stream_name}] 为用户 {person_id} 获取到 {len(messages)} 条消息用于关系构建")
-
-                # 调用关系管理器更新印象
-                relationship_manager = get_relationship_manager()
-                await relationship_manager.update_person_impression(
-                    person_id=person_id, timestamp=end_time, bot_engaged_messages=messages
-                )
-
-                logger.info(f"[{self.stream_name}] 用户 {person_id} 关系构建完成")
-            else:
+            if not main_messages:
                 logger.warning(f"[{self.stream_name}] 未找到用户 {person_id} 的消息，关系构建跳过")
+                return
+
+            # 获取第一条消息的时间戳，然后获取之前的5条消息
+            first_message_time = main_messages[0]["time"]
+            before_messages = self._get_messages_before_timestamp(first_message_time, 5)
+
+            # 获取最后一条消息的时间戳，然后获取之后的5条消息
+            last_message_time = main_messages[-1]["time"]
+            after_messages = self._get_messages_after_timestamp(last_message_time, 5)
+
+            # 合并所有消息并去重
+            all_messages = before_messages + main_messages + after_messages
+            
+            # 根据消息ID去重并按时间排序
+            seen_ids = set()
+            unique_messages = []
+            for msg in all_messages:
+                msg_id = msg["message_id"]
+                if msg_id not in seen_ids:
+                    seen_ids.add(msg_id)
+                    unique_messages.append(msg)
+            
+            # 按时间排序
+            unique_messages.sort(key=lambda x: x["time"])
+
+            logger.info(
+                f"[{self.stream_name}] 为用户 {person_id} 获取到消息用于关系构建: "
+                f"原时间段内 {len(main_messages)} 条，之前 {len(before_messages)} 条，"
+                f"之后 {len(after_messages)} 条，去重后总计 {len(unique_messages)} 条"
+            )
+
+            # 调用关系管理器更新印象
+            relationship_manager = get_relationship_manager()
+            await relationship_manager.update_person_impression(
+                person_id=person_id, timestamp=end_time, bot_engaged_messages=unique_messages
+            )
+
+            logger.info(f"[{self.stream_name}] 用户 {person_id} 关系构建完成")
 
         except Exception as e:
             logger.error(f"[{self.stream_name}] 为用户 {person_id} 构建关系时出错: {e}")
             traceback.print_exc()
+
+    def _get_messages_before_timestamp(self, timestamp: float, limit: int = 5) -> List[Dict[str, Any]]:
+        """获取指定时间戳之前的指定数量消息"""
+        try:
+            from src.common.message_repository import find_messages
+            filter_query = {"chat_id": self.stream_id, "time": {"$lt": timestamp}}
+            sort_order = [("time", -1)]  # 倒序排列，取最近的几条
+            messages = find_messages(message_filter=filter_query, sort=sort_order, limit=limit)
+            # 返回时保持正序
+            return sorted(messages, key=lambda x: x["time"])
+        except Exception as e:
+            logger.error(f"[{self.stream_name}] 获取时间戳之前的消息失败: {e}")
+            return []
+
+    def _get_messages_after_timestamp(self, timestamp: float, limit: int = 5) -> List[Dict[str, Any]]:
+        """获取指定时间戳之后的指定数量消息"""
+        try:
+            from src.common.message_repository import find_messages
+            filter_query = {"chat_id": self.stream_id, "time": {"$gt": timestamp}}
+            sort_order = [("time", 1)]  # 正序排列，取最早的几条
+            return find_messages(message_filter=filter_query, sort=sort_order, limit=limit)
+        except Exception as e:
+            logger.error(f"[{self.stream_name}] 获取时间戳之后的消息失败: {e}")
+            return []

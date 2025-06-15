@@ -255,8 +255,8 @@ class RelationshipManager:
         for original_name, mapped_name in name_mapping.items():
             points = points.replace(mapped_name, original_name)
 
-        # logger.info(f"prompt: {prompt}")
-        # logger.info(f"points: {points}")
+        logger.info(f"prompt: {prompt}")
+        logger.info(f"points: {points}")
 
         if not points:
             logger.warning(f"未能从LLM获取 {person_name} 的新印象")
