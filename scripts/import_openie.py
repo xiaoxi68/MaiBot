@@ -21,10 +21,17 @@ from src.chat.knowledge.utils.hash import get_sha256
 
 # 添加项目根目录到 sys.path
 ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-OPENIE_DIR = global_config["persistence"]["openie_data_path"] or os.path.join(ROOT_PATH, "data/openie")
+OPENIE_DIR = global_config["persistence"]["openie_data_path"] or os.path.join(ROOT_PATH, "data", "openie")
 
 logger = get_logger("OpenIE导入")
 
+def ensure_openie_dir():
+    """确保OpenIE数据目录存在"""
+    if not os.path.exists(OPENIE_DIR):
+        os.makedirs(OPENIE_DIR)
+        logger.info(f"创建OpenIE数据目录：{OPENIE_DIR}")
+    else:
+        logger.info(f"OpenIE数据目录已存在：{OPENIE_DIR}")
 
 def hash_deduplicate(
     raw_paragraphs: dict[str, str],
@@ -178,7 +185,7 @@ def main():  # sourcery skip: dict-comprehension
         print("操作已取消")
         sys.exit(1)
     print("\n" + "=" * 40 + "\n")
-
+    ensure_openie_dir()  # 确保OpenIE目录存在
     logger.info("----开始导入openie数据----\n")
 
     logger.info("创建LLM客户端")
