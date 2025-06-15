@@ -35,13 +35,15 @@ logger = get_logger("mute_plugin")
 class MuteAction(BaseAction):
     """智能禁言Action - 基于LLM智能判断是否需要禁言"""
 
-    # Action基本信息
-    action_name = "mute"
-    action_description = "智能禁言系统，基于LLM判断是否需要禁言"
-
     # 激活设置
     focus_activation_type = ActionActivationType.LLM_JUDGE  # Focus模式使用LLM判定，确保谨慎
     normal_activation_type = ActionActivationType.KEYWORD  # Normal模式使用关键词激活，快速响应
+    mode_enable = ChatMode.ALL
+    parallel_action = False
+
+    # 动作基本信息
+    action_name = "mute"
+    action_description = "智能禁言系统，基于LLM判断是否需要禁言"
 
     # 关键词设置（用于Normal模式）
     activation_keywords = ["禁言", "mute", "ban", "silence"]
@@ -65,17 +67,14 @@ class MuteAction(BaseAction):
 
 """
 
-    mode_enable = ChatMode.ALL
-    parallel_action = False
-
-    # Action参数定义
+    # 动作参数定义
     action_parameters = {
         "target": "禁言对象，必填，输入你要禁言的对象的名字，请仔细思考不要弄错禁言对象",
         "duration": "禁言时长，必填，输入你要禁言的时长（秒），单位为秒，必须为数字",
         "reason": "禁言理由，可选",
     }
 
-    # Action使用场景
+    # 动作使用场景
     action_require = [
         "当有人违反了公序良俗的内容",
         "当有人刷屏时使用",
@@ -83,6 +82,9 @@ class MuteAction(BaseAction):
         "当有人要求禁言自己时使用",
         "如果某人已经被禁言了，就不要再次禁言了，除非你想追加时间！！",
     ]
+
+    # 关联类型
+    associated_types = ["text","command"]
 
     async def execute(self) -> Tuple[bool, Optional[str]]:
         """执行智能禁言判定"""

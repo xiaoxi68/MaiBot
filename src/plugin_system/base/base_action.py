@@ -61,7 +61,7 @@ class BaseAction(ABC):
         self.log_prefix = log_prefix
         self.shutting_down = shutting_down
 
-        # 设置动作基本信息实例属性（兼容旧系统）
+        # 设置动作基本信息实例属性
         self.action_name: str = getattr(self, "action_name", self.__class__.__name__.lower().replace("action", ""))
         self.action_description: str = getattr(self, "action_description", self.__doc__ or "Action组件")
         self.action_parameters: dict = getattr(self.__class__, "action_parameters", {}).copy()
@@ -364,25 +364,23 @@ class BaseAction(ABC):
             return False
 
     @classmethod
-    def get_action_info(cls, name: str = None, description: str = None) -> "ActionInfo":
+    def get_action_info(cls) -> "ActionInfo":
         """从类属性生成ActionInfo
-
-        Args:
-            name: Action名称，如果不提供则使用类名
-            description: Action描述，如果不提供则使用类文档字符串
+        
+        所有信息都从类属性中读取，确保一致性和完整性。
+        Action类必须定义所有必要的类属性。
 
         Returns:
             ActionInfo: 生成的Action信息对象
         """
 
-        # 优先使用类属性，然后自动生成
-        if name is None:
-            name = getattr(cls, "action_name", cls.__name__.lower().replace("action", ""))
+        # 从类属性读取名称，如果没有定义则使用类名自动生成
+        name = getattr(cls, "action_name", cls.__name__.lower().replace("action", ""))
+        
+        # 从类属性读取描述，如果没有定义则使用文档字符串的第一行
+        description = getattr(cls, "action_description", None)
         if description is None:
-            description = getattr(cls, "action_description", None)
-            if description is None:
-                description = cls.__doc__ or f"{cls.__name__} Action组件"
-                description = description.strip().split("\n")[0]  # 取第一行作为描述
+            description = "Action动作"
 
         # 安全获取激活类型值
         def get_enum_value(attr_name, default):

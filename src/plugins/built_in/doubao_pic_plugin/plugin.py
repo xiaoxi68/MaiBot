@@ -39,15 +39,17 @@ logger = get_logger("doubao_pic_plugin")
 class DoubaoImageGenerationAction(BaseAction):
     """豆包图片生成Action - 根据描述使用火山引擎API生成图片"""
 
-    # Action基本信息
+    # 激活设置
+    focus_activation_type = ActionActivationType.LLM_JUDGE  # Focus模式使用LLM判定，精确理解需求
+    normal_activation_type = ActionActivationType.KEYWORD  # Normal模式使用关键词激活，快速响应
+    mode_enable = ChatMode.ALL
+    parallel_action = True
+
+    # 动作基本信息
     action_name = "doubao_image_generation"
     action_description = (
         "可以根据特定的描述，生成并发送一张图片，如果没提供描述，就根据聊天内容生成,你可以立刻画好，不用等待"
     )
-
-    # 激活设置
-    focus_activation_type = ActionActivationType.LLM_JUDGE  # Focus模式使用LLM判定，精确理解需求
-    normal_activation_type = ActionActivationType.KEYWORD  # Normal模式使用关键词激活，快速响应
 
     # 关键词设置（用于Normal模式）
     activation_keywords = ["画", "绘制", "生成图片", "画图", "draw", "paint", "图片生成"]
@@ -75,21 +77,21 @@ class DoubaoImageGenerationAction(BaseAction):
 5. 用户明确表示不需要图片时
 """
 
-    mode_enable = ChatMode.ALL
-    parallel_action = True
-
-    # Action参数定义
+    # 动作参数定义
     action_parameters = {
         "description": "图片描述，输入你想要生成并发送的图片的描述，必填",
         "size": "图片尺寸，例如 '1024x1024' (可选, 默认从配置或 '1024x1024')",
     }
 
-    # Action使用场景
+    # 动作使用场景
     action_require = [
         "当有人让你画东西时使用，你可以立刻画好，不用等待",
         "当有人要求你生成并发送一张图片时使用",
         "当有人让你画一张图时使用",
     ]
+
+    # 关联类型
+    associated_types = ["image", "text"]
 
     # 简单的请求缓存，避免短时间内重复请求
     _request_cache = {}

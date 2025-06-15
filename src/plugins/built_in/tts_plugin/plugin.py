@@ -10,33 +10,35 @@ logger = get_logger("tts")
 class TTSAction(BaseAction):
     """TTS语音转换动作处理类"""
 
-    action_name = "tts"
+    # 激活设置
+    focus_activation_type = ActionActivationType.LLM_JUDGE
+    normal_activation_type = ActionActivationType.KEYWORD
+    mode_enable = ChatMode.ALL
+    parallel_action = False
+
+    # 动作基本信息
+    action_name = "tts_action"
     action_description = "将文本转换为语音进行播放，适用于需要语音输出的场景"
+
+    # 关键词配置 - Normal模式下使用关键词触发
+    activation_keywords = ["语音", "tts", "播报", "读出来", "语音播放", "听", "朗读"]
+    keyword_case_sensitive = False
+
+    # 动作参数定义
     action_parameters = {
         "text": "需要转换为语音的文本内容，必填，内容应当适合语音播报，语句流畅、清晰",
     }
+
+    # 动作使用场景
     action_require = [
         "当需要发送语音信息时使用",
         "当用户明确要求使用语音功能时使用",
         "当表达内容更适合用语音而不是文字传达时使用",
         "当用户想听到语音回答而非阅读文本时使用",
     ]
-    enable_plugin = True  # 启用插件
+
+    # 关联类型
     associated_types = ["tts_text"]
-
-    # 模式和并行控制
-    mode_enable = ChatMode.ALL
-    parallel_action = False
-
-    focus_activation_type = ActionActivationType.LLM_JUDGE
-    normal_activation_type = ActionActivationType.KEYWORD
-
-    # 关键词配置 - Normal模式下使用关键词触发
-    activation_keywords = ["语音", "tts", "播报", "读出来", "语音播放", "听", "朗读"]
-    keyword_case_sensitive = False
-
-    # 并行执行设置 - TTS可以与回复并行执行，不覆盖回复内容
-    parallel_action = False
 
     async def execute(self) -> Tuple[bool, str]:
         """处理TTS文本转语音动作"""
@@ -112,11 +114,6 @@ class TTSPlugin(BasePlugin):
         enable_tts = self.get_config("components.enable_tts", True)
         components = []  # 添加Action组件
         if enable_tts:
-            components.append(
-                (
-                    TTSAction.get_action_info(name="tts_action", description="文字转语音插件"),
-                    TTSAction,
-                )
-            )
+            components.append((TTSAction.get_action_info(), TTSAction))
 
         return components

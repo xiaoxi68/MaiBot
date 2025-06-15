@@ -32,12 +32,16 @@ class ReplyAction(BaseAction):
     mode_enable = ChatMode.FOCUS
     parallel_action = False
 
-    # 动作参数定义（旧系统格式）
+    # 动作基本信息
+    action_name = "reply"
+    action_description = "参与聊天回复，处理文本和表情的发送"
+
+    # 动作参数定义
     action_parameters = {
         "reply_to": "如果是明确回复某个人的发言，请在reply_to参数中指定，格式：（用户名:发言内容），如果不是，reply_to的值设为none"
     }
 
-    # 动作使用场景（旧系统字段名）
+    # 动作使用场景
     action_require = ["你想要闲聊或者随便附和", "有人提到你", "如果你刚刚进行了回复，不要对同一个话题重复回应"]
 
     # 关联类型
@@ -143,6 +147,10 @@ class NoReplyAction(BaseAction):
     mode_enable = ChatMode.FOCUS
     parallel_action = False
 
+    # 动作基本信息
+    action_name = "no_reply"
+    action_description = "暂时不回复消息，等待新消息或超时"
+
     # 默认超时时间，将由插件在注册时设置
     waiting_timeout = 1200
 
@@ -210,6 +218,10 @@ class EmojiAction(BaseAction):
     mode_enable = ChatMode.ALL
     parallel_action = True
     random_activation_probability = 0.1  # 默认值，可通过配置覆盖
+
+    # 动作基本信息
+    action_name = "emoji"
+    action_description = "发送表情包辅助表达情绪"
 
     # LLM判断提示词
     llm_judge_prompt = """
@@ -294,6 +306,10 @@ class ChangeToFocusChatAction(BaseAction):
     mode_enable = ChatMode.NORMAL
     parallel_action = False
 
+    # 动作基本信息
+    action_name = "change_to_focus_chat"
+    action_description = "切换到专注聊天，从普通模式切换到专注模式"
+
     # 动作参数定义
     action_parameters = {}
 
@@ -325,6 +341,10 @@ class ExitFocusChatAction(BaseAction):
     normal_activation_type = ActionActivationType.NEVER
     mode_enable = ChatMode.FOCUS
     parallel_action = False
+
+    # 动作基本信息
+    action_name = "exit_focus_chat"
+    action_description = "退出专注聊天，从专注模式切换到普通模式"
 
     # LLM判断提示词
     llm_judge_prompt = """
@@ -408,29 +428,16 @@ class CoreActionsPlugin(BasePlugin):
         NoReplyAction.waiting_timeout = no_reply_timeout
 
         return [
-            # 回复动作
-            (ReplyAction.get_action_info(name="reply", description="参与聊天回复，处理文本和表情的发送"), ReplyAction),
-            # 不回复动作
-            (
-                NoReplyAction.get_action_info(name="no_reply", description="暂时不回复消息，等待新消息或超时"),
-                NoReplyAction,
-            ),
-            # 表情动作
-            (EmojiAction.get_action_info(name="emoji", description="发送表情包辅助表达情绪"), EmojiAction),
-            # 退出专注聊天动作
-            (
-                ExitFocusChatAction.get_action_info(
-                    name="exit_focus_chat", description="退出专注聊天，从专注模式切换到普通模式"
-                ),
-                ExitFocusChatAction,
-            ),
-            # 切换到专注聊天动作
-            (
-                ChangeToFocusChatAction.get_action_info(
-                    name="change_to_focus_chat", description="切换到专注聊天，从普通模式切换到专注模式"
-                ),
-                ChangeToFocusChatAction,
-            ),
+            # 回复动作 - 使用类中定义的所有属性
+            (ReplyAction.get_action_info(), ReplyAction),
+            # 不回复动作 - 使用类中定义的所有属性
+            (NoReplyAction.get_action_info(), NoReplyAction),
+            # 表情动作 - 使用类中定义的所有属性
+            (EmojiAction.get_action_info(), EmojiAction),
+            # 退出专注聊天动作 - 使用类中定义的所有属性
+            (ExitFocusChatAction.get_action_info(), ExitFocusChatAction),
+            # 切换到专注聊天动作 - 使用类中定义的所有属性
+            (ChangeToFocusChatAction.get_action_info(), ChangeToFocusChatAction),
             # 示例Command - Ping命令
             (PingCommand.get_command_info(name="ping", description="测试机器人响应，拦截后续处理"), PingCommand),
             # 示例Command - Log命令

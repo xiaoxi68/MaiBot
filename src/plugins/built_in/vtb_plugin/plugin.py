@@ -124,7 +124,7 @@ class VTBPlugin(BasePlugin):
         if enable_vtb:
             components.append(
                 (
-                    VTBAction.get_action_info(name="vtb_action", description="虚拟主播情感表达插件"),
+                    VTBAction.get_action_info(),
                     VTBAction,
                 )
             )
