@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 from rich.traceback import install
 
 # 最早期初始化日志系统，确保所有后续模块都使用正确的日志格式
-from src.common.logger import initialize_logging, get_logger
+from src.common.logger import initialize_logging, get_logger, shutdown_logging
 from src.main import MainSystem
 from src.manager.async_task_manager import async_task_manager
 
@@ -130,6 +130,9 @@ async def graceful_shutdown():
                 logger.error(f"等待任务取消时发生异常: {e}")
 
         logger.info("麦麦优雅关闭完成")
+        
+        # 关闭日志系统，释放文件句柄
+        shutdown_logging()
 
     except Exception as e:
         logger.error(f"麦麦关闭失败: {e}", exc_info=True)
@@ -271,6 +274,13 @@ if __name__ == "__main__":
         if "loop" in locals() and loop and not loop.is_closed():
             loop.close()
             logger.info("事件循环已关闭")
+        
+        # 关闭日志系统，释放文件句柄
+        try:
+            shutdown_logging()
+        except Exception as e:
+            print(f"关闭日志系统时出错: {e}")
+        
         # 在程序退出前暂停，让你有机会看到输出
         # input("按 Enter 键退出...")  # <--- 添加这行
         sys.exit(exit_code)  # <--- 使用记录的退出码

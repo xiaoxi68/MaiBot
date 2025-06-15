@@ -860,7 +860,8 @@ class LogViewer:
         while self.running:
             if log_file.exists():
                 try:
-                    with open(log_file, "r", encoding="utf-8") as f:
+                    # 使用共享读取模式，避免文件锁定
+                    with open(log_file, "r", encoding="utf-8", buffering=1) as f:
                         f.seek(last_position)
                         new_lines = f.readlines()
                         last_position = f.tell()
@@ -881,8 +882,13 @@ class LogViewer:
 
                             except json.JSONDecodeError:
                                 continue
+                except (FileNotFoundError, PermissionError) as e:
+                    # 文件被占用或不存在时，等待更长时间
+                    print(f"日志文件访问受限: {e}")
+                    time.sleep(1)
+                    continue
                 except Exception as e:
-                    print(f"Error reading log file: {e}")
+                    print(f"读取日志文件时出错: {e}")
 
             time.sleep(0.1)
 

@@ -188,7 +188,9 @@ enable_kaomoji_protection = false # 是否启用颜文字保护
 date_style = "Y-m-d H:i:s" # 日期格式
 log_level_style = "lite" # 日志级别样式,可选FULL，compact，lite
 color_text = "title" # 日志文本颜色，可选none，title，full
-log_level = "INFO"
+log_level = "INFO" # 全局日志级别（向下兼容，优先级低于下面的分别设置）
+console_log_level = "INFO" # 控制台日志级别，可选: DEBUG, INFO, WARNING, ERROR, CRITICAL
+file_log_level = "DEBUG" # 文件日志级别，可选: DEBUG, INFO, WARNING, ERROR, CRITICAL
 
 # 第三方库日志控制
 suppress_libraries = ["faiss","httpx", "urllib3", "asyncio", "websockets", "httpcore", "requests", "peewee", "openai","uvicorn"] # 完全屏蔽的库

@@ -328,8 +328,6 @@ class NormalChat:
 
             thinking_id = await self._create_thinking_message(message)
 
-            logger.debug(f"[{self.stream_name}] 创建捕捉器，thinking_id:{thinking_id}")
-
             # 如果启用planner，预先修改可用actions（避免在并行任务中重复调用）
             available_actions = None
             if self.enable_planner:
