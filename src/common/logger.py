@@ -27,18 +27,18 @@ def get_file_handler():
     if _file_handler is None:
         # 确保日志目录存在
         LOG_DIR.mkdir(exist_ok=True)
-        
+
         # 检查是否已有其他handler在使用同一个文件
         log_file_path = LOG_DIR / "app.log.jsonl"
         root_logger = logging.getLogger()
-        
+
         # 检查现有handler，避免重复创建
         for handler in root_logger.handlers:
             if isinstance(handler, logging.handlers.RotatingFileHandler):
-                if hasattr(handler, 'baseFilename') and Path(handler.baseFilename) == log_file_path:
+                if hasattr(handler, "baseFilename") and Path(handler.baseFilename) == log_file_path:
                     _file_handler = handler
                     return _file_handler
-        
+
         # 使用带压缩功能的handler，使用硬编码的默认值
         _file_handler = CompressedRotatingFileHandler(
             log_file_path,
@@ -120,7 +120,7 @@ class CompressedRotatingFileHandler(logging.handlers.RotatingFileHandler):
         """安全重命名文件，处理Windows文件占用问题"""
         max_retries = 5
         retry_delay = 0.1
-        
+
         for attempt in range(max_retries):
             try:
                 Path(source).rename(dest)
@@ -142,7 +142,7 @@ class CompressedRotatingFileHandler(logging.handlers.RotatingFileHandler):
         """安全删除文件，处理Windows文件占用问题"""
         max_retries = 3
         retry_delay = 0.1
-        
+
         for attempt in range(max_retries):
             try:
                 Path(filepath).unlink()
@@ -164,7 +164,7 @@ class CompressedRotatingFileHandler(logging.handlers.RotatingFileHandler):
         """在后台压缩文件"""
         # 等待一段时间确保文件写入完成
         time.sleep(0.5)
-        
+
         try:
             source_path = Path(filepath)
             if not source_path.exists():
@@ -208,14 +208,14 @@ def remove_duplicate_handlers():
     """移除重复的handler，特别是文件handler"""
     root_logger = logging.getLogger()
     log_file_path = str(LOG_DIR / "app.log.jsonl")
-    
+
     # 收集所有文件handler
     file_handlers = []
     for handler in root_logger.handlers[:]:
         if isinstance(handler, logging.handlers.RotatingFileHandler):
-            if hasattr(handler, 'baseFilename') and handler.baseFilename == log_file_path:
+            if hasattr(handler, "baseFilename") and handler.baseFilename == log_file_path:
                 file_handlers.append(handler)
-    
+
     # 如果有多个文件handler，保留第一个，关闭其他的
     if len(file_handlers) > 1:
         print(f"[日志系统] 检测到 {len(file_handlers)} 个重复的文件handler，正在清理...")
@@ -223,7 +223,7 @@ def remove_duplicate_handlers():
             print(f"[日志系统] 关闭重复的文件handler {i}")
             root_logger.removeHandler(handler)
             handler.close()
-        
+
         # 更新全局引用
         global _file_handler
         _file_handler = file_handlers[0]

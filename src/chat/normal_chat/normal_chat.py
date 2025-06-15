@@ -910,7 +910,7 @@ class NormalChat:
 
             # 合并所有消息并去重
             all_messages = before_messages + main_messages + after_messages
-            
+
             # 根据消息ID去重并按时间排序
             seen_ids = set()
             unique_messages = []
@@ -919,7 +919,7 @@ class NormalChat:
                 if msg_id not in seen_ids:
                     seen_ids.add(msg_id)
                     unique_messages.append(msg)
-            
+
             # 按时间排序
             unique_messages.sort(key=lambda x: x["time"])
 
@@ -945,6 +945,7 @@ class NormalChat:
         """获取指定时间戳之前的指定数量消息"""
         try:
             from src.common.message_repository import find_messages
+
             filter_query = {"chat_id": self.stream_id, "time": {"$lt": timestamp}}
             sort_order = [("time", -1)]  # 倒序排列，取最近的几条
             messages = find_messages(message_filter=filter_query, sort=sort_order, limit=limit)
@@ -958,6 +959,7 @@ class NormalChat:
         """获取指定时间戳之后的指定数量消息"""
         try:
             from src.common.message_repository import find_messages
+
             filter_query = {"chat_id": self.stream_id, "time": {"$gt": timestamp}}
             sort_order = [("time", 1)]  # 正序排列，取最早的几条
             return find_messages(message_filter=filter_query, sort=sort_order, limit=limit)
