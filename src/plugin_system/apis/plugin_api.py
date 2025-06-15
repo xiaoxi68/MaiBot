@@ -110,6 +110,62 @@ class PluginAPI(MessageAPI, LLMAPI, DatabaseAPI, ConfigAPI, UtilsAPI, StreamAPI,
         """获取action上下文信息"""
         return self._action_context.get(key, default)
 
+    def get_config(self, key: str, default=None):
+        """获取插件配置值，支持嵌套键访问
+
+        Args:
+            key: 配置键名，支持嵌套访问如 "section.subsection.key"
+            default: 默认值
+
+        Returns:
+            Any: 配置值或默认值
+        """
+        if not self._plugin_config:
+            return default
+        
+        # 支持嵌套键访问
+        keys = key.split(".")
+        current = self._plugin_config
+
+        for k in keys:
+            if isinstance(current, dict) and k in current:
+                current = current[k]
+            else:
+                return default
+
+        return current
+
+    def has_config(self, key: str) -> bool:
+        """检查是否存在指定的配置项
+        
+        Args:
+            key: 配置键名，支持嵌套访问如 "section.subsection.key"
+            
+        Returns:
+            bool: 是否存在该配置项
+        """
+        if not self._plugin_config:
+            return False
+        
+        keys = key.split(".")
+        current = self._plugin_config
+
+        for k in keys:
+            if isinstance(current, dict) and k in current:
+                current = current[k]
+            else:
+                return False
+        
+        return True
+
+    def get_all_config(self) -> dict:
+        """获取所有插件配置
+        
+        Returns:
+            dict: 插件配置字典的副本
+        """
+        return self._plugin_config.copy() if self._plugin_config else {}
+
 
 # 便捷的工厂函数
 def create_plugin_api(
