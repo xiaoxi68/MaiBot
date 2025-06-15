@@ -7,7 +7,7 @@ from src.common.logger import get_logger
 from src.manager.async_task_manager import AsyncTask
 
 from ...common.database.database import db  # This db is the Peewee database instance
-from ...common.database.database_model import OnlineTime, LLMUsage, Messages, ChatStreams  # Import the Peewee model
+from ...common.database.database_model import OnlineTime, LLMUsage, Messages  # Import the Peewee model
 from src.manager.local_store_manager import local_storage
 
 logger = get_logger("maibot_statistic")
@@ -253,9 +253,9 @@ class StatisticOutputTask(AsyncTask):
                         request_type = record.request_type or "unknown"
                         user_id = record.user_id or "unknown"  # user_id is TextField, already string
                         model_name = record.model_name or "unknown"
-                        
+
                         # 提取模块名：如果请求类型包含"."，取第一个"."之前的部分
-                        module_name = request_type.split('.')[0] if '.' in request_type else request_type
+                        module_name = request_type.split(".")[0] if "." in request_type else request_type
 
                         stats[period_key][REQ_CNT_BY_TYPE][request_type] += 1
                         stats[period_key][REQ_CNT_BY_USER][user_id] += 1
@@ -789,19 +789,19 @@ class StatisticOutputTask(AsyncTask):
         """生成图表数据"""
         now = datetime.now()
         chart_data = {}
-        
+
         # 支持多个时间范围
         time_ranges = [
-            ("6h", 6, 10),    # 6小时，10分钟间隔
+            ("6h", 6, 10),  # 6小时，10分钟间隔
             ("12h", 12, 15),  # 12小时，15分钟间隔
             ("24h", 24, 15),  # 24小时，15分钟间隔
             ("48h", 48, 30),  # 48小时，30分钟间隔
         ]
-        
+
         for range_key, hours, interval_minutes in time_ranges:
             range_data = self._collect_interval_data(now, hours, interval_minutes)
             chart_data[range_key] = range_data
-            
+
         return chart_data
 
     def _collect_interval_data(self, now: datetime, hours: int, interval_minutes: int) -> dict:
@@ -810,56 +810,56 @@ class StatisticOutputTask(AsyncTask):
         start_time = now - timedelta(hours=hours)
         time_points = []
         current_time = start_time
-        
+
         while current_time <= now:
             time_points.append(current_time)
             current_time += timedelta(minutes=interval_minutes)
-        
+
         # 初始化数据结构
         total_cost_data = [0] * len(time_points)
         cost_by_model = {}
         cost_by_module = {}
         message_by_chat = {}
         time_labels = [t.strftime("%H:%M") for t in time_points]
-        
+
         interval_seconds = interval_minutes * 60
-        
+
         # 查询LLM使用记录
         query_start_time = start_time
         for record in LLMUsage.select().where(LLMUsage.timestamp >= query_start_time):
             record_time = record.timestamp
-            
+
             # 找到对应的时间间隔索引
             time_diff = (record_time - start_time).total_seconds()
             interval_index = int(time_diff // interval_seconds)
-            
+
             if 0 <= interval_index < len(time_points):
                 # 累加总花费数据
                 cost = record.cost or 0.0
                 total_cost_data[interval_index] += cost
-                
+
                 # 累加按模型分类的花费
                 model_name = record.model_name or "unknown"
                 if model_name not in cost_by_model:
                     cost_by_model[model_name] = [0] * len(time_points)
                 cost_by_model[model_name][interval_index] += cost
-                
+
                 # 累加按模块分类的花费
                 request_type = record.request_type or "unknown"
-                module_name = request_type.split('.')[0] if '.' in request_type else request_type
+                module_name = request_type.split(".")[0] if "." in request_type else request_type
                 if module_name not in cost_by_module:
                     cost_by_module[module_name] = [0] * len(time_points)
                 cost_by_module[module_name][interval_index] += cost
-        
+
         # 查询消息记录
         query_start_timestamp = start_time.timestamp()
         for message in Messages.select().where(Messages.time >= query_start_timestamp):
             message_time_ts = message.time
-            
+
             # 找到对应的时间间隔索引
             time_diff = message_time_ts - query_start_timestamp
             interval_index = int(time_diff // interval_seconds)
-            
+
             if 0 <= interval_index < len(time_points):
                 # 确定聊天流名称
                 chat_name = None
@@ -869,81 +869,89 @@ class StatisticOutputTask(AsyncTask):
                     chat_name = message.user_nickname or f"用户{message.user_id}"
                 else:
                     continue
-                    
+
                 if not chat_name:
                     continue
-                    
+
                 # 累加消息数
                 if chat_name not in message_by_chat:
                     message_by_chat[chat_name] = [0] * len(time_points)
                 message_by_chat[chat_name][interval_index] += 1
-        
+
         return {
             "time_labels": time_labels,
             "total_cost_data": total_cost_data,
             "cost_by_model": cost_by_model,
             "cost_by_module": cost_by_module,
-            "message_by_chat": message_by_chat
+            "message_by_chat": message_by_chat,
         }
 
     def _generate_chart_tab(self, chart_data: dict) -> str:
         """生成图表选项卡HTML内容"""
-        
+
         # 生成不同颜色的调色板
         colors = [
-            '#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6', 
-            '#1abc9c', '#34495e', '#e67e22', '#95a5a6', '#f1c40f'
+            "#3498db",
+            "#e74c3c",
+            "#2ecc71",
+            "#f39c12",
+            "#9b59b6",
+            "#1abc9c",
+            "#34495e",
+            "#e67e22",
+            "#95a5a6",
+            "#f1c40f",
         ]
-        
+
         # 默认使用24小时数据生成数据集
-        default_data = chart_data['24h']
-        
+        default_data = chart_data["24h"]
+
         # 为每个模型生成数据集
         model_datasets = []
-        for i, (model_name, cost_data) in enumerate(default_data['cost_by_model'].items()):
+        for i, (model_name, cost_data) in enumerate(default_data["cost_by_model"].items()):
             color = colors[i % len(colors)]
-            model_datasets.append(f'''{{
+            model_datasets.append(f"""{{
                 label: '{model_name}',
                 data: {cost_data},
                 borderColor: '{color}',
                 backgroundColor: '{color}20',
                 tension: 0.4,
                 fill: false
-            }}''')
-        
-        model_datasets_str = ',\n                    '.join(model_datasets)
-        
+            }}""")
+
+        ",\n                    ".join(model_datasets)
+
         # 为每个模块生成数据集
         module_datasets = []
-        for i, (module_name, cost_data) in enumerate(default_data['cost_by_module'].items()):
+        for i, (module_name, cost_data) in enumerate(default_data["cost_by_module"].items()):
             color = colors[i % len(colors)]
-            module_datasets.append(f'''{{
+            module_datasets.append(f"""{{
                 label: '{module_name}',
                 data: {cost_data},
                 borderColor: '{color}',
                 backgroundColor: '{color}20',
                 tension: 0.4,
                 fill: false
-            }}''')
-        
-        module_datasets_str = ',\n                    '.join(module_datasets)
-        
+            }}""")
+
+        ",\n                    ".join(module_datasets)
+
         # 为每个聊天流生成消息数据集
         message_datasets = []
-        for i, (chat_name, message_data) in enumerate(default_data['message_by_chat'].items()):
+        for i, (chat_name, message_data) in enumerate(default_data["message_by_chat"].items()):
             color = colors[i % len(colors)]
-            message_datasets.append(f'''{{
+            message_datasets.append(f"""{{
                 label: '{chat_name}',
                 data: {message_data},
                 borderColor: '{color}',
                 backgroundColor: '{color}20',
                 tension: 0.4,
                 fill: false
-            }}''')
-        
-        message_datasets_str = ',\n                    '.join(message_datasets)
-        
-        return f'''
+            }}""")
+
+        ",\n                    ".join(message_datasets)
+
+        return f"""
         <div id="charts" class="tab-content">
             <h2>数据图表</h2>
             
@@ -1139,4 +1147,4 @@ class StatisticOutputTask(AsyncTask):
                 }});
             </script>
         </div>
-        '''
+        """
