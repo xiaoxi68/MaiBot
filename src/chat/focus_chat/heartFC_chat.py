@@ -332,17 +332,17 @@ class HeartFChatting:
                                 "loop_processor_info": {},
                                 "loop_plan_info": {
                                     "action_result": {
-                                        "action_type": "error", 
-                                        "action_data": {}, 
-                                        "reasoning": f"上下文处理失败: {e}"
+                                        "action_type": "error",
+                                        "action_data": {},
+                                        "reasoning": f"上下文处理失败: {e}",
                                     },
-                                    "observed_messages": ""
+                                    "observed_messages": "",
                                 },
                                 "loop_action_info": {"action_taken": False, "reply_text": "", "command": ""},
                             }
                             self._current_cycle_detail.set_loop_info(error_loop_info)
                             self._current_cycle_detail.complete_cycle()
-                            
+
                             # 上下文处理失败，跳过当前循环
                             await asyncio.sleep(1)
                             continue
@@ -403,19 +403,19 @@ class HeartFChatting:
                 except Exception as e:
                     logger.error(f"{self.log_prefix} 循环处理时出错: {e}")
                     logger.error(traceback.format_exc())
-                    
+
                     # 如果_current_cycle_detail存在但未完成，为其设置错误状态
-                    if self._current_cycle_detail and not hasattr(self._current_cycle_detail, 'end_time'):
+                    if self._current_cycle_detail and not hasattr(self._current_cycle_detail, "end_time"):
                         error_loop_info = {
                             "loop_observation_info": {},
                             "loop_processor_info": {},
                             "loop_plan_info": {
                                 "action_result": {
-                                    "action_type": "error", 
-                                    "action_data": {}, 
-                                    "reasoning": f"循环处理失败: {e}"
+                                    "action_type": "error",
+                                    "action_data": {},
+                                    "reasoning": f"循环处理失败: {e}",
                                 },
-                                "observed_messages": ""
+                                "observed_messages": "",
                             },
                             "loop_action_info": {"action_taken": False, "reply_text": "", "command": ""},
                         }
@@ -424,7 +424,7 @@ class HeartFChatting:
                             self._current_cycle_detail.complete_cycle()
                         except Exception as inner_e:
                             logger.error(f"{self.log_prefix} 设置错误状态时出错: {inner_e}")
-                    
+
                     await asyncio.sleep(1)  # 出错后等待一秒再继续
 
         except asyncio.CancelledError:
@@ -620,12 +620,8 @@ class HeartFChatting:
                 "loop_observation_info": {},
                 "loop_processor_info": {},
                 "loop_plan_info": {
-                    "action_result": {
-                        "action_type": "error", 
-                        "action_data": {}, 
-                        "reasoning": f"处理失败: {e}"
-                    },
-                    "observed_messages": ""
+                    "action_result": {"action_type": "error", "action_data": {}, "reasoning": f"处理失败: {e}"},
+                    "observed_messages": "",
                 },
                 "loop_action_info": {"action_taken": False, "reply_text": "", "command": ""},
             }
