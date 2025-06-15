@@ -122,7 +122,7 @@ class PluginAPI(MessageAPI, LLMAPI, DatabaseAPI, ConfigAPI, UtilsAPI, StreamAPI,
         """
         if not self._plugin_config:
             return default
-        
+
         # 支持嵌套键访问
         keys = key.split(".")
         current = self._plugin_config
@@ -137,16 +137,16 @@ class PluginAPI(MessageAPI, LLMAPI, DatabaseAPI, ConfigAPI, UtilsAPI, StreamAPI,
 
     def has_config(self, key: str) -> bool:
         """检查是否存在指定的配置项
-        
+
         Args:
             key: 配置键名，支持嵌套访问如 "section.subsection.key"
-            
+
         Returns:
             bool: 是否存在该配置项
         """
         if not self._plugin_config:
             return False
-        
+
         keys = key.split(".")
         current = self._plugin_config
 
@@ -155,12 +155,12 @@ class PluginAPI(MessageAPI, LLMAPI, DatabaseAPI, ConfigAPI, UtilsAPI, StreamAPI,
                 current = current[k]
             else:
                 return False
-        
+
         return True
 
     def get_all_config(self) -> dict:
         """获取所有插件配置
-        
+
         Returns:
             dict: 插件配置字典的副本
         """
