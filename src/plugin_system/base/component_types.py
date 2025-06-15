@@ -36,17 +36,17 @@ class ChatMode(Enum):
 @dataclass
 class PythonDependency:
     """Python包依赖信息"""
-    
+
     package_name: str  # 包名称
     version: str = ""  # 版本要求，例如: ">=1.0.0", "==2.1.3", ""表示任意版本
     optional: bool = False  # 是否为可选依赖
     description: str = ""  # 依赖描述
     install_name: str = ""  # 安装时的包名（如果与import名不同）
-    
+
     def __post_init__(self):
         if not self.install_name:
             self.install_name = self.package_name
-    
+
     def get_pip_requirement(self) -> str:
         """获取pip安装格式的依赖字符串"""
         if self.version:
@@ -141,7 +141,7 @@ class PluginInfo:
             self.python_dependencies = []
         if self.metadata is None:
             self.metadata = {}
-    
+
     def get_missing_packages(self) -> List[PythonDependency]:
         """检查缺失的Python包"""
         missing = []
@@ -152,7 +152,7 @@ class PluginInfo:
                 if not dep.optional:
                     missing.append(dep)
         return missing
-    
+
     def get_pip_requirements(self) -> List[str]:
         """获取所有pip安装格式的依赖"""
         return [dep.get_pip_requirement() for dep in self.python_dependencies]

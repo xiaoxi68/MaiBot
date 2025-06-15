@@ -84,7 +84,7 @@ class MuteAction(BaseAction):
     ]
 
     # 关联类型
-    associated_types = ["text","command"]
+    associated_types = ["text", "command"]
 
     async def execute(self) -> Tuple[bool, Optional[str]]:
         """执行智能禁言判定"""

@@ -59,14 +59,14 @@ class SmartGreetingAction(BaseAction):
     # ===== 功能定义必须项 =====
     action_parameters = {
         "username": "要问候的用户名（可选）",
-        "greeting_style": "问候风格：casual(随意)、formal(正式)、friendly(友好)，默认casual"
+        "greeting_style": "问候风格：casual(随意)、formal(正式)、friendly(友好)，默认casual",
     }
 
     action_require = [
         "用户发送包含问候词汇的消息时使用",
-        "检测到新用户加入时使用", 
+        "检测到新用户加入时使用",
         "响应友好交流需求时使用",
-        "避免在短时间内重复问候同一用户"
+        "避免在短时间内重复问候同一用户",
     ]
 
     associated_types = ["text", "emoji"]
@@ -115,12 +115,12 @@ class SmartGreetingAction(BaseAction):
         style_templates = {
             "casual": "嗨{username}！很开心见到你～",
             "formal": "您好{username}，很荣幸为您服务！",
-            "friendly": "你好{username}！欢迎来到这里，希望我们能成为好朋友！😊"
+            "friendly": "你好{username}！欢迎来到这里，希望我们能成为好朋友！😊",
         }
 
         selected_template = style_templates.get(style, template)
         username_display = f" {username}" if username else ""
-        
+
         return selected_template.format(username=username_display)
 
     async def _generate_llm_greeting(self, username: str, style: str) -> str:
@@ -150,7 +150,7 @@ class SmartGreetingAction(BaseAction):
                 model_config=model_config,
                 request_type="plugin.greeting",
                 temperature=0.7,
-                max_tokens=100
+                max_tokens=100,
             )
 
             if success and response:
@@ -201,14 +201,14 @@ class HelpfulAction(BaseAction):
     action_parameters = {
         "help_type": "帮助类型：explanation(解释)、suggestion(建议)、guidance(指导)、tips(提示)",
         "topic": "帮助主题或用户关心的问题",
-        "complexity": "复杂度：simple(简单)、medium(中等)、advanced(高级)"
+        "complexity": "复杂度：simple(简单)、medium(中等)、advanced(高级)",
     }
 
     action_require = [
         "用户表达困惑或寻求帮助时使用",
         "检测到用户遇到技术问题时使用",
         "对话中出现知识盲点时主动提供帮助",
-        "避免过度频繁地提供帮助，要恰到好处"
+        "避免过度频繁地提供帮助，要恰到好处",
     ]
 
     associated_types = ["text", "emoji"]
@@ -246,7 +246,7 @@ class HelpfulAction(BaseAction):
         """生成帮助消息"""
         # 获取配置
         enable_llm = self.api.get_config("help.enable_llm", False)
-        
+
         if enable_llm:
             return await self._generate_llm_help(help_type, topic, complexity)
         else:
@@ -258,11 +258,11 @@ class HelpfulAction(BaseAction):
             "explanation": f"关于{topic}，我来为你解释一下：这是一个{complexity}级别的概念...",
             "suggestion": f"针对{topic}，我建议你可以尝试以下方法...",
             "guidance": f"在{topic}方面，我可以为你提供一些指导...",
-            "tips": f"关于{topic}，这里有一些实用的小贴士..."
+            "tips": f"关于{topic}，这里有一些实用的小贴士...",
         }
 
         base_message = help_templates.get(help_type, f"关于{topic}，我很乐意为你提供帮助！")
-        
+
         # 根据复杂度调整消息
         if complexity == "advanced":
             base_message += "\n\n这个话题比较深入，需要一些基础知识。"
@@ -291,11 +291,7 @@ class HelpfulAction(BaseAction):
 
             model_config = next(iter(models.values()))
             success, response, reasoning, model_name = await self.api.generate_with_model(
-                prompt=prompt,
-                model_config=model_config,
-                request_type="plugin.help",
-                temperature=0.7,
-                max_tokens=300
+                prompt=prompt, model_config=model_config, request_type="plugin.help", temperature=0.7, max_tokens=300
             )
 
             if success and response:

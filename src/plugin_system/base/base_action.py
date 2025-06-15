@@ -366,7 +366,7 @@ class BaseAction(ABC):
     @classmethod
     def get_action_info(cls) -> "ActionInfo":
         """从类属性生成ActionInfo
-        
+
         所有信息都从类属性中读取，确保一致性和完整性。
         Action类必须定义所有必要的类属性。
 
@@ -376,7 +376,7 @@ class BaseAction(ABC):
 
         # 从类属性读取名称，如果没有定义则使用类名自动生成
         name = getattr(cls, "action_name", cls.__name__.lower().replace("action", ""))
-        
+
         # 从类属性读取描述，如果没有定义则使用文档字符串的第一行
         description = getattr(cls, "action_description", None)
         if description is None:
