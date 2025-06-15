@@ -7,6 +7,7 @@ from src.common.logger import get_logger
 from src.plugin_system.base.component_types import (
     PluginInfo,
     ComponentInfo,
+    PythonDependency,
 )
 from src.plugin_system.core.component_registry import component_registry
 
@@ -32,6 +33,7 @@ class BasePlugin(ABC):
     plugin_author: str = ""  # 插件作者
     enable_plugin: bool = True  # 是否启用插件
     dependencies: List[str] = []  # 依赖的其他插件
+    python_dependencies: List[PythonDependency] = []  # Python包依赖
     config_file_name: Optional[str] = None  # 配置文件名
 
     def __init__(self, plugin_dir: str = None):
@@ -60,6 +62,7 @@ class BasePlugin(ABC):
             is_built_in=False,
             config_file=self.config_file_name or "",
             dependencies=self.dependencies.copy(),
+            python_dependencies=self.python_dependencies.copy(),
         )
 
         logger.debug(f"{self.log_prefix} 插件基类初始化完成")

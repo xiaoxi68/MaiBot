@@ -124,6 +124,16 @@ class HelloWorldPlugin(BasePlugin):
     plugin_author = "你的名字"
     enable_plugin = True
     config_file_name = "config.toml"
+    
+    # Python依赖声明（可选）
+    python_dependencies = [
+        # 如果你的插件需要额外的Python包，在这里声明
+        # PythonDependency(
+        #     package_name="requests",
+        #     version=">=2.25.0", 
+        #     description="HTTP请求库"
+        # ),
+    ]
 
     def get_plugin_components(self) -> List[Tuple[ComponentInfo, Type]]:
         """返回插件包含的组件列表"""
@@ -245,14 +255,59 @@ python main.py
 2. **组件列表**: `get_plugin_components()` 返回所有组件
 3. **配置加载**: 自动加载 `config.toml` 文件
 
+## 📦 添加依赖包（可选）
+
+如果你的插件需要额外的Python包，可以声明依赖：
+
+```python
+from src.plugin_system import PythonDependency
+
+@register_plugin
+class HelloWorldPlugin(BasePlugin):
+    # ... 其他配置 ...
+    
+    # 声明Python依赖
+    python_dependencies = [
+        PythonDependency(
+            package_name="requests",
+            version=">=2.25.0",
+            description="HTTP请求库，用于网络功能"
+        ),
+        PythonDependency(
+            package_name="numpy", 
+            version=">=1.20.0",
+            optional=True,
+            description="数值计算库（可选功能）"
+        ),
+    ]
+```
+
+### 依赖检查
+
+系统会自动检查依赖，你也可以手动检查：
+
+```python
+from src.plugin_system import plugin_manager
+
+# 检查所有插件依赖
+result = plugin_manager.check_all_dependencies()
+print(f"缺少依赖的插件: {result['plugins_with_missing_required']}个")
+
+# 生成requirements文件
+plugin_manager.generate_plugin_requirements("plugin_deps.txt")
+```
+
+📚 **详细了解**: [依赖管理系统](dependency-management.md)
+
 ## 🎯 下一步
 
 恭喜！你已经创建了第一个MaiBot插件。接下来可以：
 
 1. 学习 [Action组件详解](action-components.md) 掌握更复杂的Action开发
 2. 学习 [Command组件详解](command-components.md) 创建更强大的命令
-3. 查看 [API参考](api/) 了解所有可用的接口
-4. 参考 [完整示例](examples/complete-examples.md) 学习最佳实践
+3. 了解 [依赖管理系统](dependency-management.md) 管理Python包依赖
+4. 查看 [API参考](api/) 了解所有可用的接口
+5. 参考 [完整示例](examples/complete-examples.md) 学习最佳实践
 
 ## 🐛 常见问题
 

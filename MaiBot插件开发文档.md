@@ -10,7 +10,7 @@ MaiBot 是一个基于大语言模型的智能聊天机器人，采用现代化�
 - **统一API接口**：提供丰富的API功能，包括消息发送、数据库操作、LLM调用等
 - **配置驱动**：支持TOML配置文件，实现灵活的参数配置
 - **热加载机制**：支持动态加载和卸载插件
-- **依赖管理**：内置依赖检查和解析机制
+- **智能依赖管理**：自动检查和安装Python第三方包依赖
 - **拦截控制**：Command组件支持消息拦截控制
 - **双目录支持**：区分用户插件和系统内置插件
 
@@ -35,6 +35,7 @@ MaiBot支持两个插件目录：
 - [⚡ Action组件详解](docs/plugins/action-components.md) - 智能动作组件开发指南
 - [💻 Command组件详解](docs/plugins/command-components.md) - 命令组件开发指南
 - [🔧 工具系统详解](docs/plugins/tool-system.md) - 扩展麦麦信息获取能力的工具组件
+- [📦 依赖管理系统](docs/plugins/dependency-management.md) - Python包依赖管理详解
 
 ### 🔌 API参考
 - [📡 消息API](docs/plugins/api/message-api.md) - 消息发送和处理接口

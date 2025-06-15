@@ -34,6 +34,27 @@ class ChatMode(Enum):
 
 
 @dataclass
+class PythonDependency:
+    """Python包依赖信息"""
+    
+    package_name: str  # 包名称
+    version: str = ""  # 版本要求，例如: ">=1.0.0", "==2.1.3", ""表示任意版本
+    optional: bool = False  # 是否为可选依赖
+    description: str = ""  # 依赖描述
+    install_name: str = ""  # 安装时的包名（如果与import名不同）
+    
+    def __post_init__(self):
+        if not self.install_name:
+            self.install_name = self.package_name
+    
+    def get_pip_requirement(self) -> str:
+        """获取pip安装格式的依赖字符串"""
+        if self.version:
+            return f"{self.install_name}{self.version}"
+        return self.install_name
+
+
+@dataclass
 class ComponentInfo:
     """组件信息"""
 
@@ -107,6 +128,7 @@ class PluginInfo:
     is_built_in: bool = False  # 是否为内置插件
     components: List[ComponentInfo] = None  # 包含的组件列表
     dependencies: List[str] = None  # 依赖的其他插件
+    python_dependencies: List[PythonDependency] = None  # Python包依赖
     config_file: str = ""  # 配置文件路径
     metadata: Dict[str, Any] = None  # 额外元数据
 
@@ -115,5 +137,22 @@ class PluginInfo:
             self.components = []
         if self.dependencies is None:
             self.dependencies = []
+        if self.python_dependencies is None:
+            self.python_dependencies = []
         if self.metadata is None:
             self.metadata = {}
+    
+    def get_missing_packages(self) -> List[PythonDependency]:
+        """检查缺失的Python包"""
+        missing = []
+        for dep in self.python_dependencies:
+            try:
+                __import__(dep.package_name)
+            except ImportError:
+                if not dep.optional:
+                    missing.append(dep)
+        return missing
+    
+    def get_pip_requirements(self) -> List[str]:
+        """获取所有pip安装格式的依赖"""
+        return [dep.get_pip_requirement() for dep in self.python_dependencies]
