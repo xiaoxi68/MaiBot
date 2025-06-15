@@ -252,7 +252,16 @@ class ComponentRegistry:
 
     def get_registry_stats(self) -> Dict[str, Any]:
         """获取注册中心统计信息"""
+        action_components: int = 0
+        command_components: int = 0
+        for component in self._components.values():
+            if component.component_type == ComponentType.ACTION:
+                action_components += 1
+            elif component.component_type == ComponentType.COMMAND:
+                command_components += 1
         return {
+            "action_components": action_components,
+            "command_components": command_components,
             "total_components": len(self._components),
             "total_plugins": len(self._plugins),
             "components_by_type": {

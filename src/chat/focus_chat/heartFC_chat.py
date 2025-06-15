@@ -217,7 +217,7 @@ class HeartFChatting:
     async def start(self):
         """检查是否需要启动主循环，如果未激活则启动。"""
         logger.debug(f"{self.log_prefix} 开始启动 HeartFChatting")
-        
+
         # 如果循环已经激活，直接返回
         if self._loop_active:
             logger.debug(f"{self.log_prefix} HeartFChatting 已激活，无需重复启动")
@@ -244,7 +244,7 @@ class HeartFChatting:
             self._loop_task = asyncio.create_task(self._run_focus_chat())
             self._loop_task.add_done_callback(self._handle_loop_completion)
             logger.debug(f"{self.log_prefix} HeartFChatting 启动完成")
-            
+
         except Exception as e:
             # 启动失败时重置状态
             self._loop_active = False
@@ -275,7 +275,7 @@ class HeartFChatting:
         try:
             while True:  # 主循环
                 logger.debug(f"{self.log_prefix} 开始第{self._cycle_counter}次循环")
-                
+
                 # 检查关闭标志
                 if self._shutting_down:
                     logger.info(f"{self.log_prefix} 检测到关闭标志，退出 Focus Chat 循环。")
@@ -295,15 +295,17 @@ class HeartFChatting:
                     async with self._get_cycle_context():
                         thinking_id = "tid" + str(round(time.time(), 2))
                         self._current_cycle_detail.set_thinking_id(thinking_id)
-                        
+
                         # 使用异步上下文管理器处理消息
                         try:
-                            async with global_prompt_manager.async_message_scope(self.chat_stream.context.get_template_name()):
+                            async with global_prompt_manager.async_message_scope(
+                                self.chat_stream.context.get_template_name()
+                            ):
                                 # 在上下文内部检查关闭状态
                                 if self._shutting_down:
                                     logger.info(f"{self.log_prefix} 在处理上下文中检测到关闭信号，退出")
                                     break
-                                
+
                                 logger.debug(f"模板 {self.chat_stream.context.get_template_name()}")
                                 loop_info = await self._observe_process_plan_action_loop(cycle_timers, thinking_id)
 
@@ -318,7 +320,7 @@ class HeartFChatting:
                                             logger.error(f"{self.log_prefix} 调用停止专注聊天回调函数时出错: {e}")
                                             logger.error(traceback.format_exc())
                                     break
-                        
+
                         except asyncio.CancelledError:
                             logger.info(f"{self.log_prefix} 处理上下文时任务被取消")
                             break
@@ -357,7 +359,9 @@ class HeartFChatting:
                         timer_strings.append(f"{name}: {formatted_time}")
 
                     # 新增：输出每个处理器的耗时
-                    processor_time_costs = self._current_cycle_detail.loop_processor_info.get("processor_time_costs", {})
+                    processor_time_costs = self._current_cycle_detail.loop_processor_info.get(
+                        "processor_time_costs", {}
+                    )
                     processor_time_strings = []
                     for pname, ptime in processor_time_costs.items():
                         formatted_ptime = f"{ptime * 1000:.2f}毫秒" if ptime < 1 else f"{ptime:.2f}秒"
@@ -375,7 +379,7 @@ class HeartFChatting:
                     )
 
                     await asyncio.sleep(global_config.focus_chat.think_interval)
-                    
+
                 except asyncio.CancelledError:
                     logger.info(f"{self.log_prefix} 循环处理时任务被取消")
                     break

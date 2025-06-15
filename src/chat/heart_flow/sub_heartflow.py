@@ -179,12 +179,12 @@ class SubHeartflow:
     async def _start_heart_fc_chat(self) -> bool:
         """启动 HeartFChatting 实例，确保 NormalChat 已停止"""
         logger.debug(f"{self.log_prefix} 开始启动 HeartFChatting")
-        
+
         try:
             # 确保普通聊天监控已停止
             await self._stop_normal_chat()
             self.interest_dict.clear()
-            
+
             log_prefix = self.log_prefix
             # 如果实例已存在，检查其循环任务状态
             if self.heart_fc_instance:
@@ -236,7 +236,7 @@ class SubHeartflow:
                 logger.error(traceback.format_exc())
                 self.heart_fc_instance = None  # 创建或初始化异常，清理实例
                 return False
-        
+
         except Exception as e:
             logger.error(f"{self.log_prefix} _start_heart_fc_chat 执行时出错: {e}")
             logger.error(traceback.format_exc())

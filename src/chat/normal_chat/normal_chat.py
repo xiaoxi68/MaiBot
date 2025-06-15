@@ -160,14 +160,14 @@ class NormalChat:
         通常由start_monitoring_interest()启动
         """
         logger.debug(f"[{self.stream_name}] 兴趣监控任务开始")
-        
+
         try:
             while True:
                 # 第一层检查：立即检查取消和停用状态
                 if self._disabled:
                     logger.info(f"[{self.stream_name}] 检测到停用标志，退出兴趣监控")
                     break
-                
+
                 # 检查当前任务是否已被取消
                 current_task = asyncio.current_task()
                 if current_task and current_task.cancelled():
@@ -177,7 +177,7 @@ class NormalChat:
                 try:
                     # 短暂等待，让出控制权
                     await asyncio.sleep(0.1)
-                    
+
                     # 第二层检查：睡眠后再次检查状态
                     if self._disabled:
                         logger.info(f"[{self.stream_name}] 睡眠后检测到停用标志，退出")
@@ -196,7 +196,9 @@ class NormalChat:
 
                     # 使用异步上下文管理器处理消息
                     try:
-                        async with global_prompt_manager.async_message_scope(self.chat_stream.context.get_template_name()):
+                        async with global_prompt_manager.async_message_scope(
+                            self.chat_stream.context.get_template_name()
+                        ):
                             # 在上下文内部再次检查取消状态
                             if self._disabled:
                                 logger.info(f"[{self.stream_name}] 在处理上下文中检测到停止信号，退出")
@@ -249,7 +251,7 @@ class NormalChat:
 
                                 limited_tasks = [limited_process(task, semaphore) for task in tasks]
                                 await asyncio.gather(*limited_tasks, return_exceptions=True)
-                    
+
                     except asyncio.CancelledError:
                         logger.info(f"[{self.stream_name}] 处理上下文时任务被取消")
                         break
@@ -531,31 +533,31 @@ class NormalChat:
     async def start_chat(self):
         """启动聊天任务。"""
         logger.debug(f"[{self.stream_name}] 开始启动聊天任务")
-        
+
         # 重置停用标志
         self._disabled = False
-        
+
         # 检查是否已有运行中的任务
         if self._chat_task and not self._chat_task.done():
             logger.info(f"[{self.stream_name}] 聊天轮询任务已在运行中。")
             return
-        
+
         # 清理可能存在的已完成任务引用
         if self._chat_task and self._chat_task.done():
             self._chat_task = None
-        
+
         try:
             logger.debug(f"[{self.stream_name}] 创建新的聊天轮询任务")
             polling_task = asyncio.create_task(self._reply_interested_message())
-            
+
             # 设置回调
             polling_task.add_done_callback(lambda t: self._handle_task_completion(t))
-            
+
             # 保存任务引用
             self._chat_task = polling_task
-            
+
             logger.debug(f"[{self.stream_name}] 聊天任务启动完成")
-            
+
         except Exception as e:
             logger.error(f"[{self.stream_name}] 启动聊天任务失败: {e}")
             self._chat_task = None
@@ -566,17 +568,17 @@ class NormalChat:
         try:
             # 简化回调逻辑，避免复杂的异常处理
             logger.debug(f"[{self.stream_name}] 任务完成回调被调用")
-            
+
             # 检查是否是我们管理的任务
             if task is not self._chat_task:
                 # 如果已经不是当前任务（可能在stop_chat中已被清空），直接返回
                 logger.debug(f"[{self.stream_name}] 回调的任务不是当前管理的任务")
                 return
-            
+
             # 清理任务引用
             self._chat_task = None
             logger.debug(f"[{self.stream_name}] 任务引用已清理")
-            
+
             # 简单记录任务状态，不进行复杂处理
             if task.cancelled():
                 logger.debug(f"[{self.stream_name}] 任务已取消")
@@ -591,7 +593,7 @@ class NormalChat:
                 except Exception as e:
                     # 获取异常时也可能出错，静默处理
                     logger.debug(f"[{self.stream_name}] 获取任务异常时出错: {e}")
-            
+
         except Exception as e:
             # 回调函数中的任何异常都要捕获，避免影响系统
             logger.error(f"[{self.stream_name}] 任务完成回调处理出错: {e}")
@@ -602,31 +604,31 @@ class NormalChat:
     async def stop_chat(self):
         """停止当前实例的兴趣监控任务。"""
         logger.debug(f"[{self.stream_name}] 开始停止聊天任务")
-        
+
         # 立即设置停用标志，防止新任务启动
         self._disabled = True
-        
+
         # 如果没有运行中的任务，直接返回
         if not self._chat_task or self._chat_task.done():
             logger.debug(f"[{self.stream_name}] 没有运行中的任务，直接完成停止")
             self._chat_task = None
             return
-        
+
         # 保存任务引用并立即清空，避免回调中的循环引用
         task_to_cancel = self._chat_task
         self._chat_task = None
-        
+
         logger.debug(f"[{self.stream_name}] 取消聊天任务")
-        
+
         # 尝试优雅取消任务
         task_to_cancel.cancel()
-        
+
         # 不等待任务完成，让它自然结束
         # 这样可以避免等待过程中的潜在递归问题
-        
+
         # 异步清理思考消息，不阻塞当前流程
         asyncio.create_task(self._cleanup_thinking_messages_async())
-        
+
         logger.debug(f"[{self.stream_name}] 聊天任务停止完成")
 
     async def _cleanup_thinking_messages_async(self):
@@ -634,7 +636,7 @@ class NormalChat:
         try:
             # 添加短暂延迟，让任务有时间响应取消
             await asyncio.sleep(0.1)
-            
+
             container = await message_manager.get_container(self.stream_id)
             if container:
                 # 查找并移除所有 MessageThinking 类型的消息
