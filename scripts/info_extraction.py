@@ -45,6 +45,7 @@ open_ie_doc_lock = Lock()
 # 创建一个事件标志，用于控制程序终止
 shutdown_event = Event()
 
+
 def ensure_dirs():
     """确保临时目录和输出目录存在"""
     if not os.path.exists(TEMP_DIR):
@@ -56,6 +57,7 @@ def ensure_dirs():
     if not os.path.exists(IMPORTED_DATA_PATH):
         os.makedirs(IMPORTED_DATA_PATH)
         logger.info(f"已创建导入数据目录: {IMPORTED_DATA_PATH}")
+
 
 def process_single_text(pg_hash, raw_data, llm_client_list):
     """处理单个文本的函数，用于线程池"""

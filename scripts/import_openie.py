@@ -25,6 +25,7 @@ OPENIE_DIR = global_config["persistence"]["openie_data_path"] or os.path.join(RO
 
 logger = get_logger("OpenIE导入")
 
+
 def ensure_openie_dir():
     """确保OpenIE数据目录存在"""
     if not os.path.exists(OPENIE_DIR):
@@ -32,6 +33,7 @@ def ensure_openie_dir():
         logger.info(f"创建OpenIE数据目录：{OPENIE_DIR}")
     else:
         logger.info(f"OpenIE数据目录已存在：{OPENIE_DIR}")
+
 
 def hash_deduplicate(
     raw_paragraphs: dict[str, str],
