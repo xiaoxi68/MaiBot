@@ -27,7 +27,7 @@ class ConfigAPI:
         # 支持嵌套键访问
         keys = key.split(".")
         current = global_config
-        
+
         try:
             for k in keys:
                 if hasattr(current, k):

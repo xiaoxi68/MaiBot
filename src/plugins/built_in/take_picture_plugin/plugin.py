@@ -24,6 +24,7 @@
 - 拍照Action - 生成自拍照
 - 展示照片Command - 展示最近生成的照片
 """
+
 from typing import List, Tuple, Type, Optional
 import random
 import datetime
@@ -67,13 +68,9 @@ class TakePictureAction(BaseAction):
 
     action_parameters = {}
 
-    action_require = [
-        "当用户想看你的照片时使用",
-        "当用户让你发自拍时使用"
-        "当想随手拍眼前的场景时使用"
-    ]
+    action_require = ["当用户想看你的照片时使用", "当用户让你发自拍时使用当想随手拍眼前的场景时使用"]
 
-    associated_types = ["text","image"]
+    associated_types = ["text", "image"]
 
     # 内置的Prompt模板，如果配置文件中没有定义，将使用这些模板
     DEFAULT_PROMPT_TEMPLATES = [
@@ -107,18 +104,14 @@ class TakePictureAction(BaseAction):
             # 获取全局配置信息
             bot_nickname = self.api.get_global_config("bot.nickname", "麦麦")
             bot_personality = self.api.get_global_config("personality.personality_core", "")
-            
 
             personality_sides = self.api.get_global_config("personality.personality_sides", [])
             if personality_sides:
                 bot_personality += random.choice(personality_sides)
-            
+
             # 准备模板变量
-            template_vars = {
-                "name": bot_nickname,
-                "personality": bot_personality
-            }
-            
+            template_vars = {"name": bot_nickname, "personality": bot_personality}
+
             logger.info(f"{self.log_prefix} 使用的全局配置: name={bot_nickname}, personality={bot_personality}")
 
             # 尝试从配置文件获取模板，如果没有则使用默认模板
@@ -136,7 +129,7 @@ class TakePictureAction(BaseAction):
 
             # 从配置获取参数
             model = self.api.get_config("picture.default_model", "doubao-seedream-3-0-t2i-250415")
-            style = self.api.get_config("picture.default_style", "动漫")
+            self.api.get_config("picture.default_style", "动漫")
             size = self.api.get_config("picture.default_size", "1024x1024")
             watermark = self.api.get_config("picture.default_watermark", True)
             guidance_scale = self.api.get_config("picture.default_guidance_scale", 2.5)
@@ -160,7 +153,7 @@ class TakePictureAction(BaseAction):
                         # 缓存失败，清除这个缓存项并继续正常流程
                         del self._request_cache[cache_key]
 
-            await self.send_text(f"正在为你拍照，请稍候...")
+            await self.send_text("正在为你拍照，请稍候...")
 
             try:
                 seed = random.randint(1, 1000000)
@@ -226,11 +219,11 @@ class TakePictureAction(BaseAction):
         log_file = self.api.get_config("storage.log_file", "picture_log.json")
         log_path = os.path.join(DATA_DIR, log_file)
         max_photos = self.api.get_config("storage.max_photos", 50)
-        
+
         async with file_lock:
             try:
                 if os.path.exists(log_path):
-                    with open(log_path, 'r', encoding='utf-8') as f:
+                    with open(log_path, "r", encoding="utf-8") as f:
                         log_data = json.load(f)
                 else:
                     log_data = []
@@ -238,18 +231,16 @@ class TakePictureAction(BaseAction):
                 log_data = []
 
             # 添加新照片
-            log_data.append({
-                "prompt": prompt,
-                "image_url": image_url,
-                "timestamp": datetime.datetime.now().isoformat()
-            })
+            log_data.append(
+                {"prompt": prompt, "image_url": image_url, "timestamp": datetime.datetime.now().isoformat()}
+            )
 
             # 如果超过最大数量，删除最旧的
             if len(log_data) > max_photos:
-                log_data = sorted(log_data, key=lambda x: x.get('timestamp', ''), reverse=True)[:max_photos]
+                log_data = sorted(log_data, key=lambda x: x.get("timestamp", ""), reverse=True)[:max_photos]
 
             try:
-                with open(log_path, 'w', encoding='utf-8') as f:
+                with open(log_path, "w", encoding="utf-8") as f:
                     json.dump(log_data, f, ensure_ascii=False, indent=4)
             except Exception as e:
                 logger.error(f"{self.log_prefix} 写入照片日志文件失败: {e}", exc_info=True)
@@ -324,8 +315,8 @@ class TakePictureAction(BaseAction):
         try:
             with urllib.request.urlopen(image_url) as response:
                 image_data = response.read()
-            
-            base64_encoded = base64.b64encode(image_data).decode('utf-8')
+
+            base64_encoded = base64.b64encode(image_data).decode("utf-8")
             return True, base64_encoded
         except Exception as e:
             logger.error(f"图片下载编码失败: {e}", exc_info=True)
@@ -373,10 +364,10 @@ class TakePictureAction(BaseAction):
         """更新缓存"""
         max_cache_size = self.api.get_config("storage.max_cache_size", 10)
         cache_key = self._get_cache_key(description, model, size)
-        
+
         # 添加到缓存
         self._request_cache[cache_key] = base64_image
-        
+
         # 如果缓存超过最大大小，删除最旧的项
         if len(self._request_cache) > max_cache_size:
             oldest_key = next(iter(self._request_cache))
@@ -397,14 +388,14 @@ class ShowRecentPicturesCommand(BaseCommand):
         logger.info(f"{self.log_prefix} 执行展示最近照片命令")
         log_file = self.api.get_config("storage.log_file", "picture_log.json")
         log_path = os.path.join(DATA_DIR, log_file)
-        
+
         async with file_lock:
             try:
                 if not os.path.exists(log_path):
                     await self.send_text("最近还没有拍过照片哦，快让我自拍一张吧！")
                     return True, "没有照片日志文件"
 
-                with open(log_path, 'r', encoding='utf-8') as f:
+                with open(log_path, "r", encoding="utf-8") as f:
                     log_data = json.load(f)
 
                 if not log_data:
@@ -412,31 +403,29 @@ class ShowRecentPicturesCommand(BaseCommand):
                     return True, "没有照片"
 
                 # 获取最新的5张照片
-                recent_pics = sorted(log_data, key=lambda x: x['timestamp'], reverse=True)[:5]
-                
+                recent_pics = sorted(log_data, key=lambda x: x["timestamp"], reverse=True)[:5]
+
                 # 先发送文本消息
                 await self.send_text("这是我最近拍的几张照片~")
-                
+
                 # 逐个发送图片
                 for pic in recent_pics:
                     # 尝试获取图片URL
-                    image_url = pic.get('image_url')
+                    image_url = pic.get("image_url")
                     if image_url:
                         try:
                             # 下载图片并转换为Base64
                             with urllib.request.urlopen(image_url) as response:
                                 image_data = response.read()
-                            base64_encoded = base64.b64encode(image_data).decode('utf-8')
-                            
+                            base64_encoded = base64.b64encode(image_data).decode("utf-8")
+
                             # 发送图片
                             await self.send_type(
-                                message_type="image",
-                                content=base64_encoded,
-                                display_message="发送最近的照片"
+                                message_type="image", content=base64_encoded, display_message="发送最近的照片"
                             )
                         except Exception as e:
                             logger.error(f"{self.log_prefix} 下载或发送照片失败: {e}", exc_info=True)
-                
+
                 return True, "成功展示最近的照片"
 
             except json.JSONDecodeError:
@@ -451,6 +440,7 @@ class ShowRecentPicturesCommand(BaseCommand):
 @register_plugin
 class TakePicturePlugin(BasePlugin):
     """拍照插件"""
+
     plugin_name = "take_picture_plugin"
     plugin_description = "提供生成自拍照和展示最近照片的功能"
     plugin_version = "1.0.0"
@@ -473,7 +463,9 @@ class TakePicturePlugin(BasePlugin):
             "name": ConfigField(type=str, default="take_picture_plugin", description="插件名称", required=True),
             "version": ConfigField(type=str, default="1.3.0", description="插件版本号"),
             "enabled": ConfigField(type=bool, default=False, description="是否启用插件"),
-            "description": ConfigField(type=str, default="提供生成自拍照和展示最近照片的功能", description="插件描述", required=True),
+            "description": ConfigField(
+                type=str, default="提供生成自拍照和展示最近照片的功能", description="插件描述", required=True
+            ),
         },
         "api": {
             "base_url": ConfigField(
@@ -511,9 +503,7 @@ class TakePicturePlugin(BasePlugin):
             ),
             "default_seed": ConfigField(type=int, default=42, description="随机种子，用于复现图片"),
             "prompt_templates": ConfigField(
-                type=list,
-                default=TakePictureAction.DEFAULT_PROMPT_TEMPLATES,
-                description="用于生成自拍照的prompt模板"
+                type=list, default=TakePictureAction.DEFAULT_PROMPT_TEMPLATES, description="用于生成自拍照的prompt模板"
             ),
         },
         "storage": {
@@ -521,7 +511,7 @@ class TakePicturePlugin(BasePlugin):
             "log_file": ConfigField(type=str, default="picture_log.json", description="照片日志文件名"),
             "enable_cache": ConfigField(type=bool, default=True, description="是否启用请求缓存"),
             "max_cache_size": ConfigField(type=int, default=10, description="最大缓存数量"),
-        }
+        },
     }
 
     def get_plugin_components(self) -> List[Tuple[ComponentInfo, Type]]:
@@ -531,4 +521,4 @@ class TakePicturePlugin(BasePlugin):
             components.append((TakePictureAction.get_action_info(), TakePictureAction))
         if self.get_config("components.enable_show_pics_command", True):
             components.append((ShowRecentPicturesCommand.get_command_info(), ShowRecentPicturesCommand))
-        return components 
+        return components
