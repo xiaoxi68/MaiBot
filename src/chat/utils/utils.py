@@ -633,7 +633,7 @@ def translate_timestamp_to_human_readable(timestamp: float, mode: str = "normal"
         elif diff < 86400 * 2:
             return f"{int(diff / 86400)}天前"
         else:
-            return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp)) + ":\n"
+            return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp)) + ":"
     else:  # mode = "lite" or unknown
         # 只返回时分秒格式，喵~
         return time.strftime("%H:%M:%S", time.localtime(timestamp))

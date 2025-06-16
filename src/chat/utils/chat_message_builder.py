@@ -357,7 +357,7 @@ def _build_readable_messages_internal(
                 limit = 200
                 replace_content = "......（内容太长了）"
             elif percentile < 1.0:  # 80% 到 100% 之前的消息 (即较新的 20%)
-                limit = 300
+                limit = 400
                 replace_content = "......（太长了）"
 
             truncated_content = content

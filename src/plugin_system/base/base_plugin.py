@@ -109,6 +109,11 @@ class BasePlugin(ABC):
             with open(config_file_path, "r", encoding="utf-8") as f:
                 self.config = toml.load(f) or {}
             logger.debug(f"{self.log_prefix} 配置已从 {config_file_path} 加载")
+            
+            # 从配置中更新 enable_plugin
+            if "plugin" in self.config and "enabled" in self.config["plugin"]:
+                self.enable_plugin = self.config["plugin"]["enabled"]
+                logger.debug(f"{self.log_prefix} 从配置更新插件启用状态: {self.enable_plugin}")
         else:
             logger.warning(f"{self.log_prefix} 不支持的配置文件格式: {file_ext}，仅支持 .toml")
             self.config = {}

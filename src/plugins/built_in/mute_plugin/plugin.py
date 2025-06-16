@@ -163,11 +163,25 @@ class MuteAction(BaseAction):
         success = await self.send_command(
             command_name="GROUP_BAN",
             args={"qq_id": str(user_id), "duration": str(duration_int)},
-            display_message=f"禁言了 {target} {time_str}",
+            display_message=f"发送禁言命令",
         )
 
         if success:
             logger.info(f"{self.log_prefix} 成功发送禁言命令，用户 {target}({user_id})，时长 {duration_int} 秒")
+            # 存储动作信息
+            await self.api.store_action_info(
+                action_build_into_prompt=True,
+                action_prompt_display=f"尝试禁言了用户 {target}，时长 {time_str}，原因：{reason}",
+                action_done=True,
+                thinking_id=self.thinking_id,
+                action_data={
+                    "target": target,
+                    "user_id": user_id,
+                    "duration": duration_int,
+                    "duration_str": time_str,
+                    "reason": reason
+                }
+            )
             return True, f"成功禁言 {target}，时长 {time_str}"
         else:
             error_msg = "发送禁言命令失败"

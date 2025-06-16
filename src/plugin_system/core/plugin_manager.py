@@ -93,6 +93,12 @@ class PluginManager:
                     self.plugin_paths[plugin_name] = plugin_dir
 
             plugin_instance = plugin_class(plugin_dir=plugin_dir)
+            
+            # 检查插件是否启用
+            if not plugin_instance.enable_plugin:
+                logger.info(f"插件 {plugin_name} 已禁用，跳过加载")
+                continue
+                
             if plugin_instance.register_plugin():
                 total_registered += 1
                 self.loaded_plugins[plugin_name] = plugin_instance

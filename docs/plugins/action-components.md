@@ -125,6 +125,39 @@ action_require = [
 associated_types = ["text", "emoji", "image"]
 ```
 
+### 4. 动作记录必须项
+
+每个 Action 在执行完成后，**必须**使用 `store_action_info` 记录动作信息。这是非常重要的，因为：
+
+1. **记忆连续性**：让麦麦记住自己执行过的动作，避免重复执行
+2. **上下文理解**：帮助麦麦理解自己的行为历史，做出更合理的决策
+3. **行为追踪**：便于后续查询和分析麦麦的行为模式
+
+```python
+async def execute(self) -> Tuple[bool, Optional[str]]:
+    # ... 执行动作的代码 ...
+    
+    if success:
+        # 存储动作信息
+        await self.api.store_action_info(
+            action_build_into_prompt=True,  # 让麦麦知道这个动作
+            action_prompt_display=f"执行了xxx动作，参数：{param}",  # 动作描述
+            action_done=True,  # 动作是否完成
+            thinking_id=self.thinking_id,  # 关联的思考ID
+            action_data={  # 动作的详细数据
+                "param1": value1,
+                "param2": value2
+            }
+        )
+        return True, "动作执行成功"
+```
+
+> ⚠️ **重要提示**：如果不记录动作信息，可能会导致以下问题：
+> - 麦麦不知道自己执行过什么动作，可能会重复执行
+> - 无法追踪动作历史，影响后续决策
+> - 在长对话中失去上下文连续性
+> - 无法进行行为分析和优化
+
 ## 🔧 激活类型详解
 
 ### KEYWORD激活

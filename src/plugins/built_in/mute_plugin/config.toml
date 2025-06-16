@@ -3,13 +3,13 @@
 [plugin]
 name = "mute_plugin"
 version = "2.0.0"
-enabled = true
+enabled = false
 description = "群聊禁言管理插件，提供智能禁言功能"
 
 # 组件启用控制
 [components]
 enable_smart_mute = true     # 启用智能禁言Action
-enable_mute_command = false    # 启用禁言命令Command
+enable_mute_command = true    # 启用禁言命令Command
 
 # 禁言配置
 [mute]

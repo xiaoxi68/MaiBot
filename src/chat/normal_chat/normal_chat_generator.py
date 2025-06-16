@@ -96,7 +96,7 @@ class NormalChatGenerator:
         try:
             content, (reasoning_content, model_name) = await model.generate_response_async(prompt)
 
-            logger.debug(f"prompt:{prompt}\n生成回复：{content}")
+            logger.info(f"prompt:{prompt}\n生成回复：{content}")
 
             logger.info(f"对  {message.processed_plain_text}  的回复：{content}")
 
