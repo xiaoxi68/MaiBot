@@ -41,6 +41,20 @@ def get_raw_msg_by_timestamp_with_chat(
     return find_messages(message_filter=filter_query, sort=sort_order, limit=limit, limit_mode=limit_mode)
 
 
+def get_raw_msg_by_timestamp_with_chat_inclusive(
+    chat_id: str, timestamp_start: float, timestamp_end: float, limit: int = 0, limit_mode: str = "latest"
+) -> List[Dict[str, Any]]:
+    """获取在特定聊天从指定时间戳到指定时间戳的消息（包含边界），按时间升序排序，返回消息列表
+    limit: 限制返回的消息数量，0为不限制
+    limit_mode: 当 limit > 0 时生效。 'earliest' 表示获取最早的记录， 'latest' 表示获取最新的记录。默认为 'latest'。
+    """
+    filter_query = {"chat_id": chat_id, "time": {"$gte": timestamp_start, "$lte": timestamp_end}}
+    # 只有当 limit 为 0 时才应用外部 sort
+    sort_order = [("time", 1)] if limit == 0 else None
+    # 直接将 limit_mode 传递给 find_messages
+    return find_messages(message_filter=filter_query, sort=sort_order, limit=limit, limit_mode=limit_mode)
+
+
 def get_raw_msg_by_timestamp_with_chat_users(
     chat_id: str,
     timestamp_start: float,

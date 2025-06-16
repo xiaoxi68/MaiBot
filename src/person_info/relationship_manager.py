@@ -208,6 +208,9 @@ class RelationshipManager:
 
         readable_messages = self.build_focus_readable_messages(messages=user_messages, target_person_id=person_id)
 
+        if not readable_messages:
+            return
+        
         for original_name, mapped_name in name_mapping.items():
             # print(f"original_name: {original_name}, mapped_name: {mapped_name}")
             readable_messages = readable_messages.replace(f"{original_name}", f"{mapped_name}")
@@ -470,60 +473,14 @@ class RelationshipManager:
         logger.info(f"印象更新完成 for {person_name}")
 
     def build_focus_readable_messages(self, messages: list, target_person_id: str = None) -> str:
-        """格式化消息，只保留目标用户和bot消息附近的内容"""
-        # 找到目标用户和bot的消息索引
-        target_indices = []
-        for i, msg in enumerate(messages):
-            user_id = msg.get("user_id")
-            platform = msg.get("chat_info_platform")
-            person_id = PersonInfoManager.get_person_id(platform, user_id)
-            if person_id == target_person_id:
-                target_indices.append(i)
-
-        if not target_indices:
+        """格式化消息，处理所有消息内容"""
+        if not messages:
             return ""
 
-        # 获取需要保留的消息索引
-        keep_indices = set()
-        for idx in target_indices:
-            # 获取前后5条消息的索引
-            start_idx = max(0, idx - 5)
-            end_idx = min(len(messages), idx + 6)
-            keep_indices.update(range(start_idx, end_idx))
-
-        print(keep_indices)
-
-        # 将索引排序
-        keep_indices = sorted(list(keep_indices))
-
-        # 按顺序构建消息组
-        message_groups = []
-        current_group = []
-
-        for i in range(len(messages)):
-            if i in keep_indices:
-                current_group.append(messages[i])
-            elif current_group:
-                # 如果当前组不为空，且遇到不保留的消息，则结束当前组
-                if current_group:
-                    message_groups.append(current_group)
-                    current_group = []
-
-        # 添加最后一组
-        if current_group:
-            message_groups.append(current_group)
-
-        # 构建最终的消息文本
-        result = []
-        for i, group in enumerate(message_groups):
-            if i > 0:
-                result.append("...")
-            group_text = build_readable_messages(
-                messages=group, replace_bot_name=True, timestamp_mode="normal_no_YMD", truncate=False
-            )
-            result.append(group_text)
-
-        return "\n".join(result)
+        # 直接处理所有消息，不进行过滤
+        return build_readable_messages(
+            messages=messages, replace_bot_name=True, timestamp_mode="normal_no_YMD", truncate=False
+        )
 
     def calculate_time_weight(self, point_time: str, current_time: str) -> float:
         """计算基于时间的权重系数"""
