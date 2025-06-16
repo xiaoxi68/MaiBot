@@ -241,7 +241,7 @@ class ActionPlanner(BasePlanner):
 
                     if relation_info:
                         action_data["relation_info_block"] = relation_info
-                    
+
                     # 将选中的表达方式传递给action_data
                     if selected_expressions:
                         action_data["selected_expressions"] = selected_expressions

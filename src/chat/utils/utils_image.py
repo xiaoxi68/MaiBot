@@ -100,7 +100,7 @@ class ImageManager:
             # 计算图片哈希
             # 确保base64字符串只包含ASCII字符
             if isinstance(image_base64, str):
-                image_base64 = image_base64.encode('ascii', errors='ignore').decode('ascii')
+                image_base64 = image_base64.encode("ascii", errors="ignore").decode("ascii")
             image_bytes = base64.b64decode(image_base64)
             image_hash = hashlib.md5(image_bytes).hexdigest()
             image_format = Image.open(io.BytesIO(image_bytes)).format.lower()
@@ -180,7 +180,7 @@ class ImageManager:
             # 计算图片哈希
             # 确保base64字符串只包含ASCII字符
             if isinstance(image_base64, str):
-                image_base64 = image_base64.encode('ascii', errors='ignore').decode('ascii')
+                image_base64 = image_base64.encode("ascii", errors="ignore").decode("ascii")
             image_bytes = base64.b64decode(image_base64)
             image_hash = hashlib.md5(image_bytes).hexdigest()
             image_format = Image.open(io.BytesIO(image_bytes)).format.lower()
@@ -263,7 +263,7 @@ class ImageManager:
         try:
             # 确保base64字符串只包含ASCII字符
             if isinstance(gif_base64, str):
-                gif_base64 = gif_base64.encode('ascii', errors='ignore').decode('ascii')
+                gif_base64 = gif_base64.encode("ascii", errors="ignore").decode("ascii")
             # 解码base64
             gif_data = base64.b64decode(gif_base64)
             gif = Image.open(io.BytesIO(gif_data))
@@ -385,7 +385,7 @@ class ImageManager:
             # 计算图片哈希
             # 确保base64字符串只包含ASCII字符
             if isinstance(image_base64, str):
-                image_base64 = image_base64.encode('ascii', errors='ignore').decode('ascii')
+                image_base64 = image_base64.encode("ascii", errors="ignore").decode("ascii")
             image_bytes = base64.b64decode(image_base64)
             image_hash = hashlib.md5(image_bytes).hexdigest()
 
@@ -458,7 +458,7 @@ class ImageManager:
             # 计算图片哈希
             # 确保base64字符串只包含ASCII字符
             if isinstance(image_base64, str):
-                image_base64 = image_base64.encode('ascii', errors='ignore').decode('ascii')
+                image_base64 = image_base64.encode("ascii", errors="ignore").decode("ascii")
             image_bytes = base64.b64decode(image_base64)
             image_hash = hashlib.md5(image_bytes).hexdigest()
 

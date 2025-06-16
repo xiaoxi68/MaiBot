@@ -896,7 +896,7 @@ class LogViewer:
             if current_monitored_file != self.current_log_file:
                 current_monitored_file = self.current_log_file
                 last_position = 0  # 重置位置
-                
+
             if current_monitored_file.exists():
                 try:
                     # 使用共享读取模式，避免文件锁定
@@ -1113,7 +1113,7 @@ class LogViewer:
         filename = filedialog.askopenfilename(
             title="选择日志文件",
             filetypes=[("JSONL日志文件", "*.jsonl"), ("所有文件", "*.*")],
-            initialdir="logs" if Path("logs").exists() else "."
+            initialdir="logs" if Path("logs").exists() else ".",
         )
         if filename:
             new_file = Path(filename)
@@ -1133,14 +1133,14 @@ class LogViewer:
         self.modules.clear()
         self.selected_modules.clear()
         self.log_text.delete(1.0, tk.END)
-        
+
         # 清空日志队列
         while not self.log_queue.empty():
             try:
                 self.log_queue.get_nowait()
             except queue.Empty:
                 break
-        
+
         # 重新读取整个文件
         if self.current_log_file.exists():
             try:
@@ -1149,23 +1149,23 @@ class LogViewer:
                         try:
                             log_entry = json.loads(line)
                             self.log_cache.append(log_entry)
-                            
+
                             # 收集模块信息
                             if "logger_name" in log_entry:
                                 self.modules.add(log_entry["logger_name"])
-                                
+
                         except json.JSONDecodeError:
                             continue
             except Exception as e:
                 messagebox.showerror("错误", f"读取日志文件失败: {e}")
                 return
-        
+
         # 更新模块列表UI
         self.update_module_list()
-        
+
         # 过滤并显示日志
         self.filter_logs()
-        
+
         # 更新窗口标题
         self.update_window_title()
 

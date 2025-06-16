@@ -1,7 +1,6 @@
 import traceback
 from typing import List, Optional, Dict, Any, Tuple
 
-from src.chat.focus_chat.expressors.exprssion_learner import get_expression_learner
 from src.chat.message_receive.message import MessageRecv, MessageThinking, MessageSending
 from src.chat.message_receive.message import Seg  # Local import needed after move
 from src.chat.message_receive.message import UserInfo
@@ -350,7 +349,7 @@ class DefaultReplyer:
 
         # 使用从处理器传来的选中表达方式
         selected_expressions = action_data.get("selected_expressions", []) if action_data else []
-        
+
         if selected_expressions:
             logger.info(f"{self.log_prefix} 使用处理器选中的{len(selected_expressions)}个表达方式")
             for expr in selected_expressions:

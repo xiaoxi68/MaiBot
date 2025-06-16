@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Dict, Any
+from typing import List, Dict
 from .info_base import InfoBase
 
 
@@ -49,17 +49,17 @@ class ExpressionSelectionInfo(InfoBase):
         expressions = self.get_selected_expressions()
         if not expressions:
             return ""
-        
+
         # 格式化表达方式为可读文本
         formatted_expressions = []
         for expr in expressions:
             situation = expr.get("situation", "")
             style = expr.get("style", "")
-            expr_type = expr.get("type", "")
-            
+            expr.get("type", "")
+
             if situation and style:
                 formatted_expressions.append(f"当{situation}时，使用 {style}")
-        
+
         return "\n".join(formatted_expressions)
 
     def get_expressions_for_action_data(self) -> List[Dict[str, str]]:
@@ -68,4 +68,4 @@ class ExpressionSelectionInfo(InfoBase):
         Returns:
             List[Dict[str, str]]: 格式化后的表达方式数据
         """
-        return self.get_selected_expressions() 
+        return self.get_selected_expressions()

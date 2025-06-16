@@ -61,9 +61,7 @@ def get_console_handler():
 class TimestampedFileHandler(logging.Handler):
     """基于时间戳的文件处理器，简单的轮转份数限制"""
 
-    def __init__(
-        self, log_dir, max_bytes=2 * 1024 * 1024, backup_count=30, encoding="utf-8"
-    ):
+    def __init__(self, log_dir, max_bytes=2 * 1024 * 1024, backup_count=30, encoding="utf-8"):
         super().__init__()
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(exist_ok=True)
@@ -99,8 +97,6 @@ class TimestampedFileHandler(logging.Handler):
 
         # 创建新文件
         self._init_current_file()
-
-
 
     def _cleanup_old_files(self):
         """清理旧的日志文件，保留指定数量"""
@@ -922,7 +918,9 @@ def force_initialize_logging():
     logger = get_logger("logger")
     console_level = LOG_CONFIG.get("console_log_level", LOG_CONFIG.get("log_level", "INFO"))
     file_level = LOG_CONFIG.get("file_log_level", LOG_CONFIG.get("log_level", "INFO"))
-    logger.info(f"日志系统已强制重新初始化，控制台级别: {console_level}，文件级别: {file_level}，轮转份数: 30个文件，所有logger格式已统一")
+    logger.info(
+        f"日志系统已强制重新初始化，控制台级别: {console_level}，文件级别: {file_level}，轮转份数: 30个文件，所有logger格式已统一"
+    )
 
 
 def show_module_colors():

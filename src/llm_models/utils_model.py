@@ -838,7 +838,7 @@ def compress_base64_image_by_scale(base64_data: str, target_size: int = 0.8 * 10
         # 将base64转换为字节数据
         # 确保base64字符串只包含ASCII字符
         if isinstance(base64_data, str):
-            base64_data = base64_data.encode('ascii', errors='ignore').decode('ascii')
+            base64_data = base64_data.encode("ascii", errors="ignore").decode("ascii")
         image_data = base64.b64decode(base64_data)
 
         # 如果已经小于目标大小，直接返回原图
