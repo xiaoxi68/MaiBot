@@ -74,6 +74,9 @@ class MaiEmoji:
 
             # 计算哈希值
             logger.debug(f"[初始化] 正在解码Base64并计算哈希: {self.filename}")
+            # 确保base64字符串只包含ASCII字符
+            if isinstance(image_base64, str):
+                image_base64 = image_base64.encode('ascii', errors='ignore').decode('ascii')
             image_bytes = base64.b64decode(image_base64)
             self.hash = hashlib.md5(image_bytes).hexdigest()
             logger.debug(f"[初始化] 哈希计算成功: {self.hash}")
@@ -841,6 +844,9 @@ class EmojiManager:
         """
         try:
             # 解码图片并获取格式
+            # 确保base64字符串只包含ASCII字符
+            if isinstance(image_base64, str):
+                image_base64 = image_base64.encode('ascii', errors='ignore').decode('ascii')
             image_bytes = base64.b64decode(image_base64)
             image_format = Image.open(io.BytesIO(image_bytes)).format.lower()
 

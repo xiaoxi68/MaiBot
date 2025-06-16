@@ -98,6 +98,9 @@ class ImageManager:
         """获取表情包描述，带查重和保存功能"""
         try:
             # 计算图片哈希
+            # 确保base64字符串只包含ASCII字符
+            if isinstance(image_base64, str):
+                image_base64 = image_base64.encode('ascii', errors='ignore').decode('ascii')
             image_bytes = base64.b64decode(image_base64)
             image_hash = hashlib.md5(image_bytes).hexdigest()
             image_format = Image.open(io.BytesIO(image_bytes)).format.lower()
@@ -113,10 +116,10 @@ class ImageManager:
                 if image_base64_processed is None:
                     logger.warning("GIF转换失败，无法获取描述")
                     return "[表情包(GIF处理失败)]"
-                prompt = "这是一个动态图表情包，每一张图代表了动态图的某一帧，黑色背景代表透明，使用1-2个词描述一下表情包表达的情感和内容，简短一些"
+                prompt = "这是一个动态图表情包，每一张图代表了动态图的某一帧，黑色背景代表透明，使用1-2个词描述一下表情包表达的情感和内容，简短一些，输出一段平文本"
                 description, _ = await self._llm.generate_response_for_image(prompt, image_base64_processed, "jpg")
             else:
-                prompt = "这是一个表情包，请用使用几个词描述一下表情包所表达的情感和内容，简短一些"
+                prompt = "这是一个表情包，请用使用几个词描述一下表情包所表达的情感和内容，简短一些，输出一段平文本"
                 description, _ = await self._llm.generate_response_for_image(prompt, image_base64, image_format)
 
             if description is None:
@@ -175,6 +178,9 @@ class ImageManager:
         """获取普通图片描述，带查重和保存功能"""
         try:
             # 计算图片哈希
+            # 确保base64字符串只包含ASCII字符
+            if isinstance(image_base64, str):
+                image_base64 = image_base64.encode('ascii', errors='ignore').decode('ascii')
             image_bytes = base64.b64decode(image_base64)
             image_hash = hashlib.md5(image_bytes).hexdigest()
             image_format = Image.open(io.BytesIO(image_bytes)).format.lower()
@@ -255,6 +261,9 @@ class ImageManager:
             Optional[str]: 拼接后的JPG图像的base64编码字符串, 或者在失败时返回None
         """
         try:
+            # 确保base64字符串只包含ASCII字符
+            if isinstance(gif_base64, str):
+                gif_base64 = gif_base64.encode('ascii', errors='ignore').decode('ascii')
             # 解码base64
             gif_data = base64.b64decode(gif_base64)
             gif = Image.open(io.BytesIO(gif_data))
@@ -374,6 +383,9 @@ class ImageManager:
         try:
             # 生成图片ID
             # 计算图片哈希
+            # 确保base64字符串只包含ASCII字符
+            if isinstance(image_base64, str):
+                image_base64 = image_base64.encode('ascii', errors='ignore').decode('ascii')
             image_bytes = base64.b64decode(image_base64)
             image_hash = hashlib.md5(image_bytes).hexdigest()
 
@@ -444,6 +456,9 @@ class ImageManager:
         """
         try:
             # 计算图片哈希
+            # 确保base64字符串只包含ASCII字符
+            if isinstance(image_base64, str):
+                image_base64 = image_base64.encode('ascii', errors='ignore').decode('ascii')
             image_bytes = base64.b64decode(image_base64)
             image_hash = hashlib.md5(image_bytes).hexdigest()
 
