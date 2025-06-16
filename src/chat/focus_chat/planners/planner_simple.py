@@ -11,6 +11,7 @@ from src.chat.focus_chat.info.action_info import ActionInfo
 from src.chat.focus_chat.info.structured_info import StructuredInfo
 from src.chat.focus_chat.info.self_info import SelfInfo
 from src.chat.focus_chat.info.relation_info import RelationInfo
+from src.chat.focus_chat.info.expression_selection_info import ExpressionSelectionInfo
 from src.common.logger import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.individuality.individuality import get_individuality
@@ -122,6 +123,7 @@ class ActionPlanner(BasePlanner):
             chat_type = "group"
             is_group_chat = True
             relation_info = ""
+            selected_expressions = []
             for info in all_plan_info:
                 if isinstance(info, ObsInfo):
                     observed_messages = info.get_talking_message()
@@ -136,6 +138,8 @@ class ActionPlanner(BasePlanner):
                     relation_info = info.get_processed_info()
                 elif isinstance(info, StructuredInfo):
                     structured_info = info.get_processed_info()
+                elif isinstance(info, ExpressionSelectionInfo):
+                    selected_expressions = info.get_expressions_for_action_data()
                 else:
                     extra_info.append(info.get_processed_info())
                 # elif not isinstance(info, ActionInfo):  # 跳过已处理的ActionInfo
@@ -237,6 +241,11 @@ class ActionPlanner(BasePlanner):
 
                     if relation_info:
                         action_data["relation_info_block"] = relation_info
+                    
+                    # 将选中的表达方式传递给action_data
+                    if selected_expressions:
+                        action_data["selected_expressions"] = selected_expressions
+                        logger.debug(f"{self.log_prefix} 传递{len(selected_expressions)}个选中的表达方式到action_data")
 
                     # 对于reply动作不需要额外处理，因为相关字段已经在上面的循环中添加到action_data
 

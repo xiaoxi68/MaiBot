@@ -26,6 +26,7 @@ from src.chat.focus_chat.replyer.default_replyer import DefaultReplyer
 from src.chat.focus_chat.memory_activator import MemoryActivator
 from src.chat.focus_chat.info_processors.base_processor import BaseProcessor
 from src.chat.focus_chat.info_processors.self_processor import SelfProcessor
+from src.chat.focus_chat.info_processors.expression_selector_processor import ExpressionSelectorProcessor
 from src.chat.focus_chat.planners.planner_factory import PlannerFactory
 from src.chat.focus_chat.planners.modify_actions import ActionModifier
 from src.chat.focus_chat.planners.action_manager import ActionManager
@@ -48,6 +49,7 @@ PROCESSOR_CLASSES = {
     "WorkingMemoryProcessor": (WorkingMemoryProcessor, "working_memory_processor"),
     "SelfProcessor": (SelfProcessor, "self_identify_processor"),
     "RelationshipProcessor": (RelationshipProcessor, "relation_processor"),
+    "ExpressionSelectorProcessor": (ExpressionSelectorProcessor, "expression_selector_processor"),
 }
 
 logger = get_logger("hfc")  # Logger Name Changed
@@ -189,6 +191,7 @@ class HeartFChatting:
                     "WorkingMemoryProcessor",
                     "SelfProcessor",
                     "RelationshipProcessor",
+                    "ExpressionSelectorProcessor",
                 ]:
                     self.processors.append(processor_actual_class(subheartflow_id=self.stream_id))
                 elif name == "ChattingInfoProcessor":

@@ -546,7 +546,7 @@ class RelationshipManager:
                 days_diff = hours_diff / 24 - 7
                 return max(0.1, 0.95 - days_diff * (0.85 / 23))
         except Exception as e:
-            self.logger.error(f"计算时间权重失败: {e}")
+            logger.error(f"计算时间权重失败: {e}")
             return 0.5  # 发生错误时返回中等权重
 
     def tfidf_similarity(self, s1, s2):

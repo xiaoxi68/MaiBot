@@ -182,6 +182,9 @@ class FocusChatProcessorConfig(ConfigBase):
     working_memory_processor: bool = True
     """是否启用工作记忆处理器"""
 
+    expression_selector_processor: bool = True
+    """是否启用表达方式选择处理器"""
+
 
 @dataclass
 class ExpressionConfig(ConfigBase):
@@ -195,6 +198,9 @@ class ExpressionConfig(ConfigBase):
 
     enable_expression_learning: bool = True
     """是否启用表达学习"""
+
+    selection_mode: str = "llm"
+    """表达方式选择模式：'llm' 使用LLM智能选择，'random' 使用传统随机选择"""
 
 
 @dataclass

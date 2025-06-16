@@ -807,7 +807,7 @@ class NormalChat:
             time_elapsed = current_time - stats["first_time"]
             total_messages = self._get_total_messages_in_timerange(stats["first_time"], stats["last_time"])
 
-            print(f"person_id: {person_id}, total_messages: {total_messages}, time_elapsed: {time_elapsed}")
+            # print(f"person_id: {person_id}, total_messages: {total_messages}, time_elapsed: {time_elapsed}")
 
             # 检查是否满足关系构建条件
             should_build_relation = (

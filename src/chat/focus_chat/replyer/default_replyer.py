@@ -268,6 +268,7 @@ class DefaultReplyer:
                     sender_name=sender,  # Pass determined name
                     target_message=targer,
                     config_expression_style=global_config.expression.expression_style,
+                    action_data=action_data,  # 传递action_data
                 )
 
             # 4. 调用 LLM 生成回复
@@ -324,6 +325,7 @@ class DefaultReplyer:
         identity,
         target_message,
         config_expression_style,
+        action_data=None,
         # stuation,
     ) -> str:
         is_group_chat = bool(chat_stream.group_info)
@@ -343,35 +345,24 @@ class DefaultReplyer:
             show_actions=True,
         )
 
-        expression_learner = get_expression_learner()
-        (
-            learnt_style_expressions,
-            learnt_grammar_expressions,
-            personality_expressions,
-        ) = await expression_learner.get_expression_by_chat_id(chat_stream.stream_id)
-
         style_habbits = []
         grammar_habbits = []
-        # 1. learnt_expressions加权随机选3条
-        if learnt_style_expressions:
-            # 使用相似度匹配选择最相似的表达
-            similar_exprs = find_similar_expressions(target_message, learnt_style_expressions, 3)
-            for expr in similar_exprs:
-                # print(f"expr: {expr}")
+
+        # 使用从处理器传来的选中表达方式
+        selected_expressions = action_data.get("selected_expressions", []) if action_data else []
+        
+        if selected_expressions:
+            logger.info(f"{self.log_prefix} 使用处理器选中的{len(selected_expressions)}个表达方式")
+            for expr in selected_expressions:
                 if isinstance(expr, dict) and "situation" in expr and "style" in expr:
-                    style_habbits.append(f"当{expr['situation']}时，使用 {expr['style']}")
-        # 2. learnt_grammar_expressions加权随机选2条
-        if learnt_grammar_expressions:
-            weights = [expr["count"] for expr in learnt_grammar_expressions]
-            selected_learnt = weighted_sample_no_replacement(learnt_grammar_expressions, weights, 2)
-            for expr in selected_learnt:
-                if isinstance(expr, dict) and "situation" in expr and "style" in expr:
-                    grammar_habbits.append(f"当{expr['situation']}时，使用 {expr['style']}")
-        # 3. personality_expressions随机选1条
-        if personality_expressions:
-            expr = random.choice(personality_expressions)
-            if isinstance(expr, dict) and "situation" in expr and "style" in expr:
-                style_habbits.append(f"当{expr['situation']}时，使用 {expr['style']}")
+                    expr_type = expr.get("type", "style")
+                    if expr_type == "grammar":
+                        grammar_habbits.append(f"当{expr['situation']}时，使用 {expr['style']}")
+                    else:
+                        style_habbits.append(f"当{expr['situation']}时，使用 {expr['style']}")
+        else:
+            logger.debug(f"{self.log_prefix} 没有从处理器获得表达方式，将使用空的表达方式")
+            # 不再在replyer中进行随机选择，全部交给处理器处理
 
         style_habbits_str = "\n".join(style_habbits)
         grammar_habbits_str = "\n".join(grammar_habbits)
