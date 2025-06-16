@@ -1,3 +1,4 @@
+from reportportal_client import current
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 from src.chat.heart_flow.observation.observation import Observation
 from src.llm_models.utils_model import LLMRequest
@@ -114,7 +115,8 @@ class RelationshipProcessor(BaseProcessor):
         self.cache_file_path = os.path.join("data", f"relationship_cache_{self.subheartflow_id}.pkl")
         
         # 最后处理的消息时间，避免重复处理相同消息
-        self.last_processed_message_time = 0.0
+        current_time = time.time()
+        self.last_processed_message_time = current_time
         
         # 最后清理时间，用于定期清理老消息段
         self.last_cleanup_time = 0.0
@@ -148,16 +150,11 @@ class RelationshipProcessor(BaseProcessor):
             try:
                 with open(self.cache_file_path, 'rb') as f:
                     cache_data = pickle.load(f)
-                    if isinstance(cache_data, dict) and 'person_engaged_cache' in cache_data:
                         # 新格式：包含额外信息的缓存
-                        self.person_engaged_cache = cache_data.get('person_engaged_cache', {})
-                        self.last_processed_message_time = cache_data.get('last_processed_message_time', 0.0)
-                        self.last_cleanup_time = cache_data.get('last_cleanup_time', 0.0)
-                    else:
-                        # 旧格式：仅包含person_engaged_cache
-                        self.person_engaged_cache = cache_data
-                        self.last_processed_message_time = 0.0
-                        self.last_cleanup_time = 0.0
+                    self.person_engaged_cache = cache_data.get('person_engaged_cache', {})
+                    self.last_processed_message_time = cache_data.get('last_processed_message_time', 0.0)
+                    self.last_cleanup_time = cache_data.get('last_cleanup_time', 0.0)
+
                 logger.info(f"{self.log_prefix} 成功加载关系缓存，包含 {len(self.person_engaged_cache)} 个用户，最后处理时间：{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.last_processed_message_time)) if self.last_processed_message_time > 0 else '未设置'}")
             except Exception as e:
                 logger.error(f"{self.log_prefix} 加载关系缓存失败: {e}")

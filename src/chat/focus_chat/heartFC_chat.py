@@ -341,7 +341,7 @@ class HeartFChatting:
                                     },
                                     "observed_messages": "",
                                 },
-                                "loop_action_info": {"action_taken": False, "reply_text": "", "command": ""},
+                                "loop_action_info": {"action_taken": False, "reply_text": "", "command": "", "taken_time": time.time()},
                             }
                             self._current_cycle_detail.set_loop_info(error_loop_info)
                             self._current_cycle_detail.complete_cycle()
@@ -420,7 +420,7 @@ class HeartFChatting:
                                 },
                                 "observed_messages": "",
                             },
-                            "loop_action_info": {"action_taken": False, "reply_text": "", "command": ""},
+                            "loop_action_info": {"action_taken": False, "reply_text": "", "command": "", "taken_time": time.time()},
                         }
                         try:
                             self._current_cycle_detail.set_loop_info(error_loop_info)
@@ -626,7 +626,7 @@ class HeartFChatting:
                     "action_result": {"action_type": "error", "action_data": {}, "reasoning": f"处理失败: {e}"},
                     "observed_messages": "",
                 },
-                "loop_action_info": {"action_taken": False, "reply_text": "", "command": ""},
+                "loop_action_info": {"action_taken": False, "reply_text": "", "command": "", "taken_time": time.time()},
             }
 
     async def _handle_action(

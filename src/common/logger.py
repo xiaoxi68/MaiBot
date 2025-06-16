@@ -37,7 +37,7 @@ def get_file_handler():
         # 使用基于时间戳的handler，简单的轮转份数限制
         _file_handler = TimestampedFileHandler(
             log_dir=LOG_DIR,
-            max_bytes=2 * 1024 * 1024,  # 2MB
+            max_bytes=5 * 1024 * 1024,  # 5MB
             backup_count=30,
             encoding="utf-8",
         )
@@ -61,7 +61,7 @@ def get_console_handler():
 class TimestampedFileHandler(logging.Handler):
     """基于时间戳的文件处理器，简单的轮转份数限制"""
 
-    def __init__(self, log_dir, max_bytes=2 * 1024 * 1024, backup_count=30, encoding="utf-8"):
+    def __init__(self, log_dir, max_bytes=5 * 1024 * 1024, backup_count=30, encoding="utf-8"):
         super().__init__()
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(exist_ok=True)
@@ -687,7 +687,7 @@ def configure_logging(
     level: str = "INFO",
     console_level: str = None,
     file_level: str = None,
-    max_bytes: int = 2 * 1024 * 1024,
+    max_bytes: int = 5 * 1024 * 1024,
     backup_count: int = 30,
     log_dir: str = "logs",
 ):

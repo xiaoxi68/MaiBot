@@ -468,6 +468,9 @@ class RelationshipManager:
         )
         know_times = await person_info_manager.get_value(person_id, "know_times") or 0
         await person_info_manager.update_one_field(person_id, "know_times", know_times + 1)
+        know_since = await person_info_manager.get_value(person_id, "know_since") or 0
+        if know_since == 0:
+            await person_info_manager.update_one_field(person_id, "know_since", timestamp)
         await person_info_manager.update_one_field(person_id, "last_know", timestamp)
 
         logger.info(f"印象更新完成 for {person_name}")
