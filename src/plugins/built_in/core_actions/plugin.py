@@ -11,6 +11,7 @@ from typing import List, Tuple, Type, Optional
 # 导入新插件系统
 from src.plugin_system import BasePlugin, register_plugin, BaseAction, ComponentInfo, ActionActivationType, ChatMode
 from src.plugin_system.base.base_command import BaseCommand
+from src.plugin_system.base.config_types import ConfigField
 
 # 导入依赖的系统组件
 from src.common.logger import get_logger
@@ -412,37 +413,80 @@ class CoreActionsPlugin(BasePlugin):
     enable_plugin = True
     config_file_name = "config.toml"
 
+    # 配置节描述
+    config_section_descriptions = {
+        "plugin": "插件基本信息配置",
+        "components": "核心组件启用配置",
+        "no_reply": "不回复动作配置",
+        "emoji": "表情动作配置",
+    }
+
+    # 配置Schema定义
+    config_schema = {
+        "plugin": {
+            "name": ConfigField(type=str, default="core_actions", description="插件名称", required=True),
+            "version": ConfigField(type=str, default="1.0.0", description="插件版本号"),
+            "enabled": ConfigField(type=bool, default=True, description="是否启用插件"),
+            "description": ConfigField(type=str, default="系统核心动作插件，提供基础聊天交互功能", description="插件描述", required=True)
+        },
+        "components": {
+            "enable_reply": ConfigField(type=bool, default=True, description="是否启用'回复'动作"),
+            "enable_no_reply": ConfigField(type=bool, default=True, description="是否启用'不回复'动作"),
+            "enable_emoji": ConfigField(type=bool, default=True, description="是否启用'表情'动作"),
+            "enable_change_to_focus": ConfigField(type=bool, default=True, description="是否启用'切换到专注模式'动作"),
+            "enable_exit_focus": ConfigField(type=bool, default=True, description="是否启用'退出专注模式'动作"),
+            "enable_ping_command": ConfigField(type=bool, default=True, description="是否启用'/ping'测试命令"),
+            "enable_log_command": ConfigField(type=bool, default=True, description="是否启用'/log'日志命令")
+        },
+        "no_reply": {
+            "waiting_timeout": ConfigField(type=int, default=1200, description="连续不回复时，最长的等待超时时间（秒）"),
+            "stage_1_wait": ConfigField(type=int, default=10, description="第1次连续不回复的等待时间（秒）"),
+            "stage_2_wait": ConfigField(type=int, default=60, description="第2次连续不回复的等待时间（秒）"),
+            "stage_3_wait": ConfigField(type=int, default=600, description="第3次连续不回复的等待时间（秒）"),
+        },
+        "emoji": {
+            "random_probability": ConfigField(
+                type=float,
+                default=0.1,
+                description="Normal模式下，随机发送表情的概率（0.0到1.0）",
+                example=0.15
+            )
+        }
+    }
+
     def get_plugin_components(self) -> List[Tuple[ComponentInfo, Type]]:
         """返回插件包含的组件列表"""
 
-        # 从配置获取表情动作的随机概率
+        # --- 从配置动态设置Action/Command ---
         emoji_chance = self.get_config("emoji.random_probability", 0.1)
-
-        # 动态设置EmojiAction的随机概率
         EmojiAction.random_activation_probability = emoji_chance
 
-        # 从配置获取不回复动作的超时时间
         no_reply_timeout = self.get_config("no_reply.waiting_timeout", 1200)
-
-        # 动态设置NoReplyAction的超时时间
         NoReplyAction.waiting_timeout = no_reply_timeout
 
-        return [
-            # 回复动作 - 使用类中定义的所有属性
-            (ReplyAction.get_action_info(), ReplyAction),
-            # 不回复动作 - 使用类中定义的所有属性
-            (NoReplyAction.get_action_info(), NoReplyAction),
-            # 表情动作 - 使用类中定义的所有属性
-            (EmojiAction.get_action_info(), EmojiAction),
-            # 退出专注聊天动作 - 使用类中定义的所有属性
-            (ExitFocusChatAction.get_action_info(), ExitFocusChatAction),
-            # 切换到专注聊天动作 - 使用类中定义的所有属性
-            (ChangeToFocusChatAction.get_action_info(), ChangeToFocusChatAction),
-            # 示例Command - Ping命令
-            (PingCommand.get_command_info(name="ping", description="测试机器人响应，拦截后续处理"), PingCommand),
-            # 示例Command - Log命令
-            (LogCommand.get_command_info(name="log", description="记录消息到日志，不拦截后续处理"), LogCommand),
-        ]
+        stage1 = self.get_config("no_reply.stage_1_wait", 10)
+        stage2 = self.get_config("no_reply.stage_2_wait", 60)
+        stage3 = self.get_config("no_reply.stage_3_wait", 600)
+        NoReplyAction._waiting_stages = [stage1, stage2, stage3]
+
+        # --- 根据配置注册组件 ---
+        components = []
+        if self.get_config("components.enable_reply", True):
+            components.append((ReplyAction.get_action_info(), ReplyAction))
+        if self.get_config("components.enable_no_reply", True):
+            components.append((NoReplyAction.get_action_info(), NoReplyAction))
+        if self.get_config("components.enable_emoji", True):
+            components.append((EmojiAction.get_action_info(), EmojiAction))
+        if self.get_config("components.enable_exit_focus", True):
+            components.append((ExitFocusChatAction.get_action_info(), ExitFocusChatAction))
+        if self.get_config("components.enable_change_to_focus", True):
+            components.append((ChangeToFocusChatAction.get_action_info(), ChangeToFocusChatAction))
+        if self.get_config("components.enable_ping_command", True):
+            components.append((PingCommand.get_command_info(name="ping", description="测试机器人响应，拦截后续处理"), PingCommand))
+        if self.get_config("components.enable_log_command", True):
+            components.append((LogCommand.get_command_info(name="log", description="记录消息到日志，不拦截后续处理"), LogCommand))
+
+        return components
 
 
 # ===== 示例Command组件 =====

@@ -28,6 +28,7 @@ from src.plugin_system.base.base_plugin import BasePlugin
 from src.plugin_system.base.base_plugin import register_plugin
 from src.plugin_system.base.base_action import BaseAction
 from src.plugin_system.base.component_types import ComponentInfo, ActionActivationType, ChatMode
+from src.plugin_system.base.config_types import ConfigField
 from src.common.logger import get_logger
 
 logger = get_logger("doubao_pic_plugin")
@@ -102,8 +103,8 @@ class DoubaoImageGenerationAction(BaseAction):
         logger.info(f"{self.log_prefix} 执行豆包图片生成动作")
 
         # 配置验证
-        http_base_url = self.api.get_config("base_url")
-        http_api_key = self.api.get_config("volcano_generate_api_key")
+        http_base_url = self.api.get_config("api.base_url")
+        http_api_key = self.api.get_config("api.volcano_generate_api_key")
 
         if not (http_base_url and http_api_key):
             error_msg = "抱歉，图片生成功能所需的HTTP配置（如API地址或密钥）不完整，无法提供服务。"
@@ -132,8 +133,8 @@ class DoubaoImageGenerationAction(BaseAction):
             logger.info(f"{self.log_prefix} 图片描述过长，已截断")
 
         # 获取配置
-        default_model = self.api.get_config("default_model", "doubao-seedream-3-0-t2i-250415")
-        image_size = self.action_data.get("size", self.api.get_config("default_size", "1024x1024"))
+        default_model = self.api.get_config("generation.default_model", "doubao-seedream-3-0-t2i-250415")
+        image_size = self.action_data.get("size", self.api.get_config("generation.default_size", "1024x1024"))
 
         # 验证图片尺寸格式
         if not self._validate_image_size(image_size):
@@ -183,6 +184,8 @@ class DoubaoImageGenerationAction(BaseAction):
 
         if success:
             image_url = result
+            # print(f"image_url: {image_url}")
+            # print(f"result: {result}")
             logger.info(f"{self.log_prefix} 图片URL获取成功: {image_url[:70]}... 下载并编码.")
 
             try:
@@ -202,8 +205,9 @@ class DoubaoImageGenerationAction(BaseAction):
                     self._cleanup_cache()
 
                     await self.send_message_by_expressor("图片已发送！")
-                    return True, "图片已发送"
+                    return True, "图片已成功生成并发送"
                 else:
+                    print(f"send_success: {send_success}")
                     await self.send_message_by_expressor("图片已处理为Base64，但发送失败了。")
                     return False, "图片发送失败 (Base64)"
             else:
@@ -216,7 +220,7 @@ class DoubaoImageGenerationAction(BaseAction):
 
     def _get_guidance_scale(self) -> float:
         """获取guidance_scale配置值"""
-        guidance_scale_input = self.api.get_config("default_guidance_scale", 2.5)
+        guidance_scale_input = self.api.get_config("generation.default_guidance_scale", 2.5)
         try:
             return float(guidance_scale_input)
         except (ValueError, TypeError):
@@ -225,7 +229,7 @@ class DoubaoImageGenerationAction(BaseAction):
 
     def _get_seed(self) -> int:
         """获取seed配置值"""
-        seed_config_value = self.api.get_config("default_seed")
+        seed_config_value = self.api.get_config("generation.default_seed")
         if seed_config_value is not None:
             try:
                 return int(seed_config_value)
@@ -235,7 +239,7 @@ class DoubaoImageGenerationAction(BaseAction):
 
     def _get_watermark(self) -> bool:
         """获取watermark配置值"""
-        watermark_source = self.api.get_config("default_watermark", True)
+        watermark_source = self.api.get_config("generation.default_watermark", True)
         if isinstance(watermark_source, bool):
             return watermark_source
         elif isinstance(watermark_source, str):
@@ -321,8 +325,8 @@ class DoubaoImageGenerationAction(BaseAction):
         self, prompt: str, model: str, size: str, seed: int, guidance_scale: float, watermark: bool
     ) -> Tuple[bool, str]:
         """发送HTTP请求生成图片"""
-        base_url = self.api.get_config("base_url")
-        generate_api_key = self.api.get_config("volcano_generate_api_key")
+        base_url = self.api.get_config("api.base_url")
+        generate_api_key = self.api.get_config("api.volcano_generate_api_key")
 
         endpoint = f"{base_url.rstrip('/')}/images/generations"
 
@@ -401,6 +405,74 @@ class DoubaoImagePlugin(BasePlugin):
     plugin_author = "MaiBot开发团队"
     enable_plugin = True
     config_file_name = "config.toml"
+
+    # 配置节描述
+    config_section_descriptions = {
+        "plugin": "插件基本信息配置",
+        "api": "API相关配置，包含火山引擎API的访问信息",
+        "generation": "图片生成参数配置，控制生成图片的各种参数",
+        "cache": "结果缓存配置",
+        "components": "组件启用配置"
+    }
+
+    # 配置Schema定义
+    config_schema = {
+        "plugin": {
+            "name": ConfigField(type=str, default="doubao_pic_plugin", description="插件名称", required=True),
+            "version": ConfigField(type=str, default="2.0.0", description="插件版本号"),
+            "enabled": ConfigField(type=bool, default=True, description="是否启用插件"),
+            "description": ConfigField(
+                type=str,
+                default="基于火山引擎豆包模型的AI图片生成插件",
+                description="插件描述",
+                required=True
+            )
+        },
+        "api": {
+            "base_url": ConfigField(
+                type=str,
+                default="https://ark.cn-beijing.volces.com/api/v3",
+                description="API基础URL",
+                example="https://api.example.com/v1"
+            ),
+            "volcano_generate_api_key": ConfigField(
+                type=str,
+                default="YOUR_DOUBAO_API_KEY_HERE",
+                description="火山引擎豆包API密钥",
+                required=True
+            )
+        },
+        "generation": {
+            "default_model": ConfigField(
+                type=str,
+                default="doubao-seedream-3-0-t2i-250415",
+                description="默认使用的文生图模型",
+                choices=["doubao-seedream-3-0-t2i-250415", "doubao-seedream-2-0-t2i"]
+            ),
+            "default_size": ConfigField(
+                type=str,
+                default="1024x1024",
+                description="默认图片尺寸",
+                example="1024x1024",
+                choices=["1024x1024", "1024x1280", "1280x1024", "1024x1536", "1536x1024"]
+            ),
+            "default_watermark": ConfigField(type=bool, default=True, description="是否默认添加水印"),
+            "default_guidance_scale": ConfigField(
+                type=float,
+                default=2.5,
+                description="模型指导强度，影响图片与提示的关联性",
+                example="2.0"
+            ),
+            "default_seed": ConfigField(type=int, default=42, description="随机种子，用于复现图片")
+        },
+        "cache": {
+            "enabled": ConfigField(type=bool, default=True, description="是否启用请求缓存"),
+            "max_size": ConfigField(type=int, default=10, description="最大缓存数量")
+        },
+        "components": {
+            "enable_image_generation": ConfigField(type=bool, default=True, description="是否启用图片生成Action")
+        }
+    }
 
     def get_plugin_components(self) -> List[Tuple[ComponentInfo, Type]]:
         """返回插件包含的组件列表"""

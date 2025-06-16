@@ -2,6 +2,7 @@ from src.plugin_system.base.base_plugin import BasePlugin, register_plugin
 from src.plugin_system.base.component_types import ComponentInfo
 from src.common.logger import get_logger
 from src.plugin_system.base.base_action import BaseAction, ActionActivationType, ChatMode
+from src.plugin_system.base.config_types import ConfigField
 from typing import Tuple, List, Type
 
 logger = get_logger("tts")
@@ -106,6 +107,30 @@ class TTSPlugin(BasePlugin):
     plugin_author = "MaiBot开发团队"
     enable_plugin = True
     config_file_name = "config.toml"
+
+    # 配置节描述
+    config_section_descriptions = {
+        "plugin": "插件基本信息配置",
+        "components": "组件启用控制",
+        "logging": "日志记录相关配置"
+    }
+
+    # 配置Schema定义
+    config_schema = {
+        "plugin": {
+            "name": ConfigField(type=str, default="tts_plugin", description="插件名称", required=True),
+            "version": ConfigField(type=str, default="0.1.0", description="插件版本号"),
+            "enabled": ConfigField(type=bool, default=True, description="是否启用插件"),
+            "description": ConfigField(type=str, default="文字转语音插件", description="插件描述", required=True)
+        },
+        "components": {
+            "enable_tts": ConfigField(type=bool, default=True, description="是否启用TTS Action")
+        },
+        "logging": {
+            "level": ConfigField(type=str, default="INFO", description="日志记录级别", choices=["DEBUG", "INFO", "WARNING", "ERROR"]),
+            "prefix": ConfigField(type=str, default="[TTS]", description="日志记录前缀")
+        }
+    }
 
     def get_plugin_components(self) -> List[Tuple[ComponentInfo, Type]]:
         """返回插件包含的组件列表"""

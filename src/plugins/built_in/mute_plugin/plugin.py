@@ -24,6 +24,7 @@ from src.plugin_system.base.base_plugin import register_plugin
 from src.plugin_system.base.base_action import BaseAction
 from src.plugin_system.base.base_command import BaseCommand
 from src.plugin_system.base.component_types import ComponentInfo, ActionActivationType, ChatMode
+from src.plugin_system.base.config_types import ConfigField
 from src.common.logger import get_logger
 
 logger = get_logger("mute_plugin")
@@ -380,6 +381,76 @@ class MutePlugin(BasePlugin):
     plugin_author = "MaiBot开发团队"
     enable_plugin = True
     config_file_name = "config.toml"
+
+    # 配置节描述
+    config_section_descriptions = {
+        "plugin": "插件基本信息配置",
+        "components": "组件启用控制",
+        "mute": "核心禁言功能配置",
+        "smart_mute": "智能禁言Action的专属配置",
+        "mute_command": "禁言命令Command的专属配置",
+        "logging": "日志记录相关配置"
+    }
+
+    # 配置Schema定义
+    config_schema = {
+        "plugin": {
+            "name": ConfigField(type=str, default="mute_plugin", description="插件名称", required=True),
+            "version": ConfigField(type=str, default="2.0.0", description="插件版本号"),
+            "enabled": ConfigField(type=bool, default=False, description="是否启用插件"),
+            "description": ConfigField(type=str, default="群聊禁言管理插件，提供智能禁言功能", description="插件描述", required=True)
+        },
+        "components": {
+            "enable_smart_mute": ConfigField(type=bool, default=True, description="是否启用智能禁言Action"),
+            "enable_mute_command": ConfigField(type=bool, default=False, description="是否启用禁言命令Command")
+        },
+        "mute": {
+            "min_duration": ConfigField(type=int, default=60, description="最短禁言时长（秒）"),
+            "max_duration": ConfigField(type=int, default=2592000, description="最长禁言时长（秒），默认30天"),
+            "default_duration": ConfigField(type=int, default=300, description="默认禁言时长（秒），默认5分钟"),
+            "enable_duration_formatting": ConfigField(type=bool, default=True, description="是否启用人性化的时长显示（如 '5分钟' 而非 '300秒'）"),
+            "log_mute_history": ConfigField(type=bool, default=True, description="是否记录禁言历史（未来功能）"),
+            "templates": ConfigField(
+                type=list,
+                default=[
+                    "好的，禁言 {target} {duration}，理由：{reason}",
+                    "收到，对 {target} 执行禁言 {duration}，因为{reason}",
+                    "明白了，禁言 {target} {duration}，原因是{reason}",
+                    "哇哈哈哈哈哈，已禁言 {target} {duration}，理由：{reason}",
+                    "哎呦我去，对 {target} 执行禁言 {duration}，因为{reason}",
+                    "{target}，你完蛋了，我要禁言你 {duration} 秒，原因：{reason}"
+                ],
+                description="成功禁言后发送的随机消息模板"
+            ),
+            "error_messages": ConfigField(
+                type=list,
+                default=[
+                    "没有指定禁言对象呢~",
+                    "没有指定禁言时长呢~",
+                    "禁言时长必须是正数哦~",
+                    "禁言时长必须是数字哦~",
+                    "找不到 {target} 这个人呢~",
+                    "查找用户信息时出现问题~"
+                ],
+                description="执行禁言过程中发生错误时发送的随机消息模板"
+            )
+        },
+        "smart_mute": {
+            "strict_mode": ConfigField(type=bool, default=True, description="LLM判定的严格模式"),
+            "keyword_sensitivity": ConfigField(type=str, default="normal", description="关键词激活的敏感度", choices=["low", "normal", "high"]),
+            "allow_parallel": ConfigField(type=bool, default=False, description="是否允许并行执行（暂未启用）")
+        },
+        "mute_command": {
+            "max_batch_size": ConfigField(type=int, default=5, description="最大批量禁言数量（未来功能）"),
+            "cooldown_seconds": ConfigField(type=int, default=3, description="命令冷却时间（秒）")
+        },
+        "logging": {
+            "level": ConfigField(type=str, default="INFO", description="日志记录级别", choices=["DEBUG", "INFO", "WARNING", "ERROR"]),
+            "prefix": ConfigField(type=str, default="[MutePlugin]", description="日志记录前缀"),
+            "include_user_info": ConfigField(type=bool, default=True, description="日志中是否包含用户信息"),
+            "include_duration_info": ConfigField(type=bool, default=True, description="日志中是否包含禁言时长信息")
+        }
+    }
 
     def get_plugin_components(self) -> List[Tuple[ComponentInfo, Type]]:
         """返回插件包含的组件列表"""

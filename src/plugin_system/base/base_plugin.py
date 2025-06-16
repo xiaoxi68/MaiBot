@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List, Type, Optional, Any
+from typing import Dict, List, Type, Optional, Any, Union
 import os
 import inspect
 import toml
@@ -9,6 +9,7 @@ from src.plugin_system.base.component_types import (
     ComponentInfo,
     PythonDependency,
 )
+from src.plugin_system.base.config_types import ConfigField
 from src.plugin_system.core.component_registry import component_registry
 
 logger = get_logger("base_plugin")
@@ -31,10 +32,14 @@ class BasePlugin(ABC):
     plugin_description: str = ""  # 插件描述
     plugin_version: str = "1.0.0"  # 插件版本
     plugin_author: str = ""  # 插件作者
-    enable_plugin: bool = True  # 是否启用插件
+    enable_plugin: bool = False  # 是否启用插件
     dependencies: List[str] = []  # 依赖的其他插件
     python_dependencies: List[PythonDependency] = []  # Python包依赖
     config_file_name: Optional[str] = None  # 配置文件名
+
+    # 新增：配置定义
+    config_schema: Dict[str, Union[Dict[str, ConfigField], str]] = {}
+    config_section_descriptions: Dict[str, str] = {}
 
     def __init__(self, plugin_dir: str = None):
         """初始化插件
@@ -74,6 +79,61 @@ class BasePlugin(ABC):
         if not self.plugin_description:
             raise ValueError(f"插件 {self.plugin_name} 必须定义 plugin_description")
 
+    def _generate_and_save_default_config(self, config_file_path: str):
+        """根据插件的Schema生成并保存默认配置文件"""
+        if not self.config_schema:
+            logger.debug(f"{self.log_prefix} 插件未定义config_schema，不生成配置文件")
+            return
+
+        toml_str = f"# {self.plugin_name} - 自动生成的配置文件\n"
+        toml_str += f"# {self.plugin_description}\n\n"
+
+        # 遍历每个配置节
+        for section, fields in self.config_schema.items():
+            # 添加节描述
+            if section in self.config_section_descriptions:
+                toml_str += f"# {self.config_section_descriptions[section]}\n"
+
+            toml_str += f"[{section}]\n\n"
+
+            # 遍历节内的字段
+            if isinstance(fields, dict):
+                for field_name, field in fields.items():
+                    if isinstance(field, ConfigField):
+                        # 添加字段描述
+                        toml_str += f"# {field.description}"
+                        if field.required:
+                            toml_str += " (必需)"
+                        toml_str += "\n"
+
+                        # 如果有示例值，添加示例
+                        if field.example:
+                            toml_str += f"# 示例: {field.example}\n"
+
+                        # 如果有可选值，添加说明
+                        if field.choices:
+                            choices_str = ", ".join(map(str, field.choices))
+                            toml_str += f"# 可选值: {choices_str}\n"
+
+                        # 添加字段值
+                        value = field.default
+                        if isinstance(value, str):
+                            toml_str += f'{field_name} = "{value}"\n'
+                        elif isinstance(value, bool):
+                            toml_str += f'{field_name} = {str(value).lower()}\n'
+                        else:
+                            toml_str += f"{field_name} = {value}\n"
+
+                        toml_str += "\n"
+            toml_str += "\n"
+
+        try:
+            with open(config_file_path, "w", encoding="utf-8") as f:
+                f.write(toml_str)
+            logger.info(f"{self.log_prefix} 已生成默认配置文件: {config_file_path}")
+        except IOError as e:
+            logger.error(f"{self.log_prefix} 保存默认配置文件失败: {e}", exc_info=True)
+
     def _load_plugin_config(self):
         """加载插件配置文件"""
         if not self.config_file_name:
@@ -100,7 +160,11 @@ class BasePlugin(ABC):
         config_file_path = os.path.join(plugin_dir, self.config_file_name)
 
         if not os.path.exists(config_file_path):
-            logger.warning(f"{self.log_prefix} 配置文件 {config_file_path} 不存在")
+            logger.info(f"{self.log_prefix} 配置文件 {config_file_path} 不存在，将生成默认配置。")
+            self._generate_and_save_default_config(config_file_path)
+
+        if not os.path.exists(config_file_path):
+            logger.warning(f"{self.log_prefix} 配置文件 {config_file_path} 不存在且无法生成。")
             return
 
         file_ext = os.path.splitext(self.config_file_name)[1].lower()
