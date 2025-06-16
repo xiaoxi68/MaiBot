@@ -106,6 +106,7 @@ self_identify_processor = true # 是否启用自我识别处理器
 relation_processor = true # 是否启用关系识别处理器
 tool_use_processor = false # 是否启用工具使用处理器
 working_memory_processor = false # 是否启用工作记忆处理器，消耗量大
+expression_selector_processor = true # 是否启用表达方式选择处理器
 
 [emoji]
 max_reg_num = 60 # 表情包最大注册数量
