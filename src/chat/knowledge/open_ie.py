@@ -6,7 +6,7 @@ from typing import Any, Dict, List
 
 from .lpmmconfig import INVALID_ENTITY, global_config
 
-ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
+ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 
 
 def _filter_invalid_entities(entities: List[str]) -> List[str]:
