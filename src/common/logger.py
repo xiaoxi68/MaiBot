@@ -1,11 +1,9 @@
 import logging
 
-# 不再需要logging.handlers，已切换到基于时间戳的处理器
+# 使用基于时间戳的文件处理器，简单的轮转份数限制
 from pathlib import Path
 from typing import Callable, Optional
 import json
-import gzip
-import shutil
 import threading
 import time
 from datetime import datetime, timedelta
@@ -36,14 +34,12 @@ def get_file_handler():
                 _file_handler = handler
                 return _file_handler
 
-        # 使用新的基于时间戳的handler，避免重命名操作
+        # 使用基于时间戳的handler，简单的轮转份数限制
         _file_handler = TimestampedFileHandler(
             log_dir=LOG_DIR,
-            max_bytes=10 * 1024 * 1024,  # 10MB
-            backup_count=5,
+            max_bytes=2 * 1024 * 1024,  # 2MB
+            backup_count=30,
             encoding="utf-8",
-            compress=True,
-            compress_level=6,
         )
         # 设置文件handler的日志级别
         file_level = LOG_CONFIG.get("file_log_level", LOG_CONFIG.get("log_level", "INFO"))
@@ -63,10 +59,10 @@ def get_console_handler():
 
 
 class TimestampedFileHandler(logging.Handler):
-    """基于时间戳的文件处理器，避免重命名操作"""
+    """基于时间戳的文件处理器，简单的轮转份数限制"""
 
     def __init__(
-        self, log_dir, max_bytes=10 * 1024 * 1024, backup_count=5, encoding="utf-8", compress=True, compress_level=6
+        self, log_dir, max_bytes=2 * 1024 * 1024, backup_count=30, encoding="utf-8"
     ):
         super().__init__()
         self.log_dir = Path(log_dir)
@@ -74,8 +70,6 @@ class TimestampedFileHandler(logging.Handler):
         self.max_bytes = max_bytes
         self.backup_count = backup_count
         self.encoding = encoding
-        self.compress = compress
-        self.compress_level = compress_level
         self._lock = threading.Lock()
 
         # 当前活跃的日志文件
@@ -100,48 +94,19 @@ class TimestampedFileHandler(logging.Handler):
         if self.current_stream:
             self.current_stream.close()
 
-        # 压缩旧文件
-        if self.compress and self.current_file:
-            threading.Thread(target=self._compress_file, args=(self.current_file,), daemon=True).start()
-
         # 清理旧文件
         self._cleanup_old_files()
 
         # 创建新文件
         self._init_current_file()
 
-    def _compress_file(self, file_path):
-        """在后台压缩文件"""
-        try:
-            time.sleep(0.5)  # 等待文件写入完成
 
-            if not file_path.exists():
-                return
-
-            compressed_path = file_path.with_suffix(file_path.suffix + ".gz")
-            original_size = file_path.stat().st_size
-
-            with open(file_path, "rb") as f_in:
-                with gzip.open(compressed_path, "wb", compresslevel=self.compress_level) as f_out:
-                    shutil.copyfileobj(f_in, f_out)
-
-            # 删除原文件
-            file_path.unlink()
-
-            compressed_size = compressed_path.stat().st_size
-            ratio = (1 - compressed_size / original_size) * 100 if original_size > 0 else 0
-            print(f"[日志压缩] {file_path.name} -> {compressed_path.name} (压缩率: {ratio:.1f}%)")
-
-        except Exception as e:
-            print(f"[日志压缩] 压缩失败 {file_path}: {e}")
 
     def _cleanup_old_files(self):
         """清理旧的日志文件，保留指定数量"""
         try:
-            # 获取所有日志文件（包括压缩的）
-            log_files = []
-            for pattern in ["app_*.log.jsonl", "app_*.log.jsonl.gz"]:
-                log_files.extend(self.log_dir.glob(pattern))
+            # 获取所有日志文件
+            log_files = list(self.log_dir.glob("app_*.log.jsonl"))
 
             # 按修改时间排序
             log_files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
@@ -380,6 +345,8 @@ MODULE_COLORS = {
     "hfc": "\033[96m",
     "base_action": "\033[96m",
     "action_manager": "\033[34m",
+    # 关系系统
+    "relation": "\033[38;5;201m",  # 深粉色
     # 聊天相关模块
     "normal_chat": "\033[38;5;81m",  # 亮蓝绿色
     "normal_chat_response": "\033[38;5;123m",  # 青绿色
@@ -724,8 +691,8 @@ def configure_logging(
     level: str = "INFO",
     console_level: str = None,
     file_level: str = None,
-    max_bytes: int = 10 * 1024 * 1024,
-    backup_count: int = 5,
+    max_bytes: int = 2 * 1024 * 1024,
+    backup_count: int = 30,
     log_dir: str = "logs",
 ):
     """动态配置日志参数"""
@@ -933,7 +900,7 @@ def initialize_logging():
     logger.info("日志系统已重新初始化:")
     logger.info(f"  - 控制台级别: {console_level}")
     logger.info(f"  - 文件级别: {file_level}")
-    logger.info("  - 压缩功能: 启用")
+    logger.info("  - 轮转份数: 30个文件")
     logger.info("  - 自动清理: 30天前的日志")
 
 
@@ -955,7 +922,7 @@ def force_initialize_logging():
     logger = get_logger("logger")
     console_level = LOG_CONFIG.get("console_log_level", LOG_CONFIG.get("log_level", "INFO"))
     file_level = LOG_CONFIG.get("file_log_level", LOG_CONFIG.get("log_level", "INFO"))
-    logger.info(f"日志系统已强制重新初始化，控制台级别: {console_level}，文件级别: {file_level}，所有logger格式已统一")
+    logger.info(f"日志系统已强制重新初始化，控制台级别: {console_level}，文件级别: {file_level}，轮转份数: 30个文件，所有logger格式已统一")
 
 
 def show_module_colors():
@@ -1033,12 +1000,12 @@ def start_log_cleanup_task():
     cleanup_thread.start()
 
     logger = get_logger("logger")
-    logger.info("已启动日志清理任务，将自动清理30天前的日志文件")
+    logger.info("已启动日志清理任务，将自动清理30天前的日志文件（轮转份数限制: 30个文件）")
 
 
 def get_log_stats():
     """获取日志文件统计信息"""
-    stats = {"total_files": 0, "total_size": 0, "compressed_files": 0, "uncompressed_files": 0, "files": []}
+    stats = {"total_files": 0, "total_size": 0, "files": []}
 
     try:
         if not LOG_DIR.exists():
@@ -1049,17 +1016,11 @@ def get_log_stats():
                 "name": log_file.name,
                 "size": log_file.stat().st_size,
                 "modified": datetime.fromtimestamp(log_file.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
-                "compressed": log_file.suffix == ".gz",
             }
 
             stats["files"].append(file_info)
             stats["total_files"] += 1
             stats["total_size"] += file_info["size"]
-
-            if file_info["compressed"]:
-                stats["compressed_files"] += 1
-            else:
-                stats["uncompressed_files"] += 1
 
         # 按修改时间排序
         stats["files"].sort(key=lambda x: x["modified"], reverse=True)

@@ -202,6 +202,9 @@ class LogViewer:
         # 初始化日志格式化器
         self.formatter = LogFormatter(self.log_config, self.custom_module_colors, self.custom_level_colors)
 
+        # 初始化日志文件路径
+        self.current_log_file = Path("logs/app.log.jsonl")
+
         # 创建主框架
         self.main_frame = ttk.Frame(root)
         self.main_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
@@ -212,6 +215,23 @@ class LogViewer:
         # 创建控制面板
         self.control_frame = ttk.Frame(self.main_frame)
         self.control_frame.pack(fill=tk.X, pady=(0, 5))
+
+        # 文件选择框架
+        self.file_frame = ttk.LabelFrame(self.control_frame, text="日志文件")
+        self.file_frame.pack(side=tk.TOP, fill=tk.X, padx=5, pady=(0, 5))
+
+        # 当前文件显示
+        self.current_file_var = tk.StringVar(value=str(self.current_log_file))
+        self.file_label = ttk.Label(self.file_frame, textvariable=self.current_file_var, foreground="blue")
+        self.file_label.pack(side=tk.LEFT, padx=5, pady=2)
+
+        # 选择文件按钮
+        select_file_btn = ttk.Button(self.file_frame, text="选择文件", command=self.select_log_file)
+        select_file_btn.pack(side=tk.RIGHT, padx=5, pady=2)
+
+        # 刷新按钮
+        refresh_btn = ttk.Button(self.file_frame, text="刷新", command=self.refresh_log_file)
+        refresh_btn.pack(side=tk.RIGHT, padx=2, pady=2)
 
         # 模块选择框架
         self.module_frame = ttk.LabelFrame(self.control_frame, text="模块")
@@ -326,6 +346,14 @@ class LogViewer:
         self.update_thread.daemon = True
         self.update_thread.start()
 
+        # 绑定快捷键
+        self.root.bind("<Control-o>", lambda e: self.select_log_file())
+        self.root.bind("<F5>", lambda e: self.refresh_log_file())
+        self.root.bind("<Control-s>", lambda e: self.export_logs())
+
+        # 更新窗口标题
+        self.update_window_title()
+
     def load_config(self):
         """加载配置文件"""
         # 默认配置
@@ -422,11 +450,18 @@ class LogViewer:
         config_menu.add_separator()
         config_menu.add_command(label="重新加载配置", command=self.reload_config)
 
+        # 文件菜单
+        file_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="文件", menu=file_menu)
+        file_menu.add_command(label="选择日志文件", command=self.select_log_file, accelerator="Ctrl+O")
+        file_menu.add_command(label="刷新当前文件", command=self.refresh_log_file, accelerator="F5")
+        file_menu.add_separator()
+        file_menu.add_command(label="导出当前日志", command=self.export_logs, accelerator="Ctrl+S")
+
         # 工具菜单
         tools_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="工具", menu=tools_menu)
         tools_menu.add_command(label="清空日志显示", command=self.clear_log_display)
-        tools_menu.add_command(label="导出当前日志", command=self.export_logs)
 
     def show_format_settings(self):
         """显示格式设置窗口"""
@@ -724,9 +759,8 @@ class LogViewer:
 
     def update_module_list(self):
         """更新模块列表"""
-        log_file = Path("logs/app.log.jsonl")
-        if log_file.exists():
-            with open(log_file, "r", encoding="utf-8") as f:
+        if self.current_log_file.exists():
+            with open(self.current_log_file, "r", encoding="utf-8") as f:
                 for line in f:
                     try:
                         log_entry = json.loads(line)
@@ -854,14 +888,19 @@ class LogViewer:
 
     def monitor_log_file(self):
         """监控日志文件变化"""
-        log_file = Path("logs/app.log.jsonl")
         last_position = 0
+        current_monitored_file = None
 
         while self.running:
-            if log_file.exists():
+            # 检查是否需要切换监控的文件
+            if current_monitored_file != self.current_log_file:
+                current_monitored_file = self.current_log_file
+                last_position = 0  # 重置位置
+                
+            if current_monitored_file.exists():
                 try:
                     # 使用共享读取模式，避免文件锁定
-                    with open(log_file, "r", encoding="utf-8", buffering=1) as f:
+                    with open(current_monitored_file, "r", encoding="utf-8", buffering=1) as f:
                         f.seek(last_position)
                         new_lines = f.readlines()
                         last_position = f.tell()
@@ -1068,6 +1107,72 @@ class LogViewer:
         button_frame.pack(fill=tk.X, padx=5, pady=5)
         ttk.Button(button_frame, text="保存", command=save_mappings).pack(side=tk.RIGHT, padx=5)
         ttk.Button(button_frame, text="取消", command=mapping_window.destroy).pack(side=tk.RIGHT, padx=5)
+
+    def select_log_file(self):
+        """选择日志文件"""
+        filename = filedialog.askopenfilename(
+            title="选择日志文件",
+            filetypes=[("JSONL日志文件", "*.jsonl"), ("所有文件", "*.*")],
+            initialdir="logs" if Path("logs").exists() else "."
+        )
+        if filename:
+            new_file = Path(filename)
+            if new_file != self.current_log_file:
+                self.current_log_file = new_file
+                self.current_file_var.set(str(self.current_log_file))
+                self.reload_log_file()
+
+    def refresh_log_file(self):
+        """刷新日志文件"""
+        self.reload_log_file()
+
+    def reload_log_file(self):
+        """重新加载日志文件"""
+        # 清空当前缓存和显示
+        self.log_cache.clear()
+        self.modules.clear()
+        self.selected_modules.clear()
+        self.log_text.delete(1.0, tk.END)
+        
+        # 清空日志队列
+        while not self.log_queue.empty():
+            try:
+                self.log_queue.get_nowait()
+            except queue.Empty:
+                break
+        
+        # 重新读取整个文件
+        if self.current_log_file.exists():
+            try:
+                with open(self.current_log_file, "r", encoding="utf-8") as f:
+                    for line in f:
+                        try:
+                            log_entry = json.loads(line)
+                            self.log_cache.append(log_entry)
+                            
+                            # 收集模块信息
+                            if "logger_name" in log_entry:
+                                self.modules.add(log_entry["logger_name"])
+                                
+                        except json.JSONDecodeError:
+                            continue
+            except Exception as e:
+                messagebox.showerror("错误", f"读取日志文件失败: {e}")
+                return
+        
+        # 更新模块列表UI
+        self.update_module_list()
+        
+        # 过滤并显示日志
+        self.filter_logs()
+        
+        # 更新窗口标题
+        self.update_window_title()
+
+    def update_window_title(self):
+        """更新窗口标题"""
+        filename = self.current_log_file.name
+        self.root.title(f"MaiBot日志查看器 - {filename}")
 
 
 def main():
