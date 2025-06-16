@@ -18,13 +18,26 @@ class ConfigAPI:
         插件应使用此方法读取全局配置，以保证只读和隔离性。
 
         Args:
-            key: 配置键名
+            key: 配置键名，支持嵌套访问如 "section.subsection.key"
             default: 如果配置不存在时返回的默认值
 
         Returns:
             Any: 配置值或默认值
         """
-        return global_config.get(key, default)
+        # 支持嵌套键访问
+        keys = key.split(".")
+        current = global_config
+        
+        try:
+            for k in keys:
+                if hasattr(current, k):
+                    current = getattr(current, k)
+                else:
+                    return default
+            return current
+        except Exception as e:
+            logger.warning(f"获取全局配置 {key} 失败: {e}")
+            return default
 
     def get_config(self, key: str, default: Any = None) -> Any:
         """

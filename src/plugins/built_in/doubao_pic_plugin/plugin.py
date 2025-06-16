@@ -420,7 +420,7 @@ class DoubaoImagePlugin(BasePlugin):
         "plugin": {
             "name": ConfigField(type=str, default="doubao_pic_plugin", description="插件名称", required=True),
             "version": ConfigField(type=str, default="2.0.0", description="插件版本号"),
-            "enabled": ConfigField(type=bool, default=True, description="是否启用插件"),
+            "enabled": ConfigField(type=bool, default=False, description="是否启用插件"),
             "description": ConfigField(
                 type=str, default="基于火山引擎豆包模型的AI图片生成插件", description="插件描述", required=True
             ),
