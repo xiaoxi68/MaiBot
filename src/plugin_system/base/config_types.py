@@ -15,4 +15,4 @@ class ConfigField:
     description: str  # 字段描述
     example: Optional[str] = None  # 示例值
     required: bool = False  # 是否必需
-    choices: Optional[List[Any]] = field(default_factory=list)  # 可选值列表 
+    choices: Optional[List[Any]] = field(default_factory=list)  # 可选值列表

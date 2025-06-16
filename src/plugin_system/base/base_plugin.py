@@ -120,7 +120,7 @@ class BasePlugin(ABC):
                         if isinstance(value, str):
                             toml_str += f'{field_name} = "{value}"\n'
                         elif isinstance(value, bool):
-                            toml_str += f'{field_name} = {str(value).lower()}\n'
+                            toml_str += f"{field_name} = {str(value).lower()}\n"
                         else:
                             toml_str += f"{field_name} = {value}\n"
 
@@ -173,7 +173,7 @@ class BasePlugin(ABC):
             with open(config_file_path, "r", encoding="utf-8") as f:
                 self.config = toml.load(f) or {}
             logger.debug(f"{self.log_prefix} 配置已从 {config_file_path} 加载")
-            
+
             # 从配置中更新 enable_plugin
             if "plugin" in self.config and "enabled" in self.config["plugin"]:
                 self.enable_plugin = self.config["plugin"]["enabled"]

@@ -210,7 +210,7 @@ class RelationshipManager:
 
         if not readable_messages:
             return
-        
+
         for original_name, mapped_name in name_mapping.items():
             # print(f"original_name: {original_name}, mapped_name: {mapped_name}")
             readable_messages = readable_messages.replace(f"{original_name}", f"{mapped_name}")

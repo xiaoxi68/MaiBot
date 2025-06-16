@@ -412,7 +412,7 @@ class DoubaoImagePlugin(BasePlugin):
         "api": "API相关配置，包含火山引擎API的访问信息",
         "generation": "图片生成参数配置，控制生成图片的各种参数",
         "cache": "结果缓存配置",
-        "components": "组件启用配置"
+        "components": "组件启用配置",
     }
 
     # 配置Schema定义
@@ -422,56 +422,47 @@ class DoubaoImagePlugin(BasePlugin):
             "version": ConfigField(type=str, default="2.0.0", description="插件版本号"),
             "enabled": ConfigField(type=bool, default=True, description="是否启用插件"),
             "description": ConfigField(
-                type=str,
-                default="基于火山引擎豆包模型的AI图片生成插件",
-                description="插件描述",
-                required=True
-            )
+                type=str, default="基于火山引擎豆包模型的AI图片生成插件", description="插件描述", required=True
+            ),
         },
         "api": {
             "base_url": ConfigField(
                 type=str,
                 default="https://ark.cn-beijing.volces.com/api/v3",
                 description="API基础URL",
-                example="https://api.example.com/v1"
+                example="https://api.example.com/v1",
             ),
             "volcano_generate_api_key": ConfigField(
-                type=str,
-                default="YOUR_DOUBAO_API_KEY_HERE",
-                description="火山引擎豆包API密钥",
-                required=True
-            )
+                type=str, default="YOUR_DOUBAO_API_KEY_HERE", description="火山引擎豆包API密钥", required=True
+            ),
         },
         "generation": {
             "default_model": ConfigField(
                 type=str,
                 default="doubao-seedream-3-0-t2i-250415",
                 description="默认使用的文生图模型",
-                choices=["doubao-seedream-3-0-t2i-250415", "doubao-seedream-2-0-t2i"]
+                choices=["doubao-seedream-3-0-t2i-250415", "doubao-seedream-2-0-t2i"],
             ),
             "default_size": ConfigField(
                 type=str,
                 default="1024x1024",
                 description="默认图片尺寸",
                 example="1024x1024",
-                choices=["1024x1024", "1024x1280", "1280x1024", "1024x1536", "1536x1024"]
+                choices=["1024x1024", "1024x1280", "1280x1024", "1024x1536", "1536x1024"],
             ),
             "default_watermark": ConfigField(type=bool, default=True, description="是否默认添加水印"),
             "default_guidance_scale": ConfigField(
-                type=float,
-                default=2.5,
-                description="模型指导强度，影响图片与提示的关联性",
-                example="2.0"
+                type=float, default=2.5, description="模型指导强度，影响图片与提示的关联性", example="2.0"
             ),
-            "default_seed": ConfigField(type=int, default=42, description="随机种子，用于复现图片")
+            "default_seed": ConfigField(type=int, default=42, description="随机种子，用于复现图片"),
         },
         "cache": {
             "enabled": ConfigField(type=bool, default=True, description="是否启用请求缓存"),
-            "max_size": ConfigField(type=int, default=10, description="最大缓存数量")
+            "max_size": ConfigField(type=int, default=10, description="最大缓存数量"),
         },
         "components": {
             "enable_image_generation": ConfigField(type=bool, default=True, description="是否启用图片生成Action")
-        }
+        },
     }
 
     def get_plugin_components(self) -> List[Tuple[ComponentInfo, Type]]:

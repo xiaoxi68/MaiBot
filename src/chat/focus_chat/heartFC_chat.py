@@ -341,7 +341,12 @@ class HeartFChatting:
                                     },
                                     "observed_messages": "",
                                 },
-                                "loop_action_info": {"action_taken": False, "reply_text": "", "command": "", "taken_time": time.time()},
+                                "loop_action_info": {
+                                    "action_taken": False,
+                                    "reply_text": "",
+                                    "command": "",
+                                    "taken_time": time.time(),
+                                },
                             }
                             self._current_cycle_detail.set_loop_info(error_loop_info)
                             self._current_cycle_detail.complete_cycle()
@@ -420,7 +425,12 @@ class HeartFChatting:
                                 },
                                 "observed_messages": "",
                             },
-                            "loop_action_info": {"action_taken": False, "reply_text": "", "command": "", "taken_time": time.time()},
+                            "loop_action_info": {
+                                "action_taken": False,
+                                "reply_text": "",
+                                "command": "",
+                                "taken_time": time.time(),
+                            },
                         }
                         try:
                             self._current_cycle_detail.set_loop_info(error_loop_info)

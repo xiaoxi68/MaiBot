@@ -47,7 +47,9 @@ class HFCloopObservation:
             action_reasoning = action_result.get("reasoning", "未提供理由")
             is_taken = cycle.loop_action_info.get("action_taken", False)
             action_taken_time = cycle.loop_action_info.get("taken_time", 0)
-            action_taken_time_str = datetime.fromtimestamp(action_taken_time).strftime("%H:%M:%S") if action_taken_time > 0 else "未知时间"
+            action_taken_time_str = (
+                datetime.fromtimestamp(action_taken_time).strftime("%H:%M:%S") if action_taken_time > 0 else "未知时间"
+            )
             # print(action_type)
             # print(action_reasoning)
             # print(is_taken)

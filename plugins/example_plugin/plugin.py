@@ -668,7 +668,9 @@ class ExampleComprehensivePlugin(BasePlugin):
             "name": ConfigField(type=str, default="example_plugin", description="插件名称", required=True),
             "version": ConfigField(type=str, default="2.0.0", description="插件版本号"),
             "enabled": ConfigField(type=bool, default=True, description="是否启用插件"),
-            "description": ConfigField(type=str, default="综合示例插件，展示新插件系统的完整功能", description="插件描述", required=True)
+            "description": ConfigField(
+                type=str, default="综合示例插件，展示新插件系统的完整功能", description="插件描述", required=True
+            ),
         },
         "components": {
             "enable_greeting": ConfigField(type=bool, default=True, description="是否启用'智能问候'Action"),
@@ -677,47 +679,53 @@ class ExampleComprehensivePlugin(BasePlugin):
             "enable_send": ConfigField(type=bool, default=True, description="是否启用'/send'命令"),
             "enable_echo": ConfigField(type=bool, default=True, description="是否启用'/echo'命令"),
             "enable_info": ConfigField(type=bool, default=True, description="是否启用'/info'命令"),
-            "enable_dice": ConfigField(type=bool, default=True, description="是否启用'!dice'命令")
+            "enable_dice": ConfigField(type=bool, default=True, description="是否启用'!dice'命令"),
         },
         "greeting": {
-            "template": ConfigField(type=str, default="你好，{username}！欢迎使用MaiBot综合插件系统！", description="问候消息模板"),
+            "template": ConfigField(
+                type=str, default="你好，{username}！欢迎使用MaiBot综合插件系统！", description="问候消息模板"
+            ),
             "enable_emoji": ConfigField(type=bool, default=True, description="问候时是否附带表情"),
-            "enable_llm": ConfigField(type=bool, default=False, description="是否使用LLM生成个性化问候语")
+            "enable_llm": ConfigField(type=bool, default=False, description="是否使用LLM生成个性化问候语"),
         },
         "helpful": {
             "enable_llm": ConfigField(type=bool, default=False, description="是否使用LLM生成帮助内容"),
             "enable_emoji": ConfigField(type=bool, default=True, description="提供帮助时是否附带表情"),
-            "random_activation_probability": ConfigField(type=float, default=0.15, description="Normal模式下随机触发帮助的概率")
+            "random_activation_probability": ConfigField(
+                type=float, default=0.15, description="Normal模式下随机触发帮助的概率"
+            ),
         },
         "help": {
             "show_extended_help": ConfigField(type=bool, default=True, description="是否显示扩展帮助信息"),
             "include_action_info": ConfigField(type=bool, default=True, description="帮助信息中是否包含Action的信息"),
             "include_config_info": ConfigField(type=bool, default=True, description="帮助信息中是否包含配置相关信息"),
             "enable_llm": ConfigField(type=bool, default=False, description="是否使用LLM生成帮助摘要"),
-            "enable_emoji": ConfigField(type=bool, default=True, description="帮助信息中是否使用表情符号")
+            "enable_emoji": ConfigField(type=bool, default=True, description="帮助信息中是否使用表情符号"),
         },
         "send": {
             "max_message_length": ConfigField(type=int, default=500, description="发送消息的最大长度限制"),
             "enable_length_check": ConfigField(type=bool, default=True, description="是否启用消息长度检查"),
-            "default_platform": ConfigField(type=str, default="qq", description="默认发送平台")
+            "default_platform": ConfigField(type=str, default="qq", description="默认发送平台"),
         },
         "echo": {
             "max_length": ConfigField(type=int, default=200, description="回声消息的最大长度"),
-            "enable_formatting": ConfigField(type=bool, default=True, description="是否为回声消息添加'🔊 回声: '前缀")
+            "enable_formatting": ConfigField(type=bool, default=True, description="是否为回声消息添加'🔊 回声: '前缀"),
         },
         "dice": {
             "enable_dice": ConfigField(type=bool, default=True, description="是否启用骰子功能"),
-            "max_dice_count": ConfigField(type=int, default=10, description="一次最多可以掷的骰子数量")
+            "max_dice_count": ConfigField(type=int, default=10, description="一次最多可以掷的骰子数量"),
         },
         "info": {
             "show_detailed_info": ConfigField(type=bool, default=True, description="是否显示详细信息"),
             "include_stream_info": ConfigField(type=bool, default=True, description="是否包含聊天流信息"),
-            "max_content_preview": ConfigField(type=int, default=100, description="消息内容预览的最大长度")
+            "max_content_preview": ConfigField(type=int, default=100, description="消息内容预览的最大长度"),
         },
         "logging": {
-            "level": ConfigField(type=str, default="INFO", description="日志级别", choices=["DEBUG", "INFO", "WARNING", "ERROR"]),
-            "prefix": ConfigField(type=str, default="[ExampleComprehensive]", description="日志前缀")
-        }
+            "level": ConfigField(
+                type=str, default="INFO", description="日志级别", choices=["DEBUG", "INFO", "WARNING", "ERROR"]
+            ),
+            "prefix": ConfigField(type=str, default="[ExampleComprehensive]", description="日志前缀"),
+        },
     }
 
     def get_plugin_components(self) -> List[Tuple[ComponentInfo, Type]]:

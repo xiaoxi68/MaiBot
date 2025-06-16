@@ -427,7 +427,9 @@ class CoreActionsPlugin(BasePlugin):
             "name": ConfigField(type=str, default="core_actions", description="插件名称", required=True),
             "version": ConfigField(type=str, default="1.0.0", description="插件版本号"),
             "enabled": ConfigField(type=bool, default=True, description="是否启用插件"),
-            "description": ConfigField(type=str, default="系统核心动作插件，提供基础聊天交互功能", description="插件描述", required=True)
+            "description": ConfigField(
+                type=str, default="系统核心动作插件，提供基础聊天交互功能", description="插件描述", required=True
+            ),
         },
         "components": {
             "enable_reply": ConfigField(type=bool, default=True, description="是否启用'回复'动作"),
@@ -436,22 +438,21 @@ class CoreActionsPlugin(BasePlugin):
             "enable_change_to_focus": ConfigField(type=bool, default=True, description="是否启用'切换到专注模式'动作"),
             "enable_exit_focus": ConfigField(type=bool, default=True, description="是否启用'退出专注模式'动作"),
             "enable_ping_command": ConfigField(type=bool, default=True, description="是否启用'/ping'测试命令"),
-            "enable_log_command": ConfigField(type=bool, default=True, description="是否启用'/log'日志命令")
+            "enable_log_command": ConfigField(type=bool, default=True, description="是否启用'/log'日志命令"),
         },
         "no_reply": {
-            "waiting_timeout": ConfigField(type=int, default=1200, description="连续不回复时，最长的等待超时时间（秒）"),
+            "waiting_timeout": ConfigField(
+                type=int, default=1200, description="连续不回复时，最长的等待超时时间（秒）"
+            ),
             "stage_1_wait": ConfigField(type=int, default=10, description="第1次连续不回复的等待时间（秒）"),
             "stage_2_wait": ConfigField(type=int, default=60, description="第2次连续不回复的等待时间（秒）"),
             "stage_3_wait": ConfigField(type=int, default=600, description="第3次连续不回复的等待时间（秒）"),
         },
         "emoji": {
             "random_probability": ConfigField(
-                type=float,
-                default=0.1,
-                description="Normal模式下，随机发送表情的概率（0.0到1.0）",
-                example=0.15
+                type=float, default=0.1, description="Normal模式下，随机发送表情的概率（0.0到1.0）", example=0.15
             )
-        }
+        },
     }
 
     def get_plugin_components(self) -> List[Tuple[ComponentInfo, Type]]:
@@ -482,9 +483,13 @@ class CoreActionsPlugin(BasePlugin):
         if self.get_config("components.enable_change_to_focus", True):
             components.append((ChangeToFocusChatAction.get_action_info(), ChangeToFocusChatAction))
         if self.get_config("components.enable_ping_command", True):
-            components.append((PingCommand.get_command_info(name="ping", description="测试机器人响应，拦截后续处理"), PingCommand))
+            components.append(
+                (PingCommand.get_command_info(name="ping", description="测试机器人响应，拦截后续处理"), PingCommand)
+            )
         if self.get_config("components.enable_log_command", True):
-            components.append((LogCommand.get_command_info(name="log", description="记录消息到日志，不拦截后续处理"), LogCommand))
+            components.append(
+                (LogCommand.get_command_info(name="log", description="记录消息到日志，不拦截后续处理"), LogCommand)
+            )
 
         return components
 

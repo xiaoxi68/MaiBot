@@ -112,7 +112,7 @@ class TTSPlugin(BasePlugin):
     config_section_descriptions = {
         "plugin": "插件基本信息配置",
         "components": "组件启用控制",
-        "logging": "日志记录相关配置"
+        "logging": "日志记录相关配置",
     }
 
     # 配置Schema定义
@@ -121,15 +121,15 @@ class TTSPlugin(BasePlugin):
             "name": ConfigField(type=str, default="tts_plugin", description="插件名称", required=True),
             "version": ConfigField(type=str, default="0.1.0", description="插件版本号"),
             "enabled": ConfigField(type=bool, default=True, description="是否启用插件"),
-            "description": ConfigField(type=str, default="文字转语音插件", description="插件描述", required=True)
+            "description": ConfigField(type=str, default="文字转语音插件", description="插件描述", required=True),
         },
-        "components": {
-            "enable_tts": ConfigField(type=bool, default=True, description="是否启用TTS Action")
-        },
+        "components": {"enable_tts": ConfigField(type=bool, default=True, description="是否启用TTS Action")},
         "logging": {
-            "level": ConfigField(type=str, default="INFO", description="日志记录级别", choices=["DEBUG", "INFO", "WARNING", "ERROR"]),
-            "prefix": ConfigField(type=str, default="[TTS]", description="日志记录前缀")
-        }
+            "level": ConfigField(
+                type=str, default="INFO", description="日志记录级别", choices=["DEBUG", "INFO", "WARNING", "ERROR"]
+            ),
+            "prefix": ConfigField(type=str, default="[TTS]", description="日志记录前缀"),
+        },
     }
 
     def get_plugin_components(self) -> List[Tuple[ComponentInfo, Type]]:
