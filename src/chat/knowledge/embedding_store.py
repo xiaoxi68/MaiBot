@@ -342,8 +342,6 @@ class EmbeddingManager:
 
     def load_from_file(self):
         """从文件加载"""
-        if not self.check_all_embedding_model_consistency():
-            raise Exception("嵌入模型与本地存储不一致，请检查模型设置或清空嵌入库后重试。")
         self.paragraphs_embedding_store.load_from_file()
         self.entities_embedding_store.load_from_file()
         self.relation_embedding_store.load_from_file()
