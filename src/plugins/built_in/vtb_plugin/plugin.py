@@ -2,6 +2,7 @@ from src.plugin_system.base.base_plugin import BasePlugin, register_plugin
 from src.plugin_system.base.component_types import ComponentInfo
 from src.common.logger import get_logger
 from src.plugin_system.base.base_action import BaseAction, ActionActivationType, ChatMode
+from src.plugin_system.base.config_types import ConfigField
 from typing import Tuple, List, Type
 
 logger = get_logger("vtb")
@@ -113,8 +114,47 @@ class VTBPlugin(BasePlugin):
     enable_plugin = True
     config_file_name = "config.toml"
 
+    # 配置节描述
+    config_section_descriptions = {
+        "plugin": "插件基本信息配置",
+        "components": "组件启用配置",
+        "vtb_action": "VTB动作专属配置",
+        "logging": "日志记录配置",
+    }
+
+    # 配置Schema定义
+    config_schema = {
+        "plugin": {
+            "name": ConfigField(type=str, default="vtb_plugin", description="插件名称", required=True),
+            "version": ConfigField(type=str, default="0.1.0", description="插件版本号"),
+            "enabled": ConfigField(type=bool, default=True, description="是否启用插件"),
+            "description": ConfigField(type=str, default="虚拟主播情感表达插件", description="插件描述", required=True)
+        },
+        "components": {
+            "enable_vtb": ConfigField(type=bool, default=True, description="是否启用VTB动作")
+        },
+        "vtb_action": {
+            "random_activation_probability": ConfigField(
+                type=float,
+                default=0.08,
+                description="Normal模式下，随机触发VTB动作的概率（0.0到1.0）",
+                example=0.1
+            ),
+            "max_text_length": ConfigField(type=int, default=100, description="用于VTB动作的情感描述文本的最大长度"),
+            "default_emotion": ConfigField(type=str, default="平静", description="当没有有效输入时，默认表达的情感")
+        },
+        "logging": {
+            "level": ConfigField(type=str, default="INFO", description="日志级别", choices=["DEBUG", "INFO", "WARNING", "ERROR"]),
+            "prefix": ConfigField(type=str, default="[VTB]", description="日志记录前缀")
+        }
+    }
+
     def get_plugin_components(self) -> List[Tuple[ComponentInfo, Type]]:
         """返回插件包含的组件列表"""
+
+        # 从配置动态设置Action参数
+        random_chance = self.get_config("vtb_action.random_activation_probability", 0.08)
+        VTBAction.random_activation_probability = random_chance
 
         # 从配置获取组件启用状态
         enable_vtb = self.get_config("components.enable_vtb", True)

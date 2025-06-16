@@ -31,6 +31,7 @@ from src.plugin_system.base.base_plugin import register_plugin
 from src.plugin_system.base.base_action import BaseAction
 from src.plugin_system.base.base_command import BaseCommand
 from src.plugin_system.base.component_types import ComponentInfo, ActionActivationType, ChatMode
+from src.plugin_system.base.config_types import ConfigField
 from src.common.logger import get_logger
 
 logger = get_logger("example_comprehensive")
@@ -647,8 +648,84 @@ class ExampleComprehensivePlugin(BasePlugin):
     enable_plugin = True
     config_file_name = "config.toml"
 
+    # 配置节描述
+    config_section_descriptions = {
+        "plugin": "插件基本信息配置",
+        "components": "组件启用控制",
+        "greeting": "智能问候配置",
+        "helpful": "智能帮助Action配置",
+        "help": "帮助系统Command配置",
+        "send": "消息发送命令配置",
+        "echo": "回声命令配置",
+        "dice": "骰子命令配置",
+        "info": "消息信息命令配置",
+        "logging": "日志记录配置",
+    }
+
+    # 配置Schema定义
+    config_schema = {
+        "plugin": {
+            "name": ConfigField(type=str, default="example_plugin", description="插件名称", required=True),
+            "version": ConfigField(type=str, default="2.0.0", description="插件版本号"),
+            "enabled": ConfigField(type=bool, default=True, description="是否启用插件"),
+            "description": ConfigField(type=str, default="综合示例插件，展示新插件系统的完整功能", description="插件描述", required=True)
+        },
+        "components": {
+            "enable_greeting": ConfigField(type=bool, default=True, description="是否启用'智能问候'Action"),
+            "enable_helpful": ConfigField(type=bool, default=True, description="是否启用'智能帮助'Action"),
+            "enable_help": ConfigField(type=bool, default=True, description="是否启用'/help'命令"),
+            "enable_send": ConfigField(type=bool, default=True, description="是否启用'/send'命令"),
+            "enable_echo": ConfigField(type=bool, default=True, description="是否启用'/echo'命令"),
+            "enable_info": ConfigField(type=bool, default=True, description="是否启用'/info'命令"),
+            "enable_dice": ConfigField(type=bool, default=True, description="是否启用'!dice'命令")
+        },
+        "greeting": {
+            "template": ConfigField(type=str, default="你好，{username}！欢迎使用MaiBot综合插件系统！", description="问候消息模板"),
+            "enable_emoji": ConfigField(type=bool, default=True, description="问候时是否附带表情"),
+            "enable_llm": ConfigField(type=bool, default=False, description="是否使用LLM生成个性化问候语")
+        },
+        "helpful": {
+            "enable_llm": ConfigField(type=bool, default=False, description="是否使用LLM生成帮助内容"),
+            "enable_emoji": ConfigField(type=bool, default=True, description="提供帮助时是否附带表情"),
+            "random_activation_probability": ConfigField(type=float, default=0.15, description="Normal模式下随机触发帮助的概率")
+        },
+        "help": {
+            "show_extended_help": ConfigField(type=bool, default=True, description="是否显示扩展帮助信息"),
+            "include_action_info": ConfigField(type=bool, default=True, description="帮助信息中是否包含Action的信息"),
+            "include_config_info": ConfigField(type=bool, default=True, description="帮助信息中是否包含配置相关信息"),
+            "enable_llm": ConfigField(type=bool, default=False, description="是否使用LLM生成帮助摘要"),
+            "enable_emoji": ConfigField(type=bool, default=True, description="帮助信息中是否使用表情符号")
+        },
+        "send": {
+            "max_message_length": ConfigField(type=int, default=500, description="发送消息的最大长度限制"),
+            "enable_length_check": ConfigField(type=bool, default=True, description="是否启用消息长度检查"),
+            "default_platform": ConfigField(type=str, default="qq", description="默认发送平台")
+        },
+        "echo": {
+            "max_length": ConfigField(type=int, default=200, description="回声消息的最大长度"),
+            "enable_formatting": ConfigField(type=bool, default=True, description="是否为回声消息添加'🔊 回声: '前缀")
+        },
+        "dice": {
+            "enable_dice": ConfigField(type=bool, default=True, description="是否启用骰子功能"),
+            "max_dice_count": ConfigField(type=int, default=10, description="一次最多可以掷的骰子数量")
+        },
+        "info": {
+            "show_detailed_info": ConfigField(type=bool, default=True, description="是否显示详细信息"),
+            "include_stream_info": ConfigField(type=bool, default=True, description="是否包含聊天流信息"),
+            "max_content_preview": ConfigField(type=int, default=100, description="消息内容预览的最大长度")
+        },
+        "logging": {
+            "level": ConfigField(type=str, default="INFO", description="日志级别", choices=["DEBUG", "INFO", "WARNING", "ERROR"]),
+            "prefix": ConfigField(type=str, default="[ExampleComprehensive]", description="日志前缀")
+        }
+    }
+
     def get_plugin_components(self) -> List[Tuple[ComponentInfo, Type]]:
         """返回插件包含的组件列表"""
+
+        # 从配置动态设置Action参数
+        helpful_chance = self.get_config("helpful.random_activation_probability", 0.15)
+        HelpfulAction.random_activation_probability = helpful_chance
 
         # 从配置获取组件启用状态
         enable_greeting = self.get_config("components.enable_greeting", True)
