@@ -358,7 +358,7 @@ class DefaultReplyer:
 
         style_habbits_str = "\n".join(style_habbits)
         grammar_habbits_str = "\n".join(grammar_habbits)
-        
+
         # 动态构建expression habits块
         expression_habits_block = ""
         if style_habbits_str.strip():
