@@ -32,11 +32,7 @@ logger = get_logger("replyer")
 def init_prompt():
     Prompt(
         """
-你可以参考以下的语言习惯，如果情景合适就使用，不要盲目使用,不要生硬使用，而是结合到表达中：
-{style_habbits}
-
-请你根据情景使用以下句法：
-{grammar_habbits}
+{expression_habits_block}
         
 {extra_info_block}
 
@@ -59,8 +55,7 @@ def init_prompt():
 
     Prompt(
         """
-{style_habbits}
-{grammar_habbits}
+{expression_habits_block}
 {extra_info_block}
 {time_block}
 {chat_target}
@@ -68,8 +63,6 @@ def init_prompt():
 现在"{sender_name}"说的:{target_message}。引起了你的注意，你想要发言或者回复这条消息。
 {identity}，
 你需要使用合适的语法和句法，参考聊天内容，组织一条日常且口语化的回复。注意不要复读你说过的话。
-你可以参考以下的语言习惯和句法，如果情景合适就使用，不要盲目使用,不要生硬使用，而是结合到表达中：
-
 
 {config_expression_style}，请注意不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出回复内容。
 {keywords_reaction_prompt}
@@ -365,6 +358,13 @@ class DefaultReplyer:
 
         style_habbits_str = "\n".join(style_habbits)
         grammar_habbits_str = "\n".join(grammar_habbits)
+        
+        # 动态构建expression habits块
+        expression_habits_block = ""
+        if style_habbits_str.strip():
+            expression_habits_block += f"你可以参考以下的语言习惯，如果情景合适就使用，不要盲目使用,不要生硬使用，而是结合到表达中：\n{style_habbits_str}\n\n"
+        if grammar_habbits_str.strip():
+            expression_habits_block += f"请你根据情景使用以下句法：\n{grammar_habbits_str}\n"
 
         # 关键词检测与反应
         keywords_reaction_prompt = ""
@@ -415,8 +415,7 @@ class DefaultReplyer:
 
             prompt = await global_prompt_manager.format_prompt(
                 template_name,
-                style_habbits=style_habbits_str,
-                grammar_habbits=grammar_habbits_str,
+                expression_habits_block=expression_habits_block,
                 chat_target=chat_target_1,
                 chat_info=chat_talking_prompt,
                 extra_info_block=extra_info_block,
@@ -438,8 +437,7 @@ class DefaultReplyer:
             chat_target_1 = "你正在和人私聊"
             prompt = await global_prompt_manager.format_prompt(
                 template_name,
-                style_habbits=style_habbits_str,
-                grammar_habbits=grammar_habbits_str,
+                expression_habits_block=expression_habits_block,
                 chat_target=chat_target_1,
                 chat_info=chat_talking_prompt,
                 extra_info_block=extra_info_block,
