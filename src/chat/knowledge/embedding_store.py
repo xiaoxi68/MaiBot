@@ -201,7 +201,8 @@ class EmbeddingStore:
         """从文件中加载"""
         if not os.path.exists(self.embedding_file_path):
             raise Exception(f"文件{self.embedding_file_path}不存在")
-        logger.info(f"正在从文件{self.embedding_file_path}中加载{self.namespace}嵌入库")
+        logger.info("正在加载嵌入库...")
+        logger.debug(f"正在从文件{self.embedding_file_path}中加载{self.namespace}嵌入库")
         data_frame = pd.read_parquet(self.embedding_file_path, engine="pyarrow")
         total = len(data_frame)
         with Progress(
@@ -224,13 +225,15 @@ class EmbeddingStore:
 
         try:
             if os.path.exists(self.index_file_path):
-                logger.info(f"正在从文件{self.index_file_path}中加载{self.namespace}嵌入库的FaissIndex")
+                logger.info(f"正在加载{self.namespace}嵌入库的FaissIndex...")
+                logger.debug(f"正在从文件{self.index_file_path}中加载{self.namespace}嵌入库的FaissIndex")
                 self.faiss_index = faiss.read_index(self.index_file_path)
                 logger.info(f"{self.namespace}嵌入库的FaissIndex加载成功")
             else:
                 raise Exception(f"文件{self.index_file_path}不存在")
             if os.path.exists(self.idx2hash_file_path):
-                logger.info(f"正在从文件{self.idx2hash_file_path}中加载{self.namespace}嵌入库的idx2hash映射")
+                logger.info(f"正在加载{self.namespace}嵌入库的idx2hash映射...")
+                logger.debug(f"正在从文件{self.idx2hash_file_path}中加载{self.namespace}嵌入库的idx2hash映射")
                 with open(self.idx2hash_file_path, "r") as f:
                     self.idx2hash = json.load(f)
                 logger.info(f"{self.namespace}嵌入库的idx2hash映射加载成功")
