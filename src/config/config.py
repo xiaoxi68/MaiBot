@@ -90,7 +90,7 @@ def update_config():
         logger.info("已有配置文件未检测到版本号，可能是旧版本。将进行更新")
 
     # 创建old目录（如果不存在）
-    os.makedirs(old_config_dir, exist_ok=True)    # 生成带时间戳的新文件名
+    os.makedirs(old_config_dir, exist_ok=True)  # 生成带时间戳的新文件名
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     old_backup_path = os.path.join(old_config_dir, f"bot_config_{timestamp}.toml")
 
