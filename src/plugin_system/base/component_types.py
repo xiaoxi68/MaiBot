@@ -131,7 +131,7 @@ class PluginInfo:
     python_dependencies: List[PythonDependency] = None  # Python包依赖
     config_file: str = ""  # 配置文件路径
     metadata: Dict[str, Any] = None  # 额外元数据
-      # 新增：manifest相关信息
+    # 新增：manifest相关信息
     manifest_data: Dict[str, Any] = None  # manifest文件数据
     license: str = ""  # 插件许可证
     homepage_url: str = ""  # 插件主页

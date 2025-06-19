@@ -6,14 +6,9 @@
 
 from src.plugin_system.utils.manifest_utils import (
     ManifestValidator,
-    ManifestGenerator, 
+    ManifestGenerator,
     validate_plugin_manifest,
-    generate_plugin_manifest
+    generate_plugin_manifest,
 )
 
-__all__ = [
-    "ManifestValidator",
-    "ManifestGenerator",
-    "validate_plugin_manifest", 
-    "generate_plugin_manifest"
-]
+__all__ = ["ManifestValidator", "ManifestGenerator", "validate_plugin_manifest", "generate_plugin_manifest"]

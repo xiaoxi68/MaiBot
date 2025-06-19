@@ -76,7 +76,8 @@ class PluginManager:
         logger.debug(f"插件模块加载完成 - 成功: {total_loaded_modules}, 失败: {total_failed_modules}")
 
         # 第二阶段：实例化所有已注册的插件类
-        from src.plugin_system.base.base_plugin import get_registered_plugin_classes        
+        from src.plugin_system.base.base_plugin import get_registered_plugin_classes
+
         plugin_classes = get_registered_plugin_classes()
         total_registered = 0
         total_failed_registration = 0
@@ -90,7 +91,7 @@ class PluginManager:
                 if not plugin_dir:
                     plugin_dir = self._find_plugin_directory(plugin_class)
                     if plugin_dir:
-                        self.plugin_paths[plugin_name] = plugin_dir                # 实例化插件（可能因为缺少manifest而失败）
+                        self.plugin_paths[plugin_name] = plugin_dir  # 实例化插件（可能因为缺少manifest而失败）
                 plugin_instance = plugin_class(plugin_dir=plugin_dir)
 
                 # 检查插件是否启用
@@ -121,7 +122,7 @@ class PluginManager:
                             component_types[comp_type] = component_types.get(comp_type, 0) + 1
 
                         components_str = ", ".join([f"{count}个{ctype}" for ctype, count in component_types.items()])
-                        
+
                         # 显示manifest信息
                         manifest_info = ""
                         if plugin_info.license:
@@ -130,7 +131,7 @@ class PluginManager:
                             manifest_info += f" 关键词: {', '.join(plugin_info.keywords[:3])}"  # 只显示前3个关键词
                             if len(plugin_info.keywords) > 3:
                                 manifest_info += "..."
-                        
+
                         logger.info(
                             f"✅ 插件加载成功: {plugin_name} v{plugin_info.version} ({components_str}){manifest_info} - {plugin_info.description}"
                         )
@@ -140,21 +141,21 @@ class PluginManager:
                     total_failed_registration += 1
                     self.failed_plugins[plugin_name] = "插件注册失败"
                     logger.error(f"❌ 插件注册失败: {plugin_name}")
-                    
+
             except FileNotFoundError as e:
                 # manifest文件缺失
                 total_failed_registration += 1
                 error_msg = f"缺少manifest文件: {str(e)}"
                 self.failed_plugins[plugin_name] = error_msg
                 logger.error(f"❌ 插件加载失败: {plugin_name} - {error_msg}")
-                
+
             except ValueError as e:
                 # manifest文件格式错误或验证失败
                 total_failed_registration += 1
                 error_msg = f"manifest验证失败: {str(e)}"
                 self.failed_plugins[plugin_name] = error_msg
                 logger.error(f"❌ 插件加载失败: {plugin_name} - {error_msg}")
-                
+
             except Exception as e:
                 # 其他错误
                 total_failed_registration += 1
@@ -517,45 +518,44 @@ class PluginManager:
 
     def check_plugin_version_compatibility(self, plugin_name: str, manifest_data: Dict[str, Any]) -> Tuple[bool, str]:
         """检查插件版本兼容性
-        
+
         Args:
             plugin_name: 插件名称
             manifest_data: manifest数据
-            
+
         Returns:
             Tuple[bool, str]: (是否兼容, 错误信息)
         """
         if "host_application" not in manifest_data:
             # 没有版本要求，默认兼容
             return True, ""
-            
+
         host_app = manifest_data["host_application"]
         if not isinstance(host_app, dict):
             return True, ""
-            
+
         min_version = host_app.get("min_version", "")
         max_version = host_app.get("max_version", "")
-        
+
         if not min_version and not max_version:
             return True, ""
-            
+
         try:
             from src.plugin_system.utils.manifest_utils import VersionComparator
-            
+
             current_version = VersionComparator.get_current_host_version()
-            is_compatible, error_msg = VersionComparator.is_version_in_range(
-                current_version, min_version, max_version
-            )
-            
+            is_compatible, error_msg = VersionComparator.is_version_in_range(current_version, min_version, max_version)
+
             if not is_compatible:
                 return False, f"版本不兼容: {error_msg}"
             else:
                 logger.debug(f"插件 {plugin_name} 版本兼容性检查通过")
                 return True, ""
-                
+
         except Exception as e:
             logger.warning(f"插件 {plugin_name} 版本兼容性检查失败: {e}")
             return True, ""  # 检查失败时默认允许加载
+
 
 # 全局插件管理器实例
 plugin_manager = PluginManager()
