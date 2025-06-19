@@ -151,7 +151,7 @@ class ManifestValidator:
     # 建议填写的字段（会给出警告但不会导致验证失败）
     RECOMMENDED_FIELDS = ["license", "keywords", "categories"]
 
-    SUPPORTED_MANIFEST_VERSIONS = [3]
+    SUPPORTED_MANIFEST_VERSIONS = [1]
 
     def __init__(self):
         self.validation_errors = []
