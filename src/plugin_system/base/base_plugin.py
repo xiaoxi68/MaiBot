@@ -63,7 +63,7 @@ class BasePlugin(ABC):
         self._validate_plugin_info()
 
         # 加载插件配置
-        self._load_plugin_config()        # 创建插件信息对象
+        self._load_plugin_config()  # 创建插件信息对象
         self.plugin_info = PluginInfo(
             name=self.plugin_name,
             description=self.plugin_description,
@@ -88,7 +88,7 @@ class BasePlugin(ABC):
         logger.debug(f"{self.log_prefix} 插件基类初始化完成")
 
     def _validate_plugin_info(self):
-        """验证插件基本信息"""        
+        """验证插件基本信息"""
         if not self.plugin_name:
             raise ValueError(f"插件类 {self.__class__.__name__} 必须定义 plugin_name")
         if not self.plugin_description:
@@ -100,7 +100,7 @@ class BasePlugin(ABC):
             raise ValueError(f"{self.log_prefix} 没有插件目录路径，无法加载manifest")
 
         manifest_path = os.path.join(self.plugin_dir, self.manifest_file_name)
-        
+
         if not os.path.exists(manifest_path):
             error_msg = f"{self.log_prefix} 缺少必需的manifest文件: {manifest_path}"
             logger.error(error_msg)
@@ -109,23 +109,23 @@ class BasePlugin(ABC):
         try:
             with open(manifest_path, "r", encoding="utf-8") as f:
                 self.manifest_data = json.load(f)
-            
+
             logger.debug(f"{self.log_prefix} 成功加载manifest文件: {manifest_path}")
-            
+
             # 验证manifest格式
             self._validate_manifest()
-            
+
             # 从manifest覆盖插件基本信息（如果插件类中未定义）
             self._apply_manifest_overrides()
-            
+
         except json.JSONDecodeError as e:
             error_msg = f"{self.log_prefix} manifest文件格式错误: {e}"
             logger.error(error_msg)
-            raise ValueError(error_msg) #noqa
+            raise ValueError(error_msg)  # noqa
         except IOError as e:
             error_msg = f"{self.log_prefix} 读取manifest文件失败: {e}"
             logger.error(error_msg)
-            raise IOError(error_msg) #noqa
+            raise IOError(error_msg)  # noqa
 
     def _apply_manifest_overrides(self):
         """从manifest文件覆盖插件信息"""
@@ -145,7 +145,7 @@ class BasePlugin(ABC):
         if not self.plugin_author:
             author_info = self.manifest_data.get("author", {})
             if isinstance(author_info, dict):
-                self.plugin_author = author_info.get("name", "")            
+                self.plugin_author = author_info.get("name", "")
             else:
                 self.plugin_author = str(author_info)
 
@@ -153,18 +153,18 @@ class BasePlugin(ABC):
         """验证manifest文件格式（使用强化的验证器）"""
         if not self.manifest_data:
             return
-            
+
         # 导入验证器
         from src.plugin_system.utils.manifest_utils import ManifestValidator
-        
+
         validator = ManifestValidator()
         is_valid = validator.validate_manifest(self.manifest_data)
-        
+
         # 记录验证结果
         if validator.validation_errors or validator.validation_warnings:
             report = validator.get_validation_report()
             logger.info(f"{self.log_prefix} Manifest验证结果:\n{report}")
-        
+
         # 如果有验证错误，抛出异常
         if not is_valid:
             error_msg = f"{self.log_prefix} Manifest文件验证失败"
@@ -183,19 +183,13 @@ class BasePlugin(ABC):
             "name": self.plugin_name,
             "version": self.plugin_version,
             "description": self.plugin_description or "插件描述",
-            "author": {
-                "name": self.plugin_author or "Unknown",
-                "url": ""
-            },
+            "author": {"name": self.plugin_author or "Unknown", "url": ""},
             "license": "MIT",
-            "host_application": {
-                "min_version": "1.0.0",
-                "max_version": "4.0.0"
-            },
+            "host_application": {"min_version": "1.0.0", "max_version": "4.0.0"},
             "keywords": [],
             "categories": [],
             "default_locale": "zh-CN",
-            "locales_path": "_locales"
+            "locales_path": "_locales",
         }
 
         try:

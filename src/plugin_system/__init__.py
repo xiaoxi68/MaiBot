@@ -28,7 +28,7 @@ from src.plugin_system.utils import (
     ManifestValidator,
     ManifestGenerator,
     validate_plugin_manifest,
-    generate_plugin_manifest
+    generate_plugin_manifest,
 )
 
 
@@ -37,7 +37,7 @@ __version__ = "1.0.0"
 __all__ = [
     # 基础类
     "BasePlugin",
-    "BaseAction", 
+    "BaseAction",
     "BaseCommand",
     # 类型定义
     "ComponentType",

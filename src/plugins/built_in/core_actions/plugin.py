@@ -340,7 +340,7 @@ class CoreActionsPlugin(BasePlugin):
     - Reply: 回复动作
     - NoReply: 不回复动作
     - Emoji: 表情动作
-    
+
     注意：插件基本信息优先从_manifest.json文件中读取
     """
 
