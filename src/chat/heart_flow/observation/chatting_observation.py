@@ -16,6 +16,7 @@ from src.common.logger import get_logger
 from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
 from src.chat.message_receive.chat_stream import get_chat_manager
 from src.person_info.person_info import get_person_info_manager
+
 logger = get_logger("observation")
 
 # 定义提示模板
@@ -71,7 +72,7 @@ class ChattingObservation(Observation):
         self.oldest_messages = []
         self.oldest_messages_str = ""
 
-        self.last_observe_time = datetime.now().timestamp() -1
+        self.last_observe_time = datetime.now().timestamp() - 1
         print(f"last_observe_time: {self.last_observe_time}")
         initial_messages = get_raw_msg_before_timestamp_with_chat(self.chat_id, self.last_observe_time, 10)
         self.last_observe_time = initial_messages[-1]["time"] if initial_messages else self.last_observe_time
@@ -159,10 +160,9 @@ class ChattingObservation(Observation):
             "processed_plain_text": find_msg.get("processed_plain_text"),
         }
         find_rec_msg = MessageRecv(message_dict)
-        
+
         find_rec_msg.update_chat_stream(get_chat_manager().get_or_create_stream(self.chat_id))
-        
-        
+
         return find_rec_msg
 
     async def observe(self):

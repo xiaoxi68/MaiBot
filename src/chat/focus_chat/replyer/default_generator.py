@@ -71,7 +71,7 @@ def init_prompt():
 """,
         "default_generator_private_prompt",
     )
-    
+
     Prompt(
         """
 你可以参考你的以下的语言习惯，如果情景合适就使用，不要盲目使用,不要生硬使用，而是结合到表达中：
@@ -156,7 +156,7 @@ class DefaultReplyer:
 
         await self.heart_fc_sender.register_thinking(thinking_message)
         return None
-        
+
     async def generate_reply_with_context(
         self,
         reply_data: Dict[str, Any],
@@ -166,8 +166,6 @@ class DefaultReplyer:
         (已整合原 HeartFCGenerator 的功能)
         """
         try:
-
-
             # 3. 构建 Prompt
             with Timer("构建Prompt", {}):  # 内部计时器，可选保留
                 prompt = await self.build_prompt_reply_context(
@@ -206,13 +204,13 @@ class DefaultReplyer:
                 reply_seg = ("text", str)
                 reply_set.append(reply_seg)
 
-            return True , reply_set
+            return True, reply_set
 
         except Exception as e:
             logger.error(f"{self.log_prefix}回复生成意外失败: {e}")
             traceback.print_exc()
             return False, None
-        
+
     async def rewrite_reply_with_context(
         self,
         reply_data: Dict[str, Any],
@@ -221,8 +219,6 @@ class DefaultReplyer:
         表达器 (Expressor): 核心逻辑，负责生成回复文本。
         """
         try:
-                    
-
             reply_to = reply_data.get("reply_to", "")
             raw_reply = reply_data.get("raw_reply", "")
             reason = reply_data.get("reason", "")
@@ -275,24 +271,20 @@ class DefaultReplyer:
             logger.error(f"{self.log_prefix}回复生成意外失败: {e}")
             traceback.print_exc()
             return False, None
-        
-        
-        
-    
 
     async def build_prompt_reply_context(
         self,
         reply_data=None,
     ) -> str:
         chat_stream = self.chat_stream
-        
+
         is_group_chat = bool(chat_stream.group_info)
-        
+
         identity = reply_data.get("identity", "")
         extra_info_block = reply_data.get("extra_info_block", "")
         relation_info_block = reply_data.get("relation_info_block", "")
         reply_to = reply_data.get("reply_to", "none")
-        
+
         sender = ""
         target = ""
         if ":" in reply_to or "：" in reply_to:
@@ -301,7 +293,6 @@ class DefaultReplyer:
             if len(parts) == 2:
                 sender = parts[0].strip()
                 target = parts[1].strip()
-        
 
         message_list_before_now = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_stream.stream_id,
@@ -379,9 +370,7 @@ class DefaultReplyer:
         # logger.debug("开始构建 focus prompt")
 
         if sender:
-            reply_target_block = (
-                f"现在{sender}说的:{target}。引起了你的注意，你想要在群里发言或者回复这条消息。"
-            )
+            reply_target_block = f"现在{sender}说的:{target}。引起了你的注意，你想要在群里发言或者回复这条消息。"
         elif target:
             reply_target_block = f"现在{target}引起了你的注意，你想要在群里发言或者回复这条消息。"
         else:
@@ -436,9 +425,6 @@ class DefaultReplyer:
         raw_reply,
         reply_to,
     ) -> str:
-        
-        
-        
         sender = ""
         target = ""
         if ":" in reply_to or "：" in reply_to:
@@ -447,9 +433,9 @@ class DefaultReplyer:
             if len(parts) == 2:
                 sender = parts[0].strip()
                 target = parts[1].strip()
-        
+
         chat_stream = self.chat_stream
-        
+
         is_group_chat = bool(chat_stream.group_info)
 
         message_list_before_now = get_raw_msg_before_timestamp_with_chat(
@@ -608,23 +594,22 @@ class DefaultReplyer:
             )
 
             try:
-                if (bot_message.is_private_message() or
-                    bot_message.reply.processed_plain_text != "[System Trigger Context]" or
-                    mark_head):
+                if (
+                    bot_message.is_private_message()
+                    or bot_message.reply.processed_plain_text != "[System Trigger Context]"
+                    or mark_head
+                ):
                     set_reply = False
                 else:
                     set_reply = True
-                
+
                 if not mark_head:
                     mark_head = True
                     typing = False
                 else:
                     typing = True
-                    
-                
-                sent_msg = await self.heart_fc_sender.send_message(
-                    bot_message, typing=typing, set_reply=set_reply
-                )
+
+                sent_msg = await self.heart_fc_sender.send_message(bot_message, typing=typing, set_reply=set_reply)
 
                 reply_message_ids.append(part_message_id)  # 记录我们生成的ID
 
@@ -652,7 +637,7 @@ class DefaultReplyer:
         is_emoji: bool,
         thinking_start_time: float,
         display_message: str,
-        anchor_message: MessageRecv = None
+        anchor_message: MessageRecv = None,
     ) -> MessageSending:
         """构建单个发送消息"""
 

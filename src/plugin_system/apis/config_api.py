@@ -19,6 +19,7 @@ logger = get_logger("config_api")
 # 配置访问API函数
 # =============================================================================
 
+
 def get_global_config(key: str, default: Any = None) -> Any:
     """
     安全地从全局配置中获取一个值。
@@ -34,7 +35,7 @@ def get_global_config(key: str, default: Any = None) -> Any:
     # 支持嵌套键访问
     keys = key.split(".")
     current = global_config
-    
+
     try:
         for k in keys:
             if hasattr(current, k):
@@ -78,6 +79,7 @@ def get_plugin_config(plugin_config: dict, key: str, default: Any = None) -> Any
 # =============================================================================
 # 用户信息API函数
 # =============================================================================
+
 
 async def get_user_id_by_person_name(person_name: str) -> tuple[str, str]:
     """根据用户名获取用户ID

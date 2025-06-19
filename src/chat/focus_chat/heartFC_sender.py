@@ -99,7 +99,6 @@ class HeartFCSender:
                 message.build_reply()
                 logger.debug(f"[{chat_id}] 选择回复引用消息: {message.processed_plain_text[:20]}...")
 
-
             await message.process()
 
             if typing:
@@ -109,7 +108,6 @@ class HeartFCSender:
                     is_emoji=message.is_emoji,
                 )
                 await asyncio.sleep(typing_time)
-
 
             sent_msg = await send_message(message)
             if not sent_msg:

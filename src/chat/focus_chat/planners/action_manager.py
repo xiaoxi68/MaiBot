@@ -14,7 +14,7 @@ ActionInfo = Dict[str, Any]
 class ActionManager:
     """
     动作管理器，用于管理各种类型的动作
-    
+
     现在统一使用新插件系统，简化了原有的新旧兼容逻辑。
     """
 

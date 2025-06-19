@@ -18,6 +18,7 @@ logger = get_logger("database_api")
 # 通用数据库查询API函数
 # =============================================================================
 
+
 async def db_query(
     model_class: Type[Model],
     query_type: str = "get",
@@ -202,9 +203,7 @@ async def db_save(
         # 如果提供了key_field和key_value，尝试更新现有记录
         if key_field and key_value is not None:
             # 查找现有记录
-            existing_records = list(
-                model_class.select().where(getattr(model_class, key_field) == key_value).limit(1)
-            )
+            existing_records = list(model_class.select().where(getattr(model_class, key_field) == key_value).limit(1))
 
             if existing_records:
                 # 更新现有记录
@@ -307,9 +306,9 @@ async def store_action_info(
     action_name: str = "",
 ) -> Union[Dict[str, Any], None]:
     """存储动作信息到数据库
-    
+
     将Action执行的相关信息保存到ActionRecords表中，用于后续的记忆和上下文构建。
-    
+
     Args:
         chat_stream: 聊天流对象，包含聊天相关信息
         action_build_into_prompt: 是否将此动作构建到提示中
@@ -318,11 +317,11 @@ async def store_action_info(
         thinking_id: 关联的思考ID
         action_data: 动作数据字典
         action_name: 动作名称
-    
+
     Returns:
         Dict[str, Any]: 保存的记录数据
         None: 如果保存失败
-    
+
     示例:
         record = await database_api.store_action_info(
             chat_stream=chat_stream,
@@ -338,7 +337,7 @@ async def store_action_info(
         import time
         import json
         from src.common.database.database_model import ActionRecords
-        
+
         # 构建动作记录数据
         record_data = {
             "action_id": thinking_id or str(int(time.time() * 1000000)),  # 使用thinking_id或生成唯一ID
@@ -349,37 +348,38 @@ async def store_action_info(
             "action_build_into_prompt": action_build_into_prompt,
             "action_prompt_display": action_prompt_display,
         }
-        
+
         # 从chat_stream获取聊天信息
         if chat_stream:
-            record_data.update({
-                "chat_id": getattr(chat_stream, 'stream_id', ''),
-                "chat_info_stream_id": getattr(chat_stream, 'stream_id', ''),
-                "chat_info_platform": getattr(chat_stream, 'platform', ''),
-            })
+            record_data.update(
+                {
+                    "chat_id": getattr(chat_stream, "stream_id", ""),
+                    "chat_info_stream_id": getattr(chat_stream, "stream_id", ""),
+                    "chat_info_platform": getattr(chat_stream, "platform", ""),
+                }
+            )
         else:
             # 如果没有chat_stream，设置默认值
-            record_data.update({
-                "chat_id": "",
-                "chat_info_stream_id": "",
-                "chat_info_platform": "",
-            })
-        
+            record_data.update(
+                {
+                    "chat_id": "",
+                    "chat_info_stream_id": "",
+                    "chat_info_platform": "",
+                }
+            )
+
         # 使用已有的db_save函数保存记录
         saved_record = await db_save(
-            ActionRecords,
-            data=record_data,
-            key_field="action_id",
-            key_value=record_data["action_id"]
+            ActionRecords, data=record_data, key_field="action_id", key_value=record_data["action_id"]
         )
-        
+
         if saved_record:
             logger.info(f"[DatabaseAPI] 成功存储动作信息: {action_name} (ID: {record_data['action_id']})")
         else:
             logger.error(f"[DatabaseAPI] 存储动作信息失败: {action_name}")
-            
+
         return saved_record
-        
+
     except Exception as e:
         logger.error(f"[DatabaseAPI] 存储动作信息时发生错误: {e}")
         traceback.print_exc()
