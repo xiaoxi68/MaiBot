@@ -14,8 +14,6 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
 
-
-
 def test_version_normalization():
     """测试版本号标准化功能"""
     print("🧪 测试版本号标准化...")
