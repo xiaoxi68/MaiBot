@@ -86,30 +86,30 @@ class BaseCommand(ABC):
 
         return current
 
-    async def send_text(self, content: str) -> None:
+    async def send_text(self, content: str, reply_to: str = "") -> bool:
         """发送回复消息
 
         Args:
             content: 回复内容
+            reply_to: 回复消息，格式为"发送者:消息内容"
+
+        Returns:
+            bool: 是否发送成功
         """
         # 获取聊天流信息
         chat_stream = self.message.chat_stream
+        if not chat_stream or not hasattr(chat_stream, 'stream_id'):
+            logger.error(f"{self.log_prefix} 缺少聊天流或stream_id")
+            return False
 
-        if chat_stream.group_info:
-            # 群聊
-
-            await send_api.text_to_group(
-                text=content, group_id=str(chat_stream.group_info.group_id), platform=chat_stream.platform
-            )
-        else:
-            # 私聊
-
-            await send_api.text_to_user(
-                text=content, user_id=str(chat_stream.user_info.user_id), platform=chat_stream.platform
-            )
+        return await send_api.text_to_stream(
+            text=content, 
+            stream_id=chat_stream.stream_id, 
+            reply_to=reply_to
+        )
 
     async def send_type(
-        self, message_type: str, content: str, display_message: str = None, typing: bool = False
+        self, message_type: str, content: str, display_message: str = "", typing: bool = False, reply_to: str = ""
     ) -> bool:
         """发送指定类型的回复消息到当前聊天环境
 
@@ -117,78 +117,54 @@ class BaseCommand(ABC):
             message_type: 消息类型，如"text"、"image"、"emoji"等
             content: 消息内容
             display_message: 显示消息（可选）
+            typing: 是否显示正在输入
+            reply_to: 回复消息，格式为"发送者:消息内容"
 
         Returns:
             bool: 是否发送成功
         """
         # 获取聊天流信息
         chat_stream = self.message.chat_stream
+        if not chat_stream or not hasattr(chat_stream, 'stream_id'):
+            logger.error(f"{self.log_prefix} 缺少聊天流或stream_id")
+            return False
 
-        if chat_stream.group_info:
-            # 群聊
-            from src.plugin_system.apis import send_api
+        return await send_api.custom_to_stream(
+            message_type=message_type,
+            content=content,
+            stream_id=chat_stream.stream_id,
+            display_message=display_message,
+            typing=typing,
+            reply_to=reply_to,
+        )
 
-            return await send_api.custom_message(
-                message_type=message_type,
-                content=content,
-                target_id=str(chat_stream.group_info.group_id),
-                is_group=True,
-                platform=chat_stream.platform,
-                typing=typing,
-            )
-        else:
-            # 私聊
-            from src.plugin_system.apis import send_api
-
-            return await send_api.custom_message(
-                message_type=message_type,
-                content=content,
-                target_id=str(chat_stream.user_info.user_id),
-                is_group=False,
-                platform=chat_stream.platform,
-                typing=typing,
-            )
-
-    async def send_command(self, command_name: str, args: dict = None, display_message: str = None) -> bool:
+    async def send_command(self, command_name: str, args: dict = None, display_message: str = "", storage_message: bool = True) -> bool:
         """发送命令消息
 
         Args:
             command_name: 命令名称
             args: 命令参数
             display_message: 显示消息
+            storage_message: 是否存储消息到数据库
 
         Returns:
             bool: 是否发送成功
         """
         try:
+            # 获取聊天流信息
+            chat_stream = self.message.chat_stream
+            if not chat_stream or not hasattr(chat_stream, 'stream_id'):
+                logger.error(f"{self.log_prefix} 缺少聊天流或stream_id")
+                return False
+
             # 构造命令数据
             command_data = {"name": command_name, "args": args or {}}
 
-            # 获取聊天流信息
-            chat_stream = self.message.chat_stream
-
-            if chat_stream.group_info:
-                # 群聊
-                from src.plugin_system.apis import send_api
-
-                success = await send_api.custom_message(
-                    message_type="command",
-                    content=command_data,
-                    target_id=str(chat_stream.group_info.group_id),
-                    is_group=True,
-                    platform=chat_stream.platform,
-                )
-            else:
-                # 私聊
-                from src.plugin_system.apis import send_api
-
-                success = await send_api.custom_message(
-                    message_type="command",
-                    content=command_data,
-                    target_id=str(chat_stream.user_info.user_id),
-                    is_group=False,
-                    platform=chat_stream.platform,
-                )
+            success = await send_api.command_to_stream(
+                command=command_data,
+                stream_id=chat_stream.stream_id,
+                storage_message=storage_message,
+            )
 
             if success:
                 logger.info(f"{self.log_prefix} 成功发送命令: {command_name}")
@@ -200,6 +176,38 @@ class BaseCommand(ABC):
         except Exception as e:
             logger.error(f"{self.log_prefix} 发送命令时出错: {e}")
             return False
+
+    async def send_emoji(self, emoji_base64: str) -> bool:
+        """发送表情包
+
+        Args:
+            emoji_base64: 表情包的base64编码
+
+        Returns:
+            bool: 是否发送成功
+        """
+        chat_stream = self.message.chat_stream
+        if not chat_stream or not hasattr(chat_stream, 'stream_id'):
+            logger.error(f"{self.log_prefix} 缺少聊天流或stream_id")
+            return False
+
+        return await send_api.emoji_to_stream(emoji_base64, chat_stream.stream_id)
+
+    async def send_image(self, image_base64: str) -> bool:
+        """发送图片
+
+        Args:
+            image_base64: 图片的base64编码
+
+        Returns:
+            bool: 是否发送成功
+        """
+        chat_stream = self.message.chat_stream
+        if not chat_stream or not hasattr(chat_stream, 'stream_id'):
+            logger.error(f"{self.log_prefix} 缺少聊天流或stream_id")
+            return False
+
+        return await send_api.image_to_stream(image_base64, chat_stream.stream_id)
 
     @classmethod
     def get_command_info(cls) -> "CommandInfo":

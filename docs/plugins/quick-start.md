@@ -123,7 +123,7 @@ class HelloAction(BaseAction):
         """执行问候动作 - 这是核心功能"""
         # 发送问候消息
         greeting_message = self.action_data.get("greeting_message","")
-      
+  
         message = "嗨！很开心见到你！😊" + greeting_message
         await self.send_text(message)
 
@@ -229,7 +229,7 @@ class ByeAction(BaseAction):
   
     async def execute(self) -> Tuple[bool, str]:
         bye_message = self.action_data.get("bye_message","")
-      
+  
         message = "再见！期待下次聊天！👋" + bye_message
         await self.send_text(message)
         return True, "发送了告别消息"
@@ -474,53 +474,6 @@ async def execute(self) -> Tuple[bool, str]:
 注意：配置文件是自动生成的，不要手动创建！
 ```
 
-## 🎯 你学会了什么
-
-恭喜！你刚刚从零开始创建了一个完整的MaiCore插件！让我们回顾一下：
-
-### 核心概念
-
-- **插件（Plugin）**: 包含多个功能组件的集合
-- **Action组件**: 智能动作，由麦麦根据情境自动选择使用
-- **Command组件**: 直接响应用户命令的功能
-- **配置Schema**: 定义配置结构，系统自动生成配置文件
-
-### 开发流程
-
-1. ✅ 创建最简单的插件框架
-2. ✅ 添加Action
-3. ✅ 理解激活系统的工作原理
-4. ✅ 尝试KEYWORD激活的Action（进阶）
-5. ✅ 添加Command组件
-6. ✅ 可选定义配置Schema
-7. ✅ 测试完整功能
-
-## 📚 进阶学习
-
-现在你已经掌握了基础，可以继续深入学习：
-
-1. **掌握更多Action功能** 📖 [Action组件详解](action-components.md)
-
-   - 学习不同的激活方式
-   - 了解Action的生命周期
-   - 掌握参数传递
-2. **学会配置管理** ⚙️ [插件配置定义指南](configuration-guide.md)
-
-   - 定义配置Schema
-   - 自动生成配置文件
-   - 配置验证和类型检查
-3. **深入Command系统** 📖 [Command组件详解](command-components.md)
-
-   - 复杂正则表达式
-   - 参数提取和处理
-   - 错误处理
-4. **掌握API系统** 📖 [新API使用指南](examples/replyer_api_usage.md)
-
-   - replyer_1智能生成
-   - 高级消息处理
-   - 表情和媒体发送
-
-祝你插件开发愉快！🎉
 
 ```
 

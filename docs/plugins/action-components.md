@@ -171,18 +171,18 @@ class MessageAction(BaseAction):
     async def execute(self) -> Tuple[bool, str]:
         # 发送文本消息 - 自动判断群聊/私聊
         await self.send_text("Hello World!")
-      
+  
         # 发送表情包
         emoji_base64 = await emoji_api.get_by_description("开心")
         if emoji_base64:
             await self.send_emoji(emoji_base64)
-      
+  
         # 发送图片
         await self.send_image(image_base64)
-      
+  
         # 发送自定义类型消息
         await self.send_custom("video", video_data, typing=True)
-      
+  
         return True, "消息发送完成"
 ```
 
@@ -200,7 +200,7 @@ class SmartReplyAction(BaseAction):
             "topic": "日常聊天",
             "replyer_name": "replyer_1"  # 指定使用replyer_1
         }
-      
+  
         # 使用generator_api生成回复
         success, reply_set = await generator_api.generate_reply(
             chat_stream=self.chat_stream,
@@ -209,7 +209,7 @@ class SmartReplyAction(BaseAction):
             chat_id=self.chat_id,
             is_group=self.is_group
         )
-      
+  
         if success and reply_set:
             # 提取并发送文本回复
             for reply_type, reply_content in reply_set:
@@ -217,14 +217,14 @@ class SmartReplyAction(BaseAction):
                     await self.send_text(reply_content)
                 elif reply_type == "emoji":
                     await self.send_emoji(reply_content)
-          
+    
             # 记录动作
             await self.store_action_info(
                 action_build_into_prompt=True,
                 action_prompt_display=f"使用replyer_1生成了智能回复",
                 action_done=True
             )
-          
+    
             return True, "智能回复生成成功"
         else:
             return False, "回复生成失败"
@@ -241,11 +241,11 @@ class ConfigurableAction(BaseAction):
         enable_feature = self.get_config("features.enable_smart_mode", False)
         max_length = self.get_config("limits.max_text_length", 200)
         style = self.get_config("behavior.response_style", "friendly")
-      
+  
         if enable_feature:
             # 启用高级功能
             pass
-      
+  
         return True, "配置获取成功"
 ```
 
@@ -258,7 +258,7 @@ class DataAction(BaseAction):
     async def execute(self) -> Tuple[bool, str]:
         # 使用database_api
         from src.plugin_system.apis import database_api
-      
+  
         # 存储数据
         await database_api.store_action_info(
             chat_stream=self.chat_stream,
@@ -266,7 +266,7 @@ class DataAction(BaseAction):
             action_data=self.action_data,
             # ... 其他参数
         )
-      
+  
         return True, "数据存储完成"
 ```
 
@@ -292,19 +292,19 @@ class GreetingAction(BaseAction):
                 "text": "生成一个友好的问候语",
                 "replyer_name": "replyer_1"
             }
-          
+    
             success, reply_set = await generator_api.generate_reply(
                 chat_stream=self.chat_stream,
                 action_data=greeting_data
             )
-          
+    
             if success:
                 for reply_type, content in reply_set:
                     if reply_type == "text":
                         await self.send_text(content)
                         break
                 return True, "发送智能问候"
-      
+  
         # 传统问候方式
         await self.send_text("你好！很高兴见到你！")
         return True, "发送问候"
@@ -336,12 +336,12 @@ class HelpAction(BaseAction):
             "help_type": self.action_data.get("help_type", "general"),
             "replyer_name": "replyer_1"
         }
-      
+  
         success, reply_set = await generator_api.generate_reply(
             chat_stream=self.chat_stream,
             action_data=help_data
         )
-      
+  
         if success:
             for reply_type, content in reply_set:
                 if reply_type == "text":
@@ -366,204 +366,10 @@ class SurpriseAction(BaseAction):
   
     async def execute(self) -> Tuple[bool, str]:
         import random
-      
+  
         surprises = ["🎉", "✨", "🌟", "💝", "🎈"]
         selected = random.choice(surprises)
-      
+  
         await self.send_emoji(selected)
         return True, f"发送了惊喜表情: {selected}"
 ```
-
-## 💡 完整示例
-
-### 智能聊天Action
-
-```python
-from src.plugin_system.apis import generator_api, emoji_api
-
-class IntelligentChatAction(BaseAction):
-    """智能聊天Action - 展示新API的完整用法"""
-  
-    # 激活设置
-    focus_activation_type = ActionActivationType.ALWAYS
-    normal_activation_type = ActionActivationType.LLM_JUDGE
-    mode_enable = ChatMode.ALL
-    parallel_action = False
-  
-    # 基本信息
-    action_name = "intelligent_chat"
-    action_description = "使用replyer_1进行智能聊天回复，支持表情包和个性化回复"
-  
-    # LLM判断提示词
-    llm_judge_prompt = """
-    判断是否需要进行智能聊天回复：
-    1. 用户提出了有趣的话题
-    2. 需要更加个性化的回复
-    3. 适合发送表情包的情况
-  
-    请回答"是"或"否"。
-    """
-  
-    # 功能定义
-    action_parameters = {
-        "topic": "聊天话题",
-        "mood": "当前氛围（happy/sad/excited/calm）",
-        "include_emoji": "是否包含表情包（true/false）"
-    }
-  
-    action_require = [
-        "需要更个性化回复时使用",
-        "聊天氛围适合发送表情时使用",
-        "避免在正式场合使用"
-    ]
-  
-    associated_types = ["text", "emoji"]
-  
-    async def execute(self) -> Tuple[bool, str]:
-        # 获取参数
-        topic = self.action_data.get("topic", "日常聊天")
-        mood = self.action_data.get("mood", "happy")
-        include_emoji = self.action_data.get("include_emoji", "true") == "true"
-      
-        # 构建智能回复数据
-        chat_data = {
-            "text": f"请针对{topic}话题进行回复，当前氛围是{mood}",
-            "topic": topic,
-            "mood": mood,
-            "style": "conversational",
-            "replyer_name": "replyer_1"  # 使用replyer_1
-        }
-      
-        # 生成智能回复
-        success, reply_set = await generator_api.generate_reply(
-            chat_stream=self.chat_stream,
-            action_data=chat_data,
-            platform=self.platform,
-            chat_id=self.chat_id,
-            is_group=self.is_group
-        )
-      
-        reply_sent = False
-      
-        if success and reply_set:
-            # 发送生成的回复
-            for reply_type, content in reply_set:
-                if reply_type == "text":
-                    await self.send_text(content)
-                    reply_sent = True
-                elif reply_type == "emoji":
-                    await self.send_emoji(content)
-      
-        # 如果配置允许且生成失败，发送表情包
-        if include_emoji and not reply_sent:
-            emoji_result = await emoji_api.get_by_description(mood)
-            if emoji_result:
-                emoji_base64, emoji_desc, matched_emotion = emoji_result
-                await self.send_emoji(emoji_base64)
-                reply_sent = True
-      
-        # 记录动作执行
-        if reply_sent:
-            await self.store_action_info(
-                action_build_into_prompt=True,
-                action_prompt_display=f"进行了智能聊天回复，话题：{topic}，氛围：{mood}",
-                action_done=True
-            )
-            return True, f"完成智能聊天回复：{topic}"
-        else:
-            return False, "智能回复生成失败"
-```
-
-## 🛠️ 调试技巧
-
-### 开发调试Action
-
-```python
-class DebugAction(BaseAction):
-    """调试Action - 展示如何调试新API"""
-  
-    focus_activation_type = ActionActivationType.KEYWORD
-    normal_activation_type = ActionActivationType.KEYWORD
-    activation_keywords = ["debug", "调试"]
-    mode_enable = ChatMode.ALL
-    parallel_action = True
-  
-    action_name = "debug_helper"
-    action_description = "调试助手，显示当前状态信息"
-  
-    action_parameters = {}
-    action_require = ["需要调试信息时使用"]
-    associated_types = ["text"]
-  
-    async def execute(self) -> Tuple[bool, str]:
-        # 收集调试信息
-        debug_info = {
-            "聊天类型": "群聊" if self.is_group else "私聊",
-            "平台": self.platform,
-            "目标ID": self.target_id,
-            "用户ID": self.user_id,
-            "用户昵称": self.user_nickname,
-            "动作数据": self.action_data,
-        }
-      
-        if self.is_group:
-            debug_info.update({
-                "群ID": self.group_id,
-                "群名": self.group_name,
-            })
-      
-        # 格式化调试信息
-        info_lines = ["🔍 调试信息:"]
-        for key, value in debug_info.items():
-            info_lines.append(f"  • {key}: {value}")
-      
-        debug_text = "\n".join(info_lines)
-      
-        # 发送调试信息
-        await self.send_text(debug_text)
-      
-        # 测试配置获取
-        test_config = self.get_config("debug.verbose", True)
-        if test_config:
-            await self.send_text(f"配置测试: debug.verbose = {test_config}")
-      
-        return True, "调试信息已发送"
-```
-
-## 📚 最佳实践
-
-1. **总是导入所需的API模块**：
-
-   ```python
-   from src.plugin_system.apis import generator_api, send_api, emoji_api
-   ```
-2. **在生成内容时指定replyer_1**：
-
-   ```python
-   action_data = {
-       "text": "生成内容的请求",
-       "replyer_name": "replyer_1"
-   }
-   ```
-3. **使用便捷发送方法**：
-
-   ```python
-   await self.send_text("文本")  # 自动处理群聊/私聊
-   await self.send_emoji(emoji_base64)
-   ```
-4. **合理使用配置**：
-
-   ```python
-   enable_feature = self.get_config("section.key", default_value)
-   ```
-5. **总是记录动作信息**：
-
-   ```python
-   await self.store_action_info(
-       action_build_into_prompt=True,
-       action_prompt_display="动作描述",
-       action_done=True
-   )
-   ```
-
-通过使用新的API格式，Action的开发变得更加简洁和强大！

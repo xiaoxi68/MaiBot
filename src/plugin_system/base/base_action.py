@@ -204,22 +204,20 @@ class BaseAction(ABC):
 
         Args:
             content: 文本内容
+            reply_to: 回复消息，格式为"发送者:消息内容"
 
         Returns:
             bool: 是否发送成功
         """
-        if not self.target_id or not self.platform:
-            logger.error(f"{self.log_prefix} 缺少发送消息所需的信息")
+        if not self.chat_id:
+            logger.error(f"{self.log_prefix} 缺少聊天ID")
             return False
 
-        if self.is_group:
-            return await send_api.text_to_group(
-                text=content, group_id=self.target_id, platform=self.platform, reply_to=reply_to
-            )
-        else:
-            return await send_api.text_to_user(
-                text=content, user_id=self.target_id, platform=self.platform, reply_to=reply_to
-            )
+        return await send_api.text_to_stream(
+            text=content, 
+            stream_id=self.chat_id, 
+            reply_to=reply_to
+        )
 
     async def send_emoji(self, emoji_base64: str) -> bool:
         """发送表情包
@@ -230,17 +228,11 @@ class BaseAction(ABC):
         Returns:
             bool: 是否发送成功
         """
-        # 导入send_api
-        from src.plugin_system.apis import send_api
-
-        if not self.target_id or not self.platform:
-            logger.error(f"{self.log_prefix} 缺少发送消息所需的信息")
+        if not self.chat_id:
+            logger.error(f"{self.log_prefix} 缺少聊天ID")
             return False
 
-        if self.is_group:
-            return await send_api.emoji_to_group(emoji_base64, self.target_id, self.platform)
-        else:
-            return await send_api.emoji_to_user(emoji_base64, self.target_id, self.platform)
+        return await send_api.emoji_to_stream(emoji_base64, self.chat_id)
 
     async def send_image(self, image_base64: str) -> bool:
         """发送图片
@@ -251,43 +243,34 @@ class BaseAction(ABC):
         Returns:
             bool: 是否发送成功
         """
-        # 导入send_api
-        from src.plugin_system.apis import send_api
-
-        if not self.target_id or not self.platform:
-            logger.error(f"{self.log_prefix} 缺少发送消息所需的信息")
+        if not self.chat_id:
+            logger.error(f"{self.log_prefix} 缺少聊天ID")
             return False
 
-        if self.is_group:
-            return await send_api.image_to_group(image_base64, self.target_id, self.platform)
-        else:
-            return await send_api.image_to_user(image_base64, self.target_id, self.platform)
+        return await send_api.image_to_stream(image_base64, self.chat_id)
 
-    async def send_custom(self, message_type: str, content: str, typing: bool = False) -> bool:
+    async def send_custom(self, message_type: str, content: str, typing: bool = False, reply_to: str = "") -> bool:
         """发送自定义类型消息
 
         Args:
             message_type: 消息类型，如"video"、"file"、"audio"等
             content: 消息内容
             typing: 是否显示正在输入
+            reply_to: 回复消息，格式为"发送者:消息内容"
 
         Returns:
             bool: 是否发送成功
         """
-        # 导入send_api
-        from src.plugin_system.apis import send_api
-
-        if not self.target_id or not self.platform:
-            logger.error(f"{self.log_prefix} 缺少发送消息所需的信息")
+        if not self.chat_id:
+            logger.error(f"{self.log_prefix} 缺少聊天ID")
             return False
 
-        return await send_api.custom_message(
+        return await send_api.custom_to_stream(
             message_type=message_type,
             content=content,
-            target_id=self.target_id,
-            is_group=self.is_group,
-            platform=self.platform,
+            stream_id=self.chat_id,
             typing=typing,
+            reply_to=reply_to,
         )
 
     async def store_action_info(
@@ -318,36 +301,30 @@ class BaseAction(ABC):
     ) -> bool:
         """发送命令消息
 
-        使用和send_text相同的方式通过MessageAPI发送命令
+        使用stream API发送命令
 
         Args:
             command_name: 命令名称
             args: 命令参数
             display_message: 显示消息
+            storage_message: 是否存储消息到数据库
 
         Returns:
             bool: 是否发送成功
         """
         try:
+            if not self.chat_id:
+                logger.error(f"{self.log_prefix} 缺少聊天ID")
+                return False
+
             # 构造命令数据
             command_data = {"name": command_name, "args": args or {}}
 
-            if self.is_group:
-                # 群聊
-                success = await send_api.command_to_group(
-                    command=command_data,
-                    group_id=str(self.group_id),
-                    platform=self.platform,
-                    storage_message=storage_message,
-                )
-            else:
-                # 私聊
-                success = await send_api.command_to_user(
-                    command=command_data,
-                    user_id=str(self.user_id),
-                    platform=self.platform,
-                    storage_message=storage_message,
-                )
+            success = await send_api.command_to_stream(
+                command=command_data,
+                stream_id=self.chat_id,
+                storage_message=storage_message,
+            )
 
             if success:
                 logger.info(f"{self.log_prefix} 成功发送命令: {command_name}")

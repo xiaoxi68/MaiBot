@@ -2,10 +2,20 @@
 发送API模块
 
 专门负责发送各种类型的消息，采用标准Python包设计模式
+
 使用方式：
     from src.plugin_system.apis import send_api
+    
+    # 方式1：直接使用stream_id（推荐）
+    await send_api.text_to_stream("hello", stream_id)
+    await send_api.emoji_to_stream(emoji_base64, stream_id)
+    await send_api.custom_to_stream("video", video_data, stream_id)
+    
+    # 方式2：使用群聊/私聊指定函数
     await send_api.text_to_group("hello", "123456")
-    await send_api.emoji_to_group(emoji_base64, "123456")
+    await send_api.text_to_user("hello", "987654")
+    
+    # 方式3：使用通用custom_message函数
     await send_api.custom_message("video", video_data, "123456", True)
 """
 
@@ -222,6 +232,96 @@ async def _find_reply_message(target_stream, reply_to: str) -> Optional[MessageR
 # =============================================================================
 # 公共API函数 - 预定义类型的发送函数
 # =============================================================================
+
+
+async def text_to_stream(
+    text: str,
+    stream_id: str,
+    typing: bool = False,
+    reply_to: str = "",
+    storage_message: bool = True,
+) -> bool:
+    """向指定流发送文本消息
+
+    Args:
+        text: 要发送的文本内容
+        stream_id: 聊天流ID
+        typing: 是否显示正在输入
+        reply_to: 回复消息，格式为"发送者:消息内容"
+        storage_message: 是否存储消息到数据库
+
+    Returns:
+        bool: 是否发送成功
+    """
+    return await _send_to_target("text", text, stream_id, "", typing, reply_to, storage_message)
+
+
+async def emoji_to_stream(emoji_base64: str, stream_id: str, storage_message: bool = True) -> bool:
+    """向指定流发送表情包
+
+    Args:
+        emoji_base64: 表情包的base64编码
+        stream_id: 聊天流ID
+        storage_message: 是否存储消息到数据库
+
+    Returns:
+        bool: 是否发送成功
+    """
+    return await _send_to_target("emoji", emoji_base64, stream_id, "", typing=False, storage_message=storage_message)
+
+
+async def image_to_stream(image_base64: str, stream_id: str, storage_message: bool = True) -> bool:
+    """向指定流发送图片
+
+    Args:
+        image_base64: 图片的base64编码
+        stream_id: 聊天流ID
+        storage_message: 是否存储消息到数据库
+
+    Returns:
+        bool: 是否发送成功
+    """
+    return await _send_to_target("image", image_base64, stream_id, "", typing=False, storage_message=storage_message)
+
+
+async def command_to_stream(command: str, stream_id: str, storage_message: bool = True) -> bool:
+    """向指定流发送命令
+
+    Args:
+        command: 命令
+        stream_id: 聊天流ID
+        storage_message: 是否存储消息到数据库
+
+    Returns:
+        bool: 是否发送成功
+    """
+    return await _send_to_target("command", command, stream_id, "", typing=False, storage_message=storage_message)
+
+
+async def custom_to_stream(
+    message_type: str,
+    content: str,
+    stream_id: str,
+    display_message: str = "",
+    typing: bool = False,
+    reply_to: str = "",
+    storage_message: bool = True,
+) -> bool:
+    """向指定流发送自定义类型消息
+
+    Args:
+        message_type: 消息类型，如"text"、"image"、"emoji"、"video"、"file"等
+        content: 消息内容（通常是base64编码或文本）
+        stream_id: 聊天流ID
+        display_message: 显示消息
+        typing: 是否显示正在输入
+        reply_to: 回复消息，格式为"发送者:消息内容"
+        storage_message: 是否存储消息到数据库
+
+    Returns:
+        bool: 是否发送成功
+    """
+    return await _send_to_target(message_type, content, stream_id, display_message, typing, reply_to, storage_message)
 
 
 async def text_to_group(
