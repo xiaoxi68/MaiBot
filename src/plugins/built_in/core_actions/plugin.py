@@ -351,7 +351,7 @@ class CoreActionsPlugin(BasePlugin):
 
     # 配置节描述
     config_section_descriptions = {
-        "plugin": "插件基本信息配置",
+        "plugin": "插件启用配置",
         "components": "核心组件启用配置",
         "no_reply": "不回复动作配置",
         "emoji": "表情动作配置",
@@ -360,12 +360,7 @@ class CoreActionsPlugin(BasePlugin):
     # 配置Schema定义
     config_schema = {
         "plugin": {
-            "name": ConfigField(type=str, default="core_actions", description="插件名称", required=True),
-            "version": ConfigField(type=str, default="1.0.0", description="插件版本号"),
             "enabled": ConfigField(type=bool, default=True, description="是否启用插件"),
-            "description": ConfigField(
-                type=str, default="系统核心动作插件，提供基础聊天交互功能", description="插件描述", required=True
-            ),
         },
         "components": {
             "enable_reply": ConfigField(type=bool, default=True, description="是否启用'回复'动作"),

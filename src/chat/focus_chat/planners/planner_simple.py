@@ -217,6 +217,20 @@ class ActionPlanner(BasePlanner):
                         # 如果repair_json直接返回了字典对象，直接使用
                         parsed_json = fixed_json_string
 
+                    # 处理repair_json可能返回列表的情况
+                    if isinstance(parsed_json, list):
+                        if parsed_json:
+                            # 取列表中最后一个元素（通常是最完整的）
+                            parsed_json = parsed_json[-1]
+                            logger.warning(f"{self.log_prefix}LLM返回了多个JSON对象，使用最后一个: {parsed_json}")
+                        else:
+                            parsed_json = {}
+                    
+                    # 确保parsed_json是字典
+                    if not isinstance(parsed_json, dict):
+                        logger.error(f"{self.log_prefix}解析后的JSON不是字典类型: {type(parsed_json)}")
+                        parsed_json = {}
+
                     # 提取决策，提供默认值
                     extracted_action = parsed_json.get("action", "no_reply")
                     extracted_reasoning = ""

@@ -3,6 +3,7 @@ import os
 import importlib
 import importlib.util
 from pathlib import Path
+import traceback
 
 if TYPE_CHECKING:
     from src.plugin_system.base.base_plugin import BasePlugin
@@ -151,6 +152,7 @@ class PluginManager:
 
             except ValueError as e:
                 # manifest文件格式错误或验证失败
+                traceback.print_exc()
                 total_failed_registration += 1
                 error_msg = f"manifest验证失败: {str(e)}"
                 self.failed_plugins[plugin_name] = error_msg
