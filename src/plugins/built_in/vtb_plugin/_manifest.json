@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "vtb_plugin",
+  "version": "0.1.0",
+  "description": "虚拟主播情感表达插件",
+  "author": {
+    "name": "MaiBot开发团队",
+    "url": ""
+  },
+  "license": "GPL-v3.0-or-later",
+  "host_application": {
+    "min_version": "0.8.0",
+    "max_version": "0.8.0"
+  },
+  "keywords": [],
+  "categories": [],
+  "default_locale": "zh-CN",
+  "locales_path": "_locales"
+}

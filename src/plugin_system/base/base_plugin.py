@@ -3,6 +3,7 @@ from typing import Dict, List, Type, Optional, Any, Union
 import os
 import inspect
 import toml
+import json
 from src.common.logger import get_logger
 from src.plugin_system.base.component_types import (
     PluginInfo,
@@ -37,6 +38,10 @@ class BasePlugin(ABC):
     python_dependencies: List[PythonDependency] = []  # Python包依赖
     config_file_name: Optional[str] = None  # 配置文件名
 
+    # 新增：manifest文件相关
+    manifest_file_name: str = "_manifest.json"  # manifest文件名
+    manifest_data: Dict[str, Any] = {}  # manifest数据
+
     # 新增：配置定义
     config_schema: Dict[str, Union[Dict[str, ConfigField], str]] = {}
     config_section_descriptions: Dict[str, str] = {}
@@ -51,13 +56,14 @@ class BasePlugin(ABC):
         self.plugin_dir = plugin_dir  # 插件目录路径
         self.log_prefix = f"[Plugin:{self.plugin_name}]"
 
+        # 加载manifest文件
+        self._load_manifest()
+
         # 验证插件信息
         self._validate_plugin_info()
 
         # 加载插件配置
-        self._load_plugin_config()
-
-        # 创建插件信息对象
+        self._load_plugin_config()        # 创建插件信息对象
         self.plugin_info = PluginInfo(
             name=self.plugin_name,
             description=self.plugin_description,
@@ -68,16 +74,160 @@ class BasePlugin(ABC):
             config_file=self.config_file_name or "",
             dependencies=self.dependencies.copy(),
             python_dependencies=self.python_dependencies.copy(),
+            # 新增：manifest相关信息
+            manifest_data=self.manifest_data.copy(),
+            license=self.get_manifest_info("license", ""),
+            homepage_url=self.get_manifest_info("homepage_url", ""),
+            repository_url=self.get_manifest_info("repository_url", ""),
+            keywords=self.get_manifest_info("keywords", []).copy() if self.get_manifest_info("keywords") else [],
+            categories=self.get_manifest_info("categories", []).copy() if self.get_manifest_info("categories") else [],
+            min_host_version=self.get_manifest_info("host_application.min_version", ""),
+            max_host_version=self.get_manifest_info("host_application.max_version", ""),
         )
 
         logger.debug(f"{self.log_prefix} 插件基类初始化完成")
 
     def _validate_plugin_info(self):
-        """验证插件基本信息"""
+        """验证插件基本信息"""        
         if not self.plugin_name:
             raise ValueError(f"插件类 {self.__class__.__name__} 必须定义 plugin_name")
         if not self.plugin_description:
             raise ValueError(f"插件 {self.plugin_name} 必须定义 plugin_description")
+
+    def _load_manifest(self):
+        """加载manifest文件（强制要求）"""
+        if not self.plugin_dir:
+            raise ValueError(f"{self.log_prefix} 没有插件目录路径，无法加载manifest")
+
+        manifest_path = os.path.join(self.plugin_dir, self.manifest_file_name)
+        
+        if not os.path.exists(manifest_path):
+            error_msg = f"{self.log_prefix} 缺少必需的manifest文件: {manifest_path}"
+            logger.error(error_msg)
+            raise FileNotFoundError(error_msg)
+
+        try:
+            with open(manifest_path, "r", encoding="utf-8") as f:
+                self.manifest_data = json.load(f)
+            
+            logger.debug(f"{self.log_prefix} 成功加载manifest文件: {manifest_path}")
+            
+            # 验证manifest格式
+            self._validate_manifest()
+            
+            # 从manifest覆盖插件基本信息（如果插件类中未定义）
+            self._apply_manifest_overrides()
+            
+        except json.JSONDecodeError as e:
+            error_msg = f"{self.log_prefix} manifest文件格式错误: {e}"
+            logger.error(error_msg)
+            raise ValueError(error_msg) #noqa
+        except IOError as e:
+            error_msg = f"{self.log_prefix} 读取manifest文件失败: {e}"
+            logger.error(error_msg)
+            raise IOError(error_msg) #noqa
+
+    def _apply_manifest_overrides(self):
+        """从manifest文件覆盖插件信息"""
+        if not self.manifest_data:
+            return
+
+        # 如果插件类中的信息为空，则从manifest中获取
+        if not self.plugin_name:
+            self.plugin_name = self.manifest_data.get("name", "")
+
+        if not self.plugin_description:
+            self.plugin_description = self.manifest_data.get("description", "")
+
+        if self.plugin_version == "1.0.0":  # 默认版本
+            self.plugin_version = self.manifest_data.get("version", "1.0.0")
+
+        if not self.plugin_author:
+            author_info = self.manifest_data.get("author", {})
+            if isinstance(author_info, dict):
+                self.plugin_author = author_info.get("name", "")            
+            else:
+                self.plugin_author = str(author_info)
+
+    def _validate_manifest(self):
+        """验证manifest文件格式（使用强化的验证器）"""
+        if not self.manifest_data:
+            return
+            
+        # 导入验证器
+        from src.plugin_system.utils.manifest_utils import ManifestValidator
+        
+        validator = ManifestValidator()
+        is_valid = validator.validate_manifest(self.manifest_data)
+        
+        # 记录验证结果
+        if validator.validation_errors or validator.validation_warnings:
+            report = validator.get_validation_report()
+            logger.info(f"{self.log_prefix} Manifest验证结果:\n{report}")
+        
+        # 如果有验证错误，抛出异常
+        if not is_valid:
+            error_msg = f"{self.log_prefix} Manifest文件验证失败"
+            if validator.validation_errors:
+                error_msg += f": {'; '.join(validator.validation_errors)}"
+            raise ValueError(error_msg)
+
+    def _generate_default_manifest(self, manifest_path: str):
+        """生成默认的manifest文件"""
+        if not self.plugin_name:
+            logger.debug(f"{self.log_prefix} 插件名称未定义，无法生成默认manifest")
+            return
+
+        default_manifest = {
+            "manifest_version": 3,
+            "name": self.plugin_name,
+            "version": self.plugin_version,
+            "description": self.plugin_description or "插件描述",
+            "author": {
+                "name": self.plugin_author or "Unknown",
+                "url": ""
+            },
+            "license": "MIT",
+            "host_application": {
+                "min_version": "1.0.0",
+                "max_version": "4.0.0"
+            },
+            "keywords": [],
+            "categories": [],
+            "default_locale": "zh-CN",
+            "locales_path": "_locales"
+        }
+
+        try:
+            with open(manifest_path, "w", encoding="utf-8") as f:
+                json.dump(default_manifest, f, ensure_ascii=False, indent=2)
+            logger.info(f"{self.log_prefix} 已生成默认manifest文件: {manifest_path}")
+        except IOError as e:
+            logger.error(f"{self.log_prefix} 保存默认manifest文件失败: {e}")
+
+    def get_manifest_info(self, key: str, default: Any = None) -> Any:
+        """获取manifest信息
+
+        Args:
+            key: 信息键，支持点分割的嵌套键（如 "author.name"）
+            default: 默认值
+
+        Returns:
+            Any: 对应的值
+        """
+        if not self.manifest_data:
+            return default
+
+        keys = key.split(".")
+        value = self.manifest_data
+
+        for k in keys:
+            if isinstance(value, dict) and k in value:
+                value = value[k]
+            else:
+                return default
+
+        return value
 
     def _generate_and_save_default_config(self, config_file_path: str):
         """根据插件的Schema生成并保存默认配置文件"""

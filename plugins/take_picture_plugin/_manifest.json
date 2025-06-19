@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "take_picture_plugin",
+  "version": "1.0.0",
+  "description": "提供生成自拍照和展示最近照片的功能",
+  "author": {
+    "name": "SengokuCola",
+    "url": ""
+  },
+  "license": "GPL-v3.0-or-later",
+  "host_application": {
+    "min_version": "0.8.0",
+    "max_version": "0.8.0"
+  },
+  "keywords": [],
+  "categories": [],
+  "default_locale": "zh-CN",
+  "locales_path": "_locales"
+}

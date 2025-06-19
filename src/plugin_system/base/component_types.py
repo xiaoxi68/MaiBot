@@ -131,6 +131,15 @@ class PluginInfo:
     python_dependencies: List[PythonDependency] = None  # Python包依赖
     config_file: str = ""  # 配置文件路径
     metadata: Dict[str, Any] = None  # 额外元数据
+      # 新增：manifest相关信息
+    manifest_data: Dict[str, Any] = None  # manifest文件数据
+    license: str = ""  # 插件许可证
+    homepage_url: str = ""  # 插件主页
+    repository_url: str = ""  # 插件仓库地址
+    keywords: List[str] = None  # 插件关键词
+    categories: List[str] = None  # 插件分类
+    min_host_version: str = ""  # 最低主机版本要求
+    max_host_version: str = ""  # 最高主机版本要求
 
     def __post_init__(self):
         if self.components is None:
@@ -141,6 +150,12 @@ class PluginInfo:
             self.python_dependencies = []
         if self.metadata is None:
             self.metadata = {}
+        if self.manifest_data is None:
+            self.manifest_data = {}
+        if self.keywords is None:
+            self.keywords = []
+        if self.categories is None:
+            self.categories = []
 
     def get_missing_packages(self) -> List[PythonDependency]:
         """检查缺失的Python包"""

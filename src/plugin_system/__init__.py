@@ -23,13 +23,21 @@ from src.plugin_system.core.plugin_manager import plugin_manager
 from src.plugin_system.core.component_registry import component_registry
 from src.plugin_system.core.dependency_manager import dependency_manager
 
+# 导入工具模块
+from src.plugin_system.utils import (
+    ManifestValidator,
+    ManifestGenerator,
+    validate_plugin_manifest,
+    generate_plugin_manifest
+)
+
 
 __version__ = "1.0.0"
 
 __all__ = [
     # 基础类
     "BasePlugin",
-    "BaseAction",
+    "BaseAction", 
     "BaseCommand",
     # 类型定义
     "ComponentType",
@@ -47,4 +55,9 @@ __all__ = [
     # 装饰器
     "register_plugin",
     "ConfigField",
+    # 工具函数
+    "ManifestValidator",
+    "ManifestGenerator",
+    "validate_plugin_manifest",
+    "generate_plugin_manifest",
 ]

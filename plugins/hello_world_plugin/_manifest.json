@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "hello_world_plugin",
+  "version": "1.0.0",
+  "description": "我的第一个MaiCore插件，包含问候功能",
+  "author": {
+    "name": "你的名字",
+    "url": ""
+  },
+  "license": "GPL-v3.0-or-later",
+  "host_application": {
+    "min_version": "0.8.0",
+    "max_version": "0.8.0"
+  },
+  "keywords": [],
+  "categories": [],
+  "default_locale": "zh-CN",
+  "locales_path": "_locales"
+}
