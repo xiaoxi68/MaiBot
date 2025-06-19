@@ -96,7 +96,7 @@ class BasePlugin(ABC):
         """验证插件基本信息"""
         if not self.plugin_name:
             raise ValueError(f"插件类 {self.__class__.__name__} 必须定义 plugin_name")
-        
+
         # 验证manifest中的必需信息
         if not self.get_manifest_info("name"):
             raise ValueError(f"插件 {self.plugin_name} 的manifest中缺少name字段")
@@ -144,7 +144,7 @@ class BasePlugin(ABC):
         # 只有当插件类中没有定义plugin_name时，才从manifest中获取作为fallback
         if not self.plugin_name:
             self.plugin_name = self.manifest_data.get("name", "").replace(" ", "_").lower()
-    
+
     def _get_author_name(self) -> str:
         """从manifest获取作者名称"""
         author_info = self.get_manifest_info("author", {})
@@ -184,7 +184,7 @@ class BasePlugin(ABC):
 
         # 从plugin_name生成友好的显示名称
         display_name = self.plugin_name.replace("_", " ").title()
-        
+
         default_manifest = {
             "manifest_version": 1,
             "name": display_name,
