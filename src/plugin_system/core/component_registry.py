@@ -54,7 +54,7 @@ class ComponentRegistry:
         """
         component_name = component_info.name
         component_type = component_info.component_type
-        plugin_name = getattr(component_info, 'plugin_name', 'unknown')
+        plugin_name = getattr(component_info, "plugin_name", "unknown")
 
         # 🔥 系统级别自动区分：为不同类型的组件添加命名空间前缀
         if component_type == ComponentType.ACTION:
@@ -68,8 +68,8 @@ class ComponentRegistry:
         # 检查命名空间化的名称是否冲突
         if namespaced_name in self._components:
             existing_info = self._components[namespaced_name]
-            existing_plugin = getattr(existing_info, 'plugin_name', 'unknown')
-            
+            existing_plugin = getattr(existing_info, "plugin_name", "unknown")
+
             logger.warning(
                 f"组件冲突: {component_type.value}组件 '{component_name}' "
                 f"已被插件 '{existing_plugin}' 注册，跳过插件 '{plugin_name}' 的注册"
@@ -116,18 +116,18 @@ class ComponentRegistry:
 
     def get_component_info(self, component_name: str, component_type: ComponentType = None) -> Optional[ComponentInfo]:
         """获取组件信息，支持自动命名空间解析
-        
+
         Args:
             component_name: 组件名称，可以是原始名称或命名空间化的名称
             component_type: 组件类型，如果提供则优先在该类型中查找
-            
+
         Returns:
             Optional[ComponentInfo]: 组件信息或None
         """
         # 1. 如果已经是命名空间化的名称，直接查找
-        if '.' in component_name:
+        if "." in component_name:
             return self._components.get(component_name)
-        
+
         # 2. 如果指定了组件类型，构造命名空间化的名称查找
         if component_type:
             if component_type == ComponentType.ACTION:
@@ -136,9 +136,9 @@ class ComponentRegistry:
                 namespaced_name = f"command.{component_name}"
             else:
                 namespaced_name = f"{component_type.value}.{component_name}"
-            
+
             return self._components.get(namespaced_name)
-        
+
         # 3. 如果没有指定类型，尝试在所有命名空间中查找
         candidates = []
         for namespace_prefix in ["action", "command"]:
@@ -146,7 +146,7 @@ class ComponentRegistry:
             component_info = self._components.get(namespaced_name)
             if component_info:
                 candidates.append((namespace_prefix, namespaced_name, component_info))
-        
+
         if len(candidates) == 1:
             # 只有一个匹配，直接返回
             return candidates[0][2]
@@ -154,28 +154,27 @@ class ComponentRegistry:
             # 多个匹配，记录警告并返回第一个
             namespaces = [ns for ns, _, _ in candidates]
             logger.warning(
-                f"组件名称 '{component_name}' 在多个命名空间中存在: {namespaces}，"
-                f"使用第一个匹配项: {candidates[0][1]}"
+                f"组件名称 '{component_name}' 在多个命名空间中存在: {namespaces}，使用第一个匹配项: {candidates[0][1]}"
             )
             return candidates[0][2]
-        
+
         # 4. 都没找到
         return None
 
     def get_component_class(self, component_name: str, component_type: ComponentType = None) -> Optional[Type]:
         """获取组件类，支持自动命名空间解析
-        
+
         Args:
             component_name: 组件名称，可以是原始名称或命名空间化的名称
             component_type: 组件类型，如果提供则优先在该类型中查找
-            
+
         Returns:
             Optional[Type]: 组件类或None
         """
         # 1. 如果已经是命名空间化的名称，直接查找
-        if '.' in component_name:
+        if "." in component_name:
             return self._component_classes.get(component_name)
-        
+
         # 2. 如果指定了组件类型，构造命名空间化的名称查找
         if component_type:
             if component_type == ComponentType.ACTION:
@@ -184,9 +183,9 @@ class ComponentRegistry:
                 namespaced_name = f"command.{component_name}"
             else:
                 namespaced_name = f"{component_type.value}.{component_name}"
-            
+
             return self._component_classes.get(namespaced_name)
-        
+
         # 3. 如果没有指定类型，尝试在所有命名空间中查找
         candidates = []
         for namespace_prefix in ["action", "command"]:
@@ -194,7 +193,7 @@ class ComponentRegistry:
             component_class = self._component_classes.get(namespaced_name)
             if component_class:
                 candidates.append((namespace_prefix, namespaced_name, component_class))
-        
+
         if len(candidates) == 1:
             # 只有一个匹配，直接返回
             namespace, full_name, cls = candidates[0]
@@ -204,11 +203,10 @@ class ComponentRegistry:
             # 多个匹配，记录警告并返回第一个
             namespaces = [ns for ns, _, _ in candidates]
             logger.warning(
-                f"组件名称 '{component_name}' 在多个命名空间中存在: {namespaces}，"
-                f"使用第一个匹配项: {candidates[0][1]}"
+                f"组件名称 '{component_name}' 在多个命名空间中存在: {namespaces}，使用第一个匹配项: {candidates[0][1]}"
             )
             return candidates[0][2]
-        
+
         # 4. 都没找到
         return None
 
@@ -262,7 +260,6 @@ class ComponentRegistry:
         """
 
         for pattern, command_class in self._command_patterns.items():
-            
             match = pattern.match(text)
             if match:
                 command_name = None
@@ -271,7 +268,7 @@ class ComponentRegistry:
                     if cls == command_class:
                         command_name = name
                         break
-                
+
                 # 检查命令是否启用
                 if command_name:
                     command_info = self.get_command_info(command_name)
@@ -346,15 +343,19 @@ class ComponentRegistry:
         component_info = self.get_component_info(component_name, component_type)
         if not component_info:
             return False
-        
+
         # 根据组件类型构造正确的命名空间化名称
         if component_info.component_type == ComponentType.ACTION:
-            namespaced_name = f"action.{component_name}" if '.' not in component_name else component_name
+            namespaced_name = f"action.{component_name}" if "." not in component_name else component_name
         elif component_info.component_type == ComponentType.COMMAND:
-            namespaced_name = f"command.{component_name}" if '.' not in component_name else component_name
+            namespaced_name = f"command.{component_name}" if "." not in component_name else component_name
         else:
-            namespaced_name = f"{component_info.component_type.value}.{component_name}" if '.' not in component_name else component_name
-        
+            namespaced_name = (
+                f"{component_info.component_type.value}.{component_name}"
+                if "." not in component_name
+                else component_name
+            )
+
         if namespaced_name in self._components:
             self._components[namespaced_name].enabled = True
             # 如果是Action，更新默认动作集
@@ -370,15 +371,19 @@ class ComponentRegistry:
         component_info = self.get_component_info(component_name, component_type)
         if not component_info:
             return False
-        
+
         # 根据组件类型构造正确的命名空间化名称
         if component_info.component_type == ComponentType.ACTION:
-            namespaced_name = f"action.{component_name}" if '.' not in component_name else component_name
+            namespaced_name = f"action.{component_name}" if "." not in component_name else component_name
         elif component_info.component_type == ComponentType.COMMAND:
-            namespaced_name = f"command.{component_name}" if '.' not in component_name else component_name
+            namespaced_name = f"command.{component_name}" if "." not in component_name else component_name
         else:
-            namespaced_name = f"{component_info.component_type.value}.{component_name}" if '.' not in component_name else component_name
-        
+            namespaced_name = (
+                f"{component_info.component_type.value}.{component_name}"
+                if "." not in component_name
+                else component_name
+            )
+
         if namespaced_name in self._components:
             self._components[namespaced_name].enabled = False
             # 如果是Action，从默认动作集中移除

@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Tuple, Optional
 from src.common.logger import get_logger
 from src.plugin_system.base.component_types import ActionActivationType, ChatMode, ActionInfo, ComponentType
-from src.plugin_system.apis import send_api, database_api,message_api
+from src.plugin_system.apis import send_api, database_api, message_api
 import time
 import asyncio
 
@@ -59,7 +59,7 @@ class BaseAction(ABC):
         self.thinking_id = thinking_id
         self.log_prefix = log_prefix
         self.shutting_down = shutting_down
-        
+
         # 保存插件配置
         self.plugin_config = plugin_config or {}
 
@@ -83,11 +83,10 @@ class BaseAction(ABC):
         # =============================================================================
         # 便捷属性 - 直接在初始化时获取常用聊天信息（带类型注解）
         # =============================================================================
-        
-        
+
         # 获取聊天流对象
         self.chat_stream = chat_stream or kwargs.get("chat_stream")
-        
+
         self.chat_id = self.chat_stream.stream_id
         # 初始化基础信息（带类型注解）
         self.is_group: bool = False
@@ -97,28 +96,30 @@ class BaseAction(ABC):
         self.target_id: Optional[str] = None
         self.group_name: Optional[str] = None
         self.user_nickname: Optional[str] = None
-        
+
         # 如果有聊天流，提取所有信息
         if self.chat_stream:
-            self.platform = getattr(self.chat_stream, 'platform', None)
-            
+            self.platform = getattr(self.chat_stream, "platform", None)
+
             # 获取群聊信息
             # print(self.chat_stream)
             # print(self.chat_stream.group_info)
             if self.chat_stream.group_info:
                 self.is_group = True
                 self.group_id = str(self.chat_stream.group_info.group_id)
-                self.group_name = getattr(self.chat_stream.group_info, 'group_name', None)
+                self.group_name = getattr(self.chat_stream.group_info, "group_name", None)
             else:
                 self.is_group = False
                 self.user_id = str(self.chat_stream.user_info.user_id)
-                self.user_nickname = getattr(self.chat_stream.user_info, 'user_nickname', None)
-            
+                self.user_nickname = getattr(self.chat_stream.user_info, "user_nickname", None)
+
             # 设置目标ID（群聊用群ID，私聊用户ID）
             self.target_id = self.group_id if self.is_group else self.user_id
 
         logger.debug(f"{self.log_prefix} Action组件初始化完成")
-        logger.debug(f"{self.log_prefix} 聊天信息: 类型={'群聊' if self.is_group else '私聊'}, 平台={self.platform}, 目标={self.target_id}")
+        logger.debug(
+            f"{self.log_prefix} 聊天信息: 类型={'群聊' if self.is_group else '私聊'}, 平台={self.platform}, 目标={self.target_id}"
+        )
 
     def _get_activation_type_value(self, attr_name: str, default: str) -> str:
         """获取激活类型的字符串值"""
@@ -138,10 +139,9 @@ class BaseAction(ABC):
             return attr.value
         return str(attr)
 
-    
     async def wait_for_new_message(self, timeout: int = 1200) -> Tuple[bool, str]:
         """等待新消息或超时
-        
+
         在loop_start_time之后等待新消息，如果没有新消息且没有超时，就一直等待。
         使用message_api检查self.chat_id对应的聊天中是否有新消息。
 
@@ -155,7 +155,7 @@ class BaseAction(ABC):
             # 获取循环开始时间，如果没有则使用当前时间
             loop_start_time = self.action_data.get("loop_start_time", time.time())
             logger.info(f"{self.log_prefix} 开始等待新消息... (最长等待: {timeout}秒, 从时间点: {loop_start_time})")
-            
+
             # 确保有有效的chat_id
             if not self.chat_id:
                 logger.error(f"{self.log_prefix} 等待新消息失败: 没有有效的chat_id")
@@ -166,17 +166,15 @@ class BaseAction(ABC):
                 # 检查关闭标志
                 # shutting_down = self.get_action_context("shutting_down", False)
                 # if shutting_down:
-                    # logger.info(f"{self.log_prefix} 等待新消息时检测到关闭信号，中断等待")
-                    # return False, ""
+                # logger.info(f"{self.log_prefix} 等待新消息时检测到关闭信号，中断等待")
+                # return False, ""
 
                 # 检查新消息
                 current_time = time.time()
                 new_message_count = message_api.count_new_messages(
-                    chat_id=self.chat_id,
-                    start_time=loop_start_time,
-                    end_time=current_time
+                    chat_id=self.chat_id, start_time=loop_start_time, end_time=current_time
                 )
-                
+
                 if new_message_count > 0:
                     logger.info(f"{self.log_prefix} 检测到{new_message_count}条新消息，聊天ID: {self.chat_id}")
                     return True, ""
@@ -186,7 +184,7 @@ class BaseAction(ABC):
                 if elapsed_time > timeout:
                     logger.warning(f"{self.log_prefix} 等待新消息超时({timeout}秒)，聊天ID: {self.chat_id}")
                     return False, ""
-                
+
                 # 每30秒记录一次等待状态
                 if int(elapsed_time) % 15 == 0 and int(elapsed_time) > 0:
                     logger.debug(f"{self.log_prefix} 已等待{int(elapsed_time)}秒，继续等待新消息...")
@@ -234,7 +232,7 @@ class BaseAction(ABC):
         """
         # 导入send_api
         from src.plugin_system.apis import send_api
-        
+
         if not self.target_id or not self.platform:
             logger.error(f"{self.log_prefix} 缺少发送消息所需的信息")
             return False
@@ -255,7 +253,7 @@ class BaseAction(ABC):
         """
         # 导入send_api
         from src.plugin_system.apis import send_api
-        
+
         if not self.target_id or not self.platform:
             logger.error(f"{self.log_prefix} 缺少发送消息所需的信息")
             return False
@@ -278,7 +276,7 @@ class BaseAction(ABC):
         """
         # 导入send_api
         from src.plugin_system.apis import send_api
-        
+
         if not self.target_id or not self.platform:
             logger.error(f"{self.log_prefix} 缺少发送消息所需的信息")
             return False
@@ -289,7 +287,7 @@ class BaseAction(ABC):
             target_id=self.target_id,
             is_group=self.is_group,
             platform=self.platform,
-            typing=typing
+            typing=typing,
         )
 
     async def store_action_info(
@@ -299,7 +297,7 @@ class BaseAction(ABC):
         action_done: bool = True,
     ) -> None:
         """存储动作信息到数据库
-        
+
         Args:
             action_build_into_prompt: 是否构建到提示中
             action_prompt_display: 显示的action提示信息
@@ -315,7 +313,9 @@ class BaseAction(ABC):
             action_name=self.action_name,
         )
 
-    async def send_command(self, command_name: str, args: dict = None, display_message: str = None, storage_message: bool = True) -> bool:
+    async def send_command(
+        self, command_name: str, args: dict = None, display_message: str = None, storage_message: bool = True
+    ) -> bool:
         """发送命令消息
 
         使用和send_text相同的方式通过MessageAPI发送命令
@@ -338,7 +338,7 @@ class BaseAction(ABC):
                     command=command_data,
                     group_id=str(self.group_id),
                     platform=self.platform,
-                    storage_message=storage_message
+                    storage_message=storage_message,
                 )
             else:
                 # 私聊
@@ -346,7 +346,7 @@ class BaseAction(ABC):
                     command=command_data,
                     user_id=str(self.user_id),
                     platform=self.platform,
-                    storage_message=storage_message
+                    storage_message=storage_message,
                 )
 
             if success:
@@ -433,11 +433,11 @@ class BaseAction(ABC):
 
     def get_action_context(self, key: str, default=None):
         """获取action上下文信息
-        
+
         Args:
             key: 上下文键名
             default: 默认值
-            
+
         Returns:
             Any: 上下文值或默认值
         """
@@ -445,17 +445,17 @@ class BaseAction(ABC):
 
     def get_config(self, key: str, default=None):
         """获取插件配置值，支持嵌套键访问
-        
+
         Args:
             key: 配置键名，支持嵌套访问如 "section.subsection.key"
             default: 默认值
-            
+
         Returns:
             Any: 配置值或默认值
         """
         if not self.plugin_config:
             return default
-            
+
         # 支持嵌套键访问
         keys = key.split(".")
         current = self.plugin_config

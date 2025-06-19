@@ -82,7 +82,9 @@ class ActionPlanner(BasePlanner):
             request_type="focus.planner",  # 用于动作规划
         )
 
-    async def plan(self, all_plan_info: List[InfoBase], running_memorys: List[Dict[str, Any]], loop_start_time: float) -> Dict[str, Any]:
+    async def plan(
+        self, all_plan_info: List[InfoBase], running_memorys: List[Dict[str, Any]], loop_start_time: float
+    ) -> Dict[str, Any]:
         """
         规划器 (Planner): 使用LLM根据上下文决定做出什么动作。
 
@@ -243,7 +245,7 @@ class ActionPlanner(BasePlanner):
                     if selected_expressions:
                         action_data["selected_expressions"] = selected_expressions
                         logger.debug(f"{self.log_prefix} 传递{len(selected_expressions)}个选中的表达方式到action_data")
-                        
+
                     action_data["loop_start_time"] = loop_start_time
 
                     # 对于reply动作不需要额外处理，因为相关字段已经在上面的循环中添加到action_data

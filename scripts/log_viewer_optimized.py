@@ -370,7 +370,6 @@ class VirtualLogDisplay:
                 self.text_widget.tag_add(tag_name, f"{start_pos}+{tag_info[1]}c", f"{start_pos}+{tag_info[2]}c")
 
 
-
 class AsyncLogLoader:
     """异步日志加载器"""
 

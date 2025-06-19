@@ -38,9 +38,7 @@ class ReplyAction(BaseAction):
     action_description = "参与聊天回复，发送文本进行表达"
 
     # 动作参数定义
-    action_parameters = {
-        "reply_to": "你要回复的对方的发言内容，格式：（用户名:发言内容），可以为none"
-    }
+    action_parameters = {"reply_to": "你要回复的对方的发言内容，格式：（用户名:发言内容），可以为none"}
 
     # 动作使用场景
     action_require = ["你想要闲聊或者随便附和", "有人提到你", "如果你刚刚进行了回复，不要对同一个话题重复回应"]
@@ -53,45 +51,40 @@ class ReplyAction(BaseAction):
         logger.info(f"{self.log_prefix} 决定回复: {self.reasoning}")
 
         start_time = self.action_data.get("loop_start_time", time.time())
-        
+
         try:
-            
             success, reply_set = await generator_api.generate_reply(
                 chat_stream=self.chat_stream,
                 action_data=self.action_data,
                 platform=self.platform,
                 chat_id=self.chat_id,
-                is_group=self.is_group
+                is_group=self.is_group,
             )
 
             # 检查从start_time以来的新消息数量
             # 获取动作触发时间或使用默认值
             current_time = time.time()
             new_message_count = message_api.count_new_messages(
-                chat_id=self.chat_id,
-                start_time=start_time,
-                end_time=current_time
+                chat_id=self.chat_id, start_time=start_time, end_time=current_time
             )
-            
+
             # 根据新消息数量决定是否使用reply_to
             need_reply = new_message_count >= 4
-            logger.info(f"{self.log_prefix} 从{start_time}到{current_time}共有{new_message_count}条新消息，{'使用' if need_reply else '不使用'}reply_to")
+            logger.info(
+                f"{self.log_prefix} 从{start_time}到{current_time}共有{new_message_count}条新消息，{'使用' if need_reply else '不使用'}reply_to"
+            )
 
             # 构建回复文本
-            reply_text = ""       
+            reply_text = ""
             first_reply = False
             for reply_seg in reply_set:
                 data = reply_seg[1]
                 if not first_reply and need_reply:
-                    await self.send_text(
-                        content=data,
-                        reply_to=self.action_data.get("reply_to", "")
-                        )
+                    await self.send_text(content=data, reply_to=self.action_data.get("reply_to", ""))
                 else:
                     await self.send_text(content=data)
                     first_reply = True
                 reply_text += data
-            
 
             # 存储动作记录
             await self.store_action_info(
@@ -108,7 +101,6 @@ class ReplyAction(BaseAction):
         except Exception as e:
             logger.error(f"{self.log_prefix} 回复动作执行失败: {e}")
             return False, f"回复失败: {str(e)}"
-
 
 
 class NoReplyAction(BaseAction):
@@ -168,7 +160,7 @@ class NoReplyAction(BaseAction):
 
         except Exception as e:
             logger.error(f"{self.log_prefix} 不回复动作执行失败: {e}")
-            return False, f"不回复动作执行失败: {e}"  
+            return False, f"不回复动作执行失败: {e}"
 
     @classmethod
     def reset_consecutive_count(cls):
@@ -218,17 +210,17 @@ class EmojiAction(BaseAction):
             # 1. 根据描述选择表情包
             description = self.action_data.get("description", "")
             emoji_result = await emoji_api.get_by_description(description)
-            
+
             if not emoji_result:
                 logger.warning(f"{self.log_prefix} 未找到匹配描述 '{description}' 的表情包")
                 return False, f"未找到匹配 '{description}' 的表情包"
-            
+
             emoji_base64, emoji_description, matched_emotion = emoji_result
             logger.info(f"{self.log_prefix} 找到表情包: {emoji_description}, 匹配情感: {matched_emotion}")
-            
+
             # 使用BaseAction的便捷方法发送表情包
             success = await self.send_emoji(emoji_base64)
-            
+
             if not success:
                 logger.error(f"{self.log_prefix} 表情包发送失败")
                 return False, "表情包发送失败"
@@ -430,10 +422,6 @@ class CoreActionsPlugin(BasePlugin):
         return components
 
 
-
-
-
-
 # class DeepReplyAction(BaseAction):
 #     """回复动作 - 参与聊天回复"""
 
@@ -467,42 +455,39 @@ class CoreActionsPlugin(BasePlugin):
 #             chatting_observation = self._get_chatting_observation()
 #             if not chatting_observation:
 #                 return False, "未找到聊天观察"
-            
+
 #             talking_message_str = chatting_observation.talking_message_str
 
 #             # 处理回复目标
 #             chat_stream = self.api.get_service("chat_stream")
 #             anchor_message = await create_empty_anchor_message(chat_stream.platform, chat_stream.group_info, chat_stream)
 
-            
-            
+
 #             llm_model = self.api.get_available_models().replyer_1
-            
+
 #             prompt = f"""
 #             {talking_message_str}
 
 #             在上面的聊天中，你对{self.action_data.get("topic", "")}感兴趣，形成深刻观点，请你思考,总结成一份学术论文,APA标准格式
 #             """
-            
+
 #             success, response, reasoning, model_name = await self.api.generate_with_model(prompt, llm_model)
-            
+
 #             print(prompt)
 #             print(f"DeepReplyAction: {response}")
-            
+
 #             # prompt = f"""
 #             # {talking_message_str}
 
 #             # 在上面的聊天中，你对{self.action_data.get("topic", "")}感兴趣，请你思考
 #             # """
-            
+
 #             extra_info_block = self.action_data.get("extra_info_block", "")
 #             extra_info_block += response
 #             # extra_info_block += f"\n--------------------------------\n注意，这是最重要的内容！！！！！你现在可以用比较长的篇幅来表达你的观点，不要只回复一个字或者几个字\n由于你进入了深度思考模式，所以下方聊天记录的回复要求不再适用，请你自由的表达，不论字数长短限制\n\n--------------------------------\n注意，你现在可以用比较长的篇幅来表达你的观点，不要只回复一个字或者几个字\n由于你进入了深度思考模式，所以下方聊天记录的回复要求不再适用，请你自由的表达，不论字数长短限制\n"
 #             # extra_info_block += f"\n--------------------------------\n注意，优先关注这句！！！！你现在可以用比较长的篇幅来表达你的观点，不要只回复一个字或者几个字\n由于你进入了深度思考模式，所以下方聊天记录的回复要求不再适用，请你自由的表达，不论字数长短限制\n\n--------------------------------\n注意，你现在可以用比较长的篇幅来表达你的观点，不要只回复一个字或者几个字\n由于你进入了深度思考模式，所以其他的回复要求不再适用，请你自由的表达，不论字数长短限制\n"
 #             self.action_data["extra_info_block"] = extra_info_block
 
-            
-            
 
 #             # 获取回复器服务
 #             # replyer = self.api.get_service("replyer")

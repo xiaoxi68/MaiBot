@@ -22,7 +22,7 @@ class BaseCommand(ABC):
 
     command_name: str = ""
     command_description: str = ""
-    
+
     # 默认命令设置（子类可以覆盖）
     command_pattern: str = ""
     command_help: str = ""
@@ -63,17 +63,17 @@ class BaseCommand(ABC):
 
     def get_config(self, key: str, default=None):
         """获取插件配置值，支持嵌套键访问
-        
+
         Args:
             key: 配置键名，支持嵌套访问如 "section.subsection.key"
             default: 默认值
-            
+
         Returns:
             Any: 配置值或默认值
         """
         if not self.plugin_config:
             return default
-            
+
         # 支持嵌套键访问
         keys = key.split(".")
         current = self.plugin_config
@@ -97,19 +97,15 @@ class BaseCommand(ABC):
 
         if chat_stream.group_info:
             # 群聊
-            
+
             await send_api.text_to_group(
-                text=content, 
-                group_id=str(chat_stream.group_info.group_id), 
-                platform=chat_stream.platform
+                text=content, group_id=str(chat_stream.group_info.group_id), platform=chat_stream.platform
             )
         else:
             # 私聊
-            
+
             await send_api.text_to_user(
-                text=content, 
-                user_id=str(chat_stream.user_info.user_id), 
-                platform=chat_stream.platform
+                text=content, user_id=str(chat_stream.user_info.user_id), platform=chat_stream.platform
             )
 
     async def send_type(
@@ -131,6 +127,7 @@ class BaseCommand(ABC):
         if chat_stream.group_info:
             # 群聊
             from src.plugin_system.apis import send_api
+
             return await send_api.custom_message(
                 message_type=message_type,
                 content=content,
@@ -142,6 +139,7 @@ class BaseCommand(ABC):
         else:
             # 私聊
             from src.plugin_system.apis import send_api
+
             return await send_api.custom_message(
                 message_type=message_type,
                 content=content,
@@ -172,6 +170,7 @@ class BaseCommand(ABC):
             if chat_stream.group_info:
                 # 群聊
                 from src.plugin_system.apis import send_api
+
                 success = await send_api.custom_message(
                     message_type="command",
                     content=command_data,
@@ -182,6 +181,7 @@ class BaseCommand(ABC):
             else:
                 # 私聊
                 from src.plugin_system.apis import send_api
+
                 success = await send_api.custom_message(
                     message_type="command",
                     content=command_data,
