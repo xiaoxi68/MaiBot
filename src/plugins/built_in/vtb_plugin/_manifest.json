@@ -1,5 +1,5 @@
 {
-  "manifest_version": 3,
+  "manifest_version": 1,
   "name": "vtb_plugin",
   "version": "0.1.0",
   "description": "虚拟主播情感表达插件",

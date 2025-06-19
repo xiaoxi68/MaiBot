@@ -1,5 +1,5 @@
 {
-  "manifest_version": 3,
+  "manifest_version": 1,
   "name": "豆包图片生成插件 (Doubao Image Generator)",
   "version": "1.2.0",
   "description": "基于火山引擎豆包模型的AI图片生成插件，支持智能LLM判定、高质量图片生成、结果缓存和多尺寸支持。",

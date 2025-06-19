@@ -43,7 +43,7 @@ def create_minimal_manifest(plugin_dir: str, plugin_name: str, description: str 
     
     # 创建最小化manifest
     minimal_manifest = {
-        "manifest_version": 3,
+        "manifest_version": 1,
         "name": plugin_name,
         "version": "1.0.0",
         "description": description or f"{plugin_name}插件",
@@ -80,7 +80,7 @@ def create_complete_manifest(plugin_dir: str, plugin_name: str) -> bool:
     
     # 创建完整模板
     complete_manifest = {
-        "manifest_version": 3,
+        "manifest_version": 1,
         "name": plugin_name,
         "version": "1.0.0",
         "description": f"{plugin_name}插件描述",

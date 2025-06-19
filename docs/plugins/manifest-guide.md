@@ -12,7 +12,7 @@ MaiBot插件系统现在强制要求每个插件都必须包含一个 `_manifest
 
 ```json
 {
-  "manifest_version": 3,
+  "manifest_version": 1,
   "name": "插件显示名称",
   "version": "1.0.0",
   "description": "插件功能描述",

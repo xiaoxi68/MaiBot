@@ -57,7 +57,7 @@
 ### 最小化Manifest示例
 ```json
 {
-  "manifest_version": 3,
+  "manifest_version": 1,
   "name": "我的插件",
   "version": "1.0.0", 
   "description": "插件描述",

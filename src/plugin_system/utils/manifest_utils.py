@@ -306,7 +306,7 @@ class ManifestGenerator:
     
     def __init__(self):
         self.template = {
-            "manifest_version": 3,
+            "manifest_version": 1,
             "name": "",
             "version": "1.0.0", 
             "description": "",

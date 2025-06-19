@@ -179,7 +179,7 @@ class BasePlugin(ABC):
             return
 
         default_manifest = {
-            "manifest_version": 3,
+            "manifest_version": 1,
             "name": self.plugin_name,
             "version": self.plugin_version,
             "description": self.plugin_description or "插件描述",
