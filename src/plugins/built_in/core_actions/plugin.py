@@ -340,9 +340,11 @@ class CoreActionsPlugin(BasePlugin):
     - Reply: 回复动作
     - NoReply: 不回复动作
     - Emoji: 表情动作
+
+    注意：插件基本信息优先从_manifest.json文件中读取
     """
 
-    # 插件基本信息
+    # 插件基本信息（作为fallback，优先从manifest读取）
     plugin_name = "core_actions"
     plugin_description = "系统核心动作插件，提供基础聊天交互功能"
     plugin_version = "1.0.0"

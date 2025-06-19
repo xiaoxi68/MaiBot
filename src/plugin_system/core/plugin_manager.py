@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Any, TYPE_CHECKING
+from typing import Dict, List, Optional, Any, TYPE_CHECKING, Tuple
 import os
 import importlib
 import importlib.util
@@ -83,44 +83,86 @@ class PluginManager:
         total_failed_registration = 0
 
         for plugin_name, plugin_class in plugin_classes.items():
-            # 使用记录的插件目录路径
-            plugin_dir = self.plugin_paths.get(plugin_name)
+            try:
+                # 使用记录的插件目录路径
+                plugin_dir = self.plugin_paths.get(plugin_name)
 
-            # 如果没有记录，则尝试查找（fallback）
-            if not plugin_dir:
-                plugin_dir = self._find_plugin_directory(plugin_class)
-                if plugin_dir:
-                    self.plugin_paths[plugin_name] = plugin_dir
+                # 如果没有记录，则尝试查找（fallback）
+                if not plugin_dir:
+                    plugin_dir = self._find_plugin_directory(plugin_class)
+                    if plugin_dir:
+                        self.plugin_paths[plugin_name] = plugin_dir  # 实例化插件（可能因为缺少manifest而失败）
+                plugin_instance = plugin_class(plugin_dir=plugin_dir)
 
-            plugin_instance = plugin_class(plugin_dir=plugin_dir)
+                # 检查插件是否启用
+                if not plugin_instance.enable_plugin:
+                    logger.info(f"插件 {plugin_name} 已禁用，跳过加载")
+                    continue
 
-            # 检查插件是否启用
-            if not plugin_instance.enable_plugin:
-                logger.info(f"插件 {plugin_name} 已禁用，跳过加载")
-                continue
+                # 检查版本兼容性
+                is_compatible, compatibility_error = self.check_plugin_version_compatibility(
+                    plugin_name, plugin_instance.manifest_data
+                )
+                if not is_compatible:
+                    total_failed_registration += 1
+                    self.failed_plugins[plugin_name] = compatibility_error
+                    logger.error(f"❌ 插件加载失败: {plugin_name} - {compatibility_error}")
+                    continue
 
-            if plugin_instance.register_plugin():
-                total_registered += 1
-                self.loaded_plugins[plugin_name] = plugin_instance
+                if plugin_instance.register_plugin():
+                    total_registered += 1
+                    self.loaded_plugins[plugin_name] = plugin_instance
 
-                # 📊 显示插件详细信息
-                plugin_info = component_registry.get_plugin_info(plugin_name)
-                if plugin_info:
-                    component_types = {}
-                    for comp in plugin_info.components:
-                        comp_type = comp.component_type.name
-                        component_types[comp_type] = component_types.get(comp_type, 0) + 1
+                    # 📊 显示插件详细信息
+                    plugin_info = component_registry.get_plugin_info(plugin_name)
+                    if plugin_info:
+                        component_types = {}
+                        for comp in plugin_info.components:
+                            comp_type = comp.component_type.name
+                            component_types[comp_type] = component_types.get(comp_type, 0) + 1
 
-                    components_str = ", ".join([f"{count}个{ctype}" for ctype, count in component_types.items()])
-                    logger.info(
-                        f"✅ 插件加载成功: {plugin_name} v{plugin_info.version} ({components_str}) - {plugin_info.description}"
-                    )
+                        components_str = ", ".join([f"{count}个{ctype}" for ctype, count in component_types.items()])
+
+                        # 显示manifest信息
+                        manifest_info = ""
+                        if plugin_info.license:
+                            manifest_info += f" [{plugin_info.license}]"
+                        if plugin_info.keywords:
+                            manifest_info += f" 关键词: {', '.join(plugin_info.keywords[:3])}"  # 只显示前3个关键词
+                            if len(plugin_info.keywords) > 3:
+                                manifest_info += "..."
+
+                        logger.info(
+                            f"✅ 插件加载成功: {plugin_name} v{plugin_info.version} ({components_str}){manifest_info} - {plugin_info.description}"
+                        )
+                    else:
+                        logger.info(f"✅ 插件加载成功: {plugin_name}")
                 else:
-                    logger.info(f"✅ 插件加载成功: {plugin_name}")
-            else:
+                    total_failed_registration += 1
+                    self.failed_plugins[plugin_name] = "插件注册失败"
+                    logger.error(f"❌ 插件注册失败: {plugin_name}")
+
+            except FileNotFoundError as e:
+                # manifest文件缺失
                 total_failed_registration += 1
-                self.failed_plugins[plugin_name] = "插件注册失败"
-                logger.error(f"❌ 插件加载失败: {plugin_name}")
+                error_msg = f"缺少manifest文件: {str(e)}"
+                self.failed_plugins[plugin_name] = error_msg
+                logger.error(f"❌ 插件加载失败: {plugin_name} - {error_msg}")
+
+            except ValueError as e:
+                # manifest文件格式错误或验证失败
+                total_failed_registration += 1
+                error_msg = f"manifest验证失败: {str(e)}"
+                self.failed_plugins[plugin_name] = error_msg
+                logger.error(f"❌ 插件加载失败: {plugin_name} - {error_msg}")
+
+            except Exception as e:
+                # 其他错误
+                total_failed_registration += 1
+                error_msg = f"未知错误: {str(e)}"
+                self.failed_plugins[plugin_name] = error_msg
+                logger.error(f"❌ 插件加载失败: {plugin_name} - {error_msg}")
+                logger.debug("详细错误信息: ", exc_info=True)
 
         # 获取组件统计信息
         stats = component_registry.get_registry_stats()
@@ -136,18 +178,27 @@ class PluginManager:
                 f"📊 总览: {total_registered}个插件, {total_components}个组件 (Action: {action_count}, Command: {command_count})"
             )
 
-            # 显示详细的插件列表
-            logger.info("📋 已加载插件详情:")
+            # 显示详细的插件列表            logger.info("📋 已加载插件详情:")
             for plugin_name, _plugin_class in self.loaded_plugins.items():
                 plugin_info = component_registry.get_plugin_info(plugin_name)
                 if plugin_info:
                     # 插件基本信息
                     version_info = f"v{plugin_info.version}" if plugin_info.version else ""
                     author_info = f"by {plugin_info.author}" if plugin_info.author else "unknown"
-                    info_parts = [part for part in [version_info, author_info] if part]
+                    license_info = f"[{plugin_info.license}]" if plugin_info.license else ""
+                    info_parts = [part for part in [version_info, author_info, license_info] if part]
                     extra_info = f" ({', '.join(info_parts)})" if info_parts else ""
 
                     logger.info(f"  📦 {plugin_name}{extra_info}")
+
+                    # Manifest信息
+                    if plugin_info.manifest_data:
+                        if plugin_info.keywords:
+                            logger.info(f"    🏷️  关键词: {', '.join(plugin_info.keywords)}")
+                        if plugin_info.categories:
+                            logger.info(f"    📁 分类: {', '.join(plugin_info.categories)}")
+                        if plugin_info.homepage_url:
+                            logger.info(f"    🌐 主页: {plugin_info.homepage_url}")
 
                     # 组件列表
                     if plugin_info.components:
@@ -161,6 +212,18 @@ class PluginManager:
                         if command_components:
                             command_names = [c.name for c in command_components]
                             logger.info(f"    ⚡ Command组件: {', '.join(command_names)}")
+
+                    # 版本兼容性信息
+                    if plugin_info.min_host_version or plugin_info.max_host_version:
+                        version_range = ""
+                        if plugin_info.min_host_version:
+                            version_range += f">={plugin_info.min_host_version}"
+                        if plugin_info.max_host_version:
+                            if version_range:
+                                version_range += f", <={plugin_info.max_host_version}"
+                            else:
+                                version_range += f"<={plugin_info.max_host_version}"
+                        logger.info(f"    📋 兼容版本: {version_range}")
 
                     # 依赖信息
                     if plugin_info.dependencies:
@@ -452,6 +515,46 @@ class PluginManager:
             return False
 
         return dependency_manager.generate_requirements_file(all_dependencies, output_path)
+
+    def check_plugin_version_compatibility(self, plugin_name: str, manifest_data: Dict[str, Any]) -> Tuple[bool, str]:
+        """检查插件版本兼容性
+
+        Args:
+            plugin_name: 插件名称
+            manifest_data: manifest数据
+
+        Returns:
+            Tuple[bool, str]: (是否兼容, 错误信息)
+        """
+        if "host_application" not in manifest_data:
+            # 没有版本要求，默认兼容
+            return True, ""
+
+        host_app = manifest_data["host_application"]
+        if not isinstance(host_app, dict):
+            return True, ""
+
+        min_version = host_app.get("min_version", "")
+        max_version = host_app.get("max_version", "")
+
+        if not min_version and not max_version:
+            return True, ""
+
+        try:
+            from src.plugin_system.utils.manifest_utils import VersionComparator
+
+            current_version = VersionComparator.get_current_host_version()
+            is_compatible, error_msg = VersionComparator.is_version_in_range(current_version, min_version, max_version)
+
+            if not is_compatible:
+                return False, f"版本不兼容: {error_msg}"
+            else:
+                logger.debug(f"插件 {plugin_name} 版本兼容性检查通过")
+                return True, ""
+
+        except Exception as e:
+            logger.warning(f"插件 {plugin_name} 版本兼容性检查失败: {e}")
+            return True, ""  # 检查失败时默认允许加载
 
 
 # 全局插件管理器实例
