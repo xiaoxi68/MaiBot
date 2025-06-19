@@ -225,7 +225,7 @@ class ActionPlanner(BasePlanner):
                             logger.warning(f"{self.log_prefix}LLM返回了多个JSON对象，使用最后一个: {parsed_json}")
                         else:
                             parsed_json = {}
-                    
+
                     # 确保parsed_json是字典
                     if not isinstance(parsed_json, dict):
                         logger.error(f"{self.log_prefix}解析后的JSON不是字典类型: {type(parsed_json)}")
