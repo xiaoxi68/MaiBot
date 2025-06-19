@@ -366,11 +366,9 @@ class VirtualLogDisplay:
 
             # 应用标签（可选，为了性能可以考虑简化）
             for tag_info in batch_tags:
-                try:
-                    tag_name = tag_info[3]
-                    self.text_widget.tag_add(tag_name, f"{start_pos}+{tag_info[1]}c", f"{start_pos}+{tag_info[2]}c")
-                except:
-                    pass
+                tag_name = tag_info[3]
+                self.text_widget.tag_add(tag_name, f"{start_pos}+{tag_info[1]}c", f"{start_pos}+{tag_info[2]}c")
+
 
 
 class AsyncLogLoader:

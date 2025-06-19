@@ -32,11 +32,7 @@ def init_prompt():
 {self_info_block}
 请记住你的性格，身份和特点。
 
-{extra_info_block}
-{memory_str}
-
 {time_block}
-
 你是群内的一员，你现在正在参与群内的闲聊，以下是群内的聊天内容：
 
 {chat_content_block}
@@ -86,13 +82,14 @@ class ActionPlanner(BasePlanner):
             request_type="focus.planner",  # 用于动作规划
         )
 
-    async def plan(self, all_plan_info: List[InfoBase], running_memorys: List[Dict[str, Any]]) -> Dict[str, Any]:
+    async def plan(self, all_plan_info: List[InfoBase], running_memorys: List[Dict[str, Any]], loop_start_time: float) -> Dict[str, Any]:
         """
         规划器 (Planner): 使用LLM根据上下文决定做出什么动作。
 
         参数:
             all_plan_info: 所有计划信息
             running_memorys: 回忆信息
+            loop_start_time: 循环开始时间
         """
 
         action = "no_reply"  # 默认动作
@@ -246,6 +243,8 @@ class ActionPlanner(BasePlanner):
                     if selected_expressions:
                         action_data["selected_expressions"] = selected_expressions
                         logger.debug(f"{self.log_prefix} 传递{len(selected_expressions)}个选中的表达方式到action_data")
+                        
+                    action_data["loop_start_time"] = loop_start_time
 
                     # 对于reply动作不需要额外处理，因为相关字段已经在上面的循环中添加到action_data
 
@@ -326,7 +325,7 @@ class ActionPlanner(BasePlanner):
 
             chat_content_block = ""
             if observed_messages_str:
-                chat_content_block = f"聊天记录：\n{observed_messages_str}"
+                chat_content_block = f"\n{observed_messages_str}"
             else:
                 chat_content_block = "你还未开始聊天"
 
@@ -387,7 +386,7 @@ class ActionPlanner(BasePlanner):
             prompt = planner_prompt_template.format(
                 relation_info_block=relation_info_block,
                 self_info_block=self_info_block,
-                memory_str=memory_str,
+                # memory_str=memory_str,
                 time_block=time_block,
                 # bot_name=global_config.bot.nickname,
                 prompt_personality=personality_block,
@@ -397,7 +396,7 @@ class ActionPlanner(BasePlanner):
                 cycle_info_block=cycle_info,
                 action_options_text=action_options_block,
                 # action_available_block=action_available_block,
-                extra_info_block=extra_info_block,
+                # extra_info_block=extra_info_block,
                 moderation_prompt=moderation_prompt_block,
             )
             return prompt

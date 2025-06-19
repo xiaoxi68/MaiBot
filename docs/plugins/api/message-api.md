@@ -2,14 +2,14 @@
 
 ## 📖 概述
 
-消息API提供了发送各种类型消息的接口，支持文本、表情、图片等多种消息类型，以及向不同目标发送消息的功能。
+消息API提供了发送各种类型消息的接口，支持文本、表情、图片等多种消息类型。新版API格式更加简洁直观，自动处理群聊/私聊判断。
 
 ## 🔄 基础消息发送
 
 ### 发送文本消息
 
 ```python
-# 发送普通文本消息
+# 新API格式 - 自动判断群聊/私聊
 await self.send_text("这是一条文本消息")
 
 # 发送多行文本
@@ -21,51 +21,64 @@ message = """
 await self.send_text(message.strip())
 ```
 
+### 发送表情消息
+
+```python
+# 新API格式 - 发送表情
+await self.send_emoji("😊")
+await self.send_emoji("🎉") 
+await self.send_emoji("👋")
+```
+
 ### 发送特定类型消息
 
 ```python
-# 发送表情
-await self.send_type("emoji", "😊")
-
 # 发送图片
 await self.send_type("image", "https://example.com/image.jpg")
 
 # 发送音频
 await self.send_type("audio", "audio_file_path")
+
+# 发送视频
+await self.send_type("video", "video_file_path")
+
+# 发送文件
+await self.send_type("file", "file_path")
 ```
 
-### 发送命令消息
+## 🎯 跨目标消息发送
+
+### 使用send_api模块发送消息
 
 ```python
-# 发送命令类型的消息
-await self.send_command("system_command", {"param": "value"})
-```
+# 导入send_api
+from src.plugin_system.apis import send_api
 
-## 🎯 目标消息发送
-
-### 向指定群聊发送消息
-
-```python
 # 向指定群聊发送文本消息
-success = await self.api.send_text_to_group(
+success = await send_api.text_to_group(
     text="这是发送到群聊的消息",
     group_id="123456789",
     platform="qq"
 )
 
-if success:
-    print("消息发送成功")
-else:
-    print("消息发送失败")
-```
-
-### 向指定用户发送私聊消息
-
-```python
 # 向指定用户发送私聊消息
-success = await self.api.send_text_to_user(
+success = await send_api.text_to_user(
     text="这是私聊消息",
     user_id="987654321", 
+    platform="qq"
+)
+
+# 向指定群聊发送表情
+success = await send_api.emoji_to_group(
+    emoji="😊",
+    group_id="123456789",
+    platform="qq"
+)
+
+# 向指定用户发送表情
+success = await send_api.emoji_to_user(
+    emoji="🎉",
+    user_id="987654321",
     platform="qq"
 )
 ```
@@ -74,7 +87,7 @@ success = await self.api.send_text_to_user(
 
 ```python
 # 向任意目标发送任意类型消息
-success = await self.api.send_message_to_target(
+success = await send_api.message_to_target(
     message_type="text",           # 消息类型
     content="消息内容",            # 消息内容
     platform="qq",                # 平台
@@ -88,76 +101,83 @@ success = await self.api.send_message_to_target(
 
 ### 支持的消息类型
 
-| 类型 | 说明 | 示例 |
-|-----|------|------|
-| `text` | 普通文本消息 | "Hello World" |
-| `emoji` | 表情消息 | "😊" |
-| `image` | 图片消息 | 图片URL或路径 |
-| `audio` | 音频消息 | 音频文件路径 |
-| `video` | 视频消息 | 视频文件路径 |
-| `file` | 文件消息 | 文件路径 |
+| 类型 | 说明 | 新API方法 | send_api方法 |
+|-----|------|----------|-------------|
+| `text` | 普通文本消息 | `await self.send_text()` | `await send_api.text_to_group()` |
+| `emoji` | 表情消息 | `await self.send_emoji()` | `await send_api.emoji_to_group()` |
+| `image` | 图片消息 | `await self.send_type("image", url)` | `await send_api.message_to_target()` |
+| `audio` | 音频消息 | `await self.send_type("audio", path)` | `await send_api.message_to_target()` |
+| `video` | 视频消息 | `await self.send_type("video", path)` | `await send_api.message_to_target()` |
+| `file` | 文件消息 | `await self.send_type("file", path)` | `await send_api.message_to_target()` |
 
-### 消息类型示例
-
-```python
-# 文本消息
-await self.send_type("text", "普通文本")
-
-# 表情消息
-await self.send_type("emoji", "🎉")
-
-# 图片消息
-await self.send_type("image", "/path/to/image.jpg")
-
-# 音频消息
-await self.send_type("audio", "/path/to/audio.mp3")
-
-# 文件消息
-await self.send_type("file", "/path/to/document.pdf")
-```
-
-## 🔍 消息查询
-
-### 获取聊天类型
+### 新API格式示例
 
 ```python
-# 获取当前聊天类型
-chat_type = self.api.get_chat_type()
-
-if chat_type == "group":
-    print("当前是群聊")
-elif chat_type == "private":
-    print("当前是私聊")
+class ExampleAction(BaseAction):
+    async def execute(self) -> Tuple[bool, str]:
+        # 文本消息 - 最常用
+        await self.send_text("普通文本消息")
+        
+        # 表情消息 - 直接方法
+        await self.send_emoji("🎉")
+        
+        # 图片消息
+        await self.send_type("image", "/path/to/image.jpg")
+        
+        # 音频消息
+        await self.send_type("audio", "/path/to/audio.mp3")
+        
+        # 文件消息
+        await self.send_type("file", "/path/to/document.pdf")
+        
+        return True, "发送了多种类型的消息"
 ```
 
-### 获取最近消息
-
-```python
-# 获取最近的5条消息
-recent_messages = self.api.get_recent_messages(count=5)
-
-for message in recent_messages:
-    print(f"用户: {message.user_nickname}")
-    print(f"内容: {message.processed_plain_text}")
-    print(f"时间: {message.timestamp}")
-```
+## 🔍 消息信息获取
 
 ### 获取当前消息信息
 
 ```python
-# 在Action或Command中获取当前处理的消息
-current_message = self.message
+# 新API格式 - 直接属性访问
+class ExampleCommand(BaseCommand):
+    async def execute(self) -> Tuple[bool, str]:
+        # 用户信息
+        user_id = self.user_id
+        user_nickname = self.user_nickname
+        
+        # 聊天信息
+        is_group_chat = self.is_group
+        chat_id = self.chat_id
+        platform = self.platform
+        
+        # 消息内容
+        message_text = self.message.processed_plain_text
+        
+        # 构建信息显示
+        info = f"""
+👤 用户: {user_nickname}({user_id})
+💬 类型: {'群聊' if is_group_chat else '私聊'}
+📱 平台: {platform}
+📝 内容: {message_text}
+        """.strip()
+        
+        await self.send_text(info)
+        return True, "显示了消息信息"
+```
 
-# 消息基本信息
-user_id = current_message.message_info.user_info.user_id
-user_nickname = current_message.message_info.user_info.user_nickname
-message_content = current_message.processed_plain_text
-timestamp = current_message.timestamp
+### 获取群聊信息（如果适用）
 
-# 群聊信息（如果是群聊）
-if current_message.message_info.group_info:
-    group_id = current_message.message_info.group_info.group_id
-    group_name = current_message.message_info.group_info.group_name
+```python
+# 在Action或Command中检查群聊信息
+if self.is_group:
+    group_info = self.message.message_info.group_info
+    if group_info:
+        group_id = group_info.group_id
+        group_name = getattr(group_info, 'group_name', '未知群聊')
+        
+        await self.send_text(f"当前群聊: {group_name}({group_id})")
+else:
+    await self.send_text("当前是私聊对话")
 ```
 
 ## 🌐 平台支持
@@ -170,242 +190,209 @@ if current_message.message_info.group_info:
 | 微信 | `wechat` | 微信聊天平台 |
 | Discord | `discord` | Discord聊天平台 |
 
-### 平台特定功能
+### 平台适配示例
 
 ```python
-# 获取当前平台
-current_platform = self.api.get_current_platform()
-
-# 根据平台调整消息格式
-if current_platform == "qq":
-    # QQ平台特定处理
-    await self.send_text("[QQ] 消息内容")
-elif current_platform == "wechat":
-    # 微信平台特定处理
-    await self.send_text("【微信】消息内容")
+class PlatformAdaptiveAction(BaseAction):
+    async def execute(self) -> Tuple[bool, str]:
+        # 获取当前平台
+        current_platform = self.platform
+        
+        # 根据平台调整消息格式
+        if current_platform == "qq":
+            await self.send_text("[QQ] 这是QQ平台的消息")
+            await self.send_emoji("🐧")  # QQ企鹅表情
+        elif current_platform == "wechat":
+            await self.send_text("【微信】这是微信平台的消息")
+            await self.send_emoji("💬")  # 微信气泡表情
+        elif current_platform == "discord":
+            await self.send_text("**Discord** 这是Discord平台的消息")
+            await self.send_emoji("🎮")  # Discord游戏表情
+        else:
+            await self.send_text(f"未知平台: {current_platform}")
+        
+        return True, f"发送了{current_platform}平台适配消息"
 ```
 
-## 🎨 消息格式化
+## 🎨 消息格式化和高级功能
 
-### Markdown支持
+### 长消息分割
 
 ```python
-# 发送Markdown格式的消息（如果平台支持）
-markdown_message = """
-**粗体文本**
-*斜体文本*
-`代码块`
-[链接](https://example.com)
-"""
+# 自动处理长消息分割
+long_message = "这是一条很长的消息..." * 100
 
-await self.send_text(markdown_message)
+# 新API会自动处理长消息分割
+await self.send_text(long_message)
 ```
 
-### 消息模板
+### 消息模板和格式化
 
 ```python
-# 使用模板生成消息
-def format_user_info(username: str, level: int, points: int) -> str:
-    return f"""
-👤 用户信息
-━━━━━━━━━━━━━━━━━━
-📛 用户名: {username}
-⭐ 等级: Lv.{level}
-💰 积分: {points:,}
-━━━━━━━━━━━━━━━━━━
-    """.strip()
-
-# 使用模板
-user_info = format_user_info("张三", 15, 12580)
-await self.send_text(user_info)
-```
-
-### 表情和Unicode
-
-```python
-# 发送Unicode表情
-await self.send_text("消息发送成功 ✅")
-
-# 发送表情包
-await self.send_type("emoji", "🎉")
-
-# 组合文本和表情
-await self.send_text("恭喜你完成任务！🎊🎉")
-```
-
-## 🔄 流式消息
-
-### 获取聊天流信息
-
-```python
-# 获取当前聊天流
-chat_stream = self.api.get_service("chat_stream")
-
-if chat_stream:
-    # 流基本信息
-    stream_id = chat_stream.stream_id
-    platform = chat_stream.platform
-    
-    # 群聊信息
-    if chat_stream.group_info:
-        group_id = chat_stream.group_info.group_id
-        group_name = chat_stream.group_info.group_name
-        print(f"当前群聊: {group_name} ({group_id})")
-    
-    # 用户信息
-    user_id = chat_stream.user_info.user_id
-    user_name = chat_stream.user_info.user_nickname
-    print(f"当前用户: {user_name} ({user_id})")
-```
-
-## 🚨 错误处理
-
-### 消息发送错误处理
-
-```python
-async def safe_send_message(self, content: str) -> bool:
-    """安全发送消息，包含错误处理"""
-    try:
-        await self.send_text(content)
-        return True
-    except Exception as e:
-        logger.error(f"消息发送失败: {e}")
-        # 发送错误提示
-        try:
-            await self.send_text("❌ 消息发送失败，请稍后重试")
-        except:
-            pass  # 避免循环错误
-        return False
-```
-
-### 目标消息发送错误处理
-
-```python
-async def send_to_group_safely(self, text: str, group_id: str) -> bool:
-    """安全向群聊发送消息"""
-    try:
-        success = await self.api.send_text_to_group(
-            text=text,
-            group_id=group_id,
-            platform="qq"
+class TemplateMessageAction(BaseAction):
+    async def execute(self) -> Tuple[bool, str]:
+        # 使用配置中的消息模板
+        template = self.get_config("messages.greeting_template", "你好 {username}！")
+        
+        # 格式化消息
+        formatted_message = template.format(
+            username=self.user_nickname,
+            time=datetime.now().strftime("%H:%M"),
+            platform=self.platform
         )
         
-        if not success:
-            logger.warning(f"向群聊 {group_id} 发送消息失败")
-            
-        return success
+        await self.send_text(formatted_message)
         
-    except Exception as e:
-        logger.error(f"向群聊发送消息异常: {e}")
-        return False
+        # 根据配置决定是否发送表情
+        if self.get_config("messages.include_emoji", True):
+            await self.send_emoji("😊")
+        
+        return True, "发送了模板化消息"
 ```
 
-## 📊 最佳实践
-
-### 1. 消息长度控制
+### 条件消息发送
 
 ```python
-async def send_long_message(self, content: str, max_length: int = 500):
-    """发送长消息，自动分段"""
-    if len(content) <= max_length:
-        await self.send_text(content)
-    else:
-        # 分段发送
-        parts = [content[i:i+max_length] for i in range(0, len(content), max_length)]
-        for i, part in enumerate(parts):
-            prefix = f"[{i+1}/{len(parts)}] " if len(parts) > 1 else ""
-            await self.send_text(f"{prefix}{part}")
+class ConditionalMessageAction(BaseAction):
+    async def execute(self) -> Tuple[bool, str]:
+        # 根据用户类型发送不同消息
+        if self.is_group:
+            await self.send_text(f"群聊消息 - 当前群成员: @{self.user_nickname}")
+        else:
+            await self.send_text(f"私聊消息 - 你好 {self.user_nickname}！")
+        
+        # 根据时间发送不同表情
+        from datetime import datetime
+        hour = datetime.now().hour
+        
+        if 6 <= hour < 12:
+            await self.send_emoji("🌅")  # 早上
+        elif 12 <= hour < 18:
+            await self.send_emoji("☀️")  # 下午
+        else:
+            await self.send_emoji("🌙")  # 晚上
+        
+        return True, "发送了条件化消息"
+```
+
+## 🛠️ 高级消息发送功能
+
+### 批量消息发送
+
+```python
+class BatchMessageAction(BaseAction):
+    async def execute(self) -> Tuple[bool, str]:
+        messages = [
+            ("text", "第一条消息"),
+            ("emoji", "🎉"),
+            ("text", "第二条消息"),
+            ("emoji", "✨")
+        ]
+        
+        for msg_type, content in messages:
+            if msg_type == "text":
+                await self.send_text(content)
+            elif msg_type == "emoji":
+                await self.send_emoji(content)
             
-            # 避免发送过快
-            if i < len(parts) - 1:
-                await asyncio.sleep(0.5)
+            # 可选：添加延迟避免消息发送过快
+            import asyncio
+            await asyncio.sleep(0.5)
+        
+        return True, "发送了批量消息"
 ```
 
-### 2. 消息格式规范
+### 错误处理和重试
 
 ```python
-class MessageFormatter:
-    """消息格式化工具类"""
-    
-    @staticmethod
-    def success(message: str) -> str:
-        return f"✅ {message}"
-    
-    @staticmethod
-    def error(message: str) -> str:
-        return f"❌ {message}"
-    
-    @staticmethod
-    def warning(message: str) -> str:
-        return f"⚠️ {message}"
-    
-    @staticmethod
-    def info(message: str) -> str:
-        return f"ℹ️ {message}"
-
-# 使用示例
-await self.send_text(MessageFormatter.success("操作成功完成"))
-await self.send_text(MessageFormatter.error("操作失败，请重试"))
+class ReliableMessageAction(BaseAction):
+    async def execute(self) -> Tuple[bool, str]:
+        max_retries = 3
+        retry_count = 0
+        
+        while retry_count < max_retries:
+            try:
+                await self.send_text("重要消息")
+                return True, "消息发送成功"
+            except Exception as e:
+                retry_count += 1
+                logger.warning(f"消息发送失败 (尝试 {retry_count}/{max_retries}): {e}")
+                
+                if retry_count < max_retries:
+                    import asyncio
+                    await asyncio.sleep(1)  # 等待1秒后重试
+        
+        return False, "消息发送失败，已达到最大重试次数"
 ```
 
-### 3. 异步消息处理
+## 📝 最佳实践
+
+### 1. 消息发送最佳实践
 
 ```python
-async def batch_send_messages(self, messages: List[str]):
-    """批量发送消息"""
-    tasks = []
-    
-    for message in messages:
-        task = self.send_text(message)
-        tasks.append(task)
-    
-    # 并发发送，但控制并发数
-    semaphore = asyncio.Semaphore(3)  # 最多3个并发
-    
-    async def send_with_limit(message):
-        async with semaphore:
+# ✅ 好的做法
+class GoodMessageAction(BaseAction):
+    async def execute(self) -> Tuple[bool, str]:
+        # 1. 检查配置
+        if not self.get_config("features.enable_messages", True):
+            return True, "消息功能已禁用"
+        
+        # 2. 简洁的消息发送
+        await self.send_text("简洁明了的消息")
+        
+        # 3. 适当的表情使用
+        if self.get_config("features.enable_emoji", True):
+            await self.send_emoji("😊")
+        
+        return True, "消息发送完成"
+
+# ❌ 避免的做法
+class BadMessageAction(BaseAction):
+    async def execute(self) -> Tuple[bool, str]:
+        # 避免：过长的消息
+        await self.send_text("这是一条非常非常长的消息" * 50)
+        
+        # 避免：过多的表情
+        for emoji in ["😊", "🎉", "✨", "🌟", "💫"]:
+            await self.send_emoji(emoji)
+        
+        return True, "发送了糟糕的消息"
+```
+
+### 2. 错误处理
+
+```python
+# ✅ 推荐的错误处理
+class SafeMessageAction(BaseAction):
+    async def execute(self) -> Tuple[bool, str]:
+        try:
+            message = self.get_config("messages.default", "默认消息")
             await self.send_text(message)
-    
-    await asyncio.gather(*[send_with_limit(msg) for msg in messages])
+            return True, "消息发送成功"
+        except Exception as e:
+            logger.error(f"消息发送失败: {e}")
+            # 可选：发送备用消息
+            await self.send_text("消息发送遇到问题，请稍后再试")
+            return False, f"发送失败: {str(e)}"
 ```
 
-### 4. 消息缓存
+### 3. 性能优化
 
 ```python
-class MessageCache:
-    """消息缓存管理"""
-    
-    def __init__(self):
-        self._cache = {}
-        self._max_size = 100
-    
-    def get_cached_message(self, key: str) -> Optional[str]:
-        return self._cache.get(key)
-    
-    def cache_message(self, key: str, message: str):
-        if len(self._cache) >= self._max_size:
-            # 删除最旧的缓存
-            oldest_key = next(iter(self._cache))
-            del self._cache[oldest_key]
+# ✅ 性能友好的消息发送
+class OptimizedMessageAction(BaseAction):
+    async def execute(self) -> Tuple[bool, str]:
+        # 合并多个短消息为一条长消息
+        parts = [
+            "第一部分信息",
+            "第二部分信息", 
+            "第三部分信息"
+        ]
         
-        self._cache[key] = message
-
-# 使用缓存避免重复生成消息
-cache = MessageCache()
-
-async def send_user_info(self, user_id: str):
-    cache_key = f"user_info_{user_id}"
-    cached_message = cache.get_cached_message(cache_key)
-    
-    if cached_message:
-        await self.send_text(cached_message)
-    else:
-        # 生成新消息
-        message = await self._generate_user_info(user_id)
-        cache.cache_message(cache_key, message)
-        await self.send_text(message)
+        combined_message = "\n".join(parts)
+        await self.send_text(combined_message)
+        
+        return True, "发送了优化的消息"
 ```
 
----
-
-🎉 **现在你已经掌握了消息API的完整用法！继续学习其他API接口。** 
+通过新的API格式，消息发送变得更加简洁高效！ 

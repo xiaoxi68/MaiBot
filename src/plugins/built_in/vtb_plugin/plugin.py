@@ -62,7 +62,7 @@ class VTBAction(BaseAction):
 
         try:
             # 发送VTB动作消息 - 使用新版本的send_type方法
-            await self.send_type(type="vtb_text", text=processed_text)
+            await self.send_custom(message_type="vtb_text", content=processed_text)
 
             logger.info(f"{self.log_prefix} VTB动作执行成功，文本内容: {processed_text}")
             return True, "VTB动作执行成功"

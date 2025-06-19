@@ -242,6 +242,8 @@ class ActionModifier:
 
         for action_name, action_info in actions_with_info.items():
             activation_type = action_info.get("focus_activation_type", "always")
+            
+            print(f"action_name: {action_name}, activation_type: {activation_type}")
 
             # 现在统一是字符串格式的激活类型值
             if activation_type == "always":

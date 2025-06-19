@@ -1,202 +1,329 @@
-import traceback
+"""
+消息API模块
+
+提供消息查询和构建成字符串的功能，采用标准Python包设计模式
+使用方式：
+    from src.plugin_system.apis import message_api
+    messages = message_api.get_messages_by_time_in_chat(chat_id, start_time, end_time)
+    readable_text = message_api.build_readable_messages(messages)
+"""
+
+from typing import List, Dict, Any, Tuple, Optional
 import time
-from typing import List, Dict, Any
-from src.common.logger import get_logger
-from src.chat.focus_chat.hfc_utils import create_empty_anchor_message
+from src.chat.utils.chat_message_builder import (
+    get_raw_msg_by_timestamp,
+    get_raw_msg_by_timestamp_with_chat,
+    get_raw_msg_by_timestamp_with_chat_inclusive,
+    get_raw_msg_by_timestamp_with_chat_users,
+    get_raw_msg_by_timestamp_random,
+    get_raw_msg_by_timestamp_with_users,
+    get_raw_msg_before_timestamp,
+    get_raw_msg_before_timestamp_with_chat,
+    get_raw_msg_before_timestamp_with_users,
+    num_new_messages_since,
+    num_new_messages_since_with_users,
+    build_readable_messages,
+    build_readable_messages_with_list,
+    get_person_id_list,
+)
 
-# 以下为类型注解需要
-from src.chat.message_receive.chat_stream import ChatStream, get_chat_manager
-from src.chat.focus_chat.info.obs_info import ObsInfo
 
-# 新增导入
-from src.chat.focus_chat.heartFC_sender import HeartFCSender
-from src.chat.message_receive.message import MessageSending
-from maim_message import Seg, UserInfo
-from src.config.config import global_config
+# =============================================================================
+# 消息查询API函数
+# =============================================================================
 
-logger = get_logger("message_api")
-
-
-class MessageAPI:
-    """消息API模块
-
-    提供了发送消息、获取消息历史等功能
+def get_messages_by_time(
+    start_time: float, end_time: float, limit: int = 0, limit_mode: str = "latest"
+) -> List[Dict[str, Any]]:
     """
+    获取指定时间范围内的消息
+    
+    Args:
+        start_time: 开始时间戳
+        end_time: 结束时间戳
+        limit: 限制返回的消息数量，0为不限制
+        limit_mode: 当limit>0时生效，'earliest'表示获取最早的记录，'latest'表示获取最新的记录
+        
+    Returns:
+        消息列表
+    """
+    return get_raw_msg_by_timestamp(start_time, end_time, limit, limit_mode)
 
-    async def send_message_to_target(
-        self,
-        message_type: str,
-        content: str,
-        platform: str,
-        target_id: str,
-        is_group: bool = True,
-        display_message: str = "",
-        typing: bool = False,
-    ) -> bool:
-        """直接向指定目标发送消息
 
-        Args:
-            message_type: 消息类型，如"text"、"image"、"emoji"等
-            content: 消息内容
-            platform: 目标平台，如"qq"
-            target_id: 目标ID（群ID或用户ID）
-            is_group: 是否为群聊，True为群聊，False为私聊
-            display_message: 显示消息（可选）
+def get_messages_by_time_in_chat(
+    chat_id: str, start_time: float, end_time: float, limit: int = 0, limit_mode: str = "latest"
+) -> List[Dict[str, Any]]:
+    """
+    获取指定聊天中指定时间范围内的消息
+    
+    Args:
+        chat_id: 聊天ID
+        start_time: 开始时间戳
+        end_time: 结束时间戳
+        limit: 限制返回的消息数量，0为不限制
+        limit_mode: 当limit>0时生效，'earliest'表示获取最早的记录，'latest'表示获取最新的记录
+        
+    Returns:
+        消息列表
+    """
+    return get_raw_msg_by_timestamp_with_chat(chat_id, start_time, end_time, limit, limit_mode)
 
-        Returns:
-            bool: 是否发送成功
-        """
-        try:
-            # 构建目标聊天流ID
-            if is_group:
-                # 群聊：从数据库查找对应的聊天流
-                target_stream = None
-                for _, stream in get_chat_manager().streams.items():
-                    if (
-                        stream.group_info
-                        and str(stream.group_info.group_id) == str(target_id)
-                        and stream.platform == platform
-                    ):
-                        target_stream = stream
-                        break
 
-                if not target_stream:
-                    logger.error(f"{getattr(self, 'log_prefix', '')} 未找到群ID为 {target_id} 的聊天流")
-                    return False
-            else:
-                # 私聊：从数据库查找对应的聊天流
-                target_stream = None
-                for _, stream in get_chat_manager().streams.items():
-                    if (
-                        not stream.group_info
-                        and str(stream.user_info.user_id) == str(target_id)
-                        and stream.platform == platform
-                    ):
-                        target_stream = stream
-                        break
+def get_messages_by_time_in_chat_inclusive(
+    chat_id: str, start_time: float, end_time: float, limit: int = 0, limit_mode: str = "latest"
+) -> List[Dict[str, Any]]:
+    """
+    获取指定聊天中指定时间范围内的消息（包含边界）
+    
+    Args:
+        chat_id: 聊天ID
+        start_time: 开始时间戳（包含）
+        end_time: 结束时间戳（包含）
+        limit: 限制返回的消息数量，0为不限制
+        limit_mode: 当limit>0时生效，'earliest'表示获取最早的记录，'latest'表示获取最新的记录
+        
+    Returns:
+        消息列表
+    """
+    return get_raw_msg_by_timestamp_with_chat_inclusive(chat_id, start_time, end_time, limit, limit_mode)
 
-                if not target_stream:
-                    logger.error(f"{getattr(self, 'log_prefix', '')} 未找到用户ID为 {target_id} 的私聊流")
-                    return False
 
-            # 创建HeartFCSender实例
-            heart_fc_sender = HeartFCSender()
+def get_messages_by_time_in_chat_for_users(
+    chat_id: str,
+    start_time: float,
+    end_time: float,
+    person_ids: list,
+    limit: int = 0,
+    limit_mode: str = "latest",
+) -> List[Dict[str, Any]]:
+    """
+    获取指定聊天中指定用户在指定时间范围内的消息
+    
+    Args:
+        chat_id: 聊天ID
+        start_time: 开始时间戳
+        end_time: 结束时间戳
+        person_ids: 用户ID列表
+        limit: 限制返回的消息数量，0为不限制
+        limit_mode: 当limit>0时生效，'earliest'表示获取最早的记录，'latest'表示获取最新的记录
+        
+    Returns:
+        消息列表
+    """
+    return get_raw_msg_by_timestamp_with_chat_users(chat_id, start_time, end_time, person_ids, limit, limit_mode)
 
-            # 生成消息ID和thinking_id
-            current_time = time.time()
-            message_id = f"plugin_msg_{int(current_time * 1000)}"
 
-            # 构建机器人用户信息
-            bot_user_info = UserInfo(
-                user_id=global_config.bot.qq_account,
-                user_nickname=global_config.bot.nickname,
-                platform=platform,
-            )
+def get_random_chat_messages(
+    start_time: float, end_time: float, limit: int = 0, limit_mode: str = "latest"
+) -> List[Dict[str, Any]]:
+    """
+    随机选择一个聊天，返回该聊天在指定时间范围内的消息
+    
+    Args:
+        start_time: 开始时间戳
+        end_time: 结束时间戳
+        limit: 限制返回的消息数量，0为不限制
+        limit_mode: 当limit>0时生效，'earliest'表示获取最早的记录，'latest'表示获取最新的记录
+        
+    Returns:
+        消息列表
+    """
+    return get_raw_msg_by_timestamp_random(start_time, end_time, limit, limit_mode)
 
-            # 创建消息段
-            message_segment = Seg(type=message_type, data=content)
 
-            # 创建空锚点消息（用于回复）
-            anchor_message = await create_empty_anchor_message(platform, target_stream.group_info, target_stream)
+def get_messages_by_time_for_users(
+    start_time: float, end_time: float, person_ids: list, limit: int = 0, limit_mode: str = "latest"
+) -> List[Dict[str, Any]]:
+    """
+    获取指定用户在所有聊天中指定时间范围内的消息
+    
+    Args:
+        start_time: 开始时间戳
+        end_time: 结束时间戳
+        person_ids: 用户ID列表
+        limit: 限制返回的消息数量，0为不限制
+        limit_mode: 当limit>0时生效，'earliest'表示获取最早的记录，'latest'表示获取最新的记录
+        
+    Returns:
+        消息列表
+    """
+    return get_raw_msg_by_timestamp_with_users(start_time, end_time, person_ids, limit, limit_mode)
 
-            # 构建发送消息对象
-            bot_message = MessageSending(
-                message_id=message_id,
-                chat_stream=target_stream,
-                bot_user_info=bot_user_info,
-                sender_info=target_stream.user_info,  # 目标用户信息
-                message_segment=message_segment,
-                display_message=display_message,
-                reply=anchor_message,
-                is_head=True,
-                is_emoji=(message_type == "emoji"),
-                thinking_start_time=current_time,
-            )
 
-            # 发送消息
-            sent_msg = await heart_fc_sender.send_message(
-                bot_message, has_thinking=False, typing=typing, set_reply=False
-            )
+def get_messages_before_time(timestamp: float, limit: int = 0) -> List[Dict[str, Any]]:
+    """
+    获取指定时间戳之前的消息
+    
+    Args:
+        timestamp: 时间戳
+        limit: 限制返回的消息数量，0为不限制
+        
+    Returns:
+        消息列表
+    """
+    return get_raw_msg_before_timestamp(timestamp, limit)
 
-            if sent_msg:
-                logger.info(f"{getattr(self, 'log_prefix', '')} 成功发送消息到 {platform}:{target_id}")
-                return True
-            else:
-                logger.error(f"{getattr(self, 'log_prefix', '')} 发送消息失败")
-                return False
 
-        except Exception as e:
-            logger.error(f"{getattr(self, 'log_prefix', '')} 向目标发送消息时出错: {e}")
-            traceback.print_exc()
-            return False
+def get_messages_before_time_in_chat(chat_id: str, timestamp: float, limit: int = 0) -> List[Dict[str, Any]]:
+    """
+    获取指定聊天中指定时间戳之前的消息
+    
+    Args:
+        chat_id: 聊天ID
+        timestamp: 时间戳
+        limit: 限制返回的消息数量，0为不限制
+        
+    Returns:
+        消息列表
+    """
+    return get_raw_msg_before_timestamp_with_chat(chat_id, timestamp, limit)
 
-    async def send_text_to_group(self, text: str, group_id: str, platform: str = "qq") -> bool:
-        """便捷方法：向指定群聊发送文本消息
 
-        Args:
-            text: 要发送的文本内容
-            group_id: 群聊ID
-            platform: 平台，默认为"qq"
+def get_messages_before_time_for_users(
+    timestamp: float, person_ids: list, limit: int = 0
+) -> List[Dict[str, Any]]:
+    """
+    获取指定用户在指定时间戳之前的消息
+    
+    Args:
+        timestamp: 时间戳
+        person_ids: 用户ID列表
+        limit: 限制返回的消息数量，0为不限制
+        
+    Returns:
+        消息列表
+    """
+    return get_raw_msg_before_timestamp_with_users(timestamp, person_ids, limit)
 
-        Returns:
-            bool: 是否发送成功
-        """
-        return await self.send_message_to_target(
-            message_type="text", content=text, platform=platform, target_id=group_id, is_group=True
-        )
 
-    async def send_text_to_user(self, text: str, user_id: str, platform: str = "qq") -> bool:
-        """便捷方法：向指定用户发送私聊文本消息
+def get_recent_messages(
+    chat_id: str, 
+    hours: float = 24.0, 
+    limit: int = 100, 
+    limit_mode: str = "latest"
+) -> List[Dict[str, Any]]:
+    """
+    获取指定聊天中最近一段时间的消息
+    
+    Args:
+        chat_id: 聊天ID
+        hours: 最近多少小时，默认24小时
+        limit: 限制返回的消息数量，默认100条
+        limit_mode: 当limit>0时生效，'earliest'表示获取最早的记录，'latest'表示获取最新的记录
+        
+    Returns:
+        消息列表
+    """
+    now = time.time()
+    start_time = now - hours * 3600
+    return get_raw_msg_by_timestamp_with_chat(chat_id, start_time, now, limit, limit_mode)
 
-        Args:
-            text: 要发送的文本内容
-            user_id: 用户ID
-            platform: 平台，默认为"qq"
 
-        Returns:
-            bool: 是否发送成功
-        """
-        return await self.send_message_to_target(
-            message_type="text", content=text, platform=platform, target_id=user_id, is_group=False
-        )
+# =============================================================================
+# 消息计数API函数
+# =============================================================================
 
-    def get_chat_type(self) -> str:
-        """获取当前聊天类型
+def count_new_messages(
+    chat_id: str, start_time: float = 0.0, end_time: Optional[float] = None
+) -> int:
+    """
+    计算指定聊天中从开始时间到结束时间的新消息数量
+    
+    Args:
+        chat_id: 聊天ID
+        start_time: 开始时间戳
+        end_time: 结束时间戳，如果为None则使用当前时间
+        
+    Returns:
+        新消息数量
+    """
+    return num_new_messages_since(chat_id, start_time, end_time)
 
-        Returns:
-            str: 聊天类型 ("group" 或 "private")
-        """
-        services = getattr(self, "_services", {})
-        chat_stream: ChatStream = services.get("chat_stream")
-        if chat_stream and hasattr(chat_stream, "group_info"):
-            return "group" if chat_stream.group_info else "private"
-        return "unknown"
 
-    def get_recent_messages(self, count: int = 5) -> List[Dict[str, Any]]:
-        """获取最近的消息
+def count_new_messages_for_users(
+    chat_id: str, start_time: float, end_time: float, person_ids: list
+) -> int:
+    """
+    计算指定聊天中指定用户从开始时间到结束时间的新消息数量
+    
+    Args:
+        chat_id: 聊天ID
+        start_time: 开始时间戳
+        end_time: 结束时间戳
+        person_ids: 用户ID列表
+        
+    Returns:
+        新消息数量
+    """
+    return num_new_messages_since_with_users(chat_id, start_time, end_time, person_ids)
 
-        Args:
-            count: 要获取的消息数量
 
-        Returns:
-            List[Dict]: 消息列表，每个消息包含发送者、内容等信息
-        """
-        messages = []
-        services = getattr(self, "_services", {})
-        observations = services.get("observations", [])
+# =============================================================================
+# 消息格式化API函数
+# =============================================================================
 
-        if observations and len(observations) > 0:
-            obs = observations[0]
-            if hasattr(obs, "get_talking_message"):
-                obs: ObsInfo
-                raw_messages = obs.get_talking_message()
-                # 转换为简化格式
-                for msg in raw_messages[-count:]:
-                    simple_msg = {
-                        "sender": msg.get("sender", "未知"),
-                        "content": msg.get("content", ""),
-                        "timestamp": msg.get("timestamp", 0),
-                    }
-                    messages.append(simple_msg)
+def build_readable_messages_to_str(
+    messages: List[Dict[str, Any]],
+    replace_bot_name: bool = True,
+    merge_messages: bool = False,
+    timestamp_mode: str = "relative",
+    read_mark: float = 0.0,
+    truncate: bool = False,
+    show_actions: bool = False,
+) -> str:
+    """
+    将消息列表构建成可读的字符串
+    
+    Args:
+        messages: 消息列表
+        replace_bot_name: 是否将机器人的名称替换为"你"
+        merge_messages: 是否合并连续消息
+        timestamp_mode: 时间戳显示模式，'relative'或'absolute'
+        read_mark: 已读标记时间戳，用于分割已读和未读消息
+        truncate: 是否截断长消息
+        show_actions: 是否显示动作记录
+        
+    Returns:
+        格式化后的可读字符串
+    """
+    return build_readable_messages(
+        messages, replace_bot_name, merge_messages, timestamp_mode, read_mark, truncate, show_actions
+    )
 
-        return messages
+
+async def build_readable_messages_with_details(
+    messages: List[Dict[str, Any]],
+    replace_bot_name: bool = True,
+    merge_messages: bool = False,
+    timestamp_mode: str = "relative",
+    truncate: bool = False,
+) -> Tuple[str, List[Tuple[float, str, str]]]:
+    """
+    将消息列表构建成可读的字符串，并返回详细信息
+    
+    Args:
+        messages: 消息列表
+        replace_bot_name: 是否将机器人的名称替换为"你"
+        merge_messages: 是否合并连续消息
+        timestamp_mode: 时间戳显示模式，'relative'或'absolute'
+        truncate: 是否截断长消息
+        
+    Returns:
+        格式化后的可读字符串和详细信息元组列表(时间戳, 昵称, 内容)
+    """
+    return await build_readable_messages_with_list(
+        messages, replace_bot_name, merge_messages, timestamp_mode, truncate
+    )
+
+
+async def get_person_ids_from_messages(messages: List[Dict[str, Any]]) -> List[str]:
+    """
+    从消息列表中提取不重复的用户ID列表
+    
+    Args:
+        messages: 消息列表
+        
+    Returns:
+        用户ID列表
+    """
+    return await get_person_id_list(messages)

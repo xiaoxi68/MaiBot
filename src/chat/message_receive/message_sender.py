@@ -230,7 +230,7 @@ class MessageManager:
                 logger.debug(
                     f"[{message.chat_stream.stream_id}] 应用 set_reply 逻辑: {message.processed_plain_text[:20]}..."
                 )
-                message.set_reply(message.reply)
+                message.build_reply()
             # --- 结束条件 set_reply ---
 
             await message.process()  # 预处理消息内容

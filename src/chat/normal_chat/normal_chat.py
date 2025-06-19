@@ -22,7 +22,7 @@ from src.chat.focus_chat.planners.action_manager import ActionManager
 from src.chat.normal_chat.normal_chat_planner import NormalChatPlanner
 from src.chat.normal_chat.normal_chat_action_modifier import NormalChatActionModifier
 from src.chat.normal_chat.normal_chat_expressor import NormalChatExpressor
-from src.chat.focus_chat.replyer.default_replyer import DefaultReplyer
+from src.chat.focus_chat.replyer.default_generator import DefaultReplyer
 from src.person_info.person_info import PersonInfoManager
 from src.chat.utils.chat_message_builder import (
     get_raw_msg_by_timestamp_with_chat,
@@ -1063,9 +1063,6 @@ class NormalChat:
                 reasoning=action_data.get("reasoning", ""),
                 cycle_timers={},  # normal_chat使用空的cycle_timers
                 thinking_id=thinking_id,
-                observations=[],  # normal_chat不使用observations
-                expressor=self.expressor,  # 使用normal_chat专用的expressor
-                replyer=self.replyer,
                 chat_stream=self.chat_stream,
                 log_prefix=self.stream_name,
                 shutting_down=self._disabled,

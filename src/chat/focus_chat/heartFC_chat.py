@@ -21,8 +21,6 @@ from src.chat.heart_flow.observation.chatting_observation import ChattingObserva
 from src.chat.heart_flow.observation.structure_observation import StructureObservation
 from src.chat.heart_flow.observation.actions_observation import ActionObservation
 from src.chat.focus_chat.info_processors.tool_processor import ToolProcessor
-from src.chat.focus_chat.expressors.default_expressor import DefaultExpressor
-from src.chat.focus_chat.replyer.default_replyer import DefaultReplyer
 from src.chat.focus_chat.memory_activator import MemoryActivator
 from src.chat.focus_chat.info_processors.base_processor import BaseProcessor
 from src.chat.focus_chat.info_processors.self_processor import SelfProcessor
@@ -124,9 +122,6 @@ class HeartFChatting:
 
         self.processors: List[BaseProcessor] = []
         self._register_default_processors()
-
-        self.expressor = DefaultExpressor(chat_stream=self.chat_stream)
-        self.replyer = DefaultReplyer(chat_stream=self.chat_stream)
 
         self.action_manager = ActionManager()
         self.action_planner = PlannerFactory.create_planner(
@@ -543,6 +538,7 @@ class HeartFChatting:
 
     async def _observe_process_plan_action_loop(self, cycle_timers: dict, thinking_id: str) -> dict:
         try:
+            loop_start_time = time.time()
             with Timer("观察", cycle_timers):
                 # 执行所有观察器的观察
                 for observation in self.observations:
@@ -583,7 +579,7 @@ class HeartFChatting:
             }
 
             with Timer("规划器", cycle_timers):
-                plan_result = await self.action_planner.plan(all_plan_info, running_memorys)
+                plan_result = await self.action_planner.plan(all_plan_info, running_memorys, loop_start_time)
 
                 loop_plan_info = {
                     "action_result": plan_result.get("action_result", {}),
@@ -607,7 +603,7 @@ class HeartFChatting:
                 logger.debug(f"{self.log_prefix} 麦麦想要：'{action_str}'")
 
                 success, reply_text, command = await self._handle_action(
-                    action_type, reasoning, action_data, cycle_timers, thinking_id, self.observations
+                    action_type, reasoning, action_data, cycle_timers, thinking_id
                 )
 
                 loop_action_info = {
@@ -646,7 +642,6 @@ class HeartFChatting:
         action_data: dict,
         cycle_timers: dict,
         thinking_id: str,
-        observations: List[Observation],
     ) -> tuple[bool, str, str]:
         """
         处理规划动作，使用动作工厂创建相应的动作处理器
@@ -670,9 +665,6 @@ class HeartFChatting:
                     reasoning=reasoning,
                     cycle_timers=cycle_timers,
                     thinking_id=thinking_id,
-                    observations=observations,
-                    expressor=self.expressor,
-                    replyer=self.replyer,
                     chat_stream=self.chat_stream,
                     log_prefix=self.log_prefix,
                     shutting_down=self._shutting_down,

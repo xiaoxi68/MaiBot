@@ -171,6 +171,15 @@ class ChatManager:
         # 使用MD5生成唯一ID
         key = "_".join(components)
         return hashlib.md5(key.encode()).hexdigest()
+    
+    def get_stream_id(self, platform: str, chat_id: str, is_group: bool = True) -> str:
+        """获取聊天流ID"""
+        if is_group:
+            components = [platform, str(chat_id)]
+        else:
+            components = [platform, str(chat_id), "private"]
+        key = "_".join(components)
+        return hashlib.md5(key.encode()).hexdigest()
 
     async def get_or_create_stream(
         self, platform: str, user_info: UserInfo, group_info: Optional[GroupInfo] = None

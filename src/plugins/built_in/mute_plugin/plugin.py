@@ -26,6 +26,8 @@ from src.plugin_system.base.base_command import BaseCommand
 from src.plugin_system.base.component_types import ComponentInfo, ActionActivationType, ChatMode
 from src.plugin_system.base.config_types import ConfigField
 from src.common.logger import get_logger
+# 导入配置API（可选的简便方法）
+from src.plugin_system.apis import person_api, generator_api
 
 logger = get_logger("mute_plugin")
 
@@ -110,8 +112,8 @@ class MuteAction(BaseAction):
             return False, error_msg
 
         # 获取时长限制配置
-        min_duration = self.api.get_config("mute.min_duration", 60)
-        max_duration = self.api.get_config("mute.max_duration", 2592000)
+        min_duration = self.get_config("mute.min_duration", 60)
+        max_duration = self.get_config("mute.max_duration", 2592000)
 
         # 验证时长格式并转换
         try:
@@ -133,72 +135,65 @@ class MuteAction(BaseAction):
         except (ValueError, TypeError):
             error_msg = f"禁言时长格式无效: {duration}"
             logger.error(f"{self.log_prefix} {error_msg}")
-            await self.send_text("禁言时长必须是数字哦~")
+            # await self.send_text("禁言时长必须是数字哦~")
             return False, error_msg
 
         # 获取用户ID
-        try:
-            platform, user_id = await self.api.get_user_id_by_person_name(target)
-        except Exception as e:
-            error_msg = f"查找用户ID时出错: {e}"
-            logger.error(f"{self.log_prefix} {error_msg}")
-            await self.send_text("查找用户信息时出现问题~")
-            return False, error_msg
-
+        person_id = person_api.get_person_id_by_name(target)
+        user_id = await person_api.get_person_value(person_id,"user_id")
         if not user_id:
             error_msg = f"未找到用户 {target} 的ID"
             await self.send_text(f"找不到 {target} 这个人呢~")
             logger.error(f"{self.log_prefix} {error_msg}")
             return False, error_msg
-
+        
         # 格式化时长显示
-        enable_formatting = self.api.get_config("mute.enable_duration_formatting", True)
+        enable_formatting = self.get_config("mute.enable_duration_formatting", True)
         time_str = self._format_duration(duration_int) if enable_formatting else f"{duration_int}秒"
 
         # 获取模板化消息
         message = self._get_template_message(target, time_str, reason)
-        # await self.send_text(message)
-        await self.send_message_by_expressor(message)
+        
+        result_status,result_message = await generator_api.rewrite_reply(
+            chat_stream=self.chat_stream,
+            reply_data={
+                "raw_reply": message,
+                "reason": reason,
+            }
+        )
+        
+        if result_status:
+            for reply_seg in result_message:
+                data = reply_seg[1]
+                await self.send_text(data)
 
         # 发送群聊禁言命令
         success = await self.send_command(
             command_name="GROUP_BAN",
             args={"qq_id": str(user_id), "duration": str(duration_int)},
-            display_message="发送禁言命令",
+            storage_message=False
         )
 
         if success:
             logger.info(f"{self.log_prefix} 成功发送禁言命令，用户 {target}({user_id})，时长 {duration_int} 秒")
             # 存储动作信息
-            await self.api.store_action_info(
+            await self.store_action_info(
                 action_build_into_prompt=True,
                 action_prompt_display=f"尝试禁言了用户 {target}，时长 {time_str}，原因：{reason}",
                 action_done=True,
-                thinking_id=self.thinking_id,
-                action_data={
-                    "target": target,
-                    "user_id": user_id,
-                    "duration": duration_int,
-                    "duration_str": time_str,
-                    "reason": reason,
-                },
             )
             return True, f"成功禁言 {target}，时长 {time_str}"
         else:
             error_msg = "发送禁言命令失败"
             logger.error(f"{self.log_prefix} {error_msg}")
+            
             await self.send_text("执行禁言动作失败")
             return False, error_msg
 
     def _get_template_message(self, target: str, duration_str: str, reason: str) -> str:
         """获取模板化的禁言消息"""
-        templates = self.api.get_config(
-            "mute.templates",
-            [
-                "好的，禁言 {target} {duration}，理由：{reason}",
-                "收到，对 {target} 执行禁言 {duration}，因为{reason}",
-                "明白了，禁言 {target} {duration}，原因是{reason}",
-            ],
+        templates = self.get_config(
+            "mute.templates"
         )
 
         template = random.choice(templates)
@@ -258,8 +253,8 @@ class MuteCommand(BaseCommand):
                 return False, "参数不完整"
 
             # 获取时长限制配置
-            min_duration = self.api.get_config("mute.min_duration", 60)
-            max_duration = self.api.get_config("mute.max_duration", 2592000)
+            min_duration = self.get_config("mute.min_duration", 60)
+            max_duration = self.get_config("mute.max_duration", 2592000)
 
             # 验证时长
             try:
@@ -281,19 +276,16 @@ class MuteCommand(BaseCommand):
                 return False, "时长格式错误"
 
             # 获取用户ID
-            try:
-                platform, user_id = await self.api.get_user_id_by_person_name(target)
-            except Exception as e:
-                logger.error(f"{self.log_prefix} 查找用户ID时出错: {e}")
-                await self.send_text("❌ 查找用户信息时出现问题")
-                return False, str(e)
-
+            person_id = person_api.get_person_id_by_name(target)
+            user_id = person_api.get_person_value(person_id, "user_id")
             if not user_id:
+                error_msg = f"未找到用户 {target} 的ID"
                 await self.send_text(f"❌ 找不到用户: {target}")
-                return False, "用户不存在"
+                logger.error(f"{self.log_prefix} {error_msg}")
+                return False, error_msg
 
             # 格式化时长显示
-            enable_formatting = self.api.get_config("mute.enable_duration_formatting", True)
+            enable_formatting = self.get_config("mute.enable_duration_formatting", True)
             time_str = self._format_duration(duration_int) if enable_formatting else f"{duration_int}秒"
 
             logger.info(f"{self.log_prefix} 执行禁言命令: {target}({user_id}) -> {time_str}")
@@ -323,14 +315,7 @@ class MuteCommand(BaseCommand):
 
     def _get_template_message(self, target: str, duration_str: str, reason: str) -> str:
         """获取模板化的禁言消息"""
-        templates = self.api.get_config(
-            "mute.templates",
-            [
-                "✅ 已禁言 {target} {duration}，理由：{reason}",
-                "🔇 对 {target} 执行禁言 {duration}，因为{reason}",
-                "⛔ 禁言 {target} {duration}，原因：{reason}",
-            ],
-        )
+        templates = self.get_config("mute.templates")
 
         template = random.choice(templates)
         return template.format(target=target, duration=duration_str, reason=reason)

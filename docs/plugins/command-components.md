@@ -73,7 +73,7 @@ class SimpleCommand(BaseCommand):
 
 ### 参数捕获
 
-使用命名组 `(?P<name>pattern)` 捕获参数：
+使用命名组 `(?P<n>pattern)` 捕获参数：
 
 ```python
 class UserCommand(BaseCommand):
@@ -336,7 +336,7 @@ class SystemInfoCommand(BaseCommand):
 
     async def _show_plugin_info(self):
         """显示插件信息"""
-        # 通过API获取插件信息
+        # 通过配置获取插件信息
         plugins = await self._get_loaded_plugins()
         
         plugin_info = f"""
@@ -349,7 +349,7 @@ class SystemInfoCommand(BaseCommand):
 
     async def _get_loaded_plugins(self) -> list:
         """获取已加载的插件列表"""
-        # 这里可以通过self.api获取实际的插件信息
+        # 这里可以通过配置或API获取实际的插件信息
         return [
             {"name": "core_actions", "active": True},
             {"name": "example_plugin", "active": True},
@@ -386,6 +386,55 @@ class CustomPrefixCommand(BaseCommand):
         return True, f"投掷了{count}面骰子，结果{result}"
 ```
 
+## 🔧 新API格式使用指南
+
+### 消息发送
+
+```python
+# 新API格式 ✅
+await self.send_text("消息内容")
+await self.send_emoji("😊")
+
+# 旧API格式 ❌  
+await self.api.send_text_to_group("消息内容", group_id, "qq")
+```
+
+### 配置访问
+
+```python
+# 新API格式 ✅
+config_value = self.get_config("section.key", "default_value")
+
+# 旧API格式 ❌
+config_value = self.api.get_config("section.key", "default_value")
+```
+
+### 用户信息获取
+
+```python
+# 新API格式 ✅
+user_id = self.user_id
+user_nickname = self.user_nickname
+is_group_chat = self.is_group
+
+# 旧API格式 ❌
+user_id = self.message.message_info.user_info.user_id
+```
+
+### 动作记录
+
+```python
+# 新API格式 ✅ (在Action中)
+await self.store_action_info(
+    action_build_into_prompt=True,
+    action_prompt_display="执行了某操作",
+    action_done=True
+)
+
+# 旧API格式 ❌
+await self.api.store_action_info(...)
+```
+
 ## 📊 性能优化建议
 
 ### 1. 正则表达式优化
@@ -398,83 +447,39 @@ command_pattern = r"^/ping$"
 command_pattern = r"^/(?:ping|pong|test|check|status|info|help|...)"
 
 # ✅ 好的做法 - 分离复杂逻辑
-class PingCommand(BaseCommand):
-    command_pattern = r"^/ping$"
-
-class StatusCommand(BaseCommand):
-    command_pattern = r"^/status$"
 ```
 
 ### 2. 参数验证
 
 ```python
+# ✅ 好的做法 - 早期验证
 async def execute(self) -> Tuple[bool, Optional[str]]:
-    # 快速参数验证
     username = self.matched_groups.get("username")
-    if not username or len(username) < 2:
-        await self.send_text("❌ 用户名不合法")
-        return False, "参数验证失败"
+    if not username:
+        await self.send_text("❌ 请提供用户名")
+        return False, "缺少参数"
     
-    # 主要逻辑
-    ...
+    # 继续处理...
 ```
 
-### 3. 异常处理
+### 3. 错误处理
 
 ```python
+# ✅ 好的做法 - 完整错误处理
 async def execute(self) -> Tuple[bool, Optional[str]]:
     try:
-        # 命令逻辑
-        result = await self._do_command()
+        # 主要逻辑
+        result = await self._process_command()
         return True, "执行成功"
     except ValueError as e:
         await self.send_text(f"❌ 参数错误: {e}")
         return False, f"参数错误: {e}"
     except Exception as e:
-        logger.error(f"{self.log_prefix} 命令执行失败: {e}")
-        await self.send_text("❌ 命令执行失败")
+        await self.send_text(f"❌ 执行失败: {e}")
         return False, f"执行失败: {e}"
 ```
 
-## 🐛 调试技巧
-
-### 1. 正则测试
-
-```python
-import re
-
-pattern = r"^/user\s+(?P<action>add|del)\s+(?P<username>\w+)$"
-test_inputs = [
-    "/user add 张三",
-    "/user del 李四",
-    "/user info 王五",  # 不匹配
-]
-
-for input_text in test_inputs:
-    match = re.match(pattern, input_text)
-    print(f"'{input_text}' -> {match.groupdict() if match else 'No match'}")
-```
-
-### 2. 参数调试
-
-```python
-async def execute(self) -> Tuple[bool, Optional[str]]:
-    # 调试输出
-    logger.debug(f"匹配组: {self.matched_groups}")
-    logger.debug(f"原始消息: {self.message.processed_plain_text}")
-    
-    # 命令逻辑...
-```
-
-### 3. 拦截测试
-
-```python
-# 测试不同的拦截设置
-intercept_message = True   # 测试拦截
-intercept_message = False  # 测试不拦截
-
-# 观察后续Action是否被触发
-```
+通过新的API格式，Command开发变得更加简洁和直观！
 
 ## 🎯 最佳实践
 

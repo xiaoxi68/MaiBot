@@ -11,7 +11,7 @@ from src.chat.message_receive.chat_stream import get_chat_manager
 from .base_processor import BaseProcessor
 from src.chat.focus_chat.info.info_base import InfoBase
 from src.chat.focus_chat.info.expression_selection_info import ExpressionSelectionInfo
-from src.chat.focus_chat.expressors.exprssion_learner import get_expression_learner
+from src.chat.express.exprssion_learner import get_expression_learner
 from json_repair import repair_json
 import json
 

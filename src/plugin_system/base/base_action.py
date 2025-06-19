@@ -1,8 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import Tuple
+from typing import Tuple, Optional
 from src.common.logger import get_logger
-from src.plugin_system.apis.plugin_api import PluginAPI
 from src.plugin_system.base.component_types import ActionActivationType, ChatMode, ActionInfo, ComponentType
+from src.plugin_system.apis import send_api, database_api,message_api
+import time
+import asyncio
 
 logger = get_logger("base_action")
 
@@ -29,9 +31,6 @@ class BaseAction(ABC):
         reasoning: str,
         cycle_timers: dict,
         thinking_id: str,
-        observations: list = None,
-        expressor=None,
-        replyer=None,
         chat_stream=None,
         log_prefix: str = "",
         shutting_down: bool = False,
@@ -60,6 +59,9 @@ class BaseAction(ABC):
         self.thinking_id = thinking_id
         self.log_prefix = log_prefix
         self.shutting_down = shutting_down
+        
+        # 保存插件配置
+        self.plugin_config = plugin_config or {}
 
         # 设置动作基本信息实例属性
         self.action_name: str = getattr(self, "action_name", self.__class__.__name__.lower().replace("action", ""))
@@ -68,8 +70,8 @@ class BaseAction(ABC):
         self.action_require: list[str] = getattr(self.__class__, "action_require", []).copy()
 
         # 设置激活类型实例属性（从类属性复制，提供默认值）
-        self.focus_activation_type: str = self._get_activation_type_value("focus_activation_type", "never")
-        self.normal_activation_type: str = self._get_activation_type_value("normal_activation_type", "never")
+        self.focus_activation_type: str = self._get_activation_type_value("focus_activation_type", "always")
+        self.normal_activation_type: str = self._get_activation_type_value("normal_activation_type", "always")
         self.random_activation_probability: float = getattr(self.__class__, "random_activation_probability", 0.0)
         self.llm_judge_prompt: str = getattr(self.__class__, "llm_judge_prompt", "")
         self.activation_keywords: list[str] = getattr(self.__class__, "activation_keywords", []).copy()
@@ -77,22 +79,46 @@ class BaseAction(ABC):
         self.mode_enable: str = self._get_mode_value("mode_enable", "all")
         self.parallel_action: bool = getattr(self.__class__, "parallel_action", True)
         self.associated_types: list[str] = getattr(self.__class__, "associated_types", []).copy()
-        self.enable_plugin: bool = True  # 默认启用
 
-        # 创建API实例，传递所有服务对象
-        self.api = PluginAPI(
-            chat_stream=chat_stream or kwargs.get("chat_stream"),
-            expressor=expressor or kwargs.get("expressor"),
-            replyer=replyer or kwargs.get("replyer"),
-            observations=observations or kwargs.get("observations", []),
-            log_prefix=log_prefix,
-            plugin_config=plugin_config or kwargs.get("plugin_config"),
-        )
-
-        # 设置API的action上下文
-        self.api.set_action_context(thinking_id=thinking_id, shutting_down=shutting_down)
+        # =============================================================================
+        # 便捷属性 - 直接在初始化时获取常用聊天信息（带类型注解）
+        # =============================================================================
+        
+        
+        # 获取聊天流对象
+        self.chat_stream = chat_stream or kwargs.get("chat_stream")
+        
+        self.chat_id = self.chat_stream.stream_id
+        # 初始化基础信息（带类型注解）
+        self.is_group: bool = False
+        self.platform: Optional[str] = None
+        self.group_id: Optional[str] = None
+        self.user_id: Optional[str] = None
+        self.target_id: Optional[str] = None
+        self.group_name: Optional[str] = None
+        self.user_nickname: Optional[str] = None
+        
+        # 如果有聊天流，提取所有信息
+        if self.chat_stream:
+            self.platform = getattr(self.chat_stream, 'platform', None)
+            
+            # 获取群聊信息
+            # print(self.chat_stream)
+            # print(self.chat_stream.group_info)
+            if self.chat_stream.group_info:
+                self.is_group = True
+                self.group_id = str(self.chat_stream.group_info.group_id)
+                self.group_name = getattr(self.chat_stream.group_info, 'group_name', None)
+            else:
+                self.is_group = False
+                self.user_id = str(self.chat_stream.user_info.user_id)
+                self.user_nickname = getattr(self.chat_stream.user_info, 'user_nickname', None)
+            
+            # 设置目标ID（群聊用群ID，私聊用户ID）
+            self.target_id = self.group_id if self.is_group else self.user_id
 
         logger.debug(f"{self.log_prefix} Action组件初始化完成")
+        logger.debug(f"{self.log_prefix} 聊天信息: 类型={'群聊' if self.is_group else '私聊'}, 平台={self.platform}, 目标={self.target_id}")
 
     def _get_activation_type_value(self, attr_name: str, default: str) -> str:
         """获取激活类型的字符串值"""
@@ -112,67 +138,184 @@ class BaseAction(ABC):
             return attr.value
         return str(attr)
 
-    async def send_text(self, content: str) -> bool:
-        """发送回复消息
+    
+    async def wait_for_new_message(self, timeout: int = 1200) -> Tuple[bool, str]:
+        """等待新消息或超时
+        
+        在loop_start_time之后等待新消息，如果没有新消息且没有超时，就一直等待。
+        使用message_api检查self.chat_id对应的聊天中是否有新消息。
 
         Args:
-            content: 回复内容
+            timeout: 超时时间（秒），默认1200秒
+
+        Returns:
+            Tuple[bool, str]: (是否收到新消息, 空字符串)
+        """
+        try:
+            # 获取循环开始时间，如果没有则使用当前时间
+            loop_start_time = self.action_data.get("loop_start_time", time.time())
+            logger.info(f"{self.log_prefix} 开始等待新消息... (最长等待: {timeout}秒, 从时间点: {loop_start_time})")
+            
+            # 确保有有效的chat_id
+            if not self.chat_id:
+                logger.error(f"{self.log_prefix} 等待新消息失败: 没有有效的chat_id")
+                return False, "没有有效的chat_id"
+
+            wait_start_time = asyncio.get_event_loop().time()
+            while True:
+                # 检查关闭标志
+                # shutting_down = self.get_action_context("shutting_down", False)
+                # if shutting_down:
+                    # logger.info(f"{self.log_prefix} 等待新消息时检测到关闭信号，中断等待")
+                    # return False, ""
+
+                # 检查新消息
+                current_time = time.time()
+                new_message_count = message_api.count_new_messages(
+                    chat_id=self.chat_id,
+                    start_time=loop_start_time,
+                    end_time=current_time
+                )
+                
+                if new_message_count > 0:
+                    logger.info(f"{self.log_prefix} 检测到{new_message_count}条新消息，聊天ID: {self.chat_id}")
+                    return True, ""
+
+                # 检查超时
+                elapsed_time = asyncio.get_event_loop().time() - wait_start_time
+                if elapsed_time > timeout:
+                    logger.warning(f"{self.log_prefix} 等待新消息超时({timeout}秒)，聊天ID: {self.chat_id}")
+                    return False, ""
+                
+                # 每30秒记录一次等待状态
+                if int(elapsed_time) % 15 == 0 and int(elapsed_time) > 0:
+                    logger.debug(f"{self.log_prefix} 已等待{int(elapsed_time)}秒，继续等待新消息...")
+
+                # 短暂休眠
+                await asyncio.sleep(0.5)
+
+        except asyncio.CancelledError:
+            logger.info(f"{self.log_prefix} 等待新消息被中断 (CancelledError)")
+            return False, ""
+        except Exception as e:
+            logger.error(f"{self.log_prefix} 等待新消息时发生错误: {e}")
+            return False, f"等待新消息失败: {str(e)}"
+
+    async def send_text(self, content: str, reply_to: str = "") -> bool:
+        """发送文本消息
+
+        Args:
+            content: 文本内容
 
         Returns:
             bool: 是否发送成功
         """
-        chat_stream = self.api.get_service("chat_stream")
-        if not chat_stream:
-            logger.error(f"{self.log_prefix} 没有可用的聊天流发送回复")
+        if not self.target_id or not self.platform:
+            logger.error(f"{self.log_prefix} 缺少发送消息所需的信息")
             return False
 
-        if chat_stream.group_info:
-            # 群聊
-            return await self.api.send_text_to_group(
-                text=content, group_id=str(chat_stream.group_info.group_id), platform=chat_stream.platform
+        if self.is_group:
+            return await send_api.text_to_group(
+                text=content, group_id=self.target_id, platform=self.platform, reply_to=reply_to
             )
         else:
-            # 私聊
-            return await self.api.send_text_to_user(
-                text=content, user_id=str(chat_stream.user_info.user_id), platform=chat_stream.platform
+            return await send_api.text_to_user(
+                text=content, user_id=self.target_id, platform=self.platform, reply_to=reply_to
             )
 
-    async def send_type(self, type: str, text: str, typing: bool = False) -> bool:
-        """发送回复消息
+    async def send_emoji(self, emoji_base64: str) -> bool:
+        """发送表情包
 
         Args:
-            text: 回复内容
+            emoji_base64: 表情包的base64编码
 
         Returns:
             bool: 是否发送成功
         """
-        chat_stream = self.api.get_service("chat_stream")
-        if not chat_stream:
-            logger.error(f"{self.log_prefix} 没有可用的聊天流发送回复")
+        # 导入send_api
+        from src.plugin_system.apis import send_api
+        
+        if not self.target_id or not self.platform:
+            logger.error(f"{self.log_prefix} 缺少发送消息所需的信息")
             return False
 
-        if chat_stream.group_info:
-            # 群聊
-            return await self.api.send_message_to_target(
-                message_type=type,
-                content=text,
-                platform=chat_stream.platform,
-                target_id=str(chat_stream.group_info.group_id),
-                is_group=True,
-                typing=typing,
-            )
+        if self.is_group:
+            return await send_api.emoji_to_group(emoji_base64, self.target_id, self.platform)
         else:
-            # 私聊
-            return await self.api.send_message_to_target(
-                message_type=type,
-                content=text,
-                platform=chat_stream.platform,
-                target_id=str(chat_stream.user_info.user_id),
-                is_group=False,
-                typing=typing,
-            )
+            return await send_api.emoji_to_user(emoji_base64, self.target_id, self.platform)
 
-    async def send_command(self, command_name: str, args: dict = None, display_message: str = None) -> bool:
+    async def send_image(self, image_base64: str) -> bool:
+        """发送图片
+
+        Args:
+            image_base64: 图片的base64编码
+
+        Returns:
+            bool: 是否发送成功
+        """
+        # 导入send_api
+        from src.plugin_system.apis import send_api
+        
+        if not self.target_id or not self.platform:
+            logger.error(f"{self.log_prefix} 缺少发送消息所需的信息")
+            return False
+
+        if self.is_group:
+            return await send_api.image_to_group(image_base64, self.target_id, self.platform)
+        else:
+            return await send_api.image_to_user(image_base64, self.target_id, self.platform)
+
+    async def send_custom(self, message_type: str, content: str, typing: bool = False) -> bool:
+        """发送自定义类型消息
+
+        Args:
+            message_type: 消息类型，如"video"、"file"、"audio"等
+            content: 消息内容
+            typing: 是否显示正在输入
+
+        Returns:
+            bool: 是否发送成功
+        """
+        # 导入send_api
+        from src.plugin_system.apis import send_api
+        
+        if not self.target_id or not self.platform:
+            logger.error(f"{self.log_prefix} 缺少发送消息所需的信息")
+            return False
+
+        return await send_api.custom_message(
+            message_type=message_type,
+            content=content,
+            target_id=self.target_id,
+            is_group=self.is_group,
+            platform=self.platform,
+            typing=typing
+        )
+
+    async def store_action_info(
+        self,
+        action_build_into_prompt: bool = False,
+        action_prompt_display: str = "",
+        action_done: bool = True,
+    ) -> None:
+        """存储动作信息到数据库
+        
+        Args:
+            action_build_into_prompt: 是否构建到提示中
+            action_prompt_display: 显示的action提示信息
+            action_done: action是否完成
+        """
+        await database_api.store_action_info(
+            chat_stream=self.chat_stream,
+            action_build_into_prompt=action_build_into_prompt,
+            action_prompt_display=action_prompt_display,
+            action_done=action_done,
+            thinking_id=self.thinking_id,
+            action_data=self.action_data,
+            action_name=self.action_name,
+        )
+
+    async def send_command(self, command_name: str, args: dict = None, display_message: str = None, storage_message: bool = True) -> bool:
         """发送命令消息
 
         使用和send_text相同的方式通过MessageAPI发送命令
@@ -189,31 +332,21 @@ class BaseAction(ABC):
             # 构造命令数据
             command_data = {"name": command_name, "args": args or {}}
 
-            # 使用send_message_to_target方法发送命令
-            chat_stream = self.api.get_service("chat_stream")
-            if not chat_stream:
-                logger.error(f"{self.log_prefix} 没有可用的聊天流发送命令")
-                return False
-
-            if chat_stream.group_info:
+            if self.is_group:
                 # 群聊
-                success = await self.api.send_message_to_target(
-                    message_type="command",
-                    content=command_data,
-                    platform=chat_stream.platform,
-                    target_id=str(chat_stream.group_info.group_id),
-                    is_group=True,
-                    display_message=display_message or f"执行命令: {command_name}",
+                success = await send_api.command_to_group(
+                    command=command_data,
+                    group_id=str(self.group_id),
+                    platform=self.platform,
+                    storage_message=storage_message
                 )
             else:
                 # 私聊
-                success = await self.api.send_message_to_target(
-                    message_type="command",
-                    content=command_data,
-                    platform=chat_stream.platform,
-                    target_id=str(chat_stream.user_info.user_id),
-                    is_group=False,
-                    display_message=display_message or f"执行命令: {command_name}",
+                success = await send_api.command_to_user(
+                    command=command_data,
+                    user_id=str(self.user_id),
+                    platform=self.platform,
+                    storage_message=storage_message
                 )
 
             if success:
@@ -225,142 +358,6 @@ class BaseAction(ABC):
 
         except Exception as e:
             logger.error(f"{self.log_prefix} 发送命令时出错: {e}")
-            return False
-
-    async def send_message_by_expressor(self, text: str, target: str = "") -> bool:
-        """通过expressor发送文本消息的Action专用方法
-
-        Args:
-            text: 要发送的消息文本
-            target: 目标消息（可选）
-
-        Returns:
-            bool: 是否发送成功
-        """
-        try:
-            from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
-            from src.chat.focus_chat.hfc_utils import create_empty_anchor_message
-
-            # 获取服务
-            expressor = self.api.get_service("expressor")
-            chat_stream = self.api.get_service("chat_stream")
-            observations = self.api.get_service("observations") or []
-
-            if not expressor or not chat_stream:
-                logger.error(f"{self.log_prefix} 无法通过expressor发送消息：缺少必要的服务")
-                return False
-
-            # 构造动作数据
-            reply_data = {"text": text, "target": target, "emojis": []}
-
-            # 查找 ChattingObservation 实例
-            chatting_observation = None
-            for obs in observations:
-                if isinstance(obs, ChattingObservation):
-                    chatting_observation = obs
-                    break
-
-            if not chatting_observation:
-                logger.warning(f"{self.log_prefix} 未找到 ChattingObservation 实例，创建占位符")
-                anchor_message = await create_empty_anchor_message(
-                    chat_stream.platform, chat_stream.group_info, chat_stream
-                )
-            else:
-                anchor_message = chatting_observation.search_message_by_text(target)
-                if not anchor_message:
-                    logger.info(f"{self.log_prefix} 未找到锚点消息，创建占位符")
-                    anchor_message = await create_empty_anchor_message(
-                        chat_stream.platform, chat_stream.group_info, chat_stream
-                    )
-                else:
-                    anchor_message.update_chat_stream(chat_stream)
-
-            # 使用Action上下文信息发送消息
-            success, _ = await expressor.deal_reply(
-                cycle_timers=self.cycle_timers,
-                action_data=reply_data,
-                anchor_message=anchor_message,
-                reasoning=self.reasoning,
-                thinking_id=self.thinking_id,
-            )
-
-            if success:
-                logger.info(f"{self.log_prefix} 成功通过expressor发送消息")
-            else:
-                logger.error(f"{self.log_prefix} 通过expressor发送消息失败")
-
-            return success
-
-        except Exception as e:
-            logger.error(f"{self.log_prefix} 通过expressor发送消息时出错: {e}")
-            return False
-
-    async def send_message_by_replyer(self, target: str = "", extra_info_block: str = None) -> bool:
-        """通过replyer发送消息的Action专用方法
-
-        Args:
-            target: 目标消息（可选）
-            extra_info_block: 额外信息块（可选）
-
-        Returns:
-            bool: 是否发送成功
-        """
-        try:
-            from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
-            from src.chat.focus_chat.hfc_utils import create_empty_anchor_message
-
-            # 获取服务
-            replyer = self.api.get_service("replyer")
-            chat_stream = self.api.get_service("chat_stream")
-            observations = self.api.get_service("observations") or []
-
-            if not replyer or not chat_stream:
-                logger.error(f"{self.log_prefix} 无法通过replyer发送消息：缺少必要的服务")
-                return False
-
-            # 构造动作数据
-            reply_data = {"target": target, "extra_info_block": extra_info_block}
-
-            # 查找 ChattingObservation 实例
-            chatting_observation = None
-            for obs in observations:
-                if isinstance(obs, ChattingObservation):
-                    chatting_observation = obs
-                    break
-
-            if not chatting_observation:
-                logger.warning(f"{self.log_prefix} 未找到 ChattingObservation 实例，创建占位符")
-                anchor_message = await create_empty_anchor_message(
-                    chat_stream.platform, chat_stream.group_info, chat_stream
-                )
-            else:
-                anchor_message = chatting_observation.search_message_by_text(target)
-                if not anchor_message:
-                    logger.info(f"{self.log_prefix} 未找到锚点消息，创建占位符")
-                    anchor_message = await create_empty_anchor_message(
-                        chat_stream.platform, chat_stream.group_info, chat_stream
-                    )
-                else:
-                    anchor_message.update_chat_stream(chat_stream)
-
-            # 使用Action上下文信息发送消息
-            success, _ = await replyer.deal_reply(
-                cycle_timers=self.cycle_timers,
-                action_data=reply_data,
-                anchor_message=anchor_message,
-                reasoning=self.reasoning,
-                thinking_id=self.thinking_id,
-            )
-
-            if success:
-                logger.info(f"{self.log_prefix} 成功通过replyer发送消息")
-            else:
-                logger.error(f"{self.log_prefix} 通过replyer发送消息失败")
-
-            return success
-
-        except Exception as e:
-            logger.error(f"{self.log_prefix} 通过replyer发送消息时出错: {e}")
             return False
 
     @classmethod
@@ -400,8 +397,8 @@ class BaseAction(ABC):
             name=name,
             component_type=ComponentType.ACTION,
             description=description,
-            focus_activation_type=get_enum_value("focus_activation_type", "never"),
-            normal_activation_type=get_enum_value("normal_activation_type", "never"),
+            focus_activation_type=get_enum_value("focus_activation_type", "always"),
+            normal_activation_type=get_enum_value("normal_activation_type", "always"),
             activation_keywords=getattr(cls, "activation_keywords", []).copy(),
             keyword_case_sensitive=getattr(cls, "keyword_case_sensitive", False),
             mode_enable=get_mode_value("mode_enable", "all"),
@@ -433,3 +430,40 @@ class BaseAction(ABC):
             Tuple[bool, str]: (是否执行成功, 回复文本)
         """
         return await self.execute()
+
+    def get_action_context(self, key: str, default=None):
+        """获取action上下文信息
+        
+        Args:
+            key: 上下文键名
+            default: 默认值
+            
+        Returns:
+            Any: 上下文值或默认值
+        """
+        return self.api.get_action_context(key, default)
+
+    def get_config(self, key: str, default=None):
+        """获取插件配置值，支持嵌套键访问
+        
+        Args:
+            key: 配置键名，支持嵌套访问如 "section.subsection.key"
+            default: 默认值
+            
+        Returns:
+            Any: 配置值或默认值
+        """
+        if not self.plugin_config:
+            return default
+            
+        # 支持嵌套键访问
+        keys = key.split(".")
+        current = self.plugin_config
+
+        for k in keys:
+            if isinstance(current, dict) and k in current:
+                current = current[k]
+            else:
+                return default
+
+        return current

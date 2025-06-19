@@ -172,6 +172,7 @@ class HeartFCMessageReceiver:
                 return
 
             # 5. 消息存储
+            print(f"message: {message.message_info.time}")
             await self.storage.store_message(message, chat)
 
             # 6. 兴趣度计算与更新

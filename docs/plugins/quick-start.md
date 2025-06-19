@@ -1,28 +1,24 @@
 # 🚀 快速开始指南
 
-本指南将带你用5分钟时间，从零开始创建一个功能完整的MaiBot插件。
-
-> **💡 配置先行**
->
-> 在开始之前，强烈建议你先阅读 ➡️ **[⚙️ 插件配置定义指南](configuration-guide.md)**。
->
-> 了解如何通过 `config_schema` 定义插件配置，可以让系统为你自动生成带详细注释的 `config.toml` 文件，这是现代插件开发的最佳实践。
+本指南将带你用5分钟时间，从零开始创建一个功能完整的MaiCore插件。
 
 ## 📖 概述
 
-这个指南将带你在5分钟内创建你的第一个MaiBot插件。我们将创建一个简单的问候插件，展示插件系统的基本概念。
+这个指南将带你快速创建你的第一个MaiCore插件。我们将创建一个简单的问候插件，展示插件系统的基本概念。无需阅读其他文档，跟着本指南就能完成！
 
 ## 🎯 学习目标
 
 - 理解插件的基本结构
-- 创建你的第一个Action组件
-- 创建你的第一个Command组件
-- 学会配置插件
+- 从最简单的插件开始，循序渐进
+- 学会创建Action组件（智能动作）
+- 学会创建Command组件（命令响应）
+- 掌握配置Schema定义和配置文件自动生成（可选）
 
 ## 📂 准备工作
 
 确保你已经：
-1. 克隆了MaiBot项目
+
+1. 克隆了MaiCore项目
 2. 安装了Python依赖
 3. 了解基本的Python语法
 
@@ -30,360 +26,502 @@
 
 ### 1. 创建插件目录
 
-在项目根目录的 `plugins/` 文件夹下创建你的插件目录：
+在项目根目录的 `plugins/` 文件夹下创建你的插件目录，目录名与插件名保持一致：
+
+可以用以下命令快速创建：
 
 ```bash
 mkdir plugins/hello_world_plugin
 cd plugins/hello_world_plugin
 ```
 
-### 2. 创建插件主文件
+### 2. 创建最简单的插件
 
-创建 `plugin.py` 文件：
+让我们从最基础的开始！创建 `plugin.py` 文件：
+
+```python
+from typing import List, Tuple, Type
+from src.plugin_system import BasePlugin, register_plugin, ComponentInfo
+
+# ===== 插件注册 =====
+
+@register_plugin
+class HelloWorldPlugin(BasePlugin):
+    """Hello World插件 - 你的第一个MaiCore插件"""
+
+    # 插件基本信息（必须填写）
+    plugin_name = "hello_world_plugin"
+    plugin_description = "我的第一个MaiCore插件"
+    plugin_version = "1.0.0"
+    plugin_author = "你的名字"
+    enable_plugin = True  # 启用插件
+
+    def get_plugin_components(self) -> List[Tuple[ComponentInfo, Type]]:
+        """返回插件包含的组件列表（目前是空的）"""
+        return []
+```
+
+🎉 **恭喜！你刚刚创建了一个最简单但完整的MaiCore插件！**
+
+**解释一下这些代码：**
+
+- 首先，我们在plugin.py中定义了一个HelloWorldPulgin插件类，继承自 `BasePlugin` ，提供基本功能。
+- 通过给类加上，`@register_plugin` 装饰器，我们告诉系统"这是一个插件"
+- `plugin_name` 等是插件的基本信息，必须填写
+- `get_plugin_components()` 返回插件的功能组件，现在我们没有定义任何action（动作）或者command(指令)，是空的
+
+### 3. 测试基础插件
+
+现在就可以测试这个插件了！启动MaiCore：
+
+直接通过启动器运行MaiCore或者 `python bot.py`
+
+在日志中你应该能看到插件被加载的信息。虽然插件还没有任何功能，但它已经成功运行了！
+
+![1750326700269](image/quick-start/1750326700269.png)
+
+### 4. 添加第一个功能：问候Action
+
+现在我们要给插件加入一个有用的功能，我们从最好玩的Action做起
+
+Action是一类可以让MaiCore根据自身意愿选择使用的“动作”，在MaiCore中，不论是“回复”还是“不回复”，或者“发送表情”以及“禁言”等等，都是通过Action实现的。
+
+你可以通过编写动作，来拓展MaiCore的能力，包括发送语音，截图，甚至操作文件，编写代码......
+
+现在让我们给插件添加第一个简单的功能。这个Action可以对用户发送一句问候语。
+
+在 `plugin.py` 文件中添加Action组件，完整代码如下：
 
 ```python
 from typing import List, Tuple, Type
 from src.plugin_system import (
-    BasePlugin, register_plugin, BaseAction, BaseCommand,
+    BasePlugin, register_plugin, BaseAction, 
     ComponentInfo, ActionActivationType, ChatMode
 )
 
 # ===== Action组件 =====
 
 class HelloAction(BaseAction):
-    """问候Action - 展示智能动作的基本用法"""
+    """问候Action - 简单的问候动作"""
 
-    # ===== 激活控制必须项 =====
-    focus_activation_type = ActionActivationType.KEYWORD
-    normal_activation_type = ActionActivationType.KEYWORD
-    mode_enable = ChatMode.ALL
-    parallel_action = False
-
-    # ===== 基本信息必须项 =====
+    # === 基本信息（必须填写）===
     action_name = "hello_greeting"
-    action_description = "向用户发送友好的问候消息"
+    action_description = "向用户发送问候消息"
 
-    # 关键词配置
-    activation_keywords = ["你好", "hello", "hi"]
-    keyword_case_sensitive = False
-
-    # ===== 功能定义必须项 =====
+    # === 功能描述（必须填写）===
     action_parameters = {
-        "greeting_style": "问候风格：casual(随意) 或 formal(正式)"
+        "greeting_message": "要发送的问候消息"
     }
-
     action_require = [
-        "用户发送问候语时使用",
-        "营造友好的聊天氛围"
-    ]
-
-    associated_types = ["text", "emoji"]
+        "需要发送友好问候时使用",
+        "当有人向你问好时使用",
+        "当你遇见没有见过的人时使用"
+        ]
+    associated_types = ["text"]
 
     async def execute(self) -> Tuple[bool, str]:
-        """执行问候动作"""
-        # 获取参数
-        style = self.action_data.get("greeting_style", "casual")
-        
-        # 根据风格生成问候语
-        if style == "formal":
-            message = "您好！很高兴为您服务！"
-            emoji = "🙏"
-        else:
-            message = "嗨！很开心见到你！"
-            emoji = "😊"
-        
-        # 发送消息
+        """执行问候动作 - 这是核心功能"""
+        # 发送问候消息
+        greeting_message = self.action_data.get("greeting_message","")
+      
+        message = "嗨！很开心见到你！😊" + greeting_message
         await self.send_text(message)
-        await self.send_type("emoji", emoji)
-        
-        return True, f"发送了{style}风格的问候"
+
+        return True, "发送了问候消息"
+
+# ===== 插件注册 =====
+
+@register_plugin
+class HelloWorldPlugin(BasePlugin):
+    """Hello World插件 - 你的第一个MaiCore插件"""
+
+    # 插件基本信息
+    plugin_name = "hello_world_plugin"
+    plugin_description = "我的第一个MaiCore插件，包含问候功能"
+    plugin_version = "1.0.0"
+    plugin_author = "你的名字"
+    enable_plugin = True
+
+    def get_plugin_components(self) -> List[Tuple[ComponentInfo, Type]]:
+        """返回插件包含的组件列表"""
+        return [
+            # 添加我们的问候Action
+            (HelloAction.get_action_info(), HelloAction),
+        ]
+```
+
+**新增内容解释：**
+
+- `HelloAction` 是一个Action组件，MaiCore可能会选择使用它
+- `execute()` 函数是Action的核心，定义了当Action被MaiCore选择后，具体要做什么
+- `self.send_text()` 是发送文本消息的便捷方法
+
+### 5. 测试问候功能
+
+重启MaiCore，然后在聊天中发送任意消息，比如：
+
+```
+你好
+```
+
+MaiCore可能会选择使用你的问候Action，发送回复：
+
+```
+嗨！很开心见到你！😊
+```
+
+![1750332508760](image/quick-start/1750332508760.png)
+
+> **💡 小提示**：MaiCore会智能地决定什么时候使用它。如果没有立即看到效果，多试几次不同的消息。
+
+🎉 **太棒了！你的插件已经有实际功能了！**
+
+### 5.5. 了解激活系统（重要概念）
+
+Action固然好用简单，但是现在有个问题，当用户加载了非常多的插件，添加了很多自定义Action，LLM需要选择的Action也会变多
+
+而不断增多的Action会加大LLM的消耗和负担，降低Action使用的精准度。而且我们并不需要LLM在所有时候都考虑所有Action
+
+例如，当群友只是在进行正常的聊天，就没有必要每次都考虑是否要选择“禁言”动作，这不仅影响决策速度，还会增加消耗。
+
+那有什么办法，能够让Action有选择的加入MaiCore的决策池呢？
+
+**什么是激活系统？**
+激活系统决定了什么时候你的Action会被MaiCore"考虑"使用：
+
+- **`ActionActivationType.ALWAYS`** - 总是可用（默认值）
+- **`ActionActivationType.KEYWORD`** - 只有消息包含特定关键词时才可用
+- **`ActionActivationType.PROBABILITY`** - 根据概率随机可用
+- **`ActionActivationType.NEVER`** - 永不可用（用于调试）
+
+> **💡 使用提示**：
+>
+> - 推荐使用枚举类型（如 `ActionActivationType.ALWAYS`），有代码提示和类型检查
+> - 也可以直接使用字符串（如 `"always"`），系统都支持
+
+### 5.6. 进阶：尝试关键词激活（可选）
+
+现在让我们尝试一个更精确的激活方式！添加一个只在用户说特定关键词时才激活的Action：
+
+```python
+# 在HelloAction后面添加这个新Action
+class ByeAction(BaseAction):
+    """告别Action - 只在用户说再见时激活"""
+  
+    action_name = "bye_greeting"
+    action_description = "向用户发送告别消息"
+  
+    # 使用关键词激活
+    focus_activation_type = ActionActivationType.KEYWORD
+    normal_activation_type = ActionActivationType.KEYWORD
+  
+    # 关键词设置
+    activation_keywords = ["再见", "bye", "88", "拜拜"]
+    keyword_case_sensitive = False
+  
+    action_parameters = {"bye_message": "要发送的告别消息"}
+    action_require = [
+        "用户要告别时使用",
+        "当有人要离开时使用",
+        "当有人和你说再见时使用",
+        ]
+    associated_types = ["text"]
+  
+    async def execute(self) -> Tuple[bool, str]:
+        bye_message = self.action_data.get("bye_message","")
+      
+        message = "再见！期待下次聊天！👋" + bye_message
+        await self.send_text(message)
+        return True, "发送了告别消息"
+```
+
+然后在插件注册中添加这个Action：
+
+```python
+def get_plugin_components(self) -> List[Tuple[ComponentInfo, Type]]:
+    return [
+        (HelloAction.get_action_info(), HelloAction),
+        (ByeAction.get_action_info(), ByeAction),  # 添加告别Action
+    ]
+```
+
+现在测试：发送"再见"，应该会触发告别Action！
+
+**关键词激活的特点：**
+
+- 更精确：只在包含特定关键词时才会被考虑
+- 更可预测：用户知道说什么会触发什么功能
+- 更适合：特定场景或命令式的功能
+
+### 6. 添加第二个功能：时间查询Command
+
+现在让我们添加一个Command组件。Command和Action不同，它是直接响应用户命令的：
+
+Command是最简单，最直接的相应，不由LLM判断选择使用
+
+```python
+# 在现有代码基础上，添加Command组件
 
 # ===== Command组件 =====
 
-class TimeCommand(BaseCommand):
-    """时间查询Command - 展示命令的基本用法"""
+from src.plugin_system import BaseCommand
+#导入Command基类
 
-    command_pattern = r"^/time$"
+class TimeCommand(BaseCommand):
+    """时间查询Command - 响应/time命令"""
+
+    command_name = "time"
+    command_description = "查询当前时间"
+
+    # === 命令设置（必须填写）===
+    command_pattern = r"^/time$"  # 精确匹配 "/time" 命令
     command_help = "查询当前时间"
     command_examples = ["/time"]
-    intercept_message = True  # 拦截消息处理
+    intercept_message = True  # 拦截消息，不让其他组件处理
 
     async def execute(self) -> Tuple[bool, str]:
         """执行时间查询"""
         import datetime
-        
+  
+        # 获取当前时间
+        time_format = self.get_config("time.format", "%Y-%m-%d %H:%M:%S")
         now = datetime.datetime.now()
-        time_str = now.strftime("%Y-%m-%d %H:%M:%S")
-        
-        await self.send_text(f"⏰ 当前时间：{time_str}")
-        
+        time_str = now.strftime(time_format)
+  
+        # 发送时间信息
+        message = f"⏰ 当前时间：{time_str}"
+        await self.send_text(message)
+  
         return True, f"显示了当前时间: {time_str}"
 
 # ===== 插件注册 =====
 
 @register_plugin
 class HelloWorldPlugin(BasePlugin):
-    """Hello World插件 - 你的第一个MaiBot插件"""
+    """Hello World插件 - 你的第一个MaiCore插件"""
 
-    # 插件基本信息
     plugin_name = "hello_world_plugin"
-    plugin_description = "Hello World演示插件，展示基本的Action和Command用法"
+    plugin_description = "我的第一个MaiCore插件，包含问候和时间查询功能"
     plugin_version = "1.0.0"
     plugin_author = "你的名字"
-    enable_plugin = True  # 默认启用插件
-    config_file_name = "config.toml"
-    
-    # Python依赖声明（可选）
-    python_dependencies = [
-        # 如果你的插件需要额外的Python包，在这里声明
-        # PythonDependency(
-        #     package_name="requests",
-        #     version=">=2.25.0", 
-        #     description="HTTP请求库"
-        # ),
-    ]
+    enable_plugin = True
 
     def get_plugin_components(self) -> List[Tuple[ComponentInfo, Type]]:
-        """返回插件包含的组件列表"""
         return [
-            # Action组件 - 使用类中定义的所有属性
             (HelloAction.get_action_info(), HelloAction),
-            
-            # Command组件 - 需要指定name和description
-            (TimeCommand.get_command_info(
-                name="time_query", 
-                description="查询当前系统时间"
-            ), TimeCommand),
+            (ByeAction.get_action_info(), ByeAction), 
+            (TimeCommand.get_command_info(), TimeCommand),
         ]
 ```
 
-### 3. 创建配置文件
+**Command组件解释：**
 
-创建 `config.toml` 文件：
+- Command是直接响应用户命令的组件
+- `command_pattern` 使用正则表达式匹配用户输入
+- `^/time$` 表示精确匹配 "/time"
+- `intercept_message = True` 表示处理完命令后不再让其他组件处理
 
-```toml
-[plugin]
-name = "hello_world_plugin"
-version = "1.0.0"
-enabled = true
-description = "Hello World演示插件"
+### 7. 测试时间查询功能
 
-[greeting]
-default_style = "casual"
-enable_emoji = true
+重启MaiCore，发送命令：
 
-[time]
-timezone = "Asia/Shanghai"
-format = "%Y-%m-%d %H:%M:%S"
-
-[logging]
-level = "INFO"
+```
+/time
 ```
 
-### 4. 创建说明文档
+你应该会收到回复：
 
-创建 `README.md` 文件：
+```
+⏰ 当前时间：2024-01-01 12:30:45
+```
+
+🎉 **太棒了！现在你的插件有3个功能了！**
+
+### 8. 添加配置文件（可选进阶）
+
+如果你想让插件更加灵活，可以添加配置支持。
+
+> **🚨 重要：不要手动创建config.toml文件！**
+>
+> 我们需要在插件代码中定义配置Schema，让系统自动生成配置文件。
+
+首先，在插件类中定义配置Schema：
+
+```python
+from src.plugin_system.base.config_types import ConfigField
+
+@register_plugin
+class HelloWorldPlugin(BasePlugin):
+    """Hello World插件 - 你的第一个MaiCore插件"""
+
+    plugin_name = "hello_world_plugin"
+    plugin_description = "我的第一个MaiCore插件，包含问候和时间查询功能"
+    plugin_version = "1.0.0"
+    plugin_author = "你的名字"
+    enable_plugin = True
+    config_file_name = "config.toml"  # 配置文件名
+
+    # 配置节描述
+    config_section_descriptions = {
+        "plugin": "插件基本信息",
+        "greeting": "问候功能配置",
+        "time": "时间查询配置"
+    }
+
+    # 配置Schema定义
+    config_schema = {
+        "plugin": {
+            "name": ConfigField(type=str, default="hello_world_plugin", description="插件名称"),
+            "version": ConfigField(type=str, default="1.0.0", description="插件版本"),
+            "enabled": ConfigField(type=bool, default=True, description="是否启用插件")
+        },
+        "greeting": {
+            "message": ConfigField(
+                type=str, 
+                default="嗨！很开心见到你！😊", 
+                description="默认问候消息"
+            ),
+            "enable_emoji": ConfigField(type=bool, default=True, description="是否启用表情符号")
+        },
+        "time": {
+            "format": ConfigField(
+                type=str, 
+                default="%Y-%m-%d %H:%M:%S", 
+                description="时间显示格式"
+            )
+        }
+    }
+
+    def get_plugin_components(self) -> List[Tuple[ComponentInfo, Type]]:
+        return [
+            (HelloAction.get_action_info(), HelloAction),
+            (ByeAction.get_action_info(), ByeAction), 
+            (TimeCommand.get_command_info(), TimeCommand),
+        ]
+```
+
+然后修改Action和Command代码，让它们读取配置：
+
+```python
+# 在HelloAction的execute方法中：
+async def execute(self) -> Tuple[bool, str]:
+    # 从配置文件读取问候消息
+    greeting_message = self.action_data.get("greeting_message", "")
+    base_message = self.get_config("greeting.message", "嗨！很开心见到你！😊")
+  
+    message = base_message + greeting_message
+    await self.send_text(message)
+    return True, "发送了问候消息"
+
+# 在TimeCommand的execute方法中：
+async def execute(self) -> Tuple[bool, str]:
+    import datetime
+  
+    # 从配置文件读取时间格式
+    time_format = self.get_config("time.format", "%Y-%m-%d %H:%M:%S")
+    now = datetime.datetime.now()
+    time_str = now.strftime(time_format)
+  
+    message = f"⏰ 当前时间：{time_str}"
+    await self.send_text(message)
+    return True, f"显示了当前时间: {time_str}"
+```
+
+**配置系统工作流程：**
+
+1. **定义Schema**: 在插件代码中定义配置结构
+2. **自动生成**: 启动插件时，系统会自动生成 `config.toml` 文件
+3. **用户修改**: 用户可以修改生成的配置文件
+4. **代码读取**: 使用 `self.get_config()` 读取配置值
+
+**配置功能解释：**
+
+- `self.get_config()` 可以读取配置文件中的值
+- 第一个参数是配置路径（用点分隔），第二个参数是默认值
+- 配置文件会包含详细的注释和说明，用户可以轻松理解和修改
+- **绝不要手动创建配置文件**，让系统自动生成
+
+### 9. 创建说明文档（可选）
+
+创建 `README.md` 文件来说明你的插件：
 
 ```markdown
 # Hello World 插件
 
 ## 概述
-
-这是一个简单的Hello World插件，演示了MaiBot插件系统的基本用法。
+我的第一个MaiCore插件，包含问候和时间查询功能。
 
 ## 功能
-
-- **HelloAction**: 智能问候动作，响应用户的问候语
-- **TimeCommand**: 时间查询命令，显示当前时间
+- **问候功能**: 当用户说"你好"、"hello"、"hi"时自动回复
+- **时间查询**: 发送 `/time` 命令查询当前时间
 
 ## 使用方法
+### 问候功能
+发送包含以下关键词的消息：
+- "你好"
+- "hello" 
+- "hi"
 
-### Action使用
-当用户发送包含"你好"、"hello"或"hi"的消息时，插件会自动触发问候动作。
+### 时间查询
+发送命令：`/time`
 
-### Command使用
-发送 `/time` 查询当前时间。
+## 配置文件
+插件会自动生成 `config.toml` 配置文件，用户可以修改：
+- 问候消息内容
+- 时间显示格式
+- 插件启用状态
 
-## 配置
-
-可以通过 `config.toml` 调整插件行为。
+注意：配置文件是自动生成的，不要手动创建！
 ```
 
-## 🎮 测试插件
+## 🎯 你学会了什么
 
-### 1. 启动MaiBot
+恭喜！你刚刚从零开始创建了一个完整的MaiCore插件！让我们回顾一下：
 
-将插件放入 `plugins/` 目录后，启动MaiBot：
+### 核心概念
 
-```bash
-python main.py
+- **插件（Plugin）**: 包含多个功能组件的集合
+- **Action组件**: 智能动作，由麦麦根据情境自动选择使用
+- **Command组件**: 直接响应用户命令的功能
+- **配置Schema**: 定义配置结构，系统自动生成配置文件
+
+### 开发流程
+
+1. ✅ 创建最简单的插件框架
+2. ✅ 添加Action
+3. ✅ 理解激活系统的工作原理
+4. ✅ 尝试KEYWORD激活的Action（进阶）
+5. ✅ 添加Command组件
+6. ✅ 可选定义配置Schema
+7. ✅ 测试完整功能
+
+## 📚 进阶学习
+
+现在你已经掌握了基础，可以继续深入学习：
+
+1. **掌握更多Action功能** 📖 [Action组件详解](action-components.md)
+
+   - 学习不同的激活方式
+   - 了解Action的生命周期
+   - 掌握参数传递
+2. **学会配置管理** ⚙️ [插件配置定义指南](configuration-guide.md)
+
+   - 定义配置Schema
+   - 自动生成配置文件
+   - 配置验证和类型检查
+3. **深入Command系统** 📖 [Command组件详解](command-components.md)
+
+   - 复杂正则表达式
+   - 参数提取和处理
+   - 错误处理
+4. **掌握API系统** 📖 [新API使用指南](examples/replyer_api_usage.md)
+
+   - replyer_1智能生成
+   - 高级消息处理
+   - 表情和媒体发送
+
+祝你插件开发愉快！🎉
+
 ```
 
-### 2. 测试Action
-
-发送消息：
 ```
-你好
-```
-
-期望输出：
-```
-嗨！很开心见到你！😊
-```
-
-### 3. 测试Command
-
-发送命令：
-```
-/time
-```
-
-期望输出：
-```
-⏰ 当前时间：2024-01-01 12:00:00
-```
-
-## 🔍 解析代码
-
-### Action组件重点
-
-1. **激活控制**: 使用 `KEYWORD` 激活类型，当检测到指定关键词时触发
-2. **必须项完整**: 包含所有必须的类属性
-3. **智能决策**: 麦麦会根据情境决定是否使用这个Action
-
-### Command组件重点
-
-1. **正则匹配**: 使用 `^/time$` 精确匹配 `/time` 命令
-2. **消息拦截**: 设置 `intercept_message = True` 防止命令继续处理
-3. **即时响应**: 匹配到命令立即执行
-
-### 插件注册重点
-
-1. **@register_plugin**: 装饰器自动注册插件
-2. **组件列表**: `get_plugin_components()` 返回所有组件
-3. **配置加载**: 自动加载 `config.toml` 文件
-
-## 📦 添加依赖包（可选）
-
-如果你的插件需要额外的Python包，可以声明依赖：
-
-```python
-from src.plugin_system import PythonDependency
-
-@register_plugin
-class HelloWorldPlugin(BasePlugin):
-    # ... 其他配置 ...
-    
-    # 声明Python依赖
-    python_dependencies = [
-        PythonDependency(
-            package_name="requests",
-            version=">=2.25.0",
-            description="HTTP请求库，用于网络功能"
-        ),
-        PythonDependency(
-            package_name="numpy", 
-            version=">=1.20.0",
-            optional=True,
-            description="数值计算库（可选功能）"
-        ),
-    ]
-```
-
-### 依赖检查
-
-系统会自动检查依赖，你也可以手动检查：
-
-```python
-from src.plugin_system import plugin_manager
-
-# 检查所有插件依赖
-result = plugin_manager.check_all_dependencies()
-print(f"缺少依赖的插件: {result['plugins_with_missing_required']}个")
-
-# 生成requirements文件
-plugin_manager.generate_plugin_requirements("plugin_deps.txt")
-```
-
-📚 **详细了解**: [依赖管理系统](dependency-management.md)
-
-## 🎯 下一步
-
-恭喜！你已经创建了第一个MaiBot插件。接下来可以：
-
-1. 学习 [Action组件详解](action-components.md) 掌握更复杂的Action开发
-2. 学习 [Command组件详解](command-components.md) 创建更强大的命令
-3. 了解 [依赖管理系统](dependency-management.md) 管理Python包依赖
-4. 查看 [API参考](api/) 了解所有可用的接口
-5. 参考 [完整示例](examples/complete-examples.md) 学习最佳实践
-
-## 🐛 常见问题
-
-### Q: 插件没有加载怎么办？
-A: 检查：
-1. 插件是否放在 `plugins/` 目录下
-2. `plugin.py` 文件语法是否正确
-3. 查看启动日志中的错误信息
-
-### Q: Action没有触发怎么办？
-A: 检查：
-1. 关键词是否正确配置
-2. 消息是否包含激活关键词
-3. 聊天模式是否匹配
-
-### Q: Command无响应怎么办？
-A: 检查：
-1. 正则表达式是否正确
-2. 命令格式是否精确匹配
-3. 是否有其他插件拦截了消息
-
-## 🔧 插件启用状态管理
-
-### 启用状态控制方式
-
-插件可以通过以下两种方式控制启用状态：
-
-1. **类属性控制**
-```python
-class MyPlugin(BasePlugin):
-    enable_plugin = True  # 在类中设置启用状态
-```
-
-2. **配置文件控制**
-```toml
-[plugin]
-enabled = true  # 在配置文件中设置启用状态
-```
-
-### 启用状态优先级
-
-1. 配置文件中的设置优先级高于类属性
-2. 如果配置文件中没有 `[plugin] enabled` 设置，则使用类属性中的值
-3. 如果类属性也没有设置，则使用 `BasePlugin` 的默认值 `False`
-
-### 最佳实践
-
-1. 在开发插件时，建议在类中设置 `enable_plugin = True`
-2. 在部署插件时，通过配置文件控制启用状态
-3. 在文档中明确说明插件的默认启用状态
-4. 提供配置示例，说明如何启用/禁用插件
-
-### 常见问题
-
-1. **插件未加载**
-   - 检查类属性 `enable_plugin` 是否设置为 `True`
-   - 检查配置文件中的 `[plugin] enabled` 设置
-   - 查看日志中是否有插件加载相关的错误信息
-
-2. **配置文件不生效**
-   - 确保配置文件名称正确（默认为 `config.toml`）
-   - 确保配置文件格式正确（TOML格式）
-   - 确保配置文件中的 `[plugin]` 部分存在
-
-3. **动态启用/禁用**
-   - 修改配置文件后需要重启MaiBot才能生效
-   - 目前不支持运行时动态启用/禁用插件
-
----
-
-🎉 **成功！你已经掌握了MaiBot插件开发的基础！** 

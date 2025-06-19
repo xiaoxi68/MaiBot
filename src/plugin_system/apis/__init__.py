@@ -1,37 +1,33 @@
 """
-插件API模块
+插件系统API模块
 
-提供插件可以使用的各种API接口
+提供了插件开发所需的各种API
 """
 
-from src.plugin_system.apis.plugin_api import PluginAPI, create_plugin_api, create_command_api
-from src.plugin_system.apis.message_api import MessageAPI
-from src.plugin_system.apis.llm_api import LLMAPI
-from src.plugin_system.apis.database_api import DatabaseAPI
-from src.plugin_system.apis.config_api import ConfigAPI
-from src.plugin_system.apis.utils_api import UtilsAPI
-from src.plugin_system.apis.stream_api import StreamAPI
-from src.plugin_system.apis.hearflow_api import HearflowAPI
+# 导入所有API模块
+from src.plugin_system.apis import (
+    chat_api,
+    config_api,
+    database_api,
+    emoji_api,
+    generator_api,
+    llm_api,
+    message_api,
+    person_api,
+    send_api,
+    utils_api
+)
 
-# 新增：分类的API聚合
-from src.plugin_system.apis.action_apis import ActionAPI
-from src.plugin_system.apis.independent_apis import IndependentAPI, StaticAPI
-
+# 导出所有API模块，使它们可以通过 apis.xxx 方式访问
 __all__ = [
-    # 原有统一API
-    "PluginAPI",
-    "create_plugin_api",
-    "create_command_api",
-    # 原有单独API
-    "MessageAPI",
-    "LLMAPI",
-    "DatabaseAPI",
-    "ConfigAPI",
-    "UtilsAPI",
-    "StreamAPI",
-    "HearflowAPI",
-    # 新增分类API
-    "ActionAPI",  # 需要Action依赖的API
-    "IndependentAPI",  # 独立API
-    "StaticAPI",  # 静态API
+    "chat_api",
+    "config_api",
+    "database_api",
+    "emoji_api",
+    "generator_api",
+    "llm_api",
+    "message_api",
+    "person_api",
+    "send_api",
+    "utils_api"
 ]

@@ -1,4 +1,4 @@
-from src.chat.focus_chat.expressors.exprssion_learner import get_expression_learner
+from src.chat.express.exprssion_learner import get_expression_learner
 from src.config.config import global_config
 from src.common.logger import get_logger
 from src.individuality.individuality import get_individuality

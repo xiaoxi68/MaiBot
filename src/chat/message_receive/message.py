@@ -275,7 +275,7 @@ class MessageSending(MessageProcessBase):
         message_id: str,
         chat_stream: "ChatStream",
         bot_user_info: UserInfo,
-        sender_info: UserInfo | None,  # 用来记录发送者信息,用于私聊回复
+        sender_info: UserInfo | None,  # 用来记录发送者信息
         message_segment: Seg,
         display_message: str = "",
         reply: Optional["MessageRecv"] = None,
@@ -304,20 +304,17 @@ class MessageSending(MessageProcessBase):
         # 用于显示发送内容与显示不一致的情况
         self.display_message = display_message
 
-    def set_reply(self, reply: Optional["MessageRecv"] = None):
+    def build_reply(self):
         """设置回复消息"""
-        if True:
-            if reply:
-                self.reply = reply
-            if self.reply:
-                self.reply_to_message_id = self.reply.message_info.message_id
-                self.message_segment = Seg(
-                    type="seglist",
-                    data=[
-                        Seg(type="reply", data=self.reply.message_info.message_id),
-                        self.message_segment,
-                    ],
-                )
+        if self.reply:
+            self.reply_to_message_id = self.reply.message_info.message_id
+            self.message_segment = Seg(
+                type="seglist",
+                data=[
+                    Seg(type="reply", data=self.reply.message_info.message_id),
+                    self.message_segment,
+                ],
+            )
 
     async def process(self) -> None:
         """处理消息内容，生成纯文本和详细文本"""

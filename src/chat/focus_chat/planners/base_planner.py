@@ -12,14 +12,14 @@ class BasePlanner(ABC):
         self.action_manager = action_manager
 
     @abstractmethod
-    async def plan(self, all_plan_info: List[InfoBase], running_memorys: List[Dict[str, Any]]) -> Dict[str, Any]:
+    async def plan(self, all_plan_info: List[InfoBase], running_memorys: List[Dict[str, Any]], loop_start_time: float) -> Dict[str, Any]:
         """
         规划下一步行动
 
         Args:
             all_plan_info: 所有计划信息
             running_memorys: 回忆信息
-
+            loop_start_time: 循环开始时间
         Returns:
             Dict[str, Any]: 规划结果
         """

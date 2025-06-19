@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Tuple, Optional, List
 from src.common.logger import get_logger
-from src.plugin_system.apis.plugin_api import PluginAPI
 from src.plugin_system.base.component_types import CommandInfo, ComponentType
 from src.chat.message_receive.message import MessageRecv
+from src.plugin_system.apis import send_api
 
 logger = get_logger("base_command")
 
@@ -20,6 +20,9 @@ class BaseCommand(ABC):
     - intercept_message: 是否拦截消息处理（默认True拦截，False继续传递）
     """
 
+    command_name: str = ""
+    command_description: str = ""
+    
     # 默认命令设置（子类可以覆盖）
     command_pattern: str = ""
     command_help: str = ""
@@ -35,9 +38,7 @@ class BaseCommand(ABC):
         """
         self.message = message
         self.matched_groups: Dict[str, str] = {}  # 存储正则表达式匹配的命名组
-
-        # 创建API实例
-        self.api = PluginAPI(chat_stream=message.chat_stream, log_prefix="[Command]", plugin_config=plugin_config)
+        self.plugin_config = plugin_config or {}  # 直接存储插件配置字典
 
         self.log_prefix = "[Command]"
 
@@ -60,6 +61,31 @@ class BaseCommand(ABC):
         """
         pass
 
+    def get_config(self, key: str, default=None):
+        """获取插件配置值，支持嵌套键访问
+        
+        Args:
+            key: 配置键名，支持嵌套访问如 "section.subsection.key"
+            default: 默认值
+            
+        Returns:
+            Any: 配置值或默认值
+        """
+        if not self.plugin_config:
+            return default
+            
+        # 支持嵌套键访问
+        keys = key.split(".")
+        current = self.plugin_config
+
+        for k in keys:
+            if isinstance(current, dict) and k in current:
+                current = current[k]
+            else:
+                return default
+
+        return current
+
     async def send_text(self, content: str) -> None:
         """发送回复消息
 
@@ -71,13 +97,19 @@ class BaseCommand(ABC):
 
         if chat_stream.group_info:
             # 群聊
-            await self.api.send_text_to_group(
-                text=content, group_id=str(chat_stream.group_info.group_id), platform=chat_stream.platform
+            
+            await send_api.text_to_group(
+                text=content, 
+                group_id=str(chat_stream.group_info.group_id), 
+                platform=chat_stream.platform
             )
         else:
             # 私聊
-            await self.api.send_text_to_user(
-                text=content, user_id=str(chat_stream.user_info.user_id), platform=chat_stream.platform
+            
+            await send_api.text_to_user(
+                text=content, 
+                user_id=str(chat_stream.user_info.user_id), 
+                platform=chat_stream.platform
             )
 
     async def send_type(
@@ -98,30 +130,29 @@ class BaseCommand(ABC):
 
         if chat_stream.group_info:
             # 群聊
-            return await self.api.send_message_to_target(
+            from src.plugin_system.apis import send_api
+            return await send_api.custom_message(
                 message_type=message_type,
                 content=content,
-                platform=chat_stream.platform,
                 target_id=str(chat_stream.group_info.group_id),
                 is_group=True,
-                display_message=display_message,
+                platform=chat_stream.platform,
                 typing=typing,
             )
         else:
             # 私聊
-            return await self.api.send_message_to_target(
+            from src.plugin_system.apis import send_api
+            return await send_api.custom_message(
                 message_type=message_type,
                 content=content,
-                platform=chat_stream.platform,
                 target_id=str(chat_stream.user_info.user_id),
                 is_group=False,
-                display_message=display_message,
+                platform=chat_stream.platform,
+                typing=typing,
             )
 
     async def send_command(self, command_name: str, args: dict = None, display_message: str = None) -> bool:
         """发送命令消息
-
-        使用和send_text相同的方式通过MessageAPI发送命令
 
         Args:
             command_name: 命令名称
@@ -135,29 +166,28 @@ class BaseCommand(ABC):
             # 构造命令数据
             command_data = {"name": command_name, "args": args or {}}
 
-            # 使用send_message_to_target方法发送命令
+            # 获取聊天流信息
             chat_stream = self.message.chat_stream
-            command_content = command_data
 
             if chat_stream.group_info:
                 # 群聊
-                success = await self.api.send_message_to_target(
+                from src.plugin_system.apis import send_api
+                success = await send_api.custom_message(
                     message_type="command",
-                    content=command_content,
-                    platform=chat_stream.platform,
+                    content=command_data,
                     target_id=str(chat_stream.group_info.group_id),
                     is_group=True,
-                    display_message=display_message or f"执行命令: {command_name}",
+                    platform=chat_stream.platform,
                 )
             else:
                 # 私聊
-                success = await self.api.send_message_to_target(
+                from src.plugin_system.apis import send_api
+                success = await send_api.custom_message(
                     message_type="command",
-                    content=command_content,
-                    platform=chat_stream.platform,
+                    content=command_data,
                     target_id=str(chat_stream.user_info.user_id),
                     is_group=False,
-                    display_message=display_message or f"执行命令: {command_name}",
+                    platform=chat_stream.platform,
                 )
 
             if success:
@@ -172,7 +202,7 @@ class BaseCommand(ABC):
             return False
 
     @classmethod
-    def get_command_info(cls, name: str = None, description: str = None) -> "CommandInfo":
+    def get_command_info(cls) -> "CommandInfo":
         """从类属性生成CommandInfo
 
         Args:
@@ -183,19 +213,10 @@ class BaseCommand(ABC):
             CommandInfo: 生成的Command信息对象
         """
 
-        # 优先使用类属性，然后自动生成
-        if name is None:
-            name = getattr(cls, "command_name", cls.__name__.lower().replace("command", ""))
-        if description is None:
-            description = getattr(cls, "command_description", None)
-            if description is None:
-                description = cls.__doc__ or f"{cls.__name__} Command组件"
-                description = description.strip().split("\n")[0]  # 取第一行作为描述
-
         return CommandInfo(
-            name=name,
+            name=cls.command_name,
             component_type=ComponentType.COMMAND,
-            description=description,
+            description=cls.command_description,
             command_pattern=cls.command_pattern,
             command_help=cls.command_help,
             command_examples=cls.command_examples.copy() if cls.command_examples else [],
