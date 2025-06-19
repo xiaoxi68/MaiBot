@@ -213,11 +213,7 @@ class BaseAction(ABC):
             logger.error(f"{self.log_prefix} 缺少聊天ID")
             return False
 
-        return await send_api.text_to_stream(
-            text=content, 
-            stream_id=self.chat_id, 
-            reply_to=reply_to
-        )
+        return await send_api.text_to_stream(text=content, stream_id=self.chat_id, reply_to=reply_to)
 
     async def send_emoji(self, emoji_base64: str) -> bool:
         """发送表情包

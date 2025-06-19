@@ -1,7 +1,12 @@
 from typing import List, Tuple, Type
 from src.plugin_system import (
-    BasePlugin, register_plugin, BaseAction, BaseCommand,
-    ComponentInfo, ActionActivationType, ConfigField
+    BasePlugin,
+    register_plugin,
+    BaseAction,
+    BaseCommand,
+    ComponentInfo,
+    ActionActivationType,
+    ConfigField,
 )
 
 # ===== Action组件 =====

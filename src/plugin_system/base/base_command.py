@@ -98,15 +98,11 @@ class BaseCommand(ABC):
         """
         # 获取聊天流信息
         chat_stream = self.message.chat_stream
-        if not chat_stream or not hasattr(chat_stream, 'stream_id'):
+        if not chat_stream or not hasattr(chat_stream, "stream_id"):
             logger.error(f"{self.log_prefix} 缺少聊天流或stream_id")
             return False
 
-        return await send_api.text_to_stream(
-            text=content, 
-            stream_id=chat_stream.stream_id, 
-            reply_to=reply_to
-        )
+        return await send_api.text_to_stream(text=content, stream_id=chat_stream.stream_id, reply_to=reply_to)
 
     async def send_type(
         self, message_type: str, content: str, display_message: str = "", typing: bool = False, reply_to: str = ""
@@ -125,7 +121,7 @@ class BaseCommand(ABC):
         """
         # 获取聊天流信息
         chat_stream = self.message.chat_stream
-        if not chat_stream or not hasattr(chat_stream, 'stream_id'):
+        if not chat_stream or not hasattr(chat_stream, "stream_id"):
             logger.error(f"{self.log_prefix} 缺少聊天流或stream_id")
             return False
 
@@ -138,7 +134,9 @@ class BaseCommand(ABC):
             reply_to=reply_to,
         )
 
-    async def send_command(self, command_name: str, args: dict = None, display_message: str = "", storage_message: bool = True) -> bool:
+    async def send_command(
+        self, command_name: str, args: dict = None, display_message: str = "", storage_message: bool = True
+    ) -> bool:
         """发送命令消息
 
         Args:
@@ -153,7 +151,7 @@ class BaseCommand(ABC):
         try:
             # 获取聊天流信息
             chat_stream = self.message.chat_stream
-            if not chat_stream or not hasattr(chat_stream, 'stream_id'):
+            if not chat_stream or not hasattr(chat_stream, "stream_id"):
                 logger.error(f"{self.log_prefix} 缺少聊天流或stream_id")
                 return False
 
@@ -187,7 +185,7 @@ class BaseCommand(ABC):
             bool: 是否发送成功
         """
         chat_stream = self.message.chat_stream
-        if not chat_stream or not hasattr(chat_stream, 'stream_id'):
+        if not chat_stream or not hasattr(chat_stream, "stream_id"):
             logger.error(f"{self.log_prefix} 缺少聊天流或stream_id")
             return False
 
@@ -203,7 +201,7 @@ class BaseCommand(ABC):
             bool: 是否发送成功
         """
         chat_stream = self.message.chat_stream
-        if not chat_stream or not hasattr(chat_stream, 'stream_id'):
+        if not chat_stream or not hasattr(chat_stream, "stream_id"):
             logger.error(f"{self.log_prefix} 缺少聊天流或stream_id")
             return False
 

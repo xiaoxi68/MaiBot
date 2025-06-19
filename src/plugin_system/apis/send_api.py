@@ -5,16 +5,16 @@
 
 使用方式：
     from src.plugin_system.apis import send_api
-    
+
     # 方式1：直接使用stream_id（推荐）
     await send_api.text_to_stream("hello", stream_id)
     await send_api.emoji_to_stream(emoji_base64, stream_id)
     await send_api.custom_to_stream("video", video_data, stream_id)
-    
+
     # 方式2：使用群聊/私聊指定函数
     await send_api.text_to_group("hello", "123456")
     await send_api.text_to_user("hello", "987654")
-    
+
     # 方式3：使用通用custom_message函数
     await send_api.custom_message("video", video_data, "123456", True)
 """
