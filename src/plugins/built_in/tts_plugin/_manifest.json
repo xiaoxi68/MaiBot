@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
   "name": "文本转语音插件 (Text-to-Speech)",
-  "version": "1.1.0",
+  "version": "0.1.0",
   "description": "将文本转换为语音进行播放的插件，支持多种语音模式和智能语音输出场景判断。",
   "author": {
     "name": "MaiBot团队", 

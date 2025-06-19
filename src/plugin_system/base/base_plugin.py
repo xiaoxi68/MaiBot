@@ -29,20 +29,17 @@ class BasePlugin(ABC):
     """
 
     # 插件基本信息（子类必须定义）
-    plugin_name: str = ""  # 插件名称
-    plugin_description: str = ""  # 插件描述
-    plugin_version: str = "1.0.0"  # 插件版本
-    plugin_author: str = ""  # 插件作者
+    plugin_name: str = ""  # 插件内部标识符（如 "doubao_pic_plugin"）
     enable_plugin: bool = False  # 是否启用插件
     dependencies: List[str] = []  # 依赖的其他插件
     python_dependencies: List[PythonDependency] = []  # Python包依赖
     config_file_name: Optional[str] = None  # 配置文件名
 
-    # 新增：manifest文件相关
+    # manifest文件相关
     manifest_file_name: str = "_manifest.json"  # manifest文件名
     manifest_data: Dict[str, Any] = {}  # manifest数据
 
-    # 新增：配置定义
+    # 配置定义
     config_schema: Dict[str, Union[Dict[str, ConfigField], str]] = {}
     config_section_descriptions: Dict[str, str] = {}
 
@@ -63,9 +60,17 @@ class BasePlugin(ABC):
         self._validate_plugin_info()
 
         # 加载插件配置
-        self._load_plugin_config()  # 创建插件信息对象
+        self._load_plugin_config()
+
+        # 从manifest获取显示信息
+        self.display_name = self.get_manifest_info("name", self.plugin_name)
+        self.plugin_version = self.get_manifest_info("version", "1.0.0")
+        self.plugin_description = self.get_manifest_info("description", "")
+        self.plugin_author = self._get_author_name()
+
+        # 创建插件信息对象
         self.plugin_info = PluginInfo(
-            name=self.plugin_name,
+            name=self.display_name,  # 使用显示名称
             description=self.plugin_description,
             version=self.plugin_version,
             author=self.plugin_author,
@@ -74,7 +79,7 @@ class BasePlugin(ABC):
             config_file=self.config_file_name or "",
             dependencies=self.dependencies.copy(),
             python_dependencies=self.python_dependencies.copy(),
-            # 新增：manifest相关信息
+            # manifest相关信息
             manifest_data=self.manifest_data.copy(),
             license=self.get_manifest_info("license", ""),
             homepage_url=self.get_manifest_info("homepage_url", ""),
@@ -91,8 +96,12 @@ class BasePlugin(ABC):
         """验证插件基本信息"""
         if not self.plugin_name:
             raise ValueError(f"插件类 {self.__class__.__name__} 必须定义 plugin_name")
-        if not self.plugin_description:
-            raise ValueError(f"插件 {self.plugin_name} 必须定义 plugin_description")
+        
+        # 验证manifest中的必需信息
+        if not self.get_manifest_info("name"):
+            raise ValueError(f"插件 {self.plugin_name} 的manifest中缺少name字段")
+        if not self.get_manifest_info("description"):
+            raise ValueError(f"插件 {self.plugin_name} 的manifest中缺少description字段")
 
     def _load_manifest(self):
         """加载manifest文件（强制要求）"""
@@ -128,26 +137,21 @@ class BasePlugin(ABC):
             raise IOError(error_msg)  # noqa
 
     def _apply_manifest_overrides(self):
-        """从manifest文件覆盖插件信息"""
+        """从manifest文件覆盖插件信息（现在只处理内部标识符的fallback）"""
         if not self.manifest_data:
             return
 
-        # 如果插件类中的信息为空，则从manifest中获取
+        # 只有当插件类中没有定义plugin_name时，才从manifest中获取作为fallback
         if not self.plugin_name:
-            self.plugin_name = self.manifest_data.get("name", "")
-
-        if not self.plugin_description:
-            self.plugin_description = self.manifest_data.get("description", "")
-
-        if self.plugin_version == "1.0.0":  # 默认版本
-            self.plugin_version = self.manifest_data.get("version", "1.0.0")
-
-        if not self.plugin_author:
-            author_info = self.manifest_data.get("author", {})
-            if isinstance(author_info, dict):
-                self.plugin_author = author_info.get("name", "")
-            else:
-                self.plugin_author = str(author_info)
+            self.plugin_name = self.manifest_data.get("name", "").replace(" ", "_").lower()
+    
+    def _get_author_name(self) -> str:
+        """从manifest获取作者名称"""
+        author_info = self.get_manifest_info("author", {})
+        if isinstance(author_info, dict):
+            return author_info.get("name", "")
+        else:
+            return str(author_info) if author_info else ""
 
     def _validate_manifest(self):
         """验证manifest文件格式（使用强化的验证器）"""
@@ -178,12 +182,15 @@ class BasePlugin(ABC):
             logger.debug(f"{self.log_prefix} 插件名称未定义，无法生成默认manifest")
             return
 
+        # 从plugin_name生成友好的显示名称
+        display_name = self.plugin_name.replace("_", " ").title()
+        
         default_manifest = {
             "manifest_version": 1,
-            "name": self.plugin_name,
-            "version": self.plugin_version,
-            "description": self.plugin_description or "插件描述",
-            "author": {"name": self.plugin_author or "Unknown", "url": ""},
+            "name": display_name,
+            "version": "1.0.0",
+            "description": "插件描述",
+            "author": {"name": "Unknown", "url": ""},
             "license": "MIT",
             "host_application": {"min_version": "1.0.0", "max_version": "4.0.0"},
             "keywords": [],

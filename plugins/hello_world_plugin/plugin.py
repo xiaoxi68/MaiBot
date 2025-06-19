@@ -101,10 +101,7 @@ class HelloWorldPlugin(BasePlugin):
     """Hello World插件 - 你的第一个MaiCore插件"""
 
     # 插件基本信息
-    plugin_name = "hello_world_plugin"
-    plugin_description = "我的第一个MaiCore插件，包含问候功能"
-    plugin_version = "1.0.0"
-    plugin_author = "你的名字"
+    plugin_name = "hello_world_plugin"  # 内部标识符
     enable_plugin = True
     config_file_name = "config.toml"  # 配置文件名
 

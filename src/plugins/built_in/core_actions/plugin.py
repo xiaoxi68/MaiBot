@@ -344,11 +344,8 @@ class CoreActionsPlugin(BasePlugin):
     注意：插件基本信息优先从_manifest.json文件中读取
     """
 
-    # 插件基本信息（作为fallback，优先从manifest读取）
-    plugin_name = "core_actions"
-    plugin_description = "系统核心动作插件，提供基础聊天交互功能"
-    plugin_version = "1.0.0"
-    plugin_author = "MaiBot团队"
+    # 插件基本信息
+    plugin_name = "core_actions"  # 内部标识符
     enable_plugin = True
     config_file_name = "config.toml"
 

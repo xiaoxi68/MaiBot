@@ -107,10 +107,7 @@ class VTBPlugin(BasePlugin):
     """
 
     # 插件基本信息
-    plugin_name = "vtb_plugin"
-    plugin_description = "虚拟主播情感表达插件"
-    plugin_version = "0.1.0"
-    plugin_author = "MaiBot开发团队"
+    plugin_name = "vtb_plugin"  # 内部标识符
     enable_plugin = True
     config_file_name = "config.toml"
 

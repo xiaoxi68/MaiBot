@@ -1,19 +1,19 @@
 {
   "manifest_version": 1,
-  "name": "vtb_plugin",
+  "name": "虚拟主播情感表达插件 (VTB Plugin)",
   "version": "0.1.0",
   "description": "虚拟主播情感表达插件",
   "author": {
     "name": "MaiBot开发团队",
-    "url": ""
+    "url": "https://github.com/MaiM-with-u"
   },
   "license": "GPL-v3.0-or-later",
   "host_application": {
     "min_version": "0.8.0",
     "max_version": "0.8.0"
   },
-  "keywords": [],
-  "categories": [],
+  "keywords": ["vtb", "vtuber", "emotion", "expression", "virtual", "streamer"],
+  "categories": ["Entertainment", "Virtual Assistant", "Emotion"],
   "default_locale": "zh-CN",
   "locales_path": "_locales"
 }

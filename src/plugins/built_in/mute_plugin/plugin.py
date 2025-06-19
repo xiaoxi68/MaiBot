@@ -357,10 +357,7 @@ class MutePlugin(BasePlugin):
     """
 
     # 插件基本信息
-    plugin_name = "mute_plugin"
-    plugin_description = "群聊禁言管理插件，提供智能禁言功能"
-    plugin_version = "2.0.0"
-    plugin_author = "MaiBot开发团队"
+    plugin_name = "mute_plugin"  # 内部标识符
     enable_plugin = True
     config_file_name = "config.toml"
 

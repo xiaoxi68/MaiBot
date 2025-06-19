@@ -101,10 +101,7 @@ class TTSPlugin(BasePlugin):
     """
 
     # 插件基本信息
-    plugin_name = "tts_plugin"
-    plugin_description = "文字转语音插件"
-    plugin_version = "0.1.0"
-    plugin_author = "MaiBot开发团队"
+    plugin_name = "tts_plugin"  # 内部标识符
     enable_plugin = True
     config_file_name = "config.toml"
 

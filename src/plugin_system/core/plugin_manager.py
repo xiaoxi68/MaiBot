@@ -166,13 +166,12 @@ class PluginManager:
 
         # 获取组件统计信息
         stats = component_registry.get_registry_stats()
+        action_count = stats.get("action_components", 0)
+        command_count = stats.get("command_components", 0)
+        total_components = stats.get("total_components", 0)
 
         # 📋 显示插件加载总览
         if total_registered > 0:
-            action_count = stats.get("action_components", 0)
-            command_count = stats.get("command_components", 0)
-            total_components = stats.get("total_components", 0)
-
             logger.info("🎉 插件系统加载完成!")
             logger.info(
                 f"📊 总览: {total_registered}个插件, {total_components}个组件 (Action: {action_count}, Command: {command_count})"

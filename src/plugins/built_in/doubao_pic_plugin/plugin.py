@@ -399,10 +399,7 @@ class DoubaoImagePlugin(BasePlugin):
     """
 
     # 插件基本信息
-    plugin_name = "doubao_pic_plugin"
-    plugin_description = "基于火山引擎豆包模型的AI图片生成插件"
-    plugin_version = "2.0.0"
-    plugin_author = "MaiBot开发团队"
+    plugin_name = "doubao_pic_plugin"  # 内部标识符
     enable_plugin = True
     config_file_name = "config.toml"
 
