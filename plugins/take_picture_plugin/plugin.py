@@ -456,12 +456,7 @@ class TakePicturePlugin(BasePlugin):
     # 配置Schema定义
     config_schema = {
         "plugin": {
-            "name": ConfigField(type=str, default="take_picture_plugin", description="插件名称", required=True),
-            "version": ConfigField(type=str, default="1.0.0", description="插件版本号"),
             "enabled": ConfigField(type=bool, default=False, description="是否启用插件"),
-            "description": ConfigField(
-                type=str, default="提供生成自拍照和展示最近照片的功能", description="插件描述", required=True
-            ),
         },
         "api": {
             "base_url": ConfigField(

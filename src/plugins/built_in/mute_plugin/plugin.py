@@ -9,10 +9,11 @@
 - 模板化消息：支持自定义禁言提示消息
 - 参数验证：完整的输入参数验证和错误处理
 - 配置文件支持：所有设置可通过配置文件调整
+- 权限管理：支持用户权限和群组权限控制
 
 包含组件：
-- 智能禁言Action - 基于LLM判断是否需要禁言
-- 禁言命令Command - 手动执行禁言操作
+- 智能禁言Action - 基于LLM判断是否需要禁言（支持群组权限控制）
+- 禁言命令Command - 手动执行禁言操作（支持用户权限控制）
 """
 
 from typing import List, Tuple, Type, Optional
@@ -90,9 +91,44 @@ class MuteAction(BaseAction):
     # 关联类型
     associated_types = ["text", "command"]
 
+    def _check_group_permission(self) -> Tuple[bool, Optional[str]]:
+        """检查当前群是否有禁言动作权限
+        
+        Returns:
+            Tuple[bool, Optional[str]]: (是否有权限, 错误信息)
+        """
+        # 如果不是群聊，直接返回False
+        if not self.is_group:
+            return False, "禁言动作只能在群聊中使用"
+        
+        # 获取权限配置
+        allowed_groups = self.get_config("permissions.allowed_groups", [])
+        
+        # 如果配置为空，表示不启用权限控制
+        if not allowed_groups:
+            logger.info(f"{self.log_prefix} 群组权限未配置，允许所有群使用禁言动作")
+            return True, None
+        
+        # 检查当前群是否在允许列表中
+        current_group_key = f"{self.platform}:{self.group_id}"
+        for allowed_group in allowed_groups:
+            if allowed_group == current_group_key:
+                logger.info(f"{self.log_prefix} 群组 {current_group_key} 有禁言动作权限")
+                return True, None
+        
+        logger.warning(f"{self.log_prefix} 群组 {current_group_key} 没有禁言动作权限")
+        return False, f"当前群组没有使用禁言动作的权限"
+
     async def execute(self) -> Tuple[bool, Optional[str]]:
         """执行智能禁言判定"""
         logger.info(f"{self.log_prefix} 执行智能禁言动作")
+
+        # 首先检查群组权限
+        has_permission, permission_error = self._check_group_permission()
+        if not has_permission:
+            logger.error(f"{self.log_prefix} 权限检查失败: {permission_error}")
+            # 不发送错误消息，静默拒绝
+            return False, permission_error
 
         # 获取参数
         target = self.action_data.get("target")
@@ -238,9 +274,48 @@ class MuteCommand(BaseCommand):
     command_examples = ["/mute 用户名 300", "/mute 张三 600 刷屏", "/mute @某人 1800 违规内容"]
     intercept_message = True  # 拦截消息处理
 
+    def _check_user_permission(self) -> Tuple[bool, Optional[str]]:
+        """检查当前用户是否有禁言命令权限
+        
+        Returns:
+            Tuple[bool, Optional[str]]: (是否有权限, 错误信息)
+        """
+        # 获取当前用户信息
+        chat_stream = self.message.chat_stream
+        if not chat_stream:
+            return False, "无法获取聊天流信息"
+        
+        current_platform = chat_stream.platform
+        current_user_id = str(chat_stream.user_info.user_id)
+        
+        # 获取权限配置
+        allowed_users = self.get_config("permissions.allowed_users", [])
+        
+        # 如果配置为空，表示不启用权限控制
+        if not allowed_users:
+            logger.info(f"{self.log_prefix} 用户权限未配置，允许所有用户使用禁言命令")
+            return True, None
+        
+        # 检查当前用户是否在允许列表中
+        current_user_key = f"{current_platform}:{current_user_id}"
+        for allowed_user in allowed_users:
+            if allowed_user == current_user_key:
+                logger.info(f"{self.log_prefix} 用户 {current_user_key} 有禁言命令权限")
+                return True, None
+        
+        logger.warning(f"{self.log_prefix} 用户 {current_user_key} 没有禁言命令权限")
+        return False, f"你没有使用禁言命令的权限"
+
     async def execute(self) -> Tuple[bool, Optional[str]]:
         """执行禁言命令"""
         try:
+            # 首先检查用户权限
+            has_permission, permission_error = self._check_user_permission()
+            if not has_permission:
+                logger.error(f"{self.log_prefix} 权限检查失败: {permission_error}")
+                await self.send_text(f"❌ {permission_error}")
+                return False, permission_error
+
             target = self.matched_groups.get("target")
             duration = self.matched_groups.get("duration")
             reason = self.matched_groups.get("reason", "管理员操作")
@@ -352,8 +427,8 @@ class MutePlugin(BasePlugin):
     """禁言插件
 
     提供智能禁言功能：
-    - 智能禁言Action：基于LLM判断是否需要禁言
-    - 禁言命令Command：手动执行禁言操作
+    - 智能禁言Action：基于LLM判断是否需要禁言（支持群组权限控制）
+    - 禁言命令Command：手动执行禁言操作（支持用户权限控制）
     """
 
     # 插件基本信息
@@ -365,6 +440,7 @@ class MutePlugin(BasePlugin):
     config_section_descriptions = {
         "plugin": "插件基本信息配置",
         "components": "组件启用控制",
+        "permissions": "权限管理配置",
         "mute": "核心禁言功能配置",
         "smart_mute": "智能禁言Action的专属配置",
         "mute_command": "禁言命令Command的专属配置",
@@ -374,16 +450,24 @@ class MutePlugin(BasePlugin):
     # 配置Schema定义
     config_schema = {
         "plugin": {
-            "name": ConfigField(type=str, default="mute_plugin", description="插件名称", required=True),
-            "version": ConfigField(type=str, default="2.0.0", description="插件版本号"),
             "enabled": ConfigField(type=bool, default=False, description="是否启用插件"),
-            "description": ConfigField(
-                type=str, default="群聊禁言管理插件，提供智能禁言功能", description="插件描述", required=True
-            ),
+            "config_version": ConfigField(type=str, default="0.0.2", description="配置文件版本"),
         },
         "components": {
             "enable_smart_mute": ConfigField(type=bool, default=True, description="是否启用智能禁言Action"),
             "enable_mute_command": ConfigField(type=bool, default=False, description="是否启用禁言命令Command"),
+        },
+        "permissions": {
+            "allowed_users": ConfigField(
+                type=list,
+                default=[],
+                description="允许使用禁言命令的用户列表，格式：['platform:user_id']，如['qq:123456789']。空列表表示不启用权限控制",
+            ),
+            "allowed_groups": ConfigField(
+                type=list,
+                default=[],
+                description="允许使用禁言动作的群组列表，格式：['platform:group_id']，如['qq:987654321']。空列表表示不启用权限控制",
+            ),
         },
         "mute": {
             "min_duration": ConfigField(type=int, default=60, description="最短禁言时长（秒）"),
