@@ -1,6 +1,6 @@
 services:
   adapters:
-    container_name: maim-bot-adapters-dev
+    container_name: maim-bot-adapters
     image: unclas/maimbot-adapter:latest
     # image: infinitycat/maimbot-adapter:latest
     environment:
@@ -13,7 +13,7 @@ services:
     networks:
       - maim_bot
   core:
-    container_name: maim-bot-core-dev
+    container_name: maim-bot-core
     image: sengokucola/maibot:latest
     # image: infinitycat/maibot:latest
     # dev
@@ -44,7 +44,7 @@ services:
       - ./docker-config/napcat:/app/napcat/config # 持久化napcat配置文件
       - ./data/qq:/app/.config/QQ # 持久化QQ本体并同步qq表情和图片到adapters
       - ./data/MaiMBot:/MaiMBot/data # NapCat 和 NoneBot 共享此卷，否则发送图片会有问题
-    container_name: maim-bot-napcat-dev
+    container_name: maim-bot-napcat
     restart: always
     image: mlikiowa/napcat-docker:latest
     networks:
