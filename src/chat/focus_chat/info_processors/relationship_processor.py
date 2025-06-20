@@ -566,24 +566,29 @@ class RelationshipProcessor(BaseProcessor):
                 person_info_manager = get_person_info_manager()
                 for person_name, info_type in content_json.items():
                     person_id = person_info_manager.get_person_id_by_person_name(person_name)
-                    if person_id:
-                        self.info_fetching_cache.append(
-                            {
-                                "person_id": person_id,
-                                "person_name": person_name,
-                                "info_type": info_type,
-                                "start_time": time.time(),
-                                "forget": False,
-                            }
-                        )
-                        if len(self.info_fetching_cache) > 20:
-                            self.info_fetching_cache.pop(0)
-                    else:
+                    if not person_id:
                         logger.warning(f"{self.log_prefix} 未找到用户 {person_name} 的ID，跳过调取信息。")
                         continue
+                    
+                    # 检查是否是bot自己，如果是则跳过
+                    user_id = person_info_manager.get_value_sync(person_id, "user_id")
+                    if user_id == global_config.bot.qq_account:
+                        logger.info(f"{self.log_prefix} 跳过调取bot自己({person_name})的信息。")
+                        continue
+                    
+                    self.info_fetching_cache.append(
+                        {
+                            "person_id": person_id,
+                            "person_name": person_name,
+                            "info_type": info_type,
+                            "start_time": time.time(),
+                            "forget": False,
+                        }
+                    )
+                    if len(self.info_fetching_cache) > 20:
+                        self.info_fetching_cache.pop(0)
 
                     logger.info(f"{self.log_prefix} 调取用户 {person_name} 的 {info_type} 信息。")
-
 
                     # 收集即时提取任务
                     instant_tasks.append((person_id, info_type, time.time()))
@@ -784,6 +789,8 @@ class RelationshipProcessor(BaseProcessor):
                 points_text_block = ""
                 
             if not points_text_block and not person_impression_block:
+                if person_id not in self.info_fetched_cache:
+                    self.info_fetched_cache[person_id] = {}
                 self.info_fetched_cache[person_id][info_type] = {
                     "info": "none",
                     "ttl": 8,
@@ -791,6 +798,7 @@ class RelationshipProcessor(BaseProcessor):
                     "person_name": person_name,
                     "unknow": True,
                 }
+                return
             
             prompt = (await global_prompt_manager.get_prompt_async("fetch_person_info_prompt")).format(
                 name_block=name_block,

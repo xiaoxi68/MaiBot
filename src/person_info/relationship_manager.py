@@ -468,14 +468,14 @@ class RelationshipManager:
 
                 forgotten_points = []
                 info_list = []
+                await person_info_manager.update_one_field(
+                    person_id, "info_list", json.dumps(info_list, ensure_ascii=False, indent=None)
+                )
 
-            # 这句代码的作用是：将更新后的 forgotten_points（遗忘的记忆点）列表，序列化为 JSON 字符串后，写回到数据库中的 forgotten_points 字段
             await person_info_manager.update_one_field(
                 person_id, "forgotten_points", json.dumps(forgotten_points, ensure_ascii=False, indent=None)
             )
-            await person_info_manager.update_one_field(
-                person_id, "info_list", json.dumps(info_list, ensure_ascii=False, indent=None)
-            )
+
 
         # 更新数据库
         await person_info_manager.update_one_field(
