@@ -240,6 +240,10 @@ class RelationshipManager:
     {{
         "point": "{person_name}居然搞错了我的名字，生气了",
         "weight": 8
+    }},
+    {{
+        "point": "{person_name}喜欢吃辣，我和她关系不错",
+        "weight": 8
     }}
 }}
 
@@ -259,10 +263,10 @@ class RelationshipManager:
             points = points.replace(mapped_name, original_name)
 
         logger.info(f"prompt: {prompt}")
-        logger.info(f"points: {points}")
+        # logger.info(f"points: {points}")
 
         if not points:
-            logger.warning(f"未能从LLM获取 {person_name} 的新印象")
+            logger.info(f"对 {person_name} 没啥新印象")
             return
 
         # 解析JSON并转换为元组列表
@@ -272,13 +276,20 @@ class RelationshipManager:
             if points_data == "none" or not points_data or points_data.get("point") == "none":
                 points_list = []
             else:
-                logger.info(f"points_data: {points_data}")
+                # logger.info(f"points_data: {points_data}")
                 if isinstance(points_data, dict) and "points" in points_data:
                     points_data = points_data["points"]
                 if not isinstance(points_data, list):
                     points_data = [points_data]
                 # 添加可读时间到每个point
                 points_list = [(item["point"], float(item["weight"]), current_time) for item in points_data]
+                
+                
+                logger_str=f"了解了有关{person_name}的新印象：\n"
+                for point in points_list:
+                    logger_str+=f"{point[0]},重要性：{point[1]}\n\n"
+                logger.info("logger_str")
+                
         except json.JSONDecodeError:
             logger.error(f"解析points JSON失败: {points}")
             return
@@ -456,10 +467,14 @@ class RelationshipManager:
                 await person_info_manager.update_one_field(person_id, "short_impression", compressed_short_summary)
 
                 forgotten_points = []
+                info_list = []
 
             # 这句代码的作用是：将更新后的 forgotten_points（遗忘的记忆点）列表，序列化为 JSON 字符串后，写回到数据库中的 forgotten_points 字段
             await person_info_manager.update_one_field(
                 person_id, "forgotten_points", json.dumps(forgotten_points, ensure_ascii=False, indent=None)
+            )
+            await person_info_manager.update_one_field(
+                person_id, "info_list", json.dumps(info_list, ensure_ascii=False, indent=None)
             )
 
         # 更新数据库
@@ -482,7 +497,7 @@ class RelationshipManager:
 
         # 直接处理所有消息，不进行过滤
         return build_readable_messages(
-            messages=messages, replace_bot_name=True, timestamp_mode="normal_no_YMD", truncate=False
+            messages=messages, replace_bot_name=True, timestamp_mode="normal_no_YMD", truncate=True
         )
 
     def calculate_time_weight(self, point_time: str, current_time: str) -> float:

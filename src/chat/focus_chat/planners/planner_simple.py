@@ -28,15 +28,12 @@ install(extra_lines=3)
 def init_prompt():
     Prompt(
         """
-你的自我认知是：
-{self_info_block}
-请记住你的性格，身份和特点。
-
 {time_block}
-你是群内的一员，你现在正在参与群内的闲聊，以下是群内的聊天内容：
+{indentify_block}你现在正在参与以下的聊天，以下是具体的聊天内容：
 
 {chat_content_block}
 
+{self_info_block}
 {relation_info_block}
 
 {cycle_info_block}
@@ -241,7 +238,7 @@ class ActionPlanner(BasePlanner):
                         if key not in ["action", "reasoning"]:
                             action_data[key] = value
 
-                    action_data["identity"] = self_info
+                    action_data["self_info_block"] = self_info
 
                     extra_info_block = "\n".join(extra_info)
                     extra_info_block += f"\n{structured_info}"
@@ -345,21 +342,10 @@ class ActionPlanner(BasePlanner):
             else:
                 chat_content_block = "你还未开始聊天"
 
-            # mind_info_block = ""
-            # if current_mind:
-            # mind_info_block = f"对聊天的规划：{current_mind}"
-            # else:
-            # mind_info_block = "你刚参与聊天"
-
-            personality_block = get_individuality().get_prompt(x_person=2, level=2)
 
             action_options_block = ""
             for using_actions_name, using_actions_info in current_available_actions.items():
-                # print(using_actions_name)
-                # print(using_actions_info)
-                # print(using_actions_info["parameters"])
-                # print(using_actions_info["require"])
-                # print(using_actions_info["description"])
+
 
                 using_action_prompt = await global_prompt_manager.get_prompt_async("action_prompt")
 
@@ -397,23 +383,26 @@ class ActionPlanner(BasePlanner):
 
             # 获取当前时间
             time_block = f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            
+            bot_name = global_config.bot.nickname
+            if global_config.bot.alias_names:
+                bot_nickname = f",也有人叫你{','.join(global_config.bot.alias_names)}"
+            else:
+                bot_nickname = ""
+            bot_core_personality = global_config.personality.personality_core
+            indentify_block = f"你的名字是{bot_name}{bot_nickname}，你{bot_core_personality}："
 
             planner_prompt_template = await global_prompt_manager.get_prompt_async("simple_planner_prompt")
             prompt = planner_prompt_template.format(
                 relation_info_block=relation_info_block,
                 self_info_block=self_info_block,
-                # memory_str=memory_str,
                 time_block=time_block,
-                # bot_name=global_config.bot.nickname,
-                prompt_personality=personality_block,
                 chat_context_description=chat_context_description,
                 chat_content_block=chat_content_block,
-                # mind_info_block=mind_info_block,
                 cycle_info_block=cycle_info,
                 action_options_text=action_options_block,
-                # action_available_block=action_available_block,
-                # extra_info_block=extra_info_block,
                 moderation_prompt=moderation_prompt_block,
+                indentify_block=indentify_block,
             )
             return prompt
 

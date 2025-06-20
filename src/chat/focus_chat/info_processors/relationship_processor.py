@@ -27,11 +27,6 @@ import os
 import pickle
 
 
-# 配置常量：是否启用小模型即时信息提取
-# 开启时：使用小模型并行即时提取，速度更快，但精度可能略低
-# 关闭时：使用原来的异步模式，精度更高但速度较慢
-ENABLE_INSTANT_INFO_EXTRACTION = True
-
 # 消息段清理配置
 SEGMENT_CLEANUP_CONFIG = {
     "enable_cleanup": True,  # 是否启用清理
@@ -49,32 +44,26 @@ def init_prompt():
 {chat_observe_info}
 </聊天记录>
 
-<调取记录>
 {info_cache_block}
-</调取记录>
+请不要重复调取相同的信息
 
 {name_block}
 请你阅读聊天记录，查看是否需要调取某个人的信息，这个人可以是出现在聊天记录中的，也可以是记录中提到的人。
 你不同程度上认识群聊里的人，以及他们谈论到的人，你可以根据聊天记录，回忆起有关他们的信息，帮助你参与聊天
-1.你需要提供用户名，以及你想要提取的信息名称类型来进行调取
+1.你需要提供用户名和你想要提取的信息名称类型来进行调取
 2.请注意，提取的信息类型一定要和用户有关，不要提取无关的信息
-3.阅读调取记录，如果已经回忆过某个人的信息，请不要重复调取，除非你忘记了
 
 请以json格式输出，例如：
 
 {{
     "用户A": "ta的昵称",
     "用户B": "ta对你的态度",
-    "用户C": "你和ta最近做的事",
     "用户D": "你对ta的印象",
+    "person_name": "其他信息",
+    "person_name": "其他信息",
 }}
 
-
-请严格按照以下输出格式，不要输出多余内容，person_name可以有多个：
-{{
-    "person_name": "信息名称",
-    "person_name": "信息名称",
-}}
+请严格按照json输出格式，不要输出多余内容，可以同时查询多个人的信息：
 
 """
     Prompt(relationship_prompt, "relationship_prompt")
@@ -83,20 +72,14 @@ def init_prompt():
     
 {name_block}
 以下是你对{person_name}的了解，请你从中提取用户的有关"{info_type}"的信息，如果用户没有相关信息，请输出none：
-<对{person_name}的总体了解>
-{person_impression}
-</对{person_name}的总体了解>
-
-<你记得{person_name}最近的事>
-{points_text}
-</你记得{person_name}最近的事>
-
+{person_impression_block}
+{points_text_block}
 请严格按照以下json输出格式，不要输出多余内容：
 {{
     {info_json_str}
 }}
 """
-    Prompt(fetch_info_prompt, "fetch_info_prompt")
+    Prompt(fetch_info_prompt, "fetch_person_info_prompt")
 
 
 class RelationshipProcessor(BaseProcessor):
@@ -131,11 +114,10 @@ class RelationshipProcessor(BaseProcessor):
         )
 
         # 小模型用于即时信息提取
-        if ENABLE_INSTANT_INFO_EXTRACTION:
-            self.instant_llm_model = LLMRequest(
-                model=global_config.model.utils_small,
-                request_type="focus.relationship.instant",
-            )
+        self.instant_llm_model = LLMRequest(
+            model=global_config.model.utils_small,
+            request_type="focus.relationship.instant",
+        )
 
         name = get_chat_manager().get_stream_name(self.subheartflow_id)
         self.log_prefix = f"[{name}] "
@@ -480,6 +462,7 @@ class RelationshipProcessor(BaseProcessor):
             for observation in observations:
                 if isinstance(observation, ChattingObservation):
                     chat_observe_info = observation.get_observe_info()
+                    chat_observe_info = chat_observe_info[-300:]
 
                     # 从聊天观察中提取用户信息并更新消息段
                     # 获取最新的非bot消息来更新消息段
@@ -536,31 +519,10 @@ class RelationshipProcessor(BaseProcessor):
             del self.person_engaged_cache[person_id]
             self._save_cache()
 
-        # 2. 减少info_fetched_cache中所有信息的TTL
         for person_id in list(self.info_fetched_cache.keys()):
             for info_type in list(self.info_fetched_cache[person_id].keys()):
                 self.info_fetched_cache[person_id][info_type]["ttl"] -= 1
                 if self.info_fetched_cache[person_id][info_type]["ttl"] <= 0:
-                    # 在删除前查找匹配的info_fetching_cache记录
-                    matched_record = None
-                    min_time_diff = float("inf")
-                    for record in self.info_fetching_cache:
-                        if (
-                            record["person_id"] == person_id
-                            and record["info_type"] == info_type
-                            and not record["forget"]
-                        ):
-                            time_diff = abs(
-                                record["start_time"] - self.info_fetched_cache[person_id][info_type]["start_time"]
-                            )
-                            if time_diff < min_time_diff:
-                                min_time_diff = time_diff
-                                matched_record = record
-
-                    if matched_record:
-                        matched_record["forget"] = True
-                        logger.info(f"{self.log_prefix} 用户 {person_id} 的 {info_type} 信息已过期，标记为遗忘。")
-
                     del self.info_fetched_cache[person_id][info_type]
             if not self.info_fetched_cache[person_id]:
                 del self.info_fetched_cache[person_id]
@@ -571,11 +533,17 @@ class RelationshipProcessor(BaseProcessor):
 
         info_cache_block = ""
         if self.info_fetching_cache:
+            # 对于每个(person_id, info_type)组合，只保留最新的记录
+            latest_records = {}
             for info_fetching in self.info_fetching_cache:
-                if info_fetching["forget"]:
-                    info_cache_block += f"在{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(info_fetching['start_time']))}，你回忆了[{info_fetching['person_name']}]的[{info_fetching['info_type']}]，但是现在你忘记了\n"
-                else:
-                    info_cache_block += f"在{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(info_fetching['start_time']))}，你回忆了[{info_fetching['person_name']}]的[{info_fetching['info_type']}]，还记着呢\n"
+                key = (info_fetching['person_id'], info_fetching['info_type'])
+                if key not in latest_records or info_fetching['start_time'] > latest_records[key]['start_time']:
+                    latest_records[key] = info_fetching
+            
+            # 按时间排序并生成显示文本
+            sorted_records = sorted(latest_records.values(), key=lambda x: x['start_time'])
+            for info_fetching in sorted_records:
+                info_cache_block += f"你已经调取了[{info_fetching['person_name']}]的[{info_fetching['info_type']}]信息\n"
 
         prompt = (await global_prompt_manager.get_prompt_async("relationship_prompt")).format(
             name_block=name_block,
@@ -585,7 +553,7 @@ class RelationshipProcessor(BaseProcessor):
         )
 
         try:
-            # logger.debug(f"{self.log_prefix} 人物信息prompt: \n{prompt}\n")
+            logger.info(f"{self.log_prefix} 人物信息prompt: \n{prompt}\n")
             content, _ = await self.llm_model.generate_response_async(prompt=prompt)
             if content:
                 # print(f"content: {content}")
@@ -616,20 +584,12 @@ class RelationshipProcessor(BaseProcessor):
 
                     logger.info(f"{self.log_prefix} 调取用户 {person_name} 的 {info_type} 信息。")
 
-                    # 这里不需要检查person_engaged_cache，因为消息段的管理由_update_message_segments处理
-                    # 信息提取和消息段管理是独立的流程
 
-                    if ENABLE_INSTANT_INFO_EXTRACTION:
-                        # 收集即时提取任务
-                        instant_tasks.append((person_id, info_type, time.time()))
-                    else:
-                        # 使用原来的异步模式
-                        async_tasks.append(
-                            asyncio.create_task(self.fetch_person_info(person_id, [info_type], start_time=time.time()))
-                        )
+                    # 收集即时提取任务
+                    instant_tasks.append((person_id, info_type, time.time()))
 
                 # 执行即时提取任务
-                if ENABLE_INSTANT_INFO_EXTRACTION and instant_tasks:
+                if instant_tasks:
                     await self._execute_instant_extraction_batch(instant_tasks)
 
                 # 启动异步任务（如果不是即时模式）
@@ -660,31 +620,6 @@ class RelationshipProcessor(BaseProcessor):
                 if person_infos_str:
                     persons_infos_str += f"你对 {person_name} 的了解：{person_infos_str}\n"
 
-        # 处理正在调取但还没有结果的项目（只在非即时提取模式下显示）
-        if not ENABLE_INSTANT_INFO_EXTRACTION:
-            pending_info_dict = {}
-            for record in self.info_fetching_cache:
-                if not record["forget"]:
-                    current_time = time.time()
-                    # 只处理不超过2分钟的调取请求，避免过期请求一直显示
-                    if current_time - record["start_time"] <= 120:  # 10分钟内的请求
-                        person_id = record["person_id"]
-                        person_name = record["person_name"]
-                        info_type = record["info_type"]
-
-                        # 检查是否已经在info_fetched_cache中有结果
-                        if person_id in self.info_fetched_cache and info_type in self.info_fetched_cache[person_id]:
-                            continue
-
-                        # 按人物组织正在调取的信息
-                        if person_name not in pending_info_dict:
-                            pending_info_dict[person_name] = []
-                        pending_info_dict[person_name].append(info_type)
-
-            # 添加正在调取的信息到返回字符串
-            for person_name, info_types in pending_info_dict.items():
-                info_types_str = "、".join(info_types)
-                persons_infos_str += f"你正在识图回忆有关 {person_name} 的 {info_types_str} 信息，稍等一下再回答...\n"
 
         return persons_infos_str
 
@@ -793,165 +728,163 @@ class RelationshipProcessor(BaseProcessor):
         使用小模型提取单个信息类型
         """
         person_info_manager = get_person_info_manager()
-        nickname_str = ",".join(global_config.bot.alias_names)
-        name_block = f"你的名字是{global_config.bot.nickname},你的昵称有{nickname_str}，有人也会用这些昵称称呼你。"
-
-        person_name = await person_info_manager.get_value(person_id, "person_name")
-
-        person_impression = await person_info_manager.get_value(person_id, "impression")
-        if not person_impression:
-            impression_block = "你对ta没有什么深刻的印象"
-        else:
-            impression_block = f"{person_impression}"
-
-        points = await person_info_manager.get_value(person_id, "points")
-        if points:
-            points_text = "\n".join([f"{point[2]}:{point[0]}" for point in points])
-        else:
-            points_text = "你不记得ta最近发生了什么"
-
-        prompt = (await global_prompt_manager.get_prompt_async("fetch_info_prompt")).format(
-            name_block=name_block,
-            info_type=info_type,
-            person_impression=impression_block,
-            person_name=person_name,
-            info_json_str=f'"{info_type}": "信息内容"',
-            points_text=points_text,
-        )
+        
+        # 首先检查 info_list 缓存
+        info_list = await person_info_manager.get_value(person_id, "info_list") or []
+        cached_info = None
+        
+        print(f"info_list: {info_list}")
+        
+        # 查找对应的 info_type
+        for info_item in info_list:
+            if info_item.get("info_type") == info_type:
+                cached_info = info_item.get("info_content")
+                logger.info(f"{self.log_prefix} [缓存命中] 从 info_list 中找到 {info_type} 信息: {cached_info}")
+                break
+        
+        
+        # 如果缓存中有信息，直接使用
+        if cached_info :
+            person_name = await person_info_manager.get_value(person_id, "person_name")
+            if person_id not in self.info_fetched_cache:
+                self.info_fetched_cache[person_id] = {}
+            
+            if cached_info == "none":
+                unknow = True
+            else:
+                unknow = False
+            
+            self.info_fetched_cache[person_id][info_type] = {
+                "info": cached_info,
+                "ttl": 8,
+                "start_time": start_time,
+                "person_name": person_name,
+                "unknow": unknow,
+            }
+            logger.info(f"{self.log_prefix} [缓存使用] 直接使用缓存的 {person_name} 的 {info_type}: {cached_info}")
+            return
+    
+        logger.info(f"{self.log_prefix} [缓存命中] 缓存中没有信息")
+        
+        try:
+            nickname_str = ",".join(global_config.bot.alias_names)
+            name_block = f"你的名字是{global_config.bot.nickname},你的昵称有{nickname_str}，有人也会用这些昵称称呼你。"
+            person_name = await person_info_manager.get_value(person_id, "person_name")
+            person_impression = await person_info_manager.get_value(person_id, "impression")
+            if person_impression:
+                person_impression_block = f"<对{person_name}的总体了解>\n{person_impression}\n</对{person_name}的总体了解>"
+            else:
+                person_impression_block = ""
+            
+            points = await person_info_manager.get_value(person_id, "points")
+            if points:
+                points_text = "\n".join([f"{point[2]}:{point[0]}" for point in points])
+                points_text_block = f"<对{person_name}的近期了解>\n{points_text}\n</对{person_name}的近期了解>"
+            else:
+                points_text_block = ""
+                
+            if not points_text_block and not person_impression_block:
+                self.info_fetched_cache[person_id][info_type] = {
+                    "info": "none",
+                    "ttl": 8,
+                    "start_time": start_time,
+                    "person_name": person_name,
+                    "unknow": True,
+                }
+            
+            prompt = (await global_prompt_manager.get_prompt_async("fetch_person_info_prompt")).format(
+                name_block=name_block,
+                info_type=info_type,
+                person_impression_block=person_impression_block,
+                person_name=person_name,
+                info_json_str=f'"{info_type}": "有关{info_type}的信息内容"',
+                points_text_block=points_text_block,
+            )
+        except Exception:
+            logger.error(traceback.format_exc())
+        
+        print(prompt)
 
         try:
             # 使用小模型进行即时提取
             content, _ = await self.instant_llm_model.generate_response_async(prompt=prompt)
 
-            logger.info(f"{self.log_prefix} [即时提取] {person_name} 的 {info_type} 结果: {content}")
+            logger.info(f"{self.log_prefix} [LLM提取] {person_name} 的 {info_type} 结果: {content}")
 
             if content:
                 content_json = json.loads(repair_json(content))
                 if info_type in content_json:
                     info_content = content_json[info_type]
-                    if info_content != "none" and info_content:
-                        if person_id not in self.info_fetched_cache:
-                            self.info_fetched_cache[person_id] = {}
-                        self.info_fetched_cache[person_id][info_type] = {
-                            "info": info_content,
-                            "ttl": 8,  # 小模型提取的信息TTL稍短
-                            "start_time": start_time,
-                            "person_name": person_name,
-                            "unknow": False,
-                        }
-                        logger.info(
-                            f"{self.log_prefix} [即时提取] 成功获取 {person_name} 的 {info_type}: {info_content}"
-                        )
+                    is_unknown = info_content == "none" or not info_content
+                    
+                    # 保存到运行时缓存
+                    if person_id not in self.info_fetched_cache:
+                        self.info_fetched_cache[person_id] = {}
+                    self.info_fetched_cache[person_id][info_type] = {
+                        "info": "unknow" if is_unknown else info_content,
+                        "ttl": 8,
+                        "start_time": start_time,
+                        "person_name": person_name,
+                        "unknow": is_unknown,
+                    }
+                    
+                    # 保存到持久化缓存 (info_list)
+                    await self._save_info_to_cache(person_id, info_type, info_content if not is_unknown else "none")
+                    
+                    if not is_unknown:
+                        logger.info(f"{self.log_prefix} [LLM提取] 成功获取并缓存 {person_name} 的 {info_type}: {info_content}")
                     else:
-                        if person_id not in self.info_fetched_cache:
-                            self.info_fetched_cache[person_id] = {}
-                        self.info_fetched_cache[person_id][info_type] = {
-                            "info": "unknow",
-                            "ttl": 8,
-                            "start_time": start_time,
-                            "person_name": person_name,
-                            "unknow": True,
-                        }
-                        logger.info(f"{self.log_prefix} [即时提取] {person_name} 的 {info_type} 信息不明确")
+                        logger.info(f"{self.log_prefix} [LLM提取] {person_name} 的 {info_type} 信息不明确")
             else:
-                logger.warning(
-                    f"{self.log_prefix} [即时提取] 小模型返回空结果，获取 {person_name} 的 {info_type} 信息失败。"
-                )
+                logger.warning(f"{self.log_prefix} [LLM提取] 小模型返回空结果，获取 {person_name} 的 {info_type} 信息失败。")
         except Exception as e:
-            logger.error(f"{self.log_prefix} [即时提取] 执行小模型请求获取用户信息时出错: {e}")
+            logger.error(f"{self.log_prefix} [LLM提取] 执行小模型请求获取用户信息时出错: {e}")
             logger.error(traceback.format_exc())
 
-    async def fetch_person_info(self, person_id: str, info_types: list[str], start_time: float):
+    async def _save_info_to_cache(self, person_id: str, info_type: str, info_content: str):
         """
-        获取某个人的信息
+        将提取到的信息保存到 person_info 的 info_list 字段中
+        
+        Args:
+            person_id: 用户ID
+            info_type: 信息类型
+            info_content: 信息内容
         """
-        # 检查缓存中是否已存在且未过期的信息
-        info_types_to_fetch = []
-
-        for info_type in info_types:
-            if person_id in self.info_fetched_cache and info_type in self.info_fetched_cache[person_id]:
-                logger.info(f"{self.log_prefix} 用户 {person_id} 的 {info_type} 信息已存在且未过期，跳过调取。")
-                continue
-            info_types_to_fetch.append(info_type)
-
-        if not info_types_to_fetch:
-            return
-
-        nickname_str = ",".join(global_config.bot.alias_names)
-        name_block = f"你的名字是{global_config.bot.nickname},你的昵称有{nickname_str}，有人也会用这些昵称称呼你。"
-
-        person_info_manager = get_person_info_manager()
-        person_name = await person_info_manager.get_value(person_id, "person_name")
-
-        info_type_str = ""
-        info_json_str = ""
-        for info_type in info_types_to_fetch:
-            info_type_str += f"{info_type},"
-            info_json_str += f'"{info_type}": "信息内容",'
-        info_type_str = info_type_str[:-1]
-        info_json_str = info_json_str[:-1]
-
-        person_impression = await person_info_manager.get_value(person_id, "impression")
-        if not person_impression:
-            impression_block = "你对ta没有什么深刻的印象"
-        else:
-            impression_block = f"{person_impression}"
-
-        points = await person_info_manager.get_value(person_id, "points")
-
-        if points:
-            points_text = "\n".join([f"{point[2]}:{point[0]}" for point in points])
-        else:
-            points_text = "你不记得ta最近发生了什么"
-
-        prompt = (await global_prompt_manager.get_prompt_async("fetch_info_prompt")).format(
-            name_block=name_block,
-            info_type=info_type_str,
-            person_impression=impression_block,
-            person_name=person_name,
-            info_json_str=info_json_str,
-            points_text=points_text,
-        )
-
         try:
-            content, _ = await self.llm_model.generate_response_async(prompt=prompt)
-
-            # logger.info(f"{self.log_prefix} fetch_person_info prompt: \n{prompt}\n")
-            logger.info(f"{self.log_prefix} fetch_person_info 结果: {content}")
-
-            if content:
-                try:
-                    content_json = json.loads(repair_json(content))
-                    for info_type, info_content in content_json.items():
-                        if info_content != "none" and info_content:
-                            if person_id not in self.info_fetched_cache:
-                                self.info_fetched_cache[person_id] = {}
-                            self.info_fetched_cache[person_id][info_type] = {
-                                "info": info_content,
-                                "ttl": 10,
-                                "start_time": start_time,
-                                "person_name": person_name,
-                                "unknow": False,
-                            }
-                        else:
-                            if person_id not in self.info_fetched_cache:
-                                self.info_fetched_cache[person_id] = {}
-
-                            self.info_fetched_cache[person_id][info_type] = {
-                                "info": "unknow",
-                                "ttl": 10,
-                                "start_time": start_time,
-                                "person_name": person_name,
-                                "unknow": True,
-                            }
-                except Exception as e:
-                    logger.error(f"{self.log_prefix} 解析LLM返回的信息时出错: {e}")
-                    logger.error(traceback.format_exc())
+            person_info_manager = get_person_info_manager()
+            
+            # 获取现有的 info_list
+            info_list = await person_info_manager.get_value(person_id, "info_list") or []
+            
+            # 查找是否已存在相同 info_type 的记录
+            found_index = -1
+            for i, info_item in enumerate(info_list):
+                if isinstance(info_item, dict) and info_item.get("info_type") == info_type:
+                    found_index = i
+                    break
+            
+            # 创建新的信息记录
+            new_info_item = {
+                "info_type": info_type,
+                "info_content": info_content,
+            }
+            
+            if found_index >= 0:
+                # 更新现有记录
+                info_list[found_index] = new_info_item
+                logger.info(f"{self.log_prefix} [缓存更新] 更新 {person_id} 的 {info_type} 信息缓存")
             else:
-                logger.warning(f"{self.log_prefix} LLM返回空结果，获取用户 {person_name} 的 {info_type_str} 信息失败。")
+                # 添加新记录
+                info_list.append(new_info_item)
+                logger.info(f"{self.log_prefix} [缓存保存] 新增 {person_id} 的 {info_type} 信息缓存")
+            
+            # 保存更新后的 info_list
+            await person_info_manager.update_one_field(person_id, "info_list", info_list)
+            
         except Exception as e:
-            logger.error(f"{self.log_prefix} 执行LLM请求获取用户信息时出错: {e}")
+            logger.error(f"{self.log_prefix} [缓存保存] 保存信息到缓存失败: {e}")
             logger.error(traceback.format_exc())
+
 
 
 init_prompt()

@@ -36,6 +36,7 @@ def init_prompt():
 {extra_info_block}
 
 {relation_info_block}
+{self_info_block}
 
 {time_block}
 {chat_target}
@@ -280,7 +281,7 @@ class DefaultReplyer:
 
         is_group_chat = bool(chat_stream.group_info)
 
-        identity = reply_data.get("identity", "")
+        self_info_block = reply_data.get("self_info_block", "")
         extra_info_block = reply_data.get("extra_info_block", "")
         relation_info_block = reply_data.get("relation_info_block", "")
         reply_to = reply_data.get("reply_to", "none")
@@ -368,6 +369,13 @@ class DefaultReplyer:
         time_block = f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
 
         # logger.debug("开始构建 focus prompt")
+        bot_name = global_config.bot.nickname
+        if global_config.bot.alias_names:
+            bot_nickname = f",也有人叫你{','.join(global_config.bot.alias_names)}"
+        else:
+            bot_nickname = ""
+        bot_core_personality = global_config.personality.personality_core
+        indentify_block = f"你的名字是{bot_name}{bot_nickname}，你{bot_core_personality}："
 
         if sender:
             reply_target_block = f"现在{sender}说的:{target}。引起了你的注意，你想要在群里发言或者回复这条消息。"
@@ -390,10 +398,11 @@ class DefaultReplyer:
                 chat_info=chat_talking_prompt,
                 extra_info_block=extra_info_block,
                 relation_info_block=relation_info_block,
+                self_info_block=self_info_block,
                 time_block=time_block,
                 reply_target_block=reply_target_block,
                 keywords_reaction_prompt=keywords_reaction_prompt,
-                identity=identity,
+                indentify_block=indentify_block,
                 target_message=target,
                 sender_name=sender,
                 config_expression_style=global_config.expression.expression_style,
@@ -408,10 +417,11 @@ class DefaultReplyer:
                 chat_info=chat_talking_prompt,
                 extra_info_block=extra_info_block,
                 relation_info_block=relation_info_block,
+                self_info_block=self_info_block,
                 time_block=time_block,
                 reply_target_block=reply_target_block,
                 keywords_reaction_prompt=keywords_reaction_prompt,
-                identity=identity,
+                indentify_block=indentify_block,
                 target_message=target,
                 sender_name=sender,
                 config_expression_style=global_config.expression.expression_style,
