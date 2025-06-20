@@ -18,7 +18,6 @@ logger = get_logger("processor")
 
 
 def init_prompt():
-    
     indentify_prompt = """
 {time_now}，以下是正在进行的聊天内容：
 <聊天记录>
@@ -46,7 +45,7 @@ class SelfProcessor(BaseProcessor):
         super().__init__()
 
         self.subheartflow_id = subheartflow_id
-        
+
         self.info_fetched_cache: Dict[str, Dict[str, any]] = {}
 
         self.llm_model = LLMRequest(
@@ -56,8 +55,6 @@ class SelfProcessor(BaseProcessor):
 
         name = get_chat_manager().get_stream_name(self.subheartflow_id)
         self.log_prefix = f"[{name}] "
-
-
 
     async def process_info(self, observations: List[Observation] = None, *infos) -> List[InfoBase]:
         """处理信息对象
@@ -123,22 +120,22 @@ class SelfProcessor(BaseProcessor):
         individuality = get_individuality()
         available_keywords = individuality.get_all_keywords()
         available_keywords_str = "、".join(available_keywords) if available_keywords else "暂无关键词"
-        
+
         prompt = (await global_prompt_manager.get_prompt_async("indentify_prompt")).format(
             name_block=name_block,
             time_now=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
             chat_observe_info=chat_observe_info[-200:],
             available_keywords=available_keywords_str,
-            bot_name = global_config.bot.nickname
+            bot_name=global_config.bot.nickname,
         )
 
         keyword = ""
-        
+
         try:
             keyword, _ = await self.llm_model.generate_response_async(prompt=prompt)
-            
+
             print(f"prompt: {prompt}\nkeyword: {keyword}")
-            
+
             if not keyword:
                 logger.warning(f"{self.log_prefix} LLM返回空结果，自我识别失败。")
         except Exception as e:
@@ -146,7 +143,6 @@ class SelfProcessor(BaseProcessor):
             logger.error(f"{self.log_prefix} 执行LLM请求或处理响应时出错: {e}")
             logger.error(traceback.format_exc())
             keyword = "我是谁，我从哪来，要到哪去"
-        
 
         # 解析关键词
         keyword = keyword.strip()
@@ -155,20 +151,20 @@ class SelfProcessor(BaseProcessor):
         else:
             # 只保留非空关键词，去除多余空格
             keyword_set = [k.strip() for k in keyword.split(",") if k.strip()]
-        
+
         # 从individuality缓存中查询关键词信息
         for keyword in keyword_set:
             if keyword not in self.info_fetched_cache:
                 # 直接从individuality的json缓存中获取关键词信息
                 fetched_info = individuality.get_keyword_info(keyword)
-                
+
                 if fetched_info:
                     self.info_fetched_cache[keyword] = {
                         "info": fetched_info,
                         "ttl": 5,
                     }
                     logger.info(f"{self.log_prefix} 从个体特征缓存中获取关键词 '{keyword}' 的信息")
-        
+
         # 管理TTL（生存时间）
         expired_keywords = []
         for fetched_keyword, info in self.info_fetched_cache.items():
@@ -176,18 +172,16 @@ class SelfProcessor(BaseProcessor):
                 info["ttl"] -= 1
             else:
                 expired_keywords.append(fetched_keyword)
-        
+
         # 删除过期的关键词
         for expired_keyword in expired_keywords:
             del self.info_fetched_cache[expired_keyword]
-        
-        
+
         fetched_info_str = ""
         for keyword, info in self.info_fetched_cache.items():
             fetched_info_str += f"你的：{keyword}信息是: {info['info']}\n"
-        
-        return fetched_info_str
 
+        return fetched_info_str
 
 
 init_prompt()

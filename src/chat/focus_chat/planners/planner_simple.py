@@ -342,11 +342,8 @@ class ActionPlanner(BasePlanner):
             else:
                 chat_content_block = "你还未开始聊天"
 
-
             action_options_block = ""
             for using_actions_name, using_actions_info in current_available_actions.items():
-
-
                 using_action_prompt = await global_prompt_manager.get_prompt_async("action_prompt")
 
                 if using_actions_info["parameters"]:
@@ -383,7 +380,7 @@ class ActionPlanner(BasePlanner):
 
             # 获取当前时间
             time_block = f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-            
+
             bot_name = global_config.bot.nickname
             if global_config.bot.alias_names:
                 bot_nickname = f",也有人叫你{','.join(global_config.bot.alias_names)}"

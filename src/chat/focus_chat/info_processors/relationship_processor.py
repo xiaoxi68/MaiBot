@@ -536,14 +536,16 @@ class RelationshipProcessor(BaseProcessor):
             # 对于每个(person_id, info_type)组合，只保留最新的记录
             latest_records = {}
             for info_fetching in self.info_fetching_cache:
-                key = (info_fetching['person_id'], info_fetching['info_type'])
-                if key not in latest_records or info_fetching['start_time'] > latest_records[key]['start_time']:
+                key = (info_fetching["person_id"], info_fetching["info_type"])
+                if key not in latest_records or info_fetching["start_time"] > latest_records[key]["start_time"]:
                     latest_records[key] = info_fetching
-            
+
             # 按时间排序并生成显示文本
-            sorted_records = sorted(latest_records.values(), key=lambda x: x['start_time'])
+            sorted_records = sorted(latest_records.values(), key=lambda x: x["start_time"])
             for info_fetching in sorted_records:
-                info_cache_block += f"你已经调取了[{info_fetching['person_name']}]的[{info_fetching['info_type']}]信息\n"
+                info_cache_block += (
+                    f"你已经调取了[{info_fetching['person_name']}]的[{info_fetching['info_type']}]信息\n"
+                )
 
         prompt = (await global_prompt_manager.get_prompt_async("relationship_prompt")).format(
             name_block=name_block,
@@ -569,13 +571,13 @@ class RelationshipProcessor(BaseProcessor):
                     if not person_id:
                         logger.warning(f"{self.log_prefix} 未找到用户 {person_name} 的ID，跳过调取信息。")
                         continue
-                    
+
                     # 检查是否是bot自己，如果是则跳过
                     user_id = person_info_manager.get_value_sync(person_id, "user_id")
                     if user_id == global_config.bot.qq_account:
                         logger.info(f"{self.log_prefix} 跳过调取bot自己({person_name})的信息。")
                         continue
-                    
+
                     self.info_fetching_cache.append(
                         {
                             "person_id": person_id,
@@ -624,7 +626,6 @@ class RelationshipProcessor(BaseProcessor):
                         person_infos_str += f"你不了解{person_name}有关[{info_type}]的信息，不要胡乱回答，你可以直接说你不知道，或者你忘记了；"
                 if person_infos_str:
                     persons_infos_str += f"你对 {person_name} 的了解：{person_infos_str}\n"
-
 
         return persons_infos_str
 
@@ -733,32 +734,31 @@ class RelationshipProcessor(BaseProcessor):
         使用小模型提取单个信息类型
         """
         person_info_manager = get_person_info_manager()
-        
+
         # 首先检查 info_list 缓存
         info_list = await person_info_manager.get_value(person_id, "info_list") or []
         cached_info = None
-        
+
         print(f"info_list: {info_list}")
-        
+
         # 查找对应的 info_type
         for info_item in info_list:
             if info_item.get("info_type") == info_type:
                 cached_info = info_item.get("info_content")
                 logger.info(f"{self.log_prefix} [缓存命中] 从 info_list 中找到 {info_type} 信息: {cached_info}")
                 break
-        
-        
+
         # 如果缓存中有信息，直接使用
-        if cached_info :
+        if cached_info:
             person_name = await person_info_manager.get_value(person_id, "person_name")
             if person_id not in self.info_fetched_cache:
                 self.info_fetched_cache[person_id] = {}
-            
+
             if cached_info == "none":
                 unknow = True
             else:
                 unknow = False
-            
+
             self.info_fetched_cache[person_id][info_type] = {
                 "info": cached_info,
                 "ttl": 8,
@@ -768,26 +768,28 @@ class RelationshipProcessor(BaseProcessor):
             }
             logger.info(f"{self.log_prefix} [缓存使用] 直接使用缓存的 {person_name} 的 {info_type}: {cached_info}")
             return
-    
+
         logger.info(f"{self.log_prefix} [缓存命中] 缓存中没有信息")
-        
+
         try:
             nickname_str = ",".join(global_config.bot.alias_names)
             name_block = f"你的名字是{global_config.bot.nickname},你的昵称有{nickname_str}，有人也会用这些昵称称呼你。"
             person_name = await person_info_manager.get_value(person_id, "person_name")
             person_impression = await person_info_manager.get_value(person_id, "impression")
             if person_impression:
-                person_impression_block = f"<对{person_name}的总体了解>\n{person_impression}\n</对{person_name}的总体了解>"
+                person_impression_block = (
+                    f"<对{person_name}的总体了解>\n{person_impression}\n</对{person_name}的总体了解>"
+                )
             else:
                 person_impression_block = ""
-            
+
             points = await person_info_manager.get_value(person_id, "points")
             if points:
                 points_text = "\n".join([f"{point[2]}:{point[0]}" for point in points])
                 points_text_block = f"<对{person_name}的近期了解>\n{points_text}\n</对{person_name}的近期了解>"
             else:
                 points_text_block = ""
-                
+
             if not points_text_block and not person_impression_block:
                 if person_id not in self.info_fetched_cache:
                     self.info_fetched_cache[person_id] = {}
@@ -799,7 +801,7 @@ class RelationshipProcessor(BaseProcessor):
                     "unknow": True,
                 }
                 return
-            
+
             prompt = (await global_prompt_manager.get_prompt_async("fetch_person_info_prompt")).format(
                 name_block=name_block,
                 info_type=info_type,
@@ -810,7 +812,7 @@ class RelationshipProcessor(BaseProcessor):
             )
         except Exception:
             logger.error(traceback.format_exc())
-        
+
         print(prompt)
 
         try:
@@ -824,7 +826,7 @@ class RelationshipProcessor(BaseProcessor):
                 if info_type in content_json:
                     info_content = content_json[info_type]
                     is_unknown = info_content == "none" or not info_content
-                    
+
                     # 保存到运行时缓存
                     if person_id not in self.info_fetched_cache:
                         self.info_fetched_cache[person_id] = {}
@@ -835,16 +837,20 @@ class RelationshipProcessor(BaseProcessor):
                         "person_name": person_name,
                         "unknow": is_unknown,
                     }
-                    
+
                     # 保存到持久化缓存 (info_list)
                     await self._save_info_to_cache(person_id, info_type, info_content if not is_unknown else "none")
-                    
+
                     if not is_unknown:
-                        logger.info(f"{self.log_prefix} [LLM提取] 成功获取并缓存 {person_name} 的 {info_type}: {info_content}")
+                        logger.info(
+                            f"{self.log_prefix} [LLM提取] 成功获取并缓存 {person_name} 的 {info_type}: {info_content}"
+                        )
                     else:
                         logger.info(f"{self.log_prefix} [LLM提取] {person_name} 的 {info_type} 信息不明确")
             else:
-                logger.warning(f"{self.log_prefix} [LLM提取] 小模型返回空结果，获取 {person_name} 的 {info_type} 信息失败。")
+                logger.warning(
+                    f"{self.log_prefix} [LLM提取] 小模型返回空结果，获取 {person_name} 的 {info_type} 信息失败。"
+                )
         except Exception as e:
             logger.error(f"{self.log_prefix} [LLM提取] 执行小模型请求获取用户信息时出错: {e}")
             logger.error(traceback.format_exc())
@@ -852,7 +858,7 @@ class RelationshipProcessor(BaseProcessor):
     async def _save_info_to_cache(self, person_id: str, info_type: str, info_content: str):
         """
         将提取到的信息保存到 person_info 的 info_list 字段中
-        
+
         Args:
             person_id: 用户ID
             info_type: 信息类型
@@ -860,23 +866,23 @@ class RelationshipProcessor(BaseProcessor):
         """
         try:
             person_info_manager = get_person_info_manager()
-            
+
             # 获取现有的 info_list
             info_list = await person_info_manager.get_value(person_id, "info_list") or []
-            
+
             # 查找是否已存在相同 info_type 的记录
             found_index = -1
             for i, info_item in enumerate(info_list):
                 if isinstance(info_item, dict) and info_item.get("info_type") == info_type:
                     found_index = i
                     break
-            
+
             # 创建新的信息记录
             new_info_item = {
                 "info_type": info_type,
                 "info_content": info_content,
             }
-            
+
             if found_index >= 0:
                 # 更新现有记录
                 info_list[found_index] = new_info_item
@@ -885,14 +891,13 @@ class RelationshipProcessor(BaseProcessor):
                 # 添加新记录
                 info_list.append(new_info_item)
                 logger.info(f"{self.log_prefix} [缓存保存] 新增 {person_id} 的 {info_type} 信息缓存")
-            
+
             # 保存更新后的 info_list
             await person_info_manager.update_one_field(person_id, "info_list", info_list)
-            
+
         except Exception as e:
             logger.error(f"{self.log_prefix} [缓存保存] 保存信息到缓存失败: {e}")
             logger.error(traceback.format_exc())
-
 
 
 init_prompt()

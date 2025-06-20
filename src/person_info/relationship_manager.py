@@ -283,13 +283,12 @@ class RelationshipManager:
                     points_data = [points_data]
                 # 添加可读时间到每个point
                 points_list = [(item["point"], float(item["weight"]), current_time) for item in points_data]
-                
-                
-                logger_str=f"了解了有关{person_name}的新印象：\n"
+
+                logger_str = f"了解了有关{person_name}的新印象：\n"
                 for point in points_list:
-                    logger_str+=f"{point[0]},重要性：{point[1]}\n\n"
+                    logger_str += f"{point[0]},重要性：{point[1]}\n\n"
                 logger.info("logger_str")
-                
+
         except json.JSONDecodeError:
             logger.error(f"解析points JSON失败: {points}")
             return
@@ -475,7 +474,6 @@ class RelationshipManager:
             await person_info_manager.update_one_field(
                 person_id, "forgotten_points", json.dumps(forgotten_points, ensure_ascii=False, indent=None)
             )
-
 
         # 更新数据库
         await person_info_manager.update_one_field(
