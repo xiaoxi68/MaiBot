@@ -93,31 +93,31 @@ class MuteAction(BaseAction):
 
     def _check_group_permission(self) -> Tuple[bool, Optional[str]]:
         """检查当前群是否有禁言动作权限
-        
+
         Returns:
             Tuple[bool, Optional[str]]: (是否有权限, 错误信息)
         """
         # 如果不是群聊，直接返回False
         if not self.is_group:
             return False, "禁言动作只能在群聊中使用"
-        
+
         # 获取权限配置
         allowed_groups = self.get_config("permissions.allowed_groups", [])
-        
+
         # 如果配置为空，表示不启用权限控制
         if not allowed_groups:
             logger.info(f"{self.log_prefix} 群组权限未配置，允许所有群使用禁言动作")
             return True, None
-        
+
         # 检查当前群是否在允许列表中
         current_group_key = f"{self.platform}:{self.group_id}"
         for allowed_group in allowed_groups:
             if allowed_group == current_group_key:
                 logger.info(f"{self.log_prefix} 群组 {current_group_key} 有禁言动作权限")
                 return True, None
-        
+
         logger.warning(f"{self.log_prefix} 群组 {current_group_key} 没有禁言动作权限")
-        return False, f"当前群组没有使用禁言动作的权限"
+        return False, "当前群组没有使用禁言动作的权限"
 
     async def execute(self) -> Tuple[bool, Optional[str]]:
         """执行智能禁言判定"""
@@ -276,7 +276,7 @@ class MuteCommand(BaseCommand):
 
     def _check_user_permission(self) -> Tuple[bool, Optional[str]]:
         """检查当前用户是否有禁言命令权限
-        
+
         Returns:
             Tuple[bool, Optional[str]]: (是否有权限, 错误信息)
         """
@@ -284,27 +284,27 @@ class MuteCommand(BaseCommand):
         chat_stream = self.message.chat_stream
         if not chat_stream:
             return False, "无法获取聊天流信息"
-        
+
         current_platform = chat_stream.platform
         current_user_id = str(chat_stream.user_info.user_id)
-        
+
         # 获取权限配置
         allowed_users = self.get_config("permissions.allowed_users", [])
-        
+
         # 如果配置为空，表示不启用权限控制
         if not allowed_users:
             logger.info(f"{self.log_prefix} 用户权限未配置，允许所有用户使用禁言命令")
             return True, None
-        
+
         # 检查当前用户是否在允许列表中
         current_user_key = f"{current_platform}:{current_user_id}"
         for allowed_user in allowed_users:
             if allowed_user == current_user_key:
                 logger.info(f"{self.log_prefix} 用户 {current_user_key} 有禁言命令权限")
                 return True, None
-        
+
         logger.warning(f"{self.log_prefix} 用户 {current_user_key} 没有禁言命令权限")
-        return False, f"你没有使用禁言命令的权限"
+        return False, "你没有使用禁言命令的权限"
 
     async def execute(self) -> Tuple[bool, Optional[str]]:
         """执行禁言命令"""
