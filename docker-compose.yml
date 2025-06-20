@@ -1,19 +1,19 @@
 services:
   adapters:
-    container_name: maim-bot-adapters
+    container_name: maim-bot-adapters-dev
     image: unclas/maimbot-adapter:latest
     # image: infinitycat/maimbot-adapter:latest
     environment:
       - TZ=Asia/Shanghai
 #    ports:
-#      - "8095:8095"
+#      - "8005:8005"
     volumes:
       - ./docker-config/adapters/config.toml:/adapters/config.toml
     restart: always
     networks:
       - maim_bot
   core:
-    container_name: maim-bot-core
+    container_name: maim-bot-core-dev
     image: sengokucola/maibot:latest
     # image: infinitycat/maibot:latest
     # dev
@@ -24,8 +24,7 @@ services:
 #      - EULA_AGREE=bda99dca873f5d8044e9987eac417e01  # 同意EULA
 #      - PRIVACY_AGREE=42dddb3cbe2b784b45a2781407b298a1 # 同意EULA
 #    ports:
-#      - "8000:8000"
-#      - "27017:27017"
+#      - "8070:8070"
     volumes:
       - ./docker-config/mmc/.env:/MaiMBot/.env # 持久化env配置文件
       - ./docker-config/mmc/maibot_statistics.html:/MaiMBot/maibot_statistics.html #统计数据输出
@@ -40,14 +39,26 @@ services:
       - NAPCAT_GID=1000
       - TZ=Asia/Shanghai
     ports:
-      - "6099:6099"
+      - "6100:6099"
     volumes:
       - ./docker-config/napcat:/app/napcat/config # 持久化napcat配置文件
       - ./data/qq:/app/.config/QQ # 持久化QQ本体并同步qq表情和图片到adapters
       - ./data/MaiMBot:/MaiMBot/data # NapCat 和 NoneBot 共享此卷，否则发送图片会有问题
-    container_name: maim-bot-napcat
+    container_name: maim-bot-napcat-dev
     restart: always
     image: mlikiowa/napcat-docker:latest
+    networks:
+      - maim_bot
+  sqlite-web:
+    image: coleifer/sqlite-web
+    container_name: sqlite-web
+    restart: always
+    ports:
+      - "8120:8080"
+    volumes:
+      - ./data/MaiMBot/MaiBot.db:/data/MaiBot.db
+    environment:
+      - SQLITE_DATABASE=MaiBot.db  # 你的数据库文件
     networks:
       - maim_bot
 networks:
