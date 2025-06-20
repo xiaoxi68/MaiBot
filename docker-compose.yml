@@ -6,7 +6,7 @@ services:
     environment:
       - TZ=Asia/Shanghai
 #    ports:
-#      - "8005:8005"
+#      - "8095:8095"
     volumes:
       - ./docker-config/adapters/config.toml:/adapters/config.toml
     restart: always
@@ -24,7 +24,8 @@ services:
 #      - EULA_AGREE=bda99dca873f5d8044e9987eac417e01  # 同意EULA
 #      - PRIVACY_AGREE=42dddb3cbe2b784b45a2781407b298a1 # 同意EULA
 #    ports:
-#      - "8070:8070"
+#      - "8000:8000"
+#      - "27017:27017"
     volumes:
       - ./docker-config/mmc/.env:/MaiMBot/.env # 持久化env配置文件
       - ./docker-config/mmc/maibot_statistics.html:/MaiMBot/maibot_statistics.html #统计数据输出
@@ -39,7 +40,7 @@ services:
       - NAPCAT_GID=1000
       - TZ=Asia/Shanghai
     ports:
-      - "6100:6099"
+      - "6099:6099"
     volumes:
       - ./docker-config/napcat:/app/napcat/config # 持久化napcat配置文件
       - ./data/qq:/app/.config/QQ # 持久化QQ本体并同步qq表情和图片到adapters
