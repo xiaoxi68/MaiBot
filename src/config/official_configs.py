@@ -193,8 +193,13 @@ class ExpressionConfig(ConfigBase):
     enable_expression_learning: bool = True
     """是否启用表达学习"""
 
-    selection_mode: str = "llm"
-    """表达方式选择模式：'llm' 使用LLM智能选择，'random' 使用传统随机选择"""
+
+
+    expression_groups: list[list[str]] = field(default_factory=list)
+    """
+    表达学习互通组
+    格式: [["qq:12345:group", "qq:67890:private"]]
+    """
 
 
 @dataclass

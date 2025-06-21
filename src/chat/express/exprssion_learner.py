@@ -69,7 +69,7 @@ class ExpressionLearner:
         # TODO: API-Adapter修改标记
         self.express_learn_model: LLMRequest = LLMRequest(
             model=global_config.model.replyer_1,
-            temperature=0.1,
+            temperature=0.2,
             request_type="expressor.learner",
         )
 
@@ -78,18 +78,62 @@ class ExpressionLearner:
         读取/data/expression/learnt/{chat_id}/expressions.json和/data/expression/personality/expressions.json
         返回(learnt_expressions, personality_expressions)
         """
-        learnt_style_file = os.path.join("data", "expression", "learnt_style", str(chat_id), "expressions.json")
-        learnt_grammar_file = os.path.join("data", "expression", "learnt_grammar", str(chat_id), "expressions.json")
-        personality_file = os.path.join("data", "expression", "personality", "expressions.json")
+        expression_groups = global_config.expression.expression_groups
+        chat_ids_to_load = [chat_id]
+
+        # 获取当前chat_id的类型
+        chat_stream = get_chat_manager().get_stream(chat_id)
+        platform = chat_stream.platform
+        if chat_stream and chat_stream.group_info:
+            current_chat_type = "group"
+            typed_chat_id = f"{platform}:{chat_stream.group_info.group_id}:{current_chat_type}"
+        else:
+            typed_chat_id = f"{platform}:{chat_stream.user_info.user_id}:{current_chat_type}"
+
+        logger.info(f"正在为 {typed_chat_id} 查找互通组...")
+
+        found_group = None
+        for group in expression_groups:
+            # logger.info(f"正在检查互通组: {group}")
+            # logger.info(f"当前chat_id: {typed_chat_id}")
+            if typed_chat_id in group:
+                found_group = group
+                # logger.info(f"找到互通组: {group}")
+                break
+
+        if not found_group:
+            logger.info(f"未找到互通组，仅加载 {chat_id} 的表达方式")
+
+        if found_group:
+            # 从带类型的id中解析出原始id
+            parsed_ids = []
+            for item in found_group:
+                try:
+                    platform, id, type = item.split(":")
+                    chat_id = get_chat_manager().get_stream_id(platform, id, type == "group")
+                    parsed_ids.append(chat_id)
+                except Exception:
+                    logger.warning(f"无法解析互通组中的ID: {item}")
+            chat_ids_to_load = parsed_ids
+            logger.info(f"将要加载以下id的表达方式: {chat_ids_to_load}")
+
         learnt_style_expressions = []
         learnt_grammar_expressions = []
+
+        for id_to_load in chat_ids_to_load:
+            learnt_style_file = os.path.join("data", "expression", "learnt_style", str(id_to_load), "expressions.json")
+            learnt_grammar_file = os.path.join(
+                "data", "expression", "learnt_grammar", str(id_to_load), "expressions.json"
+            )
+            if os.path.exists(learnt_style_file):
+                with open(learnt_style_file, "r", encoding="utf-8") as f:
+                    learnt_style_expressions.extend(json.load(f))
+            if os.path.exists(learnt_grammar_file):
+                with open(learnt_grammar_file, "r", encoding="utf-8") as f:
+                    learnt_grammar_expressions.extend(json.load(f))
+
+        personality_file = os.path.join("data", "expression", "personality", "expressions.json")
         personality_expressions = []
-        if os.path.exists(learnt_style_file):
-            with open(learnt_style_file, "r", encoding="utf-8") as f:
-                learnt_style_expressions = json.load(f)
-        if os.path.exists(learnt_grammar_file):
-            with open(learnt_grammar_file, "r", encoding="utf-8") as f:
-                learnt_grammar_expressions = json.load(f)
         if os.path.exists(personality_file):
             with open(personality_file, "r", encoding="utf-8") as f:
                 personality_expressions = json.load(f)

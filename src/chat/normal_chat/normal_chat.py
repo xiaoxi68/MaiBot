@@ -87,7 +87,7 @@ class NormalChat:
         self.person_engaged_cache: Dict[str, List[Dict[str, any]]] = {}
 
         # 持久化存储文件路径
-        self.cache_file_path = os.path.join("data", f"relationship_cache_{self.stream_id}.pkl")
+        self.cache_file_path = os.path.join("data", "relationship", f"relationship_cache_{self.stream_id}.pkl")
 
         # 最后处理的消息时间，避免重复处理相同消息
         self.last_processed_message_time = 0.0

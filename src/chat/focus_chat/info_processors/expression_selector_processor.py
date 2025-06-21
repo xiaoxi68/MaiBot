@@ -101,7 +101,7 @@ class ExpressionSelectorProcessor(BaseProcessor):
 
         self.subheartflow_id = subheartflow_id
         self.last_selection_time = 0
-        self.selection_interval = 60  # 1分钟间隔
+        self.selection_interval = 40  # 1分钟间隔
         self.cached_expressions = []  # 缓存上一次选择的表达方式
 
         # 表达方式选择模式
@@ -158,16 +158,11 @@ class ExpressionSelectorProcessor(BaseProcessor):
 
         try:
             # 根据模式选择表达方式
-            if self.selection_mode == "llm":
-                # LLM模式：调用LLM选择15个，然后随机选5个
-                selected_expressions = await self._select_suitable_expressions_llm(chat_info)
-                cache_size = len(selected_expressions) if selected_expressions else 0
-                mode_desc = f"LLM模式（已缓存{cache_size}个）"
-            else:
-                # 随机模式：直接随机选择5个
-                selected_expressions = await self._select_suitable_expressions_random(chat_info)
-                cache_size = len(selected_expressions) if selected_expressions else 0
-                mode_desc = f"随机模式（已缓存{cache_size}个）"
+            # LLM模式：调用LLM选择15个，然后随机选5个
+            selected_expressions = await self._select_suitable_expressions_llm(chat_info)
+            cache_size = len(selected_expressions) if selected_expressions else 0
+            mode_desc = f"LLM模式（已缓存{cache_size}个）"
+
 
             if selected_expressions:
                 # 缓存选择的表达方式
