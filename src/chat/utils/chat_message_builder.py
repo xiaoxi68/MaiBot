@@ -622,10 +622,13 @@ def build_readable_messages(
             messages_after_mark, replace_bot_name, merge_messages, timestamp_mode, False, pic_id_mapping, pic_counter
         )
 
-        read_mark_line = "\n--- 以上消息是你已经看过---\n--- 请关注以下未读的新消息---\n"
+        read_mark_line = "\n--- 以上消息是你已经看过，请关注以下未读的新消息---\n"
 
         # 生成图片映射信息
-        pic_mapping_info = f"图片信息：\n{build_pic_mapping_info(pic_id_mapping)}\n聊天记录信息：\n"
+        if pic_id_mapping:
+            pic_mapping_info = f"图片信息：\n{build_pic_mapping_info(pic_id_mapping)}\n聊天记录信息：\n"
+        else:
+            pic_mapping_info = "聊天记录信息：\n"
 
         # 组合结果
         result_parts = []

@@ -644,7 +644,7 @@ class PersonImpressionpProcessor(BaseProcessor):
         )
 
         try:
-            logger.info(f"{self.log_prefix} 人物信息prompt: \n{prompt}\n")
+            logger.debug(f"{self.log_prefix} 人物信息prompt: \n{prompt}\n")
             content, _ = await self.llm_model.generate_response_async(prompt=prompt)
             if content:
                 # print(f"content: {content}")
@@ -704,26 +704,47 @@ class PersonImpressionpProcessor(BaseProcessor):
         persons_infos_str = ""
         # 处理已获取到的信息
         if self.info_fetched_cache:
+            persons_with_known_info = []  # 有已知信息的人员
+            persons_with_unknown_info = []  # 有未知信息的人员
+            
             for person_id in self.info_fetched_cache:
-                person_infos_str = ""
-                unknown_info_types = []  # 收集所有unknow的信息类型
+                person_known_infos = []
+                person_unknown_infos = []
                 person_name = ""
 
                 for info_type in self.info_fetched_cache[person_id]:
                     person_name = self.info_fetched_cache[person_id][info_type]["person_name"]
                     if not self.info_fetched_cache[person_id][info_type]["unknow"]:
                         info_content = self.info_fetched_cache[person_id][info_type]["info"]
-                        person_infos_str += f"[{info_type}]：{info_content}；"
+                        person_known_infos.append(f"[{info_type}]：{info_content}")
                     else:
-                        unknown_info_types.append(info_type)
+                        person_unknown_infos.append(info_type)
 
-                # 如果有unknow的信息类型，合并输出
-                if unknown_info_types:
-                    unknown_types_str = "、".join(unknown_info_types)
-                    person_infos_str += f"你不了解{person_name}有关[{unknown_types_str}]的信息，不要胡乱回答，你可以直接说你不知道，或者你忘记了；"
+                # 如果有已知信息，添加到已知信息列表
+                if person_known_infos:
+                    known_info_str = "；".join(person_known_infos) + "；"
+                    persons_with_known_info.append((person_name, known_info_str))
 
-                if person_infos_str:
-                    persons_infos_str += f"你对 {person_name} 的了解：{person_infos_str}\n"
+                # 如果有未知信息，添加到未知信息列表
+                if person_unknown_infos:
+                    persons_with_unknown_info.append((person_name, person_unknown_infos))
+
+            # 先输出有已知信息的人员
+            for person_name, known_info_str in persons_with_known_info:
+                persons_infos_str += f"你对 {person_name} 的了解：{known_info_str}\n"
+
+            # 统一处理未知信息，避免重复的警告文本
+            if persons_with_unknown_info:
+                unknown_persons_details = []
+                for person_name, unknown_types in persons_with_unknown_info:
+                    unknown_types_str = "、".join(unknown_types)
+                    unknown_persons_details.append(f"{person_name}的[{unknown_types_str}]")
+                
+                if len(unknown_persons_details) == 1:
+                    persons_infos_str += f"你不了解{unknown_persons_details[0]}信息，不要胡乱回答，可以直接说不知道或忘记了；\n"
+                else:
+                    unknown_all_str = "、".join(unknown_persons_details)
+                    persons_infos_str += f"你不了解{unknown_all_str}等信息，不要胡乱回答，可以直接说不知道或忘记了；\n"
 
         return persons_infos_str
 

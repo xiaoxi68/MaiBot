@@ -286,7 +286,7 @@ class RelationshipManager:
 
                 logger_str = f"了解了有关{person_name}的新印象：\n"
                 for point in points_list:
-                    logger_str += f"{point[0]},重要性：{point[1]}\n\n"
+                    logger_str += f"{point[0]},重要性：{point[1]}\n"
                 logger.info(logger_str)
 
         except json.JSONDecodeError:

@@ -477,7 +477,7 @@ class ImageManager:
             image_format = Image.open(io.BytesIO(image_bytes)).format.lower()
 
             # 构建prompt
-            prompt = """请用中文描述这张图片的内容。如果有文字，请把文字描述概括出来，请留意其主题，直观感受，输出为一段平文本，最多50字"""
+            prompt = """请用中文描述这张图片的内容。如果有文字，请把文字描述概括出来，请留意其主题，直观感受，输出为一段平文本，最多30字，请注意不要分点，就输出一段文本"""
 
             # 获取VLM描述
             description, _ = await self._llm.generate_response_for_image(prompt, image_base64, image_format)

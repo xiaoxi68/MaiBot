@@ -610,6 +610,17 @@ class NormalChat:
             logger.info(f"[{self.stream_name}] 已停用，忽略 normal_response。")
             return
 
+        # 新增：在auto模式下检查是否需要直接切换到focus模式
+        if global_config.chat.chat_mode == "auto":
+            should_switch = await self._check_should_switch_to_focus()
+            if should_switch:
+                logger.info(f"[{self.stream_name}] 检测到切换到focus聊天模式的条件，直接执行切换")
+                if self.on_switch_to_focus_callback:
+                    await self.on_switch_to_focus_callback()
+                    return
+                else:
+                    logger.warning(f"[{self.stream_name}] 没有设置切换到focus聊天模式的回调函数，无法执行切换")
+
         # 执行定期清理
         self._cleanup_old_segments()
 
@@ -729,9 +740,6 @@ class NormalChat:
                     if action_type == "no_action":
                         logger.debug(f"[{self.stream_name}] Planner决定不执行任何额外动作")
                         return no_action
-                    elif action_type == "change_to_focus_chat":
-                        logger.info(f"[{self.stream_name}] Planner决定切换到focus聊天模式")
-                        return None
 
                     # 执行额外的动作（不影响回复生成）
                     action_result = await self._execute_action(action_type, action_data, message, thinking_id)
@@ -772,14 +780,14 @@ class NormalChat:
 
             if not response_set or (
                 self.enable_planner
-                and self.action_type not in ["no_action", "change_to_focus_chat"]
+                and self.action_type not in ["no_action"]
                 and not self.is_parallel_action
             ):
                 if not response_set:
                     logger.info(f"[{self.stream_name}] 模型未生成回复内容")
                 elif (
                     self.enable_planner
-                    and self.action_type not in ["no_action", "change_to_focus_chat"]
+                    and self.action_type not in ["no_action"]
                     and not self.is_parallel_action
                 ):
                     logger.info(f"[{self.stream_name}] 模型选择其他动作（非并行动作）")
@@ -828,15 +836,7 @@ class NormalChat:
                 if len(self.recent_replies) > self.max_replies_history:
                     self.recent_replies = self.recent_replies[-self.max_replies_history :]
 
-                # 检查是否需要切换到focus模式
-                if global_config.chat.chat_mode == "auto":
-                    if self.action_type == "change_to_focus_chat":
-                        logger.info(f"[{self.stream_name}] 检测到切换到focus聊天模式的请求")
-                        if self.on_switch_to_focus_callback:
-                            await self.on_switch_to_focus_callback()
-                        else:
-                            logger.warning(f"[{self.stream_name}] 没有设置切换到focus聊天模式的回调函数，无法执行切换")
-                        return
+
 
             # 回复后处理
             await willing_manager.after_generate_reply_handle(message.message_info.message_id)
@@ -1124,61 +1124,64 @@ class NormalChat:
             logger.info(f"[{self.stream_name}] 用户 {person_id} 关系构建已启动，缓存已清理")
 
     async def _build_relation_for_person_segments(self, person_id: str, segments: List[Dict[str, any]]):
-        """基于消息段为特定用户构建关系"""
-        logger.info(f"[{self.stream_name}] 开始为 {person_id} 基于 {len(segments)} 个消息段更新印象")
-        try:
-            processed_messages = []
+        """为特定用户的消息段构建关系"""
+        if not segments:
+            return
 
-            for i, segment in enumerate(segments):
+        try:
+            chat_stream = get_chat_manager().get_stream(self.stream_id)
+            relationship_manager = chat_stream.relationship_manager
+
+            for segment in segments:
                 start_time = segment["start_time"]
                 end_time = segment["end_time"]
-                segment["message_count"]
-                start_date = time.strftime("%Y-%m-%d %H:%M", time.localtime(start_time))
+                message_count = segment["message_count"]
 
-                # 获取该段的消息（包含边界）
-                segment_messages = get_raw_msg_by_timestamp_with_chat_inclusive(self.stream_id, start_time, end_time)
-                logger.info(
-                    f"[{self.stream_name}] 消息段 {i + 1}: {start_date} - {time.strftime('%Y-%m-%d %H:%M', time.localtime(end_time))}, 消息数: {len(segment_messages)}"
+                logger.debug(
+                    f"[{self.stream_name}] 为用户 {person_id} 构建关系 "
+                    f"消息段时间: {time.strftime('%H:%M:%S', time.localtime(start_time))} - "
+                    f"{time.strftime('%H:%M:%S', time.localtime(end_time))} "
+                    f"消息数量: {message_count}"
                 )
 
-                if segment_messages:
-                    # 如果不是第一个消息段，在消息列表前添加间隔标识
-                    if i > 0:
-                        # 创建一个特殊的间隔消息
-                        gap_message = {
-                            "time": start_time - 0.1,  # 稍微早于段开始时间
-                            "user_id": "system",
-                            "user_platform": "system",
-                            "user_nickname": "系统",
-                            "user_cardname": "",
-                            "display_message": f"...（中间省略一些消息）{start_date} 之后的消息如下...",
-                            "is_action_record": True,
-                            "chat_info_platform": segment_messages[0].get("chat_info_platform", ""),
-                            "chat_id": self.stream_id,
-                        }
-                        processed_messages.append(gap_message)
-
-                    # 添加该段的所有消息
-                    processed_messages.extend(segment_messages)
-
-            if processed_messages:
-                # 按时间排序所有消息（包括间隔标识）
-                processed_messages.sort(key=lambda x: x["time"])
-
-                logger.info(
-                    f"[{self.stream_name}] 为 {person_id} 获取到总共 {len(processed_messages)} 条消息（包含间隔标识）用于印象更新"
+                await relationship_manager.direct_build_relation(
+                    person_id, start_time, end_time, message_count, time.time()
                 )
-                relationship_manager = get_relationship_manager()
-
-                # 调用原有的更新方法
-                await relationship_manager.update_person_impression(
-                    person_id=person_id, timestamp=time.time(), bot_engaged_messages=processed_messages
-                )
-
-                logger.info(f"[{self.stream_name}] 用户 {person_id} 关系构建完成")
-            else:
-                logger.warning(f"[{self.stream_name}] 没有找到 {person_id} 的消息段对应的消息，不更新印象")
 
         except Exception as e:
-            logger.error(f"[{self.stream_name}] 为 {person_id} 更新印象时发生错误: {e}")
-            logger.error(traceback.format_exc())
+            logger.error(f"[{self.stream_name}] 构建关系失败: {e}")
+
+    async def _check_should_switch_to_focus(self) -> bool:
+        """
+        检查是否满足切换到focus模式的条件
+
+        Returns:
+            bool: 是否应该切换到focus模式
+        """
+        # 检查思考消息堆积情况
+        container = await message_manager.get_container(self.stream_id)
+        if container:
+            thinking_count = sum(1 for msg in container.messages if isinstance(msg, MessageThinking))
+            if thinking_count >= 4 * global_config.chat.auto_focus_threshold:  # 如果堆积超过阈值条思考消息
+                logger.debug(f"[{self.stream_name}] 检测到思考消息堆积({thinking_count}条)，切换到focus模式")
+                return True
+
+        if not self.recent_replies:
+            return False
+
+        current_time = time.time()
+        time_threshold = 120 / global_config.chat.auto_focus_threshold
+        reply_threshold = 6 * global_config.chat.auto_focus_threshold
+
+        one_minute_ago = current_time - time_threshold
+
+        # 统计指定时间内的回复数量
+        recent_reply_count = sum(1 for reply in self.recent_replies if reply["time"] > one_minute_ago)
+
+        should_switch = recent_reply_count > reply_threshold
+        if should_switch:
+            logger.debug(
+                f"[{self.stream_name}] 检测到{time_threshold:.0f}秒内回复数量({recent_reply_count})大于{reply_threshold}，满足切换到focus模式条件"
+            )
+
+        return should_switch
