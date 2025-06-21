@@ -619,7 +619,7 @@ class RelationshipProcessor(BaseProcessor):
                 person_infos_str = ""
                 unknown_info_types = []  # 收集所有unknow的信息类型
                 person_name = ""
-                
+
                 for info_type in self.info_fetched_cache[person_id]:
                     person_name = self.info_fetched_cache[person_id][info_type]["person_name"]
                     if not self.info_fetched_cache[person_id][info_type]["unknow"]:
@@ -627,12 +627,12 @@ class RelationshipProcessor(BaseProcessor):
                         person_infos_str += f"[{info_type}]：{info_content}；"
                     else:
                         unknown_info_types.append(info_type)
-                
+
                 # 如果有unknow的信息类型，合并输出
                 if unknown_info_types:
                     unknown_types_str = "、".join(unknown_info_types)
                     person_infos_str += f"你不了解{person_name}有关[{unknown_types_str}]的信息，不要胡乱回答，你可以直接说你不知道，或者你忘记了；"
-                
+
                 if person_infos_str:
                     persons_infos_str += f"你对 {person_name} 的了解：{person_infos_str}\n"
 
