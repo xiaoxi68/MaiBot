@@ -26,6 +26,7 @@ from src.chat.utils.chat_message_builder import (
 )
 import os
 import pickle
+import random
 
 
 # 消息段清理配置
@@ -36,7 +37,53 @@ SEGMENT_CLEANUP_CONFIG = {
     "cleanup_interval_hours": 1,  # 清理间隔（小时）
 }
 
+# 用于随机生成prompt示例的资源池
+USER_EXAMPLE_KEYS = ["用户A", "小明", "Alice", "陈皮", "老王", "Bob", "张三", "李四"]
+USER_EXAMPLE_VALUES = [
+    "ta的昵称", "ta对你的态度", "你对ta的印象", "ta最近心情如何", 
+    "你们的关系", "ta的身份", "ta的兴趣爱好", "ta和你的共同点", "ta的习惯","你们最近做的事","你对ta的语气","你们的互动方式","给你的第一印象","你们最近聊过什么"
+]
+BOT_EXAMPLE_VALUES = ["身份", "性格", "你的原则", "你的知识", "你的目标", "你的爱好", "你最近在做什么","头像","年龄","性别","职业","兴趣爱好","习惯","目标","原则","知识","爱好"]
+
+
 logger = get_logger("processor")
+
+
+def _generate_random_prompt_example() -> str:
+    """动态生成一个随机的、符合规则的JSON示例字符串"""
+    
+    bot_nickname = global_config.bot.nickname
+    bot_aliases = list(global_config.bot.alias_names)
+    
+    # 确定示例数量
+    num_user_examples = random.randint(1, 2)
+    num_bot_examples = random.randint(1, 2)
+
+    example_dict = {}
+
+    # 1. 生成用户提取示例
+    user_keys = random.sample(USER_EXAMPLE_KEYS, min(num_user_examples, len(USER_EXAMPLE_KEYS)))
+    user_values = random.sample(USER_EXAMPLE_VALUES, min(num_user_examples, len(USER_EXAMPLE_VALUES)))
+    for i in range(len(user_keys)):
+        example_dict[user_keys[i]] = user_values[i]
+
+    # 2. 生成bot自身示例 (使用昵称和别名避免key重复)
+    bot_name_pool = [bot_nickname] + bot_aliases
+    random.shuffle(bot_name_pool)
+    bot_values = random.sample(BOT_EXAMPLE_VALUES, min(num_bot_examples, len(BOT_EXAMPLE_VALUES)))
+    
+    for i in range(min(num_bot_examples, len(bot_name_pool), len(bot_values))):
+        example_dict[bot_name_pool[i]] = bot_values[i]
+
+    # 3. 添加固定示例
+    example_dict["person_name"] = "其他信息"
+
+    # 随机化顺序并格式化为JSON字符串
+    items = list(example_dict.items())
+    random.shuffle(items)
+    shuffled_dict = dict(items)
+    
+    return json.dumps(shuffled_dict, ensure_ascii=False, indent=4)
 
 
 def init_prompt():
@@ -57,13 +104,7 @@ def init_prompt():
 
 请以json格式输出，例如：
 
-{{
-    "用户A": "ta的昵称",
-    "用户B": "ta对你的态度",
-    "用户D": "你对ta的印象",
-    "{bot_name}": "身份",
-    "person_name": "其他信息",
-}}
+{example_json}
 
 请严格按照json输出格式，不要输出多余内容，可以同时查询多个人的信息：
 
@@ -561,12 +602,15 @@ class RelationshipProcessor(BaseProcessor):
                     f"你已经调取了[{info_fetching['person_name']}]的[{info_fetching['info_type']}]信息\n"
                 )
 
+        example_json = _generate_random_prompt_example()
+
         prompt = (await global_prompt_manager.get_prompt_async("relationship_prompt")).format(
             name_block=name_block,
             bot_name=global_config.bot.nickname,
             time_now=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
             chat_observe_info=chat_observe_info,
             info_cache_block=info_cache_block,
+            example_json=example_json,
         )
 
         try:

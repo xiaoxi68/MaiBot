@@ -6,13 +6,7 @@ import random
 import json
 import os
 import hashlib
-import traceback
 from rich.traceback import install
-from json_repair import repair_json
-from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
-from src.manager.async_task_manager import AsyncTask
-from src.llm_models.utils_model import LLMRequest
-from src.config.config import global_config
 from src.common.logger import get_logger
 from src.person_info.person_info import get_person_info_manager
 
@@ -85,7 +79,7 @@ class Individuality:
                 "nickname": self.name,
             }
             await person_info_manager.update_one_field(self.bot_person_id, "impression", impression_text, data=update_data)
-            logger.info(f"已将完整人设更新到bot的impression中")
+            logger.info("已将完整人设更新到bot的impression中")
 
         await self.express_style.extract_and_store_personality_expressions()
 

@@ -38,7 +38,8 @@ class ReplyAction(BaseAction):
     action_description = "参与聊天回复，发送文本进行表达"
 
     # 动作参数定义
-    action_parameters = {"reply_to": "你要回复的对方的发言内容，格式：（用户名:发言内容），可以为none"}
+    action_parameters = {"reply_to": "你要回复的对方的发言内容，格式：（用户名:发言内容），可以为none",
+                         "reason": "回复的原因"}
 
     # 动作使用场景
     action_require = ["你想要闲聊或者随便附和", "有人提到你", "如果你刚刚进行了回复，不要对同一个话题重复回应"]
@@ -106,8 +107,8 @@ class ReplyAction(BaseAction):
 class NoReplyAction(BaseAction):
     """不回复动作，继承时会等待新消息或超时"""
 
-    # focus_activation_type = ActionActivationType.ALWAYS
-    focus_activation_type = ActionActivationType.RANDOM
+    focus_activation_type = ActionActivationType.ALWAYS
+    # focus_activation_type = ActionActivationType.RANDOM
     normal_activation_type = ActionActivationType.NEVER
     mode_enable = ChatMode.FOCUS
     parallel_action = False
@@ -122,7 +123,7 @@ class NoReplyAction(BaseAction):
     # 连续no_reply计数器
     _consecutive_count = 0
 
-    random_activation_probability = 0.2
+    # random_activation_probability = 0.2
 
     # 分级等待时间
     _waiting_stages = [10, 60, 600]  # 第1、2、3次的等待时间
