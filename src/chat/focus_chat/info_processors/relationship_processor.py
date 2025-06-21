@@ -40,10 +40,40 @@ SEGMENT_CLEANUP_CONFIG = {
 # 用于随机生成prompt示例的资源池
 USER_EXAMPLE_KEYS = ["用户A", "小明", "Alice", "陈皮", "老王", "Bob", "张三", "李四"]
 USER_EXAMPLE_VALUES = [
-    "ta的昵称", "ta对你的态度", "你对ta的印象", "ta最近心情如何", 
-    "你们的关系", "ta的身份", "ta的兴趣爱好", "ta和你的共同点", "ta的习惯","你们最近做的事","你对ta的语气","你们的互动方式","给你的第一印象","你们最近聊过什么"
+    "ta的昵称",
+    "ta对你的态度",
+    "你对ta的印象",
+    "ta最近心情如何",
+    "你们的关系",
+    "ta的身份",
+    "ta的兴趣爱好",
+    "ta和你的共同点",
+    "ta的习惯",
+    "你们最近做的事",
+    "你对ta的语气",
+    "你们的互动方式",
+    "给你的第一印象",
+    "你们最近聊过什么",
 ]
-BOT_EXAMPLE_VALUES = ["身份", "性格", "你的原则", "你的知识", "你的目标", "你的爱好", "你最近在做什么","头像","年龄","性别","职业","兴趣爱好","习惯","目标","原则","知识","爱好"]
+BOT_EXAMPLE_VALUES = [
+    "身份",
+    "性格",
+    "你的原则",
+    "你的知识",
+    "你的目标",
+    "你的爱好",
+    "你最近在做什么",
+    "头像",
+    "年龄",
+    "性别",
+    "职业",
+    "兴趣爱好",
+    "习惯",
+    "目标",
+    "原则",
+    "知识",
+    "爱好",
+]
 
 
 logger = get_logger("processor")
@@ -51,10 +81,10 @@ logger = get_logger("processor")
 
 def _generate_random_prompt_example() -> str:
     """动态生成一个随机的、符合规则的JSON示例字符串"""
-    
+
     bot_nickname = global_config.bot.nickname
     bot_aliases = list(global_config.bot.alias_names)
-    
+
     # 确定示例数量
     num_user_examples = random.randint(1, 2)
     num_bot_examples = random.randint(1, 2)
@@ -71,7 +101,7 @@ def _generate_random_prompt_example() -> str:
     bot_name_pool = [bot_nickname] + bot_aliases
     random.shuffle(bot_name_pool)
     bot_values = random.sample(BOT_EXAMPLE_VALUES, min(num_bot_examples, len(BOT_EXAMPLE_VALUES)))
-    
+
     for i in range(min(num_bot_examples, len(bot_name_pool), len(bot_values))):
         example_dict[bot_name_pool[i]] = bot_values[i]
 
@@ -82,7 +112,7 @@ def _generate_random_prompt_example() -> str:
     items = list(example_dict.items())
     random.shuffle(items)
     shuffled_dict = dict(items)
-    
+
     return json.dumps(shuffled_dict, ensure_ascii=False, indent=4)
 
 
