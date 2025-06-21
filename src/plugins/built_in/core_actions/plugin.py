@@ -24,8 +24,6 @@ logger = get_logger("core_actions")
 WAITING_TIME_THRESHOLD = 1200  # 等待新消息时间阈值，单位秒
 
 
-
-
 class ReplyAction(BaseAction):
     """回复动作 - 参与聊天回复"""
 
@@ -105,7 +103,6 @@ class ReplyAction(BaseAction):
             return False, f"回复失败: {str(e)}"
 
 
-
 class NoReplyAction(BaseAction):
     """不回复动作，继承时会等待新消息或超时"""
 
@@ -124,9 +121,9 @@ class NoReplyAction(BaseAction):
 
     # 连续no_reply计数器
     _consecutive_count = 0
-    
+
     random_activation_probability = 0.2
-    
+
     # 分级等待时间
     _waiting_stages = [10, 60, 600]  # 第1、2、3次的等待时间
 

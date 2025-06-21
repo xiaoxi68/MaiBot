@@ -14,7 +14,6 @@ from src.chat.focus_chat.info.relation_info import RelationInfo
 from src.chat.focus_chat.info.expression_selection_info import ExpressionSelectionInfo
 from src.common.logger import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
-from src.individuality.individuality import get_individuality
 from src.chat.focus_chat.planners.action_manager import ActionManager
 from json_repair import repair_json
 from src.chat.focus_chat.planners.base_planner import BasePlanner
@@ -26,30 +25,30 @@ install(extra_lines=3)
 
 
 def init_prompt():
-#     Prompt(
-#         """
-# {time_block}
-# {indentify_block}你现在正在参与以下的聊天，以下是具体的聊天内容：
+    #     Prompt(
+    #         """
+    # {time_block}
+    # {indentify_block}你现在正在参与以下的聊天，以下是具体的聊天内容：
 
-# {chat_content_block}
+    # {chat_content_block}
 
-# {self_info_block}
-# {relation_info_block}
+    # {self_info_block}
+    # {relation_info_block}
 
-# {cycle_info_block}
+    # {cycle_info_block}
 
-# {moderation_prompt}
-# 注意，除了下面动作选项之外，你在群聊里不能做其他任何事情，这是你能力的边界，现在请你选择合适的action:
+    # {moderation_prompt}
+    # 注意，除了下面动作选项之外，你在群聊里不能做其他任何事情，这是你能力的边界，现在请你选择合适的action:
 
-# {action_options_text}
+    # {action_options_text}
 
-# 请以动作的输出要求，以严格的 JSON 格式输出，且仅包含 JSON 内容。
-# 请输出你提取的JSON，不要有任何其他文字或解释：
+    # 请以动作的输出要求，以严格的 JSON 格式输出，且仅包含 JSON 内容。
+    # 请输出你提取的JSON，不要有任何其他文字或解释：
 
-# """,
-#         "simple_planner_prompt",
-#     )
-    
+    # """,
+    #         "simple_planner_prompt",
+    #     )
+
     Prompt(
         """
 {time_block}

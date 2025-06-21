@@ -45,8 +45,6 @@ def init_prompt():
     Prompt(extract_keywords_prompt, "extract_keywords_prompt")
 
 
-
-
 class Individuality:
     """个体特征管理类"""
 
@@ -345,8 +343,6 @@ class Individuality:
             fetch_info_data = self._load_fetch_info_from_file()
             logger.info(f"加载已有数据，现有关键词数量: {len(fetch_info_data)}")
 
-
-
             # 构建完整描述（personality + identity）
             personality_sides_str = ""
             for personality_side in personality_sides:
@@ -362,8 +358,7 @@ class Individuality:
 
             # 提取关键词
             extract_prompt = (await global_prompt_manager.get_prompt_async("extract_keywords_prompt")).format(
-                personality_sides=personality_sides_str,
-                bot_name=self.name
+                personality_sides=personality_sides_str, bot_name=self.name
             )
 
             llm_model = LLMRequest(
@@ -378,18 +373,16 @@ class Individuality:
                 logger.info("未提取到有效关键词")
                 return
 
-
-            
             # 使用json_repair修复并解析JSON
             keyword_dict = json.loads(repair_json(keywords_result))
             logger.info(f"成功解析JSON格式的关键词: {keyword_dict}")
 
             # 从字典中提取关键词列表，跳过"keywords"键
             keyword_set = []
-            for key, value in keyword_dict.items():
+            for key, _value in keyword_dict.items():
                 if key.lower() != "keywords" and key.strip():
                     keyword_set.append(key.strip())
-            
+
             logger.info(f"最终提取的关键词列表: {keyword_set}")
             logger.info(f"共提取到 {len(keyword_set)} 个关键词")
 
@@ -412,7 +405,11 @@ class Individuality:
 
                     # 从JSON结果中获取关键词的信息
                     existing_info_from_json = keyword_dict.get(keyword, "")
-                    if existing_info_from_json and existing_info_from_json.strip() and existing_info_from_json != keyword:
+                    if (
+                        existing_info_from_json
+                        and existing_info_from_json.strip()
+                        and existing_info_from_json != keyword
+                    ):
                         # 如果JSON中有有效信息且不只是重复关键词本身，直接使用
                         logger.info(f"从JSON结果中获取到关键词 '{keyword}' 的信息: '{existing_info_from_json}'")
                         if existing_info_from_json not in fetch_info_data[keyword]:
