@@ -83,40 +83,45 @@ class ExpressionLearner:
 
         # 获取当前chat_id的类型
         chat_stream = get_chat_manager().get_stream(chat_id)
-        platform = chat_stream.platform
-        if chat_stream and chat_stream.group_info:
-            current_chat_type = "group"
-            typed_chat_id = f"{platform}:{chat_stream.group_info.group_id}:{current_chat_type}"
+        if chat_stream is None:
+            # 如果聊天流不在内存中，跳过互通组查找，直接使用当前chat_id
+            logger.warning(f"聊天流 {chat_id} 不在内存中，跳过互通组查找")
+            chat_ids_to_load = [chat_id]
         else:
-            current_chat_type = "private"
-            typed_chat_id = f"{platform}:{chat_stream.user_info.user_id}:{current_chat_type}"
+            platform = chat_stream.platform
+            if chat_stream.group_info:
+                current_chat_type = "group"
+                typed_chat_id = f"{platform}:{chat_stream.group_info.group_id}:{current_chat_type}"
+            else:
+                current_chat_type = "private"
+                typed_chat_id = f"{platform}:{chat_stream.user_info.user_id}:{current_chat_type}"
 
-        logger.info(f"正在为 {typed_chat_id} 查找互通组...")
+            logger.info(f"正在为 {typed_chat_id} 查找互通组...")
 
-        found_group = None
-        for group in expression_groups:
-            # logger.info(f"正在检查互通组: {group}")
-            # logger.info(f"当前chat_id: {typed_chat_id}")
-            if typed_chat_id in group:
-                found_group = group
-                # logger.info(f"找到互通组: {group}")
-                break
+            found_group = None
+            for group in expression_groups:
+                # logger.info(f"正在检查互通组: {group}")
+                # logger.info(f"当前chat_id: {typed_chat_id}")
+                if typed_chat_id in group:
+                    found_group = group
+                    # logger.info(f"找到互通组: {group}")
+                    break
 
-        if not found_group:
-            logger.info(f"未找到互通组，仅加载 {chat_id} 的表达方式")
+            if not found_group:
+                logger.info(f"未找到互通组，仅加载 {chat_id} 的表达方式")
 
-        if found_group:
-            # 从带类型的id中解析出原始id
-            parsed_ids = []
-            for item in found_group:
-                try:
-                    platform, id, type = item.split(":")
-                    chat_id = get_chat_manager().get_stream_id(platform, id, type == "group")
-                    parsed_ids.append(chat_id)
-                except Exception:
-                    logger.warning(f"无法解析互通组中的ID: {item}")
-            chat_ids_to_load = parsed_ids
-            logger.info(f"将要加载以下id的表达方式: {chat_ids_to_load}")
+            if found_group:
+                # 从带类型的id中解析出原始id
+                parsed_ids = []
+                for item in found_group:
+                    try:
+                        platform, id, type = item.split(":")
+                        chat_id = get_chat_manager().get_stream_id(platform, id, type == "group")
+                        parsed_ids.append(chat_id)
+                    except Exception:
+                        logger.warning(f"无法解析互通组中的ID: {item}")
+                chat_ids_to_load = parsed_ids
+                logger.info(f"将要加载以下id的表达方式: {chat_ids_to_load}")
 
         learnt_style_expressions = []
         learnt_grammar_expressions = []
@@ -266,7 +271,10 @@ class ExpressionLearner:
         learnt_expressions, chat_id = res
 
         chat_stream = get_chat_manager().get_stream(chat_id)
-        if chat_stream.group_info:
+        if chat_stream is None:
+            # 如果聊天流不在内存中，使用chat_id作为默认名称
+            group_name = f"聊天流 {chat_id}"
+        elif chat_stream.group_info:
             group_name = chat_stream.group_info.group_name
         else:
             group_name = f"{chat_stream.user_info.user_nickname}的私聊"
