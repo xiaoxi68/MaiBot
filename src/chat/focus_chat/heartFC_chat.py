@@ -566,15 +566,11 @@ class HeartFChatting:
 
                 # 创建三个并行任务，为LLM调用添加超时保护
                 action_modify_task = asyncio.create_task(
-                    asyncio.wait_for(
-                        modify_actions_task(),
-                        timeout=ACTION_MODIFICATION_TIMEOUT
-                    )
+                    asyncio.wait_for(modify_actions_task(), timeout=ACTION_MODIFICATION_TIMEOUT)
                 )
                 memory_task = asyncio.create_task(
                     asyncio.wait_for(
-                        self.memory_activator.activate_memory(self.observations),
-                        timeout=MEMORY_ACTIVATION_TIMEOUT
+                        self.memory_activator.activate_memory(self.observations), timeout=MEMORY_ACTIVATION_TIMEOUT
                     )
                 )
                 processor_task = asyncio.create_task(self._process_processors(self.observations))
@@ -584,27 +580,26 @@ class HeartFChatting:
                 running_memorys = []
                 all_plan_info = []
                 processor_time_costs = {}
-                
+
                 try:
                     action_modify_result, running_memorys, (all_plan_info, processor_time_costs) = await asyncio.gather(
-                        action_modify_task, memory_task, processor_task,
-                        return_exceptions=True
+                        action_modify_task, memory_task, processor_task, return_exceptions=True
                     )
-                    
+
                     # 检查各个任务的结果
                     if isinstance(action_modify_result, Exception):
                         if isinstance(action_modify_result, asyncio.TimeoutError):
                             logger.error(f"{self.log_prefix} 动作修改任务超时")
                         else:
                             logger.error(f"{self.log_prefix} 动作修改任务失败: {action_modify_result}")
-                    
+
                     if isinstance(running_memorys, Exception):
                         if isinstance(running_memorys, asyncio.TimeoutError):
                             logger.error(f"{self.log_prefix} 记忆激活任务超时")
                         else:
                             logger.error(f"{self.log_prefix} 记忆激活任务失败: {running_memorys}")
                         running_memorys = []
-                    
+
                     processor_result = (all_plan_info, processor_time_costs)
                     if isinstance(processor_result, Exception):
                         if isinstance(processor_result, asyncio.TimeoutError):
@@ -615,7 +610,7 @@ class HeartFChatting:
                         processor_time_costs = {}
                     else:
                         all_plan_info, processor_time_costs = processor_result
-                        
+
                 except Exception as e:
                     logger.error(f"{self.log_prefix} 并行任务gather失败: {e}")
                     # 设置默认值以继续执行
@@ -628,7 +623,9 @@ class HeartFChatting:
                 "processor_time_costs": processor_time_costs,
             }
 
-            logger.debug(f"{self.log_prefix} 并行阶段完成，准备进入规划器，plan_info数量: {len(all_plan_info)}, running_memorys数量: {len(running_memorys)}")
+            logger.debug(
+                f"{self.log_prefix} 并行阶段完成，准备进入规划器，plan_info数量: {len(all_plan_info)}, running_memorys数量: {len(running_memorys)}"
+            )
 
             with Timer("规划器", cycle_timers):
                 plan_result = await self.action_planner.plan(all_plan_info, running_memorys, loop_start_time)

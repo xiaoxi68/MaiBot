@@ -163,7 +163,6 @@ class ExpressionSelectorProcessor(BaseProcessor):
             cache_size = len(selected_expressions) if selected_expressions else 0
             mode_desc = f"LLM模式（已缓存{cache_size}个）"
 
-
             if selected_expressions:
                 # 缓存选择的表达方式
                 self.cached_expressions = selected_expressions

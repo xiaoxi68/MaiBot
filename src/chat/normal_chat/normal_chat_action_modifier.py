@@ -5,8 +5,6 @@ from src.chat.utils.chat_message_builder import build_readable_messages, get_raw
 from src.config.config import global_config
 import random
 import time
-from src.chat.message_receive.message_sender import message_manager
-from src.chat.message_receive.message import MessageThinking
 
 logger = get_logger("normal_chat_action_modifier")
 
@@ -279,8 +277,6 @@ class NormalChatActionModifier:
         else:
             logger.debug(f"{self.log_prefix}动作 {action_name} 未匹配到任何关键词: {activation_keywords}")
             return False
-
-
 
     def get_available_actions_count(self) -> int:
         """获取当前可用动作数量（排除默认的no_action）"""

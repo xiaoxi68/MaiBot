@@ -30,7 +30,6 @@ from src.chat.utils.chat_message_builder import (
     get_raw_msg_before_timestamp_with_chat,
     num_new_messages_since,
 )
-from src.person_info.relationship_manager import get_relationship_manager
 
 willing_manager = get_willing_manager()
 
@@ -779,17 +778,11 @@ class NormalChat:
                 logger.debug(f"[{self.stream_name}] 额外动作处理完成: {self.action_type}")
 
             if not response_set or (
-                self.enable_planner
-                and self.action_type not in ["no_action"]
-                and not self.is_parallel_action
+                self.enable_planner and self.action_type not in ["no_action"] and not self.is_parallel_action
             ):
                 if not response_set:
                     logger.info(f"[{self.stream_name}] 模型未生成回复内容")
-                elif (
-                    self.enable_planner
-                    and self.action_type not in ["no_action"]
-                    and not self.is_parallel_action
-                ):
+                elif self.enable_planner and self.action_type not in ["no_action"] and not self.is_parallel_action:
                     logger.info(f"[{self.stream_name}] 模型选择其他动作（非并行动作）")
                 # 如果模型未生成回复，移除思考消息
                 container = await message_manager.get_container(self.stream_id)  # 使用 self.stream_id
@@ -835,8 +828,6 @@ class NormalChat:
                 # 保持最近回复历史在限定数量内
                 if len(self.recent_replies) > self.max_replies_history:
                     self.recent_replies = self.recent_replies[-self.max_replies_history :]
-
-
 
             # 回复后处理
             await willing_manager.after_generate_reply_handle(message.message_info.message_id)

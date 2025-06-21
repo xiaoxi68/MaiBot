@@ -193,8 +193,6 @@ class ExpressionConfig(ConfigBase):
     enable_expression_learning: bool = True
     """是否启用表达学习"""
 
-
-
     expression_groups: list[list[str]] = field(default_factory=list)
     """
     表达学习互通组

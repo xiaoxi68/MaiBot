@@ -706,7 +706,7 @@ class PersonImpressionpProcessor(BaseProcessor):
         if self.info_fetched_cache:
             persons_with_known_info = []  # 有已知信息的人员
             persons_with_unknown_info = []  # 有未知信息的人员
-            
+
             for person_id in self.info_fetched_cache:
                 person_known_infos = []
                 person_unknown_infos = []
@@ -739,9 +739,11 @@ class PersonImpressionpProcessor(BaseProcessor):
                 for person_name, unknown_types in persons_with_unknown_info:
                     unknown_types_str = "、".join(unknown_types)
                     unknown_persons_details.append(f"{person_name}的[{unknown_types_str}]")
-                
+
                 if len(unknown_persons_details) == 1:
-                    persons_infos_str += f"你不了解{unknown_persons_details[0]}信息，不要胡乱回答，可以直接说不知道或忘记了；\n"
+                    persons_infos_str += (
+                        f"你不了解{unknown_persons_details[0]}信息，不要胡乱回答，可以直接说不知道或忘记了；\n"
+                    )
                 else:
                     unknown_all_str = "、".join(unknown_persons_details)
                     persons_infos_str += f"你不了解{unknown_all_str}等信息，不要胡乱回答，可以直接说不知道或忘记了；\n"

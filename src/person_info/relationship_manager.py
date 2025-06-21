@@ -492,9 +492,11 @@ class RelationshipManager:
 }}
 """
                 try:
-                    relation_value_response, _ = await self.relationship_llm.generate_response_async(prompt=relation_value_prompt)
+                    relation_value_response, _ = await self.relationship_llm.generate_response_async(
+                        prompt=relation_value_prompt
+                    )
                     relation_value_json = json.loads(repair_json(relation_value_response))
-                    
+
                     # 从LLM获取新生成的值
                     new_familiarity_value = int(relation_value_json.get("familiarity_value", 0))
                     new_liking_value = int(relation_value_json.get("liking_value", 50))
@@ -502,14 +504,16 @@ class RelationshipManager:
                     # 获取数据库中的旧值，如果不存在则使用默认值
                     old_familiarity_value = await person_info_manager.get_value(person_id, "familiarity_value") or 0
                     old_liking_value = await person_info_manager.get_value(person_id, "liking_value") or 50
-                    
+
                     # 计算平均值
                     final_familiarity_value = (old_familiarity_value + new_familiarity_value) // 2
                     final_liking_value = (old_liking_value + new_liking_value) // 2
 
                     await person_info_manager.update_one_field(person_id, "familiarity_value", final_familiarity_value)
                     await person_info_manager.update_one_field(person_id, "liking_value", final_liking_value)
-                    logger.info(f"更新了与 {person_name} 的关系值: 熟悉度={final_familiarity_value}, 好感度={final_liking_value}")
+                    logger.info(
+                        f"更新了与 {person_name} 的关系值: 熟悉度={final_familiarity_value}, 好感度={final_liking_value}"
+                    )
                 except (json.JSONDecodeError, ValueError, TypeError) as e:
                     logger.error(f"解析relation_value JSON失败或值无效: {e}, 响应: {relation_value_response}")
 
