@@ -47,7 +47,7 @@ person_info_default = {
     "info_list": None,
     "points": None,
     "forgotten_points": None,
-    "config_hash": None,
+    "relation_value": None,
 }
 
 

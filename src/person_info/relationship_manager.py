@@ -465,6 +465,54 @@ class RelationshipManager:
 
                 await person_info_manager.update_one_field(person_id, "short_impression", compressed_short_summary)
 
+                relation_value_prompt = f"""
+你的名字是{global_config.bot.nickname}。
+你对{person_name}的了解如下：
+{compressed_summary}
+
+请根据以上信息，评估你和{person_name}的关系，给出两个维度的值：熟悉度和好感度。
+1.  **熟悉度 (familiarity_value)**: 0-100的整数，表示你对ta的熟悉程度。
+    - 0: 完全陌生
+    - 25: 有点眼熟
+    - 50: 比较熟悉
+    - 75: 很熟悉
+    - 100: 非常熟悉，了如指掌
+
+2.  **好感度 (liking_value)**: 0-100的整数，表示你对ta的喜好程度。
+    - 0: 非常厌恶
+    - 25: 有点反感
+    - 50: 中立/无感
+    - 75: 有点喜欢
+    - 100: 非常喜欢/挚友
+
+请严格按照json格式输出，不要有其他多余内容：
+{{
+    "familiarity_value": <0-100之间的整数>,
+    "liking_value": <0-100之间的整数>
+}}
+"""
+                try:
+                    relation_value_response, _ = await self.relationship_llm.generate_response_async(prompt=relation_value_prompt)
+                    relation_value_json = json.loads(repair_json(relation_value_response))
+                    
+                    # 从LLM获取新生成的值
+                    new_familiarity_value = int(relation_value_json.get("familiarity_value", 0))
+                    new_liking_value = int(relation_value_json.get("liking_value", 50))
+
+                    # 获取数据库中的旧值，如果不存在则使用默认值
+                    old_familiarity_value = await person_info_manager.get_value(person_id, "familiarity_value") or 0
+                    old_liking_value = await person_info_manager.get_value(person_id, "liking_value") or 50
+                    
+                    # 计算平均值
+                    final_familiarity_value = (old_familiarity_value + new_familiarity_value) // 2
+                    final_liking_value = (old_liking_value + new_liking_value) // 2
+
+                    await person_info_manager.update_one_field(person_id, "familiarity_value", final_familiarity_value)
+                    await person_info_manager.update_one_field(person_id, "liking_value", final_liking_value)
+                    logger.info(f"更新了与 {person_name} 的关系值: 熟悉度={final_familiarity_value}, 好感度={final_liking_value}")
+                except (json.JSONDecodeError, ValueError, TypeError) as e:
+                    logger.error(f"解析relation_value JSON失败或值无效: {e}, 响应: {relation_value_response}")
+
                 forgotten_points = []
                 info_list = []
                 await person_info_manager.update_one_field(

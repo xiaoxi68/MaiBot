@@ -250,6 +250,8 @@ class PersonInfo(BaseModel):
     know_times = FloatField(null=True)  # 认识时间 (时间戳)
     know_since = FloatField(null=True)  # 首次印象总结时间
     last_know = FloatField(null=True)  # 最后一次印象总结时间
+    familiarity_value = IntegerField(null=True, default=0)  # 熟悉度，0-100，从完全陌生到非常熟悉
+    liking_value = IntegerField(null=True, default=50)  # 好感度，0-100，从非常厌恶到十分喜欢
 
     class Meta:
         # database = db # 继承自 BaseModel
