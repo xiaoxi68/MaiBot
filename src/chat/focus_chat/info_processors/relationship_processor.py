@@ -223,7 +223,7 @@ class RelationshipProcessor(BaseProcessor):
             last_segment["message_count"] = self._count_messages_in_timerange(
                 last_segment["start_time"], last_segment["end_time"]
             )
-            logger.info(f"{self.log_prefix} 延伸用户 {person_id} 的消息段: {last_segment}")
+            logger.debug(f"{self.log_prefix} 延伸用户 {person_id} 的消息段: {last_segment}")
         else:
             # 超过10条消息，结束当前消息段并创建新的
             # 结束当前消息段：延伸到原消息段最后一条消息后5条消息的时间
@@ -617,13 +617,22 @@ class RelationshipProcessor(BaseProcessor):
         if self.info_fetched_cache:
             for person_id in self.info_fetched_cache:
                 person_infos_str = ""
+                unknown_info_types = []  # 收集所有unknow的信息类型
+                person_name = ""
+                
                 for info_type in self.info_fetched_cache[person_id]:
                     person_name = self.info_fetched_cache[person_id][info_type]["person_name"]
                     if not self.info_fetched_cache[person_id][info_type]["unknow"]:
                         info_content = self.info_fetched_cache[person_id][info_type]["info"]
                         person_infos_str += f"[{info_type}]：{info_content}；"
                     else:
-                        person_infos_str += f"你不了解{person_name}有关[{info_type}]的信息，不要胡乱回答，你可以直接说你不知道，或者你忘记了；"
+                        unknown_info_types.append(info_type)
+                
+                # 如果有unknow的信息类型，合并输出
+                if unknown_info_types:
+                    unknown_types_str = "、".join(unknown_info_types)
+                    person_infos_str += f"你不了解{person_name}有关[{unknown_types_str}]的信息，不要胡乱回答，你可以直接说你不知道，或者你忘记了；"
+                
                 if person_infos_str:
                     persons_infos_str += f"你对 {person_name} 的了解：{person_infos_str}\n"
 
@@ -718,7 +727,7 @@ class RelationshipProcessor(BaseProcessor):
         for person_id, info_type, start_time in instant_tasks:
             # 检查缓存中是否已存在且未过期的信息
             if person_id in self.info_fetched_cache and info_type in self.info_fetched_cache[person_id]:
-                logger.info(f"{self.log_prefix} 用户 {person_id} 的 {info_type} 信息已存在且未过期，跳过调取。")
+                logger.debug(f"{self.log_prefix} 用户 {person_id} 的 {info_type} 信息已存在且未过期，跳过调取。")
                 continue
 
             task = asyncio.create_task(self._fetch_single_info_instant(person_id, info_type, start_time))

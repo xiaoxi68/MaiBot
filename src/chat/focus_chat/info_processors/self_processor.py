@@ -27,10 +27,7 @@ def init_prompt():
 {name_block}
 请你根据以上聊天记录，思考聊天记录中是否有人提到你自己相关的信息，或者有人询问你的相关信息。
 
-数据库中包含以下关键词的信息：
-{available_keywords}
-
-请从上述关键词中选择你需要查询的关键词来回答聊天中的问题。如果需要多个关键词，请用逗号隔开。
+请选择你需要查询的关键词来回答聊天中的问题。如果需要多个关键词，请用逗号隔开。
 如果聊天中没有涉及任何关于你的问题，请输出none。
 
 现在请输出你要查询的关键词，注意只输出关键词就好，不要输出其他内容：
@@ -134,7 +131,7 @@ class SelfProcessor(BaseProcessor):
         try:
             keyword, _ = await self.llm_model.generate_response_async(prompt=prompt)
 
-            print(f"prompt: {prompt}\nkeyword: {keyword}")
+            # print(f"prompt: {prompt}\nkeyword: {keyword}")
 
             if not keyword:
                 logger.warning(f"{self.log_prefix} LLM返回空结果，自我识别失败。")

@@ -262,7 +262,7 @@ class RelationshipManager:
         for original_name, mapped_name in name_mapping.items():
             points = points.replace(mapped_name, original_name)
 
-        logger.info(f"prompt: {prompt}")
+        # logger.info(f"prompt: {prompt}")
         # logger.info(f"points: {points}")
 
         if not points:
@@ -287,7 +287,7 @@ class RelationshipManager:
                 logger_str = f"了解了有关{person_name}的新印象：\n"
                 for point in points_list:
                     logger_str += f"{point[0]},重要性：{point[1]}\n\n"
-                logger.info("logger_str")
+                logger.info(logger_str)
 
         except json.JSONDecodeError:
             logger.error(f"解析points JSON失败: {points}")
@@ -486,7 +486,7 @@ class RelationshipManager:
             await person_info_manager.update_one_field(person_id, "know_since", timestamp)
         await person_info_manager.update_one_field(person_id, "last_know", timestamp)
 
-        logger.info(f"印象更新完成 for {person_name}")
+        logger.info(f"{person_name} 的印象更新完成")
 
     def build_focus_readable_messages(self, messages: list, target_person_id: str = None) -> str:
         """格式化消息，处理所有消息内容"""

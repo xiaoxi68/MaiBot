@@ -175,7 +175,7 @@ class ChattingObservation(Observation):
             limit_mode="latest",
         )
 
-        print(f"new_messages_list: {new_messages_list}")
+        # print(f"new_messages_list: {new_messages_list}")
 
         last_obs_time_mark = self.last_observe_time
         if new_messages_list:

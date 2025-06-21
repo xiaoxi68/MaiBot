@@ -261,7 +261,7 @@ class ExpressionSelectorProcessor(BaseProcessor):
         try:
             content, _ = await self.llm_model.generate_response_async(prompt=prompt)
 
-            logger.info(f"{self.log_prefix} LLM返回结果: {content}")
+            # logger.info(f"{self.log_prefix} LLM返回结果: {content}")
 
             if not content:
                 logger.warning(f"{self.log_prefix} LLM返回空结果")
