@@ -143,7 +143,7 @@ class NoReplyAction(BaseAction):
             # 增加连续计数
             NoReplyAction._consecutive_count += 1
             count = NoReplyAction._consecutive_count
-            
+
             reason = self.action_data.get("reason", "")
 
             # 计算本次等待时间
@@ -156,7 +156,9 @@ class NoReplyAction(BaseAction):
                 # 第4次及以后使用WAITING_TIME_THRESHOLD
                 timeout = self.waiting_timeout
 
-            logger.info(f"{self.log_prefix} 选择不回复(第{count}次连续)，等待新消息中... (超时: {timeout}秒)，原因: {reason}")
+            logger.info(
+                f"{self.log_prefix} 选择不回复(第{count}次连续)，等待新消息中... (超时: {timeout}秒)，原因: {reason}"
+            )
 
             # 等待新消息或达到时间上限
             result = await self.wait_for_new_message(timeout)
