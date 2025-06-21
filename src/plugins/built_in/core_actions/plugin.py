@@ -38,8 +38,10 @@ class ReplyAction(BaseAction):
     action_description = "参与聊天回复，发送文本进行表达"
 
     # 动作参数定义
-    action_parameters = {"reply_to": "你要回复的对方的发言内容，格式：（用户名:发言内容），可以为none",
-                         "reason": "回复的原因"}
+    action_parameters = {
+        "reply_to": "你要回复的对方的发言内容，格式：（用户名:发言内容），可以为none",
+        "reason": "回复的原因",
+    }
 
     # 动作使用场景
     action_require = ["你想要闲聊或者随便附和", "有人提到你", "如果你刚刚进行了回复，不要对同一个话题重复回应"]
