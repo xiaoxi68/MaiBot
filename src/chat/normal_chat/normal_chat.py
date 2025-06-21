@@ -24,6 +24,7 @@ from src.chat.normal_chat.normal_chat_action_modifier import NormalChatActionMod
 from src.chat.normal_chat.normal_chat_expressor import NormalChatExpressor
 from src.chat.focus_chat.replyer.default_generator import DefaultReplyer
 from src.person_info.person_info import PersonInfoManager
+from src.person_info.relationship_manager import get_relationship_manager
 from src.chat.utils.chat_message_builder import (
     get_raw_msg_by_timestamp_with_chat,
     get_raw_msg_by_timestamp_with_chat_inclusive,
@@ -1115,32 +1116,65 @@ class NormalChat:
             logger.info(f"[{self.stream_name}] 用户 {person_id} 关系构建已启动，缓存已清理")
 
     async def _build_relation_for_person_segments(self, person_id: str, segments: List[Dict[str, any]]):
-        """为特定用户的消息段构建关系"""
+        """基于消息段更新用户印象，统一使用focus chat的构建方式"""
         if not segments:
             return
 
+        logger.info(f"[{self.stream_name}] 开始为 {person_id} 基于 {len(segments)} 个消息段更新印象")
         try:
-            chat_stream = get_chat_manager().get_stream(self.stream_id)
-            relationship_manager = chat_stream.relationship_manager
+            processed_messages = []
 
-            for segment in segments:
+            for i, segment in enumerate(segments):
                 start_time = segment["start_time"]
                 end_time = segment["end_time"]
-                message_count = segment["message_count"]
+                segment["message_count"]
+                start_date = time.strftime("%Y-%m-%d %H:%M", time.localtime(start_time))
 
-                logger.debug(
-                    f"[{self.stream_name}] 为用户 {person_id} 构建关系 "
-                    f"消息段时间: {time.strftime('%H:%M:%S', time.localtime(start_time))} - "
-                    f"{time.strftime('%H:%M:%S', time.localtime(end_time))} "
-                    f"消息数量: {message_count}"
+                # 获取该段的消息（包含边界）
+                segment_messages = get_raw_msg_by_timestamp_with_chat_inclusive(
+                    self.stream_id, start_time, end_time
+                )
+                logger.info(
+                    f"[{self.stream_name}] 消息段 {i + 1}: {start_date} - {time.strftime('%Y-%m-%d %H:%M', time.localtime(end_time))}, 消息数: {len(segment_messages)}"
                 )
 
-                await relationship_manager.direct_build_relation(
-                    person_id, start_time, end_time, message_count, time.time()
+                if segment_messages:
+                    # 如果不是第一个消息段，在消息列表前添加间隔标识
+                    if i > 0:
+                        # 创建一个特殊的间隔消息
+                        gap_message = {
+                            "time": start_time - 0.1,  # 稍微早于段开始时间
+                            "user_id": "system",
+                            "user_platform": "system",
+                            "user_nickname": "系统",
+                            "user_cardname": "",
+                            "display_message": f"...（中间省略一些消息）{start_date} 之后的消息如下...",
+                            "is_action_record": True,
+                            "chat_info_platform": segment_messages[0].get("chat_info_platform", ""),
+                            "chat_id": self.stream_id,
+                        }
+                        processed_messages.append(gap_message)
+
+                    # 添加该段的所有消息
+                    processed_messages.extend(segment_messages)
+
+            if processed_messages:
+                # 按时间排序所有消息（包括间隔标识）
+                processed_messages.sort(key=lambda x: x["time"])
+
+                logger.info(f"[{self.stream_name}] 为 {person_id} 获取到总共 {len(processed_messages)} 条消息（包含间隔标识）用于印象更新")
+                relationship_manager = get_relationship_manager()
+
+                # 调用统一的更新方法
+                await relationship_manager.update_person_impression(
+                    person_id=person_id, timestamp=time.time(), bot_engaged_messages=processed_messages
                 )
+            else:
+                logger.info(f"[{self.stream_name}] 没有找到 {person_id} 的消息段对应的消息，不更新印象")
 
         except Exception as e:
-            logger.error(f"[{self.stream_name}] 构建关系失败: {e}")
+            logger.error(f"[{self.stream_name}] 为 {person_id} 更新印象时发生错误: {e}")
+            logger.error(traceback.format_exc())
 
     async def _check_should_switch_to_focus(self) -> bool:
         """

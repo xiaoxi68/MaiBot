@@ -710,35 +710,5 @@ def weighted_sample_no_replacement(items, weights, k) -> list:
     return selected
 
 
-def find_similar_expressions(input_text: str, expressions: List[Dict], top_k: int = 3) -> List[Dict]:
-    """使用TF-IDF和余弦相似度找出与输入文本最相似的top_k个表达方式"""
-    if not expressions:
-        return []
-
-    # 准备文本数据
-    texts = [expr["situation"] for expr in expressions]
-    texts.append(input_text)  # 添加输入文本
-
-    # 使用TF-IDF向量化
-    vectorizer = TfidfVectorizer()
-    tfidf_matrix = vectorizer.fit_transform(texts)
-
-    # 计算余弦相似度
-    similarity_matrix = cosine_similarity(tfidf_matrix)
-
-    # 获取输入文本的相似度分数（最后一行）
-    scores = similarity_matrix[-1][:-1]  # 排除与自身的相似度
-
-    # 获取top_k的索引
-    top_indices = np.argsort(scores)[::-1][:top_k]
-
-    # 获取相似表达
-    similar_exprs = []
-    for idx in top_indices:
-        if scores[idx] > 0:  # 只保留有相似度的
-            similar_exprs.append(expressions[idx])
-
-    return similar_exprs
-
 
 init_prompt()
