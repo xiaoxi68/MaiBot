@@ -7,6 +7,7 @@ import toml
 from datetime import datetime
 from collections import defaultdict
 import os
+import time
 
 
 class LogIndex:
@@ -334,40 +335,33 @@ class VirtualLogDisplay:
 
     def display_batch(self, start_index, end_index):
         """批量显示日志条目"""
-        batch_text = []
-        batch_tags = []
-
         for i in range(start_index, end_index):
             log_entry = self.log_index.get_entry_at_filtered_position(i)
             if log_entry:
-                parts, tags = self.formatter.format_log_entry(log_entry)
+                self.append_entry(log_entry, scroll=False)
 
-                # 合并部分为单行文本
-                line_text = " ".join(parts) + "\n"
-                batch_text.append(line_text)
+    def append_entry(self, log_entry, scroll=True):
+        """将单个日志条目附加到文本小部件"""
+        # 检查在添加新内容之前视图是否已滚动到底部
+        should_scroll = scroll and self.text_widget.yview()[1] > 0.99
 
-                # 记录标签信息（简化处理）
-                if tags and self.formatter.enable_level_colors:
-                    level = log_entry.get("level", "info")
-                    batch_tags.append(
-                        (
-                            "line",
-                            len("".join(batch_text)) - len(line_text),
-                            len("".join(batch_text)) - 1,
-                            f"level_{level}",
-                        )
-                    )
+        parts, tags = self.formatter.format_log_entry(log_entry)
+        line_text = " ".join(parts) + "\n"
 
-        # 一次性插入所有文本
-        if batch_text:
-            start_pos = self.text_widget.index(tk.END)
-            all_text = "".join(batch_text)
-            self.text_widget.insert(tk.END, all_text)
+        # 获取插入前的末尾位置
+        start_pos = self.text_widget.index(tk.END + "-1c")
+        self.text_widget.insert(tk.END, line_text)
 
-            # 应用标签（可选，为了性能可以考虑简化）
-            for tag_info in batch_tags:
-                tag_name = tag_info[3]
-                self.text_widget.tag_add(tag_name, f"{start_pos}+{tag_info[1]}c", f"{start_pos}+{tag_info[2]}c")
+        # 为每个部分应用正确的标签
+        current_len = 0
+        for part, tag_name in zip(parts, tags):
+            start_index = f"{start_pos}+{current_len}c"
+            end_index = f"{start_pos}+{current_len + len(part)}c"
+            self.text_widget.tag_add(tag_name, start_index, end_index)
+            current_len += len(part) + 1  # 计入空格
+
+        if should_scroll:
+            self.text_widget.see(tk.END)
 
 
 class AsyncLogLoader:
@@ -459,6 +453,9 @@ class LogViewer:
 
         # 初始化日志文件路径
         self.current_log_file = Path("logs/app.log.jsonl")
+        self.last_file_size = 0
+        self.watching_thread = None
+        self.is_watching = tk.BooleanVar(value=True)
 
         # 初始化异步加载器
         self.async_loader = AsyncLogLoader(self.on_file_loaded)
@@ -548,6 +545,9 @@ class LogViewer:
 
         ttk.Button(button_frame, text="选择文件", command=self.select_log_file).pack(side=tk.LEFT, padx=2)
         ttk.Button(button_frame, text="刷新", command=self.refresh_log_file).pack(side=tk.LEFT, padx=2)
+        ttk.Checkbutton(button_frame, text="实时更新", variable=self.is_watching, command=self.toggle_watching).pack(
+            side=tk.LEFT, padx=2
+        )
 
         # 过滤控制框架
         filter_frame = ttk.Frame(self.control_frame)
@@ -583,15 +583,21 @@ class LogViewer:
             return
 
         self.log_index = log_index
+        try:
+            self.last_file_size = os.path.getsize(self.current_log_file)
+        except OSError:
+            self.last_file_size = 0
         self.status_var.set(f"已加载 {log_index.total_entries} 条日志")
 
         # 更新模块列表
-        self.modules = set(log_index.module_index.keys())
-        module_values = ["全部"] + sorted(list(self.modules))
-        self.module_combo["values"] = module_values
+        self.update_module_list()
 
         # 应用过滤并显示
         self.filter_logs()
+
+        # 如果开启了实时更新，则开始监视
+        if self.is_watching.get():
+            self.start_watching()
 
     def on_loading_progress(self, progress, line_count):
         """加载进度回调"""
@@ -604,6 +610,8 @@ class LogViewer:
 
     def load_log_file_async(self):
         """异步加载日志文件"""
+        self.stop_watching()  # 停止任何正在运行的监视器
+
         if not self.current_log_file.exists():
             self.status_var.set("文件不存在")
             return
@@ -617,6 +625,7 @@ class LogViewer:
         self.log_index = LogIndex()
         self.modules.clear()
         self.selected_modules.clear()
+        self.module_var.set("全部")
 
         # 开始异步加载
         self.async_loader.load_file_async(str(self.current_log_file), self.on_loading_progress)
@@ -671,6 +680,126 @@ class LogViewer:
     def refresh_log_file(self):
         """刷新日志文件"""
         self.load_log_file_async()
+
+    def toggle_watching(self):
+        """切换实时更新状态"""
+        if self.is_watching.get():
+            self.start_watching()
+        else:
+            self.stop_watching()
+
+    def start_watching(self):
+        """开始监视文件变化"""
+        if self.watching_thread and self.watching_thread.is_alive():
+            return  # 已经在监视
+
+        if not self.current_log_file.exists():
+            self.is_watching.set(False)
+            messagebox.showwarning("警告", "日志文件不存在，无法开启实时更新。")
+            return
+
+        self.watching_thread = threading.Thread(target=self.watch_file_loop, daemon=True)
+        self.watching_thread.start()
+
+    def stop_watching(self):
+        """停止监视文件变化"""
+        self.is_watching.set(False)
+        # 线程通过检查 is_watching 变量来停止，这里不需要强制干预
+        self.watching_thread = None
+
+    def watch_file_loop(self):
+        """监视文件循环"""
+        while self.is_watching.get():
+            try:
+                if not self.current_log_file.exists():
+                    self.root.after(
+                        0,
+                        lambda: messagebox.showwarning("警告", "日志文件丢失，已停止实时更新。"),
+                    )
+                    self.root.after(0, self.is_watching.set, False)
+                    break
+
+                current_size = os.path.getsize(self.current_log_file)
+                if current_size > self.last_file_size:
+                    new_entries = self.read_new_logs(self.last_file_size)
+                    self.last_file_size = current_size
+                    if new_entries:
+                        self.root.after(0, self.append_new_logs, new_entries)
+                elif current_size < self.last_file_size:
+                    # 文件被截断或替换
+                    self.last_file_size = 0
+                    self.root.after(0, self.refresh_log_file)
+                    break  # 刷新会重新启动监视（如果需要），所以结束当前循环
+
+            except Exception as e:
+                print(f"监视日志文件时出错: {e}")
+                self.root.after(0, self.is_watching.set, False)
+                break
+
+            time.sleep(1)
+
+        self.watching_thread = None
+
+    def read_new_logs(self, from_position):
+        """读取新的日志条目并返回它们"""
+        new_entries = []
+        new_modules_found = False
+        with open(self.current_log_file, "r", encoding="utf-8") as f:
+            f.seek(from_position)
+            line_count = self.log_index.total_entries
+            for line in f:
+                if line.strip():
+                    try:
+                        log_entry = json.loads(line)
+                        self.log_index.add_entry(line_count, log_entry)
+                        new_entries.append(log_entry)
+
+                        logger_name = log_entry.get("logger_name", "")
+                        if logger_name and logger_name not in self.modules:
+                            self.modules.add(logger_name)
+                            new_modules_found = True
+
+                        line_count += 1
+                    except json.JSONDecodeError:
+                        continue
+        if new_modules_found:
+            self.root.after(0, self.update_module_list)
+        return new_entries
+
+    def append_new_logs(self, new_entries):
+        """将新日志附加到显示中"""
+        # 检查是否应附加或执行完全刷新（例如，如果过滤器处于活动状态）
+        selected_modules = (
+            self.selected_modules if (self.selected_modules and "全部" not in self.selected_modules) else None
+        )
+        level = self.level_var.get() if self.level_var.get() != "全部" else None
+        search_text = self.search_var.get().strip() if self.search_var.get().strip() else None
+
+        is_filtered = selected_modules or level or search_text
+
+        if is_filtered:
+            # 如果过滤器处于活动状态，我们必须执行完全刷新以应用它们
+            self.filter_logs()
+            return
+
+        # 如果没有过滤器，只需附加新日志
+        for entry in new_entries:
+            self.log_display.append_entry(entry)
+
+        # 更新状态
+        total_count = self.log_index.total_entries
+        self.status_var.set(f"显示 {total_count} 条日志")
+
+    def update_module_list(self):
+        """更新模块下拉列表"""
+        current_selection = self.module_var.get()
+        self.modules = set(self.log_index.module_index.keys())
+        module_values = ["全部"] + sorted(list(self.modules))
+        self.module_combo["values"] = module_values
+        if current_selection in module_values:
+            self.module_var.set(current_selection)
+        else:
+            self.module_var.set("全部")
 
 
 def main():

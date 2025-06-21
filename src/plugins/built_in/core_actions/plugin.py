@@ -128,7 +128,7 @@ class NoReplyAction(BaseAction):
     _waiting_stages = [10, 60, 600]  # 第1、2、3次的等待时间
 
     # 动作参数定义
-    action_parameters = {}
+    action_parameters = {"reason": "不回复的原因"}
 
     # 动作使用场景
     action_require = ["你发送了消息，目前无人回复"]
@@ -142,6 +142,8 @@ class NoReplyAction(BaseAction):
             # 增加连续计数
             NoReplyAction._consecutive_count += 1
             count = NoReplyAction._consecutive_count
+            
+            reason = self.action_data.get("reason", "")
 
             # 计算本次等待时间
             if count <= len(self._waiting_stages):
@@ -153,7 +155,7 @@ class NoReplyAction(BaseAction):
                 # 第4次及以后使用WAITING_TIME_THRESHOLD
                 timeout = self.waiting_timeout
 
-            logger.info(f"{self.log_prefix} 选择不回复(第{count}次连续)，等待新消息中... (超时: {timeout}秒)")
+            logger.info(f"{self.log_prefix} 选择不回复(第{count}次连续)，等待新消息中... (超时: {timeout}秒)，原因: {reason}")
 
             # 等待新消息或达到时间上限
             result = await self.wait_for_new_message(timeout)

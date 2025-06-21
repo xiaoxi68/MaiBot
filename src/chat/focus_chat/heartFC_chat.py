@@ -23,7 +23,6 @@ from src.chat.heart_flow.observation.actions_observation import ActionObservatio
 from src.chat.focus_chat.info_processors.tool_processor import ToolProcessor
 from src.chat.focus_chat.memory_activator import MemoryActivator
 from src.chat.focus_chat.info_processors.base_processor import BaseProcessor
-from src.chat.focus_chat.info_processors.self_processor import SelfProcessor
 from src.chat.focus_chat.info_processors.expression_selector_processor import ExpressionSelectorProcessor
 from src.chat.focus_chat.planners.planner_factory import PlannerFactory
 from src.chat.focus_chat.planners.modify_actions import ActionModifier
@@ -45,7 +44,6 @@ PROCESSOR_CLASSES = {
     "ChattingInfoProcessor": (ChattingInfoProcessor, None),
     "ToolProcessor": (ToolProcessor, "tool_use_processor"),
     "WorkingMemoryProcessor": (WorkingMemoryProcessor, "working_memory_processor"),
-    "SelfProcessor": (SelfProcessor, "self_identify_processor"),
     "RelationshipProcessor": (RelationshipProcessor, "relation_processor"),
     "ExpressionSelectorProcessor": (ExpressionSelectorProcessor, "expression_selector_processor"),
 }
@@ -184,7 +182,6 @@ class HeartFChatting:
                 if name in [
                     "ToolProcessor",
                     "WorkingMemoryProcessor",
-                    "SelfProcessor",
                     "RelationshipProcessor",
                     "ExpressionSelectorProcessor",
                 ]:

@@ -25,34 +25,10 @@ install(extra_lines=3)
 
 
 def init_prompt():
-    #     Prompt(
-    #         """
-    # {time_block}
-    # {indentify_block}你现在正在参与以下的聊天，以下是具体的聊天内容：
-
-    # {chat_content_block}
-
-    # {self_info_block}
-    # {relation_info_block}
-
-    # {cycle_info_block}
-
-    # {moderation_prompt}
-    # 注意，除了下面动作选项之外，你在群聊里不能做其他任何事情，这是你能力的边界，现在请你选择合适的action:
-
-    # {action_options_text}
-
-    # 请以动作的输出要求，以严格的 JSON 格式输出，且仅包含 JSON 内容。
-    # 请输出你提取的JSON，不要有任何其他文字或解释：
-
-    # """,
-    #         "simple_planner_prompt",
-    #     )
-
     Prompt(
         """
 {time_block}
-{indentify_block}你现在正在B站进行直播，你是一个虚拟主播，以下是直播间内容和电脑屏幕内容：
+{indentify_block}你现在正在参与以下的聊天，以下是具体的聊天内容：
 
 {chat_content_block}
 
@@ -62,7 +38,7 @@ def init_prompt():
 {cycle_info_block}
 
 {moderation_prompt}
-注意，除了下面动作选项之外，你在直播间里不能做其他任何事情，这是你能力的边界，现在请你选择合适的action:
+注意，除了下面动作选项之外，你在群聊里不能做其他任何事情，这是你能力的边界，现在请你选择合适的action:
 
 {action_options_text}
 

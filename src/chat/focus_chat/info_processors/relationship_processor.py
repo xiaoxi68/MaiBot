@@ -13,6 +13,7 @@ from typing import List
 from typing import Dict
 from src.chat.focus_chat.info.info_base import InfoBase
 from src.chat.focus_chat.info.relation_info import RelationInfo
+from src.person_info.person_info import PersonInfoManager
 from json_repair import repair_json
 from src.person_info.person_info import get_person_info_manager
 import json
@@ -48,10 +49,11 @@ def init_prompt():
 请不要重复调取相同的信息
 
 {name_block}
-请你阅读聊天记录，查看是否需要调取某个人的信息，这个人可以是出现在聊天记录中的，也可以是记录中提到的人。
+请你阅读聊天记录，查看是否需要调取某个人的信息，这个人可以是出现在聊天记录中的，也可以是记录中提到的人，也可以是你自己({bot_name})。
 你不同程度上认识群聊里的人，以及他们谈论到的人，你可以根据聊天记录，回忆起有关他们的信息，帮助你参与聊天
 1.你需要提供用户名和你想要提取的信息名称类型来进行调取
 2.请注意，提取的信息类型一定要和用户有关，不要提取无关的信息
+3.你也可以调取有关自己({bot_name})的信息
 
 请以json格式输出，例如：
 
@@ -59,7 +61,7 @@ def init_prompt():
     "用户A": "ta的昵称",
     "用户B": "ta对你的态度",
     "用户D": "你对ta的印象",
-    "person_name": "其他信息",
+    "{bot_name}": "身份",
     "person_name": "其他信息",
 }}
 
@@ -80,6 +82,18 @@ def init_prompt():
 }}
 """
     Prompt(fetch_info_prompt, "fetch_person_info_prompt")
+
+    fetch_bot_info_prompt = """
+你是{nickname}，你的昵称有{alias_names}。
+以下是你对自己的了解，请你从中提取和"{info_type}"有关的信息，如果无法提取，请输出none：
+{person_impression_block}
+{points_text_block}
+请严格按照以下json输出格式，不要输出多余内容：
+{{
+    "{info_type}": "有关你自己的{info_type}的信息内容"
+}}
+"""
+    Prompt(fetch_bot_info_prompt, "fetch_bot_info_prompt")
 
 
 class RelationshipProcessor(BaseProcessor):
@@ -549,6 +563,7 @@ class RelationshipProcessor(BaseProcessor):
 
         prompt = (await global_prompt_manager.get_prompt_async("relationship_prompt")).format(
             name_block=name_block,
+            bot_name=global_config.bot.nickname,
             time_now=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
             chat_observe_info=chat_observe_info,
             info_cache_block=info_cache_block,
@@ -567,15 +582,15 @@ class RelationshipProcessor(BaseProcessor):
 
                 person_info_manager = get_person_info_manager()
                 for person_name, info_type in content_json.items():
-                    person_id = person_info_manager.get_person_id_by_person_name(person_name)
+                    is_bot = person_name == global_config.bot.nickname or person_name in global_config.bot.alias_names
+                    if is_bot:
+                        person_id = person_info_manager.get_person_id("system", "bot_id")
+                        logger.info(f"{self.log_prefix} 检测到对bot自身({person_name})的信息查询，使用特殊ID。")
+                    else:
+                        person_id = person_info_manager.get_person_id_by_person_name(person_name)
+
                     if not person_id:
                         logger.warning(f"{self.log_prefix} 未找到用户 {person_name} 的ID，跳过调取信息。")
-                        continue
-
-                    # 检查是否是bot自己，如果是则跳过
-                    user_id = person_info_manager.get_value_sync(person_id, "user_id")
-                    if user_id == global_config.bot.qq_account:
-                        logger.info(f"{self.log_prefix} 跳过调取bot自己({person_name})的信息。")
                         continue
 
                     self.info_fetching_cache.append(
@@ -747,42 +762,37 @@ class RelationshipProcessor(BaseProcessor):
         # 首先检查 info_list 缓存
         info_list = await person_info_manager.get_value(person_id, "info_list") or []
         cached_info = None
+        person_name = await person_info_manager.get_value(person_id, "person_name")
 
-        print(f"info_list: {info_list}")
+        # print(f"info_list: {info_list}")
 
         # 查找对应的 info_type
         for info_item in info_list:
             if info_item.get("info_type") == info_type:
                 cached_info = info_item.get("info_content")
-                logger.info(f"{self.log_prefix} [缓存命中] 从 info_list 中找到 {info_type} 信息: {cached_info}")
+                logger.debug(f"{self.log_prefix} 在info_list中找到 {person_name} 的 {info_type} 信息: {cached_info}")
                 break
 
         # 如果缓存中有信息，直接使用
         if cached_info:
-            person_name = await person_info_manager.get_value(person_id, "person_name")
             if person_id not in self.info_fetched_cache:
                 self.info_fetched_cache[person_id] = {}
 
-            if cached_info == "none":
-                unknow = True
-            else:
-                unknow = False
-
             self.info_fetched_cache[person_id][info_type] = {
                 "info": cached_info,
-                "ttl": 8,
+                "ttl": 4,
                 "start_time": start_time,
                 "person_name": person_name,
-                "unknow": unknow,
+                "unknow": cached_info == "none",
             }
-            logger.info(f"{self.log_prefix} [缓存使用] 直接使用缓存的 {person_name} 的 {info_type}: {cached_info}")
+            logger.info(f"{self.log_prefix} 记得 {person_name} 的 {info_type}: {cached_info}")
             return
 
-        logger.info(f"{self.log_prefix} [缓存命中] 缓存中没有信息")
+
+        bot_person_id = PersonInfoManager.get_person_id("system", "bot_id")
+        is_bot = person_id == bot_person_id
 
         try:
-            nickname_str = ",".join(global_config.bot.alias_names)
-            name_block = f"你的名字是{global_config.bot.nickname},你的昵称有{nickname_str}，有人也会用这些昵称称呼你。"
             person_name = await person_info_manager.get_value(person_id, "person_name")
             person_impression = await person_info_manager.get_value(person_id, "impression")
             if person_impression:
@@ -804,31 +814,43 @@ class RelationshipProcessor(BaseProcessor):
                     self.info_fetched_cache[person_id] = {}
                 self.info_fetched_cache[person_id][info_type] = {
                     "info": "none",
-                    "ttl": 8,
+                    "ttl": 4,
                     "start_time": start_time,
                     "person_name": person_name,
                     "unknow": True,
                 }
+                logger.info(f"{self.log_prefix} 完全不认识 {person_name}")
+                await self._save_info_to_cache(person_id, info_type, "none")
                 return
 
-            prompt = (await global_prompt_manager.get_prompt_async("fetch_person_info_prompt")).format(
-                name_block=name_block,
-                info_type=info_type,
-                person_impression_block=person_impression_block,
-                person_name=person_name,
-                info_json_str=f'"{info_type}": "有关{info_type}的信息内容"',
-                points_text_block=points_text_block,
-            )
+            if is_bot:
+                prompt = (await global_prompt_manager.get_prompt_async("fetch_bot_info_prompt")).format(
+                    nickname=global_config.bot.nickname,
+                    alias_names=",".join(global_config.bot.alias_names),
+                    info_type=info_type,
+                    person_impression_block=person_impression_block,
+                    points_text_block=points_text_block,
+                )
+            else:
+                nickname_str = ",".join(global_config.bot.alias_names)
+                name_block = f"你的名字是{global_config.bot.nickname},你的昵称有{nickname_str}，有人也会用这些昵称称呼你。"
+                prompt = (await global_prompt_manager.get_prompt_async("fetch_person_info_prompt")).format(
+                    name_block=name_block,
+                    info_type=info_type,
+                    person_impression_block=person_impression_block,
+                    person_name=person_name,
+                    info_json_str=f'"{info_type}": "有关{info_type}的信息内容"',
+                    points_text_block=points_text_block,
+                )
         except Exception:
             logger.error(traceback.format_exc())
-
-        print(prompt)
+            return
 
         try:
             # 使用小模型进行即时提取
             content, _ = await self.instant_llm_model.generate_response_async(prompt=prompt)
 
-            logger.info(f"{self.log_prefix} [LLM提取] {person_name} 的 {info_type} 结果: {content}")
+            
 
             if content:
                 content_json = json.loads(repair_json(content))
@@ -851,17 +873,15 @@ class RelationshipProcessor(BaseProcessor):
                     await self._save_info_to_cache(person_id, info_type, info_content if not is_unknown else "none")
 
                     if not is_unknown:
-                        logger.info(
-                            f"{self.log_prefix} [LLM提取] 成功获取并缓存 {person_name} 的 {info_type}: {info_content}"
-                        )
+                        logger.info(f"{self.log_prefix} 思考得到，{person_name} 的 {info_type}: {content}")
                     else:
-                        logger.info(f"{self.log_prefix} [LLM提取] {person_name} 的 {info_type} 信息不明确")
+                        logger.info(f"{self.log_prefix} 思考了也不知道{person_name} 的 {info_type} 信息")
             else:
                 logger.warning(
-                    f"{self.log_prefix} [LLM提取] 小模型返回空结果，获取 {person_name} 的 {info_type} 信息失败。"
+                    f"{self.log_prefix} 小模型返回空结果，获取 {person_name} 的 {info_type} 信息失败。"
                 )
         except Exception as e:
-            logger.error(f"{self.log_prefix} [LLM提取] 执行小模型请求获取用户信息时出错: {e}")
+            logger.error(f"{self.log_prefix} 执行小模型请求获取用户信息时出错: {e}")
             logger.error(traceback.format_exc())
 
     async def _save_info_to_cache(self, person_id: str, info_type: str, info_content: str):
