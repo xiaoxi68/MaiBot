@@ -26,10 +26,34 @@ install(extra_lines=3)
 
 
 def init_prompt():
+#     Prompt(
+#         """
+# {time_block}
+# {indentify_block}你现在正在参与以下的聊天，以下是具体的聊天内容：
+
+# {chat_content_block}
+
+# {self_info_block}
+# {relation_info_block}
+
+# {cycle_info_block}
+
+# {moderation_prompt}
+# 注意，除了下面动作选项之外，你在群聊里不能做其他任何事情，这是你能力的边界，现在请你选择合适的action:
+
+# {action_options_text}
+
+# 请以动作的输出要求，以严格的 JSON 格式输出，且仅包含 JSON 内容。
+# 请输出你提取的JSON，不要有任何其他文字或解释：
+
+# """,
+#         "simple_planner_prompt",
+#     )
+    
     Prompt(
         """
 {time_block}
-{indentify_block}你现在正在参与以下的聊天，以下是具体的聊天内容：
+{indentify_block}你现在正在B站进行直播，你是一个虚拟主播，以下是直播间内容和电脑屏幕内容：
 
 {chat_content_block}
 
@@ -39,7 +63,7 @@ def init_prompt():
 {cycle_info_block}
 
 {moderation_prompt}
-注意，除了下面动作选项之外，你在群聊里不能做其他任何事情，这是你能力的边界，现在请你选择合适的action:
+注意，除了下面动作选项之外，你在直播间里不能做其他任何事情，这是你能力的边界，现在请你选择合适的action:
 
 {action_options_text}
 
@@ -99,18 +123,7 @@ class ActionPlanner(BasePlanner):
             # 获取观察信息
             extra_info: list[str] = []
 
-            # 设置默认值
-            nickname_str = ""
-            for nicknames in global_config.bot.alias_names:
-                nickname_str += f"{nicknames},"
-            name_block = f"你的名字是{global_config.bot.nickname},你的昵称有{nickname_str}，有人也会用这些昵称称呼你。"
-
-            personality_block = get_individuality().get_personality_prompt(x_person=2, level=2)
-            identity_block = get_individuality().get_identity_prompt(x_person=2, level=2)
-
-            self_info = name_block + personality_block + identity_block
-            current_mind = "你思考了很久，没有想清晰要做什么"
-
+            self_info = ""
             cycle_info = ""
             structured_info = ""
             extra_info = []
@@ -168,7 +181,6 @@ class ActionPlanner(BasePlanner):
                 )
                 return {
                     "action_result": {"action_type": action, "action_data": action_data, "reasoning": reasoning},
-                    "current_mind": current_mind,
                     "observed_messages": observed_messages,
                 }
 
@@ -294,8 +306,6 @@ class ActionPlanner(BasePlanner):
 
         plan_result = {
             "action_result": action_result,
-            # "extra_info_block": extra_info_block,
-            "current_mind": current_mind,
             "observed_messages": observed_messages,
             "action_prompt": prompt,
         }

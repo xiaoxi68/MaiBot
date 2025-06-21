@@ -77,7 +77,7 @@ class ActionInfo(ComponentInfo):
 
     focus_activation_type: ActionActivationType = ActionActivationType.ALWAYS
     normal_activation_type: ActionActivationType = ActionActivationType.ALWAYS
-    random_activation_probability: float = 0.3
+    random_activation_probability: float = 0.0
     llm_judge_prompt: str = ""
     activation_keywords: List[str] = None
     keyword_case_sensitive: bool = False

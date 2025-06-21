@@ -222,7 +222,7 @@ class NormalChatActionModifier:
 
         # 2. 处理RANDOM类型（概率激活）
         for action_name, action_info in random_actions.items():
-            probability = action_info.get("random_probability", 0.3)
+            probability = action_info.get("random_activation_probability", ActionManager.DEFAULT_RANDOM_PROBABILITY)
             should_activate = random.random() < probability
             if should_activate:
                 activated_actions[action_name] = action_info

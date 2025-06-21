@@ -243,7 +243,7 @@ class ActionModifier:
         for action_name, action_info in actions_with_info.items():
             activation_type = action_info.get("focus_activation_type", "always")
 
-            print(f"action_name: {action_name}, activation_type: {activation_type}")
+            # print(f"action_name: {action_name}, activation_type: {activation_type}")
 
             # 现在统一是字符串格式的激活类型值
             if activation_type == "always":
@@ -264,7 +264,7 @@ class ActionModifier:
 
         # 2. 处理RANDOM类型
         for action_name, action_info in random_actions.items():
-            probability = action_info.get("random_probability", 0.3)
+            probability = action_info.get("random_activation_probability", ActionManager.DEFAULT_RANDOM_PROBABILITY)
             should_activate = random.random() < probability
             if should_activate:
                 activated_actions[action_name] = action_info
