@@ -6,13 +6,7 @@ import random
 import json
 import os
 import hashlib
-import traceback
 from rich.traceback import install
-from json_repair import repair_json
-from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
-from src.manager.async_task_manager import AsyncTask
-from src.llm_models.utils_model import LLMRequest
-from src.config.config import global_config
 from src.common.logger import get_logger
 from src.person_info.person_info import get_person_info_manager
 
@@ -52,9 +46,11 @@ class Individuality:
         person_info_manager = get_person_info_manager()
         self.bot_person_id = person_info_manager.get_person_id("system", "bot_id")
         self.name = bot_nickname
-        
+
         # 检查配置变化，如果变化则清空
-        await self._check_config_and_clear_if_changed(bot_nickname, personality_core, personality_sides, identity_detail)
+        await self._check_config_and_clear_if_changed(
+            bot_nickname, personality_core, personality_sides, identity_detail
+        )
 
         # 初始化人格
         self.personality = Personality.initialize(
@@ -72,7 +68,7 @@ class Individuality:
             impression_parts.append(f"人格侧面: {'、'.join(personality_sides)}")
         if identity_detail:
             impression_parts.append(f"身份: {'、'.join(identity_detail)}")
-        
+
         impression_text = "。".join(impression_parts)
         if impression_text:
             impression_text += "。"
@@ -84,8 +80,10 @@ class Individuality:
                 "person_name": self.name,
                 "nickname": self.name,
             }
-            await person_info_manager.update_one_field(self.bot_person_id, "impression", impression_text, data=update_data)
-            logger.info(f"已将完整人设更新到bot的impression中")
+            await person_info_manager.update_one_field(
+                self.bot_person_id, "impression", impression_text, data=update_data
+            )
+            logger.info("已将完整人设更新到bot的impression中")
 
         await self.express_style.extract_and_store_personality_expressions()
 
@@ -255,30 +253,32 @@ class Individuality:
             return self.personality.neuroticism
         return None
 
-    def _get_config_hash(self, bot_nickname: str, personality_core: str, personality_sides: list, identity_detail: list) -> str:
+    def _get_config_hash(
+        self, bot_nickname: str, personality_core: str, personality_sides: list, identity_detail: list
+    ) -> str:
         """获取当前personality和identity配置的哈希值"""
         config_data = {
             "nickname": bot_nickname,
             "personality_core": personality_core,
-            "personality_sides": sorted(personality_sides), 
-            "identity_detail": sorted(identity_detail)
+            "personality_sides": sorted(personality_sides),
+            "identity_detail": sorted(identity_detail),
         }
         config_str = json.dumps(config_data, sort_keys=True)
         return hashlib.md5(config_str.encode("utf-8")).hexdigest()
 
     async def _check_config_and_clear_if_changed(
-            self, bot_nickname: str, personality_core: str, personality_sides: list, identity_detail: list
+        self, bot_nickname: str, personality_core: str, personality_sides: list, identity_detail: list
     ):
         """检查配置是否发生变化，如果变化则清空info_list"""
         person_info_manager = get_person_info_manager()
         current_hash = self._get_config_hash(bot_nickname, personality_core, personality_sides, identity_detail)
-        
+
         meta_info = self._load_meta_info()
         stored_hash = meta_info.get("config_hash")
 
         if current_hash != stored_hash:
             logger.info("检测到人格配置发生变化，将清空原有的关键词缓存。")
-            
+
             # 清空数据库中的info_list
             update_data = {
                 "platform": "system",

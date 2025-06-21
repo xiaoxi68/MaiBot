@@ -788,7 +788,6 @@ class RelationshipProcessor(BaseProcessor):
             logger.info(f"{self.log_prefix} 记得 {person_name} 的 {info_type}: {cached_info}")
             return
 
-
         bot_person_id = PersonInfoManager.get_person_id("system", "bot_id")
         is_bot = person_id == bot_person_id
 
@@ -833,7 +832,9 @@ class RelationshipProcessor(BaseProcessor):
                 )
             else:
                 nickname_str = ",".join(global_config.bot.alias_names)
-                name_block = f"你的名字是{global_config.bot.nickname},你的昵称有{nickname_str}，有人也会用这些昵称称呼你。"
+                name_block = (
+                    f"你的名字是{global_config.bot.nickname},你的昵称有{nickname_str}，有人也会用这些昵称称呼你。"
+                )
                 prompt = (await global_prompt_manager.get_prompt_async("fetch_person_info_prompt")).format(
                     name_block=name_block,
                     info_type=info_type,
@@ -849,8 +850,6 @@ class RelationshipProcessor(BaseProcessor):
         try:
             # 使用小模型进行即时提取
             content, _ = await self.instant_llm_model.generate_response_async(prompt=prompt)
-
-            
 
             if content:
                 content_json = json.loads(repair_json(content))
@@ -877,9 +876,7 @@ class RelationshipProcessor(BaseProcessor):
                     else:
                         logger.info(f"{self.log_prefix} 思考了也不知道{person_name} 的 {info_type} 信息")
             else:
-                logger.warning(
-                    f"{self.log_prefix} 小模型返回空结果，获取 {person_name} 的 {info_type} 信息失败。"
-                )
+                logger.warning(f"{self.log_prefix} 小模型返回空结果，获取 {person_name} 的 {info_type} 信息失败。")
         except Exception as e:
             logger.error(f"{self.log_prefix} 执行小模型请求获取用户信息时出错: {e}")
             logger.error(traceback.format_exc())
