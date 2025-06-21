@@ -137,7 +137,7 @@ def init_prompt():
     Prompt(fetch_bot_info_prompt, "fetch_bot_info_prompt")
 
 
-class RelationshipProcessor(BaseProcessor):
+class PersonImpressionpProcessor(BaseProcessor):
     log_prefix = "关系"
 
     def __init__(self, subheartflow_id: str):

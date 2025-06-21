@@ -108,7 +108,7 @@ compressed_length = 8 # 不能大于observation_context_size,心流上下文压�
 compress_length_limit = 4 #最多压缩份数，超过该数值的压缩上下文会被删除
 
 [focus_chat_processor] # 专注聊天处理器，打开可以实现更多功能，但是会增加token消耗
-relation_processor = true # 是否启用关系识别处理器
+person_impression_processor = true # 是否启用关系识别处理器
 tool_use_processor = false # 是否启用工具使用处理器
 working_memory_processor = false # 是否启用工作记忆处理器，消耗量大
 expression_selector_processor = true # 是否启用表达方式选择处理器

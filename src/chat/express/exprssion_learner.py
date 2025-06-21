@@ -88,6 +88,7 @@ class ExpressionLearner:
             current_chat_type = "group"
             typed_chat_id = f"{platform}:{chat_stream.group_info.group_id}:{current_chat_type}"
         else:
+            current_chat_type = "private"
             typed_chat_id = f"{platform}:{chat_stream.user_info.user_id}:{current_chat_type}"
 
         logger.info(f"正在为 {typed_chat_id} 查找互通组...")

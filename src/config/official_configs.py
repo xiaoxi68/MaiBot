@@ -167,7 +167,7 @@ class FocusChatConfig(ConfigBase):
 class FocusChatProcessorConfig(ConfigBase):
     """专注聊天处理器配置类"""
 
-    relation_processor: bool = True
+    person_impression_processor: bool = True
     """是否启用关系识别处理器"""
 
     tool_use_processor: bool = True
