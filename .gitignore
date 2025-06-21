@@ -20,6 +20,7 @@ MaiMBot-LPMM
 *.zip
 run.bat
 log_debug/
+run_amds.bat
 run_none.bat
 run.py
 message_queue_content.txt
