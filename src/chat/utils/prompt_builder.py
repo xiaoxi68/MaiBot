@@ -37,9 +37,11 @@ class PromptContext:
         if context_id is not None:
             try:
                 # 添加超时保护，避免长时间等待锁
-                async with asyncio.wait_for(self._context_lock.acquire(), timeout=5.0):
+                await asyncio.wait_for(self._context_lock.acquire(), timeout=5.0)
+                try:
                     if context_id not in self._context_prompts:
                         self._context_prompts[context_id] = {}
+                finally:
                     self._context_lock.release()
             except asyncio.TimeoutError:
                 logger.warning(f"获取上下文锁超时，context_id: {context_id}")
@@ -148,8 +150,14 @@ class Prompt(str):
     _TEMP_RIGHT_BRACE = "__ESCAPED_RIGHT_BRACE__"
 
     @staticmethod
-    def _process_escaped_braces(template: str) -> str:
+    def _process_escaped_braces(template) -> str:
         """处理模板中的转义花括号，将 \{ 和 \} 替换为临时标记"""
+        # 如果传入的是列表，将其转换为字符串
+        if isinstance(template, list):
+            template = '\n'.join(str(item) for item in template)
+        elif not isinstance(template, str):
+            template = str(template)
+        
         return template.replace("\\{", Prompt._TEMP_LEFT_BRACE).replace("\\}", Prompt._TEMP_RIGHT_BRACE)
 
     @staticmethod
@@ -157,7 +165,7 @@ class Prompt(str):
         """将临时标记还原为实际的花括号字符"""
         return template.replace(Prompt._TEMP_LEFT_BRACE, "{").replace(Prompt._TEMP_RIGHT_BRACE, "}")
 
-    def __new__(cls, fstr: str, name: Optional[str] = None, args: Union[List[Any], tuple[Any, ...]] = None, **kwargs):
+    def __new__(cls, fstr, name: Optional[str] = None, args: Union[List[Any], tuple[Any, ...]] = None, **kwargs):
         # 如果传入的是元组，转换为列表
         if isinstance(args, tuple):
             args = list(args)
@@ -199,7 +207,7 @@ class Prompt(str):
 
     @classmethod
     async def create_async(
-        cls, fstr: str, name: Optional[str] = None, args: Union[List[Any], tuple[Any, ...]] = None, **kwargs
+        cls, fstr, name: Optional[str] = None, args: Union[List[Any], tuple[Any, ...]] = None, **kwargs
     ):
         """异步创建Prompt实例"""
         prompt = cls(fstr, name, args, **kwargs)
@@ -208,7 +216,7 @@ class Prompt(str):
         return prompt
 
     @classmethod
-    def _format_template(cls, template: str, args: List[Any] = None, kwargs: Dict[str, Any] = None) -> str:
+    def _format_template(cls, template, args: List[Any] = None, kwargs: Dict[str, Any] = None) -> str:
         # 预处理模板中的转义花括号
         processed_template = cls._process_escaped_braces(template)
 
