@@ -8,6 +8,7 @@ import os
 import hashlib
 import traceback
 from rich.traceback import install
+from json_repair import repair_json
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.manager.async_task_manager import AsyncTask
 from src.llm_models.utils_model import LLMRequest
@@ -23,28 +24,27 @@ def init_prompt():
     """初始化用于关键词提取的prompts"""
 
     extract_keywords_prompt = """
-请分析以下对某人的描述，提取出其中的独立关键词。每个关键词应该是可以用来从某一角度概括的方面：性格，身高，喜好，外貌，身份，兴趣，爱好，习惯，等等。
+请分析以下对{bot_name}的描述，提取出其中的独立关键词。每个关键词应该是可以用来从某一角度概括的方面，例如：
+性格，身高，喜好，外貌，身份，兴趣，爱好，习惯，等等..........
 
 描述内容：
 {personality_sides}
 
 要求：
-1. 提取独立的关键词，不要使用句子或短语
-2. 每个关键词用逗号分隔
-3. 只输出关键词，不要输出任何解释或其他内容
+1. 选择关键词，对{bot_name}的某一方面进行概括
+2. 用json格式输出，以下是示例格式：
+{{
+    "性格":"性格开朗",
+    "兴趣":"喜欢唱歌",
+    "身份":"大学生",
+}}
+以上是一个例子，你可以输出多个关键词，现在请你根据描述内容进行总结{bot_name}，输出json格式：
 
-请输出关键词：
+请输出json格式，不要输出任何解释或其他内容
 """
     Prompt(extract_keywords_prompt, "extract_keywords_prompt")
 
-    fetch_info_prompt = """
-{name_block}，你的性格的特征是：
-{prompt_personality}
-{indentify_block}
 
-请从中提取有关你的有关"{keyword}"信息，请输出原始内容，如果{bot_name}没有涉及"{keyword}"相关信息，请输出none：
-"""
-    Prompt(fetch_info_prompt, "fetch_info_prompt")
 
 
 class Individuality:
@@ -317,12 +317,7 @@ class Individuality:
         if os.path.exists(self.fetch_info_file_path):
             try:
                 with open(self.fetch_info_file_path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    # 兼容旧格式：如果是字符串则转换为列表
-                    for keyword, value in data.items():
-                        if isinstance(value, str):
-                            data[keyword] = [value]
-                    return data
+                    return json.load(f)
             except Exception as e:
                 logger.error(f"读取fetch_info文件失败: {e}")
                 return {}
@@ -350,35 +345,7 @@ class Individuality:
             fetch_info_data = self._load_fetch_info_from_file()
             logger.info(f"加载已有数据，现有关键词数量: {len(fetch_info_data)}")
 
-            # 检查并清理错误分割的关键词（包含逗号的键）
-            keys_to_fix = []
-            for key in fetch_info_data.keys():
-                if "," in key:
-                    keys_to_fix.append(key)
 
-            if keys_to_fix:
-                logger.info(f"发现 {len(keys_to_fix)} 个需要重新分割的关键词")
-                for bad_key in keys_to_fix:
-                    logger.info(f"重新分割关键词: '{bad_key}'")
-                    # 获取对应的信息
-                    info_list = fetch_info_data[bad_key]
-                    # 删除旧的错误键
-                    del fetch_info_data[bad_key]
-
-                    # 按逗号分割并重新添加
-                    split_keywords = [k.strip() for k in bad_key.split(",") if k.strip()]
-                    for split_keyword in split_keywords:
-                        if split_keyword not in fetch_info_data:
-                            fetch_info_data[split_keyword] = []
-                        # 将信息添加到分割后的关键词中
-                        for info in info_list:
-                            if info not in fetch_info_data[split_keyword]:
-                                fetch_info_data[split_keyword].append(info)
-                        logger.info(f"已将信息分配给关键词: '{split_keyword}'")
-
-                # 保存清理后的数据
-                self._save_fetch_info_to_file(fetch_info_data)
-                logger.info(f"清理完成，现在共有 {len(fetch_info_data)} 个关键词")
 
             # 构建完整描述（personality + identity）
             personality_sides_str = ""
@@ -395,7 +362,8 @@ class Individuality:
 
             # 提取关键词
             extract_prompt = (await global_prompt_manager.get_prompt_async("extract_keywords_prompt")).format(
-                personality_sides=personality_sides_str
+                personality_sides=personality_sides_str,
+                bot_name=self.name
             )
 
             llm_model = LLMRequest(
@@ -410,22 +378,22 @@ class Individuality:
                 logger.info("未提取到有效关键词")
                 return
 
-            # 解析关键词
-            keyword_set = [k.strip() for k in keywords_result.split(",") if k.strip()]
-            logger.info(f"分割后的关键词列表: {keyword_set}")
+
+            
+            # 使用json_repair修复并解析JSON
+            keyword_dict = json.loads(repair_json(keywords_result))
+            logger.info(f"成功解析JSON格式的关键词: {keyword_dict}")
+
+            # 从字典中提取关键词列表，跳过"keywords"键
+            keyword_set = []
+            for key, value in keyword_dict.items():
+                if key.lower() != "keywords" and key.strip():
+                    keyword_set.append(key.strip())
+            
+            logger.info(f"最终提取的关键词列表: {keyword_set}")
             logger.info(f"共提取到 {len(keyword_set)} 个关键词")
 
-            # 构建名称块和身份信息
-            nickname_str = ""
-            for nickname in global_config.bot.alias_names:
-                nickname_str += f"{nickname},"
-            name_block = f"你的名字是{self.name},你的昵称有{nickname_str}，有人也会用这些昵称称呼你。"
-
-            identity_detail_str = "你"
-            for detail in identity_detail:
-                identity_detail_str += f"{detail},"
-
-            # 为每个关键词生成fetched_info，添加到现有数据中
+            # 处理每个关键词的信息
             updated_count = 0
             new_count = 0
 
@@ -442,20 +410,13 @@ class Individuality:
                         action_type = "新增"
                         fetch_info_data[keyword] = []  # 初始化为空列表
 
-                    fetch_prompt = (await global_prompt_manager.get_prompt_async("fetch_info_prompt")).format(
-                        name_block=name_block,
-                        prompt_personality=personality_sides_str,
-                        indentify_block=identity_detail_str,
-                        keyword=keyword,
-                        bot_name=self.name,
-                    )
-
-                    fetched_info, _ = await llm_model.generate_response_async(prompt=fetch_prompt)
-
-                    if fetched_info and fetched_info.strip() != "none":
-                        # 添加到列表中，避免重复
-                        if fetched_info not in fetch_info_data[keyword]:
-                            fetch_info_data[keyword].append(fetched_info)
+                    # 从JSON结果中获取关键词的信息
+                    existing_info_from_json = keyword_dict.get(keyword, "")
+                    if existing_info_from_json and existing_info_from_json.strip() and existing_info_from_json != keyword:
+                        # 如果JSON中有有效信息且不只是重复关键词本身，直接使用
+                        logger.info(f"从JSON结果中获取到关键词 '{keyword}' 的信息: '{existing_info_from_json}'")
+                        if existing_info_from_json not in fetch_info_data[keyword]:
+                            fetch_info_data[keyword].append(existing_info_from_json)
                             if action_type == "追加":
                                 updated_count += 1
                             else:
@@ -464,7 +425,7 @@ class Individuality:
                         else:
                             logger.info(f"关键词 '{keyword}' 的信息已存在，跳过重复添加")
                     else:
-                        logger.info(f"关键词 '{keyword}' 没有相关信息")
+                        logger.info(f"关键词 '{keyword}' 在JSON中没有有效信息，跳过")
 
                 except Exception as e:
                     logger.error(f"为关键词 '{keyword}' 生成信息时出错: {e}")
