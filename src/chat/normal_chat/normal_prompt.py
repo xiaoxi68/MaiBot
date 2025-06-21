@@ -150,7 +150,6 @@ class PromptBuilder:
         style_habbits_str = "\n".join(style_habbits)
         grammar_habbits_str = "\n".join(grammar_habbits)
 
-
         memory_prompt = ""
 
         if global_config.memory.enable_memory:

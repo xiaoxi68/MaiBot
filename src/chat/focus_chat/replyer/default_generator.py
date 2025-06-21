@@ -21,9 +21,6 @@ import time
 import random
 from datetime import datetime
 import re
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-import numpy as np
 
 logger = get_logger("replyer")
 
@@ -708,7 +705,6 @@ def weighted_sample_no_replacement(items, weights, k) -> list:
                 pool.pop(idx)
                 break
     return selected
-
 
 
 init_prompt()

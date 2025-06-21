@@ -1131,9 +1131,7 @@ class NormalChat:
                 start_date = time.strftime("%Y-%m-%d %H:%M", time.localtime(start_time))
 
                 # 获取该段的消息（包含边界）
-                segment_messages = get_raw_msg_by_timestamp_with_chat_inclusive(
-                    self.stream_id, start_time, end_time
-                )
+                segment_messages = get_raw_msg_by_timestamp_with_chat_inclusive(self.stream_id, start_time, end_time)
                 logger.info(
                     f"[{self.stream_name}] 消息段 {i + 1}: {start_date} - {time.strftime('%Y-%m-%d %H:%M', time.localtime(end_time))}, 消息数: {len(segment_messages)}"
                 )
@@ -1162,7 +1160,9 @@ class NormalChat:
                 # 按时间排序所有消息（包括间隔标识）
                 processed_messages.sort(key=lambda x: x["time"])
 
-                logger.info(f"[{self.stream_name}] 为 {person_id} 获取到总共 {len(processed_messages)} 条消息（包含间隔标识）用于印象更新")
+                logger.info(
+                    f"[{self.stream_name}] 为 {person_id} 获取到总共 {len(processed_messages)} 条消息（包含间隔标识）用于印象更新"
+                )
                 relationship_manager = get_relationship_manager()
 
                 # 调用统一的更新方法
