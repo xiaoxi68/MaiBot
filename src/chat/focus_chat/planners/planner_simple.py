@@ -16,6 +16,7 @@ from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.focus_chat.planners.action_manager import ActionManager
 from json_repair import repair_json
 from src.chat.focus_chat.planners.base_planner import BasePlanner
+from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
 from datetime import datetime
 
 logger = get_logger("planner")
@@ -27,40 +28,73 @@ def init_prompt():
     Prompt(
         """
 {time_block}
-{indentify_block}你现在正在参与以下的聊天，以下是具体的聊天内容：
-
+{indentify_block}
+你现在需要根据聊天内容，选择的合适的action来参与聊天。
+{chat_context_description}，以下是具体的聊天内容：
 {chat_content_block}
-
-{self_info_block}
-{relation_info_block}
-
 {cycle_info_block}
-
 {moderation_prompt}
-注意，除了下面动作选项之外，你在群聊里不能做其他任何事情，这是你能力的边界，现在请你选择合适的action:
+现在请你根据聊天内容选择合适的action:
 
 {action_options_text}
 
-请以动作的输出要求，以严格的 JSON 格式输出，且仅包含 JSON 内容。
-请输出你提取的JSON，不要有任何其他文字或解释：
-
+请根据动作示例，以严格的 JSON 格式输出，且仅包含 JSON 内容：
 """,
         "simple_planner_prompt",
     )
-
+    
     Prompt(
         """
-动作：{action_name}
-该动作的描述：{action_description}
-使用该动作的场景：
+{time_block}
+{indentify_block}
+你现在需要根据聊天内容，选择的合适的action来参与聊天。
+{chat_context_description}，以下是具体的聊天内容：
+{chat_content_block}
+{relation_info_block}
+{cycle_info_block}
+{moderation_prompt}
+现在请你选择合适的action:
+
+{action_options_text}
+
+请根据动作示例，以严格的 JSON 格式输出，且仅包含 JSON 内容：
+""",
+        "simple_planner_prompt_private",
+    )
+
+#     Prompt(
+#         """
+# 动作：{action_name}
+# 该动作的描述：{action_description}
+# 使用该动作的场景：
+# {action_require}
+# 输出要求：
+# {{
+#     "action": "{action_name}",{action_parameters}
+# }}
+# """,
+#         "action_prompt",
+#     )
+    Prompt(
+        """
 {action_require}
-输出要求：
 {{
     "action": "{action_name}",{action_parameters}
 }}
 """,
         "action_prompt",
     )
+    
+    Prompt(
+        """
+{action_require}
+{{
+    "action": "{action_name}",{action_parameters}
+}}
+""",
+        "action_prompt_private",
+    )
+
 
 
 class ActionPlanner(BasePlanner):
@@ -97,7 +131,6 @@ class ActionPlanner(BasePlanner):
             # 获取观察信息
             extra_info: list[str] = []
 
-            self_info = ""
             cycle_info = ""
             structured_info = ""
             extra_info = []
@@ -107,12 +140,16 @@ class ActionPlanner(BasePlanner):
             is_group_chat = True
             relation_info = ""
             selected_expressions = []
+            chat_id = None  # 添加chat_id变量
+            
             for info in all_plan_info:
                 if isinstance(info, ObsInfo):
                     observed_messages = info.get_talking_message()
-                    observed_messages_str = info.get_talking_message_str_truncate()
+                    observed_messages_str = info.get_talking_message_str_truncate_short()
                     chat_type = info.get_chat_type()
                     is_group_chat = chat_type == "group"
+                    # 从ObsInfo中获取chat_id
+                    chat_id = info.get_chat_id()
                 elif isinstance(info, CycleInfo):
                     cycle_info = info.get_observe_info()
                 elif isinstance(info, RelationInfo):
@@ -123,8 +160,20 @@ class ActionPlanner(BasePlanner):
                     selected_expressions = info.get_expressions_for_action_data()
                 else:
                     extra_info.append(info.get_processed_info())
-                # elif not isinstance(info, ActionInfo):  # 跳过已处理的ActionInfo
-                # extra_info.append(info.get_processed_info())
+
+            # 获取聊天类型和目标信息
+            chat_target_info = None
+            if chat_id:
+                try:
+                    # 重新获取更准确的聊天信息
+                    is_group_chat_updated, chat_target_info = get_chat_type_and_target_info(chat_id)
+                    # 如果获取成功，更新is_group_chat
+                    if is_group_chat_updated is not None:
+                        is_group_chat = is_group_chat_updated
+                    logger.debug(f"{self.log_prefix}获取到聊天信息 - 群聊: {is_group_chat}, 目标信息: {chat_target_info}")
+                except Exception as e:
+                    logger.warning(f"{self.log_prefix}获取聊天目标信息失败: {e}")
+                    chat_target_info = None
 
             # 获取经过modify_actions处理后的最终可用动作集
             # 注意：动作的激活判定现在在主循环的modify_actions中完成
@@ -158,10 +207,9 @@ class ActionPlanner(BasePlanner):
 
             # --- 构建提示词 (调用修改后的 PromptBuilder 方法) ---
             prompt = await self.build_planner_prompt(
-                self_info_block=self_info,
                 relation_info_block=relation_info,
                 is_group_chat=is_group_chat,  # <-- Pass HFC state
-                chat_target_info=None,
+                chat_target_info=chat_target_info,  # <-- 传递获取到的聊天目标信息
                 observed_messages_str=observed_messages_str,  # <-- Pass local variable
                 structured_info=structured_info,  # <-- Pass SubMind info
                 current_available_actions=current_available_actions,  # <-- Pass determined actions
@@ -221,8 +269,6 @@ class ActionPlanner(BasePlanner):
                     for key, value in parsed_json.items():
                         if key not in ["action", "reasoning"]:
                             action_data[key] = value
-
-                    action_data["self_info_block"] = self_info
 
                     extra_info_block = "\n".join(extra_info)
                     extra_info_block += f"\n{structured_info}"
@@ -286,7 +332,6 @@ class ActionPlanner(BasePlanner):
 
     async def build_planner_prompt(
         self,
-        self_info_block: str,
         relation_info_block: str,
         is_group_chat: bool,  # Now passed as argument
         chat_target_info: Optional[dict],  # Now passed as argument
@@ -300,7 +345,7 @@ class ActionPlanner(BasePlanner):
         """构建 Planner LLM 的提示词 (获取模板并填充数据)"""
         try:
             if relation_info_block:
-                relation_info_block = f"以下是你和别人的关系描述：\n{relation_info_block}"
+                relation_info_block = f"以下内容是你对发言对象之前的了解：\n{relation_info_block}\n这是你对他们先前的印象，不要和他们现在的聊天内容混淆。"
             else:
                 relation_info_block = ""
 
@@ -325,8 +370,11 @@ class ActionPlanner(BasePlanner):
                 chat_content_block = "你还未开始聊天"
 
             action_options_block = ""
+            # 根据聊天类型选择不同的动作prompt模板
+            action_template_name = "action_prompt_private" if not is_group_chat else "action_prompt"
+            
             for using_actions_name, using_actions_info in current_available_actions.items():
-                using_action_prompt = await global_prompt_manager.get_prompt_async("action_prompt")
+                using_action_prompt = await global_prompt_manager.get_prompt_async(action_template_name)
 
                 if using_actions_info["parameters"]:
                     param_text = "\n"
@@ -341,12 +389,22 @@ class ActionPlanner(BasePlanner):
                     require_text += f"- {require_item}\n"
                 require_text = require_text.rstrip("\n")
 
-                using_action_prompt = using_action_prompt.format(
-                    action_name=using_actions_name,
-                    action_description=using_actions_info["description"],
-                    action_parameters=param_text,
-                    action_require=require_text,
-                )
+                # 根据模板类型决定是否包含description参数
+                if action_template_name == "action_prompt_private":
+                    # 私聊模板不包含description参数
+                    using_action_prompt = using_action_prompt.format(
+                        action_name=using_actions_name,
+                        action_parameters=param_text,
+                        action_require=require_text,
+                    )
+                else:
+                    # 群聊模板包含description参数
+                    using_action_prompt = using_action_prompt.format(
+                        action_name=using_actions_name,
+                        action_description=using_actions_info["description"],
+                        action_parameters=param_text,
+                        action_require=require_text,
+                    )
 
                 action_options_block += using_action_prompt
 
@@ -371,10 +429,11 @@ class ActionPlanner(BasePlanner):
             bot_core_personality = global_config.personality.personality_core
             indentify_block = f"你的名字是{bot_name}{bot_nickname}，你{bot_core_personality}："
 
-            planner_prompt_template = await global_prompt_manager.get_prompt_async("simple_planner_prompt")
+            # 根据聊天类型选择不同的prompt模板
+            template_name = "simple_planner_prompt_private" if not is_group_chat else "simple_planner_prompt"
+            planner_prompt_template = await global_prompt_manager.get_prompt_async(template_name)
             prompt = planner_prompt_template.format(
                 relation_info_block=relation_info_block,
-                self_info_block=self_info_block,
                 time_block=time_block,
                 chat_context_description=chat_context_description,
                 chat_content_block=chat_content_block,
