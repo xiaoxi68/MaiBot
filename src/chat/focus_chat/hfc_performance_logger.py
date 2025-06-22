@@ -17,12 +17,10 @@ class HFCPerformanceLogger:
         self.chat_id = chat_id
         self.version = version or self.INTERNAL_VERSION
         self.log_dir = Path("log/hfc_loop")
-        self.data_dir = Path("data/hfc")
         self.session_start_time = datetime.now()
 
         # 确保目录存在
         self.log_dir.mkdir(parents=True, exist_ok=True)
-        self.data_dir.mkdir(parents=True, exist_ok=True)
 
         # 当前会话的日志文件，包含版本号
         version_suffix = self.version.replace(".", "_")
@@ -31,11 +29,9 @@ class HFCPerformanceLogger:
         )
         self.current_session_data = []
 
-        # 统计数据文件
-        self.stats_file = self.data_dir / "time.json"
 
-        # 初始化时计算历史统计数据
-        self._update_historical_stats()
+
+
 
     def record_cycle(self, cycle_data: Dict[str, Any]):
         """记录单次循环数据"""
@@ -74,165 +70,95 @@ class HFCPerformanceLogger:
         except Exception as e:
             logger.error(f"写入会话数据失败: {e}")
 
-    def _update_historical_stats(self):
-        """更新历史统计数据"""
-        try:
-            # 读取所有历史会话文件
-            all_records = []
-
-            # 读取当前chat_id的所有历史文件（包括不同版本）
-            for file_path in self.log_dir.glob(f"{self.chat_id}_*.json"):
-                if file_path == self.session_file:
-                    continue  # 跳过当前会话文件
-
-                try:
-                    with open(file_path, "r", encoding="utf-8") as f:
-                        records = json.load(f)
-                        if isinstance(records, list):
-                            all_records.extend(records)
-                except Exception as e:
-                    logger.warning(f"读取历史文件 {file_path} 失败: {e}")
-
-            if not all_records:
-                logger.info(f"没有找到 chat_id={self.chat_id} 的历史数据")
-                return
-
-            # 计算统计数据
-            stats = self._calculate_stats(all_records)
-
-            # 更新统计文件
-            self._update_stats_file(stats)
-
-            logger.info(f"更新了 chat_id={self.chat_id} 的历史统计数据，共 {len(all_records)} 条记录")
-
-        except Exception as e:
-            logger.error(f"更新历史统计数据失败: {e}")
-
-    def _calculate_stats(self, records: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """计算统计数据"""
-        if not records:
+    def get_current_session_stats(self) -> Dict[str, Any]:
+        """获取当前会话的基本信息"""
+        if not self.current_session_data:
             return {}
-
-        # 按动作类型分组
-        action_groups = {}
-        total_times = []
-        step_time_totals = {}
-
-        for record in records:
-            action_type = record.get("action_type", "unknown")
-            total_time = record.get("total_time", 0)
-            step_times = record.get("step_times", {})
-
-            if action_type not in action_groups:
-                action_groups[action_type] = {"count": 0, "total_times": [], "step_times": {}}
-
-            action_groups[action_type]["count"] += 1
-            action_groups[action_type]["total_times"].append(total_time)
-            total_times.append(total_time)
-
-            # 记录步骤时间
-            for step_name, step_time in step_times.items():
-                if step_name not in action_groups[action_type]["step_times"]:
-                    action_groups[action_type]["step_times"][step_name] = []
-                action_groups[action_type]["step_times"][step_name].append(step_time)
-
-                if step_name not in step_time_totals:
-                    step_time_totals[step_name] = []
-                step_time_totals[step_name].append(step_time)
-
-        # 计算各种平均值和比例
-        total_records = len(records)
-
-        # 整体统计
-        overall_stats = {
-            "total_records": total_records,
-            "avg_total_time": sum(total_times) / len(total_times) if total_times else 0,
-            "avg_step_times": {},
-        }
-
-        # 各步骤平均时间
-        for step_name, times in step_time_totals.items():
-            overall_stats["avg_step_times"][step_name] = sum(times) / len(times) if times else 0
-
-        # 按动作类型统计
-        action_stats = {}
-        for action_type, data in action_groups.items():
-            action_stats[action_type] = {
-                "count": data["count"],
-                "percentage": (data["count"] / total_records) * 100,
-                "avg_total_time": sum(data["total_times"]) / len(data["total_times"]) if data["total_times"] else 0,
-                "avg_step_times": {},
-            }
-
-            # 该动作各步骤平均时间
-            for step_name, times in data["step_times"].items():
-                action_stats[action_type]["avg_step_times"][step_name] = sum(times) / len(times) if times else 0
 
         return {
             "chat_id": self.chat_id,
             "version": self.version,
-            "last_updated": datetime.now().isoformat(),
-            "overall": overall_stats,
-            "by_action": action_stats,
+            "session_file": str(self.session_file),
+            "record_count": len(self.current_session_data),
+            "start_time": self.session_start_time.isoformat()
         }
 
-    def _update_stats_file(self, new_stats: Dict[str, Any]):
-        """更新统计文件"""
-        try:
-            # 读取现有统计数据
-            existing_stats = {}
-            if self.stats_file.exists():
-                with open(self.stats_file, "r", encoding="utf-8") as f:
-                    existing_stats = json.load(f)
-
-            # 更新当前chat_id和版本的统计数据
-            stats_key = f"{self.chat_id}_{self.version}"
-            existing_stats[stats_key] = new_stats
-
-            # 写回文件
-            with open(self.stats_file, "w", encoding="utf-8") as f:
-                json.dump(existing_stats, f, ensure_ascii=False, indent=2)
-
-        except Exception as e:
-            logger.error(f"更新统计文件失败: {e}")
-
-    def get_current_session_stats(self) -> Dict[str, Any]:
-        """获取当前会话的统计数据"""
-        if not self.current_session_data:
-            return {}
-
-        return self._calculate_stats(self.current_session_data)
-
     def finalize_session(self):
-        """结束会话，进行最终统计"""
+        """结束会话"""
         try:
             if self.current_session_data:
-                # 计算当前会话统计数据
-                self._calculate_stats(self.current_session_data)
-
-                # 合并历史数据重新计算总体统计
-                all_records = self.current_session_data[:]
-
-                # 读取历史数据
-                for file_path in self.log_dir.glob(f"{self.chat_id}_*.json"):
-                    if file_path == self.session_file:
-                        continue
-
-                    try:
-                        with open(file_path, "r", encoding="utf-8") as f:
-                            records = json.load(f)
-                            if isinstance(records, list):
-                                all_records.extend(records)
-                    except Exception as e:
-                        logger.warning(f"读取历史文件 {file_path} 失败: {e}")
-
-                # 重新计算总体统计
-                total_stats = self._calculate_stats(all_records)
-                self._update_stats_file(total_stats)
-
-                logger.info(
-                    f"完成会话统计，当前会话 {len(self.current_session_data)} 条记录，总共 {len(all_records)} 条记录"
-                )
-
+                logger.info(f"完成会话，当前会话 {len(self.current_session_data)} 条记录")
         except Exception as e:
-            logger.error(f"结束会话统计失败: {e}")
+            logger.error(f"结束会话失败: {e}")
+
+    @classmethod
+    def cleanup_old_logs(cls, max_size_mb: float = 50.0):
+        """
+        清理旧的HFC日志文件，保持目录大小在指定限制内
+        
+        Args:
+            max_size_mb: 最大目录大小限制（MB）
+        """
+        log_dir = Path("log/hfc_loop")
+        if not log_dir.exists():
+            logger.info("HFC日志目录不存在，跳过日志清理")
+            return
+        
+        # 获取所有日志文件及其信息
+        log_files = []
+        total_size = 0
+        
+        for log_file in log_dir.glob("*.json"):
+            try:
+                file_stat = log_file.stat()
+                log_files.append({
+                    'path': log_file,
+                    'size': file_stat.st_size,
+                    'mtime': file_stat.st_mtime
+                })
+                total_size += file_stat.st_size
+            except Exception as e:
+                logger.warning(f"无法获取文件信息 {log_file}: {e}")
+        
+        if not log_files:
+            logger.info("没有找到HFC日志文件")
+            return
+        
+        max_size_bytes = max_size_mb * 1024 * 1024
+        current_size_mb = total_size / (1024 * 1024)
+        
+        logger.info(f"HFC日志目录当前大小: {current_size_mb:.2f}MB，限制: {max_size_mb}MB")
+        
+        if total_size <= max_size_bytes:
+            logger.info("HFC日志目录大小在限制范围内，无需清理")
+            return
+        
+        # 按修改时间排序（最早的在前面）
+        log_files.sort(key=lambda x: x['mtime'])
+        
+        deleted_count = 0
+        deleted_size = 0
+        
+        for file_info in log_files:
+            if total_size <= max_size_bytes:
+                break
+            
+            try:
+                file_size = file_info['size']
+                file_path = file_info['path']
+                
+                file_path.unlink()
+                total_size -= file_size
+                deleted_size += file_size
+                deleted_count += 1
+                
+                logger.info(f"删除旧日志文件: {file_path.name} ({file_size / 1024:.1f}KB)")
+                
+            except Exception as e:
+                logger.error(f"删除日志文件失败 {file_info['path']}: {e}")
+        
+        final_size_mb = total_size / (1024 * 1024)
+        deleted_size_mb = deleted_size / (1024 * 1024)
+        
+        logger.info(f"HFC日志清理完成: 删除了{deleted_count}个文件，释放{deleted_size_mb:.2f}MB空间")
+        logger.info(f"清理后目录大小: {final_size_mb:.2f}MB")
