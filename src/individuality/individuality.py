@@ -1,4 +1,5 @@
 from typing import Optional
+import asyncio
 from .personality import Personality
 from .identity import Identity
 from .expression_style import PersonalityExpression
@@ -86,7 +87,7 @@ class Individuality:
             )
             logger.info("已将完整人设更新到bot的impression中")
 
-        await self.express_style.extract_and_store_personality_expressions()
+        asyncio.create_task(self.express_style.extract_and_store_personality_expressions())
 
     def to_dict(self) -> dict:
         """将个体特征转换为字典格式"""

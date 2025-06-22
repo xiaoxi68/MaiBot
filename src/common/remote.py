@@ -1,9 +1,10 @@
 import asyncio
 
-import requests
+import aiohttp
 import platform
 
 from src.common.logger import get_logger
+from src.common.tcp_connector import get_tcp_connector
 from src.config.config import global_config
 from src.manager.async_task_manager import AsyncTask
 from src.manager.local_store_manager import local_storage
@@ -64,34 +65,36 @@ class TelemetryHeartBeatTask(AsyncTask):
             logger.info("正在向遥测服务端请求UUID...")
 
             try:
-                response = requests.post(
-                    f"{TELEMETRY_SERVER_URL}/stat/reg_client",
-                    json={"deploy_time": local_storage["deploy_time"]},
-                    timeout=5,  # 设置超时时间为5秒
-                )
+                async with aiohttp.ClientSession(connector=await get_tcp_connector()) as session:
+                    async with session.post(
+                        f"{TELEMETRY_SERVER_URL}/stat/reg_client",
+                        json={"deploy_time": local_storage["deploy_time"]},
+                        timeout=aiohttp.ClientTimeout(total=5),  # 设置超时时间为5秒
+                    ) as response:
+                        logger.debug(f"{TELEMETRY_SERVER_URL}/stat/reg_client")
+                        logger.debug(local_storage["deploy_time"])
+                        logger.debug(f"Response status: {response.status}")
+
+                        if response.status == 200:
+                            data = await response.json()
+                            if client_id := data.get("mmc_uuid"):
+                                # 将UUID存储到本地
+                                local_storage["mmc_uuid"] = client_id
+                                self.client_uuid = client_id
+                                logger.info(f"成功获取UUID: {self.client_uuid}")
+                                return True  # 成功获取UUID，返回True
+                            else:
+                                logger.error("无效的服务端响应")
+                        else:
+                            response_text = await response.text()
+                            logger.error(
+                                f"请求UUID失败，不过你还是可以正常使用麦麦，状态码: {response.status}, 响应内容: {response_text}"
+                            )
             except Exception as e:
-                logger.warning(f"请求UUID出错，不过你还是可以正常使用麦麦: {e}")  # 可能是网络问题
-
-            logger.debug(f"{TELEMETRY_SERVER_URL}/stat/reg_client")
-
-            logger.debug(local_storage["deploy_time"])
-
-            logger.debug(response)
-
-            if response.status_code == 200:
-                data = response.json()
-                if client_id := data.get("mmc_uuid"):
-                    # 将UUID存储到本地
-                    local_storage["mmc_uuid"] = client_id
-                    self.client_uuid = client_id
-                    logger.info(f"成功获取UUID: {self.client_uuid}")
-                    return True  # 成功获取UUID，返回True
-                else:
-                    logger.error("无效的服务端响应")
-            else:
-                logger.error(
-                    f"请求UUID失败，不过你还是可以正常使用麦麦，状态码: {response.status_code}, 响应内容: {response.text}"
-                )
+                import traceback
+                error_msg = str(e) if str(e) else "未知错误"
+                logger.warning(f"请求UUID出错，不过你还是可以正常使用麦麦: {type(e).__name__}: {error_msg}")  # 可能是网络问题
+                logger.debug(f"完整错误信息: {traceback.format_exc()}")
 
             # 请求失败，重试次数+1
             try_count += 1
@@ -112,38 +115,41 @@ class TelemetryHeartBeatTask(AsyncTask):
         }
 
         logger.debug(f"正在发送心跳到服务器: {self.server_url}")
-
         logger.debug(headers)
 
         try:
-            response = requests.post(
-                f"{self.server_url}/stat/client_heartbeat",
-                headers=headers,
-                json=self.info_dict,
-                timeout=5,  # 设置超时时间为5秒
-            )
+            async with aiohttp.ClientSession(connector=await get_tcp_connector()) as session:
+                async with session.post(
+                    f"{self.server_url}/stat/client_heartbeat",
+                    headers=headers,
+                    json=self.info_dict,
+                    timeout=aiohttp.ClientTimeout(total=5),  # 设置超时时间为5秒
+                ) as response:
+                    logger.debug(f"Response status: {response.status}")
+
+                    # 处理响应
+                    if 200 <= response.status < 300:
+                        # 成功
+                        logger.debug(f"心跳发送成功，状态码: {response.status}")
+                    elif response.status == 403:
+                        # 403 Forbidden
+                        logger.warning(
+                            "（此消息不会影响正常使用）心跳发送失败，403 Forbidden: 可能是UUID无效或未注册。"
+                            "处理措施：重置UUID，下次发送心跳时将尝试重新注册。"
+                        )
+                        self.client_uuid = None
+                        del local_storage["mmc_uuid"]  # 删除本地存储的UUID
+                    else:
+                        # 其他错误
+                        response_text = await response.text()
+                        logger.warning(
+                            f"（此消息不会影响正常使用）状态未发送，状态码: {response.status}, 响应内容: {response_text}"
+                        )
         except Exception as e:
-            logger.warning(f"（此消息不会影响正常使用）状态未发生: {e}")
-
-        logger.debug(response)
-
-        # 处理响应
-        if 200 <= response.status_code < 300:
-            # 成功
-            logger.debug(f"心跳发送成功，状态码: {response.status_code}")
-        elif response.status_code == 403:
-            # 403 Forbidden
-            logger.warning(
-                "（此消息不会影响正常使用）心跳发送失败，403 Forbidden: 可能是UUID无效或未注册。"
-                "处理措施：重置UUID，下次发送心跳时将尝试重新注册。"
-            )
-            self.client_uuid = None
-            del local_storage["mmc_uuid"]  # 删除本地存储的UUID
-        else:
-            # 其他错误
-            logger.warning(
-                f"（此消息不会影响正常使用）状态未发送，状态码: {response.status_code}, 响应内容: {response.text}"
-            )
+            import traceback
+            error_msg = str(e) if str(e) else "未知错误"
+            logger.warning(f"（此消息不会影响正常使用）状态未发生: {type(e).__name__}: {error_msg}")
+            logger.debug(f"完整错误信息: {traceback.format_exc()}")
 
     async def run(self):
         # 发送心跳
