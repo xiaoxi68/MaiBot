@@ -583,19 +583,20 @@ class StatisticOutputTask(AsyncTask):
         except Exception as e:
             logger.error(f"收集HFC统计数据失败: {e}")
 
-        # 计算加权平均时间
+        # 只对非all_time时段计算加权平均时间，all_time需要在历史数据合并后再计算
         for period_key in stats:
-            for stat_type in [HFC_AVG_TIME_BY_CHAT, HFC_AVG_TIME_BY_ACTION, HFC_AVG_TIME_BY_VERSION]:
-                for key, time_data in stats[period_key][stat_type].items():
-                    if time_data.get("count", 0) > 0:
-                        count = time_data["count"]
-                        stats[period_key][stat_type][key] = {
-                            "decision": time_data["decision"] / count,
-                            "action": time_data["action"] / count,
-                            "total": time_data["total"] / count
-                        }
-                    else:
-                        stats[period_key][stat_type][key] = {"decision": 0, "action": 0, "total": 0}
+            if period_key != "all_time":  # 跳过all_time，等历史数据合并后再计算
+                for stat_type in [HFC_AVG_TIME_BY_CHAT, HFC_AVG_TIME_BY_ACTION, HFC_AVG_TIME_BY_VERSION]:
+                    for key, time_data in stats[period_key][stat_type].items():
+                        if time_data.get("count", 0) > 0:
+                            count = time_data["count"]
+                            stats[period_key][stat_type][key] = {
+                                "decision": time_data["decision"] / count,
+                                "action": time_data["action"] / count,
+                                "total": time_data["total"] / count
+                            }
+                        else:
+                            stats[period_key][stat_type][key] = {"decision": 0, "action": 0, "total": 0}
         
         return stats
 
@@ -654,9 +655,14 @@ class StatisticOutputTask(AsyncTask):
                         if key in [HFC_AVG_TIME_BY_CHAT, HFC_AVG_TIME_BY_ACTION, HFC_AVG_TIME_BY_VERSION] and isinstance(sub_val, dict):
                             # 对于HFC时间数据，需要特殊处理
                             if sub_key not in stat["all_time"][key]:
-                                stat["all_time"][key][sub_key] = {"decision": 0, "action": 0, "total": 0}
+                                stat["all_time"][key][sub_key] = {"decision": 0, "action": 0, "total": 0, "count": 0}
                             
-                            # 合并嵌套的时间数据
+                            # 如果历史数据是已经计算过的平均值（没有count字段），需要跳过或重新处理
+                            if "count" not in sub_val:
+                                logger.debug(f"历史数据{key}.{sub_key}是平均值格式，跳过合并以避免错误计算")
+                                continue
+                            
+                            # 合并累计的加权时间数据
                             for time_type, time_val in sub_val.items():
                                 if time_type in stat["all_time"][key][sub_key]:
                                     stat["all_time"][key][sub_key][time_type] += time_val
@@ -680,6 +686,24 @@ class StatisticOutputTask(AsyncTask):
                 else:
                     # 直接合并
                     stat["all_time"][key] += val
+
+        # 为all_time计算正确的平均时间（在历史数据合并后）
+        if "all_time" in stat:
+            for stat_type in [HFC_AVG_TIME_BY_CHAT, HFC_AVG_TIME_BY_ACTION, HFC_AVG_TIME_BY_VERSION]:
+                if stat_type in stat["all_time"]:
+                    for key, time_data in stat["all_time"][stat_type].items():
+                        if time_data.get("count", 0) > 0:
+                            count = time_data["count"]
+                            # 计算平均值，但保留count字段用于下次合并
+                            avg_data = {
+                                "decision": time_data["decision"] / count,
+                                "action": time_data["action"] / count,
+                                "total": time_data["total"] / count,
+                                "count": count  # 保留count字段
+                            }
+                            stat["all_time"][stat_type][key] = avg_data
+                        else:
+                            stat["all_time"][stat_type][key] = {"decision": 0, "action": 0, "total": 0, "count": 0}
 
         # 更新上次完整统计数据的时间戳
         local_storage["last_full_statistics"] = {
@@ -1143,10 +1167,35 @@ class StatisticOutputTask(AsyncTask):
         
         def _get_chat_display_name(chat_id):
             """获取聊天显示名称"""
-            if chat_id in self.name_mapping:
-                return self.name_mapping[chat_id][0]
-            else:
+            try:
+                # 首先尝试从chat_stream获取真实群组名称
+                from src.chat.message_receive.chat_stream import get_chat_manager
+                chat_manager = get_chat_manager()
+                
+                if chat_id in chat_manager.streams:
+                    stream = chat_manager.streams[chat_id]
+                    if stream.group_info and hasattr(stream.group_info, 'group_name'):
+                        group_name = stream.group_info.group_name
+                        if group_name and group_name.strip():
+                            return group_name.strip()
+                    elif stream.user_info and hasattr(stream.user_info, 'user_nickname'):
+                        user_name = stream.user_info.user_nickname
+                        if user_name and user_name.strip():
+                            return user_name.strip()
+                
+                # 如果从chat_stream获取失败，回退到name_mapping
+                if chat_id in self.name_mapping:
+                    return self.name_mapping[chat_id][0]
+                
+                # 最后回退到chat_id
                 return chat_id
+            except Exception as e:
+                logger.warning(f"获取聊天显示名称失败: {e}")
+                # 发生异常时回退到原有逻辑
+                if chat_id in self.name_mapping:
+                    return self.name_mapping[chat_id][0]
+                else:
+                    return chat_id
         
         def _generate_overview_section(data, title):
             """生成总览部分"""
