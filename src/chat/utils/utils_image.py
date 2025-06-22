@@ -116,10 +116,10 @@ class ImageManager:
                 if image_base64_processed is None:
                     logger.warning("GIF转换失败，无法获取描述")
                     return "[表情包(GIF处理失败)]"
-                prompt = "这是一个动态图表情包，每一张图代表了动态图的某一帧，黑色背景代表透明，使用1-2个词描述一下表情包表达的情感和内容，简短一些，输出一段平文本"
+                prompt = "这是一个动态图表情包，每一张图代表了动态图的某一帧，黑色背景代表透明，使用1-2个词描述一下表情包表达的情感和内容，简短一些，输出一段平文本，不超过15个字"
                 description, _ = await self._llm.generate_response_for_image(prompt, image_base64_processed, "jpg")
             else:
-                prompt = "这是一个表情包，请用使用几个词描述一下表情包所表达的情感和内容，简短一些，输出一段平文本"
+                prompt = "图片是一个表情包，请用使用1-2个词描述一下表情包所表达的情感和内容，简短一些，输出一段平文本，不超过15个字"
                 description, _ = await self._llm.generate_response_for_image(prompt, image_base64, image_format)
 
             if description is None:

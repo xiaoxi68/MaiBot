@@ -141,7 +141,7 @@ class NormalChatConfig(ConfigBase):
 class FocusChatConfig(ConfigBase):
     """专注聊天配置类"""
 
-    observation_context_size: int = 12
+    observation_context_size: int = 20
     """可观察到的最长上下文大小，超过这个值的上下文会被压缩"""
 
     compressed_length: int = 5

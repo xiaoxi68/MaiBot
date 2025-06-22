@@ -129,7 +129,7 @@ memory_build_sample_num = 4 # 采样数量，数值越高记忆采样次数越�
 memory_build_sample_length = 30 # 采样长度，数值越高一段记忆内容越丰富
 memory_compress_rate = 0.1 # 记忆压缩率 控制记忆精简程度 建议保持默认,调高可以获得更多信息，但是冗余信息也会增多
 
-forget_memory_interval = 1000 # 记忆遗忘间隔 单位秒   间隔越低，麦麦遗忘越频繁，记忆更精简，但更难学习
+forget_memory_interval = 1500 # 记忆遗忘间隔 单位秒   间隔越低，麦麦遗忘越频繁，记忆更精简，但更难学习
 memory_forget_time = 24 #多长时间后的记忆会被遗忘 单位小时
 memory_forget_percentage = 0.01 # 记忆遗忘比例 控制记忆遗忘程度 越大遗忘越多 建议保持默认
 
@@ -272,11 +272,12 @@ pri_out = 8
 temp = 0.3
 
 [model.relation] #用于处理和麦麦和其他人的关系
-name = "Pro/deepseek-ai/DeepSeek-V3"
+name = "Qwen/Qwen3-30B-A3B"
 provider = "SILICONFLOW"
-pri_in = 2
-pri_out = 8
-temp = 0.3
+pri_in = 0.7
+pri_out = 2.8
+temp = 0.7
+enable_thinking = false # 是否启用思考
 
 
 #嵌入模型

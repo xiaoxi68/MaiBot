@@ -33,7 +33,6 @@ def init_prompt():
 {extra_info_block}
 
 {relation_info_block}
-{self_info_block}
 
 {time_block}
 {chat_target}
@@ -41,10 +40,10 @@ def init_prompt():
 {reply_target_block}
 {identity}
 你需要使用合适的语言习惯和句法，参考聊天内容，组织一条日常且口语化的回复。注意不要复读你说过的话。
-{config_expression_style}，请注意不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出回复内容。
+{config_expression_style}
 {keywords_reaction_prompt}
 请不要输出违法违规内容，不要输出色情，暴力，政治相关内容，如有敏感内容，请规避。
-不要浮夸，不要夸张修辞，只输出一条回复就好。
+不要浮夸，不要夸张修辞，请注意不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出一条回复就好。
 现在，你说：
 """,
         "default_generator_prompt",
@@ -57,14 +56,14 @@ def init_prompt():
 {time_block}
 {chat_target}
 {chat_info}
-现在"{sender_name}"说的:{target_message}。引起了你的注意，你想要发言或者回复这条消息。
+现在"{sender_name}"说:{target_message}。你想要回复对方的这条消息。
 {identity}，
 你需要使用合适的语法和句法，参考聊天内容，组织一条日常且口语化的回复。注意不要复读你说过的话。
 
-{config_expression_style}，请注意不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出回复内容。
+{config_expression_style}
 {keywords_reaction_prompt}
 请不要输出违法违规内容，不要输出色情，暴力，政治相关内容，如有敏感内容，请规避。
-不要浮夸，不要夸张修辞，只输出一条回复就好。
+不要浮夸，不要夸张修辞，请注意不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出一条回复就好。
 现在，你说：
 """,
         "default_generator_private_prompt",
@@ -406,7 +405,15 @@ class DefaultReplyer:
             )
         else:  # Private chat
             template_name = "default_generator_private_prompt"
-            chat_target_1 = "你正在和人私聊"
+            # 在私聊时获取对方的昵称信息
+            chat_target_name = "对方"
+            if self.chat_target_info:
+                chat_target_name = (
+                    self.chat_target_info.get("person_name") 
+                    or self.chat_target_info.get("user_nickname") 
+                    or "对方"
+                )
+            chat_target_1 = f"你正在和 {chat_target_name} 聊天"
             prompt = await global_prompt_manager.format_prompt(
                 template_name,
                 expression_habits_block=expression_habits_block,
@@ -513,7 +520,15 @@ class DefaultReplyer:
             )
         else:  # Private chat
             template_name = "default_expressor_private_prompt"
-            chat_target_1 = "你正在和人私聊"
+            # 在私聊时获取对方的昵称信息
+            chat_target_name = "对方"
+            if self.chat_target_info:
+                chat_target_name = (
+                    self.chat_target_info.get("person_name") 
+                    or self.chat_target_info.get("user_nickname") 
+                    or "对方"
+                )
+            chat_target_1 = f"你正在和 {chat_target_name} 聊天"
             prompt = await global_prompt_manager.format_prompt(
                 template_name,
                 style_habbits=style_habbits_str,

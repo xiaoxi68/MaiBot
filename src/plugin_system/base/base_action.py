@@ -199,7 +199,7 @@ class BaseAction(ABC):
             logger.error(f"{self.log_prefix} 等待新消息时发生错误: {e}")
             return False, f"等待新消息失败: {str(e)}"
 
-    async def send_text(self, content: str, reply_to: str = "") -> bool:
+    async def send_text(self, content: str, reply_to: str = "",typing:bool=False) -> bool:
         """发送文本消息
 
         Args:
@@ -213,7 +213,7 @@ class BaseAction(ABC):
             logger.error(f"{self.log_prefix} 缺少聊天ID")
             return False
 
-        return await send_api.text_to_stream(text=content, stream_id=self.chat_id, reply_to=reply_to)
+        return await send_api.text_to_stream(text=content, stream_id=self.chat_id, reply_to=reply_to,typing=typing)
 
     async def send_emoji(self, emoji_base64: str) -> bool:
         """发送表情包
