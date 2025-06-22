@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from typing import Dict, List, Any
+from typing import Dict, Any
 from pathlib import Path
 from src.common.logger import get_logger
 

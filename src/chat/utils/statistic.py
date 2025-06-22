@@ -598,7 +598,7 @@ class StatisticOutputTask(AsyncTask):
         """
         计算Focus统计的平均值
         """
-        for period_key, stat in stats.items():
+        for _period_key, stat in stats.items():
             # 计算全局阶段平均时间
             for stage, times in stat[FOCUS_AVG_TIMES_BY_STAGE].items():
                 if times:
@@ -944,27 +944,27 @@ class StatisticOutputTask(AsyncTask):
             )
             
             # Focus统计数据
-            focus_action_rows = ""
-            focus_chat_rows = ""
-            focus_stage_rows = ""
-            focus_action_stage_rows = ""
+            # focus_action_rows = ""
+            # focus_chat_rows = ""
+            # focus_stage_rows = ""
+            # focus_action_stage_rows = ""
             
             if stat_data.get(FOCUS_TOTAL_CYCLES, 0) > 0:
                 # Action类型统计
                 total_actions = sum(stat_data[FOCUS_ACTION_RATIOS].values()) if stat_data[FOCUS_ACTION_RATIOS] else 0
-                focus_action_rows = "\n".join([
+                _focus_action_rows = "\n".join([
                     f"<tr><td>{action_type}</td><td>{count}</td><td>{(count/total_actions*100):.1f}%</td></tr>"
                     for action_type, count in sorted(stat_data[FOCUS_ACTION_RATIOS].items())
                 ])
                 
                 # 按聊天流统计
-                focus_chat_rows = "\n".join([
+                _focus_chat_rows = "\n".join([
                     f"<tr><td>{self.name_mapping.get(chat_id, (chat_id, 0))[0]}</td><td>{count}</td><td>{stat_data[FOCUS_TOTAL_TIME_BY_CHAT].get(chat_id, 0):.2f}秒</td></tr>"
                     for chat_id, count in sorted(stat_data[FOCUS_CYCLE_CNT_BY_CHAT].items(), key=lambda x: x[1], reverse=True)
                 ])
                 
                 # 全局阶段时间统计
-                focus_stage_rows = "\n".join([
+                _focus_stage_rows = "\n".join([
                     f"<tr><td>{stage}</td><td>{avg_time:.3f}秒</td></tr>"
                     for stage, avg_time in sorted(stat_data[FOCUS_AVG_TIMES_BY_STAGE].items())
                 ])
@@ -975,7 +975,7 @@ class StatisticOutputTask(AsyncTask):
                     for stage, avg_time in stage_times.items():
                         focus_action_stage_items.append((action_type, stage, avg_time))
                 
-                focus_action_stage_rows = "\n".join([
+                _focus_action_stage_rows = "\n".join([
                     f"<tr><td>{action_type}</td><td>{stage}</td><td>{avg_time:.3f}秒</td></tr>"
                     for action_type, stage, avg_time in sorted(focus_action_stage_items)
                 ])
@@ -1236,7 +1236,7 @@ class StatisticOutputTask(AsyncTask):
                 for stage in basic_stages:
                     # 检查是否有任何聊天流在这个阶段有数据
                     stage_exists = False
-                    for chat_id, stage_times in stat_data[FOCUS_AVG_TIMES_BY_CHAT_ACTION].items():
+                    for _chat_id, stage_times in stat_data[FOCUS_AVG_TIMES_BY_CHAT_ACTION].items():
                         if stage in stage_times:
                             stage_exists = True
                             break
@@ -1274,7 +1274,7 @@ class StatisticOutputTask(AsyncTask):
                         if avg_exec_time > 0:
                             row_cells.append(f"<td>{avg_exec_time:.3f}秒</td>")
                         else:
-                            row_cells.append(f"<td>-</td>")
+                            row_cells.append("<td>-</td>")
                     
                     chat_rows.append(f"<tr>{''.join(row_cells)}</tr>")
                 
@@ -1315,7 +1315,7 @@ class StatisticOutputTask(AsyncTask):
                             if count > 0:
                                 row_cells.append(f"<td>{count}<br><small>({ratio:.1f}%)</small></td>")
                             else:
-                                row_cells.append(f"<td>-<br><small>(0%)</small></td>")
+                                row_cells.append("<td>-<br><small>(0%)</small></td>")
                         
                         chat_ratio_rows.append(f"<tr>{''.join(row_cells)}</tr>")
                     
@@ -1628,7 +1628,7 @@ class StatisticOutputTask(AsyncTask):
                                 exec_time = version_exec_times[version][action_type]
                                 row_cells.append(f"<td>{exec_time:.3f}秒</td>")
                             else:
-                                row_cells.append(f"<td>-</td>")
+                                row_cells.append("<td>-</td>")
                         
                         version_stage_rows.append(f"<tr>{''.join(row_cells)}</tr>")
                     
@@ -1922,9 +1922,9 @@ class StatisticOutputTask(AsyncTask):
                                                     if stage not in focus_time_by_stage:
                                                         focus_time_by_stage[stage] = [0] * len(time_points)
                                                     focus_time_by_stage[stage][interval_index] += time_val
-                                    except Exception as e:
+                                    except Exception:
                                         continue
-                except Exception as e:
+                except Exception:
                     continue
 
         return {
