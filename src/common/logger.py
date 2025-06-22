@@ -402,7 +402,7 @@ MODULE_COLORS = {
     # 特殊功能插件
     "mute_plugin": "\033[38;5;240m",  # 灰色
     "example_comprehensive": "\033[38;5;246m",  # 浅灰色
-    "core_actions": "\033[38;5;52m",  # 深红色
+    "core_actions": "\033[38;5;117m",  # 深红色
     "tts_action": "\033[38;5;58m",  # 深黄色
     "doubao_pic_plugin": "\033[38;5;64m",  # 深绿色
     "vtb_action": "\033[38;5;70m",  # 绿色
