@@ -93,12 +93,19 @@ class MainSystem:
         # 添加情绪打印任务
         await async_task_manager.add_task(MoodPrintTask())
 
+        logger.info("情绪管理器初始化成功")
+
         # 启动愿望管理器
         await willing_manager.async_task_starter()
 
+        logger.info("willing管理器初始化成功")
+
         # 初始化聊天管理器
+        
         await get_chat_manager()._initialize()
         asyncio.create_task(get_chat_manager()._auto_save_task())
+
+        logger.info("聊天管理器初始化成功")
 
         # 根据配置条件性地初始化记忆系统
         if global_config.memory.enable_memory:

@@ -61,6 +61,12 @@ class PersonInfoManager:
         )
         try:
             db.connect(reuse_if_open=True)
+            # 设置连接池参数
+            if hasattr(db, 'execute_sql'):
+                # 设置SQLite优化参数
+                db.execute_sql('PRAGMA cache_size = -64000')  # 64MB缓存
+                db.execute_sql('PRAGMA temp_store = memory')  # 临时存储在内存中
+                db.execute_sql('PRAGMA mmap_size = 268435456')  # 256MB内存映射
             db.create_tables([PersonInfo], safe=True)
         except Exception as e:
             logger.error(f"数据库连接或 PersonInfo 表创建失败: {e}")
@@ -159,13 +165,9 @@ class PersonInfoManager:
     async def update_one_field(self, person_id: str, field_name: str, value, data: dict = None):
         """更新某一个字段，会补全"""
         if field_name not in PersonInfo._meta.fields:
-            # if field_name in person_info_default: # Keep this check if some defaults are not DB fields
-            #     logger.debug(f"更新'{field_name}'跳过，字段存在于默认配置但不在 PersonInfo Peewee 模型中。")
-            #     return
+
             logger.debug(f"更新'{field_name}'失败，未在 PersonInfo Peewee 模型中定义的字段。")
             return
-
-        # print(f"更新字段: {field_name}，值: {value}")
 
         processed_value = value
         if field_name in JSON_SERIALIZED_FIELDS:
@@ -173,20 +175,39 @@ class PersonInfoManager:
                 processed_value = json.dumps(value, ensure_ascii=False, indent=None)
             elif value is None:  # Store None as "[]" for JSON list fields
                 processed_value = json.dumps([], ensure_ascii=False, indent=None)
-            # If value is already a string, assume it's pre-serialized or a non-JSON string.
 
         def _db_update_sync(p_id: str, f_name: str, val_to_set):
-            record = PersonInfo.get_or_none(PersonInfo.person_id == p_id)
-            if record:
-                setattr(record, f_name, val_to_set)
-                record.save()
-                return True, False  # Found and updated, no creation needed
-            return False, True  # Not found, needs creation
+            import time
+            start_time = time.time()
+            try:
+                record = PersonInfo.get_or_none(PersonInfo.person_id == p_id)
+                query_time = time.time()
+                
+                if record:
+                    setattr(record, f_name, val_to_set)
+                    record.save()
+                    save_time = time.time()
+                    
+                    total_time = save_time - start_time
+                    if total_time > 0.5:  # 如果超过500ms就记录日志
+                        logger.warning(f"数据库更新操作耗时 {total_time:.3f}秒 (查询: {query_time-start_time:.3f}s, 保存: {save_time-query_time:.3f}s) person_id={p_id}, field={f_name}")
+                    
+                    return True, False  # Found and updated, no creation needed
+                else:
+                    total_time = time.time() - start_time
+                    if total_time > 0.5:
+                        logger.warning(f"数据库查询操作耗时 {total_time:.3f}秒 person_id={p_id}, field={f_name}")
+                    return False, True  # Not found, needs creation
+            except Exception as e:
+                total_time = time.time() - start_time
+                logger.error(f"数据库操作异常，耗时 {total_time:.3f}秒: {e}")
+                raise
+        
 
         found, needs_creation = await asyncio.to_thread(_db_update_sync, person_id, field_name, processed_value)
 
         if needs_creation:
-            logger.debug(f"更新时 {person_id} 不存在，将新建。")
+            logger.info(f"{person_id} 不存在，将新建。")
             creation_data = data if data is not None else {}
             # Ensure platform and user_id are present for context if available from 'data'
             # but primarily, set the field that triggered the update.

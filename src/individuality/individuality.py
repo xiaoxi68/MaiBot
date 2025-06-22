@@ -44,9 +44,11 @@ class Individuality:
             personality_sides: 人格侧面描述
             identity_detail: 身份细节描述
         """
+        logger.info("正在初始化个体特征")
         person_info_manager = get_person_info_manager()
         self.bot_person_id = person_info_manager.get_person_id("system", "bot_id")
         self.name = bot_nickname
+    
 
         # 检查配置变化，如果变化则清空
         await self._check_config_and_clear_if_changed(
@@ -61,6 +63,8 @@ class Individuality:
         # 初始化身份
         self.identity = Identity(identity_detail=identity_detail)
 
+
+        logger.info("正在将所有人设写入impression")
         # 将所有人设写入impression
         impression_parts = []
         if personality_core:
@@ -69,6 +73,7 @@ class Individuality:
             impression_parts.append(f"人格侧面: {'、'.join(personality_sides)}")
         if identity_detail:
             impression_parts.append(f"身份: {'、'.join(identity_detail)}")
+        logger.info(f"impression_parts: {impression_parts}")
 
         impression_text = "。".join(impression_parts)
         if impression_text:
