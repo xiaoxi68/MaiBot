@@ -115,8 +115,6 @@ class ActionPlanner(BasePlanner):
                     is_group_chat = chat_type == "group"
                 elif isinstance(info, CycleInfo):
                     cycle_info = info.get_observe_info()
-                elif isinstance(info, SelfInfo):
-                    self_info = info.get_processed_info()
                 elif isinstance(info, RelationInfo):
                     relation_info = info.get_processed_info()
                 elif isinstance(info, StructuredInfo):
