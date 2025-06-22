@@ -197,36 +197,30 @@ class StatisticOutputTask(AsyncTask):
         logger.info("\n" + "\n".join(output))
 
     async def run(self):
-        try:            
+        try:
             now = datetime.now()
-            
+
             # 使用线程池并行执行耗时操作
             loop = asyncio.get_event_loop()
-            
+
             # 在线程池中并行执行数据收集和之前的HTML生成（如果存在）
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 logger.info("正在收集统计数据...")
-                
+
                 # 数据收集任务
-                collect_task = loop.run_in_executor(
-                    executor, self._collect_all_statistics, now
-                )
-                
+                collect_task = loop.run_in_executor(executor, self._collect_all_statistics, now)
+
                 # 等待数据收集完成
                 stats = await collect_task
                 logger.info("统计数据收集完成")
-                
+
                 # 并行执行控制台输出和HTML报告生成
-                console_task = loop.run_in_executor(
-                    executor, self._statistic_console_output, stats, now
-                )
-                html_task = loop.run_in_executor(
-                    executor, self._generate_html_report, stats, now
-                )
-                
+                console_task = loop.run_in_executor(executor, self._statistic_console_output, stats, now)
+                html_task = loop.run_in_executor(executor, self._generate_html_report, stats, now)
+
                 # 等待两个输出任务完成
                 await asyncio.gather(console_task, html_task)
-                
+
             logger.info("统计数据输出完成")
         except Exception as e:
             logger.exception(f"输出统计数据过程中发生异常，错误信息：{e}")
@@ -236,41 +230,38 @@ class StatisticOutputTask(AsyncTask):
         备选方案：完全异步后台运行统计输出
         使用此方法可以让统计任务完全非阻塞
         """
+
         async def _async_collect_and_output():
             try:
                 import concurrent.futures
-                
+
                 now = datetime.now()
                 loop = asyncio.get_event_loop()
-                
+
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     logger.info("正在后台收集统计数据...")
-                    
+
                     # 创建后台任务，不等待完成
                     collect_task = asyncio.create_task(
                         loop.run_in_executor(executor, self._collect_all_statistics, now)
                     )
-                    
+
                     stats = await collect_task
                     logger.info("统计数据收集完成")
-                    
+
                     # 创建并发的输出任务
                     output_tasks = [
-                        asyncio.create_task(
-                            loop.run_in_executor(executor, self._statistic_console_output, stats, now)
-                        ),
-                        asyncio.create_task(
-                            loop.run_in_executor(executor, self._generate_html_report, stats, now)
-                        )
+                        asyncio.create_task(loop.run_in_executor(executor, self._statistic_console_output, stats, now)),
+                        asyncio.create_task(loop.run_in_executor(executor, self._generate_html_report, stats, now)),
                     ]
-                    
+
                     # 等待所有输出任务完成
                     await asyncio.gather(*output_tasks)
-                    
+
                 logger.info("统计数据后台输出完成")
             except Exception as e:
                 logger.exception(f"后台统计数据输出过程中发生异常：{e}")
-        
+
         # 创建后台任务，立即返回
         asyncio.create_task(_async_collect_and_output())
 
@@ -1619,7 +1610,7 @@ class AsyncStatisticOutputTask(AsyncTask):
     def __init__(self, record_file_path: str = "maibot_statistics.html"):
         # 延迟0秒启动，运行间隔300秒
         super().__init__(task_name="Async Statistics Data Output Task", wait_before_start=0, run_interval=300)
-        
+
         # 直接复用 StatisticOutputTask 的初始化逻辑
         temp_stat_task = StatisticOutputTask(record_file_path)
         self.name_mapping = temp_stat_task.name_mapping
@@ -1628,49 +1619,46 @@ class AsyncStatisticOutputTask(AsyncTask):
 
     async def run(self):
         """完全异步执行统计任务"""
+
         async def _async_collect_and_output():
             try:
                 now = datetime.now()
                 loop = asyncio.get_event_loop()
-                
+
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     logger.info("正在后台收集统计数据...")
-                    
+
                     # 数据收集任务
                     collect_task = asyncio.create_task(
                         loop.run_in_executor(executor, self._collect_all_statistics, now)
                     )
-                    
+
                     stats = await collect_task
                     logger.info("统计数据收集完成")
-                    
+
                     # 创建并发的输出任务
                     output_tasks = [
-                        asyncio.create_task(
-                            loop.run_in_executor(executor, self._statistic_console_output, stats, now)
-                        ),
-                        asyncio.create_task(
-                            loop.run_in_executor(executor, self._generate_html_report, stats, now)
-                        )
+                        asyncio.create_task(loop.run_in_executor(executor, self._statistic_console_output, stats, now)),
+                        asyncio.create_task(loop.run_in_executor(executor, self._generate_html_report, stats, now)),
                     ]
-                    
+
                     # 等待所有输出任务完成
                     await asyncio.gather(*output_tasks)
-                    
+
                 logger.info("统计数据后台输出完成")
             except Exception as e:
                 logger.exception(f"后台统计数据输出过程中发生异常：{e}")
-        
+
         # 创建后台任务，立即返回
         asyncio.create_task(_async_collect_and_output())
 
     # 复用 StatisticOutputTask 的所有方法
     def _collect_all_statistics(self, now: datetime):
         return StatisticOutputTask._collect_all_statistics(self, now)
-    
+
     def _statistic_console_output(self, stats: Dict[str, Any], now: datetime):
         return StatisticOutputTask._statistic_console_output(self, stats, now)
-    
+
     def _generate_html_report(self, stats: dict[str, Any], now: datetime):
         return StatisticOutputTask._generate_html_report(self, stats, now)
 
@@ -1678,11 +1666,11 @@ class AsyncStatisticOutputTask(AsyncTask):
     @staticmethod
     def _collect_model_request_for_period(collect_period: List[Tuple[str, datetime]]) -> Dict[str, Any]:
         return StatisticOutputTask._collect_model_request_for_period(collect_period)
-    
-    @staticmethod 
+
+    @staticmethod
     def _collect_online_time_for_period(collect_period: List[Tuple[str, datetime]], now: datetime) -> Dict[str, Any]:
         return StatisticOutputTask._collect_online_time_for_period(collect_period, now)
-    
+
     def _collect_message_count_for_period(self, collect_period: List[Tuple[str, datetime]]) -> Dict[str, Any]:
         return StatisticOutputTask._collect_message_count_for_period(self, collect_period)
     
@@ -1699,13 +1687,13 @@ class AsyncStatisticOutputTask(AsyncTask):
 
     def _format_chat_stat(self, stats: Dict[str, Any]) -> str:
         return StatisticOutputTask._format_chat_stat(self, stats)
-        
+
     def _generate_chart_data(self, stat: dict[str, Any]) -> dict:
         return StatisticOutputTask._generate_chart_data(self, stat)
-        
+
     def _collect_interval_data(self, now: datetime, hours: int, interval_minutes: int) -> dict:
         return StatisticOutputTask._collect_interval_data(self, now, hours, interval_minutes)
-        
+
     def _generate_chart_tab(self, chart_data: dict) -> str:
         return StatisticOutputTask._generate_chart_tab(self, chart_data)
     

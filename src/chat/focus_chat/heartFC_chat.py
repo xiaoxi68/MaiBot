@@ -151,7 +151,7 @@ class HeartFChatting:
 
         # 存储回调函数
         self.on_stop_focus_chat = on_stop_focus_chat
-        
+
         # 初始化性能记录器
         # 如果没有指定版本号，则使用全局版本管理器的版本号
         actual_version = performance_version or get_hfc_version()
@@ -407,17 +407,17 @@ class HeartFChatting:
                         + (f"\n详情: {'; '.join(timer_strings)}" if timer_strings else "")
                         + processor_time_log
                     )
-                    
+
                     # 记录性能数据
                     try:
-                        action_result = self._current_cycle_detail.loop_plan_info.get('action_result', {})
+                        action_result = self._current_cycle_detail.loop_plan_info.get("action_result", {})
                         cycle_performance_data = {
                             "cycle_id": self._current_cycle_detail.cycle_id,
-                            "action_type": action_result.get('action_type', 'unknown'),
+                            "action_type": action_result.get("action_type", "unknown"),
                             "total_time": self._current_cycle_detail.end_time - self._current_cycle_detail.start_time,
                             "step_times": cycle_timers.copy(),
-                            "reasoning": action_result.get('reasoning', ''),
-                            "success": self._current_cycle_detail.loop_action_info.get('action_taken', False),
+                            "reasoning": action_result.get("reasoning", ""),
+                            "success": self._current_cycle_detail.loop_action_info.get("action_taken", False),
                         }
                         self.performance_logger.record_cycle(cycle_performance_data)
                     except Exception as perf_e:

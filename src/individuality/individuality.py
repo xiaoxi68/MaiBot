@@ -48,7 +48,6 @@ class Individuality:
         person_info_manager = get_person_info_manager()
         self.bot_person_id = person_info_manager.get_person_id("system", "bot_id")
         self.name = bot_nickname
-    
 
         # 检查配置变化，如果变化则清空
         await self._check_config_and_clear_if_changed(
@@ -62,7 +61,6 @@ class Individuality:
 
         # 初始化身份
         self.identity = Identity(identity_detail=identity_detail)
-
 
         logger.info("正在将所有人设写入impression")
         # 将所有人设写入impression
