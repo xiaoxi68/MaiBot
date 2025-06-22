@@ -62,11 +62,11 @@ class PersonInfoManager:
         try:
             db.connect(reuse_if_open=True)
             # 设置连接池参数
-            if hasattr(db, 'execute_sql'):
+            if hasattr(db, "execute_sql"):
                 # 设置SQLite优化参数
-                db.execute_sql('PRAGMA cache_size = -64000')  # 64MB缓存
-                db.execute_sql('PRAGMA temp_store = memory')  # 临时存储在内存中
-                db.execute_sql('PRAGMA mmap_size = 268435456')  # 256MB内存映射
+                db.execute_sql("PRAGMA cache_size = -64000")  # 64MB缓存
+                db.execute_sql("PRAGMA temp_store = memory")  # 临时存储在内存中
+                db.execute_sql("PRAGMA mmap_size = 268435456")  # 256MB内存映射
             db.create_tables([PersonInfo], safe=True)
         except Exception as e:
             logger.error(f"数据库连接或 PersonInfo 表创建失败: {e}")
@@ -165,7 +165,6 @@ class PersonInfoManager:
     async def update_one_field(self, person_id: str, field_name: str, value, data: dict = None):
         """更新某一个字段，会补全"""
         if field_name not in PersonInfo._meta.fields:
-
             logger.debug(f"更新'{field_name}'失败，未在 PersonInfo Peewee 模型中定义的字段。")
             return
 
@@ -178,20 +177,23 @@ class PersonInfoManager:
 
         def _db_update_sync(p_id: str, f_name: str, val_to_set):
             import time
+
             start_time = time.time()
             try:
                 record = PersonInfo.get_or_none(PersonInfo.person_id == p_id)
                 query_time = time.time()
-                
+
                 if record:
                     setattr(record, f_name, val_to_set)
                     record.save()
                     save_time = time.time()
-                    
+
                     total_time = save_time - start_time
                     if total_time > 0.5:  # 如果超过500ms就记录日志
-                        logger.warning(f"数据库更新操作耗时 {total_time:.3f}秒 (查询: {query_time-start_time:.3f}s, 保存: {save_time-query_time:.3f}s) person_id={p_id}, field={f_name}")
-                    
+                        logger.warning(
+                            f"数据库更新操作耗时 {total_time:.3f}秒 (查询: {query_time - start_time:.3f}s, 保存: {save_time - query_time:.3f}s) person_id={p_id}, field={f_name}"
+                        )
+
                     return True, False  # Found and updated, no creation needed
                 else:
                     total_time = time.time() - start_time
@@ -202,7 +204,6 @@ class PersonInfoManager:
                 total_time = time.time() - start_time
                 logger.error(f"数据库操作异常，耗时 {total_time:.3f}秒: {e}")
                 raise
-        
 
         found, needs_creation = await asyncio.to_thread(_db_update_sync, person_id, field_name, processed_value)
 

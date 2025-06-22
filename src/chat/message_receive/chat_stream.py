@@ -345,6 +345,7 @@ class ChatManager:
     async def load_all_streams(self):
         """从数据库加载所有聊天流"""
         logger.info("正在从数据库加载所有聊天流")
+
         def _db_load_all_streams_sync():
             loaded_streams_data = []
             for model_instance in ChatStreams.select():
