@@ -409,9 +409,7 @@ class DefaultReplyer:
             chat_target_name = "对方"
             if self.chat_target_info:
                 chat_target_name = (
-                    self.chat_target_info.get("person_name") 
-                    or self.chat_target_info.get("user_nickname") 
-                    or "对方"
+                    self.chat_target_info.get("person_name") or self.chat_target_info.get("user_nickname") or "对方"
                 )
             chat_target_1 = f"你正在和 {chat_target_name} 聊天"
             prompt = await global_prompt_manager.format_prompt(
@@ -524,9 +522,7 @@ class DefaultReplyer:
             chat_target_name = "对方"
             if self.chat_target_info:
                 chat_target_name = (
-                    self.chat_target_info.get("person_name") 
-                    or self.chat_target_info.get("user_nickname") 
-                    or "对方"
+                    self.chat_target_info.get("person_name") or self.chat_target_info.get("user_nickname") or "对方"
                 )
             chat_target_1 = f"你正在和 {chat_target_name} 聊天"
             prompt = await global_prompt_manager.format_prompt(
