@@ -28,6 +28,8 @@ from src.chat.focus_chat.planners.planner_factory import PlannerFactory
 from src.chat.focus_chat.planners.modify_actions import ActionModifier
 from src.chat.focus_chat.planners.action_manager import ActionManager
 from src.config.config import global_config
+from src.chat.focus_chat.hfc_performance_logger import HFCPerformanceLogger
+from src.chat.focus_chat.hfc_version_manager import get_hfc_version
 
 install(extra_lines=3)
 
@@ -85,6 +87,7 @@ class HeartFChatting:
         self,
         chat_id: str,
         on_stop_focus_chat: Optional[Callable[[], Awaitable[None]]] = None,
+        performance_version: str = None,
     ):
         """
         HeartFChatting 初始化函数
@@ -92,6 +95,7 @@ class HeartFChatting:
         参数:
             chat_id: 聊天流唯一标识符(如stream_id)
             on_stop_focus_chat: 当收到stop_focus_chat命令时调用的回调函数
+            performance_version: 性能记录版本号，用于区分不同启动版本
         """
         # 基础属性
         self.stream_id: str = chat_id  # 聊天流ID
@@ -147,6 +151,11 @@ class HeartFChatting:
 
         # 存储回调函数
         self.on_stop_focus_chat = on_stop_focus_chat
+        
+        # 初始化性能记录器
+        # 如果没有指定版本号，则使用全局版本管理器的版本号
+        actual_version = performance_version or get_hfc_version()
+        self.performance_logger = HFCPerformanceLogger(chat_id, actual_version)
 
     def _register_observations(self):
         """注册所有观察器"""
@@ -398,6 +407,21 @@ class HeartFChatting:
                         + (f"\n详情: {'; '.join(timer_strings)}" if timer_strings else "")
                         + processor_time_log
                     )
+                    
+                    # 记录性能数据
+                    try:
+                        action_result = self._current_cycle_detail.loop_plan_info.get('action_result', {})
+                        cycle_performance_data = {
+                            "cycle_id": self._current_cycle_detail.cycle_id,
+                            "action_type": action_result.get('action_type', 'unknown'),
+                            "total_time": self._current_cycle_detail.end_time - self._current_cycle_detail.start_time,
+                            "step_times": cycle_timers.copy(),
+                            "reasoning": action_result.get('reasoning', ''),
+                            "success": self._current_cycle_detail.loop_action_info.get('action_taken', False),
+                        }
+                        self.performance_logger.record_cycle(cycle_performance_data)
+                    except Exception as perf_e:
+                        logger.warning(f"{self.log_prefix} 记录性能数据失败: {perf_e}")
 
                     await asyncio.sleep(global_config.focus_chat.think_interval)
 
@@ -774,6 +798,13 @@ class HeartFChatting:
         if self._processing_lock.locked():
             self._processing_lock.release()
             logger.warning(f"{self.log_prefix} 已释放处理锁")
+
+        # 完成性能统计
+        try:
+            self.performance_logger.finalize_session()
+            logger.info(f"{self.log_prefix} 性能统计已完成")
+        except Exception as e:
+            logger.warning(f"{self.log_prefix} 完成性能统计时出错: {e}")
 
         logger.info(f"{self.log_prefix} HeartFChatting关闭完成")
 
