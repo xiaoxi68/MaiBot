@@ -9,7 +9,6 @@ from src.chat.focus_chat.info.obs_info import ObsInfo
 from src.chat.focus_chat.info.cycle_info import CycleInfo
 from src.chat.focus_chat.info.action_info import ActionInfo
 from src.chat.focus_chat.info.structured_info import StructuredInfo
-from src.chat.focus_chat.info.self_info import SelfInfo
 from src.chat.focus_chat.info.relation_info import RelationInfo
 from src.chat.focus_chat.info.expression_selection_info import ExpressionSelectionInfo
 from src.common.logger import get_logger
