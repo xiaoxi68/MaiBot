@@ -94,7 +94,7 @@ class MemoryActivator:
         obs_info_text = ""
         for observation in observations:
             if isinstance(observation, ChattingObservation):
-                obs_info_text += observation.get_observe_info()
+                obs_info_text += observation.talking_message_str_truncate_short
             elif isinstance(observation, StructureObservation):
                 working_info = observation.get_observe_info()
                 for working_info_item in working_info:

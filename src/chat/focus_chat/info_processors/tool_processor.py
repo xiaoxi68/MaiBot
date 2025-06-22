@@ -112,7 +112,8 @@ class ToolProcessor(BaseProcessor):
 
         is_group_chat = observation.is_group_chat
 
-        chat_observe_info = observation.get_observe_info()
+        #   chat_observe_info = observation.get_observe_info()
+        chat_observe_info = observation.talking_message_str_truncate_short
         # person_list = observation.person_list
 
         # 获取时间信息

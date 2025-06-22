@@ -54,6 +54,8 @@ class ReplyAction(BaseAction):
         logger.info(f"{self.log_prefix} 决定回复: {self.reasoning}")
 
         start_time = self.action_data.get("loop_start_time", time.time())
+        
+
 
         try:
             success, reply_set = await generator_api.generate_reply(
@@ -63,6 +65,7 @@ class ReplyAction(BaseAction):
                 chat_id=self.chat_id,
                 is_group=self.is_group,
             )
+
 
             # 检查从start_time以来的新消息数量
             # 获取动作触发时间或使用默认值
@@ -79,15 +82,20 @@ class ReplyAction(BaseAction):
 
             # 构建回复文本
             reply_text = ""
-            first_reply = False
+            first_replyed = False
             for reply_seg in reply_set:
                 data = reply_seg[1]
-                if not first_reply and need_reply:
-                    await self.send_text(content=data, reply_to=self.action_data.get("reply_to", ""))
+                if not first_replyed:
+                    if need_reply:
+                        await self.send_text(content=data, reply_to=self.action_data.get("reply_to", ""),typing=False)
+                        first_replyed = True
+                    else:
+                        await self.send_text(content=data,typing=False)
+                        first_replyed = True
                 else:
-                    await self.send_text(content=data)
-                    first_reply = True
+                    await self.send_text(content=data,typing=True)
                 reply_text += data
+                
 
             # 存储动作记录
             await self.store_action_info(
@@ -119,16 +127,17 @@ class NoReplyAction(BaseAction):
     action_name = "no_reply"
     action_description = "暂时不回复消息"
 
-    # 默认超时时间，将由插件在注册时设置
-    waiting_timeout = 1200
-
     # 连续no_reply计数器
     _consecutive_count = 0
-
-    # random_activation_probability = 0.2
-
-    # 分级等待时间
-    _waiting_stages = [10, 60, 600]  # 第1、2、3次的等待时间
+    
+    # 概率判定时间点
+    _probability_check_time = 15  # 15秒时进行概率判定
+    
+    # 概率判定通过的概率（通过则结束动作）
+    _end_probability = 0.5  # 50%概率结束
+    
+    # 最大等待超时时间
+    _max_timeout = 1200  # 1200秒
 
     # 动作参数定义
     action_parameters = {"reason": "不回复的原因"}
@@ -140,33 +149,42 @@ class NoReplyAction(BaseAction):
     associated_types = []
 
     async def execute(self) -> Tuple[bool, str]:
-        """执行不回复动作，等待新消息或超时"""
+        """执行不回复动作，在15秒时进行概率判定，决定是否继续等待"""
+        import random
+        
         try:
             # 增加连续计数
             NoReplyAction._consecutive_count += 1
             count = NoReplyAction._consecutive_count
 
             reason = self.action_data.get("reason", "")
+            
+            logger.info(f"{self.log_prefix} 选择不回复(第{count}次)，开始等待新消息，原因: {reason}")
 
-            # 计算本次等待时间
-            if count <= len(self._waiting_stages):
-                # 前3次使用预设时间
-                stage_time = self._waiting_stages[count - 1]
-                # 如果WAITING_TIME_THRESHOLD更小，则使用它
-                timeout = min(stage_time, self.waiting_timeout)
+            # 先等待到概率判定时间点（15秒）
+            logger.info(f"{self.log_prefix} 等待{self._probability_check_time}秒后进行概率判定...")
+            
+            # 等待15秒或有新消息
+            result = await self.wait_for_new_message(self._probability_check_time)
+            
+            # 如果在15秒内有新消息，直接返回
+            if result[0]:  # 有新消息
+                logger.info(f"{self.log_prefix} 在{self._probability_check_time}秒内收到新消息，结束等待")
+                return result
+            
+            # 15秒后进行概率判定
+            if random.random() < self._end_probability:
+                # 概率判定通过，结束动作
+                logger.info(f"{self.log_prefix} 概率判定通过({self._end_probability * 100}%)，结束不回复动作")
+                return True, "概率判定通过，结束等待"
             else:
-                # 第4次及以后使用WAITING_TIME_THRESHOLD
-                timeout = self.waiting_timeout
-
-            logger.info(
-                f"{self.log_prefix} 选择不回复(第{count}次连续)，等待新消息中... (超时: {timeout}秒)，原因: {reason}"
-            )
-
-            # 等待新消息或达到时间上限
-            result = await self.wait_for_new_message(timeout)
-
-            # 如果有新消息或者超时，都不重置计数器，因为可能还会继续no_reply
-            return result
+                # 概率判定不通过，继续等待直到最大超时时间
+                remaining_time = self._max_timeout - self._probability_check_time
+                logger.info(f"{self.log_prefix} 概率判定不通过，继续等待{remaining_time}秒直到超时或有新消息...")
+                
+                # 继续等待剩余时间
+                result = await self.wait_for_new_message(remaining_time)
+                return result
 
         except Exception as e:
             logger.error(f"{self.log_prefix} 不回复动作执行失败: {e}")
@@ -244,41 +262,6 @@ class EmojiAction(BaseAction):
             logger.error(f"{self.log_prefix} 表情动作执行失败: {e}")
             return False, f"表情发送失败: {str(e)}"
 
-
-class ChangeToFocusChatAction(BaseAction):
-    """切换到专注聊天动作 - 从普通模式切换到专注模式"""
-
-    focus_activation_type = ActionActivationType.NEVER
-    normal_activation_type = ActionActivationType.NEVER
-    mode_enable = ChatMode.NORMAL
-    parallel_action = False
-
-    # 动作基本信息
-    action_name = "change_to_focus_chat"
-    action_description = "切换到专注聊天，从普通模式切换到专注模式"
-
-    # 动作参数定义
-    action_parameters = {}
-
-    apex = 111
-    # 动作使用场景
-    action_require = [
-        "你想要进入专注聊天模式",
-        "聊天上下文中自己的回复条数较多（超过3-4条）",
-        "对话进行得非常热烈活跃",
-        "用户表现出深入交流的意图",
-        "话题需要更专注和深入的讨论",
-    ]
-
-    async def execute(self) -> Tuple[bool, str]:
-        """执行切换到专注聊天动作"""
-        logger.info(f"{self.log_prefix} 决定切换到专注聊天: {self.reasoning}")
-
-        # 重置NoReplyAction的连续计数器
-        NoReplyAction.reset_consecutive_count()
-
-        # 这里只做决策标记，具体切换逻辑由上层管理器处理
-        return True, "决定切换到专注聊天模式"
 
 
 class ExitFocusChatAction(BaseAction):
@@ -371,7 +354,7 @@ class CoreActionsPlugin(BasePlugin):
     config_schema = {
         "plugin": {
             "enabled": ConfigField(type=bool, default=True, description="是否启用插件"),
-            "config_version": ConfigField(type=str, default="0.0.2", description="配置文件版本"),
+            "config_version": ConfigField(type=str, default="0.0.3", description="配置文件版本"),
         },
         "components": {
             "enable_reply": ConfigField(type=bool, default=True, description="是否启用'回复'动作"),
@@ -381,12 +364,11 @@ class CoreActionsPlugin(BasePlugin):
             "enable_exit_focus": ConfigField(type=bool, default=True, description="是否启用'退出专注模式'动作"),
         },
         "no_reply": {
-            "waiting_timeout": ConfigField(
-                type=int, default=1200, description="连续不回复时，最长的等待超时时间（秒）"
+            "probability_check_time": ConfigField(type=int, default=15, description="进行概率判定的时间点（秒）"),
+            "end_probability": ConfigField(
+                type=float, default=0.5, description="在判定时间点结束等待的概率（0.0到1.0）", example=0.5
             ),
-            "stage_1_wait": ConfigField(type=int, default=10, description="第1次连续不回复的等待时间（秒）"),
-            "stage_2_wait": ConfigField(type=int, default=60, description="第2次连续不回复的等待时间（秒）"),
-            "stage_3_wait": ConfigField(type=int, default=600, description="第3次连续不回复的等待时间（秒）"),
+            "max_timeout": ConfigField(type=int, default=1200, description="最大等待超时时间（秒）"),
             "random_probability": ConfigField(
                 type=float, default=0.8, description="Focus模式下，随机选择不回复的概率（0.0到1.0）", example=0.8
             ),
@@ -408,13 +390,14 @@ class CoreActionsPlugin(BasePlugin):
         no_reply_probability = self.get_config("no_reply.random_probability", 0.8)
         NoReplyAction.random_activation_probability = no_reply_probability
 
-        no_reply_timeout = self.get_config("no_reply.waiting_timeout", 1200)
-        NoReplyAction.waiting_timeout = no_reply_timeout
+        probability_check_time = self.get_config("no_reply.probability_check_time", 15)
+        NoReplyAction._probability_check_time = probability_check_time
 
-        stage1 = self.get_config("no_reply.stage_1_wait", 10)
-        stage2 = self.get_config("no_reply.stage_2_wait", 60)
-        stage3 = self.get_config("no_reply.stage_3_wait", 600)
-        NoReplyAction._waiting_stages = [stage1, stage2, stage3]
+        end_probability = self.get_config("no_reply.end_probability", 0.5)
+        NoReplyAction._end_probability = end_probability
+
+        max_timeout = self.get_config("no_reply.max_timeout", 1200)
+        NoReplyAction._max_timeout = max_timeout
 
         # --- 根据配置注册组件 ---
         components = []
@@ -426,8 +409,7 @@ class CoreActionsPlugin(BasePlugin):
             components.append((EmojiAction.get_action_info(), EmojiAction))
         if self.get_config("components.enable_exit_focus", True):
             components.append((ExitFocusChatAction.get_action_info(), ExitFocusChatAction))
-        if self.get_config("components.enable_change_to_focus", True):
-            components.append((ChangeToFocusChatAction.get_action_info(), ChangeToFocusChatAction))
+
         # components.append((DeepReplyAction.get_action_info(), DeepReplyAction))
 
         return components

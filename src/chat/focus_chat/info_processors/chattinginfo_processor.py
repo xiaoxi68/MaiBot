@@ -62,6 +62,10 @@ class ChattingInfoProcessor(BaseProcessor):
                     # 改为异步任务，不阻塞主流程
                     # asyncio.create_task(self.chat_compress(obs))
 
+                    # 设置聊天ID
+                    if hasattr(obs, "chat_id"):
+                        obs_info.set_chat_id(obs.chat_id)
+
                     # 设置说话消息
                     if hasattr(obs, "talking_message_str"):
                         # print(f"设置说话消息：obs.talking_message_str: {obs.talking_message_str}")
@@ -71,6 +75,14 @@ class ChattingInfoProcessor(BaseProcessor):
                     if hasattr(obs, "talking_message_str_truncate"):
                         # print(f"设置截断后的说话消息：obs.talking_message_str_truncate: {obs.talking_message_str_truncate}")
                         obs_info.set_talking_message_str_truncate(obs.talking_message_str_truncate)
+
+                    # 设置简短版本的说话消息
+                    if hasattr(obs, "talking_message_str_short"):
+                        obs_info.set_talking_message_str_short(obs.talking_message_str_short)
+
+                    # 设置截断简短版本的说话消息
+                    if hasattr(obs, "talking_message_str_truncate_short"):
+                        obs_info.set_talking_message_str_truncate_short(obs.talking_message_str_truncate_short)
 
                     if hasattr(obs, "mid_memory_info"):
                         # print(f"设置之前聊天信息：obs.mid_memory_info: {obs.mid_memory_info}")
@@ -82,7 +94,8 @@ class ChattingInfoProcessor(BaseProcessor):
                         chat_type = "group"
                     else:
                         chat_type = "private"
-                        obs_info.set_chat_target(obs.chat_target_info.get("person_name", "某人"))
+                        if hasattr(obs, "chat_target_info") and obs.chat_target_info:
+                            obs_info.set_chat_target(obs.chat_target_info.get("person_name", "某人"))
                     obs_info.set_chat_type(chat_type)
 
                     # logger.debug(f"聊天信息处理器处理后的信息: {obs_info}")

@@ -660,6 +660,7 @@ class HeartFChatting:
                 }
 
             with Timer("执行动作", cycle_timers):
+                
                 action_type, action_data, reasoning = (
                     plan_result.get("action_result", {}).get("action_type", "error"),
                     plan_result.get("action_result", {}).get("action_data", {}),
@@ -674,7 +675,7 @@ class HeartFChatting:
                     action_str = action_type
 
                 logger.debug(f"{self.log_prefix} 麦麦想要：'{action_str}'")
-
+                
                 success, reply_text, command = await self._handle_action(
                     action_type, reasoning, action_data, cycle_timers, thinking_id
                 )

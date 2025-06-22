@@ -149,7 +149,8 @@ class ExpressionSelectorProcessor(BaseProcessor):
         if observations:
             for observation in observations:
                 if isinstance(observation, ChattingObservation):
-                    chat_info = observation.get_observe_info()
+                    # chat_info = observation.get_observe_info()    
+                    chat_info = observation.talking_message_str_truncate_short
                     break
 
         if not chat_info:

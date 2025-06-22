@@ -144,7 +144,7 @@ def init_prompt():
     fetch_info_prompt = """
     
 {name_block}
-以下是你对{person_name}的了解，请你从中提取用户的有关"{info_type}"的信息，如果用户没有相关信息，请输出none：
+以下是你在之前与{person_name}的交流中，产生的对{person_name}的了解，请你从中提取用户的有关"{info_type}"的信息，如果用户没有相关信息，请输出none：
 {person_impression_block}
 {points_text_block}
 请严格按照以下json输出格式，不要输出多余内容：
@@ -547,8 +547,7 @@ class PersonImpressionpProcessor(BaseProcessor):
             for observation in observations:
                 if isinstance(observation, ChattingObservation):
                     chat_observe_info = observation.get_observe_info()
-                    chat_observe_info = chat_observe_info[-300:]
-
+                    # latest_message_time = observation.last_observe_time
                     # 从聊天观察中提取用户信息并更新消息段
                     # 获取最新的非bot消息来更新消息段
                     latest_messages = get_raw_msg_by_timestamp_with_chat(

@@ -63,6 +63,8 @@ class ChattingObservation(Observation):
         self.talking_message = []
         self.talking_message_str = ""
         self.talking_message_str_truncate = ""
+        self.talking_message_str_short = ""
+        self.talking_message_str_truncate_short = ""
         self.name = global_config.bot.nickname
         self.nick_name = global_config.bot.alias_names
         self.max_now_obs_len = global_config.focus_chat.observation_context_size
@@ -88,6 +90,8 @@ class ChattingObservation(Observation):
             "chat_target_info": self.chat_target_info,
             "talking_message_str": self.talking_message_str,
             "talking_message_str_truncate": self.talking_message_str_truncate,
+            "talking_message_str_short": self.talking_message_str_short,
+            "talking_message_str_truncate_short": self.talking_message_str_truncate_short,
             "name": self.name,
             "nick_name": self.nick_name,
             "last_observe_time": self.last_observe_time,
@@ -223,6 +227,24 @@ class ChattingObservation(Observation):
         )
         self.talking_message_str_truncate = build_readable_messages(
             messages=self.talking_message,
+            timestamp_mode="normal_no_YMD",
+            read_mark=last_obs_time_mark,
+            truncate=True,
+            show_actions=True,
+        )
+        
+        # 构建简短版本 - 使用最新一半的消息
+        half_count = len(self.talking_message) // 2
+        recent_messages = self.talking_message[-half_count:] if half_count > 0 else self.talking_message
+        
+        self.talking_message_str_short = build_readable_messages(
+            messages=recent_messages,
+            timestamp_mode="lite",
+            read_mark=last_obs_time_mark,
+            show_actions=True,
+        )
+        self.talking_message_str_truncate_short = build_readable_messages(
+            messages=recent_messages,
             timestamp_mode="normal_no_YMD",
             read_mark=last_obs_time_mark,
             truncate=True,
