@@ -512,16 +512,16 @@ class StatisticOutputTask(AsyncTask):
             try:
                 # 从文件名解析时间戳 (格式: hash_version_date_time.json)
                 filename = os.path.basename(json_file)
-                name_parts = filename.replace('.json', '').split('_')
+                name_parts = filename.replace(".json", "").split("_")
                 if len(name_parts) >= 4:
                     date_str = name_parts[-2]  # YYYYMMDD
                     time_str = name_parts[-1]  # HHMMSS
                     file_time_str = f"{date_str}_{time_str}"
                     file_time = datetime.strptime(file_time_str, "%Y%m%d_%H%M%S")
-                    
+
                     # 如果文件时间在查询范围内，则处理该文件
                     if file_time >= query_start_time:
-                        with open(json_file, 'r', encoding='utf-8') as f:
+                        with open(json_file, "r", encoding="utf-8") as f:
                             cycles_data = json.load(f)
                             self._process_focus_file_data(cycles_data, stats, collect_period, file_time)
             except Exception as e:
@@ -532,8 +532,13 @@ class StatisticOutputTask(AsyncTask):
         self._calculate_focus_averages(stats)
         return stats
 
-    def _process_focus_file_data(self, cycles_data: List[Dict], stats: Dict[str, Any], 
-                                collect_period: List[Tuple[str, datetime]], file_time: datetime):
+    def _process_focus_file_data(
+        self,
+        cycles_data: List[Dict],
+        stats: Dict[str, Any],
+        collect_period: List[Tuple[str, datetime]],
+        file_time: datetime,
+    ):
         """
         处理单个focus文件的数据
         """
@@ -542,7 +547,7 @@ class StatisticOutputTask(AsyncTask):
                 # 解析时间戳
                 timestamp_str = cycle_data.get("timestamp", "")
                 if timestamp_str:
-                    cycle_time = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+                    cycle_time = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
                 else:
                     cycle_time = file_time  # 使用文件时间作为后备
 
@@ -563,7 +568,7 @@ class StatisticOutputTask(AsyncTask):
                     if cycle_time >= period_start:
                         for period_key, _ in collect_period[idx:]:
                             stat = stats[period_key]
-                            
+
                             # 基础统计
                             stat[FOCUS_TOTAL_CYCLES] += 1
                             stat[FOCUS_ACTION_RATIOS][action_type] += 1
@@ -572,7 +577,7 @@ class StatisticOutputTask(AsyncTask):
                             stat["focus_action_ratios_by_chat"][chat_id][action_type] += 1
                             stat[FOCUS_TOTAL_TIME_BY_CHAT][chat_id] += total_time
                             stat[FOCUS_TOTAL_TIME_BY_ACTION][action_type] += total_time
-                            
+
                             # 版本统计
                             stat[FOCUS_CYCLE_CNT_BY_VERSION][version] += 1
                             stat[FOCUS_ACTION_RATIOS_BY_VERSION][version][action_type] += 1
@@ -583,7 +588,7 @@ class StatisticOutputTask(AsyncTask):
                                 stat[FOCUS_AVG_TIMES_BY_CHAT_ACTION][chat_id][stage].append(time_val)
                                 stat[FOCUS_AVG_TIMES_BY_ACTION][action_type][stage].append(time_val)
                                 stat[FOCUS_AVG_TIMES_BY_VERSION][version][stage].append(time_val)
-                                
+
                                 # 专门收集执行动作阶段的时间，按聊天流和action类型分组
                                 if stage == "执行动作":
                                     stat["focus_exec_times_by_chat_action"][chat_id][action_type].append(time_val)
@@ -645,8 +650,6 @@ class StatisticOutputTask(AsyncTask):
                         stat["focus_exec_times_by_version_action"][version][action_type] = sum(times) / len(times)
                     else:
                         stat["focus_exec_times_by_version_action"][version][action_type] = 0.0
-
-
 
     def _collect_all_statistics(self, now: datetime) -> Dict[str, Dict[str, Any]]:
         """
@@ -803,12 +806,8 @@ class StatisticOutputTask(AsyncTask):
         """
         if stats[FOCUS_TOTAL_CYCLES] <= 0:
             return ""
-        
-        output = [
-            "Focus系统统计:",
-            f"总循环数: {stats[FOCUS_TOTAL_CYCLES]}",
-            ""
-        ]
+
+        output = ["Focus系统统计:", f"总循环数: {stats[FOCUS_TOTAL_CYCLES]}", ""]
 
         # 全局阶段平均时间
         if stats[FOCUS_AVG_TIMES_BY_STAGE]:
@@ -842,23 +841,24 @@ class StatisticOutputTask(AsyncTask):
         try:
             # 首先尝试从chat_stream获取真实群组名称
             from src.chat.message_receive.chat_stream import get_chat_manager
+
             chat_manager = get_chat_manager()
-            
+
             if chat_id in chat_manager.streams:
                 stream = chat_manager.streams[chat_id]
-                if stream.group_info and hasattr(stream.group_info, 'group_name'):
+                if stream.group_info and hasattr(stream.group_info, "group_name"):
                     group_name = stream.group_info.group_name
                     if group_name and group_name.strip():
                         return group_name.strip()
-                elif stream.user_info and hasattr(stream.user_info, 'user_nickname'):
+                elif stream.user_info and hasattr(stream.user_info, "user_nickname"):
                     user_name = stream.user_info.user_nickname
                     if user_name and user_name.strip():
                         return user_name.strip()
-            
+
             # 如果从chat_stream获取失败，尝试解析chat_id格式
-            if chat_id.startswith('g'):
+            if chat_id.startswith("g"):
                 return f"群聊{chat_id[1:]}"
-            elif chat_id.startswith('u'):
+            elif chat_id.startswith("u"):
                 return f"用户{chat_id[1:]}"
             else:
                 return chat_id
@@ -942,43 +942,53 @@ class StatisticOutputTask(AsyncTask):
                     for chat_id, count in sorted(stat_data[MSG_CNT_BY_CHAT].items())
                 ]
             )
-            
+
             # Focus统计数据
             # focus_action_rows = ""
             # focus_chat_rows = ""
             # focus_stage_rows = ""
             # focus_action_stage_rows = ""
-            
+
             if stat_data.get(FOCUS_TOTAL_CYCLES, 0) > 0:
                 # Action类型统计
                 total_actions = sum(stat_data[FOCUS_ACTION_RATIOS].values()) if stat_data[FOCUS_ACTION_RATIOS] else 0
-                _focus_action_rows = "\n".join([
-                    f"<tr><td>{action_type}</td><td>{count}</td><td>{(count/total_actions*100):.1f}%</td></tr>"
-                    for action_type, count in sorted(stat_data[FOCUS_ACTION_RATIOS].items())
-                ])
-                
+                _focus_action_rows = "\n".join(
+                    [
+                        f"<tr><td>{action_type}</td><td>{count}</td><td>{(count / total_actions * 100):.1f}%</td></tr>"
+                        for action_type, count in sorted(stat_data[FOCUS_ACTION_RATIOS].items())
+                    ]
+                )
+
                 # 按聊天流统计
-                _focus_chat_rows = "\n".join([
-                    f"<tr><td>{self.name_mapping.get(chat_id, (chat_id, 0))[0]}</td><td>{count}</td><td>{stat_data[FOCUS_TOTAL_TIME_BY_CHAT].get(chat_id, 0):.2f}秒</td></tr>"
-                    for chat_id, count in sorted(stat_data[FOCUS_CYCLE_CNT_BY_CHAT].items(), key=lambda x: x[1], reverse=True)
-                ])
-                
+                _focus_chat_rows = "\n".join(
+                    [
+                        f"<tr><td>{self.name_mapping.get(chat_id, (chat_id, 0))[0]}</td><td>{count}</td><td>{stat_data[FOCUS_TOTAL_TIME_BY_CHAT].get(chat_id, 0):.2f}秒</td></tr>"
+                        for chat_id, count in sorted(
+                            stat_data[FOCUS_CYCLE_CNT_BY_CHAT].items(), key=lambda x: x[1], reverse=True
+                        )
+                    ]
+                )
+
                 # 全局阶段时间统计
-                _focus_stage_rows = "\n".join([
-                    f"<tr><td>{stage}</td><td>{avg_time:.3f}秒</td></tr>"
-                    for stage, avg_time in sorted(stat_data[FOCUS_AVG_TIMES_BY_STAGE].items())
-                ])
-                
+                _focus_stage_rows = "\n".join(
+                    [
+                        f"<tr><td>{stage}</td><td>{avg_time:.3f}秒</td></tr>"
+                        for stage, avg_time in sorted(stat_data[FOCUS_AVG_TIMES_BY_STAGE].items())
+                    ]
+                )
+
                 # 按Action类型的阶段时间统计
                 focus_action_stage_items = []
                 for action_type, stage_times in stat_data[FOCUS_AVG_TIMES_BY_ACTION].items():
                     for stage, avg_time in stage_times.items():
                         focus_action_stage_items.append((action_type, stage, avg_time))
-                
-                _focus_action_stage_rows = "\n".join([
-                    f"<tr><td>{action_type}</td><td>{stage}</td><td>{avg_time:.3f}秒</td></tr>"
-                    for action_type, stage, avg_time in sorted(focus_action_stage_items)
-                ])
+
+                _focus_action_stage_rows = "\n".join(
+                    [
+                        f"<tr><td>{action_type}</td><td>{stage}</td><td>{avg_time:.3f}秒</td></tr>"
+                        for action_type, stage, avg_time in sorted(focus_action_stage_items)
+                    ]
+                )
             # 生成HTML
             return f"""
             <div id=\"{div_id}\" class=\"tab-content\">
@@ -1046,11 +1056,11 @@ class StatisticOutputTask(AsyncTask):
         # 添加Focus统计内容
         focus_tab = self._generate_focus_tab(stat)
         tab_content_list.append(focus_tab)
-        
+
         # 添加版本对比内容
         versions_tab = self._generate_versions_tab(stat)
         tab_content_list.append(versions_tab)
-        
+
         # 添加图表内容
         chart_data = self._generate_chart_data(stat)
         tab_content_list.append(self._generate_chart_tab(chart_data))
@@ -1203,30 +1213,32 @@ class StatisticOutputTask(AsyncTask):
 
     def _generate_focus_tab(self, stat: dict[str, Any]) -> str:
         """生成Focus统计独立分页的HTML内容"""
-        
+
         # 为每个时间段准备Focus数据
         focus_sections = []
-        
+
         for period_name, period_delta, period_desc in self.stat_period:
             stat_data = stat.get(period_name, {})
-            
+
             if stat_data.get(FOCUS_TOTAL_CYCLES, 0) <= 0:
                 continue
-            
+
             # 生成Focus统计数据行
             focus_action_rows = ""
             focus_chat_rows = ""
             focus_stage_rows = ""
             focus_action_stage_rows = ""
-            
+
             # Action类型统计
             total_actions = sum(stat_data[FOCUS_ACTION_RATIOS].values()) if stat_data[FOCUS_ACTION_RATIOS] else 0
             if total_actions > 0:
-                focus_action_rows = "\n".join([
-                    f"<tr><td>{action_type}</td><td>{count}</td><td>{(count/total_actions*100):.1f}%</td></tr>"
-                    for action_type, count in sorted(stat_data[FOCUS_ACTION_RATIOS].items())
-                ])
-            
+                focus_action_rows = "\n".join(
+                    [
+                        f"<tr><td>{action_type}</td><td>{count}</td><td>{(count / total_actions * 100):.1f}%</td></tr>"
+                        for action_type, count in sorted(stat_data[FOCUS_ACTION_RATIOS].items())
+                    ]
+                )
+
             # 按聊天流统计（横向表格，显示各阶段时间差异和不同action的平均时间）
             focus_chat_rows = ""
             if stat_data[FOCUS_AVG_TIMES_BY_CHAT_ACTION]:
@@ -1242,72 +1254,84 @@ class StatisticOutputTask(AsyncTask):
                             break
                     if stage_exists:
                         existing_basic_stages.append(stage)
-                
+
                 # 获取所有action类型（按出现频率排序）
-                all_action_types = sorted(stat_data[FOCUS_ACTION_RATIOS].keys(), 
-                                        key=lambda x: stat_data[FOCUS_ACTION_RATIOS][x], reverse=True)
-                
+                all_action_types = sorted(
+                    stat_data[FOCUS_ACTION_RATIOS].keys(), key=lambda x: stat_data[FOCUS_ACTION_RATIOS][x], reverse=True
+                )
+
                 # 为每个聊天流生成一行
                 chat_rows = []
-                for chat_id in sorted(stat_data[FOCUS_CYCLE_CNT_BY_CHAT].keys(), 
-                                    key=lambda x: stat_data[FOCUS_CYCLE_CNT_BY_CHAT][x], reverse=True):
+                for chat_id in sorted(
+                    stat_data[FOCUS_CYCLE_CNT_BY_CHAT].keys(),
+                    key=lambda x: stat_data[FOCUS_CYCLE_CNT_BY_CHAT][x],
+                    reverse=True,
+                ):
                     chat_name = self.name_mapping.get(chat_id, (chat_id, 0))[0]
                     cycle_count = stat_data[FOCUS_CYCLE_CNT_BY_CHAT][chat_id]
-                    
+
                     # 获取该聊天流的各阶段平均时间
                     stage_times = stat_data[FOCUS_AVG_TIMES_BY_CHAT_ACTION].get(chat_id, {})
-                    
+
                     row_cells = [f"<td><strong>{chat_name}</strong><br><small>({cycle_count}次循环)</small></td>"]
-                    
+
                     # 添加基础阶段时间
                     for stage in existing_basic_stages:
                         time_val = stage_times.get(stage, 0.0)
                         row_cells.append(f"<td>{time_val:.3f}秒</td>")
-                    
+
                     # 添加每个action类型的平均执行时间
                     for action_type in all_action_types:
                         # 使用真实的按聊天流+action类型分组的执行时间数据
                         exec_times_by_chat_action = stat_data.get("focus_exec_times_by_chat_action", {})
                         chat_action_times = exec_times_by_chat_action.get(chat_id, {})
                         avg_exec_time = chat_action_times.get(action_type, 0.0)
-                        
+
                         if avg_exec_time > 0:
                             row_cells.append(f"<td>{avg_exec_time:.3f}秒</td>")
                         else:
                             row_cells.append("<td>-</td>")
-                    
+
                     chat_rows.append(f"<tr>{''.join(row_cells)}</tr>")
-                
+
                 # 生成表头
                 stage_headers = "".join([f"<th>{stage}</th>" for stage in existing_basic_stages])
-                action_headers = "".join([f"<th>{action_type}<br><small>(执行)</small></th>" for action_type in all_action_types])
+                action_headers = "".join(
+                    [f"<th>{action_type}<br><small>(执行)</small></th>" for action_type in all_action_types]
+                )
                 focus_chat_table_header = f"<tr><th>聊天流</th>{stage_headers}{action_headers}</tr>"
                 focus_chat_rows = focus_chat_table_header + "\n" + "\n".join(chat_rows)
-            
+
             # 全局阶段时间统计
-            focus_stage_rows = "\n".join([
-                f"<tr><td>{stage}</td><td>{avg_time:.3f}秒</td></tr>"
-                for stage, avg_time in sorted(stat_data[FOCUS_AVG_TIMES_BY_STAGE].items())
-            ])
-            
+            focus_stage_rows = "\n".join(
+                [
+                    f"<tr><td>{stage}</td><td>{avg_time:.3f}秒</td></tr>"
+                    for stage, avg_time in sorted(stat_data[FOCUS_AVG_TIMES_BY_STAGE].items())
+                ]
+            )
+
             # 聊天流Action选择比例对比表（横向表格）
             focus_chat_action_ratios_rows = ""
             if stat_data.get("focus_action_ratios_by_chat"):
                 # 获取所有action类型（按全局频率排序）
-                all_action_types_for_ratio = sorted(stat_data[FOCUS_ACTION_RATIOS].keys(), 
-                                                  key=lambda x: stat_data[FOCUS_ACTION_RATIOS][x], reverse=True)
-                
+                all_action_types_for_ratio = sorted(
+                    stat_data[FOCUS_ACTION_RATIOS].keys(), key=lambda x: stat_data[FOCUS_ACTION_RATIOS][x], reverse=True
+                )
+
                 if all_action_types_for_ratio:
                     # 为每个聊天流生成数据行（按循环数排序）
                     chat_ratio_rows = []
-                    for chat_id in sorted(stat_data[FOCUS_CYCLE_CNT_BY_CHAT].keys(), 
-                                        key=lambda x: stat_data[FOCUS_CYCLE_CNT_BY_CHAT][x], reverse=True):
+                    for chat_id in sorted(
+                        stat_data[FOCUS_CYCLE_CNT_BY_CHAT].keys(),
+                        key=lambda x: stat_data[FOCUS_CYCLE_CNT_BY_CHAT][x],
+                        reverse=True,
+                    ):
                         chat_name = self.name_mapping.get(chat_id, (chat_id, 0))[0]
                         total_cycles = stat_data[FOCUS_CYCLE_CNT_BY_CHAT][chat_id]
                         chat_action_counts = stat_data["focus_action_ratios_by_chat"].get(chat_id, {})
-                        
+
                         row_cells = [f"<td><strong>{chat_name}</strong><br><small>({total_cycles}次循环)</small></td>"]
-                        
+
                         # 添加每个action类型的数量和百分比
                         for action_type in all_action_types_for_ratio:
                             count = chat_action_counts.get(action_type, 0)
@@ -1316,9 +1340,9 @@ class StatisticOutputTask(AsyncTask):
                                 row_cells.append(f"<td>{count}<br><small>({ratio:.1f}%)</small></td>")
                             else:
                                 row_cells.append("<td>-<br><small>(0%)</small></td>")
-                        
+
                         chat_ratio_rows.append(f"<tr>{''.join(row_cells)}</tr>")
-                    
+
                     # 生成表头
                     action_headers = "".join([f"<th>{action_type}</th>" for action_type in all_action_types_for_ratio])
                     chat_action_ratio_table_header = f"<tr><th>聊天流</th>{action_headers}</tr>"
@@ -1333,33 +1357,38 @@ class StatisticOutputTask(AsyncTask):
                 for stage in stage_order:
                     if any(stage in stage_times for stage_times in stat_data[FOCUS_AVG_TIMES_BY_ACTION].values()):
                         all_stages.append(stage)
-                
+
                 # 为每个Action类型生成一行
                 action_rows = []
                 for action_type in sorted(stat_data[FOCUS_AVG_TIMES_BY_ACTION].keys()):
                     stage_times = stat_data[FOCUS_AVG_TIMES_BY_ACTION][action_type]
                     row_cells = [f"<td><strong>{action_type}</strong></td>"]
-                    
+
                     for stage in all_stages:
                         time_val = stage_times.get(stage, 0.0)
                         row_cells.append(f"<td>{time_val:.3f}秒</td>")
-                    
+
                     action_rows.append(f"<tr>{''.join(row_cells)}</tr>")
-                
+
                 # 生成表头
                 stage_headers = "".join([f"<th>{stage}</th>" for stage in all_stages])
                 focus_action_stage_table_header = f"<tr><th>Action类型</th>{stage_headers}</tr>"
                 focus_action_stage_rows = focus_action_stage_table_header + "\n" + "\n".join(action_rows)
-            
+
             # 计算时间范围
             if period_name == "all_time":
                 from src.manager.local_store_manager import local_storage
+
                 start_time = datetime.fromtimestamp(local_storage["deploy_time"])
-                time_range = f"{start_time.strftime('%Y-%m-%d %H:%M:%S')} ~ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                time_range = (
+                    f"{start_time.strftime('%Y-%m-%d %H:%M:%S')} ~ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                )
             else:
                 start_time = datetime.now() - period_delta
-                time_range = f"{start_time.strftime('%Y-%m-%d %H:%M:%S')} ~ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-            
+                time_range = (
+                    f"{start_time.strftime('%Y-%m-%d %H:%M:%S')} ~ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                )
+
             # 生成该时间段的Focus统计HTML
             section_html = f"""
             <div class="focus-period-section">
@@ -1410,9 +1439,9 @@ class StatisticOutputTask(AsyncTask):
                 </div>
             </div>
             """
-            
+
             focus_sections.append(section_html)
-        
+
         # 如果没有任何Focus数据
         if not focus_sections:
             focus_sections.append("""
@@ -1422,7 +1451,7 @@ class StatisticOutputTask(AsyncTask):
                 <p class="info-item">请确保 <code>log/hfc_loop/</code> 目录下存在相应的JSON文件。</p>
             </div>
             """)
-        
+
         return f"""
         <div id="focus" class="tab-content">
             <h1>Focus系统详细统计</h1>
@@ -1431,7 +1460,7 @@ class StatisticOutputTask(AsyncTask):
                 <strong>统计内容:</strong> 各时间段的Focus循环性能分析
             </p>
             
-            {''.join(focus_sections)}
+            {"".join(focus_sections)}
             
             <style>
                 .focus-period-section {{
@@ -1537,20 +1566,23 @@ class StatisticOutputTask(AsyncTask):
 
     def _generate_versions_tab(self, stat: dict[str, Any]) -> str:
         """生成版本对比独立分页的HTML内容"""
-        
+
         # 为每个时间段准备版本对比数据
         version_sections = []
-        
+
         for period_name, period_delta, period_desc in self.stat_period:
             stat_data = stat.get(period_name, {})
-            
+
             if not stat_data.get(FOCUS_CYCLE_CNT_BY_VERSION):
                 continue
-            
+
             # 获取所有版本（按循环数排序）
-            all_versions = sorted(stat_data[FOCUS_CYCLE_CNT_BY_VERSION].keys(), 
-                                key=lambda x: stat_data[FOCUS_CYCLE_CNT_BY_VERSION][x], reverse=True)
-            
+            all_versions = sorted(
+                stat_data[FOCUS_CYCLE_CNT_BY_VERSION].keys(),
+                key=lambda x: stat_data[FOCUS_CYCLE_CNT_BY_VERSION][x],
+                reverse=True,
+            )
+
             # 生成版本Action分布表
             focus_version_action_rows = ""
             if stat_data[FOCUS_ACTION_RATIOS_BY_VERSION]:
@@ -1559,40 +1591,42 @@ class StatisticOutputTask(AsyncTask):
                 for version_actions in stat_data[FOCUS_ACTION_RATIOS_BY_VERSION].values():
                     all_action_types_for_version.update(version_actions.keys())
                 all_action_types_for_version = sorted(all_action_types_for_version)
-                
+
                 if all_action_types_for_version:
                     version_action_rows = []
                     for version in all_versions:
                         version_actions = stat_data[FOCUS_ACTION_RATIOS_BY_VERSION].get(version, {})
                         total_cycles = stat_data[FOCUS_CYCLE_CNT_BY_VERSION][version]
-                        
+
                         row_cells = [f"<td><strong>{version}</strong><br><small>({total_cycles}次循环)</small></td>"]
-                        
+
                         for action_type in all_action_types_for_version:
                             count = version_actions.get(action_type, 0)
                             ratio = (count / total_cycles * 100) if total_cycles > 0 else 0
                             row_cells.append(f"<td>{count}<br><small>({ratio:.1f}%)</small></td>")
-                        
+
                         version_action_rows.append(f"<tr>{''.join(row_cells)}</tr>")
-                    
+
                     # 生成表头
-                    action_headers = "".join([f"<th>{action_type}</th>" for action_type in all_action_types_for_version])
+                    action_headers = "".join(
+                        [f"<th>{action_type}</th>" for action_type in all_action_types_for_version]
+                    )
                     version_action_table_header = f"<tr><th>版本</th>{action_headers}</tr>"
                     focus_version_action_rows = version_action_table_header + "\n" + "\n".join(version_action_rows)
-            
+
             # 生成版本阶段时间表（按action类型分解执行时间）
             focus_version_stage_rows = ""
             if stat_data[FOCUS_AVG_TIMES_BY_VERSION]:
                 # 基础三个阶段
                 basic_stages = ["观察", "并行调整动作、处理", "规划器"]
-                
+
                 # 获取所有action类型用于执行时间列
                 all_action_types_for_exec = set()
                 if stat_data.get("focus_exec_times_by_version_action"):
                     for version_actions in stat_data["focus_exec_times_by_version_action"].values():
                         all_action_types_for_exec.update(version_actions.keys())
                 all_action_types_for_exec = sorted(all_action_types_for_exec)
-                
+
                 # 检查哪些基础阶段存在数据
                 existing_basic_stages = []
                 for stage in basic_stages:
@@ -1603,23 +1637,23 @@ class StatisticOutputTask(AsyncTask):
                             break
                     if stage_exists:
                         existing_basic_stages.append(stage)
-                
+
                 # 构建表格
                 if existing_basic_stages or all_action_types_for_exec:
                     version_stage_rows = []
-                    
+
                     # 为每个版本生成数据行
                     for version in all_versions:
                         version_stages = stat_data[FOCUS_AVG_TIMES_BY_VERSION].get(version, {})
                         total_cycles = stat_data[FOCUS_CYCLE_CNT_BY_VERSION][version]
-                        
+
                         row_cells = [f"<td><strong>{version}</strong><br><small>({total_cycles}次循环)</small></td>"]
-                        
+
                         # 添加基础阶段时间
                         for stage in existing_basic_stages:
                             time_val = version_stages.get(stage, 0.0)
                             row_cells.append(f"<td>{time_val:.3f}秒</td>")
-                        
+
                         # 添加不同action类型的执行时间
                         for action_type in all_action_types_for_exec:
                             # 获取该版本该action类型的平均执行时间
@@ -1629,24 +1663,34 @@ class StatisticOutputTask(AsyncTask):
                                 row_cells.append(f"<td>{exec_time:.3f}秒</td>")
                             else:
                                 row_cells.append("<td>-</td>")
-                        
+
                         version_stage_rows.append(f"<tr>{''.join(row_cells)}</tr>")
-                    
+
                     # 生成表头
                     basic_headers = "".join([f"<th>{stage}</th>" for stage in existing_basic_stages])
-                    action_headers = "".join([f"<th>执行时间<br><small>[{action_type}]</small></th>" for action_type in all_action_types_for_exec])
+                    action_headers = "".join(
+                        [
+                            f"<th>执行时间<br><small>[{action_type}]</small></th>"
+                            for action_type in all_action_types_for_exec
+                        ]
+                    )
                     version_stage_table_header = f"<tr><th>版本</th>{basic_headers}{action_headers}</tr>"
                     focus_version_stage_rows = version_stage_table_header + "\n" + "\n".join(version_stage_rows)
-            
+
             # 计算时间范围
             if period_name == "all_time":
                 from src.manager.local_store_manager import local_storage
+
                 start_time = datetime.fromtimestamp(local_storage["deploy_time"])
-                time_range = f"{start_time.strftime('%Y-%m-%d %H:%M:%S')} ~ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                time_range = (
+                    f"{start_time.strftime('%Y-%m-%d %H:%M:%S')} ~ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                )
             else:
                 start_time = datetime.now() - period_delta
-                time_range = f"{start_time.strftime('%Y-%m-%d %H:%M:%S')} ~ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-            
+                time_range = (
+                    f"{start_time.strftime('%Y-%m-%d %H:%M:%S')} ~ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                )
+
             # 生成该时间段的版本对比HTML
             section_html = f"""
             <div class="version-period-section">
@@ -1673,9 +1717,9 @@ class StatisticOutputTask(AsyncTask):
                 </div>
             </div>
             """
-            
+
             version_sections.append(section_html)
-        
+
         # 如果没有任何版本数据
         if not version_sections:
             version_sections.append("""
@@ -1685,7 +1729,7 @@ class StatisticOutputTask(AsyncTask):
                 <p class="info-item">请确保 <code>log/hfc_loop/</code> 目录下的JSON文件包含版本信息。</p>
             </div>
             """)
-        
+
         return f"""
         <div id="versions" class="tab-content">
             <h1>Focus HFC版本对比分析</h1>
@@ -1694,7 +1738,7 @@ class StatisticOutputTask(AsyncTask):
                 <strong>数据来源:</strong> log/hfc_loop/ 目录下JSON文件中的version字段
             </p>
             
-            {''.join(version_sections)}
+            {"".join(version_sections)}
             
             <style>
                 .version-period-section {{
@@ -1876,7 +1920,7 @@ class StatisticOutputTask(AsyncTask):
         # 查询Focus循环记录
         focus_cycles_by_action = {}
         focus_time_by_stage = {}
-        
+
         log_dir = "log/hfc_loop"
         if os.path.exists(log_dir):
             json_files = glob.glob(os.path.join(log_dir, "*.json"))
@@ -1884,39 +1928,39 @@ class StatisticOutputTask(AsyncTask):
                 try:
                     # 解析文件时间
                     filename = os.path.basename(json_file)
-                    name_parts = filename.replace('.json', '').split('_')
+                    name_parts = filename.replace(".json", "").split("_")
                     if len(name_parts) >= 4:
                         date_str = name_parts[-2]
                         time_str = name_parts[-1]
                         file_time_str = f"{date_str}_{time_str}"
                         file_time = datetime.strptime(file_time_str, "%Y%m%d_%H%M%S")
-                        
+
                         if file_time >= start_time:
-                            with open(json_file, 'r', encoding='utf-8') as f:
+                            with open(json_file, "r", encoding="utf-8") as f:
                                 cycles_data = json.load(f)
-                                
+
                                 for cycle in cycles_data:
                                     try:
                                         timestamp_str = cycle.get("timestamp", "")
                                         if timestamp_str:
-                                            cycle_time = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+                                            cycle_time = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
                                         else:
                                             cycle_time = file_time
-                                        
+
                                         if cycle_time >= start_time:
                                             # 计算时间间隔索引
                                             time_diff = (cycle_time - start_time).total_seconds()
                                             interval_index = int(time_diff // interval_seconds)
-                                            
+
                                             if 0 <= interval_index < len(time_points):
                                                 action_type = cycle.get("action_type", "unknown")
                                                 step_times = cycle.get("step_times", {})
-                                                
+
                                                 # 累计action类型数据
                                                 if action_type not in focus_cycles_by_action:
                                                     focus_cycles_by_action[action_type] = [0] * len(time_points)
                                                 focus_cycles_by_action[action_type][interval_index] += 1
-                                                
+
                                                 # 累计阶段时间数据
                                                 for stage, time_val in step_times.items():
                                                     if stage not in focus_time_by_stage:
@@ -1936,8 +1980,6 @@ class StatisticOutputTask(AsyncTask):
             "focus_cycles_by_action": focus_cycles_by_action,
             "focus_time_by_stage": focus_time_by_stage,
         }
-
-
 
     def _generate_chart_tab(self, chart_data: dict) -> str:
         """生成图表选项卡HTML内容"""
@@ -2298,8 +2340,13 @@ class AsyncStatisticOutputTask(AsyncTask):
     def _collect_focus_statistics_for_period(self, collect_period: List[Tuple[str, datetime]]) -> Dict[str, Any]:
         return StatisticOutputTask._collect_focus_statistics_for_period(self, collect_period)
 
-    def _process_focus_file_data(self, cycles_data: List[Dict], stats: Dict[str, Any], 
-                                collect_period: List[Tuple[str, datetime]], file_time: datetime):
+    def _process_focus_file_data(
+        self,
+        cycles_data: List[Dict],
+        stats: Dict[str, Any],
+        collect_period: List[Tuple[str, datetime]],
+        file_time: datetime,
+    ):
         return StatisticOutputTask._process_focus_file_data(self, cycles_data, stats, collect_period, file_time)
 
     def _calculate_focus_averages(self, stats: Dict[str, Any]):
@@ -2327,7 +2374,7 @@ class AsyncStatisticOutputTask(AsyncTask):
 
     def _generate_chart_tab(self, chart_data: dict) -> str:
         return StatisticOutputTask._generate_chart_tab(self, chart_data)
-    
+
     def _get_chat_display_name_from_id(self, chat_id: str) -> str:
         return StatisticOutputTask._get_chat_display_name_from_id(self, chat_id)
 

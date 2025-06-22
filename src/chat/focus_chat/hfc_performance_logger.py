@@ -29,10 +29,6 @@ class HFCPerformanceLogger:
         )
         self.current_session_data = []
 
-
-
-
-
     def record_cycle(self, cycle_data: Dict[str, Any]):
         """记录单次循环数据"""
         try:
@@ -80,7 +76,7 @@ class HFCPerformanceLogger:
             "version": self.version,
             "session_file": str(self.session_file),
             "record_count": len(self.current_session_data),
-            "start_time": self.session_start_time.isoformat()
+            "start_time": self.session_start_time.isoformat(),
         }
 
     def finalize_session(self):
@@ -95,7 +91,7 @@ class HFCPerformanceLogger:
     def cleanup_old_logs(cls, max_size_mb: float = 50.0):
         """
         清理旧的HFC日志文件，保持目录大小在指定限制内
-        
+
         Args:
             max_size_mb: 最大目录大小限制（MB）
         """
@@ -103,62 +99,58 @@ class HFCPerformanceLogger:
         if not log_dir.exists():
             logger.info("HFC日志目录不存在，跳过日志清理")
             return
-        
+
         # 获取所有日志文件及其信息
         log_files = []
         total_size = 0
-        
+
         for log_file in log_dir.glob("*.json"):
             try:
                 file_stat = log_file.stat()
-                log_files.append({
-                    'path': log_file,
-                    'size': file_stat.st_size,
-                    'mtime': file_stat.st_mtime
-                })
+                log_files.append({"path": log_file, "size": file_stat.st_size, "mtime": file_stat.st_mtime})
                 total_size += file_stat.st_size
             except Exception as e:
                 logger.warning(f"无法获取文件信息 {log_file}: {e}")
-        
+
         if not log_files:
             logger.info("没有找到HFC日志文件")
             return
-        
+
         max_size_bytes = max_size_mb * 1024 * 1024
         current_size_mb = total_size / (1024 * 1024)
-        
+
         logger.info(f"HFC日志目录当前大小: {current_size_mb:.2f}MB，限制: {max_size_mb}MB")
-        
+
         if total_size <= max_size_bytes:
             logger.info("HFC日志目录大小在限制范围内，无需清理")
             return
-        
+
         # 按修改时间排序（最早的在前面）
-        log_files.sort(key=lambda x: x['mtime'])
-        
+        log_files.sort(key=lambda x: x["mtime"])
+
         deleted_count = 0
         deleted_size = 0
-        
+
         for file_info in log_files:
             if total_size <= max_size_bytes:
                 break
-            
+
             try:
-                file_size = file_info['size']
-                file_path = file_info['path']
-                
+                file_size = file_info["size"]
+                file_path = file_info["path"]
+
                 file_path.unlink()
                 total_size -= file_size
                 deleted_size += file_size
                 deleted_count += 1
-                
+
                 logger.info(f"删除旧日志文件: {file_path.name} ({file_size / 1024:.1f}KB)")
-                
+
             except Exception as e:
                 logger.error(f"删除日志文件失败 {file_info['path']}: {e}")
-        
+
         final_size_mb = total_size / (1024 * 1024)
         deleted_size_mb = deleted_size / (1024 * 1024)
-        
+
         logger.info(f"HFC日志清理完成: 删除了{deleted_count}个文件，释放{deleted_size_mb:.2f}MB空间")
         logger.info(f"清理后目录大小: {final_size_mb:.2f}MB")
