@@ -478,7 +478,6 @@ class StatisticOutputTask(AsyncTask):
                 HFC_AVG_TIME_BY_ACTION: defaultdict(lambda: {"decision": 0, "action": 0, "total": 0}),
                 HFC_AVG_TIME_BY_VERSION: defaultdict(lambda: {"decision": 0, "action": 0, "total": 0}),
                 HFC_ACTIONS_BY_CHAT: defaultdict(lambda: defaultdict(int)),  # 群聊×动作交叉统计
-
             }
             for period_key, _ in collect_period
         }
@@ -486,28 +485,28 @@ class StatisticOutputTask(AsyncTask):
         try:
             import json
             from pathlib import Path
-            
+
             hfc_stats_file = Path("data/hfc/time.json")
             if not hfc_stats_file.exists():
                 logger.info("HFC统计文件不存在，跳过HFC统计")
                 return stats
 
             # 读取HFC统计数据
-            with open(hfc_stats_file, 'r', encoding='utf-8') as f:
+            with open(hfc_stats_file, "r", encoding="utf-8") as f:
                 hfc_data = json.load(f)
 
             # 处理每个chat_id和版本的统计数据
-            for stats_key, chat_stats in hfc_data.items():
+            for _stats_key, chat_stats in hfc_data.items():
                 chat_id = chat_stats.get("chat_id", "unknown")
                 version = chat_stats.get("version", "unknown")
                 last_updated_str = chat_stats.get("last_updated")
-                
+
                 if not last_updated_str:
                     continue
-                
+
                 # 解析最后更新时间
                 try:
-                    last_updated = datetime.fromisoformat(last_updated_str.replace('Z', '+00:00'))
+                    last_updated = datetime.fromisoformat(last_updated_str.replace("Z", "+00:00"))
                     if last_updated.tzinfo:
                         last_updated = last_updated.replace(tzinfo=None)
                 except:
@@ -527,7 +526,7 @@ class StatisticOutputTask(AsyncTask):
                 overall = chat_stats.get("overall", {})
                 total_records = overall.get("total_records", 0)
                 avg_step_times = overall.get("avg_step_times", {})
-                
+
                 # 计算决策时间和动作时间
                 action_time = avg_step_times.get("执行动作", 0)
                 total_time = overall.get("avg_total_time", 0)
@@ -544,25 +543,40 @@ class StatisticOutputTask(AsyncTask):
                     count = action_data.get("count", 0)
                     action_step_times = action_data.get("avg_step_times", {})
                     action_total_time = action_data.get("avg_total_time", 0)
-                    
+
                     # 计算该动作类型的决策时间和动作时间
                     action_exec_time = action_step_times.get("执行动作", 0)
                     action_decision_time = max(0, action_total_time - action_exec_time)
 
                     for period_key in applicable_periods:
                         stats[period_key][HFC_CYCLES_BY_ACTION][action_type] += count
-                        
+
                         # 群聊×动作交叉统计
                         stats[period_key][HFC_ACTIONS_BY_CHAT][chat_id][action_type] += count
-                        
+
                         # 累加时间统计（用于后续计算加权平均）
                         # 这里我们需要重新设计数据结构来存储累计值
                         if chat_id not in stats[period_key][HFC_AVG_TIME_BY_CHAT]:
-                            stats[period_key][HFC_AVG_TIME_BY_CHAT][chat_id] = {"decision": 0, "action": 0, "total": 0, "count": 0}
+                            stats[period_key][HFC_AVG_TIME_BY_CHAT][chat_id] = {
+                                "decision": 0,
+                                "action": 0,
+                                "total": 0,
+                                "count": 0,
+                            }
                         if action_type not in stats[period_key][HFC_AVG_TIME_BY_ACTION]:
-                            stats[period_key][HFC_AVG_TIME_BY_ACTION][action_type] = {"decision": 0, "action": 0, "total": 0, "count": 0}
+                            stats[period_key][HFC_AVG_TIME_BY_ACTION][action_type] = {
+                                "decision": 0,
+                                "action": 0,
+                                "total": 0,
+                                "count": 0,
+                            }
                         if version not in stats[period_key][HFC_AVG_TIME_BY_VERSION]:
-                            stats[period_key][HFC_AVG_TIME_BY_VERSION][version] = {"decision": 0, "action": 0, "total": 0, "count": 0}
+                            stats[period_key][HFC_AVG_TIME_BY_VERSION][version] = {
+                                "decision": 0,
+                                "action": 0,
+                                "total": 0,
+                                "count": 0,
+                            }
 
                         # 累加加权值（时间*数量）
                         stats[period_key][HFC_AVG_TIME_BY_CHAT][chat_id]["decision"] += decision_time * total_records
@@ -570,7 +584,9 @@ class StatisticOutputTask(AsyncTask):
                         stats[period_key][HFC_AVG_TIME_BY_CHAT][chat_id]["total"] += total_time * total_records
                         stats[period_key][HFC_AVG_TIME_BY_CHAT][chat_id]["count"] += total_records
 
-                        stats[period_key][HFC_AVG_TIME_BY_ACTION][action_type]["decision"] += action_decision_time * count
+                        stats[period_key][HFC_AVG_TIME_BY_ACTION][action_type]["decision"] += (
+                            action_decision_time * count
+                        )
                         stats[period_key][HFC_AVG_TIME_BY_ACTION][action_type]["action"] += action_exec_time * count
                         stats[period_key][HFC_AVG_TIME_BY_ACTION][action_type]["total"] += action_total_time * count
                         stats[period_key][HFC_AVG_TIME_BY_ACTION][action_type]["count"] += count
@@ -593,11 +609,11 @@ class StatisticOutputTask(AsyncTask):
                             stats[period_key][stat_type][key] = {
                                 "decision": time_data["decision"] / count,
                                 "action": time_data["action"] / count,
-                                "total": time_data["total"] / count
+                                "total": time_data["total"] / count,
                             }
                         else:
                             stats[period_key][stat_type][key] = {"decision": 0, "action": 0, "total": 0}
-        
+
         return stats
 
     def _collect_all_statistics(self, now: datetime) -> Dict[str, Dict[str, Any]]:
@@ -643,25 +659,29 @@ class StatisticOutputTask(AsyncTask):
                 # 跳过已删除的SUCCESS_RATE相关key
                 if key in ["hfc_success_rate_by_chat", "hfc_success_rate_by_action", "hfc_success_rate_by_version"]:
                     continue
-                
+
                 # 确保当前统计数据中存在该key
                 if key not in stat["all_time"]:
                     continue
-                
+
                 if isinstance(val, dict):
                     # 是字典类型，则进行合并
                     for sub_key, sub_val in val.items():
                         # 检查是否是HFC的嵌套字典时间数据
-                        if key in [HFC_AVG_TIME_BY_CHAT, HFC_AVG_TIME_BY_ACTION, HFC_AVG_TIME_BY_VERSION] and isinstance(sub_val, dict):
+                        if key in [
+                            HFC_AVG_TIME_BY_CHAT,
+                            HFC_AVG_TIME_BY_ACTION,
+                            HFC_AVG_TIME_BY_VERSION,
+                        ] and isinstance(sub_val, dict):
                             # 对于HFC时间数据，需要特殊处理
                             if sub_key not in stat["all_time"][key]:
                                 stat["all_time"][key][sub_key] = {"decision": 0, "action": 0, "total": 0, "count": 0}
-                            
+
                             # 如果历史数据是已经计算过的平均值（没有count字段），需要跳过或重新处理
                             if "count" not in sub_val:
                                 logger.debug(f"历史数据{key}.{sub_key}是平均值格式，跳过合并以避免错误计算")
                                 continue
-                            
+
                             # 合并累计的加权时间数据
                             for time_type, time_val in sub_val.items():
                                 if time_type in stat["all_time"][key][sub_key]:
@@ -670,7 +690,7 @@ class StatisticOutputTask(AsyncTask):
                             # 对于群聊×动作交叉统计的二层嵌套字典，需要特殊处理
                             if sub_key not in stat["all_time"][key]:
                                 stat["all_time"][key][sub_key] = {}
-                            
+
                             # 合并二层嵌套的动作数据
                             for action_type, action_count in sub_val.items():
                                 if action_type in stat["all_time"][key][sub_key]:
@@ -699,7 +719,7 @@ class StatisticOutputTask(AsyncTask):
                                 "decision": time_data["decision"] / count,
                                 "action": time_data["action"] / count,
                                 "total": time_data["total"] / count,
-                                "count": count  # 保留count字段
+                                "count": count,  # 保留count字段
                             }
                             stat["all_time"][stat_type][key] = avg_data
                         else:
@@ -911,7 +931,7 @@ class StatisticOutputTask(AsyncTask):
         # 添加图表内容
         chart_data = self._generate_chart_data(stat)
         tab_content_list.append(self._generate_chart_tab(chart_data))
-        
+
         # 添加HFC统计内容
         tab_content_list.append(self._generate_hfc_stats_tab(stat))
 
@@ -1164,29 +1184,30 @@ class StatisticOutputTask(AsyncTask):
 
     def _generate_hfc_stats_tab(self, stat: dict[str, Any]) -> str:
         """生成HFC统计选项卡HTML内容"""
-        
+
         def _get_chat_display_name(chat_id):
             """获取聊天显示名称"""
             try:
                 # 首先尝试从chat_stream获取真实群组名称
                 from src.chat.message_receive.chat_stream import get_chat_manager
+
                 chat_manager = get_chat_manager()
-                
+
                 if chat_id in chat_manager.streams:
                     stream = chat_manager.streams[chat_id]
-                    if stream.group_info and hasattr(stream.group_info, 'group_name'):
+                    if stream.group_info and hasattr(stream.group_info, "group_name"):
                         group_name = stream.group_info.group_name
                         if group_name and group_name.strip():
                             return group_name.strip()
-                    elif stream.user_info and hasattr(stream.user_info, 'user_nickname'):
+                    elif stream.user_info and hasattr(stream.user_info, "user_nickname"):
                         user_name = stream.user_info.user_nickname
                         if user_name and user_name.strip():
                             return user_name.strip()
-                
+
                 # 如果从chat_stream获取失败，回退到name_mapping
                 if chat_id in self.name_mapping:
                     return self.name_mapping[chat_id][0]
-                
+
                 # 最后回退到chat_id
                 return chat_id
             except Exception as e:
@@ -1196,28 +1217,28 @@ class StatisticOutputTask(AsyncTask):
                     return self.name_mapping[chat_id][0]
                 else:
                     return chat_id
-        
+
         def _generate_overview_section(data, title):
             """生成总览部分"""
             total_cycles = data.get(HFC_TOTAL_CYCLES, 0)
             if total_cycles == 0:
                 return f"<h3>{title}</h3><p>暂无HFC数据</p>"
-            
+
             def _generate_chat_action_table(actions_by_chat):
                 """生成群聊×动作选择率表格"""
                 if not actions_by_chat:
                     return "<h4>按群聊的动作选择率</h4><p>暂无数据</p>"
-                
+
                 # 获取所有动作类型
                 all_actions = set()
                 for chat_actions in actions_by_chat.values():
                     all_actions.update(chat_actions.keys())
-                
+
                 if not all_actions:
                     return "<h4>按群聊的动作选择率</h4><p>暂无数据</p>"
-                
+
                 all_actions = sorted(all_actions)
-                
+
                 # 生成表头
                 action_headers = ""
                 for action in all_actions:
@@ -1225,27 +1246,27 @@ class StatisticOutputTask(AsyncTask):
                     if action == "no_reply":
                         action_display = "不回复"
                     action_headers += f"<th>{action_display}</th>"
-                
+
                 # 生成表格行
                 table_rows = ""
                 for chat_id in sorted(actions_by_chat.keys()):
                     chat_actions = actions_by_chat[chat_id]
                     chat_total = sum(chat_actions.values())
-                    
+
                     if chat_total == 0:
                         continue
-                        
+
                     chat_display_name = _get_chat_display_name(chat_id)
                     table_rows += f"<tr><td>{chat_display_name}</td>"
-                    
+
                     # 为每个动作生成百分比
                     for action in all_actions:
                         count = chat_actions.get(action, 0)
                         percentage = (count / chat_total * 100) if chat_total > 0 else 0
                         table_rows += f"<td>{count} ({percentage:.1f}%)</td>"
-                    
+
                     table_rows += f"<td>{chat_total}</td></tr>"
-                
+
                 return f"""
                 <h4>按群聊的动作选择率</h4>
                 <table>
@@ -1258,7 +1279,7 @@ class StatisticOutputTask(AsyncTask):
                 </table>
                 <p class="info-item"><strong>说明：</strong>显示每个群聊中不同动作类型的选择次数及占比。</p>
                 """
-            
+
             cycles_by_chat = data.get(HFC_CYCLES_BY_CHAT, {})
             cycles_by_action = data.get(HFC_CYCLES_BY_ACTION, {})
             cycles_by_version = data.get(HFC_CYCLES_BY_VERSION, {})
@@ -1266,7 +1287,7 @@ class StatisticOutputTask(AsyncTask):
             avg_time_by_action = data.get(HFC_AVG_TIME_BY_ACTION, {})
             avg_time_by_version = data.get(HFC_AVG_TIME_BY_VERSION, {})
             actions_by_chat = data.get(HFC_ACTIONS_BY_CHAT, {})
-            
+
             # 按群聊统计表格
             chat_rows = ""
             for chat_id in sorted(cycles_by_chat.keys()):
@@ -1284,7 +1305,7 @@ class StatisticOutputTask(AsyncTask):
                     <td>{action_time:.2f}s</td>
                     <td>{total_time:.2f}s</td>
                 </tr>"""
-            
+
             # 按动作类型统计表格 - 添加说明
             action_rows = ""
             for action_type in sorted(cycles_by_action.keys()):
@@ -1305,7 +1326,7 @@ class StatisticOutputTask(AsyncTask):
                     <td>{action_time:.2f}s</td>
                     <td>{total_time:.2f}s</td>
                 </tr>"""
-            
+
             # 按版本统计表格
             version_rows = ""
             for version in sorted(cycles_by_version.keys()):
@@ -1322,7 +1343,7 @@ class StatisticOutputTask(AsyncTask):
                     <td>{action_time:.2f}s</td>
                     <td>{total_time:.2f}s</td>
                 </tr>"""
-            
+
             return f"""
             <h3>{title} (总循环数: {total_cycles})</h3>
             
@@ -1359,27 +1380,23 @@ class StatisticOutputTask(AsyncTask):
             
             {_generate_chat_action_table(actions_by_chat)}
             """
-        
+
         # 生成指定时间段的统计
         sections = []
-        
+
         # 定义要显示的时间段及其描述（所有时间在最上方）
-        time_periods = [
-            ("all_time", "全部时间"),
-            ("last_24_hours", "最近24小时"),
-            ("last_7_days", "最近7天")
-        ]
-        
+        time_periods = [("all_time", "全部时间"), ("last_24_hours", "最近24小时"), ("last_7_days", "最近7天")]
+
         for period_key, period_desc in time_periods:
             period_data = stat.get(period_key, {})
             if period_data.get(HFC_TOTAL_CYCLES, 0) > 0:  # 只显示有数据的时间段
                 sections.append(_generate_overview_section(period_data, period_desc))
-        
+
         if not sections:
             sections.append("<h3>暂无HFC数据</h3><p>系统中还没有HFC循环记录</p>")
-        
+
         sections_html = "<br/>".join(sections)
-        
+
         return f"""
         <div id="hfc_stats" class="tab-content">
             <h2>HFC (Heart Flow Chat) 统计</h2>
@@ -1722,7 +1739,7 @@ class AsyncStatisticOutputTask(AsyncTask):
 
     def _collect_message_count_for_period(self, collect_period: List[Tuple[str, datetime]]) -> Dict[str, Any]:
         return StatisticOutputTask._collect_message_count_for_period(self, collect_period)
-    
+
     def _collect_hfc_data_for_period(self, collect_period: List[Tuple[str, datetime]]) -> Dict[str, Any]:
         return StatisticOutputTask._collect_hfc_data_for_period(self, collect_period)
 
@@ -1745,6 +1762,6 @@ class AsyncStatisticOutputTask(AsyncTask):
 
     def _generate_chart_tab(self, chart_data: dict) -> str:
         return StatisticOutputTask._generate_chart_tab(self, chart_data)
-    
+
     def _generate_hfc_stats_tab(self, stat: dict[str, Any]) -> str:
         return StatisticOutputTask._generate_hfc_stats_tab(self, stat)
