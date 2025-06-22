@@ -689,7 +689,7 @@ class StatisticOutputTask(AsyncTask):
                 # 确保当前统计数据中存在该key
                 if key not in stat["all_time"]:
                     continue
-                
+
                 if isinstance(val, dict):
                     # 是字典类型，则进行合并
                     for sub_key, sub_val in val.items():
