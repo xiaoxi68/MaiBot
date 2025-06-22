@@ -92,8 +92,11 @@ class TelemetryHeartBeatTask(AsyncTask):
                             )
             except Exception as e:
                 import traceback
+
                 error_msg = str(e) if str(e) else "未知错误"
-                logger.warning(f"请求UUID出错，不过你还是可以正常使用麦麦: {type(e).__name__}: {error_msg}")  # 可能是网络问题
+                logger.warning(
+                    f"请求UUID出错，不过你还是可以正常使用麦麦: {type(e).__name__}: {error_msg}"
+                )  # 可能是网络问题
                 logger.debug(f"完整错误信息: {traceback.format_exc()}")
 
             # 请求失败，重试次数+1
@@ -147,6 +150,7 @@ class TelemetryHeartBeatTask(AsyncTask):
                         )
         except Exception as e:
             import traceback
+
             error_msg = str(e) if str(e) else "未知错误"
             logger.warning(f"（此消息不会影响正常使用）状态未发生: {type(e).__name__}: {error_msg}")
             logger.debug(f"完整错误信息: {traceback.format_exc()}")
