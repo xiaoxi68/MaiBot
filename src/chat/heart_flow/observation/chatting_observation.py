@@ -232,11 +232,11 @@ class ChattingObservation(Observation):
             truncate=True,
             show_actions=True,
         )
-        
+
         # 构建简短版本 - 使用最新一半的消息
         half_count = len(self.talking_message) // 2
         recent_messages = self.talking_message[-half_count:] if half_count > 0 else self.talking_message
-        
+
         self.talking_message_str_short = build_readable_messages(
             messages=recent_messages,
             timestamp_mode="lite",
