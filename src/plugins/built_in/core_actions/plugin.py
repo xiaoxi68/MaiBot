@@ -145,6 +145,12 @@ class NoReplyAction(BaseAction):
     # 最大等待超时时间
     _max_timeout = 1200  # 1200秒
 
+    # 跳过LLM判断的配置
+    _skip_judge_when_tired = True
+    _skip_probability_light = 0.2   # 轻度疲惫跳过概率
+    _skip_probability_medium = 0.4  # 中度疲惫跳过概率
+    _skip_probability_heavy = 0.6   # 重度疲惫跳过概率
+
     # 动作参数定义
     action_parameters = {"reason": "不回复的原因"}
 
@@ -253,17 +259,21 @@ class NoReplyAction(BaseAction):
                         bot_core_personality = global_config.personality.personality_core
                         identity_block = f"你的名字是{bot_name}{bot_nickname}，你{bot_core_personality}"
 
-                        # 构建判断历史字符串
+                        # 构建判断历史字符串（最多显示3条）
                         history_block = ""
                         if judge_history:
                             history_block = "之前的判断历史：\n"
-                            for i, (timestamp, judge_result, reason) in enumerate(judge_history, 1):
+                            # 只取最近的3条历史记录
+                            recent_history = judge_history[-3:] if len(judge_history) > 3 else judge_history
+                            for i, (timestamp, judge_result, reason) in enumerate(recent_history, 1):
                                 elapsed_seconds = int(timestamp - start_time)
                                 history_block += f"{i}. 等待{elapsed_seconds}秒时判断：{judge_result}，理由：{reason}\n"
                             history_block += "\n"
 
                         # 检查过去10分钟的发言频率
                         frequency_block = ""
+                        should_skip_llm_judge = False  # 是否跳过LLM判断
+                        
                         try:
                             # 获取过去10分钟的所有消息
                             past_10min_time = current_time - 600  # 10分钟前
@@ -290,11 +300,13 @@ class NoReplyAction(BaseAction):
                             if bot_message_count > talk_frequency_threshold:
                                 over_count = bot_message_count - talk_frequency_threshold
 
-                                # 根据超过的数量设置不同的提示词
+                                # 根据超过的数量设置不同的提示词和跳过概率
                                 if over_count <= 3:
                                     frequency_block = "你感觉稍微有些累，回复的有点多了。\n"
+                                    skip_probability = self._skip_probability_light
                                 elif over_count <= 5:
                                     frequency_block = "你今天说话比较多，感觉有点疲惫，想要稍微休息一下。\n"
+                                    skip_probability = self._skip_probability_medium
                                 else:
                                     frequency_block = "你发现自己说话太多了，感觉很累，想要安静一会儿，除非有重要的事情否则不想回复。\n"
 
@@ -319,6 +331,12 @@ class NoReplyAction(BaseAction):
                         except Exception as e:
                             logger.warning(f"{self.log_prefix} 检查发言频率时出错: {e}")
                             frequency_block = ""
+
+                        # 如果决定跳过LLM判断，直接更新时间并继续等待
+                        if should_skip_llm_judge:
+                            last_judge_time = time.time()  # 更新判断时间，避免立即重新判断
+                            start_time = current_time      # 更新开始时间，避免重复计算同样的消息
+                            continue  # 跳过本次LLM判断，继续循环等待
 
                         # 构建判断上下文
                         judge_prompt = f"""
@@ -649,7 +667,7 @@ class CoreActionsPlugin(BasePlugin):
     config_schema = {
         "plugin": {
             "enabled": ConfigField(type=bool, default=True, description="是否启用插件"),
-            "config_version": ConfigField(type=str, default="0.0.8", description="配置文件版本"),
+            "config_version": ConfigField(type=str, default="0.0.9", description="配置文件版本"),
         },
         "components": {
             "enable_reply": ConfigField(type=bool, default=True, description="是否启用'回复'动作"),
@@ -668,6 +686,18 @@ class CoreActionsPlugin(BasePlugin):
             ),
             "random_probability": ConfigField(
                 type=float, default=0.8, description="Focus模式下，随机选择不回复的概率（0.0到1.0）", example=0.8
+            ),
+            "skip_judge_when_tired": ConfigField(
+                type=bool, default=True, description="当发言过多时是否启用跳过LLM判断机制"
+            ),
+            "skip_probability_light": ConfigField(
+                type=float, default=0.3, description="轻度疲惫时跳过LLM判断的概率", example=0.2
+            ),
+            "skip_probability_medium": ConfigField(
+                type=float, default=0.5, description="中度疲惫时跳过LLM判断的概率", example=0.4
+            ),
+            "skip_probability_heavy": ConfigField(
+                type=float, default=0.7, description="重度疲惫时跳过LLM判断的概率", example=0.6
             ),
         },
         "emoji": {
@@ -695,6 +725,18 @@ class CoreActionsPlugin(BasePlugin):
 
         max_timeout = self.get_config("no_reply.max_timeout", 1200)
         NoReplyAction._max_timeout = max_timeout
+
+        skip_judge_when_tired = self.get_config("no_reply.skip_judge_when_tired", True)
+        NoReplyAction._skip_judge_when_tired = skip_judge_when_tired
+
+        skip_probability_light = self.get_config("no_reply.skip_probability_light", 0.2)
+        NoReplyAction._skip_probability_light = skip_probability_light
+
+        skip_probability_medium = self.get_config("no_reply.skip_probability_medium", 0.4)
+        NoReplyAction._skip_probability_medium = skip_probability_medium
+
+        skip_probability_heavy = self.get_config("no_reply.skip_probability_heavy", 0.6)
+        NoReplyAction._skip_probability_heavy = skip_probability_heavy
 
         # --- 根据配置注册组件 ---
         components = []
