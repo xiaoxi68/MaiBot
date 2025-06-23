@@ -57,15 +57,14 @@ class HFCPerformanceLogger:
             log_parts = [
                 f"cycle_id={record['cycle_id']}",
                 f"action={record['action_type']}",
-                f"time={record['total_time']:.2f}s"
+                f"time={record['total_time']:.2f}s",
             ]
-            
+
             # 添加后处理器时间信息到日志
-            if record['post_processor_time_costs']:
-                post_processor_stats = ", ".join([
-                    f"{name}: {time_cost:.3f}s" 
-                    for name, time_cost in record['post_processor_time_costs'].items()
-                ])
+            if record["post_processor_time_costs"]:
+                post_processor_stats = ", ".join(
+                    [f"{name}: {time_cost:.3f}s" for name, time_cost in record["post_processor_time_costs"].items()]
+                )
                 log_parts.append(f"post_processors=({post_processor_stats})")
 
             logger.debug(f"记录HFC循环数据: {', '.join(log_parts)}")

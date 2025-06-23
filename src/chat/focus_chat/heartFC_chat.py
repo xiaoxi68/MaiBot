@@ -466,7 +466,9 @@ class HeartFChatting:
                         formatted_ptime = f"{ptime * 1000:.2f}毫秒" if ptime < 1 else f"{ptime:.2f}秒"
                         post_processor_time_strings.append(f"{pname}: {formatted_ptime}")
                     post_processor_time_log = (
-                        ("\n后处理器耗时: " + "; ".join(post_processor_time_strings)) if post_processor_time_strings else ""
+                        ("\n后处理器耗时: " + "; ".join(post_processor_time_strings))
+                        if post_processor_time_strings
+                        else ""
                     )
 
                     logger.info(
@@ -769,7 +771,9 @@ class HeartFChatting:
 
         return updated_action_data
 
-    async def _process_post_planning_processors_with_timing(self, observations: List[Observation], action_data: dict) -> tuple[dict, dict]:
+    async def _process_post_planning_processors_with_timing(
+        self, observations: List[Observation], action_data: dict
+    ) -> tuple[dict, dict]:
         """
         处理后期处理器（规划后执行的处理器）并收集详细时间统计
         包括：关系处理器、表达选择器、记忆激活器
@@ -883,7 +887,9 @@ class HeartFChatting:
                         )
                     elif task_type == "memory":
                         post_processor_time_costs["MemoryActivator"] = elapsed_time
-                        logger.warning(f"{self.log_prefix} 记忆激活器超时（>{MEMORY_ACTIVATION_TIMEOUT}s），已跳过，耗时: {elapsed_time:.3f}秒")
+                        logger.warning(
+                            f"{self.log_prefix} 记忆激活器超时（>{MEMORY_ACTIVATION_TIMEOUT}s），已跳过，耗时: {elapsed_time:.3f}秒"
+                        )
                         running_memorys = []
                 except Exception as e:
                     # 对于异常任务，记录已用时间
@@ -896,7 +902,10 @@ class HeartFChatting:
                         )
                     elif task_type == "memory":
                         post_processor_time_costs["MemoryActivator"] = elapsed_time
-                        logger.error(f"{self.log_prefix} 记忆激活器执行失败，耗时: {elapsed_time:.3f}秒. 错误: {e}", exc_info=True)
+                        logger.error(
+                            f"{self.log_prefix} 记忆激活器执行失败，耗时: {elapsed_time:.3f}秒. 错误: {e}",
+                            exc_info=True,
+                        )
                         running_memorys = []
 
         # 将后期处理器的结果整合到 action_data 中
@@ -938,7 +947,9 @@ class HeartFChatting:
 
         # 输出详细统计信息
         if post_processor_time_costs:
-            stats_str = ", ".join([f"{name}: {time_cost:.3f}s" for name, time_cost in post_processor_time_costs.items()])
+            stats_str = ", ".join(
+                [f"{name}: {time_cost:.3f}s" for name, time_cost in post_processor_time_costs.items()]
+            )
             logger.info(f"{self.log_prefix} 后期处理器详细耗时统计: {stats_str}")
 
         return updated_action_data, post_processor_time_costs
@@ -1048,7 +1059,9 @@ class HeartFChatting:
                     logger.debug(f"{self.log_prefix} 执行后期处理器（动作类型: {action_type}）")
                     # 记录详细的后处理器时间
                     post_start_time = time.time()
-                    action_data, post_processor_time_costs = await self._process_post_planning_processors_with_timing(self.observations, action_data)
+                    action_data, post_processor_time_costs = await self._process_post_planning_processors_with_timing(
+                        self.observations, action_data
+                    )
                     post_end_time = time.time()
                     logger.info(f"{self.log_prefix} 后期处理器总耗时: {post_end_time - post_start_time:.3f}秒")
             else:

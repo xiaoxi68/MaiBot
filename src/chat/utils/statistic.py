@@ -60,7 +60,7 @@ FOCUS_AVG_TIMES_BY_VERSION = "focus_avg_times_by_version"
 
 # 新增: 后处理器统计数据的键
 FOCUS_POST_PROCESSOR_TIMES = "focus_post_processor_times"
-FOCUS_POST_PROCESSOR_COUNT = "focus_post_processor_count" 
+FOCUS_POST_PROCESSOR_COUNT = "focus_post_processor_count"
 FOCUS_POST_PROCESSOR_SUCCESS_RATE = "focus_post_processor_success_rate"
 FOCUS_PROCESSOR_TIMES = "focus_processor_times"  # 前处理器统计
 
@@ -566,7 +566,7 @@ class StatisticOutputTask(AsyncTask):
                 total_time = cycle_data.get("total_time", 0.0)
                 step_times = cycle_data.get("step_times", {})
                 version = cycle_data.get("version", "unknown")
-                
+
                 # 新增：获取前处理器和后处理器时间
                 processor_time_costs = cycle_data.get("processor_time_costs", {})
                 post_processor_time_costs = cycle_data.get("post_processor_time_costs", {})
@@ -930,7 +930,7 @@ class StatisticOutputTask(AsyncTask):
             # format总在线时间
 
             # 按模型分类统计
-            model_rows = "\n".join(
+            "\n".join(
                 [
                     f"<tr>"
                     f"<td>{model_name}</td>"
@@ -944,7 +944,7 @@ class StatisticOutputTask(AsyncTask):
                 ]
             )
             # 按请求类型分类统计
-            type_rows = "\n".join(
+            "\n".join(
                 [
                     f"<tr>"
                     f"<td>{req_type}</td>"
@@ -958,7 +958,7 @@ class StatisticOutputTask(AsyncTask):
                 ]
             )
             # 按模块分类统计
-            module_rows = "\n".join(
+            "\n".join(
                 [
                     f"<tr>"
                     f"<td>{module_name}</td>"
@@ -973,7 +973,7 @@ class StatisticOutputTask(AsyncTask):
             )
 
             # 聊天消息统计
-            chat_rows = "\n".join(
+            "\n".join(
                 [
                     f"<tr><td>{self.name_mapping[chat_id][0]}</td><td>{count}</td></tr>"
                     for chat_id, count in sorted(stat_data[MSG_CNT_BY_CHAT].items())
@@ -1028,7 +1028,7 @@ class StatisticOutputTask(AsyncTask):
                 basic_stages = ["观察", "并行调整动作、处理", "规划器", "后期处理器", "动作执行"]
                 existing_basic_stages = []
                 for stage in basic_stages:
-                                            # 检查是否有任何聊天流在这个阶段有数据
+                    # 检查是否有任何聊天流在这个阶段有数据
                     stage_exists = False
                     for _chat_id, stage_times in stat_data[FOCUS_AVG_TIMES_BY_CHAT_ACTION].items():
                         if stage in stage_times:
@@ -1275,7 +1275,9 @@ class StatisticOutputTask(AsyncTask):
                 for processor_name in sorted(stat_data[FOCUS_POST_PROCESSOR_TIMES].keys()):
                     avg_time = stat_data[FOCUS_POST_PROCESSOR_TIMES][processor_name]
                     count = stat_data[FOCUS_POST_PROCESSOR_COUNT].get(processor_name, 0)
-                    post_processor_rows.append(f"<tr><td>{processor_name}</td><td>{avg_time:.3f}秒</td><td>{count}</td></tr>")
+                    post_processor_rows.append(
+                        f"<tr><td>{processor_name}</td><td>{avg_time:.3f}秒</td><td>{count}</td></tr>"
+                    )
                 focus_post_processor_rows = "\n".join(post_processor_rows)
 
             # 计算时间范围
