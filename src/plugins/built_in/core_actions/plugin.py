@@ -233,10 +233,10 @@ class NoReplyAction(BaseAction):
                 # 判定条件：累计3条消息或等待超过5秒且有新消息
                 time_since_last_judge = current_time - last_judge_time
                 should_judge = (
-                    new_message_count >= 3 or  # 累计3条消息
-                    (new_message_count > 0 and time_since_last_judge >= 5.0)  # 等待超过5秒且有新消息
+                    new_message_count >= 3  # 累计3条消息
+                    or (new_message_count > 0 and time_since_last_judge >= 5.0)  # 等待超过5秒且有新消息
                 )
-                
+
                 if should_judge and time_since_last_judge >= min_judge_interval:
                     # 判断触发原因
                     trigger_reason = ""
@@ -244,7 +244,7 @@ class NoReplyAction(BaseAction):
                         trigger_reason = f"累计{new_message_count}条消息"
                     elif time_since_last_judge >= 5.0:
                         trigger_reason = f"等待{time_since_last_judge:.1f}秒且有{new_message_count}条新消息"
-                    
+
                     logger.info(f"{self.log_prefix} 触发判定({trigger_reason})，进行智能判断...")
 
                     # 获取最近的消息内容用于判断
@@ -326,7 +326,7 @@ class NoReplyAction(BaseAction):
                                 if self._skip_judge_when_tired and random.random() < skip_probability:
                                     should_skip_llm_judge = True
                                     logger.info(
-                                        f"{self.log_prefix} 发言过多(超过{over_count}条)，随机决定跳过此次LLM判断(概率{skip_probability*100:.0f}%)"
+                                        f"{self.log_prefix} 发言过多(超过{over_count}条)，随机决定跳过此次LLM判断(概率{skip_probability * 100:.0f}%)"
                                     )
 
                                 logger.info(
