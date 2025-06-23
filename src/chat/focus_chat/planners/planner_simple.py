@@ -42,7 +42,7 @@ def init_prompt():
 """,
         "simple_planner_prompt",
     )
-    
+
     Prompt(
         """
 {time_block}
@@ -62,19 +62,19 @@ def init_prompt():
         "simple_planner_prompt_private",
     )
 
-#     Prompt(
-#         """
-# 动作：{action_name}
-# 该动作的描述：{action_description}
-# 使用该动作的场景：
-# {action_require}
-# 输出要求：
-# {{
-#     "action": "{action_name}",{action_parameters}
-# }}
-# """,
-#         "action_prompt",
-#     )
+    #     Prompt(
+    #         """
+    # 动作：{action_name}
+    # 该动作的描述：{action_description}
+    # 使用该动作的场景：
+    # {action_require}
+    # 输出要求：
+    # {{
+    #     "action": "{action_name}",{action_parameters}
+    # }}
+    # """,
+    #         "action_prompt",
+    #     )
     Prompt(
         """
 {action_require}
@@ -84,7 +84,7 @@ def init_prompt():
 """,
         "action_prompt",
     )
-    
+
     Prompt(
         """
 {action_require}
@@ -94,7 +94,6 @@ def init_prompt():
 """,
         "action_prompt_private",
     )
-
 
 
 class ActionPlanner(BasePlanner):
@@ -141,7 +140,7 @@ class ActionPlanner(BasePlanner):
             relation_info = ""
             selected_expressions = []
             chat_id = None  # 添加chat_id变量
-            
+
             for info in all_plan_info:
                 if isinstance(info, ObsInfo):
                     observed_messages = info.get_talking_message()
@@ -170,7 +169,9 @@ class ActionPlanner(BasePlanner):
                     # 如果获取成功，更新is_group_chat
                     if is_group_chat_updated is not None:
                         is_group_chat = is_group_chat_updated
-                    logger.debug(f"{self.log_prefix}获取到聊天信息 - 群聊: {is_group_chat}, 目标信息: {chat_target_info}")
+                    logger.debug(
+                        f"{self.log_prefix}获取到聊天信息 - 群聊: {is_group_chat}, 目标信息: {chat_target_info}"
+                    )
                 except Exception as e:
                     logger.warning(f"{self.log_prefix}获取聊天目标信息失败: {e}")
                     chat_target_info = None
@@ -372,7 +373,7 @@ class ActionPlanner(BasePlanner):
             action_options_block = ""
             # 根据聊天类型选择不同的动作prompt模板
             action_template_name = "action_prompt_private" if not is_group_chat else "action_prompt"
-            
+
             for using_actions_name, using_actions_info in current_available_actions.items():
                 using_action_prompt = await global_prompt_manager.get_prompt_async(action_template_name)
 

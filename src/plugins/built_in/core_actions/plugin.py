@@ -58,8 +58,6 @@ class ReplyAction(BaseAction):
         logger.info(f"{self.log_prefix} 决定回复: {self.reasoning}")
 
         start_time = self.action_data.get("loop_start_time", time.time())
-        
-
 
         try:
             success, reply_set = await generator_api.generate_reply(
@@ -69,7 +67,6 @@ class ReplyAction(BaseAction):
                 chat_id=self.chat_id,
                 is_group=self.is_group,
             )
-
 
             # 检查从start_time以来的新消息数量
             # 获取动作触发时间或使用默认值
@@ -91,15 +88,14 @@ class ReplyAction(BaseAction):
                 data = reply_seg[1]
                 if not first_replyed:
                     if need_reply:
-                        await self.send_text(content=data, reply_to=self.action_data.get("reply_to", ""),typing=False)
+                        await self.send_text(content=data, reply_to=self.action_data.get("reply_to", ""), typing=False)
                         first_replyed = True
                     else:
-                        await self.send_text(content=data,typing=False)
+                        await self.send_text(content=data, typing=False)
                         first_replyed = True
                 else:
-                    await self.send_text(content=data,typing=True)
+                    await self.send_text(content=data, typing=True)
                 reply_text += data
-                
 
             # 存储动作记录
             await self.store_action_info(
@@ -120,7 +116,7 @@ class ReplyAction(BaseAction):
 
 class NoReplyAction(BaseAction):
     """不回复动作，使用智能判断机制决定何时结束等待
-    
+
     新的等待逻辑：
     - 每0.2秒检查是否有新消息（提高响应性）
     - 如果累计消息数量达到阈值（默认20条），直接结束等待
@@ -141,13 +137,13 @@ class NoReplyAction(BaseAction):
 
     # 连续no_reply计数器
     _consecutive_count = 0
-    
+
     # LLM判断的最小间隔时间
     _min_judge_interval = 1.0  # 最快1秒一次LLM判断
-    
+
     # 自动结束的消息数量阈值
     _auto_exit_message_count = 20  # 累计20条消息自动结束
-    
+
     # 最大等待超时时间
     _max_timeout = 1200  # 1200秒
 
@@ -163,7 +159,7 @@ class NoReplyAction(BaseAction):
     async def execute(self) -> Tuple[bool, str]:
         """执行不回复动作，有新消息时进行判断，但最快1秒一次"""
         import asyncio
-        
+
         try:
             # 增加连续计数
             NoReplyAction._consecutive_count += 1
@@ -174,33 +170,30 @@ class NoReplyAction(BaseAction):
             last_judge_time = 0  # 上次进行LLM判断的时间
             min_judge_interval = self._min_judge_interval  # 最小判断间隔，从配置获取
             check_interval = 0.2  # 检查新消息的间隔，设为0.2秒提高响应性
-            
+
             # 获取no_reply开始时的上下文消息（5条），用于后续记录
             context_messages = message_api.get_messages_by_time_in_chat(
                 chat_id=self.chat_id,
                 start_time=start_time - 300,  # 获取开始前5分钟内的消息
                 end_time=start_time,
                 limit=5,
-                limit_mode="latest"
+                limit_mode="latest",
             )
-            
+
             # 构建上下文字符串
             context_str = ""
             if context_messages:
                 context_str = message_api.build_readable_messages(
-                    messages=context_messages,
-                    timestamp_mode="normal_no_YMD",
-                    truncate=False,
-                    show_actions=False
+                    messages=context_messages, timestamp_mode="normal_no_YMD", truncate=False, show_actions=False
                 )
                 context_str = f"当时选择no_reply前的聊天上下文：\n{context_str}\n"
-            
+
             logger.info(f"{self.log_prefix} 选择不回复(第{count}次)，开始智能等待，原因: {reason}")
 
             while True:
                 current_time = time.time()
                 elapsed_time = current_time - start_time
-                
+
                 # 检查是否超时
                 if elapsed_time >= self._max_timeout:
                     logger.info(f"{self.log_prefix} 达到最大等待时间{self._max_timeout}秒，结束等待")
@@ -211,12 +204,12 @@ class NoReplyAction(BaseAction):
                         action_done=True,
                     )
                     return True, exit_reason
-                
+
                 # 检查是否有新消息
                 new_message_count = message_api.count_new_messages(
                     chat_id=self.chat_id, start_time=start_time, end_time=current_time
                 )
-                
+
                 # 如果累计消息数量达到阈值，直接结束等待
                 if new_message_count >= self._auto_exit_message_count:
                     logger.info(f"{self.log_prefix} 累计消息数量达到{new_message_count}条，直接结束等待")
@@ -227,31 +220,28 @@ class NoReplyAction(BaseAction):
                         action_done=True,
                     )
                     return True, f"累计消息数量达到{new_message_count}条，直接结束等待 (等待时间: {elapsed_time:.1f}秒)"
-                
+
                 # 如果有新消息且距离上次判断>=1秒，进行LLM判断
                 if new_message_count > 0 and (current_time - last_judge_time) >= min_judge_interval:
                     logger.info(f"{self.log_prefix} 检测到{new_message_count}条新消息，进行智能判断...")
-                    
+
                     # 获取最近的消息内容用于判断
                     recent_messages = message_api.get_messages_by_time_in_chat(
-                        chat_id=self.chat_id, 
+                        chat_id=self.chat_id,
                         start_time=start_time,
                         end_time=current_time,
                     )
-                    
+
                     if recent_messages:
                         # 使用message_api构建可读的消息字符串
                         messages_text = message_api.build_readable_messages(
-                            messages=recent_messages,
-                            timestamp_mode="normal_no_YMD",
-                            truncate=False,
-                            show_actions=False
+                            messages=recent_messages, timestamp_mode="normal_no_YMD", truncate=False, show_actions=False
                         )
-                        
+
                         # 参考simple_planner构建更完整的判断信息
                         # 获取时间信息
                         time_block = f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-                        
+
                         # 获取身份信息
                         bot_name = global_config.bot.nickname
                         bot_nickname = ""
@@ -259,7 +249,7 @@ class NoReplyAction(BaseAction):
                             bot_nickname = f",也有人叫你{','.join(global_config.bot.alias_names)}"
                         bot_core_personality = global_config.personality.personality_core
                         identity_block = f"你的名字是{bot_name}{bot_nickname}，你{bot_core_personality}"
-                        
+
                         # 构建判断上下文
                         judge_prompt = f"""
 {time_block}
@@ -284,14 +274,14 @@ class NoReplyAction(BaseAction):
     "reason": "详细说明你的判断理由"
 }}
 """
-                        
+
                         try:
                             # 获取可用的模型配置
                             available_models = llm_api.get_available_models()
-                            
+
                             # 使用 utils_small 模型
-                            small_model = getattr(available_models, 'utils_small', None)
-                            
+                            small_model = getattr(available_models, "utils_small", None)
+
                             if small_model:
                                 # 使用小模型进行判断
                                 success, response, reasoning, model_name = await llm_api.generate_with_model(
@@ -300,10 +290,10 @@ class NoReplyAction(BaseAction):
                                     request_type="plugin.no_reply_judge",
                                     temperature=0.7  # 进一步降低温度，提高JSON输出的一致性和准确性
                                 )
-                                
+
                                 # 更新上次判断时间
                                 last_judge_time = time.time()
-                                
+
                                 if success and response:
                                     response = response.strip()
                                     logger.info(f"{self.log_prefix} 模型({model_name})原始JSON响应: {response}")
@@ -331,11 +321,11 @@ class NoReplyAction(BaseAction):
                             else:
                                 logger.warning(f"{self.log_prefix} 未找到可用的模型配置，继续等待")
                                 last_judge_time = time.time()  # 即使失败也更新时间，避免频繁重试
-                                
+
                         except Exception as e:
                             logger.error(f"{self.log_prefix} 模型判断异常: {e}，继续等待")
                             last_judge_time = time.time()  # 异常时也更新时间，避免频繁重试
-                
+
                 # 每10秒输出一次等待状态
                 if int(elapsed_time) % 10 == 0 and int(elapsed_time) > 0:
                     logger.info(f"{self.log_prefix} 已等待{elapsed_time:.0f}秒，等待新消息...")
@@ -488,7 +478,6 @@ class EmojiAction(BaseAction):
             return False, f"表情发送失败: {str(e)}"
 
 
-
 class ExitFocusChatAction(BaseAction):
     """退出专注聊天动作 - 从专注模式切换到普通模式"""
 
@@ -590,8 +579,12 @@ class CoreActionsPlugin(BasePlugin):
         },
         "no_reply": {
             "max_timeout": ConfigField(type=int, default=1200, description="最大等待超时时间（秒）"),
-            "min_judge_interval": ConfigField(type=float, default=1.0, description="LLM判断的最小间隔时间（秒），防止过于频繁"),
-            "auto_exit_message_count": ConfigField(type=int, default=20, description="累计消息数量达到此阈值时自动结束等待"),
+            "min_judge_interval": ConfigField(
+                type=float, default=1.0, description="LLM判断的最小间隔时间（秒），防止过于频繁"
+            ),
+            "auto_exit_message_count": ConfigField(
+                type=int, default=20, description="累计消息数量达到此阈值时自动结束等待"
+            ),
             "random_probability": ConfigField(
                 type=float, default=0.8, description="Focus模式下，随机选择不回复的概率（0.0到1.0）", example=0.8
             ),

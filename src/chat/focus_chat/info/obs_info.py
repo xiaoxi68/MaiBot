@@ -80,7 +80,7 @@ class ObsInfo(InfoBase):
             chat_target (str): 聊天目标，可以是 "private"（私聊）、"group"（群聊）或 "other"（其他）
         """
         self.data["chat_target"] = chat_target
-    
+
     def set_chat_id(self, chat_id: str) -> None:
         """设置聊天ID
 
@@ -88,7 +88,7 @@ class ObsInfo(InfoBase):
             chat_id (str): 聊天ID
         """
         self.data["chat_id"] = chat_id
-    
+
     def get_chat_id(self) -> Optional[str]:
         """获取聊天ID
 
