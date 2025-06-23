@@ -7,8 +7,6 @@ from src.config.config import global_config
 from src.chat.focus_chat.info.info_base import InfoBase
 from src.chat.focus_chat.info.obs_info import ObsInfo
 from src.chat.focus_chat.info.action_info import ActionInfo
-from src.chat.focus_chat.info.structured_info import StructuredInfo
-from src.chat.focus_chat.info.relation_info import RelationInfo
 from src.common.logger import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.focus_chat.planners.action_manager import ActionManager
@@ -235,7 +233,6 @@ class ActionPlanner(BasePlanner):
                     for key, value in parsed_json.items():
                         if key not in ["action", "reasoning"]:
                             action_data[key] = value
-
 
                     action_data["loop_start_time"] = loop_start_time
 

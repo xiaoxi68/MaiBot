@@ -721,7 +721,7 @@ class HeartFChatting:
         relation_info = ""
         selected_expressions = []
         structured_info = ""
-        
+
         for info in all_post_plan_info:
             if isinstance(info, RelationInfo):
                 relation_info = info.get_processed_info()
@@ -729,25 +729,24 @@ class HeartFChatting:
                 selected_expressions = info.get_expressions_for_action_data()
             elif isinstance(info, StructuredInfo):
                 structured_info = info.get_processed_info()
-                
+
         if relation_info:
             updated_action_data["relation_info_block"] = relation_info
 
         if selected_expressions:
-            updated_action_data["selected_expressions"] = selected_expressions     
-            
+            updated_action_data["selected_expressions"] = selected_expressions
+
         if structured_info:
             updated_action_data["structured_info"] = structured_info
-        
-        #特殊处理running_memorys
+
+        # 特殊处理running_memorys
         if running_memorys:
             memory_str = "以下是当前在聊天中，你回忆起的记忆：\n"
             for running_memory in running_memorys:
                 memory_str += f"{running_memory['content']}\n"
             updated_action_data["memory_block"] = memory_str
             logger.info(f"{self.log_prefix} 添加了 {len(running_memorys)} 个激活的记忆到action_data")
-            
-        
+
         if all_post_plan_info or running_memorys:
             logger.info(
                 f"{self.log_prefix} 后期处理完成，产生了 {len(all_post_plan_info)} 个信息项和 {len(running_memorys)} 个记忆"

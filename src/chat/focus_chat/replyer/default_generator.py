@@ -285,7 +285,7 @@ class DefaultReplyer:
         relation_info_block = reply_data.get("relation_info_block", "")
         reply_to = reply_data.get("reply_to", "none")
         memory_block = reply_data.get("memory_block", "")
-        
+
         # 优先使用 extra_info_block，没有则用 extra_info
         extra_info_block = reply_data.get("extra_info_block", "") or reply_data.get("extra_info", "")
 
@@ -353,7 +353,7 @@ class DefaultReplyer:
             extra_info_block = f"以下是你在回复时需要参考的信息，现在请你阅读以下内容，进行决策\n{extra_info_block}\n以上是你在回复时需要参考的信息，现在请你阅读以下内容，进行决策"
         else:
             extra_info_block = ""
-    
+
         # 关键词检测与反应
         keywords_reaction_prompt = ""
         try:
