@@ -76,10 +76,14 @@ class ChattingObservation(Observation):
 
         self.last_observe_time = datetime.now().timestamp()
         initial_messages = get_raw_msg_before_timestamp_with_chat(self.chat_id, self.last_observe_time, 10)
-        print(f"initial_messages: {initial_messages}")
+        initial_messages_short = get_raw_msg_before_timestamp_with_chat(self.chat_id, self.last_observe_time, 5)
         self.last_observe_time = initial_messages[-1]["time"] if initial_messages else self.last_observe_time
         self.talking_message = initial_messages
+        self.talking_message_short = initial_messages_short
         self.talking_message_str = build_readable_messages(self.talking_message, show_actions=True)
+        self.talking_message_str_truncate = build_readable_messages(self.talking_message, show_actions=True, truncate=True)
+        self.talking_message_str_short = build_readable_messages(self.talking_message_short, show_actions=True)
+        self.talking_message_str_truncate_short = build_readable_messages(self.talking_message_short, show_actions=True, truncate=True)
 
     def to_dict(self) -> dict:
         """将观察对象转换为可序列化的字典"""
