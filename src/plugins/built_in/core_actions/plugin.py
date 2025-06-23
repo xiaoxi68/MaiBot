@@ -177,7 +177,6 @@ class EmojiAction(BaseAction):
             return False, f"表情发送失败: {str(e)}"
 
 
-
 @register_plugin
 class CoreActionsPlugin(BasePlugin):
     """核心动作插件
@@ -294,6 +293,8 @@ class CoreActionsPlugin(BasePlugin):
         # components.append((DeepReplyAction.get_action_info(), DeepReplyAction))
 
         return components
+
+
 # class DeepReplyAction(BaseAction):
 #     """回复动作 - 参与聊天回复"""
 
@@ -416,5 +417,3 @@ class CoreActionsPlugin(BasePlugin):
 #                 data = reply[1]
 #                 reply_text += data
 #         return reply_text
-
-

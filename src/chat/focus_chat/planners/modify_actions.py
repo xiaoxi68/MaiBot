@@ -59,7 +59,7 @@ class ActionModifier:
 
         # === 第一阶段：传统观察处理 ===
         chat_content = None
-        
+
         if observations:
             hfc_obs = None
             chat_obs = None
