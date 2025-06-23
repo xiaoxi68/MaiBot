@@ -1,4 +1,4 @@
-from typing import Dict, List, Type, Optional, Any, Pattern
+from typing import Dict, List, Optional, Any, Pattern, Union
 import re
 from src.common.logger import get_logger
 from src.plugin_system.base.component_types import (
@@ -8,6 +8,9 @@ from src.plugin_system.base.component_types import (
     PluginInfo,
     ComponentType,
 )
+
+from ..base.base_command import BaseCommand
+from ..base.base_action import BaseAction
 
 logger = get_logger("component_registry")
 
@@ -25,24 +28,26 @@ class ComponentRegistry:
             ComponentType.ACTION: {},
             ComponentType.COMMAND: {},
         }
-        self._component_classes: Dict[str, Type] = {}  # 组件名 -> 组件类
+        self._component_classes: Dict[str, Union[BaseCommand, BaseAction]] = {}  # 组件名 -> 组件类
 
         # 插件注册表
         self._plugins: Dict[str, PluginInfo] = {}  # 插件名 -> 插件信息
 
         # Action特定注册表
-        self._action_registry: Dict[str, Type] = {}  # action名 -> action类
+        self._action_registry: Dict[str, BaseAction] = {}  # action名 -> action类
         self._default_actions: Dict[str, str] = {}  # 启用的action名 -> 描述
 
         # Command特定注册表
-        self._command_registry: Dict[str, Type] = {}  # command名 -> command类
-        self._command_patterns: Dict[Pattern, Type] = {}  # 编译后的正则 -> command类
+        self._command_registry: Dict[str, BaseCommand] = {}  # command名 -> command类
+        self._command_patterns: Dict[Pattern, BaseCommand] = {}  # 编译后的正则 -> command类
 
         logger.info("组件注册中心初始化完成")
 
     # === 通用组件注册方法 ===
 
-    def register_component(self, component_info: ComponentInfo, component_class: Type) -> bool:
+    def register_component(
+        self, component_info: ComponentInfo, component_class: Union[BaseCommand, BaseAction]
+    ) -> bool:
         """注册组件
 
         Args:
@@ -93,7 +98,7 @@ class ComponentRegistry:
         )
         return True
 
-    def _register_action_component(self, action_info: ActionInfo, action_class: Type):
+    def _register_action_component(self, action_info: ActionInfo, action_class: BaseAction):
         """注册Action组件到Action特定注册表"""
         action_name = action_info.name
         self._action_registry[action_name] = action_class
@@ -102,7 +107,7 @@ class ComponentRegistry:
         if action_info.enabled:
             self._default_actions[action_name] = action_info.description
 
-    def _register_command_component(self, command_info: CommandInfo, command_class: Type):
+    def _register_command_component(self, command_info: CommandInfo, command_class: BaseCommand):
         """注册Command组件到Command特定注册表"""
         command_name = command_info.name
         self._command_registry[command_name] = command_class
@@ -115,6 +120,7 @@ class ComponentRegistry:
     # === 组件查询方法 ===
 
     def get_component_info(self, component_name: str, component_type: ComponentType = None) -> Optional[ComponentInfo]:
+        # sourcery skip: class-extract-method
         """获取组件信息，支持自动命名空间解析
 
         Args:
@@ -143,8 +149,7 @@ class ComponentRegistry:
         candidates = []
         for namespace_prefix in ["action", "command"]:
             namespaced_name = f"{namespace_prefix}.{component_name}"
-            component_info = self._components.get(namespaced_name)
-            if component_info:
+            if component_info := self._components.get(namespaced_name):
                 candidates.append((namespace_prefix, namespaced_name, component_info))
 
         if len(candidates) == 1:
@@ -161,7 +166,9 @@ class ComponentRegistry:
         # 4. 都没找到
         return None
 
-    def get_component_class(self, component_name: str, component_type: ComponentType = None) -> Optional[Type]:
+    def get_component_class(
+        self, component_name: str, component_type: ComponentType = None
+    ) -> Optional[Union[BaseCommand, BaseAction]]:
         """获取组件类，支持自动命名空间解析
 
         Args:
@@ -169,7 +176,7 @@ class ComponentRegistry:
             component_type: 组件类型，如果提供则优先在该类型中查找
 
         Returns:
-            Optional[Type]: 组件类或None
+            Optional[Union[BaseCommand, BaseAction]]: 组件类或None
         """
         # 1. 如果已经是命名空间化的名称，直接查找
         if "." in component_name:
@@ -190,8 +197,7 @@ class ComponentRegistry:
         candidates = []
         for namespace_prefix in ["action", "command"]:
             namespaced_name = f"{namespace_prefix}.{component_name}"
-            component_class = self._component_classes.get(namespaced_name)
-            if component_class:
+            if component_class := self._component_classes.get(namespaced_name):
                 candidates.append((namespace_prefix, namespaced_name, component_class))
 
         if len(candidates) == 1:
@@ -221,7 +227,7 @@ class ComponentRegistry:
 
     # === Action特定查询方法 ===
 
-    def get_action_registry(self) -> Dict[str, Type]:
+    def get_action_registry(self) -> Dict[str, BaseAction]:
         """获取Action注册表（用于兼容现有系统）"""
         return self._action_registry.copy()
 
@@ -236,11 +242,11 @@ class ComponentRegistry:
 
     # === Command特定查询方法 ===
 
-    def get_command_registry(self) -> Dict[str, Type]:
+    def get_command_registry(self) -> Dict[str, BaseCommand]:
         """获取Command注册表（用于兼容现有系统）"""
         return self._command_registry.copy()
 
-    def get_command_patterns(self) -> Dict[Pattern, Type]:
+    def get_command_patterns(self) -> Dict[Pattern, BaseCommand]:
         """获取Command模式注册表（用于兼容现有系统）"""
         return self._command_patterns.copy()
 
@@ -249,19 +255,19 @@ class ComponentRegistry:
         info = self.get_component_info(command_name, ComponentType.COMMAND)
         return info if isinstance(info, CommandInfo) else None
 
-    def find_command_by_text(self, text: str) -> Optional[tuple[Type, dict, bool, str]]:
+    def find_command_by_text(self, text: str) -> Optional[tuple[BaseCommand, dict, bool, str]]:
+        # sourcery skip: use-named-expression, use-next
         """根据文本查找匹配的命令
 
         Args:
             text: 输入文本
 
         Returns:
-            Optional[tuple[Type, dict, bool, str]]: (命令类, 匹配的命名组, 是否拦截消息, 插件名) 或 None
+            Optional[tuple[BaseCommand, dict, bool, str]]: (命令类, 匹配的命名组, 是否拦截消息, 插件名) 或 None
         """
 
         for pattern, command_class in self._command_patterns.items():
-            match = pattern.match(text)
-            if match:
+            if match := pattern.match(text):
                 command_name = None
                 # 查找对应的组件信息
                 for name, cls in self._command_registry.items():
@@ -272,14 +278,13 @@ class ComponentRegistry:
                 # 检查命令是否启用
                 if command_name:
                     command_info = self.get_command_info(command_name)
-                    if command_info:
-                        if command_info.enabled:
-                            return (
-                                command_class,
-                                match.groupdict(),
-                                command_info.intercept_message,
-                                command_info.plugin_name,
-                            )
+                    if command_info and command_info.enabled:
+                        return (
+                            command_class,
+                            match.groupdict(),
+                            command_info.intercept_message,
+                            command_info.plugin_name,
+                        )
         return None
 
     # === 插件管理方法 ===

@@ -22,7 +22,7 @@
 import traceback
 import time
 import difflib
-from typing import Optional
+from typing import Optional, Union
 from src.common.logger import get_logger
 
 # 导入依赖
@@ -44,7 +44,7 @@ logger = get_logger("send_api")
 
 async def _send_to_target(
     message_type: str,
-    content: str,
+    content: Union[str, dict],
     stream_id: str,
     display_message: str = "",
     typing: bool = False,
@@ -284,7 +284,7 @@ async def image_to_stream(image_base64: str, stream_id: str, storage_message: bo
     return await _send_to_target("image", image_base64, stream_id, "", typing=False, storage_message=storage_message)
 
 
-async def command_to_stream(command: str, stream_id: str, storage_message: bool = True) -> bool:
+async def command_to_stream(command: Union[str, dict], stream_id: str, storage_message: bool = True) -> bool:
     """向指定流发送命令
 
     Args:

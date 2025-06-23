@@ -53,6 +53,8 @@ class BaseAction(ABC):
             plugin_config: 插件配置字典
             **kwargs: 其他参数
         """
+        if plugin_config is None:
+            plugin_config = {}
         self.action_data = action_data
         self.reasoning = reasoning
         self.cycle_timers = cycle_timers

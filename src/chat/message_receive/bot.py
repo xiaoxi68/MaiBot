@@ -11,7 +11,7 @@ from src.chat.focus_chat.heartflow_message_processor import HeartFCMessageReceiv
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.config.config import global_config
 from src.plugin_system.core.component_registry import component_registry  # 导入新插件系统
-
+from src.plugin_system.base.base_command import BaseCommand
 # 定义日志配置
 
 
@@ -49,6 +49,7 @@ class ChatBot:
             logger.error(f"创建PFC聊天失败: {e}")
 
     async def _process_commands_with_new_system(self, message: MessageRecv):
+        # sourcery skip: use-named-expression
         """使用新插件系统处理命令"""
         try:
             text = message.processed_plain_text
@@ -62,7 +63,7 @@ class ChatBot:
                 plugin_config = component_registry.get_plugin_config(plugin_name)
 
                 # 创建命令实例
-                command_instance = command_class(message, plugin_config)
+                command_instance: BaseCommand = command_class(message, plugin_config)
                 command_instance.set_matched_groups(matched_groups)
 
                 try:
@@ -85,7 +86,7 @@ class ChatBot:
                     logger.error(traceback.format_exc())
 
                     try:
-                        await command_instance.send_reply(f"命令执行出错: {str(e)}")
+                        await command_instance.send_text(f"命令执行出错: {str(e)}")
                     except Exception as send_error:
                         logger.error(f"发送错误消息失败: {send_error}")
 
