@@ -130,8 +130,13 @@ class LLMRequest:
         self.pri_out = model.get("pri_out", 0)
         self.max_tokens = model.get("max_tokens", global_config.model.model_max_output_length)
         # print(f"max_tokens: {self.max_tokens}")
-        self.custom_params = model.get("custom_params", "{}")
-        self.custom_params = json.loads(self.custom_params)
+        custom_params_str = model.get("custom_params", "{}")
+        try:
+            self.custom_params = json.loads(custom_params_str)
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in custom_params for model '{self.model_name}': {custom_params_str}")
+            self.custom_params = {}
+
 
         # 获取数据库实例
         self._init_database()
