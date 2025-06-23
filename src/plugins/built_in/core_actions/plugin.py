@@ -382,7 +382,7 @@ class NoReplyAction(BaseAction):
 
                                     if judge_result == "需要回复":
                                         logger.info(f"{self.log_prefix} 模型判断需要回复，结束等待")
-                                        
+
                                         full_prompt = f"{global_config.bot.nickname}（你）的想法是：{reason}"
                                         await self.store_action_info(
                                             action_build_into_prompt=True,
