@@ -34,7 +34,7 @@ class BaseAction(ABC):
         chat_stream=None,
         log_prefix: str = "",
         shutting_down: bool = False,
-        plugin_config: dict = None,
+        plugin_config: dict = {},
         **kwargs,
     ):
         """初始化Action组件

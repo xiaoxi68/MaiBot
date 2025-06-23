@@ -60,7 +60,7 @@ class ByeAction(BaseAction):
     async def execute(self) -> Tuple[bool, str]:
         bye_message = self.action_data.get("bye_message", "")
 
-        message = "再见！期待下次聊天！👋" + bye_message
+        message = f"再见！期待下次聊天！👋{bye_message}"
         await self.send_text(message)
         return True, "发送了告别消息"
 
