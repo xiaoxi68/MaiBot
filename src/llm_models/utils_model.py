@@ -488,8 +488,8 @@ class LLMRequest:
             logger.error(
                 f"模型 {self.model_name} 错误码: {response.status} - {error_code_mapping.get(response.status)}"
             )
-            print(request_content)
-            print(response)
+            # print(request_content)
+            # print(response)
             # 尝试获取并记录服务器返回的详细错误信息
             try:
                 error_json = await response.json()

@@ -1008,21 +1008,21 @@ class NormalChat:
         # 计算回复频率
         _reply_frequency = bot_reply_count / total_message_count
 
-        differ = global_config.normal_chat.talk_frequency - (bot_reply_count / duration)
+        differ = global_config.chat.talk_frequency - (bot_reply_count / duration)
 
         # 如果回复频率低于0.5，增加回复概率
         if differ > 0.1:
             mapped = 1 + (differ - 0.1) * 4 / 0.9
             mapped = max(1, min(5, mapped))
             logger.debug(
-                f"[{self.stream_name}] 回复频率低于{global_config.normal_chat.talk_frequency}，增加回复概率，differ={differ:.3f}，映射值={mapped:.2f}"
+                f"[{self.stream_name}] 回复频率低于{global_config.chat.talk_frequency}，增加回复概率，differ={differ:.3f}，映射值={mapped:.2f}"
             )
             self.willing_amplifier += mapped * 0.1  # 你可以根据实际需要调整系数
         elif differ < -0.1:
             mapped = 1 - (differ + 0.1) * 4 / 0.9
             mapped = max(1, min(5, mapped))
             logger.debug(
-                f"[{self.stream_name}] 回复频率高于{global_config.normal_chat.talk_frequency}，减少回复概率，differ={differ:.3f}，映射值={mapped:.2f}"
+                f"[{self.stream_name}] 回复频率高于{global_config.chat.talk_frequency}，减少回复概率，differ={differ:.3f}，映射值={mapped:.2f}"
             )
             self.willing_amplifier -= mapped * 0.1
 
@@ -1120,7 +1120,7 @@ class NormalChat:
         if not segments:
             return
 
-        logger.info(f"[{self.stream_name}] 开始为 {person_id} 基于 {len(segments)} 个消息段更新印象")
+        logger.debug(f"[{self.stream_name}] 开始为 {person_id} 基于 {len(segments)} 个消息段更新印象")
         try:
             processed_messages = []
 
@@ -1132,7 +1132,7 @@ class NormalChat:
 
                 # 获取该段的消息（包含边界）
                 segment_messages = get_raw_msg_by_timestamp_with_chat_inclusive(self.stream_id, start_time, end_time)
-                logger.info(
+                logger.debug(
                     f"[{self.stream_name}] 消息段 {i + 1}: {start_date} - {time.strftime('%Y-%m-%d %H:%M', time.localtime(end_time))}, 消息数: {len(segment_messages)}"
                 )
 
@@ -1160,7 +1160,7 @@ class NormalChat:
                 # 按时间排序所有消息（包括间隔标识）
                 processed_messages.sort(key=lambda x: x["time"])
 
-                logger.info(
+                logger.debug(
                     f"[{self.stream_name}] 为 {person_id} 获取到总共 {len(processed_messages)} 条消息（包含间隔标识）用于印象更新"
                 )
                 relationship_manager = get_relationship_manager()
@@ -1170,7 +1170,7 @@ class NormalChat:
                     person_id=person_id, timestamp=time.time(), bot_engaged_messages=processed_messages
                 )
             else:
-                logger.info(f"[{self.stream_name}] 没有找到 {person_id} 的消息段对应的消息，不更新印象")
+                logger.debug(f"[{self.stream_name}] 没有找到 {person_id} 的消息段对应的消息，不更新印象")
 
         except Exception as e:
             logger.error(f"[{self.stream_name}] 为 {person_id} 更新印象时发生错误: {e}")

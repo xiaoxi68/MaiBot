@@ -5,6 +5,7 @@
 这是系统的内置插件，提供基础的聊天交互功能
 """
 
+import random
 import time
 import json
 from typing import List, Tuple, Type
@@ -76,7 +77,7 @@ class ReplyAction(BaseAction):
             )
 
             # 根据新消息数量决定是否使用reply_to
-            need_reply = new_message_count >= 4
+            need_reply = new_message_count >= random.randint(2, 5)
             logger.info(
                 f"{self.log_prefix} 从{start_time}到{current_time}共有{new_message_count}条新消息，{'使用' if need_reply else '不使用'}reply_to"
             )
@@ -170,13 +171,16 @@ class NoReplyAction(BaseAction):
             last_judge_time = 0  # 上次进行LLM判断的时间
             min_judge_interval = self._min_judge_interval  # 最小判断间隔，从配置获取
             check_interval = 0.2  # 检查新消息的间隔，设为0.2秒提高响应性
+            
+            # 累积判断历史
+            judge_history = []  # 存储每次判断的结果和理由
 
-            # 获取no_reply开始时的上下文消息（5条），用于后续记录
+            # 获取no_reply开始时的上下文消息（10条），用于后续记录
             context_messages = message_api.get_messages_by_time_in_chat(
                 chat_id=self.chat_id,
-                start_time=start_time - 300,  # 获取开始前5分钟内的消息
+                start_time=start_time - 600,  # 获取开始前10分钟内的消息
                 end_time=start_time,
-                limit=5,
+                limit=10,
                 limit_mode="latest",
             )
 
@@ -184,7 +188,7 @@ class NoReplyAction(BaseAction):
             context_str = ""
             if context_messages:
                 context_str = message_api.build_readable_messages(
-                    messages=context_messages, timestamp_mode="normal_no_YMD", truncate=False, show_actions=False
+                    messages=context_messages, timestamp_mode="normal_no_YMD", truncate=False, show_actions=True
                 )
                 context_str = f"当时选择no_reply前的聊天上下文：\n{context_str}\n"
 
@@ -252,23 +256,83 @@ class NoReplyAction(BaseAction):
                         bot_core_personality = global_config.personality.personality_core
                         identity_block = f"你的名字是{bot_name}{bot_nickname}，你{bot_core_personality}"
 
+                        # 构建判断历史字符串
+                        history_block = ""
+                        if judge_history:
+                            history_block = "之前的判断历史：\n"
+                            for i, (timestamp, judge_result, reason) in enumerate(judge_history, 1):
+                                elapsed_seconds = int(timestamp - start_time)
+                                history_block += f"{i}. 等待{elapsed_seconds}秒时判断：{judge_result}，理由：{reason}\n"
+                            history_block += "\n"
+
+                        # 检查过去10分钟的发言频率
+                        frequency_block = ""
+                        try:
+                            # 获取过去10分钟的所有消息
+                            past_10min_time = current_time - 600  # 10分钟前
+                            all_messages_10min = message_api.get_messages_by_time_in_chat(
+                                chat_id=self.chat_id,
+                                start_time=past_10min_time,
+                                end_time=current_time,
+                            )
+                            
+                            # 手动过滤bot自己的消息
+                            bot_message_count = 0
+                            if all_messages_10min:
+                                user_id = global_config.bot.qq_account
+                                
+                                for message in all_messages_10min:
+                                    # 检查消息发送者是否是bot
+                                    sender_id = message.get("user_id", "")
+
+                                    if sender_id == user_id:
+                                        bot_message_count += 1
+
+                            print(bot_message_count)
+
+                            talk_frequency_threshold = global_config.chat.talk_frequency * 10
+                            
+                            if bot_message_count > talk_frequency_threshold:
+                                over_count = bot_message_count - talk_frequency_threshold
+                                
+                                # 根据超过的数量设置不同的提示词
+                                if over_count <= 5:
+                                    frequency_block = "你感觉稍微有些累，回复的有点多了。\n"
+                                elif over_count <= 10:
+                                    frequency_block = "你今天说话比较多，感觉有点疲惫，想要稍微休息一下。\n"
+                                elif over_count <= 20:
+                                    frequency_block = "你发现自己说话太多了，感觉很累，需要好好休息一下，不想频繁回复。\n"
+                                else:
+                                    frequency_block = "你感到非常疲惫，今天话说得太多了，想要安静一会儿，除非有重要的事情否则不想回复。\n"
+                                
+                                logger.info(f"{self.log_prefix} 过去10分钟发言{bot_message_count}条，超过阈值{talk_frequency_threshold}，添加疲惫提示")
+                            else:
+                                logger.info(f"{self.log_prefix} 过去10分钟发言{bot_message_count}条，未超过阈值{talk_frequency_threshold}")
+                                
+                        except Exception as e:
+                            logger.warning(f"{self.log_prefix} 检查发言频率时出错: {e}")
+                            frequency_block = ""
+
                         # 构建判断上下文
                         judge_prompt = f"""
 {time_block}
 {identity_block}
 
+你现在正在QQ群参与聊天，以下是聊天内容：
 {context_str}
 在以上的聊天中，你选择了暂时不回复，现在，你看到了新的聊天消息如下：
 {messages_text}
 
+{history_block}
+请注意：{frequency_block}
 请你判断，是否要结束不回复的状态，重新加入聊天讨论。
 
 判断标准：
 1. 如果有人直接@你、提到你的名字或明确向你询问，应该回复
 2. 如果话题发生重要变化，需要你参与讨论，应该回复
-3. 如果出现了紧急或重要的情况，应该回复
-4. 如果只是普通闲聊、重复内容或与你无关的讨论，不需要回复
-5. 如果消息内容过于简单（如单纯的表情、"哈哈"等），不需要回复
+3. 如果只是普通闲聊、重复内容或与你无关的讨论，不需要回复
+4. 如果消息内容过于简单（如单纯的表情、"哈哈"等），不需要回复
+5. 参考之前的判断历史，如果情况有明显变化或持续等待时间过长，考虑调整判断
 
 请用JSON格式回复你的判断，严格按照以下格式：
 {{
@@ -283,6 +347,8 @@ class NoReplyAction(BaseAction):
 
                             # 使用 utils_small 模型
                             small_model = getattr(available_models, "utils_small", None)
+
+                            print(judge_prompt)
 
                             if small_model:
                                 # 使用小模型进行判断
@@ -307,9 +373,22 @@ class NoReplyAction(BaseAction):
                                         f"{self.log_prefix} JSON解析结果 - 判断: {judge_result}, 理由: {reason}"
                                     )
 
+                                    # 将判断结果保存到历史中
+                                    judge_history.append((current_time, judge_result, reason))
+
                                     if judge_result == "需要回复":
                                         logger.info(f"{self.log_prefix} 模型判断需要回复，结束等待")
-                                        full_prompt = f"{global_config.bot.nickname}（你）的想法是：{reason}"
+                                        
+                                        # 构建包含判断历史的详细信息
+                                        history_summary = ""
+                                        if len(judge_history) > 1:
+                                            history_summary = f"\n\n判断过程：\n"
+                                            for i, (timestamp, past_result, past_reason) in enumerate(judge_history[:-1], 1):
+                                                elapsed_seconds = int(timestamp - start_time)
+                                                history_summary += f"{i}. 等待{elapsed_seconds}秒时：{past_result}，理由：{past_reason}\n"
+                                            history_summary += f"{len(judge_history)}. 等待{elapsed_time:.0f}秒时：{judge_result}，理由：{reason}"
+                                        
+                                        full_prompt = f"{global_config.bot.nickname}（你）的想法是：{reason}{history_summary}"
                                         await self.store_action_info(
                                             action_build_into_prompt=True,
                                             action_prompt_display=full_prompt,

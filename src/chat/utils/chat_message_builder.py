@@ -487,7 +487,7 @@ def build_pic_mapping_info(pic_id_mapping: Dict[str, str]) -> str:
 
     for pic_id, display_name in sorted_items:
         # 从数据库中获取图片描述
-        description = "内容正在阅读"
+        description = "内容正在阅读，请稍等"
         try:
             image = Images.get_or_none(Images.image_id == pic_id)
             if image and image.description:

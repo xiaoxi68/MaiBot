@@ -99,7 +99,7 @@ class MemoryActivator:
                 for working_info_item in working_info:
                     obs_info_text += f"{working_info_item['type']}: {working_info_item['content']}\n"
 
-        logger.info(f"回忆待检索内容：obs_info_text: {obs_info_text}")
+        # logger.info(f"回忆待检索内容：obs_info_text: {obs_info_text}")
 
         # 将缓存的关键词转换为字符串，用于prompt
         cached_keywords_str = ", ".join(self.cached_keywords) if self.cached_keywords else "暂无历史关键词"

@@ -774,7 +774,7 @@ class PersonImpressionpProcessor(BaseProcessor):
             chat_id: 聊天ID
             segments: 消息段列表
         """
-        logger.info(f"开始为 {person_id} 基于 {len(segments)} 个消息段更新印象")
+        logger.debug(f"开始为 {person_id} 基于 {len(segments)} 个消息段更新印象")
         try:
             processed_messages = []
 

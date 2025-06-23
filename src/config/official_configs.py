@@ -69,6 +69,9 @@ class ChatConfig(ConfigBase):
     chat_mode: str = "normal"
     """聊天模式"""
 
+    talk_frequency: float = 1
+    """回复频率阈值"""
+
     auto_focus_threshold: float = 1.0
     """自动切换到专注聊天的阈值，越低越容易进入专注聊天"""
 
@@ -112,8 +115,7 @@ class NormalChatConfig(ConfigBase):
     willing_mode: str = "classical"
     """意愿模式"""
 
-    talk_frequency: float = 1
-    """回复频率阈值"""
+
 
     response_interested_rate_amplifier: float = 1.0
     """回复兴趣度放大系数"""

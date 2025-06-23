@@ -68,7 +68,7 @@ class ActionModifier:
                     hfc_obs = obs
                 if isinstance(obs, ChattingObservation):
                     chat_obs = obs
-                    chat_content = obs.talking_message_str_truncate
+                    chat_content = obs.talking_message_str_truncate_short
 
             # 合并所有动作变更
             merged_action_changes = {"add": [], "remove": []}

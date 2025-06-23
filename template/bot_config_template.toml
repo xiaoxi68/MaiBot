@@ -1,5 +1,5 @@
 [inner]
-version = "2.25.0"
+version = "2.26.0"
 
 #----以下是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 #如果你想要修改配置文件，请在修改后将version的值进行变更
@@ -60,6 +60,8 @@ chat_mode = "normal" # 聊天模式 —— 普通模式：normal，专注模式�
 # chat_mode = "focus"
 # chat_mode = "auto"
 
+talk_frequency = 1 # 麦麦回复频率，越高，麦麦回复越频繁
+
 auto_focus_threshold = 1 # 自动切换到专注聊天的阈值，越低越容易进入专注聊天
 exit_focus_threshold = 1 # 自动退出专注聊天的阈值，越低越容易退出专注聊天
 # 普通模式下，麦麦会针对感兴趣的消息进行回复，token消耗量较低
@@ -86,7 +88,7 @@ emoji_chance = 0.2 # 麦麦一般回复时使用表情包的概率，设置为1�
 thinking_timeout = 120 # 麦麦最长思考时间，超过这个时间的思考会放弃（往往是api反应太慢）
 
 willing_mode = "classical" # 回复意愿模式 —— 经典模式：classical，mxp模式：mxp，自定义模式：custom（需要你自己实现）
-talk_frequency = 1 # 麦麦回复频率，一般为1，默认频率下，30分钟麦麦回复30条（约数）
+
 
 response_interested_rate_amplifier = 1 # 麦麦回复兴趣度放大系数
 
