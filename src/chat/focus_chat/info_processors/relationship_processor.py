@@ -131,10 +131,14 @@ def init_prompt():
 1.你需要提供用户名和你想要提取的信息名称类型来进行调取
 2.请注意，提取的信息类型一定要和用户有关，不要提取无关的信息
 3.你也可以调取有关自己({bot_name})的信息
+4.如果当前聊天记录中没有需要查询的信息，或者现有信息已经足够回复，请返回{{"none": "不需要查询"}}
 
 请以json格式输出，例如：
 
 {example_json}
+
+如果不需要查询任何信息，请输出：
+{{"none": "不需要查询"}}
 
 请严格按照json输出格式，不要输出多余内容，可以同时查询多个人的信息：
 
@@ -649,48 +653,53 @@ class PersonImpressionpProcessor(BaseProcessor):
                 # print(f"content: {content}")
                 content_json = json.loads(repair_json(content))
 
-                # 收集即时提取任务
-                instant_tasks = []
-                async_tasks = []
-
-                person_info_manager = get_person_info_manager()
-                for person_name, info_type in content_json.items():
-                    is_bot = person_name == global_config.bot.nickname or person_name in global_config.bot.alias_names
-                    if is_bot:
-                        person_id = person_info_manager.get_person_id("system", "bot_id")
-                        logger.info(f"{self.log_prefix} 检测到对bot自身({person_name})的信息查询，使用特殊ID。")
-                    else:
-                        person_id = person_info_manager.get_person_id_by_person_name(person_name)
-
-                    if not person_id:
-                        logger.warning(f"{self.log_prefix} 未找到用户 {person_name} 的ID，跳过调取信息。")
-                        continue
-
-                    self.info_fetching_cache.append(
-                        {
-                            "person_id": person_id,
-                            "person_name": person_name,
-                            "info_type": info_type,
-                            "start_time": time.time(),
-                            "forget": False,
-                        }
-                    )
-                    if len(self.info_fetching_cache) > 20:
-                        self.info_fetching_cache.pop(0)
-
-                    logger.info(f"{self.log_prefix} 调取用户 {person_name} 的 {info_type} 信息。")
-
+                # 检查是否返回了不需要查询的标志
+                if "none" in content_json:
+                    logger.info(f"{self.log_prefix} LLM判断当前不需要查询任何信息：{content_json.get('none', '')}")
+                    # 跳过新的信息提取，但仍会处理已有缓存
+                else:
                     # 收集即时提取任务
-                    instant_tasks.append((person_id, info_type, time.time()))
+                    instant_tasks = []
+                    async_tasks = []
 
-                # 执行即时提取任务
-                if instant_tasks:
-                    await self._execute_instant_extraction_batch(instant_tasks)
+                    person_info_manager = get_person_info_manager()
+                    for person_name, info_type in content_json.items():
+                        is_bot = person_name == global_config.bot.nickname or person_name in global_config.bot.alias_names
+                        if is_bot:
+                            person_id = person_info_manager.get_person_id("system", "bot_id")
+                            logger.info(f"{self.log_prefix} 检测到对bot自身({person_name})的信息查询，使用特殊ID。")
+                        else:
+                            person_id = person_info_manager.get_person_id_by_person_name(person_name)
 
-                # 启动异步任务（如果不是即时模式）
-                if async_tasks:
-                    # 异步任务不需要等待完成
-                    pass
+                        if not person_id:
+                            logger.warning(f"{self.log_prefix} 未找到用户 {person_name} 的ID，跳过调取信息。")
+                            continue
+
+                        self.info_fetching_cache.append(
+                            {
+                                "person_id": person_id,
+                                "person_name": person_name,
+                                "info_type": info_type,
+                                "start_time": time.time(),
+                                "forget": False,
+                            }
+                        )
+                        if len(self.info_fetching_cache) > 20:
+                            self.info_fetching_cache.pop(0)
+
+                        logger.info(f"{self.log_prefix} 调取用户 {person_name} 的 {info_type} 信息。")
+
+                        # 收集即时提取任务
+                        instant_tasks.append((person_id, info_type, time.time()))
+
+                    # 执行即时提取任务
+                    if instant_tasks:
+                        await self._execute_instant_extraction_batch(instant_tasks)
+
+                    # 启动异步任务（如果不是即时模式）
+                    if async_tasks:
+                        # 异步任务不需要等待完成
+                        pass
 
             else:
                 logger.warning(f"{self.log_prefix} LLM返回空结果，关系识别失败。")

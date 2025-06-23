@@ -1,6 +1,5 @@
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 from src.chat.heart_flow.observation.structure_observation import StructureObservation
-from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.common.logger import get_logger
@@ -99,17 +98,15 @@ class MemoryActivator:
                 working_info = observation.get_observe_info()
                 for working_info_item in working_info:
                     obs_info_text += f"{working_info_item['type']}: {working_info_item['content']}\n"
-            elif isinstance(observation, HFCloopObservation):
-                obs_info_text += observation.get_observe_info()
 
-        # logger.debug(f"回忆待检索内容：obs_info_text: {obs_info_text}")
+        logger.info(f"回忆待检索内容：obs_info_text: {obs_info_text}")
 
         # 将缓存的关键词转换为字符串，用于prompt
         cached_keywords_str = ", ".join(self.cached_keywords) if self.cached_keywords else "暂无历史关键词"
 
         prompt = await global_prompt_manager.format_prompt(
             "memory_activator_prompt",
-            obs_info_text=obs_info_text,
+            obs_info_text = obs_info_text,
             cached_keywords=cached_keywords_str,
         )
 
@@ -129,7 +126,7 @@ class MemoryActivator:
 
             # 添加新的关键词到缓存
             self.cached_keywords.update(keywords)
-            logger.debug(f"当前激活的记忆关键词: {self.cached_keywords}")
+            logger.info(f"当前激活的记忆关键词: {self.cached_keywords}")
 
         # 调用记忆系统获取相关记忆
         related_memory = await hippocampus_manager.get_memory_from_topic(
@@ -139,7 +136,7 @@ class MemoryActivator:
         #     text=obs_info_text, max_memory_num=5, max_memory_length=2, max_depth=3, fast_retrieval=False
         # )
 
-        # logger.debug(f"获取到的记忆: {related_memory}")
+        logger.info(f"获取到的记忆: {related_memory}")
 
         # 激活时，所有已有记忆的duration+1，达到3则移除
         for m in self.running_memory[:]:

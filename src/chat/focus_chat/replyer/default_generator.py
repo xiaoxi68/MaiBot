@@ -29,11 +29,9 @@ def init_prompt():
     Prompt(
         """
 {expression_habits_block}
-        
 {extra_info_block}
-
+{memory_block}
 {relation_info_block}
-
 {time_block}
 {chat_target}
 {chat_info}
@@ -53,6 +51,7 @@ def init_prompt():
         """
 {expression_habits_block}
 {extra_info_block}
+{memory_block}
 {time_block}
 {chat_target}
 {chat_info}
@@ -281,6 +280,7 @@ class DefaultReplyer:
         extra_info_block = reply_data.get("extra_info_block", "")
         relation_info_block = reply_data.get("relation_info_block", "")
         reply_to = reply_data.get("reply_to", "none")
+        memory_block = reply_data.get("memory_block", "")
 
         sender = ""
         target = ""
@@ -394,6 +394,7 @@ class DefaultReplyer:
                 expression_habits_block=expression_habits_block,
                 chat_target=chat_target_1,
                 chat_info=chat_talking_prompt,
+                memory_block=memory_block,
                 extra_info_block=extra_info_block,
                 relation_info_block=relation_info_block,
                 self_info_block=self_info_block,
@@ -419,6 +420,7 @@ class DefaultReplyer:
                 expression_habits_block=expression_habits_block,
                 chat_target=chat_target_1,
                 chat_info=chat_talking_prompt,
+                memory_block=memory_block,
                 extra_info_block=extra_info_block,
                 time_block=time_block,
                 keywords_reaction_prompt=keywords_reaction_prompt,
