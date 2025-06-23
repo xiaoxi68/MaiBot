@@ -49,7 +49,7 @@ class NoReplyAction(BaseAction):
     _auto_exit_message_count = 20  # 累计20条消息自动结束
 
     # 最大等待超时时间
-    _max_timeout = 1200  # 1200秒
+    _max_timeout = 600  # 1200秒
 
     # 跳过LLM判断的配置
     _skip_judge_when_tired = True
@@ -110,9 +110,11 @@ class NoReplyAction(BaseAction):
 
                 # 检查是否超时
                 if elapsed_time >= self._max_timeout:
-                    logger.info(f"{self.log_prefix} 达到最大等待时间{self._max_timeout}秒，结束等待")
+                    logger.info(f"{self.log_prefix} 达到最大等待时间{self._max_timeout}秒，退出专注模式")
+                    # 标记退出专注模式
+                    self.action_data["_system_command"] = "stop_focus_chat"
                     exit_reason = (
-                        f"{global_config.bot.nickname}（你）等待了{self._max_timeout}秒，可以考虑一下是否要进行回复"
+                        f"{global_config.bot.nickname}（你）等待了{self._max_timeout}秒，感觉群里没有新内容，决定退出专注模式，稍作休息"
                     )
                     await self.store_action_info(
                         action_build_into_prompt=True,
@@ -128,6 +130,20 @@ class NoReplyAction(BaseAction):
                     # 标记退出专注模式
                     self.action_data["_system_command"] = "stop_focus_chat"
                     exit_reason = f"{global_config.bot.nickname}（你）发现自己回复太频繁了，决定退出专注模式，稍作休息"
+                    await self.store_action_info(
+                        action_build_into_prompt=True,
+                        action_prompt_display=exit_reason,
+                        action_done=True,
+                    )
+                    return True, exit_reason
+
+                # **新增**：检查过去10分钟是否完全没有发言，如果是则退出专注模式
+                should_exit_no_activity = await self._check_no_activity_and_exit_focus(current_time)
+                if should_exit_no_activity:
+                    logger.info(f"{self.log_prefix} 检测到过去10分钟完全没有发言，退出专注模式")
+                    # 标记退出专注模式
+                    self.action_data["_system_command"] = "stop_focus_chat"
+                    exit_reason = f"{global_config.bot.nickname}（你）发现自己过去10分钟完全没有说话，感觉可能不太活跃，决定退出专注模式"
                     await self.store_action_info(
                         action_build_into_prompt=True,
                         action_prompt_display=exit_reason,
@@ -181,9 +197,6 @@ class NoReplyAction(BaseAction):
                             messages=recent_messages, timestamp_mode="normal_no_YMD", truncate=False, show_actions=False
                         )
 
-                        # 参考simple_planner构建更完整的判断信息
-                        # 获取时间信息
-                        time_block = f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
 
                         # 获取身份信息
                         bot_name = global_config.bot.nickname
@@ -276,12 +289,10 @@ class NoReplyAction(BaseAction):
                         # 如果决定跳过LLM判断，直接更新时间并继续等待
                         if should_skip_llm_judge:
                             last_judge_time = time.time()  # 更新判断时间，避免立即重新判断
-                            start_time = current_time  # 更新开始时间，避免重复计算同样的消息
                             continue  # 跳过本次LLM判断，继续循环等待
 
                         # 构建判断上下文
                         judge_prompt = f"""
-{time_block}
 {identity_block}
 
 你现在正在QQ群参与聊天，以下是聊天内容：
@@ -367,9 +378,14 @@ class NoReplyAction(BaseAction):
                             last_judge_time = time.time()  # 异常时也更新时间，避免频繁重试
 
                 # 每10秒输出一次等待状态
-                if int(elapsed_time) % 10 == 0 and int(elapsed_time) > 0:
-                    logger.info(f"{self.log_prefix} 已等待{elapsed_time:.0f}秒，等待新消息...")
-                    await asyncio.sleep(1)
+                if elapsed_time < 60:
+                    if int(elapsed_time) % 10 == 0 and int(elapsed_time) > 0:
+                        logger.info(f"{self.log_prefix} 已等待{elapsed_time:.0f}秒，等待新消息...")
+                        await asyncio.sleep(1)
+                else:
+                    if int(elapsed_time) % 60 == 0 and int(elapsed_time) > 0:
+                        logger.info(f"{self.log_prefix} 已等待{elapsed_time/60:.0f}分钟，等待新消息...")
+                        await asyncio.sleep(1)
 
                 # 短暂等待后继续检查
                 await asyncio.sleep(check_interval)
@@ -442,6 +458,53 @@ class NoReplyAction(BaseAction):
 
         except Exception as e:
             logger.error(f"{self.log_prefix} 检查回复频率时出错: {e}")
+            return False
+
+    async def _check_no_activity_and_exit_focus(self, current_time: float) -> bool:
+        """检查过去10分钟是否完全没有发言，决定是否退出专注模式
+
+        Args:
+            current_time: 当前时间戳
+
+        Returns:
+            bool: 是否应该退出专注模式
+        """
+        try:
+            # 只在auto模式下进行检查
+            if global_config.chat.chat_mode != "auto":
+                return False
+
+            # 获取过去10分钟的所有消息
+            past_10min_time = current_time - 600  # 10分钟前
+            all_messages = message_api.get_messages_by_time_in_chat(
+                chat_id=self.chat_id,
+                start_time=past_10min_time,
+                end_time=current_time,
+            )
+
+            if not all_messages:
+                # 如果完全没有消息，也不需要退出专注模式
+                return False
+
+            # 统计bot自己的回复数量
+            bot_message_count = 0
+            user_id = global_config.bot.qq_account
+
+            for message in all_messages:
+                sender_id = message.get("user_id", "")
+                if sender_id == user_id:
+                    bot_message_count += 1
+
+            # 如果过去10分钟bot一条消息也没有发送，退出专注模式
+            if bot_message_count == 0:
+                logger.info(f"{self.log_prefix} 过去10分钟bot完全没有发言，准备退出专注模式")
+                return True
+            else:
+                logger.debug(f"{self.log_prefix} 过去10分钟bot发言{bot_message_count}条，继续保持专注模式")
+                return False
+
+        except Exception as e:
+            logger.error(f"{self.log_prefix} 检查无活动状态时出错: {e}")
             return False
 
     def _parse_llm_judge_response(self, response: str) -> tuple[str, str]:

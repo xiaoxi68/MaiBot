@@ -204,7 +204,7 @@ class CoreActionsPlugin(BasePlugin):
     config_schema = {
         "plugin": {
             "enabled": ConfigField(type=bool, default=True, description="是否启用插件"),
-            "config_version": ConfigField(type=str, default="0.0.9", description="配置文件版本"),
+            "config_version": ConfigField(type=str, default="0.1.0", description="配置文件版本"),
         },
         "components": {
             "enable_reply": ConfigField(type=bool, default=True, description="是否启用'回复'动作"),
@@ -260,7 +260,7 @@ class CoreActionsPlugin(BasePlugin):
         auto_exit_message_count = self.get_config("no_reply.auto_exit_message_count", 20)
         NoReplyAction._auto_exit_message_count = auto_exit_message_count
 
-        max_timeout = self.get_config("no_reply.max_timeout", 1200)
+        max_timeout = self.get_config("no_reply.max_timeout", 600)
         NoReplyAction._max_timeout = max_timeout
 
         skip_judge_when_tired = self.get_config("no_reply.skip_judge_when_tired", True)
