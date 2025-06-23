@@ -664,7 +664,9 @@ class PersonImpressionpProcessor(BaseProcessor):
 
                     person_info_manager = get_person_info_manager()
                     for person_name, info_type in content_json.items():
-                        is_bot = person_name == global_config.bot.nickname or person_name in global_config.bot.alias_names
+                        is_bot = (
+                            person_name == global_config.bot.nickname or person_name in global_config.bot.alias_names
+                        )
                         if is_bot:
                             person_id = person_info_manager.get_person_id("system", "bot_id")
                             logger.info(f"{self.log_prefix} 检测到对bot自身({person_name})的信息查询，使用特殊ID。")

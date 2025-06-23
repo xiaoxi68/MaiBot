@@ -106,7 +106,7 @@ class MemoryActivator:
 
         prompt = await global_prompt_manager.format_prompt(
             "memory_activator_prompt",
-            obs_info_text = obs_info_text,
+            obs_info_text=obs_info_text,
             cached_keywords=cached_keywords_str,
         )
 

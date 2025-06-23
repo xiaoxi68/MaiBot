@@ -6,7 +6,6 @@ from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.chat.focus_chat.info.info_base import InfoBase
 from src.chat.focus_chat.info.obs_info import ObsInfo
-from src.chat.focus_chat.info.cycle_info import CycleInfo
 from src.chat.focus_chat.info.action_info import ActionInfo
 from src.chat.focus_chat.info.structured_info import StructuredInfo
 from src.chat.focus_chat.info.relation_info import RelationInfo
@@ -59,7 +58,6 @@ def init_prompt():
 """,
         "simple_planner_prompt_private",
     )
-
 
     Prompt(
         """
@@ -116,7 +114,6 @@ class ActionPlanner(BasePlanner):
             # 获取观察信息
             extra_info: list[str] = []
 
-            cycle_info = ""
             structured_info = ""
             extra_info = []
             observed_messages = []
@@ -136,7 +133,7 @@ class ActionPlanner(BasePlanner):
                     # 从ObsInfo中获取chat_id
                     chat_id = info.get_chat_id()
                 # elif isinstance(info, CycleInfo):
-                    # cycle_info = info.get_observe_info()
+                # cycle_info = info.get_observe_info()
                 elif isinstance(info, RelationInfo):
                     relation_info = info.get_processed_info()
                 elif isinstance(info, StructuredInfo):
@@ -275,8 +272,7 @@ class ActionPlanner(BasePlanner):
                         logger.debug(f"{self.log_prefix} 传递{len(selected_expressions)}个选中的表达方式到action_data")
 
                     action_data["loop_start_time"] = loop_start_time
-                    
-                    
+
                     memory_str = ""
                     if running_memorys:
                         memory_str = "以下是当前在聊天中，你回忆起的记忆：\n"
