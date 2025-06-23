@@ -6,7 +6,6 @@ from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.chat.focus_chat.info.info_base import InfoBase
 from src.chat.focus_chat.info.obs_info import ObsInfo
-from src.chat.focus_chat.info.cycle_info import CycleInfo
 from src.chat.focus_chat.info.action_info import ActionInfo
 from src.chat.focus_chat.info.structured_info import StructuredInfo
 from src.chat.focus_chat.info.relation_info import RelationInfo
@@ -32,7 +31,6 @@ def init_prompt():
 你现在需要根据聊天内容，选择的合适的action来参与聊天。
 {chat_context_description}，以下是具体的聊天内容：
 {chat_content_block}
-{cycle_info_block}
 {moderation_prompt}
 现在请你根据聊天内容选择合适的action:
 
@@ -51,7 +49,6 @@ def init_prompt():
 {chat_context_description}，以下是具体的聊天内容：
 {chat_content_block}
 {relation_info_block}
-{cycle_info_block}
 {moderation_prompt}
 现在请你选择合适的action:
 
@@ -62,19 +59,6 @@ def init_prompt():
         "simple_planner_prompt_private",
     )
 
-    #     Prompt(
-    #         """
-    # 动作：{action_name}
-    # 该动作的描述：{action_description}
-    # 使用该动作的场景：
-    # {action_require}
-    # 输出要求：
-    # {{
-    #     "action": "{action_name}",{action_parameters}
-    # }}
-    # """,
-    #         "action_prompt",
-    #     )
     Prompt(
         """
 {action_require}
@@ -130,7 +114,6 @@ class ActionPlanner(BasePlanner):
             # 获取观察信息
             extra_info: list[str] = []
 
-            cycle_info = ""
             structured_info = ""
             extra_info = []
             observed_messages = []
@@ -149,8 +132,8 @@ class ActionPlanner(BasePlanner):
                     is_group_chat = chat_type == "group"
                     # 从ObsInfo中获取chat_id
                     chat_id = info.get_chat_id()
-                elif isinstance(info, CycleInfo):
-                    cycle_info = info.get_observe_info()
+                # elif isinstance(info, CycleInfo):
+                # cycle_info = info.get_observe_info()
                 elif isinstance(info, RelationInfo):
                     relation_info = info.get_processed_info()
                 elif isinstance(info, StructuredInfo):
@@ -214,7 +197,7 @@ class ActionPlanner(BasePlanner):
                 observed_messages_str=observed_messages_str,  # <-- Pass local variable
                 structured_info=structured_info,  # <-- Pass SubMind info
                 current_available_actions=current_available_actions,  # <-- Pass determined actions
-                cycle_info=cycle_info,  # <-- Pass cycle info
+                # cycle_info=cycle_info,  # <-- Pass cycle info
                 extra_info=extra_info,
                 running_memorys=running_memorys,
             )
@@ -290,6 +273,14 @@ class ActionPlanner(BasePlanner):
 
                     action_data["loop_start_time"] = loop_start_time
 
+                    memory_str = ""
+                    if running_memorys:
+                        memory_str = "以下是当前在聊天中，你回忆起的记忆：\n"
+                        for running_memory in running_memorys:
+                            memory_str += f"{running_memory['content']}\n"
+                    if memory_str:
+                        action_data["memory_block"] = memory_str
+
                     # 对于reply动作不需要额外处理，因为相关字段已经在上面的循环中添加到action_data
 
                     if extracted_action not in current_available_actions:
@@ -339,7 +330,7 @@ class ActionPlanner(BasePlanner):
         observed_messages_str: str,
         structured_info: Optional[str],
         current_available_actions: Dict[str, ActionInfo],
-        cycle_info: Optional[str],
+        # cycle_info: Optional[str],
         extra_info: list[str],
         running_memorys: List[Dict[str, Any]],
     ) -> str:
@@ -349,12 +340,6 @@ class ActionPlanner(BasePlanner):
                 relation_info_block = f"以下内容是你对发言对象之前的了解：\n{relation_info_block}\n这是你对他们先前的印象，不要和他们现在的聊天内容混淆。"
             else:
                 relation_info_block = ""
-
-            memory_str = ""
-            if running_memorys:
-                memory_str = "以下是当前在聊天中，你回忆起的记忆：\n"
-                for running_memory in running_memorys:
-                    memory_str += f"{running_memory['content']}\n"
 
             chat_context_description = "你现在正在一个群聊中"
             chat_target_name = None  # Only relevant for private
@@ -438,7 +423,6 @@ class ActionPlanner(BasePlanner):
                 time_block=time_block,
                 chat_context_description=chat_context_description,
                 chat_content_block=chat_content_block,
-                cycle_info_block=cycle_info,
                 action_options_text=action_options_block,
                 moderation_prompt=moderation_prompt_block,
                 indentify_block=indentify_block,

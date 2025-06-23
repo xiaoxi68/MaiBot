@@ -5,8 +5,6 @@ from src.chat.focus_chat.info.info_base import InfoBase
 from .base_processor import BaseProcessor
 from src.common.logger import get_logger
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
-from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
-from src.chat.focus_chat.info.cycle_info import CycleInfo
 from datetime import datetime
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
@@ -55,12 +53,7 @@ class ChattingInfoProcessor(BaseProcessor):
             for obs in observations:
                 # print(f"obs: {obs}")
                 if isinstance(obs, ChattingObservation):
-                    # print("1111111111111111111111读取111111111111111")
-
                     obs_info = ObsInfo()
-
-                    # 改为异步任务，不阻塞主流程
-                    # asyncio.create_task(self.chat_compress(obs))
 
                     # 设置聊天ID
                     if hasattr(obs, "chat_id"):
@@ -100,10 +93,6 @@ class ChattingInfoProcessor(BaseProcessor):
 
                     # logger.debug(f"聊天信息处理器处理后的信息: {obs_info}")
 
-                    processed_infos.append(obs_info)
-                if isinstance(obs, HFCloopObservation):
-                    obs_info = CycleInfo()
-                    obs_info.set_observe_info(obs.observe_info)
                     processed_infos.append(obs_info)
 
         return processed_infos
