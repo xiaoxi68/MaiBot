@@ -67,7 +67,7 @@ class ToolProcessor(BaseProcessor):
                 if isinstance(observation, ChattingObservation):
                     result, used_tools, prompt = await self.execute_tools(observation)
 
-            logger.debug(f"工具调用结果: {result}")
+            logger.info(f"工具调用结果: {result}")
             # 更新WorkingObservation中的结构化信息
             for observation in observations:
                 if isinstance(observation, StructureObservation):

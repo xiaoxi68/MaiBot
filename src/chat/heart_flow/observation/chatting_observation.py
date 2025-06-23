@@ -74,9 +74,9 @@ class ChattingObservation(Observation):
         self.oldest_messages = []
         self.oldest_messages_str = ""
 
-        self.last_observe_time = datetime.now().timestamp() - 1
-        print(f"last_observe_time: {self.last_observe_time}")
+        self.last_observe_time = datetime.now().timestamp()
         initial_messages = get_raw_msg_before_timestamp_with_chat(self.chat_id, self.last_observe_time, 10)
+        print(f"initial_messages: {initial_messages}")
         self.last_observe_time = initial_messages[-1]["time"] if initial_messages else self.last_observe_time
         self.talking_message = initial_messages
         self.talking_message_str = build_readable_messages(self.talking_message, show_actions=True)

@@ -9,7 +9,6 @@ from src.chat.focus_chat.info.obs_info import ObsInfo
 from src.chat.focus_chat.info.action_info import ActionInfo
 from src.chat.focus_chat.info.structured_info import StructuredInfo
 from src.chat.focus_chat.info.relation_info import RelationInfo
-from src.chat.focus_chat.info.expression_selection_info import ExpressionSelectionInfo
 from src.common.logger import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.focus_chat.planners.action_manager import ActionManager
@@ -48,7 +47,6 @@ def init_prompt():
 你现在需要根据聊天内容，选择的合适的action来参与聊天。
 {chat_context_description}，以下是具体的聊天内容：
 {chat_content_block}
-{relation_info_block}
 {moderation_prompt}
 现在请你选择合适的action:
 
@@ -114,14 +112,11 @@ class ActionPlanner(BasePlanner):
             # 获取观察信息
             extra_info: list[str] = []
 
-            structured_info = ""
             extra_info = []
             observed_messages = []
             observed_messages_str = ""
             chat_type = "group"
             is_group_chat = True
-            relation_info = ""
-            selected_expressions = []
             chat_id = None  # 添加chat_id变量
 
             for info in all_plan_info:
@@ -132,14 +127,6 @@ class ActionPlanner(BasePlanner):
                     is_group_chat = chat_type == "group"
                     # 从ObsInfo中获取chat_id
                     chat_id = info.get_chat_id()
-                # elif isinstance(info, CycleInfo):
-                # cycle_info = info.get_observe_info()
-                elif isinstance(info, RelationInfo):
-                    relation_info = info.get_processed_info()
-                elif isinstance(info, StructuredInfo):
-                    structured_info = info.get_processed_info()
-                elif isinstance(info, ExpressionSelectionInfo):
-                    selected_expressions = info.get_expressions_for_action_data()
                 else:
                     extra_info.append(info.get_processed_info())
 
@@ -191,15 +178,10 @@ class ActionPlanner(BasePlanner):
 
             # --- 构建提示词 (调用修改后的 PromptBuilder 方法) ---
             prompt = await self.build_planner_prompt(
-                relation_info_block=relation_info,
                 is_group_chat=is_group_chat,  # <-- Pass HFC state
                 chat_target_info=chat_target_info,  # <-- 传递获取到的聊天目标信息
                 observed_messages_str=observed_messages_str,  # <-- Pass local variable
-                structured_info=structured_info,  # <-- Pass SubMind info
                 current_available_actions=current_available_actions,  # <-- Pass determined actions
-                # cycle_info=cycle_info,  # <-- Pass cycle info
-                extra_info=extra_info,
-                running_memorys=running_memorys,
             )
 
             # --- 调用 LLM (普通文本生成) ---
@@ -254,22 +236,6 @@ class ActionPlanner(BasePlanner):
                         if key not in ["action", "reasoning"]:
                             action_data[key] = value
 
-                    extra_info_block = "\n".join(extra_info)
-                    extra_info_block += f"\n{structured_info}"
-                    if extra_info or structured_info:
-                        extra_info_block = f"以下是一些额外的信息，现在请你阅读以下内容，进行决策\n{extra_info_block}\n以上是一些额外的信息，现在请你阅读以下内容，进行决策"
-                    else:
-                        extra_info_block = ""
-
-                    action_data["extra_info_block"] = extra_info_block
-
-                    if relation_info:
-                        action_data["relation_info_block"] = relation_info
-
-                    # 将选中的表达方式传递给action_data
-                    if selected_expressions:
-                        action_data["selected_expressions"] = selected_expressions
-                        logger.debug(f"{self.log_prefix} 传递{len(selected_expressions)}个选中的表达方式到action_data")
 
                     action_data["loop_start_time"] = loop_start_time
 
@@ -324,23 +290,13 @@ class ActionPlanner(BasePlanner):
 
     async def build_planner_prompt(
         self,
-        relation_info_block: str,
         is_group_chat: bool,  # Now passed as argument
         chat_target_info: Optional[dict],  # Now passed as argument
         observed_messages_str: str,
-        structured_info: Optional[str],
         current_available_actions: Dict[str, ActionInfo],
-        # cycle_info: Optional[str],
-        extra_info: list[str],
-        running_memorys: List[Dict[str, Any]],
     ) -> str:
         """构建 Planner LLM 的提示词 (获取模板并填充数据)"""
         try:
-            if relation_info_block:
-                relation_info_block = f"以下内容是你对发言对象之前的了解：\n{relation_info_block}\n这是你对他们先前的印象，不要和他们现在的聊天内容混淆。"
-            else:
-                relation_info_block = ""
-
             chat_context_description = "你现在正在一个群聊中"
             chat_target_name = None  # Only relevant for private
             if not is_group_chat and chat_target_info:
@@ -394,13 +350,6 @@ class ActionPlanner(BasePlanner):
 
                 action_options_block += using_action_prompt
 
-            extra_info_block = "\n".join(extra_info)
-            extra_info_block += f"\n{structured_info}"
-            if extra_info or structured_info:
-                extra_info_block = f"以下是一些额外的信息，现在请你阅读以下内容，进行决策\n{extra_info_block}\n以上是一些额外的信息，现在请你阅读以下内容，进行决策"
-            else:
-                extra_info_block = ""
-
             # moderation_prompt_block = "请不要输出违法违规内容，不要输出色情，暴力，政治相关内容，如有敏感内容，请规避。"
             moderation_prompt_block = ""
 
@@ -419,7 +368,6 @@ class ActionPlanner(BasePlanner):
             template_name = "simple_planner_prompt_private" if not is_group_chat else "simple_planner_prompt"
             planner_prompt_template = await global_prompt_manager.get_prompt_async(template_name)
             prompt = planner_prompt_template.format(
-                relation_info_block=relation_info_block,
                 time_block=time_block,
                 chat_context_description=chat_context_description,
                 chat_content_block=chat_content_block,

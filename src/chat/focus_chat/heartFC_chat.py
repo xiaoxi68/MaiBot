@@ -32,6 +32,7 @@ from src.chat.focus_chat.hfc_performance_logger import HFCPerformanceLogger
 from src.chat.focus_chat.hfc_version_manager import get_hfc_version
 from src.chat.focus_chat.info.relation_info import RelationInfo
 from src.chat.focus_chat.info.expression_selection_info import ExpressionSelectionInfo
+from src.chat.focus_chat.info.structured_info import StructuredInfo
 
 
 install(extra_lines=3)
@@ -51,12 +52,12 @@ OBSERVATION_CLASSES = {
 # 定义处理器映射：键是处理器名称，值是 (处理器类, 可选的配置键名)
 PROCESSOR_CLASSES = {
     "ChattingInfoProcessor": (ChattingInfoProcessor, None),
-    "ToolProcessor": (ToolProcessor, "tool_use_processor"),
     "WorkingMemoryProcessor": (WorkingMemoryProcessor, "working_memory_processor"),
 }
 
 # 定义后期处理器映射：在规划后、动作执行前运行的处理器
 POST_PLANNING_PROCESSOR_CLASSES = {
+    "ToolProcessor": (ToolProcessor, "tool_use_processor"),
     "PersonImpressionpProcessor": (PersonImpressionpProcessor, "person_impression_processor"),
     "ExpressionSelectorProcessor": (ExpressionSelectorProcessor, "expression_selector_processor"),
 }
@@ -212,7 +213,6 @@ class HeartFChatting:
                 processor_actual_class = processor_info[0]  # 获取实际的类定义
                 # 根据处理器类名判断是否需要 subheartflow_id
                 if name in [
-                    "ToolProcessor",
                     "WorkingMemoryProcessor",
                 ]:
                     self.processors.append(processor_actual_class(subheartflow_id=self.stream_id))
@@ -249,6 +249,7 @@ class HeartFChatting:
                 processor_actual_class = processor_info[0]  # 获取实际的类定义
                 # 根据处理器类名判断是否需要 subheartflow_id
                 if name in [
+                    "ToolProcessor",
                     "PersonImpressionpProcessor",
                     "ExpressionSelectorProcessor",
                 ]:
@@ -715,32 +716,33 @@ class HeartFChatting:
         
         relation_info = ""
         selected_expressions = []
-
+        structured_info = ""
+        
         for info in all_post_plan_info:
             if isinstance(info, RelationInfo):
                 relation_info = info.get_processed_info()
             elif isinstance(info, ExpressionSelectionInfo):
                 selected_expressions = info.get_expressions_for_action_data()
+            elif isinstance(info, StructuredInfo):
+                structured_info = info.get_processed_info()
                 
         if relation_info:
             updated_action_data["relation_info_block"] = relation_info
 
-        # 将选中的表达方式传递给action_data
         if selected_expressions:
-            updated_action_data["selected_expressions"] = selected_expressions
-            logger.info(f"{self.log_prefix} 传递{len(selected_expressions)}个选中的表达方式到action_data")        
-        
-        # 将记忆信息也添加到action_data中
-        if running_memorys:
-            updated_action_data["running_memories"] = running_memorys
+            updated_action_data["selected_expressions"] = selected_expressions     
             
-            # 生成兼容的memory_block格式
+        if structured_info:
+            updated_action_data["structured_info"] = structured_info
+        
+        #特殊处理running_memorys
+        if running_memorys:
             memory_str = "以下是当前在聊天中，你回忆起的记忆：\n"
             for running_memory in running_memorys:
                 memory_str += f"{running_memory['content']}\n"
             updated_action_data["memory_block"] = memory_str
-            
             logger.info(f"{self.log_prefix} 添加了 {len(running_memorys)} 个激活的记忆到action_data")
+            
         
         if all_post_plan_info or running_memorys:
             logger.info(f"{self.log_prefix} 后期处理完成，产生了 {len(all_post_plan_info)} 个信息项和 {len(running_memorys)} 个记忆")
