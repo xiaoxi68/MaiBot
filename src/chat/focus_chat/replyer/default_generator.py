@@ -37,6 +37,7 @@ def init_prompt():
 {chat_info}
 {reply_target_block}
 {identity}
+
 你需要使用合适的语言习惯和句法，参考聊天内容，组织一条日常且口语化的回复。注意不要复读你说过的话。
 {config_expression_style}
 {keywords_reaction_prompt}

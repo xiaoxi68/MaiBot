@@ -62,11 +62,8 @@ class ReplyAction(BaseAction):
 
         try:
             success, reply_set = await generator_api.generate_reply(
-                chat_stream=self.chat_stream,
                 action_data=self.action_data,
-                platform=self.platform,
                 chat_id=self.chat_id,
-                is_group=self.is_group,
             )
 
             # 检查从start_time以来的新消息数量
