@@ -147,9 +147,9 @@ class NoReplyAction(BaseAction):
 
     # 跳过LLM判断的配置
     _skip_judge_when_tired = True
-    _skip_probability_light = 0.2   # 轻度疲惫跳过概率
+    _skip_probability_light = 0.2  # 轻度疲惫跳过概率
     _skip_probability_medium = 0.4  # 中度疲惫跳过概率
-    _skip_probability_heavy = 0.6   # 重度疲惫跳过概率
+    _skip_probability_heavy = 0.6  # 重度疲惫跳过概率
 
     # 动作参数定义
     action_parameters = {"reason": "不回复的原因"}
@@ -286,7 +286,7 @@ class NoReplyAction(BaseAction):
                         # 检查过去10分钟的发言频率
                         frequency_block = ""
                         should_skip_llm_judge = False  # 是否跳过LLM判断
-                        
+
                         try:
                             # 获取过去10分钟的所有消息
                             past_10min_time = current_time - 600  # 10分钟前
@@ -316,10 +316,8 @@ class NoReplyAction(BaseAction):
                                 # 根据超过的数量设置不同的提示词和跳过概率
                                 if over_count <= 3:
                                     frequency_block = "你感觉稍微有些累，回复的有点多了。\n"
-                                    skip_probability = self._skip_probability_light
                                 elif over_count <= 5:
                                     frequency_block = "你今天说话比较多，感觉有点疲惫，想要稍微休息一下。\n"
-                                    skip_probability = self._skip_probability_medium
                                 else:
                                     frequency_block = "你发现自己说话太多了，感觉很累，想要安静一会儿，除非有重要的事情否则不想回复。\n"
                                     skip_probability = self._skip_probability_heavy
@@ -356,7 +354,7 @@ class NoReplyAction(BaseAction):
                         # 如果决定跳过LLM判断，直接更新时间并继续等待
                         if should_skip_llm_judge:
                             last_judge_time = time.time()  # 更新判断时间，避免立即重新判断
-                            start_time = current_time      # 更新开始时间，避免重复计算同样的消息
+                            start_time = current_time  # 更新开始时间，避免重复计算同样的消息
                             continue  # 跳过本次LLM判断，继续循环等待
 
                         # 构建判断上下文
