@@ -171,7 +171,7 @@ class NoReplyAction(BaseAction):
             last_judge_time = 0  # 上次进行LLM判断的时间
             min_judge_interval = self._min_judge_interval  # 最小判断间隔，从配置获取
             check_interval = 0.2  # 检查新消息的间隔，设为0.2秒提高响应性
-            
+
             # 累积判断历史
             judge_history = []  # 存储每次判断的结果和理由
 
@@ -275,12 +275,12 @@ class NoReplyAction(BaseAction):
                                 start_time=past_10min_time,
                                 end_time=current_time,
                             )
-                            
+
                             # 手动过滤bot自己的消息
                             bot_message_count = 0
                             if all_messages_10min:
                                 user_id = global_config.bot.qq_account
-                                
+
                                 for message in all_messages_10min:
                                     # 检查消息发送者是否是bot
                                     sender_id = message.get("user_id", "")
@@ -289,24 +289,30 @@ class NoReplyAction(BaseAction):
                                         bot_message_count += 1
 
                             talk_frequency_threshold = global_config.chat.talk_frequency * 10
-                            
+
                             if bot_message_count > talk_frequency_threshold:
                                 over_count = bot_message_count - talk_frequency_threshold
-                                
+
                                 # 根据超过的数量设置不同的提示词
                                 if over_count <= 5:
                                     frequency_block = "你感觉稍微有些累，回复的有点多了。\n"
                                 elif over_count <= 10:
                                     frequency_block = "你今天说话比较多，感觉有点疲惫，想要稍微休息一下。\n"
                                 elif over_count <= 20:
-                                    frequency_block = "你发现自己说话太多了，感觉很累，需要好好休息一下，不想频繁回复。\n"
+                                    frequency_block = (
+                                        "你发现自己说话太多了，感觉很累，需要好好休息一下，不想频繁回复。\n"
+                                    )
                                 else:
                                     frequency_block = "你感到非常疲惫，今天话说得太多了，想要安静一会儿，除非有重要的事情否则不想回复。\n"
-                                
-                                logger.info(f"{self.log_prefix} 过去10分钟发言{bot_message_count}条，超过阈值{talk_frequency_threshold}，添加疲惫提示")
+
+                                logger.info(
+                                    f"{self.log_prefix} 过去10分钟发言{bot_message_count}条，超过阈值{talk_frequency_threshold}，添加疲惫提示"
+                                )
                             else:
-                                logger.info(f"{self.log_prefix} 过去10分钟发言{bot_message_count}条，未超过阈值{talk_frequency_threshold}")
-                                
+                                logger.info(
+                                    f"{self.log_prefix} 过去10分钟发言{bot_message_count}条，未超过阈值{talk_frequency_threshold}"
+                                )
+
                         except Exception as e:
                             logger.warning(f"{self.log_prefix} 检查发言频率时出错: {e}")
                             frequency_block = ""

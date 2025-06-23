@@ -115,8 +115,6 @@ class NormalChatConfig(ConfigBase):
     willing_mode: str = "classical"
     """意愿模式"""
 
-
-
     response_interested_rate_amplifier: float = 1.0
     """回复兴趣度放大系数"""
 
