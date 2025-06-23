@@ -499,24 +499,21 @@ class RelationshipManager:
                     # 从LLM获取新生成的值
                     new_familiarity_value = int(relation_value_json.get("familiarity_value", 0))
                     new_liking_value = int(relation_value_json.get("liking_value", 50))
-                    
+
                     if new_familiarity_value > 25:
                         old_familiarity_value = await person_info_manager.get_value(person_id, "familiarity_value") or 0
-                        old_familiarity_value += (new_familiarity_value - 25 /75)
-                    
-                    
+                        old_familiarity_value += new_familiarity_value - 25 / 75
+
                     if new_liking_value > 50:
                         liking_value = await person_info_manager.get_value(person_id, "liking_value") or 50
-                        liking_value += (new_liking_value - 50 /50)
+                        liking_value += new_liking_value - 50 / 50
                     if new_liking_value < 50:
                         liking_value = await person_info_manager.get_value(person_id, "liking_value") or 50
-                        liking_value -= (50 - new_liking_value /50) * 1.5
+                        liking_value -= (50 - new_liking_value / 50) * 1.5
 
                     await person_info_manager.update_one_field(person_id, "familiarity_value", liking_value)
                     await person_info_manager.update_one_field(person_id, "liking_value", liking_value)
-                    logger.info(
-                        f"更新了与 {person_name} 的关系值: 熟悉度={liking_value}, 好感度={liking_value}"
-                    )
+                    logger.info(f"更新了与 {person_name} 的关系值: 熟悉度={liking_value}, 好感度={liking_value}")
                 except (json.JSONDecodeError, ValueError, TypeError) as e:
                     logger.error(f"解析relation_value JSON失败或值无效: {e}, 响应: {relation_value_response}")
 
