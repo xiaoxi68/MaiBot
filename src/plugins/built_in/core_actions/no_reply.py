@@ -53,10 +53,10 @@ class NoReplyAction(BaseAction):
 
     # 跳过LLM判断的配置
     _skip_judge_when_tired = True
-    _skip_probability = 0.5 
-    
+    _skip_probability = 0.5
+
     # 新增：回复频率退出专注模式的配置
-    _frequency_check_window = 600  # 频率检查窗口时间（秒） 
+    _frequency_check_window = 600  # 频率检查窗口时间（秒）
 
     # 动作参数定义
     action_parameters = {"reason": "不回复的原因"}
@@ -388,10 +388,10 @@ class NoReplyAction(BaseAction):
 
     async def _check_frequency_and_exit_focus(self, current_time: float) -> bool:
         """检查回复频率，决定是否退出专注模式
-        
+
         Args:
             current_time: 当前时间戳
-            
+
         Returns:
             bool: 是否应该退出专注模式
         """
@@ -399,7 +399,7 @@ class NoReplyAction(BaseAction):
             # 只在auto模式下进行频率检查
             if global_config.chat.chat_mode != "auto":
                 return False
-                
+
             # 获取检查窗口内的所有消息
             window_start_time = current_time - self._frequency_check_window
             all_messages = message_api.get_messages_by_time_in_chat(
