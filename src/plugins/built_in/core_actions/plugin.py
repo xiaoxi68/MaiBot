@@ -147,9 +147,10 @@ class NoReplyAction(BaseAction):
 
     # 跳过LLM判断的配置
     _skip_judge_when_tired = True
-    _skip_probability_light = 0.2  # 轻度疲惫跳过概率
-    _skip_probability_medium = 0.4  # 中度疲惫跳过概率
-    _skip_probability_heavy = 0.6  # 重度疲惫跳过概率
+    _skip_probability = 0.5 
+    
+    # 新增：回复频率退出专注模式的配置
+    _frequency_check_window = 600  # 频率检查窗口时间（秒） 
 
     # 动作参数定义
     action_parameters = {"reason": "不回复的原因"}
@@ -207,6 +208,20 @@ class NoReplyAction(BaseAction):
                     exit_reason = (
                         f"{global_config.bot.nickname}（你）等待了{self._max_timeout}秒，可以考虑一下是否要进行回复"
                     )
+                    await self.store_action_info(
+                        action_build_into_prompt=True,
+                        action_prompt_display=exit_reason,
+                        action_done=True,
+                    )
+                    return True, exit_reason
+
+                # **新增**：检查回复频率，决定是否退出专注模式
+                should_exit_focus = await self._check_frequency_and_exit_focus(current_time)
+                if should_exit_focus:
+                    logger.info(f"{self.log_prefix} 检测到回复频率过高，退出专注模式")
+                    # 标记退出专注模式
+                    self.action_data["_system_command"] = "stop_focus_chat"
+                    exit_reason = f"{global_config.bot.nickname}（你）发现自己回复太频繁了，决定退出专注模式，稍作休息"
                     await self.store_action_info(
                         action_build_into_prompt=True,
                         action_prompt_display=exit_reason,
@@ -314,13 +329,14 @@ class NoReplyAction(BaseAction):
                                 over_count = bot_message_count - talk_frequency_threshold
 
                                 # 根据超过的数量设置不同的提示词和跳过概率
+                                skip_probability = 0
                                 if over_count <= 3:
                                     frequency_block = "你感觉稍微有些累，回复的有点多了。\n"
                                 elif over_count <= 5:
                                     frequency_block = "你今天说话比较多，感觉有点疲惫，想要稍微休息一下。\n"
                                 else:
                                     frequency_block = "你发现自己说话太多了，感觉很累，想要安静一会儿，除非有重要的事情否则不想回复。\n"
-                                    skip_probability = self._skip_probability_heavy
+                                    skip_probability = self._skip_probability
 
                                 # 根据配置和概率决定是否跳过LLM判断
                                 if self._skip_judge_when_tired and random.random() < skip_probability:
@@ -464,6 +480,64 @@ class NoReplyAction(BaseAction):
             )
             return False, f"不回复动作执行失败: {e}"
 
+    async def _check_frequency_and_exit_focus(self, current_time: float) -> bool:
+        """检查回复频率，决定是否退出专注模式
+        
+        Args:
+            current_time: 当前时间戳
+            
+        Returns:
+            bool: 是否应该退出专注模式
+        """
+        try:
+            # 只在auto模式下进行频率检查
+            if global_config.chat.chat_mode != "auto":
+                return False
+                
+            # 获取检查窗口内的所有消息
+            window_start_time = current_time - self._frequency_check_window
+            all_messages = message_api.get_messages_by_time_in_chat(
+                chat_id=self.chat_id,
+                start_time=window_start_time,
+                end_time=current_time,
+            )
+
+            if not all_messages:
+                return False
+
+            # 统计bot自己的回复数量
+            bot_message_count = 0
+            user_id = global_config.bot.qq_account
+
+            for message in all_messages:
+                sender_id = message.get("user_id", "")
+                if sender_id == user_id:
+                    bot_message_count += 1
+
+            # 计算当前回复频率（每分钟回复数）
+            window_minutes = self._frequency_check_window / 60
+            current_frequency = bot_message_count / window_minutes
+
+            # 计算阈值频率：使用 exit_focus_threshold * 1.5
+            threshold_multiplier = global_config.chat.exit_focus_threshold * 1.5
+            threshold_frequency = global_config.chat.talk_frequency * threshold_multiplier
+
+            # 判断是否超过阈值
+            if current_frequency > threshold_frequency:
+                logger.info(
+                    f"{self.log_prefix} 回复频率检查：当前频率 {current_frequency:.2f}/分钟，超过阈值 {threshold_frequency:.2f}/分钟 (exit_threshold={global_config.chat.exit_focus_threshold} * 1.5)，准备退出专注模式"
+                )
+                return True
+            else:
+                logger.debug(
+                    f"{self.log_prefix} 回复频率检查：当前频率 {current_frequency:.2f}/分钟，未超过阈值 {threshold_frequency:.2f}/分钟 (exit_threshold={global_config.chat.exit_focus_threshold} * 1.5)"
+                )
+                return False
+
+        except Exception as e:
+            logger.error(f"{self.log_prefix} 检查回复频率时出错: {e}")
+            return False
+
     def _parse_llm_judge_response(self, response: str) -> tuple[str, str]:
         """解析LLM判断响应，使用JSON格式提取判断结果和理由
 
@@ -596,66 +670,6 @@ class EmojiAction(BaseAction):
             return False, f"表情发送失败: {str(e)}"
 
 
-class ExitFocusChatAction(BaseAction):
-    """退出专注聊天动作 - 从专注模式切换到普通模式"""
-
-    # 激活设置
-    focus_activation_type = ActionActivationType.NEVER
-    normal_activation_type = ActionActivationType.NEVER
-    mode_enable = ChatMode.FOCUS
-    parallel_action = False
-
-    # 动作基本信息
-    action_name = "exit_focus_chat"
-    action_description = "退出专注聊天，从专注模式切换到普通模式"
-
-    # LLM判断提示词
-    llm_judge_prompt = """
-    判定是否需要退出专注聊天的条件：
-    1. 很长时间没有回复，应该退出专注聊天
-    2. 当前内容不需要持续专注关注
-    3. 聊天内容已经完成，话题结束
-    
-    请回答"是"或"否"。
-    """
-
-    # 动作参数定义
-    action_parameters = {}
-
-    # 动作使用场景
-    action_require = [
-        "很长时间没有回复，你决定退出专注聊天",
-        "当前内容不需要持续专注关注，你决定退出专注聊天",
-        "聊天内容已经完成，你决定退出专注聊天",
-    ]
-
-    # 关联类型
-    associated_types = []
-
-    async def execute(self) -> Tuple[bool, str]:
-        """执行退出专注聊天动作"""
-        logger.info(f"{self.log_prefix} 决定退出专注聊天: {self.reasoning}")
-
-        try:
-            # 标记状态切换请求
-            self._mark_state_change()
-
-            # 重置NoReplyAction的连续计数器
-            NoReplyAction.reset_consecutive_count()
-
-            status_message = "决定退出专注聊天模式"
-            return True, status_message
-
-        except Exception as e:
-            logger.error(f"{self.log_prefix} 退出专注聊天动作执行失败: {e}")
-            return False, f"退出专注聊天失败: {str(e)}"
-
-    def _mark_state_change(self):
-        """标记状态切换请求"""
-        # 通过action_data传递状态切换命令
-        self.action_data["_system_command"] = "stop_focus_chat"
-        logger.info(f"{self.log_prefix} 已标记状态切换命令: stop_focus_chat")
-
 
 @register_plugin
 class CoreActionsPlugin(BasePlugin):
@@ -757,6 +771,10 @@ class CoreActionsPlugin(BasePlugin):
         skip_probability_heavy = self.get_config("no_reply.skip_probability_heavy", 0.6)
         NoReplyAction._skip_probability_heavy = skip_probability_heavy
 
+        # 新增：频率检测相关配置
+        frequency_check_window = self.get_config("no_reply.frequency_check_window", 600)
+        NoReplyAction._frequency_check_window = frequency_check_window
+
         # --- 根据配置注册组件 ---
         components = []
         if self.get_config("components.enable_reply", True):
@@ -765,14 +783,10 @@ class CoreActionsPlugin(BasePlugin):
             components.append((NoReplyAction.get_action_info(), NoReplyAction))
         if self.get_config("components.enable_emoji", True):
             components.append((EmojiAction.get_action_info(), EmojiAction))
-        if self.get_config("components.enable_exit_focus", True):
-            components.append((ExitFocusChatAction.get_action_info(), ExitFocusChatAction))
 
         # components.append((DeepReplyAction.get_action_info(), DeepReplyAction))
 
         return components
-
-
 # class DeepReplyAction(BaseAction):
 #     """回复动作 - 参与聊天回复"""
 
@@ -895,3 +909,5 @@ class CoreActionsPlugin(BasePlugin):
 #                 data = reply[1]
 #                 reply_text += data
 #         return reply_text
+
+
