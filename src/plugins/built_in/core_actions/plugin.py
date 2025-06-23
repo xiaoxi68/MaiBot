@@ -288,8 +288,6 @@ class NoReplyAction(BaseAction):
                                     if sender_id == user_id:
                                         bot_message_count += 1
 
-                            print(bot_message_count)
-
                             talk_frequency_threshold = global_config.chat.talk_frequency * 10
                             
                             if bot_message_count > talk_frequency_threshold:
@@ -379,16 +377,7 @@ class NoReplyAction(BaseAction):
                                     if judge_result == "需要回复":
                                         logger.info(f"{self.log_prefix} 模型判断需要回复，结束等待")
                                         
-                                        # 构建包含判断历史的详细信息
-                                        history_summary = ""
-                                        if len(judge_history) > 1:
-                                            history_summary = f"\n\n判断过程：\n"
-                                            for i, (timestamp, past_result, past_reason) in enumerate(judge_history[:-1], 1):
-                                                elapsed_seconds = int(timestamp - start_time)
-                                                history_summary += f"{i}. 等待{elapsed_seconds}秒时：{past_result}，理由：{past_reason}\n"
-                                            history_summary += f"{len(judge_history)}. 等待{elapsed_time:.0f}秒时：{judge_result}，理由：{reason}"
-                                        
-                                        full_prompt = f"{global_config.bot.nickname}（你）的想法是：{reason}{history_summary}"
+                                        full_prompt = f"{global_config.bot.nickname}（你）的想法是：{reason}"
                                         await self.store_action_info(
                                             action_build_into_prompt=True,
                                             action_prompt_display=full_prompt,
