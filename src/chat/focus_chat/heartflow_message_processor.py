@@ -155,14 +155,13 @@ class HeartFCMessageReceiver:
             groupinfo = message.message_info.group_info
             userinfo = message.message_info.user_info
             messageinfo = message.message_info
-            
 
             chat = await get_chat_manager().get_or_create_stream(
                 platform=messageinfo.platform,
                 user_info=userinfo,
                 group_info=groupinfo,
             )
-            
+
             await self.storage.store_message(message, chat)
 
             subheartflow = await heartflow.get_or_create_subheartflow(chat.stream_id)
@@ -173,7 +172,6 @@ class HeartFCMessageReceiver:
                 message.raw_message, chat, userinfo
             ):
                 return
-            
 
             # 6. 兴趣度计算与更新
             interested_rate, is_mentioned = await _calculate_interest(message)

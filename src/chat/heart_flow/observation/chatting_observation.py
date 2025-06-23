@@ -81,9 +81,13 @@ class ChattingObservation(Observation):
         self.talking_message = initial_messages
         self.talking_message_short = initial_messages_short
         self.talking_message_str = build_readable_messages(self.talking_message, show_actions=True)
-        self.talking_message_str_truncate = build_readable_messages(self.talking_message, show_actions=True, truncate=True)
+        self.talking_message_str_truncate = build_readable_messages(
+            self.talking_message, show_actions=True, truncate=True
+        )
         self.talking_message_str_short = build_readable_messages(self.talking_message_short, show_actions=True)
-        self.talking_message_str_truncate_short = build_readable_messages(self.talking_message_short, show_actions=True, truncate=True)
+        self.talking_message_str_truncate_short = build_readable_messages(
+            self.talking_message_short, show_actions=True, truncate=True
+        )
 
     def to_dict(self) -> dict:
         """将观察对象转换为可序列化的字典"""

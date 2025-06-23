@@ -296,9 +296,7 @@ class NoReplyAction(BaseAction):
                                 elif over_count <= 5:
                                     frequency_block = "你今天说话比较多，感觉有点疲惫，想要稍微休息一下。\n"
                                 else:
-                                    frequency_block = (
-                                        "你发现自己说话太多了，感觉很累，想要安静一会儿，除非有重要的事情否则不想回复。\n"
-                                    )
+                                    frequency_block = "你发现自己说话太多了，感觉很累，想要安静一会儿，除非有重要的事情否则不想回复。\n"
 
                                 logger.info(
                                     f"{self.log_prefix} 过去10分钟发言{bot_message_count}条，超过阈值{talk_frequency_threshold}，添加疲惫提示"
@@ -306,7 +304,7 @@ class NoReplyAction(BaseAction):
                             else:
                                 # 回复次数少时的正向提示
                                 under_count = talk_frequency_threshold - bot_message_count
-                                
+
                                 if under_count >= talk_frequency_threshold * 0.8:  # 回复很少（少于20%）
                                     frequency_block = "你感觉精力充沛，状态很好。\n"
                                 elif under_count >= talk_frequency_threshold * 0.5:  # 回复较少（少于50%）
