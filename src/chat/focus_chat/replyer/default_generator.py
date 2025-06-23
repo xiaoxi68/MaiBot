@@ -296,6 +296,7 @@ class DefaultReplyer:
             timestamp=time.time(),
             limit=global_config.focus_chat.observation_context_size,
         )
+        # print(f"message_list_before_now: {message_list_before_now}")
         chat_talking_prompt = build_readable_messages(
             message_list_before_now,
             replace_bot_name=True,
@@ -305,6 +306,7 @@ class DefaultReplyer:
             truncate=True,
             show_actions=True,
         )
+        # print(f"chat_talking_prompt: {chat_talking_prompt}")
 
         style_habbits = []
         grammar_habbits = []

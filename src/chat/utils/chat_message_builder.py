@@ -559,13 +559,26 @@ def build_readable_messages(
         chat_id = copy_messages[0].get("chat_id") if copy_messages else None
 
         # 获取这个时间范围内的动作记录，并匹配chat_id
-        actions = (
+        actions_in_range = (
             ActionRecords.select()
             .where(
                 (ActionRecords.time >= min_time) & (ActionRecords.time <= max_time) & (ActionRecords.chat_id == chat_id)
             )
             .order_by(ActionRecords.time)
         )
+        
+        # 获取最新消息之后的第一个动作记录
+        action_after_latest = (
+            ActionRecords.select()
+            .where(
+                (ActionRecords.time > max_time) & (ActionRecords.chat_id == chat_id)
+            )
+            .order_by(ActionRecords.time)
+            .limit(1)
+        )
+        
+        # 合并两部分动作记录
+        actions = list(actions_in_range) + list(action_after_latest)
 
         # 将动作记录转换为消息格式
         for action in actions:
