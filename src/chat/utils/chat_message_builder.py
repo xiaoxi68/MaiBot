@@ -566,17 +566,15 @@ def build_readable_messages(
             )
             .order_by(ActionRecords.time)
         )
-        
+
         # 获取最新消息之后的第一个动作记录
         action_after_latest = (
             ActionRecords.select()
-            .where(
-                (ActionRecords.time > max_time) & (ActionRecords.chat_id == chat_id)
-            )
+            .where((ActionRecords.time > max_time) & (ActionRecords.chat_id == chat_id))
             .order_by(ActionRecords.time)
             .limit(1)
         )
-        
+
         # 合并两部分动作记录
         actions = list(actions_in_range) + list(action_after_latest)
 

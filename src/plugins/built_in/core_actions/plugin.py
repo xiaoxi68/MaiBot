@@ -197,7 +197,9 @@ class NoReplyAction(BaseAction):
                 # 检查是否超时
                 if elapsed_time >= self._max_timeout:
                     logger.info(f"{self.log_prefix} 达到最大等待时间{self._max_timeout}秒，结束等待")
-                    exit_reason = f"{global_config.bot.nickname}（你）等待了{self._max_timeout}秒，可以考虑一下是否要进行回复"
+                    exit_reason = (
+                        f"{global_config.bot.nickname}（你）等待了{self._max_timeout}秒，可以考虑一下是否要进行回复"
+                    )
                     await self.store_action_info(
                         action_build_into_prompt=True,
                         action_prompt_display=exit_reason,
@@ -288,7 +290,7 @@ class NoReplyAction(BaseAction):
                                     prompt=judge_prompt,
                                     model_config=small_model,
                                     request_type="plugin.no_reply_judge",
-                                    temperature=0.7  # 进一步降低温度，提高JSON输出的一致性和准确性
+                                    temperature=0.7,  # 进一步降低温度，提高JSON输出的一致性和准确性
                                 )
 
                                 # 更新上次判断时间
@@ -297,12 +299,14 @@ class NoReplyAction(BaseAction):
                                 if success and response:
                                     response = response.strip()
                                     logger.info(f"{self.log_prefix} 模型({model_name})原始JSON响应: {response}")
-                                    
+
                                     # 解析LLM的JSON响应，提取判断结果和理由
                                     judge_result, reason = self._parse_llm_judge_response(response)
-                                    
-                                    logger.info(f"{self.log_prefix} JSON解析结果 - 判断: {judge_result}, 理由: {reason}")
-                                    
+
+                                    logger.info(
+                                        f"{self.log_prefix} JSON解析结果 - 判断: {judge_result}, 理由: {reason}"
+                                    )
+
                                     if judge_result == "需要回复":
                                         logger.info(f"{self.log_prefix} 模型判断需要回复，结束等待")
                                         full_prompt = f"{global_config.bot.nickname}（你）的想法是：{reason}"
@@ -330,7 +334,7 @@ class NoReplyAction(BaseAction):
                 if int(elapsed_time) % 10 == 0 and int(elapsed_time) > 0:
                     logger.info(f"{self.log_prefix} 已等待{elapsed_time:.0f}秒，等待新消息...")
                     await asyncio.sleep(1)
-                
+
                 # 短暂等待后继续检查
                 await asyncio.sleep(check_interval)
 
@@ -348,10 +352,10 @@ class NoReplyAction(BaseAction):
 
     def _parse_llm_judge_response(self, response: str) -> tuple[str, str]:
         """解析LLM判断响应，使用JSON格式提取判断结果和理由
-        
+
         Args:
             response: LLM的原始JSON响应
-            
+
         Returns:
             tuple: (判断结果, 理由)
         """
@@ -359,31 +363,31 @@ class NoReplyAction(BaseAction):
             # 使用repair_json修复可能有问题的JSON格式
             fixed_json_string = repair_json(response)
             logger.debug(f"{self.log_prefix} repair_json修复后的响应: {fixed_json_string}")
-            
+
             # 如果repair_json返回的是字符串，需要解析为Python对象
             if isinstance(fixed_json_string, str):
                 result_json = json.loads(fixed_json_string)
             else:
                 # 如果repair_json直接返回了字典对象，直接使用
                 result_json = fixed_json_string
-            
+
             # 从JSON中提取判断结果和理由
             should_reply = result_json.get("should_reply", False)
             reason = result_json.get("reason", "无法获取判断理由")
-            
+
             # 转换布尔值为中文字符串
             judge_result = "需要回复" if should_reply else "不需要回复"
-            
+
             logger.debug(f"{self.log_prefix} JSON解析成功 - 判断: {judge_result}, 理由: {reason}")
             return judge_result, reason
-            
+
         except (json.JSONDecodeError, KeyError, TypeError) as e:
             logger.warning(f"{self.log_prefix} JSON解析失败，尝试文本解析: {e}")
-            
+
             # 如果JSON解析失败，回退到简单的关键词匹配
             try:
                 response_lower = response.lower()
-                
+
                 if "true" in response_lower or "需要回复" in response:
                     judge_result = "需要回复"
                     reason = "从响应文本中检测到需要回复的指示"
@@ -393,14 +397,14 @@ class NoReplyAction(BaseAction):
                 else:
                     judge_result = "不需要回复"  # 默认值
                     reason = f"无法解析响应格式，使用默认判断。原始响应: {response[:100]}..."
-                
+
                 logger.debug(f"{self.log_prefix} 文本解析结果 - 判断: {judge_result}, 理由: {reason}")
                 return judge_result, reason
-                
+
             except Exception as fallback_e:
                 logger.error(f"{self.log_prefix} 文本解析也失败: {fallback_e}")
                 return "不需要回复", f"解析异常: {str(e)}, 回退解析也失败: {str(fallback_e)}"
-            
+
         except Exception as e:
             logger.error(f"{self.log_prefix} 解析LLM响应时出错: {e}")
             return "不需要回复", f"解析异常: {str(e)}"
