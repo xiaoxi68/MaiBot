@@ -10,9 +10,8 @@ from dotenv import load_dotenv
 from rich.traceback import install
 
 # maim_message imports for console input
-from maim_message import Seg, UserInfo, GroupInfo, BaseMessageInfo, MessageBase
+from maim_message import Seg, UserInfo, BaseMessageInfo, MessageBase
 from src.chat.message_receive.bot import chat_bot
-from src.config.config import global_config
 
 # 最早期初始化日志系统，确保所有后续模块都使用正确的日志格式
 from src.common.logger import initialize_logging, get_logger, shutdown_logging
@@ -265,12 +264,8 @@ async def _create_console_message_dict(text: str) -> dict:
     message_segment = Seg(type="text", data=text)
 
     # --- Final MessageBase object to convert to dict ---
-    message = MessageBase(
-        message_info=message_info,
-        message_segment=message_segment,
-        raw_message=text
-    )
-    
+    message = MessageBase(message_info=message_info, message_segment=message_segment, raw_message=text)
+
     return message.to_dict()
 
 
@@ -320,7 +315,7 @@ if __name__ == "__main__":
             # We can run console_input_loop concurrently.
             main_tasks = loop.create_task(main_system.schedule_tasks())
             console_task = loop.create_task(console_input_loop(main_system))
-            
+
             # Wait for all tasks to complete (which they won't, normally)
             loop.run_until_complete(asyncio.gather(main_tasks, console_task))
 
