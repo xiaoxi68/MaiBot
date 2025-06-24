@@ -542,10 +542,7 @@ class NormalChat:
                                         return
 
                                     # 处理消息
-                                    if time.time() - self.start_time > 300:
-                                        self.adjust_reply_frequency(duration=300 / 60)
-                                    else:
-                                        self.adjust_reply_frequency(duration=(time.time() - self.start_time) / 60)
+                                    self.adjust_reply_frequency()
 
                                     await self.normal_response(
                                         message=message,
@@ -989,47 +986,73 @@ class NormalChat:
         # 返回最近的limit条记录，按时间倒序排列
         return sorted(self.recent_replies[-limit:], key=lambda x: x["time"], reverse=True)
 
-    def adjust_reply_frequency(self, duration: int = 10):
+    def adjust_reply_frequency(self):
         """
-        调整回复频率
+        根据预设规则动态调整回复意愿（willing_amplifier）。
+        - 评估周期：10分钟
+        - 目标频率：由 global_config.chat.talk_frequency 定义（例如 1条/分钟）
+        - 调整逻辑：
+            - 0条回复 -> 5.0x 意愿
+            - 达到目标回复数 -> 1.0x 意愿（基准）
+            - 达到目标2倍回复数 -> 0.2x 意愿
+            - 中间值线性变化
+        - 增益抑制：如果最近5分钟回复过快，则不增加意愿。
         """
-        # 获取最近30分钟内的消息统计
+        # --- 1. 定义参数 ---
+        evaluation_minutes = 10.0
+        target_replies_per_min = global_config.chat.talk_frequency  # 目标频率：e.g. 1条/分钟
+        target_replies_in_window = target_replies_per_min * evaluation_minutes  # 10分钟内的目标回复数
 
-        stats = get_recent_message_stats(minutes=duration, chat_id=self.stream_id)
-        bot_reply_count = stats["bot_reply_count"]
-
-        total_message_count = stats["total_message_count"]
-        if total_message_count == 0:
+        if target_replies_in_window <= 0:
+            logger.debug(f"[{self.stream_name}] 目标回复频率为0或负数，不调整意愿放大器。")
             return
-        logger.debug(
-            f"[{self.stream_name}]({self.willing_amplifier}) 最近{duration}分钟 回复数量: {bot_reply_count}，消息总数: {total_message_count}"
-        )
 
-        # 计算回复频率
-        _reply_frequency = bot_reply_count / total_message_count
+        # --- 2. 获取近期统计数据 ---
+        stats_10_min = get_recent_message_stats(minutes=evaluation_minutes, chat_id=self.stream_id)
+        bot_reply_count_10_min = stats_10_min["bot_reply_count"]
 
-        differ = global_config.chat.talk_frequency - (bot_reply_count / duration)
+        # --- 3. 计算新的意愿放大器 (willing_amplifier) ---
+        # 基于回复数在 [0, target*2] 区间内进行分段线性映射
+        if bot_reply_count_10_min <= target_replies_in_window:
+            # 在 [0, 目标数] 区间，意愿从 5.0 线性下降到 1.0
+            new_amplifier = 5.0 + (bot_reply_count_10_min - 0) * (1.0 - 5.0) / (target_replies_in_window - 0)
+        elif bot_reply_count_10_min <= target_replies_in_window * 2:
+            # 在 [目标数, 目标数*2] 区间，意愿从 1.0 线性下降到 0.2
+            over_target_cap = target_replies_in_window * 2
+            new_amplifier = 1.0 + (bot_reply_count_10_min - target_replies_in_window) * (
+                0.2 - 1.0
+            ) / (over_target_cap - target_replies_in_window)
+        else:
+            # 超过目标数2倍，直接设为最小值
+            new_amplifier = 0.2
 
-        # 如果回复频率低于0.5，增加回复概率
-        if differ > 0.1:
-            mapped = 1 + (differ - 0.1) * 4 / 0.9
-            mapped = max(1, min(5, mapped))
+        # --- 4. 检查是否需要抑制增益 ---
+        # "如果邻近5分钟内，回复数量 > 频率/2，就不再进行增益"
+        suppress_gain = False
+        if new_amplifier > self.willing_amplifier:  # 仅在计算结果为增益时检查
+            suppression_minutes = 5.0
+            # 5分钟内目标回复数的一半
+            suppression_threshold = (target_replies_per_min / 2) * suppression_minutes  # e.g., (1/2)*5 = 2.5
+            stats_5_min = get_recent_message_stats(minutes=suppression_minutes, chat_id=self.stream_id)
+            bot_reply_count_5_min = stats_5_min["bot_reply_count"]
+
+            if bot_reply_count_5_min > suppression_threshold:
+                suppress_gain = True
+
+        # --- 5. 更新意愿放大器 ---
+        if suppress_gain:
             logger.debug(
-                f"[{self.stream_name}] 回复频率低于{global_config.chat.talk_frequency}，增加回复概率，differ={differ:.3f}，映射值={mapped:.2f}"
+                f"[{self.stream_name}] 回复增益被抑制。最近5分钟内回复数 ({bot_reply_count_5_min}) "
+                f"> 阈值 ({suppression_threshold:.1f})。意愿放大器保持在 {self.willing_amplifier:.2f}"
             )
-            self.willing_amplifier += mapped * 0.1  # 你可以根据实际需要调整系数
-        elif differ < -0.1:
-            mapped = 1 - (differ + 0.1) * 4 / 0.9
-            mapped = max(1, min(5, mapped))
+            # 不做任何改动
+        else:
+            # 限制最终值在 [0.2, 5.0] 范围内
+            self.willing_amplifier = max(0.2, min(5.0, new_amplifier))
             logger.debug(
-                f"[{self.stream_name}] 回复频率高于{global_config.chat.talk_frequency}，减少回复概率，differ={differ:.3f}，映射值={mapped:.2f}"
+                f"[{self.stream_name}] 调整回复意愿。10分钟内回复: {bot_reply_count_10_min} (目标: {target_replies_in_window:.0f}) -> "
+                f"意愿放大器更新为: {self.willing_amplifier:.2f}"
             )
-            self.willing_amplifier -= mapped * 0.1
-
-        if self.willing_amplifier > 5:
-            self.willing_amplifier = 5
-        elif self.willing_amplifier < 0.1:
-            self.willing_amplifier = 0.1
 
     def _get_sender_name(self, message: MessageRecv) -> str:
         """获取发送者名称，用于planner"""
