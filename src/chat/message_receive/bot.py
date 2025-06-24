@@ -12,8 +12,11 @@ from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.config.config import global_config
 from src.plugin_system.core.component_registry import component_registry  # 导入新插件系统
 from src.plugin_system.base.base_command import BaseCommand
+from src.mais4u.mais4u_chat.s4u_msg_processor import S4UMessageProcessor
 # 定义日志配置
 
+ENABLE_S4U_CHAT = True
+# 仅内部开启
 
 # 配置主程序日志格式
 logger = get_logger("chat")
@@ -29,6 +32,7 @@ class ChatBot:
         # 创建初始化PFC管理器的任务，会在_ensure_started时执行
         self.only_process_chat = MessageProcessor()
         self.pfc_manager = PFCManager.get_instance()
+        self.s4u_message_processor = S4UMessageProcessor()
 
     async def _ensure_started(self):
         """确保所有任务已启动"""
@@ -168,6 +172,14 @@ class ChatBot:
                 # 如果在私聊中
                 if group_info is None:
                     logger.debug("检测到私聊消息")
+                    
+                    if ENABLE_S4U_CHAT:
+                        logger.debug("进入S4U私聊处理流程")
+                        await self.s4u_message_processor.process_message(message)
+                        return
+                    
+                    
+                    
                     if global_config.experimental.pfc_chatting:
                         logger.debug("进入PFC私聊处理流程")
                         # 创建聊天流
@@ -180,6 +192,13 @@ class ChatBot:
                         await self.heartflow_message_receiver.process_message(message)
                 # 群聊默认进入心流消息处理逻辑
                 else:
+                    
+                    if ENABLE_S4U_CHAT:
+                        logger.debug("进入S4U私聊处理流程")
+                        await self.s4u_message_processor.process_message(message)
+                        return
+                    
+                    
                     logger.debug(f"检测到群聊消息，群ID: {group_info.group_id}")
                     await self.heartflow_message_receiver.process_message(message)
 
