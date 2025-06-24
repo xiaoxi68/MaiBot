@@ -12,7 +12,6 @@ from src.common.logger import get_logger
 # 导入API模块 - 标准Python包方式
 from src.plugin_system.apis import message_api, llm_api
 from src.config.config import global_config
-from datetime import datetime
 from json_repair import repair_json
 
 logger = get_logger("core_actions")
@@ -113,9 +112,7 @@ class NoReplyAction(BaseAction):
                     logger.info(f"{self.log_prefix} 达到最大等待时间{self._max_timeout}秒，退出专注模式")
                     # 标记退出专注模式
                     self.action_data["_system_command"] = "stop_focus_chat"
-                    exit_reason = (
-                        f"{global_config.bot.nickname}（你）等待了{self._max_timeout}秒，感觉群里没有新内容，决定退出专注模式，稍作休息"
-                    )
+                    exit_reason = f"{global_config.bot.nickname}（你）等待了{self._max_timeout}秒，感觉群里没有新内容，决定退出专注模式，稍作休息"
                     await self.store_action_info(
                         action_build_into_prompt=True,
                         action_prompt_display=exit_reason,
@@ -196,7 +193,6 @@ class NoReplyAction(BaseAction):
                         messages_text = message_api.build_readable_messages(
                             messages=recent_messages, timestamp_mode="normal_no_YMD", truncate=False, show_actions=False
                         )
-
 
                         # 获取身份信息
                         bot_name = global_config.bot.nickname
@@ -384,7 +380,7 @@ class NoReplyAction(BaseAction):
                         await asyncio.sleep(1)
                 else:
                     if int(elapsed_time) % 60 == 0 and int(elapsed_time) > 0:
-                        logger.info(f"{self.log_prefix} 已等待{elapsed_time/60:.0f}分钟，等待新消息...")
+                        logger.info(f"{self.log_prefix} 已等待{elapsed_time / 60:.0f}分钟，等待新消息...")
                         await asyncio.sleep(1)
 
                 # 短暂等待后继续检查
