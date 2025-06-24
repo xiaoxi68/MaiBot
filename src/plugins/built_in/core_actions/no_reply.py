@@ -106,7 +106,7 @@ class NoReplyAction(BaseAction):
             while True:
                 current_time = time.time()
                 elapsed_time = current_time - start_time
-                
+
                 if global_config.chat.chat_mode == "auto":
                     # 检查是否超时
                     if elapsed_time >= self._max_timeout:
@@ -121,14 +121,15 @@ class NoReplyAction(BaseAction):
                         )
                         return True, exit_reason
 
-
                     # **新增**：检查回复频率，决定是否退出专注模式
                     should_exit_focus = await self._check_frequency_and_exit_focus(current_time)
                     if should_exit_focus:
                         logger.info(f"{self.log_prefix} 检测到回复频率过高，退出专注模式")
                         # 标记退出专注模式
                         self.action_data["_system_command"] = "stop_focus_chat"
-                        exit_reason = f"{global_config.bot.nickname}（你）发现自己回复太频繁了，决定退出专注模式，稍作休息"
+                        exit_reason = (
+                            f"{global_config.bot.nickname}（你）发现自己回复太频繁了，决定退出专注模式，稍作休息"
+                        )
                         await self.store_action_info(
                             action_build_into_prompt=True,
                             action_prompt_display=exit_reason,
