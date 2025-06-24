@@ -27,7 +27,7 @@ def init_prompt():
     Prompt(
         """
 你的名字叫{bot_name}，昵称是：{bot_other_names}，{prompt_personality}。
-你现在的主要任务是和 {sender_name} 聊天。同时，也有其他用户会参与你们的聊天，但是你主要还是关注你和{sender_name}的聊天内容。
+你现在的主要任务是和 {sender_name} 聊天。同时，也有其他用户会参与你们的聊天，你可以参考他们的回复内容，但是你主要还是关注你和{sender_name}的聊天内容。
 
 {background_dialogue_prompt}
 --------------------------------
@@ -35,10 +35,13 @@ def init_prompt():
 这是你和{sender_name}的对话，你们正在交流中：
 {core_dialogue_prompt}
 
-{message_txt}
+对方最新发送的内容：{message_txt}
 回复可以简短一些。可以参考贴吧，知乎和微博的回复风格，回复不要浮夸，不要用夸张修辞，平淡一些。
 不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出回复内容，现在{sender_name}正在等待你的回复。
-你的回复风格不要浮夸，有逻辑和条理，请你继续回复{sender_name}。""",
+你的回复风格不要浮夸，有逻辑和条理，请你继续回复{sender_name}。
+你的发言：
+
+""",
         "s4u_prompt",  # New template for private CHAT chat
     )
 
@@ -96,19 +99,29 @@ class PromptBuilder:
             limit=100,
         )
         
+        
+        talk_type = message.message_info.platform + ":" + message.chat_stream.user_info.user_id
+        print(f"talk_type: {talk_type}")
+        
 
         # 分别筛选核心对话和背景对话
         core_dialogue_list = []
         background_dialogue_list = []
         bot_id = str(global_config.bot.qq_account)
         target_user_id = str(message.chat_stream.user_info.user_id)
+        
 
         for msg_dict in message_list_before_now:
             try:
                 # 直接通过字典访问
                 msg_user_id = str(msg_dict.get('user_id'))
-                
-                if msg_user_id == bot_id or msg_user_id == target_user_id:
+                if msg_user_id == bot_id:
+                    if msg_dict.get("reply_to") and talk_type == msg_dict.get("reply_to"):
+                        print(f"reply: {msg_dict.get('reply_to')}")
+                        core_dialogue_list.append(msg_dict)
+                    else:
+                        background_dialogue_list.append(msg_dict)
+                elif msg_user_id == target_user_id:
                     core_dialogue_list.append(msg_dict)
                 else:
                     background_dialogue_list.append(msg_dict)
@@ -140,14 +153,14 @@ class PromptBuilder:
             last_speaking_user_id = start_speaking_user_id
             msg_seg_str = "对方的发言：\n"
         
-        msg_seg_str += f"{first_msg.get('processed_plain_text')}\n"
+        msg_seg_str += f"{time.strftime('%H:%M:%S', time.localtime(first_msg.get('time')))}: {first_msg.get('processed_plain_text')}\n"
 
         all_msg_seg_list = []
         for msg in core_dialogue_list[1:]:
             speaker = msg.get('user_id')
             if speaker == last_speaking_user_id:
                 #还是同一个人讲话
-                msg_seg_str += f"{msg.get('processed_plain_text')}\n"
+                msg_seg_str += f"{time.strftime('%H:%M:%S', time.localtime(msg.get('time')))}: {msg.get('processed_plain_text')}\n"
             else:
                 #换人了
                 msg_seg_str = f"{msg_seg_str}\n"
@@ -158,7 +171,7 @@ class PromptBuilder:
                 else:
                     msg_seg_str = "对方的发言：\n"
                 
-                msg_seg_str += f"{msg.get('processed_plain_text')}\n"
+                msg_seg_str += f"{time.strftime('%H:%M:%S', time.localtime(msg.get('time')))}: {msg.get('processed_plain_text')}\n"
                 last_speaking_user_id = speaker
             
         all_msg_seg_list.append(msg_seg_str)

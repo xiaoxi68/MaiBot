@@ -283,6 +283,7 @@ class MessageSending(MessageProcessBase):
         is_emoji: bool = False,
         thinking_start_time: float = 0,
         apply_set_reply_logic: bool = False,
+        reply_to: str = None,
     ):
         # 调用父类初始化
         super().__init__(
@@ -300,6 +301,8 @@ class MessageSending(MessageProcessBase):
         self.is_head = is_head
         self.is_emoji = is_emoji
         self.apply_set_reply_logic = apply_set_reply_logic
+        
+        self.reply_to = reply_to
 
         # 用于显示发送内容与显示不一致的情况
         self.display_message = display_message

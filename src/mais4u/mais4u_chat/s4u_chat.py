@@ -92,7 +92,8 @@ class MessageSenderContainer:
                 # Check for pause signal *after* getting an item.
                 await self._paused_event.wait()
 
-                delay = self._calculate_typing_delay(chunk)
+                # delay = self._calculate_typing_delay(chunk)
+                delay = 0.1
                 await asyncio.sleep(delay)
 
                 current_time = time.time()
@@ -116,6 +117,7 @@ class MessageSenderContainer:
                     reply=self.original_message,
                     is_emoji=False,
                     apply_set_reply_logic=True,
+                    reply_to=f"{self.original_message.message_info.user_info.platform}:{self.original_message.message_info.user_info.user_id}"
                 )
                 
                 await bot_message.process()
@@ -171,22 +173,13 @@ class S4UChat:
         self._message_queue = asyncio.Queue()
         self._processing_task = asyncio.create_task(self._message_processor())
         self._current_generation_task: Optional[asyncio.Task] = None
+        self._current_message_being_replied: Optional[MessageRecv] = None
         
         self._is_replying = False
 
-        # 初始化Normal Chat专用表达器
-        self.expressor = NormalChatExpressor(self.chat_stream)
-        self.replyer = DefaultReplyer(self.chat_stream)
-
         self.gpt = S4UStreamGenerator()
-        self.audio_generator = MockAudioGenerator()
-        self.start_time = time.time()
+        # self.audio_generator = MockAudioGenerator()
 
-        # 记录最近的回复内容，每项包含: {time, user_message, response, is_mentioned, is_reference_reply}
-        self.recent_replies = []
-        self.max_replies_history = 20  # 最多保存最近20条回复记录
-        
-        self.storage = MessageStorage()
 
 
         logger.info(f"[{self.stream_name}] S4UChat")
@@ -194,11 +187,32 @@ class S4UChat:
 
     # 改为实例方法, 移除 chat 参数
     async def response(self, message: MessageRecv, is_mentioned: bool, interested_rate: float) -> None:
-        """将消息放入队列并中断当前处理（如果正在处理）。"""
+        """将消息放入队列并根据发信人决定是否中断当前处理。"""
+        should_interrupt = False
         if self._current_generation_task and not self._current_generation_task.done():
+            if self._current_message_being_replied:
+                # 检查新消息发送者和正在回复的消息发送者是否为同一人
+                new_sender_id = message.message_info.user_info.user_id
+                original_sender_id = self._current_message_being_replied.message_info.user_info.user_id
+
+                if new_sender_id == original_sender_id:
+                    should_interrupt = True
+                    logger.info(f"[{self.stream_name}] 来自同一用户的消息，中断当前回复。")
+                else:
+                    if random.random() < 0.2:
+                        should_interrupt = True
+                        logger.info(f"[{self.stream_name}] 来自不同用户的消息，随机中断(20%)。")
+                    else:
+                        logger.info(f"[{self.stream_name}] 来自不同用户的消息，不中断。")
+            else:
+                # Fallback: if we don't know who we are replying to, interrupt.
+                should_interrupt = True
+                logger.warning(f"[{self.stream_name}] 正在生成回复，但无法获取原始消息发送者信息，将默认中断。")
+
+        if should_interrupt:
             self._current_generation_task.cancel()
             logger.info(f"[{self.stream_name}] 请求中断当前回复生成任务。")
-        
+
         await self._message_queue.put(message)
 
     async def _message_processor(self):
@@ -207,12 +221,14 @@ class S4UChat:
             try:
                 # 等待第一条消息
                 message = await self._message_queue.get()
+                self._current_message_being_replied = message
 
                 # 如果因快速中断导致队列中积压了更多消息，则只处理最新的一条
                 while not self._message_queue.empty():
                     drained_msg = self._message_queue.get_nowait()
                     self._message_queue.task_done() # 为取出的旧消息调用 task_done
                     message = drained_msg # 始终处理最新消息
+                    self._current_message_being_replied = message
                     logger.info(f"[{self.stream_name}] 丢弃过时消息，处理最新消息: {message.processed_plain_text}")
 
                 self._current_generation_task = asyncio.create_task(self._generate_and_send(message))
@@ -225,6 +241,7 @@ class S4UChat:
                     logger.error(f"[{self.stream_name}] _generate_and_send 任务出现错误: {e}", exc_info=True)
                 finally:
                     self._current_generation_task = None
+                    self._current_message_being_replied = None
             
             except asyncio.CancelledError:
                 logger.info(f"[{self.stream_name}] 消息处理器正在关闭。")
@@ -259,10 +276,10 @@ class S4UChat:
                 await sender_container.add_message(chunk)
                 
                 # b. 为该文本块生成并播放音频
-                if chunk.strip():
-                    audio_data = await self.audio_generator.generate(chunk)
-                    player = MockAudioPlayer(audio_data)
-                    await player.play()
+                # if chunk.strip():
+                    # audio_data = await self.audio_generator.generate(chunk)
+                    # player = MockAudioPlayer(audio_data)
+                    # await player.play()
 
             # 等待所有文本消息发送完成
             await sender_container.close()

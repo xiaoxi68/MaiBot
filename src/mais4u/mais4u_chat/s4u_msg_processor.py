@@ -43,7 +43,7 @@ class S4UMessageProcessor:
             message_data: 原始消息字符串
         """
 
-        target_user_id = "1026294844"
+        target_user_id_list = ["1026294844", "964959351"]
         
         # 1. 消息解析与初始化
         groupinfo = message.message_info.group_info
@@ -61,9 +61,10 @@ class S4UMessageProcessor:
         is_mentioned = is_mentioned_bot_in_message(message)
         s4u_chat = get_s4u_chat_manager().get_or_create_chat(chat)
         
-        if userinfo.user_id == target_user_id:
+        if userinfo.user_id in target_user_id_list:
             await s4u_chat.response(message, is_mentioned=is_mentioned, interested_rate=1.0)
-        
+        else:
+            await s4u_chat.response(message, is_mentioned=is_mentioned, interested_rate=0.0)
 
         # 7. 日志记录
         logger.info(f"[S4U]{userinfo.user_nickname}:{message.processed_plain_text}")
