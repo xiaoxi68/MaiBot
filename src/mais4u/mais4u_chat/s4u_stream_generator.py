@@ -112,6 +112,7 @@ class S4UStreamGenerator:
         
         buffer = ""
         delimiters = "，。！？,.!?\n\r"  # For final trimming
+        punctuation_buffer = ""
         
         async for content in client.get_stream_content(
             messages=[{"role": "user", "content": prompt}], model=model_name, **kwargs
@@ -125,8 +126,19 @@ class S4UStreamGenerator:
                 if sentence:
                     # 如果句子看起来完整（即不只是等待更多内容），则发送
                     if match.end(0) < len(buffer) or sentence.endswith(tuple(delimiters)):
-                        yield sentence
-                        await asyncio.sleep(0) # 允许其他任务运行
+                        # 检查是否只是一个标点符号
+                        if sentence in [",", "，", ".", "。", "!", "！", "?", "？"]:
+                            punctuation_buffer += sentence
+                        else:
+                            # 发送之前累积的标点和当前句子
+                            to_yield = punctuation_buffer + sentence
+                            if to_yield.endswith((',', '，')):
+                                to_yield = to_yield.rstrip(',，')
+                            
+                            yield to_yield
+                            punctuation_buffer = "" # 清空标点符号缓冲区
+                            await asyncio.sleep(0) # 允许其他任务运行
+                        
                         last_match_end = match.end(0)
             
             # 从缓冲区移除已发送的部分
@@ -134,7 +146,10 @@ class S4UStreamGenerator:
                 buffer = buffer[last_match_end:]
         
         # 发送缓冲区中剩余的任何内容
-        if buffer.strip():
-            yield buffer.strip()
-            await asyncio.sleep(0)
+        to_yield = (punctuation_buffer + buffer).strip()
+        if to_yield:
+            if to_yield.endswith(('，', ',')):
+                to_yield = to_yield.rstrip('，,')
+            if to_yield:
+                yield to_yield
 
