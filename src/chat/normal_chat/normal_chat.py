@@ -1019,9 +1019,9 @@ class NormalChat:
         elif bot_reply_count_10_min <= target_replies_in_window * 2:
             # 在 [目标数, 目标数*2] 区间，意愿从 1.0 线性下降到 0.2
             over_target_cap = target_replies_in_window * 2
-            new_amplifier = 1.0 + (bot_reply_count_10_min - target_replies_in_window) * (
-                0.2 - 1.0
-            ) / (over_target_cap - target_replies_in_window)
+            new_amplifier = 1.0 + (bot_reply_count_10_min - target_replies_in_window) * (0.2 - 1.0) / (
+                over_target_cap - target_replies_in_window
+            )
         else:
             # 超过目标数2倍，直接设为最小值
             new_amplifier = 0.2
