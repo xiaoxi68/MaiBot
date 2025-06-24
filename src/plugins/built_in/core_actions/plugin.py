@@ -227,7 +227,6 @@ class CoreActionsPlugin(BasePlugin):
             "skip_judge_when_tired": ConfigField(
                 type=bool, default=True, description="当发言过多时是否启用跳过LLM判断机制"
             ),
-
             "frequency_check_window": ConfigField(
                 type=int, default=600, description="回复频率检查窗口时间（秒）", example=600
             ),
@@ -260,7 +259,6 @@ class CoreActionsPlugin(BasePlugin):
 
         skip_judge_when_tired = self.get_config("no_reply.skip_judge_when_tired", True)
         NoReplyAction._skip_judge_when_tired = skip_judge_when_tired
-
 
         # 新增：频率检测相关配置
         frequency_check_window = self.get_config("no_reply.frequency_check_window", 600)
