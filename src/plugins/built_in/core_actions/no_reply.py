@@ -101,7 +101,7 @@ class NoReplyAction(BaseAction):
                 )
                 context_str = f"当时选择no_reply前的聊天上下文：\n{context_str}\n"
 
-            logger.info(f"{self.log_prefix} 选择不回复(第{count}次)，开始智能等待，原因: {reason}")
+            logger.info(f"{self.log_prefix} 选择不回复(第{count}次)，开始摸鱼，原因: {reason}")
 
             while True:
                 current_time = time.time()
@@ -171,7 +171,7 @@ class NoReplyAction(BaseAction):
                 time_since_last_judge = current_time - last_judge_time
                 should_judge = (
                     new_message_count >= 3  # 累计3条消息
-                    or (new_message_count > 0 and time_since_last_judge >= 5.0)  # 等待超过5秒且有新消息
+                    or (new_message_count > 0 and time_since_last_judge >= 15.0)  # 等待超过5秒且有新消息
                 )
 
                 if should_judge and time_since_last_judge >= min_judge_interval:
@@ -179,8 +179,8 @@ class NoReplyAction(BaseAction):
                     trigger_reason = ""
                     if new_message_count >= 3:
                         trigger_reason = f"累计{new_message_count}条消息"
-                    elif time_since_last_judge >= 5.0:
-                        trigger_reason = f"等待{time_since_last_judge:.1f}秒且有{new_message_count}条新消息"
+                    elif time_since_last_judge >= 10.0:
+                        trigger_reason = f"等待{time_since_last_judge:.1f}秒且有新消息"
 
                     logger.info(f"{self.log_prefix} 触发判定({trigger_reason})，进行智能判断...")
 
@@ -252,9 +252,12 @@ class NoReplyAction(BaseAction):
                                     frequency_block = "你感觉稍微有些累，回复的有点多了。\n"
                                 elif over_count <= 5:
                                     frequency_block = "你今天说话比较多，感觉有点疲惫，想要稍微休息一下。\n"
-                                else:
+                                elif over_count <= 8:
                                     frequency_block = "你发现自己说话太多了，感觉很累，想要安静一会儿，除非有重要的事情否则不想回复。\n"
                                     skip_probability = self._skip_probability
+                                else:
+                                    frequency_block = "你感觉非常累，想要安静一会儿。\n"
+                                    skip_probability = 1
 
                                 # 根据配置和概率决定是否跳过LLM判断
                                 if self._skip_judge_when_tired and random.random() < skip_probability:
@@ -271,7 +274,7 @@ class NoReplyAction(BaseAction):
                                 under_count = talk_frequency_threshold - bot_message_count
 
                                 if under_count >= talk_frequency_threshold * 0.8:  # 回复很少（少于20%）
-                                    frequency_block = "你感觉精力充沛，状态很好。\n"
+                                    frequency_block = "你感觉精力充沛，状态很好，积极参与聊天。\n"
                                 elif under_count >= talk_frequency_threshold * 0.5:  # 回复较少（少于50%）
                                     frequency_block = "你感觉状态不错。\n"
                                 else:  # 刚好达到阈值

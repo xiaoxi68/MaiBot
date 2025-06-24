@@ -227,14 +227,9 @@ class CoreActionsPlugin(BasePlugin):
             "skip_judge_when_tired": ConfigField(
                 type=bool, default=True, description="当发言过多时是否启用跳过LLM判断机制"
             ),
-            "skip_probability_light": ConfigField(
-                type=float, default=0.3, description="轻度疲惫时跳过LLM判断的概率", example=0.2
-            ),
-            "skip_probability_medium": ConfigField(
-                type=float, default=0.5, description="中度疲惫时跳过LLM判断的概率", example=0.4
-            ),
-            "skip_probability_heavy": ConfigField(
-                type=float, default=0.7, description="重度疲惫时跳过LLM判断的概率", example=0.6
+
+            "frequency_check_window": ConfigField(
+                type=int, default=600, description="回复频率检查窗口时间（秒）", example=600
             ),
         },
         "emoji": {
@@ -266,14 +261,6 @@ class CoreActionsPlugin(BasePlugin):
         skip_judge_when_tired = self.get_config("no_reply.skip_judge_when_tired", True)
         NoReplyAction._skip_judge_when_tired = skip_judge_when_tired
 
-        skip_probability_light = self.get_config("no_reply.skip_probability_light", 0.2)
-        NoReplyAction._skip_probability_light = skip_probability_light
-
-        skip_probability_medium = self.get_config("no_reply.skip_probability_medium", 0.4)
-        NoReplyAction._skip_probability_medium = skip_probability_medium
-
-        skip_probability_heavy = self.get_config("no_reply.skip_probability_heavy", 0.6)
-        NoReplyAction._skip_probability_heavy = skip_probability_heavy
 
         # 新增：频率检测相关配置
         frequency_check_window = self.get_config("no_reply.frequency_check_window", 600)
