@@ -106,47 +106,49 @@ class NoReplyAction(BaseAction):
             while True:
                 current_time = time.time()
                 elapsed_time = current_time - start_time
+                
+                if global_config.chat.chat_mode == "auto":
+                    # 检查是否超时
+                    if elapsed_time >= self._max_timeout:
+                        logger.info(f"{self.log_prefix} 达到最大等待时间{self._max_timeout}秒，退出专注模式")
+                        # 标记退出专注模式
+                        self.action_data["_system_command"] = "stop_focus_chat"
+                        exit_reason = f"{global_config.bot.nickname}（你）等待了{self._max_timeout}秒，感觉群里没有新内容，决定退出专注模式，稍作休息"
+                        await self.store_action_info(
+                            action_build_into_prompt=True,
+                            action_prompt_display=exit_reason,
+                            action_done=True,
+                        )
+                        return True, exit_reason
 
-                # 检查是否超时
-                if elapsed_time >= self._max_timeout:
-                    logger.info(f"{self.log_prefix} 达到最大等待时间{self._max_timeout}秒，退出专注模式")
-                    # 标记退出专注模式
-                    self.action_data["_system_command"] = "stop_focus_chat"
-                    exit_reason = f"{global_config.bot.nickname}（你）等待了{self._max_timeout}秒，感觉群里没有新内容，决定退出专注模式，稍作休息"
-                    await self.store_action_info(
-                        action_build_into_prompt=True,
-                        action_prompt_display=exit_reason,
-                        action_done=True,
-                    )
-                    return True, exit_reason
 
-                # **新增**：检查回复频率，决定是否退出专注模式
-                should_exit_focus = await self._check_frequency_and_exit_focus(current_time)
-                if should_exit_focus:
-                    logger.info(f"{self.log_prefix} 检测到回复频率过高，退出专注模式")
-                    # 标记退出专注模式
-                    self.action_data["_system_command"] = "stop_focus_chat"
-                    exit_reason = f"{global_config.bot.nickname}（你）发现自己回复太频繁了，决定退出专注模式，稍作休息"
-                    await self.store_action_info(
-                        action_build_into_prompt=True,
-                        action_prompt_display=exit_reason,
-                        action_done=True,
-                    )
-                    return True, exit_reason
+                    # **新增**：检查回复频率，决定是否退出专注模式
+                    should_exit_focus = await self._check_frequency_and_exit_focus(current_time)
+                    if should_exit_focus:
+                        logger.info(f"{self.log_prefix} 检测到回复频率过高，退出专注模式")
+                        # 标记退出专注模式
+                        self.action_data["_system_command"] = "stop_focus_chat"
+                        exit_reason = f"{global_config.bot.nickname}（你）发现自己回复太频繁了，决定退出专注模式，稍作休息"
+                        await self.store_action_info(
+                            action_build_into_prompt=True,
+                            action_prompt_display=exit_reason,
+                            action_done=True,
+                        )
+                        return True, exit_reason
 
-                # **新增**：检查过去10分钟是否完全没有发言，如果是则退出专注模式
-                should_exit_no_activity = await self._check_no_activity_and_exit_focus(current_time)
-                if should_exit_no_activity:
-                    logger.info(f"{self.log_prefix} 检测到过去10分钟完全没有发言，退出专注模式")
-                    # 标记退出专注模式
-                    self.action_data["_system_command"] = "stop_focus_chat"
-                    exit_reason = f"{global_config.bot.nickname}（你）发现自己过去10分钟完全没有说话，感觉可能不太活跃，决定退出专注模式"
-                    await self.store_action_info(
-                        action_build_into_prompt=True,
-                        action_prompt_display=exit_reason,
-                        action_done=True,
-                    )
-                    return True, exit_reason
+                    # **新增**：检查过去10分钟是否完全没有发言，如果是则退出专注模式
+                    should_exit_no_activity = await self._check_no_activity_and_exit_focus(current_time)
+                    if should_exit_no_activity:
+                        logger.info(f"{self.log_prefix} 检测到过去10分钟完全没有发言，退出专注模式")
+                        # 标记退出专注模式
+                        self.action_data["_system_command"] = "stop_focus_chat"
+                        exit_reason = f"{global_config.bot.nickname}（你）发现自己过去10分钟完全没有说话，感觉可能不太活跃，决定退出专注模式"
+                        await self.store_action_info(
+                            action_build_into_prompt=True,
+                            action_prompt_display=exit_reason,
+                            action_done=True,
+                        )
+                        return True, exit_reason
 
                 # 检查是否有新消息
                 new_message_count = message_api.count_new_messages(
