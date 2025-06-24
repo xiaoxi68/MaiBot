@@ -9,6 +9,11 @@ from pathlib import Path
 from dotenv import load_dotenv
 from rich.traceback import install
 
+# maim_message imports for console input
+from maim_message import Seg, UserInfo, GroupInfo, BaseMessageInfo, MessageBase
+from src.chat.message_receive.bot import chat_bot
+from src.config.config import global_config
+
 # 最早期初始化日志系统，确保所有后续模块都使用正确的日志格式
 from src.common.logger import initialize_logging, get_logger, shutdown_logging
 from src.main import MainSystem
@@ -232,6 +237,72 @@ def raw_main():
     return MainSystem()
 
 
+async def _create_console_message_dict(text: str) -> dict:
+    """使用配置创建消息字典"""
+    timestamp = time.time()
+
+    # --- User & Group Info (hardcoded for console) ---
+    user_info = UserInfo(
+        platform="console",
+        user_id="console_user",
+        user_nickname="ConsoleUser",
+        user_cardname="",
+    )
+    # Console input is private chat
+    group_info = None
+
+    # --- Base Message Info ---
+    message_info = BaseMessageInfo(
+        platform="console",
+        message_id=f"console_{int(timestamp * 1000)}_{hash(text) % 10000}",
+        time=timestamp,
+        user_info=user_info,
+        group_info=group_info,
+        # Other infos can be added here if needed, e.g., FormatInfo
+    )
+
+    # --- Message Segment ---
+    message_segment = Seg(type="text", data=text)
+
+    # --- Final MessageBase object to convert to dict ---
+    message = MessageBase(
+        message_info=message_info,
+        message_segment=message_segment,
+        raw_message=text
+    )
+    
+    return message.to_dict()
+
+
+async def console_input_loop(main_system: MainSystem):
+    """异步循环以读取控制台输入并模拟接收消息"""
+    logger.info("控制台输入已准备就绪 (模拟接收消息)。输入 'exit()' 来停止。")
+    loop = asyncio.get_event_loop()
+    while True:
+        try:
+            line = await loop.run_in_executor(None, sys.stdin.readline)
+            text = line.strip()
+
+            if not text:
+                continue
+            if text.lower() == "exit()":
+                logger.info("收到 'exit()' 命令，正在停止...")
+                break
+
+            # Create message dict and pass to the processor
+            message_dict = await _create_console_message_dict(text)
+            await chat_bot.message_process(message_dict)
+            logger.info(f"已将控制台消息 '{text}' 作为接收消息处理。")
+
+        except asyncio.CancelledError:
+            logger.info("控制台输入循环被取消。")
+            break
+        except Exception as e:
+            logger.error(f"控制台输入循环出错: {e}", exc_info=True)
+            await asyncio.sleep(1)
+    logger.info("控制台输入循环结束。")
+
+
 if __name__ == "__main__":
     exit_code = 0  # 用于记录程序最终的退出状态
     try:
@@ -245,7 +316,14 @@ if __name__ == "__main__":
         try:
             # 执行初始化和任务调度
             loop.run_until_complete(main_system.initialize())
-            loop.run_until_complete(main_system.schedule_tasks())
+            # Schedule tasks returns a future that runs forever.
+            # We can run console_input_loop concurrently.
+            main_tasks = loop.create_task(main_system.schedule_tasks())
+            console_task = loop.create_task(console_input_loop(main_system))
+            
+            # Wait for all tasks to complete (which they won't, normally)
+            loop.run_until_complete(asyncio.gather(main_tasks, console_task))
+
         except KeyboardInterrupt:
             # loop.run_until_complete(get_global_api().stop())
             logger.warning("收到中断信号，正在优雅关闭...")
