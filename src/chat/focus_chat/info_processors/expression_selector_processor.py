@@ -71,7 +71,9 @@ class ExpressionSelectorProcessor(BaseProcessor):
 
         try:
             # LLM模式：调用LLM选择5-10个，然后随机选5个
-            selected_expressions = await expression_selector.select_suitable_expressions_llm(self.subheartflow_id, chat_info, max_num=12, min_num=2)
+            selected_expressions = await expression_selector.select_suitable_expressions_llm(
+                self.subheartflow_id, chat_info, max_num=12, min_num=2
+            )
             cache_size = len(selected_expressions) if selected_expressions else 0
             mode_desc = f"LLM模式（已缓存{cache_size}个）"
 

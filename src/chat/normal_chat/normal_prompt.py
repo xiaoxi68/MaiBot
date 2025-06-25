@@ -162,8 +162,10 @@ class PromptBuilder:
             read_mark=0.0,
             show_actions=True,
         )
-        
-        expressions = await expression_selector.select_suitable_expressions_llm(chat_stream.stream_id, chat_talking_prompt_half, max_num=8, min_num=3)
+
+        expressions = await expression_selector.select_suitable_expressions_llm(
+            chat_stream.stream_id, chat_talking_prompt_half, max_num=8, min_num=3
+        )
         style_habbits = []
         grammar_habbits = []
         if expressions:
