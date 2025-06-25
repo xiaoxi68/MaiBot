@@ -108,8 +108,14 @@ class ExpressionSelector:
 
         return selected_style, selected_grammar, selected_personality
 
-    def update_expression_count(self, chat_id: str, expression: Dict[str, str], multiplier: float = 1.5):
-        """更新表达方式的count值"""
+    def update_expression_count(self, chat_id: str, expression: Dict[str, str], base_multiplier: float = 1.5):
+        """更新表达方式的count值
+        
+        Args:
+            chat_id: 聊天ID
+            expression: 表达方式字典
+            base_multiplier: 基础倍数，当count=1时使用此倍数
+        """
         if expression.get("type") == "style_personality":
             # personality表达方式存储在全局文件中
             file_path = os.path.join("data", "expression", "personality", "expressions.json")
@@ -135,8 +141,27 @@ class ExpressionSelector:
                 if expr.get("situation") == expression.get("situation") and expr.get("style") == expression.get(
                     "style"
                 ):
-                    expr["count"] = expr.get("count", 1) * multiplier
+                    current_count = expr.get("count", 1)
+                    
+                    # 计算动态倍数：count值越高，增加倍数越小
+                    if current_count <= 1:
+                        # count <= 1时使用基础倍数
+                        dynamic_multiplier = base_multiplier
+                    else:
+                        # count > 1时，倍数逐渐降低
+                        # 使用公式：base_multiplier / (1 + (count - 1) * 0.3)
+                        # 这样count=2时倍数约为1.15，count=5时倍数约为1.06
+                        decay_factor = 0.3
+                        dynamic_multiplier = base_multiplier / (1 + (current_count - 1) * decay_factor)
+                        
+                        # 确保倍数不低于1.01（至少要有一点增长）
+                        dynamic_multiplier = max(dynamic_multiplier, 1.01)
+                    
+                    new_count = current_count * dynamic_multiplier
+                    expr["count"] = new_count
                     expr["last_active_time"] = time.time()
+                    
+                    logger.debug(f"表达方式激活: 原count={current_count:.2f}, 倍数={dynamic_multiplier:.3f}, 新count={new_count:.2f}")
                     break
 
             # 保存更新后的文件
