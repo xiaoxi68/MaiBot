@@ -145,8 +145,10 @@ class ExpressionSelector:
 
         except Exception as e:
             logger.error(f"更新表达方式count失败: {e}")
-    
-    async def select_suitable_expressions_llm(self, chat_id: str, chat_info: str, max_num: int = 10, min_num: int = 5) -> List[Dict[str, str]]:
+
+    async def select_suitable_expressions_llm(
+        self, chat_id: str, chat_info: str, max_num: int = 10, min_num: int = 5
+    ) -> List[Dict[str, str]]:
         """使用LLM选择适合的表达方式"""
 
         # 1. 获取35个随机表达方式（现在按权重抽取）
@@ -194,7 +196,6 @@ class ExpressionSelector:
             min_num=min_num,
             max_num=max_num,
         )
-
 
         # 4. 调用LLM
         try:

@@ -1000,7 +1000,9 @@ class NormalChat:
         """
         # --- 1. 定义参数 ---
         evaluation_minutes = 10.0
-        target_replies_per_min = global_config.chat.get_current_talk_frequency(self.stream_id)  # 目标频率：e.g. 1条/分钟
+        target_replies_per_min = global_config.chat.get_current_talk_frequency(
+            self.stream_id
+        )  # 目标频率：e.g. 1条/分钟
         target_replies_in_window = target_replies_per_min * evaluation_minutes  # 10分钟内的目标回复数
 
         if target_replies_in_window <= 0:
