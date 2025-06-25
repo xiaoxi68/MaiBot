@@ -24,7 +24,6 @@ class ExpressionSelectorProcessor(BaseProcessor):
         self.selection_interval = 10  # 40秒间隔
         self.cached_expressions = []  # 缓存上一次选择的表达方式
 
-
         name = get_chat_manager().get_stream_name(self.subheartflow_id)
         self.log_prefix = f"[{name}] 表达选择器"
 
@@ -72,7 +71,9 @@ class ExpressionSelectorProcessor(BaseProcessor):
 
         try:
             # LLM模式：调用LLM选择5-10个，然后随机选5个
-            selected_expressions = await expression_selector.select_suitable_expressions_llm(self.subheartflow_id, chat_info)
+            selected_expressions = await expression_selector.select_suitable_expressions_llm(
+                self.subheartflow_id, chat_info
+            )
             cache_size = len(selected_expressions) if selected_expressions else 0
             mode_desc = f"LLM模式（已缓存{cache_size}个）"
 
@@ -93,4 +94,3 @@ class ExpressionSelectorProcessor(BaseProcessor):
         except Exception as e:
             logger.error(f"{self.log_prefix} 处理表达方式选择时出错: {e}")
             return []
-

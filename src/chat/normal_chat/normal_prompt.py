@@ -148,7 +148,7 @@ class PromptBuilder:
             read_mark=0.0,
             show_actions=True,
         )
-        
+
         message_list_before_now_half = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_stream.stream_id,
             timestamp=time.time(),
@@ -162,8 +162,10 @@ class PromptBuilder:
             read_mark=0.0,
             show_actions=True,
         )
-        
-        expressions = expression_selector.select_suitable_expressions_llm(chat_stream.stream_id, chat_talking_prompt_half)
+
+        expressions = expression_selector.select_suitable_expressions_llm(
+            chat_stream.stream_id, chat_talking_prompt_half
+        )
         style_habbits = []
         grammar_habbits = []
         if expressions:
