@@ -50,6 +50,9 @@ class SubHeartflow:
         self.should_stop = False  # 停止标志
         self.task: Optional[asyncio.Task] = None  # 后台任务
 
+        # focus模式退出冷却时间管理
+        self.last_focus_exit_time: float = 0  # 上次退出focus模式的时间
+
         # 随便水群 normal_chat 和 认真水群 focus_chat 实例
         # CHAT模式激活 随便水群  FOCUS模式激活 认真水群
         self.heart_fc_instance: Optional[HeartFChatting] = None  # 该sub_heartflow的HeartFChatting实例
@@ -139,6 +142,11 @@ class SubHeartflow:
             stream_id: 请求切换的stream_id
         """
         logger.info(f"{self.log_prefix} 收到NormalChat请求切换到focus模式")
+
+        # 检查是否在focus冷却期内
+        if self.is_in_focus_cooldown():
+            logger.info(f"{self.log_prefix} 正在focus冷却期内，忽略切换到focus模式的请求")
+            return
 
         # 切换到focus模式
         current_state = self.chat_state.chat_status
@@ -280,6 +288,11 @@ class SubHeartflow:
             await self._stop_heart_fc_chat()
             state_changed = True
 
+        # --- 记录focus模式退出时间 ---
+        if state_changed and current_state == ChatState.FOCUSED and new_state != ChatState.FOCUSED:
+            self.last_focus_exit_time = time.time()
+            logger.debug(f"{log_prefix} 记录focus模式退出时间: {self.last_focus_exit_time}")
+
         # --- 更新状态和最后活动时间 ---
         if state_changed:
             self.update_last_chat_state_time()
@@ -396,3 +409,28 @@ class SubHeartflow:
         self.chat_state.chat_status = ChatState.ABSENT  # 状态重置为不参与
 
         logger.info(f"{self.log_prefix} 子心流关闭完成。")
+
+    def is_in_focus_cooldown(self) -> bool:
+        """检查是否在focus模式的冷却期内
+        
+        Returns:
+            bool: 如果在冷却期内返回True，否则返回False
+        """
+        if self.last_focus_exit_time == 0:
+            return False
+        
+        # 基础冷却时间10分钟，受auto_focus_threshold调控
+        base_cooldown = 10 * 60  # 10分钟转换为秒
+        cooldown_duration = base_cooldown / global_config.chat.auto_focus_threshold
+        
+        current_time = time.time()
+        elapsed_since_exit = current_time - self.last_focus_exit_time
+        
+        is_cooling = elapsed_since_exit < cooldown_duration
+        
+        if is_cooling:
+            remaining_time = cooldown_duration - elapsed_since_exit
+            remaining_minutes = remaining_time / 60
+            logger.debug(f"[{self.log_prefix}] focus冷却中，剩余时间: {remaining_minutes:.1f}分钟 (阈值: {global_config.chat.auto_focus_threshold})")
+        
+        return is_cooling
