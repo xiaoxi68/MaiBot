@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import os
 from dotenv import load_dotenv
+
 if os.path.exists(".env"):
     load_dotenv(".env", override=True)
     print("成功加载环境变量配置")
@@ -13,9 +14,11 @@ import platform
 import traceback
 from pathlib import Path
 from rich.traceback import install
+
 # maim_message imports for console input
 from maim_message import Seg, UserInfo, BaseMessageInfo, MessageBase
 from src.chat.message_receive.bot import chat_bot
+
 # 最早期初始化日志系统，确保所有后续模块都使用正确的日志格式
 from src.common.logger import initialize_logging, get_logger, shutdown_logging
 from src.main import MainSystem
@@ -24,7 +27,6 @@ from src.manager.async_task_manager import async_task_manager
 initialize_logging()
 
 logger = get_logger("main")
-
 
 
 install(extra_lines=3)

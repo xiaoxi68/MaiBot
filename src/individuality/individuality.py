@@ -31,7 +31,7 @@ class Individuality:
         self.name = ""
         self.bot_person_id = ""
         self.meta_info_file_path = "data/personality/meta.json"
-        
+
         self.model = LLMRequest(
             model=global_config.model.utils,
             request_type="individuality.compress",
@@ -99,9 +99,7 @@ class Individuality:
             logger.info("已将完整人设更新到bot的impression中")
 
         # 创建压缩版本的short_impression
-        asyncio.create_task(self._create_compressed_impression(
-            personality_core, personality_sides, identity_detail
-        ))
+        asyncio.create_task(self._create_compressed_impression(personality_core, personality_sides, identity_detail))
 
         asyncio.create_task(self.express_style.extract_and_store_personality_expressions())
 
@@ -374,12 +372,12 @@ class Individuality:
         self, personality_core: str, personality_sides: list, identity_detail: list
     ) -> str:
         """使用LLM创建压缩版本的impression
-        
+
         Args:
             personality_core: 核心人格
             personality_sides: 人格侧面列表
             identity_detail: 身份细节列表
-            
+
         Returns:
             str: 压缩后的impression文本
         """
@@ -387,23 +385,23 @@ class Individuality:
         compressed_parts = []
         if personality_core:
             compressed_parts.append(f"{personality_core}")
-        
+
         # 准备需要压缩的内容
         content_to_compress = []
         if personality_sides:
             content_to_compress.append(f"人格特质: {'、'.join(personality_sides)}")
         if identity_detail:
             content_to_compress.append(f"身份背景: {'、'.join(identity_detail)}")
-            
+
         if not content_to_compress:
             # 如果没有需要压缩的内容，直接返回核心人格
             result = "。".join(compressed_parts)
             return result + "。" if result else ""
-            
+
         # 使用LLM压缩其他内容
         try:
             compress_content = "、".join(content_to_compress)
-            
+
             prompt = f"""请将以下人设信息进行简洁压缩，保留主要内容，用简练的中文表达：
 
 {compress_content}
@@ -413,10 +411,10 @@ class Individuality:
 2. 尽量简洁，不超过30字
 3. 直接输出压缩后的内容，不要解释"""
 
-            response,(_,_) = await self.model.generate_response_async(
+            response, (_, _) = await self.model.generate_response_async(
                 prompt=prompt,
             )
-            
+
             if response.strip():
                 compressed_parts.append(response.strip())
                 logger.info(f"精简人格侧面: {response.strip()}")
@@ -424,15 +422,13 @@ class Individuality:
                 logger.error(f"使用LLM压缩人设时出错: {response}")
         except Exception as e:
             logger.error(f"使用LLM压缩人设时出错: {e}")
-            
+
         result = "。".join(compressed_parts)
-    
+
         # 更新short_impression字段
         if result:
             person_info_manager = get_person_info_manager()
-            await person_info_manager.update_one_field(
-                self.bot_person_id, "short_impression", result
-            )
+            await person_info_manager.update_one_field(self.bot_person_id, "short_impression", result)
             logger.info("已将压缩人设更新到bot的short_impression中")
 
 
