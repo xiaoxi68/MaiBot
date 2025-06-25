@@ -412,25 +412,27 @@ class SubHeartflow:
 
     def is_in_focus_cooldown(self) -> bool:
         """检查是否在focus模式的冷却期内
-        
+
         Returns:
             bool: 如果在冷却期内返回True，否则返回False
         """
         if self.last_focus_exit_time == 0:
             return False
-        
+
         # 基础冷却时间10分钟，受auto_focus_threshold调控
         base_cooldown = 10 * 60  # 10分钟转换为秒
         cooldown_duration = base_cooldown / global_config.chat.auto_focus_threshold
-        
+
         current_time = time.time()
         elapsed_since_exit = current_time - self.last_focus_exit_time
-        
+
         is_cooling = elapsed_since_exit < cooldown_duration
-        
+
         if is_cooling:
             remaining_time = cooldown_duration - elapsed_since_exit
             remaining_minutes = remaining_time / 60
-            logger.debug(f"[{self.log_prefix}] focus冷却中，剩余时间: {remaining_minutes:.1f}分钟 (阈值: {global_config.chat.auto_focus_threshold})")
-        
+            logger.debug(
+                f"[{self.log_prefix}] focus冷却中，剩余时间: {remaining_minutes:.1f}分钟 (阈值: {global_config.chat.auto_focus_threshold})"
+            )
+
         return is_cooling

@@ -192,16 +192,16 @@ class ExpressionLearner:
         """
         if time_diff_days <= 0:
             return 0.0  # 刚激活的表达式不衰减
-        
+
         if time_diff_days >= DECAY_DAYS:
             return 0.01  # 长时间未活跃的表达式大幅衰减
-        
+
         # 使用二次函数插值：在0-30天之间从0衰减到0.01
         # 使用简单的二次函数：y = a * x^2
         # 当x=30时，y=0.01，所以 a = 0.01 / (30^2) = 0.01 / 900
-        a = 0.01 / (DECAY_DAYS ** 2)
-        decay = a * (time_diff_days ** 2)
-        
+        a = 0.01 / (DECAY_DAYS**2)
+        decay = a * (time_diff_days**2)
+
         return min(0.01, decay)
 
     def apply_decay_to_expressions(
