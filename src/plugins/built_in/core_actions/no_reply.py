@@ -241,7 +241,7 @@ class NoReplyAction(BaseAction):
                                     if sender_id == user_id:
                                         bot_message_count += 1
 
-                            talk_frequency_threshold = global_config.chat.talk_frequency * 10
+                            talk_frequency_threshold = global_config.chat.get_current_talk_frequency(self.chat_id) * 10
 
                             if bot_message_count > talk_frequency_threshold:
                                 over_count = bot_message_count - talk_frequency_threshold
@@ -444,7 +444,7 @@ class NoReplyAction(BaseAction):
 
             # 计算阈值频率：使用 exit_focus_threshold * 1.5
             threshold_multiplier = global_config.chat.exit_focus_threshold * 1.5
-            threshold_frequency = global_config.chat.talk_frequency * threshold_multiplier
+            threshold_frequency = global_config.chat.get_current_talk_frequency(self.chat_id) * threshold_multiplier
 
             # 判断是否超过阈值
             if current_frequency > threshold_frequency:

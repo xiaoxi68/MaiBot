@@ -96,7 +96,7 @@ class ExpressionLearner:
                 current_chat_type = "private"
                 typed_chat_id = f"{platform}:{chat_stream.user_info.user_id}:{current_chat_type}"
 
-            logger.info(f"正在为 {typed_chat_id} 查找互通组...")
+            logger.debug(f"正在为 {typed_chat_id} 查找互通组...")
 
             found_group = None
             for group in expression_groups:
@@ -108,7 +108,7 @@ class ExpressionLearner:
                     break
 
             if not found_group:
-                logger.info(f"未找到互通组，仅加载 {chat_id} 的表达方式")
+                logger.debug(f"未找到互通组，仅加载 {chat_id} 的表达方式")
 
             if found_group:
                 # 从带类型的id中解析出原始id
@@ -121,7 +121,7 @@ class ExpressionLearner:
                     except Exception:
                         logger.warning(f"无法解析互通组中的ID: {item}")
                 chat_ids_to_load = parsed_ids
-                logger.info(f"将要加载以下id的表达方式: {chat_ids_to_load}")
+                logger.debug(f"将要加载以下id的表达方式: {chat_ids_to_load}")
 
         learnt_style_expressions = []
         learnt_grammar_expressions = []

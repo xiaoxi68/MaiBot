@@ -23,7 +23,7 @@ def init_prompt():
 以下是可选的表达情境：
 {all_situations}
 
-请你分析聊天内容的语境、情绪、话题类型，从上述情境中选择最适合当前聊天情境的5-10个情境。
+请你分析聊天内容的语境、情绪、话题类型，从上述情境中选择最适合当前聊天情境的{min_num}-{max_num}个情境。
 考虑因素包括：
 1. 聊天的情绪氛围（轻松、严肃、幽默等）
 2. 话题类型（日常、技术、游戏、情感等）
@@ -32,11 +32,11 @@ def init_prompt():
 请以JSON格式输出，只需要输出选中的情境编号：
 例如：
 {{
-    "selected_situations": [2, 3, 5, 7, 9, 12, 15, 18, 21, 25]
+    "selected_situations": [2, 3, 5, 7, 19, 22, 25, 38, 39, 45, 48 , 64]
 }}
 例如：
 {{
-    "selected_situations": [1, 4, 7, 9, 13, 18, 24]
+    "selected_situations": [1, 4, 7, 9, 23, 38, 44]
 }}
 
 请严格按照JSON格式输出，不要包含其他内容：
@@ -145,8 +145,8 @@ class ExpressionSelector:
 
         except Exception as e:
             logger.error(f"更新表达方式count失败: {e}")
-
-    async def select_suitable_expressions_llm(self, chat_id: str, chat_info: str) -> List[Dict[str, str]]:
+    
+    async def select_suitable_expressions_llm(self, chat_id: str, chat_info: str, max_num: int = 10, min_num: int = 5) -> List[Dict[str, str]]:
         """使用LLM选择适合的表达方式"""
 
         # 1. 获取35个随机表达方式（现在按权重抽取）
@@ -191,9 +191,10 @@ class ExpressionSelector:
             bot_name=global_config.bot.nickname,
             chat_observe_info=chat_info,
             all_situations=all_situations_str,
+            min_num=min_num,
+            max_num=max_num,
         )
 
-        print(prompt)
 
         # 4. 调用LLM
         try:

@@ -1,5 +1,5 @@
 [inner]
-version = "2.26.0"
+version = "2.27.0"
 
 #----以下是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 #如果你想要修改配置文件，请在修改后将version的值进行变更
@@ -61,6 +61,31 @@ chat_mode = "normal" # 聊天模式 —— 普通模式：normal，专注模式�
 # chat_mode = "auto"
 
 talk_frequency = 1 # 麦麦回复频率，越高，麦麦回复越频繁
+
+time_based_talk_frequency = ["8:00,1", "12:00,1.5", "18:00,2", "01:00,0.5"]
+# 基于时段的回复频率配置（可选）
+# 格式：time_based_talk_frequency = ["HH:MM,frequency", ...]
+# 示例：
+# time_based_talk_frequency = ["8:00,1", "12:00,2", "18:00,1.5", "00:00,0.5"]
+# 说明：表示从该时间开始使用该频率，直到下一个时间点
+# 注意：如果没有配置，则使用上面的默认 talk_frequency 值
+
+talk_frequency_adjust = [
+    ["qq:114514:group", "12:20,1", "16:10,2", "20:10,1", "00:10,0.3"],
+    ["qq:1919810:private", "8:20,1", "12:10,2", "20:10,1.5", "00:10,0.2"]
+]
+
+# 基于聊天流的个性化时段频率配置（可选）
+# 格式：talk_frequency_adjust = [["platform:id:type", "HH:MM,frequency", ...], ...]
+# 说明：
+# - 第一个元素是聊天流标识符，格式为 "platform:id:type"
+#   - platform: 平台名称（如 qq）
+#   - id: 群号或用户QQ号
+#   - type: group表示群聊，private表示私聊
+# - 后续元素是"时间,频率"格式，表示从该时间开始使用该频率，直到下一个时间点
+# - 优先级：聊天流特定配置 > 全局时段配置 > 默认 talk_frequency
+# - 时间支持跨天，例如 "00:10,0.3" 表示从凌晨0:10开始使用频率0.3
+# - 系统会自动将 "platform:id:type" 转换为内部的哈希chat_id进行匹配
 
 auto_focus_threshold = 1 # 自动切换到专注聊天的阈值，越低越容易进入专注聊天
 exit_focus_threshold = 1 # 自动退出专注聊天的阈值，越低越容易退出专注聊天

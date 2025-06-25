@@ -72,11 +72,170 @@ class ChatConfig(ConfigBase):
     talk_frequency: float = 1
     """回复频率阈值"""
 
+    # 修改：基于时段的回复频率配置，改为数组格式
+    time_based_talk_frequency: list[str] = field(default_factory=lambda: [])
+    """
+    基于时段的回复频率配置（全局）
+    格式：["HH:MM,frequency", "HH:MM,frequency", ...]
+    示例：["8:00,1", "12:00,2", "18:00,1.5", "00:00,0.5"]
+    表示从该时间开始使用该频率，直到下一个时间点
+    """
+
+    # 新增：基于聊天流的个性化时段频率配置
+    talk_frequency_adjust: list[list[str]] = field(default_factory=lambda: [])
+    """
+    基于聊天流的个性化时段频率配置
+    格式：[["platform:chat_id:type", "HH:MM,frequency", "HH:MM,frequency", ...], ...]
+    示例：[
+        ["qq:1026294844:group", "12:20,1", "16:10,2", "20:10,1", "00:10,0.3"],
+        ["qq:729957033:group", "8:20,1", "12:10,2", "20:10,1.5", "00:10,0.2"]
+    ]
+    每个子列表的第一个元素是聊天流标识符，后续元素是"时间,频率"格式
+    表示从该时间开始使用该频率，直到下一个时间点
+    """
+
     auto_focus_threshold: float = 1.0
     """自动切换到专注聊天的阈值，越低越容易进入专注聊天"""
 
     exit_focus_threshold: float = 1.0
     """自动退出专注聊天的阈值，越低越容易退出专注聊天"""
+
+    def get_current_talk_frequency(self, chat_stream_id: str = None) -> float:
+        """
+        根据当前时间和聊天流获取对应的 talk_frequency
+        
+        Args:
+            chat_stream_id: 聊天流ID，格式为 "platform:chat_id:type"
+        
+        Returns:
+            float: 对应的频率值
+        """
+        # 优先检查聊天流特定的配置
+        if chat_stream_id and self.talk_frequency_adjust:
+            stream_frequency = self._get_stream_specific_frequency(chat_stream_id)
+            if stream_frequency is not None:
+                return stream_frequency
+        
+        # 如果没有聊天流特定配置，检查全局时段配置
+        if self.time_based_talk_frequency:
+            global_frequency = self._get_time_based_frequency(self.time_based_talk_frequency)
+            if global_frequency is not None:
+                return global_frequency
+        
+        # 如果都没有匹配，返回默认值
+        return self.talk_frequency
+    
+    def _get_time_based_frequency(self, time_freq_list: list[str]) -> float:
+        """
+        根据时间配置列表获取当前时段的频率
+        
+        Args:
+            time_freq_list: 时间频率配置列表，格式为 ["HH:MM,frequency", ...]
+            
+        Returns:
+            float: 频率值，如果没有配置则返回 None
+        """
+        from datetime import datetime
+        current_time = datetime.now().strftime("%H:%M")
+        current_hour, current_minute = map(int, current_time.split(":"))
+        current_minutes = current_hour * 60 + current_minute
+        
+        # 解析时间频率配置
+        time_freq_pairs = []
+        for time_freq_str in time_freq_list:
+            try:
+                time_str, freq_str = time_freq_str.split(",")
+                hour, minute = map(int, time_str.split(":"))
+                frequency = float(freq_str)
+                minutes = hour * 60 + minute
+                time_freq_pairs.append((minutes, frequency))
+            except (ValueError, IndexError):
+                continue
+        
+        if not time_freq_pairs:
+            return None
+        
+        # 按时间排序
+        time_freq_pairs.sort(key=lambda x: x[0])
+        
+        # 查找当前时间对应的频率
+        current_frequency = None
+        for minutes, frequency in time_freq_pairs:
+            if current_minutes >= minutes:
+                current_frequency = frequency
+            else:
+                break
+        
+        # 如果当前时间在所有配置时间之前，使用最后一个时间段的频率（跨天逻辑）
+        if current_frequency is None and time_freq_pairs:
+            current_frequency = time_freq_pairs[-1][1]
+        
+        return current_frequency
+    
+    def _get_stream_specific_frequency(self, chat_stream_id: str) -> float:
+        """
+        获取特定聊天流在当前时间的频率
+        
+        Args:
+            chat_stream_id: 聊天流ID（哈希值）
+            
+        Returns:
+            float: 频率值，如果没有配置则返回 None
+        """
+        # 查找匹配的聊天流配置
+        for config_item in self.talk_frequency_adjust:
+            if not config_item or len(config_item) < 2:
+                continue
+                
+            stream_config_str = config_item[0]  # 例如 "qq:1026294844:group"
+            
+            # 解析配置字符串并生成对应的 chat_id
+            config_chat_id = self._parse_stream_config_to_chat_id(stream_config_str)
+            if config_chat_id is None:
+                continue
+            
+            # 比较生成的 chat_id
+            if config_chat_id != chat_stream_id:
+                continue
+            
+            # 使用通用的时间频率解析方法
+            return self._get_time_based_frequency(config_item[1:])
+        
+        return None
+    
+    def _parse_stream_config_to_chat_id(self, stream_config_str: str) -> str:
+        """
+        解析流配置字符串并生成对应的 chat_id
+        
+        Args:
+            stream_config_str: 格式为 "platform:id:type" 的字符串
+            
+        Returns:
+            str: 生成的 chat_id，如果解析失败则返回 None
+        """
+        try:
+            parts = stream_config_str.split(":")
+            if len(parts) != 3:
+                return None
+                
+            platform = parts[0]
+            id_str = parts[1] 
+            stream_type = parts[2]
+            
+            # 判断是否为群聊
+            is_group = stream_type == "group"
+            
+            # 使用与 ChatStream.get_stream_id 相同的逻辑生成 chat_id
+            import hashlib
+            if is_group:
+                components = [platform, str(id_str)]
+            else:
+                components = [platform, str(id_str), "private"]
+            key = "_".join(components)
+            return hashlib.md5(key.encode()).hexdigest()
+            
+        except (ValueError, IndexError):
+            return None
 
 
 @dataclass

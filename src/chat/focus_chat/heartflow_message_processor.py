@@ -180,7 +180,8 @@ class HeartFCMessageReceiver:
             # 7. 日志记录
             mes_name = chat.group_info.group_name if chat.group_info else "私聊"
             # current_time = time.strftime("%H:%M:%S", time.localtime(message.message_info.time))
-            logger.info(f"[{mes_name}]{userinfo.user_nickname}:{message.processed_plain_text}")
+            current_talk_frequency = global_config.chat.get_current_talk_frequency(chat.stream_id)
+            logger.info(f"[{mes_name}]{userinfo.user_nickname}:{message.processed_plain_text}[当前回复频率: {current_talk_frequency}]")
 
             # 8. 关系处理
             if global_config.relationship.enable_relationship:
