@@ -135,7 +135,7 @@ class PromptBuilder:
         if global_config.relationship.enable_relationship:
             for person in who_chat_in_group:
                 relationship_manager = get_relationship_manager()
-                relation_prompt += await relationship_manager.build_relationship_info(person)
+                relation_prompt += f"{await relationship_manager.build_relationship_info(person)}\n"
 
         mood_prompt = mood_manager.get_mood_prompt()
 
@@ -170,7 +170,7 @@ class PromptBuilder:
         message_list_before_now_half = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_stream.stream_id,
             timestamp=time.time(),
-            limit=global_config.focus_chat.observation_context_size * 0.5,
+            limit=int(global_config.focus_chat.observation_context_size * 0.5),
         )
         chat_talking_prompt_half = build_readable_messages(
             message_list_before_now_half,

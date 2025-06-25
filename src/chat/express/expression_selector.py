@@ -148,7 +148,7 @@ class ExpressionSelector:
                     expr["count"] = new_count
                     expr["last_active_time"] = time.time()
 
-                    logger.info(f"表达方式激活: 原count={current_count:.2f}, 增量={increment}, 新count={new_count:.2f}")
+                    # logger.info(f"表达方式激活: 原count={current_count:.2f}, 增量={increment}, 新count={new_count:.2f}")
                     break
 
             # 保存更新后的文件
