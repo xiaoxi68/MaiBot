@@ -11,7 +11,6 @@ import random
 from src.person_info.person_info import get_person_info_manager
 from src.chat.express.expression_selector import expression_selector
 import re
-import json
 import ast
 
 from src.person_info.relationship_manager import get_relationship_manager
@@ -95,9 +94,9 @@ class PromptBuilder:
     ) -> str:
         person_info_manager = get_person_info_manager()
         bot_person_id = person_info_manager.get_person_id("system", "bot_id")
-        
+
         short_impression = await person_info_manager.get_value(bot_person_id, "short_impression")
-        
+
         # 解析字符串形式的Python列表
         try:
             if isinstance(short_impression, str) and short_impression.strip():
@@ -108,12 +107,12 @@ class PromptBuilder:
         except (ValueError, SyntaxError) as e:
             logger.error(f"解析short_impression失败: {e}, 原始值: {short_impression}")
             short_impression = ["友好活泼", "人类"]
-        
+
         # 确保short_impression是列表格式且有足够的元素
         if not isinstance(short_impression, list) or len(short_impression) < 2:
             logger.warning(f"short_impression格式不正确: {short_impression}, 使用默认值")
             short_impression = ["友好活泼", "人类"]
-            
+
         personality = short_impression[0]
         identity = short_impression[1]
         prompt_personality = personality + "，" + identity
