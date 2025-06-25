@@ -88,7 +88,7 @@ def write_expressions(f, expressions: List[Dict[str, Any]], title: str):
         last_active = expr.get("last_active_time", time.time())
         f.write(f"场景: {expr['situation']}\n")
         f.write(f"表达: {expr['style']}\n")
-        f.write(f"计数: {count:.2f}\n")
+        f.write(f"计数: {count:.4f}\n")
         f.write(f"最后活跃: {format_time(last_active)}\n")
         f.write("-" * 40 + "\n")
 
