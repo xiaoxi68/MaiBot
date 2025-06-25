@@ -148,7 +148,7 @@ class PromptBuilder:
             read_mark=0.0,
             show_actions=True,
         )
-        
+
         message_list_before_now_half = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_stream.stream_id,
             timestamp=time.time(),
