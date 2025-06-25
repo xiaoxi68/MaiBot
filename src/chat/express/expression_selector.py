@@ -110,7 +110,7 @@ class ExpressionSelector:
 
     def update_expression_count(self, chat_id: str, expression: Dict[str, str], base_multiplier: float = 1.5):
         """更新表达方式的count值
-        
+
         Args:
             chat_id: 聊天ID
             expression: 表达方式字典
@@ -142,7 +142,7 @@ class ExpressionSelector:
                     "style"
                 ):
                     current_count = expr.get("count", 1)
-                    
+
                     # 计算动态倍数：count值越高，增加倍数越小
                     if current_count <= 1:
                         # count <= 1时使用基础倍数
@@ -153,15 +153,17 @@ class ExpressionSelector:
                         # 这样count=2时倍数约为1.15，count=5时倍数约为1.06
                         decay_factor = 0.3
                         dynamic_multiplier = base_multiplier / (1 + (current_count - 1) * decay_factor)
-                        
+
                         # 确保倍数不低于1.01（至少要有一点增长）
                         dynamic_multiplier = max(dynamic_multiplier, 1.01)
-                    
+
                     new_count = current_count * dynamic_multiplier
                     expr["count"] = new_count
                     expr["last_active_time"] = time.time()
-                    
-                    logger.debug(f"表达方式激活: 原count={current_count:.2f}, 倍数={dynamic_multiplier:.3f}, 新count={new_count:.2f}")
+
+                    logger.debug(
+                        f"表达方式激活: 原count={current_count:.2f}, 倍数={dynamic_multiplier:.3f}, 新count={new_count:.2f}"
+                    )
                     break
 
             # 保存更新后的文件
