@@ -124,14 +124,12 @@ class RelationshipManager:
         if not person_name or person_name == "none":
             return ""
         short_impression = await person_info_manager.get_value(person_id, "short_impression")
-        
 
-        
         nickname_str = await person_info_manager.get_value(person_id, "nickname")
         platform = await person_info_manager.get_value(person_id, "platform")
-        
+
         if person_name == nickname_str and not short_impression:
-            return ""        
+            return ""
 
         if person_name == nickname_str:
             relation_prompt = f"'{person_name}' :"
