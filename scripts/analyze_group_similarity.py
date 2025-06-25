@@ -194,4 +194,3 @@ def analyze_group_similarity():
 
 if __name__ == "__main__":
     analyze_group_similarity()
-
