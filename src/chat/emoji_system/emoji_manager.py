@@ -309,7 +309,11 @@ async def clear_temp_emoji() -> None:
 
     logger.info("[清理] 开始清理缓存...")
 
-    for need_clear in (os.path.join(BASE_DIR, "emoji"), os.path.join(BASE_DIR, "image"), os.path.join(BASE_DIR, "images")):
+    for need_clear in (
+        os.path.join(BASE_DIR, "emoji"),
+        os.path.join(BASE_DIR, "image"),
+        os.path.join(BASE_DIR, "images"),
+    ):
         if os.path.exists(need_clear):
             files = os.listdir(need_clear)
             # 如果文件数超过100就全部删除
