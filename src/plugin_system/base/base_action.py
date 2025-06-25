@@ -322,6 +322,7 @@ class BaseAction(ABC):
                 command=command_data,
                 stream_id=self.chat_id,
                 storage_message=storage_message,
+                display_message=display_message
             )
 
             if success:
