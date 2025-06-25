@@ -10,7 +10,7 @@
 
 from typing import Tuple, Any, Dict, List
 from src.common.logger import get_logger
-from src.chat.focus_chat.replyer.default_generator import DefaultReplyer
+from src.chat.replyer.default_generator import DefaultReplyer
 from src.chat.message_receive.chat_stream import get_chat_manager
 
 logger = get_logger("generator_api")
