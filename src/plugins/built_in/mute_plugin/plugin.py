@@ -115,7 +115,7 @@ class MuteAction(BaseAction):
             if allowed_group == current_group_key:
                 logger.info(f"{self.log_prefix} 群组 {current_group_key} 有禁言动作权限")
                 return True, None
-
+    
         logger.warning(f"{self.log_prefix} 群组 {current_group_key} 没有禁言动作权限")
         return False, "当前群组没有使用禁言动作的权限"
 
@@ -125,10 +125,6 @@ class MuteAction(BaseAction):
 
         # 首先检查群组权限
         has_permission, permission_error = self._check_group_permission()
-        if not has_permission:
-            logger.error(f"{self.log_prefix} 权限检查失败: {permission_error}")
-            # 不发送错误消息，静默拒绝
-            return False, permission_error
 
         # 获取参数
         target = self.action_data.get("target")
@@ -190,6 +186,32 @@ class MuteAction(BaseAction):
 
         # 获取模板化消息
         message = self._get_template_message(target, time_str, reason)
+        
+        if not has_permission:
+            logger.warning(f"{self.log_prefix} 权限检查失败: {permission_error}")
+            result_status, result_message = await generator_api.rewrite_reply(
+                chat_stream=self.chat_stream,
+                reply_data={
+                    "raw_reply": "我想禁言{target}，但是我没有权限",
+                    "reason": "表达自己没有在这个群禁言的能力",
+                },
+            )
+            
+            if result_status:
+                for reply_seg in result_message:
+                    data = reply_seg[1]
+                    await self.send_text(data)
+                    
+            await self.store_action_info(
+                action_build_into_prompt=True,
+                action_prompt_display=f"尝试禁言了用户 {target}，但是没有权限，无法禁言",
+                action_done=True,
+            )
+            
+
+                
+            # 不发送错误消息，静默拒绝
+            return False, permission_error
 
         result_status, result_message = await generator_api.rewrite_reply(
             chat_stream=self.chat_stream,

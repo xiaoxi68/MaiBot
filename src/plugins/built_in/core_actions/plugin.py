@@ -117,7 +117,7 @@ class EmojiAction(BaseAction):
     normal_activation_type = ActionActivationType.RANDOM
     mode_enable = ChatMode.ALL
     parallel_action = True
-    random_activation_probability = 0.1  # 默认值，可通过配置覆盖
+    random_activation_probability = 0.2  # 默认值，可通过配置覆盖
 
     # 动作基本信息
     action_name = "emoji"

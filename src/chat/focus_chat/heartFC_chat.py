@@ -112,6 +112,13 @@ class HeartFChatting:
 
         self.memory_activator = MemoryActivator()
 
+        # 新增：消息计数器和疲惫阈值
+        self._message_count = 0  # 发送的消息计数
+        # 基于exit_focus_threshold动态计算疲惫阈值
+        # 基础值30条，通过exit_focus_threshold调节：threshold越小，越容易疲惫
+        self._message_threshold = max(10, int(30 * global_config.chat.exit_focus_threshold))
+        self._fatigue_triggered = False  # 是否已触发疲惫退出
+        
         # 初始化观察器
         self.observations: List[Observation] = []
         self._register_observations()
@@ -176,6 +183,8 @@ class HeartFChatting:
         # 如果没有指定版本号，则使用全局版本管理器的版本号
         actual_version = performance_version or get_hfc_version()
         self.performance_logger = HFCPerformanceLogger(chat_id, actual_version)
+
+        logger.info(f"{self.log_prefix} HeartFChatting 初始化完成，消息疲惫阈值: {self._message_threshold}条（基于exit_focus_threshold={global_config.chat.exit_focus_threshold}计算，仅在auto模式下生效）")
 
     def _register_observations(self):
         """注册所有观察器"""
@@ -289,6 +298,9 @@ class HeartFChatting:
             return
 
         try:
+            # 重置消息计数器，开始新的focus会话
+            self.reset_message_count()
+            
             # 标记为活动状态，防止重复启动
             self._loop_active = True
 
@@ -1164,6 +1176,24 @@ class HeartFChatting:
                 command = action_data["_system_command"]
                 logger.debug(f"{self.log_prefix} 从action_data中获取系统命令: {command}")
 
+            # 新增：消息计数和疲惫检查
+            if action == "reply" and success:
+                self._message_count += 1
+                current_threshold = self._get_current_fatigue_threshold()
+                logger.info(f"{self.log_prefix} 已发送第 {self._message_count} 条消息（动态阈值: {current_threshold}, exit_focus_threshold: {global_config.chat.exit_focus_threshold}）")
+                
+                # 检查是否达到疲惫阈值（只有在auto模式下才会自动退出）
+                if (global_config.chat.chat_mode == "auto" and 
+                    self._message_count >= current_threshold and 
+                    not self._fatigue_triggered):
+                    self._fatigue_triggered = True
+                    logger.info(f"{self.log_prefix} [auto模式] 已发送 {self._message_count} 条消息，达到疲惫阈值 {current_threshold}，麦麦感到疲惫了，准备退出专注聊天模式")
+                    # 设置系统命令，在下次循环检查时触发退出
+                    command = "stop_focus_chat"
+                elif (self._message_count >= current_threshold and 
+                      global_config.chat.chat_mode != "auto"):
+                    logger.info(f"{self.log_prefix} [非auto模式] 已发送 {self._message_count} 条消息，达到疲惫阈值 {current_threshold}，但非auto模式不会自动退出")
+
             logger.debug(f"{self.log_prefix} 麦麦执行了'{action}', 返回结果'{success}', '{reply_text}', '{command}'")
 
             return success, reply_text, command
@@ -1173,10 +1203,44 @@ class HeartFChatting:
             traceback.print_exc()
             return False, "", ""
 
+    def _get_current_fatigue_threshold(self) -> int:
+        """动态获取当前的疲惫阈值，基于exit_focus_threshold配置
+        
+        Returns:
+            int: 当前的疲惫阈值
+        """
+        return max(10, int(30 / global_config.chat.exit_focus_threshold))
+
+    def get_message_count_info(self) -> dict:
+        """获取消息计数信息
+        
+        Returns:
+            dict: 包含消息计数信息的字典
+        """
+        current_threshold = self._get_current_fatigue_threshold()
+        return {
+            "current_count": self._message_count,
+            "threshold": current_threshold,
+            "fatigue_triggered": self._fatigue_triggered,
+            "remaining": max(0, current_threshold - self._message_count)
+        }
+
+    def reset_message_count(self):
+        """重置消息计数器（用于重新启动focus模式时）"""
+        self._message_count = 0
+        self._fatigue_triggered = False
+        logger.info(f"{self.log_prefix} 消息计数器已重置")
+
     async def shutdown(self):
         """优雅关闭HeartFChatting实例，取消活动循环任务"""
         logger.info(f"{self.log_prefix} 正在关闭HeartFChatting...")
         self._shutting_down = True  # <-- 在开始关闭时设置标志位
+
+        # 记录最终的消息统计
+        if self._message_count > 0:
+            logger.info(f"{self.log_prefix} 本次focus会话共发送了 {self._message_count} 条消息")
+            if self._fatigue_triggered:
+                logger.info(f"{self.log_prefix} 因疲惫而退出focus模式")
 
         # 取消循环任务
         if self._loop_task and not self._loop_task.done():
@@ -1205,6 +1269,9 @@ class HeartFChatting:
             logger.info(f"{self.log_prefix} 性能统计已完成")
         except Exception as e:
             logger.warning(f"{self.log_prefix} 完成性能统计时出错: {e}")
+
+        # 重置消息计数器，为下次启动做准备
+        self.reset_message_count()
 
         logger.info(f"{self.log_prefix} HeartFChatting关闭完成")
 

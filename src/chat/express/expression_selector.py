@@ -148,7 +148,7 @@ class ExpressionSelector:
                     expr["count"] = new_count
                     expr["last_active_time"] = time.time()
 
-                    # logger.info(f"表达方式激活: 原count={current_count:.2f}, 增量={increment}, 新count={new_count:.2f}")
+                    logger.info(f"表达方式激活: 原count={current_count:.3f}, 增量={increment}, 新count={new_count:.3f}")
                     break
 
             # 保存更新后的文件
@@ -238,7 +238,7 @@ class ExpressionSelector:
                     valid_expressions.append(expression)
 
                     # 对选中的表达方式count数+0.1
-                    self.update_expression_count(chat_id, expression, 0.0001)
+                    self.update_expression_count(chat_id, expression, 0.001)
 
             # logger.info(f"LLM从{len(all_expressions)}个情境中选择了{len(valid_expressions)}个")
             return valid_expressions

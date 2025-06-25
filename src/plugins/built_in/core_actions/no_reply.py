@@ -327,7 +327,7 @@ class NoReplyAction(BaseAction):
                             # 使用 utils_small 模型
                             small_model = getattr(available_models, "utils_small", None)
 
-                            print(judge_prompt)
+                            logger.debug(judge_prompt)
 
                             if small_model:
                                 # 使用小模型进行判断
