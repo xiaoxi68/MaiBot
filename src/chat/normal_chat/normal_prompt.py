@@ -163,7 +163,7 @@ class PromptBuilder:
             show_actions=True,
         )
         
-        expressions = expression_selector.select_suitable_expressions_llm(chat_stream.stream_id, chat_talking_prompt_half)
+        expressions = await expression_selector.select_suitable_expressions_llm(chat_stream.stream_id, chat_talking_prompt_half)
         style_habbits = []
         grammar_habbits = []
         if expressions:
