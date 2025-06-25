@@ -303,16 +303,16 @@ def _ensure_emoji_dir() -> None:
 
 async def clear_temp_emoji() -> None:
     """清理临时表情包
-    清理/data/emoji和/data/image目录下的所有文件
+    清理/data/emoji、/data/image和/data/images目录下的所有文件
     当目录中文件数超过100时，会全部删除
     """
 
     logger.info("[清理] 开始清理缓存...")
 
-    for need_clear in (os.path.join(BASE_DIR, "emoji"), os.path.join(BASE_DIR, "image")):
+    for need_clear in (os.path.join(BASE_DIR, "emoji"), os.path.join(BASE_DIR, "image"), os.path.join(BASE_DIR, "images")):
         if os.path.exists(need_clear):
             files = os.listdir(need_clear)
-            # 如果文件数超过50就全部删除
+            # 如果文件数超过100就全部删除
             if len(files) > 100:
                 for filename in files:
                     file_path = os.path.join(need_clear, filename)
