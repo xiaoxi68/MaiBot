@@ -49,13 +49,6 @@ class ClassicalWillingManager(BaseWillingManager):
 
         reply_probability = min(max((current_willing - 0.5), 0.01) * 2, 1)
 
-        # 检查群组权限（如果是群聊）
-        if (
-            willing_info.group_info
-            and willing_info.group_info.group_id in global_config.normal_chat.talk_frequency_down_groups
-        ):
-            reply_probability = reply_probability / global_config.normal_chat.down_frequency_rate
-
         if is_emoji_not_reply:
             reply_probability = 0
 

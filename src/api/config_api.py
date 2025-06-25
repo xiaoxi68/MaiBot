@@ -53,7 +53,6 @@ class APIBotConfig:
     thinking_timeout: int  # 思考超时时间
     willing_mode: str  # 意愿模式
     response_interested_rate_amplifier: float  # 回复兴趣率放大器
-    down_frequency_rate: float  # 降低频率率
     emoji_response_penalty: float  # 表情回复惩罚
     mentioned_bot_inevitable_reply: bool  # 提及 bot 必然回复
     at_bot_inevitable_reply: bool  # @bot 必然回复

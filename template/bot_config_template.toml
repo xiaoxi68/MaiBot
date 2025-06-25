@@ -114,7 +114,6 @@ thinking_timeout = 120 # 麦麦最长思考时间，超过这个时间的思考�
 
 willing_mode = "classical" # 回复意愿模式 —— 经典模式：classical，mxp模式：mxp，自定义模式：custom（需要你自己实现）
 
-
 response_interested_rate_amplifier = 1 # 麦麦回复兴趣度放大系数
 
 emoji_response_penalty = 0 # 对其他人发的表情包回复惩罚系数，设为0为不回复单个表情包，减少单独回复表情包的概率
@@ -123,8 +122,6 @@ at_bot_inevitable_reply = true # @bot 必然回复（包含提及）
 
 enable_planner = false # 是否启用动作规划器（实验性功能，与focus_chat共享actions）
 
-down_frequency_rate = 3 # 降低回复频率的群组回复意愿降低系数 除法
-talk_frequency_down_groups = []  #降低回复频率的群号码
 
 [focus_chat] #专注聊天
 think_interval = 3 # 思考间隔 单位秒，可以有效减少消耗

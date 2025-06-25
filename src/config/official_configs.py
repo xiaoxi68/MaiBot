@@ -277,12 +277,6 @@ class NormalChatConfig(ConfigBase):
     response_interested_rate_amplifier: float = 1.0
     """回复兴趣度放大系数"""
 
-    talk_frequency_down_groups: list[str] = field(default_factory=lambda: [])
-    """降低回复频率的群组"""
-
-    down_frequency_rate: float = 3.0
-    """降低回复频率的群组回复意愿降低系数"""
-
     emoji_response_penalty: float = 0.0
     """表情包回复惩罚系数"""
 
