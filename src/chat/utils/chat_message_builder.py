@@ -599,7 +599,6 @@ def build_readable_messages(
         copy_messages.sort(key=lambda x: x.get("time", 0))
 
     if read_mark <= 0:
-        print(f"read_mark: {read_mark}")
         # 没有有效的 read_mark，直接格式化所有消息
         formatted_string, _, pic_id_mapping, _ = _build_readable_messages_internal(
             copy_messages, replace_bot_name, merge_messages, timestamp_mode, truncate

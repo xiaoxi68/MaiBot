@@ -490,7 +490,7 @@ class DefaultReplyer:
             learnt_style_expressions,
             learnt_grammar_expressions,
             personality_expressions,
-        ) = await expression_learner.get_expression_by_chat_id(chat_stream.stream_id)
+        ) = expression_learner.get_expression_by_chat_id(chat_stream.stream_id)
 
         style_habbits = []
         grammar_habbits = []

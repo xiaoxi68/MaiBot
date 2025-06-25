@@ -109,6 +109,7 @@ class LLMRequest:
     def __init__(self, model: dict, **kwargs):
         # 将大写的配置键转换为小写并从config中获取实际值
         try:
+            # print(f"model['provider']: {model['provider']}")
             self.api_key = os.environ[f"{model['provider']}_KEY"]
             self.base_url = os.environ[f"{model['provider']}_BASE_URL"]
         except AttributeError as e:

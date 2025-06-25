@@ -29,7 +29,7 @@ def init_prompt() -> None:
 4. 思考有没有特殊的梗，一并总结成语言风格
 5. 例子仅供参考，请严格根据群聊内容总结!!!
 注意：总结成如下格式的规律，总结的内容要详细，但具有概括性：
-当"xxxxxx"时，可以"xxxxxx", xxxxxx不超过20个字
+当"xxxxxx"时，可以"xxxxxx", xxxxxx不超过20个字，为特定句式或表达
 
 例如：
 当"对某件事表示十分惊叹，有些意外"时，使用"我嘞个xxxx"
@@ -73,7 +73,7 @@ class ExpressionLearner:
             request_type="expressor.learner",
         )
 
-    async def get_expression_by_chat_id(self, chat_id: str) -> Tuple[List[Dict[str, str]], List[Dict[str, str]]]:
+    def get_expression_by_chat_id(self, chat_id: str) -> Tuple[List[Dict[str, str]], List[Dict[str, str]]]:
         """
         读取/data/expression/learnt/{chat_id}/expressions.json和/data/expression/personality/expressions.json
         返回(learnt_expressions, personality_expressions)

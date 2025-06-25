@@ -1,96 +1,16 @@
 import time
 import random
-from typing import List, Dict
+from typing import List
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 from src.chat.heart_flow.observation.observation import Observation
-from src.llm_models.utils_model import LLMRequest
-from src.config.config import global_config
 from src.common.logger import get_logger
-from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.message_receive.chat_stream import get_chat_manager
 from .base_processor import BaseProcessor
 from src.chat.focus_chat.info.info_base import InfoBase
 from src.chat.focus_chat.info.expression_selection_info import ExpressionSelectionInfo
-from src.chat.express.exprssion_learner import get_expression_learner
-from json_repair import repair_json
-import json
+from src.chat.express.expression_selector import expression_selector
 
 logger = get_logger("processor")
-
-
-def weighted_sample_no_replacement(items, weights, k) -> list:
-    """
-    加权随机抽样，不允许重复
-
-    Args:
-        items: 待抽样的项目列表
-        weights: 对应项目的权重列表
-        k: 抽样数量
-
-    Returns:
-        抽样结果列表
-    """
-    if not items or k <= 0:
-        return []
-
-    k = min(k, len(items))
-    selected = []
-    remaining_items = list(items)
-    remaining_weights = list(weights)
-
-    for _ in range(k):
-        if not remaining_items:
-            break
-
-        # 计算累积权重
-        total_weight = sum(remaining_weights)
-        if total_weight <= 0:
-            # 如果权重都为0或负数，则随机选择
-            selected_index = random.randint(0, len(remaining_items) - 1)
-        else:
-            # 加权随机选择
-            rand_val = random.uniform(0, total_weight)
-            cumulative_weight = 0
-            selected_index = 0
-            for i, weight in enumerate(remaining_weights):
-                cumulative_weight += weight
-                if rand_val <= cumulative_weight:
-                    selected_index = i
-                    break
-
-        # 添加选中的项目
-        selected.append(remaining_items[selected_index])
-        # 移除已选中的项目
-        remaining_items.pop(selected_index)
-        remaining_weights.pop(selected_index)
-
-    return selected
-
-
-def init_prompt():
-    expression_evaluation_prompt = """
-你的名字是{bot_name}
-
-以下是正在进行的聊天内容：
-{chat_observe_info}
-
-以下是可选的表达情境：
-{all_situations}
-
-请你分析聊天内容的语境、情绪、话题类型，从上述情境中选择最适合当前聊天情境的10个情境。
-考虑因素包括：
-1. 聊天的情绪氛围（轻松、严肃、幽默等）
-2. 话题类型（日常、技术、游戏、情感等）
-3. 情境与当前语境的匹配度
-
-请以JSON格式输出，只需要输出选中的情境编号：
-{{
-    "selected_situations": [1, 3, 5, 7, 9, 12, 15, 18, 21, 25]
-}}
-
-请严格按照JSON格式输出，不要包含其他内容：
-"""
-    Prompt(expression_evaluation_prompt, "expression_evaluation_prompt")
 
 
 class ExpressionSelectorProcessor(BaseProcessor):
@@ -101,16 +21,9 @@ class ExpressionSelectorProcessor(BaseProcessor):
 
         self.subheartflow_id = subheartflow_id
         self.last_selection_time = 0
-        self.selection_interval = 40  # 1分钟间隔
+        self.selection_interval = 10  # 40秒间隔
         self.cached_expressions = []  # 缓存上一次选择的表达方式
 
-        # 表达方式选择模式
-        self.selection_mode = getattr(global_config.expression, "selection_mode", "llm")  # "llm" 或 "random"
-
-        self.llm_model = LLMRequest(
-            model=global_config.model.utils_small,
-            request_type="focus.processor.expression_selector",
-        )
 
         name = get_chat_manager().get_stream_name(self.subheartflow_id)
         self.log_prefix = f"[{name}] 表达选择器"
@@ -158,26 +71,20 @@ class ExpressionSelectorProcessor(BaseProcessor):
             return []
 
         try:
-            # 根据模式选择表达方式
-            # LLM模式：调用LLM选择15个，然后随机选5个
-            selected_expressions = await self._select_suitable_expressions_llm(chat_info)
+            # LLM模式：调用LLM选择5-10个，然后随机选5个
+            selected_expressions = await expression_selector.select_suitable_expressions_llm(self.subheartflow_id, chat_info)
             cache_size = len(selected_expressions) if selected_expressions else 0
             mode_desc = f"LLM模式（已缓存{cache_size}个）"
 
             if selected_expressions:
-                # 缓存选择的表达方式
                 self.cached_expressions = selected_expressions
-                # 更新最后选择时间
                 self.last_selection_time = current_time
-
-                # 从选择的表达方式中随机选5个
-                final_expressions = random.sample(selected_expressions, min(4, len(selected_expressions)))
 
                 # 创建表达选择信息
                 expression_info = ExpressionSelectionInfo()
-                expression_info.set_selected_expressions(final_expressions)
+                expression_info.set_selected_expressions(selected_expressions)
 
-                logger.info(f"{self.log_prefix} 为当前聊天选择了{len(final_expressions)}个表达方式（{mode_desc}）")
+                logger.info(f"{self.log_prefix} 为当前聊天选择了{len(selected_expressions)}个表达方式（{mode_desc}）")
                 return [expression_info]
             else:
                 logger.debug(f"{self.log_prefix} 未选择任何表达方式")
@@ -187,104 +94,3 @@ class ExpressionSelectorProcessor(BaseProcessor):
             logger.error(f"{self.log_prefix} 处理表达方式选择时出错: {e}")
             return []
 
-    async def _get_random_expressions(self) -> tuple[List[Dict], List[Dict], List[Dict]]:
-        """随机获取表达方式：20个style，20个grammar，20个personality"""
-        expression_learner = get_expression_learner()
-
-        # 获取所有表达方式
-        (
-            learnt_style_expressions,
-            learnt_grammar_expressions,
-            personality_expressions,
-        ) = await expression_learner.get_expression_by_chat_id(self.subheartflow_id)
-
-        # 随机选择
-        selected_style = random.sample(learnt_style_expressions, min(15, len(learnt_style_expressions)))
-        selected_grammar = random.sample(learnt_grammar_expressions, min(15, len(learnt_grammar_expressions)))
-        selected_personality = random.sample(personality_expressions, min(5, len(personality_expressions)))
-
-        return selected_style, selected_grammar, selected_personality
-
-    async def _select_suitable_expressions_llm(self, chat_info: str) -> List[Dict[str, str]]:
-        """使用LLM选择适合的表达方式"""
-
-        # 1. 获取35个随机表达方式
-        style_exprs, grammar_exprs, personality_exprs = await self._get_random_expressions()
-
-        # 2. 构建所有表达方式的索引和情境列表
-        all_expressions = []
-        all_situations = []
-
-        # 添加style表达方式
-        for expr in style_exprs:
-            if isinstance(expr, dict) and "situation" in expr and "style" in expr:
-                expr_with_type = expr.copy()
-                expr_with_type["type"] = "style"
-                all_expressions.append(expr_with_type)
-                all_situations.append(f"{len(all_expressions)}. [语言风格] {expr['situation']}")
-
-        # 添加grammar表达方式
-        for expr in grammar_exprs:
-            if isinstance(expr, dict) and "situation" in expr and "style" in expr:
-                expr_with_type = expr.copy()
-                expr_with_type["type"] = "grammar"
-                all_expressions.append(expr_with_type)
-                all_situations.append(f"{len(all_expressions)}. [句法语法] {expr['situation']}")
-
-        # 添加personality表达方式
-        for expr in personality_exprs:
-            if isinstance(expr, dict) and "situation" in expr and "style" in expr:
-                expr_with_type = expr.copy()
-                expr_with_type["type"] = "personality"
-                all_expressions.append(expr_with_type)
-                all_situations.append(f"{len(all_expressions)}. [个性表达] {expr['situation']}")
-
-        if not all_expressions:
-            logger.warning(f"{self.log_prefix} 没有找到可用的表达方式")
-            return []
-
-        all_situations_str = "\n".join(all_situations)
-
-        # 3. 构建prompt（只包含情境，不包含完整的表达方式）
-        prompt = (await global_prompt_manager.get_prompt_async("expression_evaluation_prompt")).format(
-            bot_name=global_config.bot.nickname,
-            chat_observe_info=chat_info,
-            all_situations=all_situations_str,
-        )
-
-        # 4. 调用LLM
-        try:
-            content, _ = await self.llm_model.generate_response_async(prompt=prompt)
-
-            # logger.info(f"{self.log_prefix} LLM返回结果: {content}")
-
-            if not content:
-                logger.warning(f"{self.log_prefix} LLM返回空结果")
-                return []
-
-            # 5. 解析结果
-            result = repair_json(content)
-            if isinstance(result, str):
-                result = json.loads(result)
-
-            if not isinstance(result, dict) or "selected_situations" not in result:
-                logger.error(f"{self.log_prefix} LLM返回格式错误")
-                return []
-
-            selected_indices = result["selected_situations"]
-
-            # 根据索引获取完整的表达方式
-            valid_expressions = []
-            for idx in selected_indices:
-                if isinstance(idx, int) and 1 <= idx <= len(all_expressions):
-                    valid_expressions.append(all_expressions[idx - 1])  # 索引从1开始
-
-            logger.info(f"{self.log_prefix} LLM从{len(all_expressions)}个情境中选择了{len(valid_expressions)}个")
-            return valid_expressions
-
-        except Exception as e:
-            logger.error(f"{self.log_prefix} LLM处理表达方式选择时出错: {e}")
-            return []
-
-
-init_prompt()
