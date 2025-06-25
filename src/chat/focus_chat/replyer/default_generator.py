@@ -19,6 +19,8 @@ from src.chat.utils.chat_message_builder import build_readable_messages, get_raw
 from src.chat.express.exprssion_learner import get_expression_learner
 import time
 import random
+import ast
+from src.person_info.person_info import get_person_info_manager
 from datetime import datetime
 import re
 
@@ -277,6 +279,8 @@ class DefaultReplyer:
         reply_data=None,
     ) -> str:
         chat_stream = self.chat_stream
+        person_info_manager = get_person_info_manager()
+        bot_person_id = person_info_manager.get_person_id("system", "bot_id")
 
         is_group_chat = bool(chat_stream.group_info)
 
@@ -389,8 +393,26 @@ class DefaultReplyer:
             bot_nickname = f",也有人叫你{','.join(global_config.bot.alias_names)}"
         else:
             bot_nickname = ""
-        bot_core_personality = global_config.personality.personality_core
-        indentify_block = f"你的名字是{bot_name}{bot_nickname}，你{bot_core_personality}："
+        short_impression = await person_info_manager.get_value(bot_person_id, "short_impression")
+                # 解析字符串形式的Python列表
+        try:
+            if isinstance(short_impression, str) and short_impression.strip():
+                short_impression = ast.literal_eval(short_impression)
+            elif not short_impression:
+                logger.warning("short_impression为空，使用默认值")
+                short_impression = ["友好活泼", "人类"]
+        except (ValueError, SyntaxError) as e:
+            logger.error(f"解析short_impression失败: {e}, 原始值: {short_impression}")
+            short_impression = ["友好活泼", "人类"]
+        
+        # 确保short_impression是列表格式且有足够的元素
+        if not isinstance(short_impression, list) or len(short_impression) < 2:
+            logger.warning(f"short_impression格式不正确: {short_impression}, 使用默认值")
+            short_impression = ["友好活泼", "人类"]
+        personality = short_impression[0]
+        identity = short_impression[1]
+        prompt_personality = personality + "，" + identity
+        indentify_block = f"你的名字是{bot_name}{bot_nickname}，你{prompt_personality}："
 
         if sender:
             reply_target_block = f"现在{sender}说的:{target}。引起了你的注意，你想要在群里发言或者回复这条消息。"

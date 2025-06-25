@@ -58,7 +58,7 @@ class Individuality:
         self.name = bot_nickname
 
         # 检查配置变化，如果变化则清空
-        await self._check_config_and_clear_if_changed(
+        personality_changed, identity_changed = await self._check_config_and_clear_if_changed(
             bot_nickname, personality_core, personality_sides, identity_detail
         )
 
@@ -96,11 +96,60 @@ class Individuality:
             await person_info_manager.update_one_field(
                 self.bot_person_id, "impression", impression_text, data=update_data
             )
-            logger.info("已将完整人设更新到bot的impression中")
+            logger.debug("已将完整人设更新到bot的impression中")
 
-        # 创建压缩版本的short_impression
-        asyncio.create_task(self._create_compressed_impression(personality_core, personality_sides, identity_detail))
-
+        # 根据变化情况决定是否重新创建
+        personality_result = None
+        identity_result = None
+        
+        if personality_changed:
+            logger.info("检测到人格配置变化，重新生成压缩版本")
+            personality_result = await self._create_personality(personality_core, personality_sides)
+        else:
+            logger.info("人格配置未变化，使用缓存版本")
+            # 从缓存中获取已有的personality结果
+            existing_short_impression = await person_info_manager.get_value(self.bot_person_id, "short_impression")
+            if existing_short_impression:
+                try:
+                    existing_data = json.loads(existing_short_impression) if isinstance(existing_short_impression, str) else existing_short_impression
+                    if isinstance(existing_data, list) and len(existing_data) >= 1:
+                        personality_result = existing_data[0]
+                except (json.JSONDecodeError, TypeError, IndexError):
+                    logger.warning("无法解析现有的short_impression，将重新生成人格部分")
+                    personality_result = await self._create_personality(personality_core, personality_sides)
+            else:
+                logger.info("未找到现有的人格缓存，重新生成")
+                personality_result = await self._create_personality(personality_core, personality_sides)
+        
+        if identity_changed:
+            logger.info("检测到身份配置变化，重新生成压缩版本")
+            identity_result = await self._create_identity(identity_detail)
+        else:
+            logger.info("身份配置未变化，使用缓存版本")
+            # 从缓存中获取已有的identity结果
+            existing_short_impression = await person_info_manager.get_value(self.bot_person_id, "short_impression")
+            if existing_short_impression:
+                try:
+                    existing_data = json.loads(existing_short_impression) if isinstance(existing_short_impression, str) else existing_short_impression
+                    if isinstance(existing_data, list) and len(existing_data) >= 2:
+                        identity_result = existing_data[1]
+                except (json.JSONDecodeError, TypeError, IndexError):
+                    logger.warning("无法解析现有的short_impression，将重新生成身份部分")
+                    identity_result = await self._create_identity(identity_detail)
+            else:
+                logger.info("未找到现有的身份缓存，重新生成")
+                identity_result = await self._create_identity(identity_detail)
+        
+        result = [personality_result, identity_result]
+        
+        # 更新short_impression字段
+        if personality_result and identity_result:
+            person_info_manager = get_person_info_manager()
+            await person_info_manager.update_one_field(self.bot_person_id, "short_impression", result)
+            logger.info("已将人设构建")
+        else:
+            logger.error("人设构建失败")
+            
         asyncio.create_task(self.express_style.extract_and_store_personality_expressions())
 
     def to_dict(self) -> dict:
@@ -271,31 +320,61 @@ class Individuality:
 
     def _get_config_hash(
         self, bot_nickname: str, personality_core: str, personality_sides: list, identity_detail: list
-    ) -> str:
-        """获取当前personality和identity配置的哈希值"""
-        config_data = {
+    ) -> tuple[str, str]:
+        """获取personality和identity配置的哈希值
+        
+        Returns:
+            tuple: (personality_hash, identity_hash)
+        """
+        # 人格配置哈希
+        personality_config = {
             "nickname": bot_nickname,
             "personality_core": personality_core,
             "personality_sides": sorted(personality_sides),
-            "identity_detail": sorted(identity_detail),
+            "compress_personality": global_config.personality.compress_personality,
         }
-        config_str = json.dumps(config_data, sort_keys=True)
-        return hashlib.md5(config_str.encode("utf-8")).hexdigest()
+        personality_str = json.dumps(personality_config, sort_keys=True)
+        personality_hash = hashlib.md5(personality_str.encode("utf-8")).hexdigest()
+        
+        # 身份配置哈希
+        identity_config = {
+            "identity_detail": sorted(identity_detail),
+            "compress_identity": global_config.identity.compress_indentity,
+        }
+        identity_str = json.dumps(identity_config, sort_keys=True)
+        identity_hash = hashlib.md5(identity_str.encode("utf-8")).hexdigest()
+        
+        return personality_hash, identity_hash
 
     async def _check_config_and_clear_if_changed(
         self, bot_nickname: str, personality_core: str, personality_sides: list, identity_detail: list
-    ):
-        """检查配置是否发生变化，如果变化则清空info_list"""
+    ) -> tuple[bool, bool]:
+        """检查配置是否发生变化，如果变化则清空相应缓存
+        
+        Returns:
+            tuple: (personality_changed, identity_changed)
+        """
         person_info_manager = get_person_info_manager()
-        current_hash = self._get_config_hash(bot_nickname, personality_core, personality_sides, identity_detail)
+        current_personality_hash, current_identity_hash = self._get_config_hash(
+            bot_nickname, personality_core, personality_sides, identity_detail
+        )
 
         meta_info = self._load_meta_info()
-        stored_hash = meta_info.get("config_hash")
+        stored_personality_hash = meta_info.get("personality_hash")
+        stored_identity_hash = meta_info.get("identity_hash")
 
-        if current_hash != stored_hash:
-            logger.info("检测到人格配置发生变化，将清空原有的关键词缓存。")
+        personality_changed = current_personality_hash != stored_personality_hash
+        identity_changed = current_identity_hash != stored_identity_hash
 
-            # 清空数据库中的info_list
+        if personality_changed:
+            logger.info("检测到人格配置发生变化")
+
+        if identity_changed:
+            logger.info("检测到身份配置发生变化")
+
+        # 如果任何一个发生变化，都需要清空info_list（因为这影响整体人设）
+        if personality_changed or identity_changed:
+            logger.info("将清空原有的关键词缓存")
             update_data = {
                 "platform": "system",
                 "user_id": "bot_id",
@@ -304,9 +383,14 @@ class Individuality:
             }
             await person_info_manager.update_one_field(self.bot_person_id, "info_list", [], data=update_data)
 
-            # 更新元信息文件，重置计数器
-            new_meta_info = {"config_hash": current_hash}
-            self._save_meta_info(new_meta_info)
+        # 更新元信息文件
+        new_meta_info = {
+            "personality_hash": current_personality_hash,
+            "identity_hash": current_identity_hash,
+        }
+        self._save_meta_info(new_meta_info)
+
+        return personality_changed, identity_changed
 
     def _load_meta_info(self) -> dict:
         """从JSON文件中加载元信息"""
@@ -368,8 +452,8 @@ class Individuality:
                 logger.error(f"解析info_list失败: {info_list_json}")
         return keywords
 
-    async def _create_compressed_impression(
-        self, personality_core: str, personality_sides: list, identity_detail: list
+    async def _create_personality(
+        self, personality_core: str, personality_sides: list
     ) -> str:
         """使用LLM创建压缩版本的impression
 
@@ -381,30 +465,62 @@ class Individuality:
         Returns:
             str: 压缩后的impression文本
         """
+        logger.info("正在构建人格.........")
+        
+        
         # 核心人格保持不变
-        compressed_parts = []
+        personality_parts = []
         if personality_core:
-            compressed_parts.append(f"{personality_core}")
+            personality_parts.append(f"{personality_core}")
 
         # 准备需要压缩的内容
-        content_to_compress = []
-        if personality_sides:
-            content_to_compress.append(f"人格特质: {'、'.join(personality_sides)}")
-        if identity_detail:
-            content_to_compress.append(f"身份背景: {'、'.join(identity_detail)}")
+        if global_config.personality.compress_personality:
+            personality_to_compress = []
+            if personality_sides:
+                personality_to_compress.append(f"人格特质: {'、'.join(personality_sides)}")
+                
+                
+                prompt = f"""请将以下人格信息进行简洁压缩，保留主要内容，用简练的中文表达：
+{personality_to_compress}
 
-        if not content_to_compress:
-            # 如果没有需要压缩的内容，直接返回核心人格
-            result = "。".join(compressed_parts)
-            return result + "。" if result else ""
+要求：
+1. 保持原意不变，尽量使用原文
+2. 尽量简洁，不超过30字
+3. 直接输出压缩后的内容，不要解释"""
 
-        # 使用LLM压缩其他内容
-        try:
-            compress_content = "、".join(content_to_compress)
+                response, (_, _) = await self.model.generate_response_async(
+                    prompt=prompt,
+                )
+                
+                if response.strip():
+                    personality_parts.append(response.strip())
+                    logger.info(f"精简人格侧面: {response.strip()}")
+                else:
+                    logger.error(f"使用LLM压缩人设时出错: {response}")
+                if personality_parts:
+                    personality_result = "。".join(personality_parts)
+                else:
+                    personality_result = personality_core
+        else:
+            personality_result = personality_core
+            if personality_sides:
+                personality_result += "，".join(personality_sides)
+            
 
-            prompt = f"""请将以下人设信息进行简洁压缩，保留主要内容，用简练的中文表达：
+        return personality_result
 
-{compress_content}
+    async def _create_identity(self, identity_detail: list) -> str:
+        """使用LLM创建压缩版本的impression
+        """
+        logger.info("正在构建身份.........")
+        
+        if global_config.identity.compress_indentity:
+            identity_to_compress = []
+            if identity_detail:
+                identity_to_compress.append(f"身份背景: {'、'.join(identity_detail)}")
+
+            prompt = f"""请将以下身份信息进行简洁压缩，保留主要内容，用简练的中文表达：
+{identity_to_compress}
 
 要求：
 1. 保持原意不变，尽量使用原文
@@ -416,20 +532,16 @@ class Individuality:
             )
 
             if response.strip():
-                compressed_parts.append(response.strip())
-                logger.info(f"精简人格侧面: {response.strip()}")
+                identity_result = response.strip()
+                logger.info(f"精简身份: {identity_result}")
             else:
-                logger.error(f"使用LLM压缩人设时出错: {response}")
-        except Exception as e:
-            logger.error(f"使用LLM压缩人设时出错: {e}")
+                logger.error(f"使用LLM压缩身份时出错: {response}")
+        else:
+            identity_result = "。".join(identity_detail)
+            
+        
+        return identity_result
 
-        result = "。".join(compressed_parts)
-
-        # 更新short_impression字段
-        if result:
-            person_info_manager = get_person_info_manager()
-            await person_info_manager.update_one_field(self.bot_person_id, "short_impression", result)
-            logger.info("已将压缩人设更新到bot的short_impression中")
 
 
 individuality = None

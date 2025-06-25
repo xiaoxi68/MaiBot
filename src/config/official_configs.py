@@ -37,6 +37,9 @@ class PersonalityConfig(ConfigBase):
     personality_sides: list[str] = field(default_factory=lambda: [])
     """人格侧写"""
 
+    compress_personality: bool = True
+    """是否压缩人格，压缩后会精简人格信息，节省token消耗并提高回复性能，但是会丢失一些信息，如果人设不长，可以关闭"""
+
 
 @dataclass
 class IdentityConfig(ConfigBase):
@@ -44,6 +47,9 @@ class IdentityConfig(ConfigBase):
 
     identity_detail: list[str] = field(default_factory=lambda: [])
     """身份特征"""
+
+    compress_indentity: bool = True
+    """是否压缩身份，压缩后会精简身份信息，节省token消耗并提高回复性能，但是会丢失一些信息，如果不长，可以关闭"""
 
 
 @dataclass

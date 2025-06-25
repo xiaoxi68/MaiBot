@@ -240,7 +240,7 @@ class ExpressionSelector:
                     valid_expressions.append(expression)
 
                     # 对选中的表达方式count数+0.1
-                    self.update_expression_count(chat_id, expression, 0.1)
+                    self.update_expression_count(chat_id, expression, 0.0001)
 
             # logger.info(f"LLM从{len(all_expressions)}个情境中选择了{len(valid_expressions)}个")
             return valid_expressions
