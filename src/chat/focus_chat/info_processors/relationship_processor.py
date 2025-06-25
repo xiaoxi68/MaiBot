@@ -293,7 +293,7 @@ class PersonImpressionpProcessor(BaseProcessor):
             }
             segments.append(new_segment)
 
-            person_name = get_person_info_manager().get_value(person_id, "person_name")
+            person_name = get_person_info_manager().get_value(person_id, "person_name") or person_id
             logger.info(
                 f"{self.log_prefix} 眼熟用户 {person_name} 在 {time.strftime('%H:%M:%S', time.localtime(potential_start_time))} - {time.strftime('%H:%M:%S', time.localtime(message_time))} 之间有 {new_segment['message_count']} 条消息"
             )
@@ -341,6 +341,7 @@ class PersonImpressionpProcessor(BaseProcessor):
                 "message_count": self._count_messages_in_timerange(potential_start_time, message_time),
             }
             segments.append(new_segment)
+            person_name = get_person_info_manager().get_value(person_id, "person_name") or person_id
             logger.info(f"{self.log_prefix} 重新眼熟用户 {person_name} 创建新消息段（超过10条消息间隔）: {new_segment}")
 
         self._save_cache()
