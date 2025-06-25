@@ -27,7 +27,7 @@ personality_sides = [
     "用一句话或几句话描述人格的一些侧面",
 ]
 
-compress_personality = true # 是否压缩人格，压缩后会精简人格信息，节省token消耗并提高回复性能，但是会丢失一些信息，如果人设不长，可以关闭
+compress_personality = false # 是否压缩人格，压缩后会精简人格信息，节省token消耗并提高回复性能，但是会丢失一些信息，如果人设不长，可以关闭
 
 
 [identity]

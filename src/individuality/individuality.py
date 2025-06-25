@@ -1,5 +1,6 @@
 from typing import Optional
 import asyncio
+import ast
 
 from src.llm_models.utils_model import LLMRequest
 from .personality import Personality
@@ -111,7 +112,7 @@ class Individuality:
             existing_short_impression = await person_info_manager.get_value(self.bot_person_id, "short_impression")
             if existing_short_impression:
                 try:
-                    existing_data = json.loads(existing_short_impression) if isinstance(existing_short_impression, str) else existing_short_impression
+                    existing_data = ast.literal_eval(existing_short_impression)
                     if isinstance(existing_data, list) and len(existing_data) >= 1:
                         personality_result = existing_data[0]
                 except (json.JSONDecodeError, TypeError, IndexError):
@@ -130,7 +131,7 @@ class Individuality:
             existing_short_impression = await person_info_manager.get_value(self.bot_person_id, "short_impression")
             if existing_short_impression:
                 try:
-                    existing_data = json.loads(existing_short_impression) if isinstance(existing_short_impression, str) else existing_short_impression
+                    existing_data = ast.literal_eval(existing_short_impression)
                     if isinstance(existing_data, list) and len(existing_data) >= 2:
                         identity_result = existing_data[1]
                 except (json.JSONDecodeError, TypeError, IndexError):
