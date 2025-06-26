@@ -13,7 +13,6 @@ from typing import List
 from typing import Dict
 from src.chat.focus_chat.info.info_base import InfoBase
 from src.chat.focus_chat.info.relation_info import RelationInfo
-from src.person_info.person_info import PersonInfoManager
 from json_repair import repair_json
 from src.person_info.person_info import get_person_info_manager
 import json
@@ -26,7 +25,6 @@ from src.chat.utils.chat_message_builder import (
 )
 import os
 import pickle
-import random
 
 
 # 消息段清理配置
@@ -446,8 +444,8 @@ class PersonImpressionpProcessor(BaseProcessor):
             List[InfoBase]: 处理后的结构化信息列表
         """
         await self.build_relation(observations)
-        
-        relation_info_str = await self.relation_identify(observations,action_type,action_data)
+
+        relation_info_str = await self.relation_identify(observations, action_type, action_data)
 
         if relation_info_str:
             relation_info = RelationInfo()
@@ -462,7 +460,7 @@ class PersonImpressionpProcessor(BaseProcessor):
         """构建关系"""
         self._cleanup_old_segments()
         current_time = time.time()
-        
+
         if observations:
             for observation in observations:
                 if isinstance(observation, ChattingObservation):
@@ -518,7 +516,7 @@ class PersonImpressionpProcessor(BaseProcessor):
             # 移除已处理的用户缓存
             del self.person_engaged_cache[person_id]
             self._save_cache()
-    
+
     async def relation_identify(
         self,
         observations: List[Observation] = None,
@@ -527,7 +525,7 @@ class PersonImpressionpProcessor(BaseProcessor):
     ):
         """
         从人物获取信息
-        """            
+        """
 
         chat_observe_info = ""
         current_time = time.time()
@@ -567,7 +565,6 @@ class PersonImpressionpProcessor(BaseProcessor):
                                 self.last_processed_message_time = max(self.last_processed_message_time, msg_time)
                     break
 
-
         for person_id in list(self.info_fetched_cache.keys()):
             for info_type in list(self.info_fetched_cache[person_id].keys()):
                 self.info_fetched_cache[person_id][info_type]["ttl"] -= 1
@@ -575,11 +572,7 @@ class PersonImpressionpProcessor(BaseProcessor):
                     del self.info_fetched_cache[person_id][info_type]
             if not self.info_fetched_cache[person_id]:
                 del self.info_fetched_cache[person_id]
-                
-                
-        
 
-        
         if action_type != "reply":
             return None
 
@@ -831,7 +824,6 @@ class PersonImpressionpProcessor(BaseProcessor):
             logger.info(f"{self.log_prefix} 记得 {person_name} 的 {info_type}: {cached_info}")
             return
 
-
         try:
             person_name = await person_info_manager.get_value(person_id, "person_name")
             person_impression = await person_info_manager.get_value(person_id, "impression")
@@ -864,9 +856,7 @@ class PersonImpressionpProcessor(BaseProcessor):
                 return
 
             nickname_str = ",".join(global_config.bot.alias_names)
-            name_block = (
-                f"你的名字是{global_config.bot.nickname},你的昵称有{nickname_str}，有人也会用这些昵称称呼你。"
-            )
+            name_block = f"你的名字是{global_config.bot.nickname},你的昵称有{nickname_str}，有人也会用这些昵称称呼你。"
             prompt = (await global_prompt_manager.get_prompt_async("fetch_person_info_prompt")).format(
                 name_block=name_block,
                 info_type=info_type,

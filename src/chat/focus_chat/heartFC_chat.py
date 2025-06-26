@@ -649,7 +649,6 @@ class HeartFChatting:
 
         return all_plan_info, processor_time_costs
 
-
     async def _process_post_planning_processors_with_timing(
         self, observations: List[Observation], action_type: str, action_data: dict
     ) -> tuple[dict, dict]:
@@ -681,9 +680,7 @@ class HeartFChatting:
                 start_time = time.time()
                 try:
                     result = await asyncio.wait_for(
-                        proc.process_info(
-                            observations=observations, action_type=action_type, action_data=action_data
-                        ),
+                        proc.process_info(observations=observations, action_type=action_type, action_data=action_data),
                         timeout=global_config.focus_chat.processor_max_time,
                     )
                     end_time = time.time()

@@ -8,7 +8,7 @@ from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.tools.tool_use import ToolUser
 from src.chat.utils.json_utils import process_llm_tool_calls
 from .base_processor import BaseProcessor
-from typing import List, Optional
+from typing import List
 from src.chat.heart_flow.observation.observation import Observation
 from src.chat.focus_chat.info.structured_info import StructuredInfo
 from src.chat.heart_flow.observation.structure_observation import StructureObservation
@@ -92,9 +92,7 @@ class ToolProcessor(BaseProcessor):
 
         return [structured_info]
 
-    async def execute_tools(
-        self, observation: ChattingObservation, action_type: str = None, action_data: dict = None
-    ):
+    async def execute_tools(self, observation: ChattingObservation, action_type: str = None, action_data: dict = None):
         """
         并行执行工具，返回结构化信息
 
