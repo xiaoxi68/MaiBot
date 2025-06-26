@@ -108,6 +108,8 @@ class BaseAction(ABC):
             # print(self.chat_stream.group_info)
             if self.chat_stream.group_info:
                 self.is_group = True
+                self.user_id = str(self.chat_stream.user_info.user_id)
+                self.user_nickname = getattr(self.chat_stream.user_info, "user_nickname", None)
                 self.group_id = str(self.chat_stream.group_info.group_id)
                 self.group_name = getattr(self.chat_stream.group_info, "group_name", None)
             else:
