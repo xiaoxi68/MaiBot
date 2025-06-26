@@ -1,10 +1,13 @@
 import re
-from typing import Union
+import base64
+import hashlib
+from typing import Union, List
 
 # from ...common.database.database import db  # db is now Peewee's SqliteDatabase instance
 from .message import MessageSending, MessageRecv
 from .chat_stream import ChatStream
 from ...common.database.database_model import Messages, RecalledMessages  # Import Peewee models
+from ...common.database.database_model import Images
 from src.common.logger import get_logger
 
 logger = get_logger("message_storage")
@@ -103,3 +106,109 @@ class MessageStorage:
 
 
 # 如果需要其他存储相关的函数，可以在这里添加
+    @staticmethod
+    async def update_message(message: MessageRecv) -> None: # 用于实时更新数据库的自身发送消息ID，目前能处理text,reply,image和emoji
+        """更新最新一条匹配消息的message_id，区分文字和图片情况"""
+        try:
+            new_message_id = message.message_info.message_id
+            user_id = message.message_info.user_info.user_id
+            
+            # 检查消息是否包含图片
+            image_hashes = MessageStorage._extract_image_hashes(message.message_segment)
+            
+            if image_hashes:
+                # 图片消息处理
+                await MessageStorage._update_image_message(message, new_message_id, user_id, image_hashes)
+            else:
+                # 文本消息处理
+                await MessageStorage._update_text_message(message, new_message_id, user_id)
+                
+        except Exception:
+            logger.exception("更新消息ID失败")
+
+    @staticmethod
+    def _extract_image_hashes(segment) -> List[str]:
+        """递归提取消息段中的所有图片哈希值"""
+        hashes = []
+        
+        if segment.type == "image" or segment.type == "emoji":
+            try:
+                # 计算图片哈希值
+                binary_data = base64.b64decode(segment.data)
+                file_hash = hashlib.md5(binary_data).hexdigest()
+                hashes.append(file_hash)
+            except Exception as e:
+                logger.error(f"计算图片哈希失败: {e}")
+        
+        elif segment.type == "seglist":
+            # 递归处理子消息段
+            for sub_seg in segment.data:
+                hashes.extend(MessageStorage._extract_image_hashes(sub_seg))
+        
+        return hashes
+
+    @staticmethod
+    async def _update_image_message(message: MessageRecv, new_message_id: str, user_id: str, image_hashes: List[str]) -> None:
+        """处理图片消息的更新逻辑"""
+        
+        # 使用第一张图片的哈希值查询描述
+        first_image_hash = image_hashes[0]
+        logger.info(f"{first_image_hash}")
+        
+        try:
+            # 查询图片描述
+            image_desc = Images.get_or_none(
+                Images.emoji_hash == first_image_hash
+            )
+            
+            if not image_desc or not image_desc.description:
+                logger.debug(f"未找到图片描述: {first_image_hash}")
+                return
+                
+            # 在Messages表中查找包含该描述的最新消息
+            matched_message = Messages.select().where(
+                (Messages.user_id == user_id) &
+                (Messages.processed_plain_text.contains(image_desc.description))
+            ).order_by(Messages.time.desc()).first()
+            
+            if matched_message:
+                # 更新找到的消息记录
+                Messages.update(message_id=new_message_id).where(
+                    Messages.id == matched_message.id
+                ).execute()
+                logger.info(f"更新图片消息ID成功: {matched_message.message_id} -> {new_message_id}")
+            else:
+                logger.debug(f"未找到包含描述'{image_desc.description}'的消息")
+                
+        except Exception as e:
+            logger.error(f"更新图片消息失败: {e}")
+
+    @staticmethod
+    async def _update_text_message(message: MessageRecv, new_message_id: str, user_id: str) -> None:
+        """处理文本消息的更新逻辑"""
+        try:
+            # 过滤处理文本（与store_message相同的处理方式）
+            pattern = r"<MainRule>.*?</MainRule>|<schedule>.*?</schedule>|<UserMessage>.*?</UserMessage>"
+            processed_plain_text = re.sub(
+                pattern, "", 
+                message.processed_plain_text, 
+                flags=re.DOTALL
+            ) if message.processed_plain_text else ""
+            
+            # 查询最新一条匹配消息
+            matched_message = Messages.select().where(
+                (Messages.user_id == user_id) &
+                (Messages.processed_plain_text == processed_plain_text)
+            ).order_by(Messages.time.desc()).first()
+            
+            if matched_message:
+                # 更新找到的消息记录
+                Messages.update(message_id=new_message_id).where(
+                    Messages.id == matched_message.id
+                ).execute()
+                logger.info(f"更新文本消息ID成功: {matched_message.message_id} -> {new_message_id}")
+            else:
+                logger.debug("未找到匹配的文本消息")
+                
+        except Exception as e:
+            logger.error(f"更新文本消息失败: {e}")
