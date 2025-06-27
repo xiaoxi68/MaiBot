@@ -58,9 +58,9 @@ services:
     ports:
       - "8120:8080"
     volumes:
-      - ./data/MaiMBot/MaiBot.db:/data/MaiBot.db
+      - ./data/MaiBot:/data/MaiBot
     environment:
-      - SQLITE_DATABASE=MaiBot.db  # 你的数据库文件
+      - SQLITE_DATABASE=MaiBot/MaiBot.db  # 你的数据库文件
     networks:
       - maim_bot
 networks:
