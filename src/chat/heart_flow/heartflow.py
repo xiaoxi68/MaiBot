@@ -1,5 +1,5 @@
 from src.chat.heart_flow.sub_heartflow import SubHeartflow, ChatState
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from typing import Any, Optional, List
 from src.chat.heart_flow.subheartflow_manager import SubHeartflowManager
 from src.chat.heart_flow.background_tasks import BackgroundTaskManager  # Import BackgroundTaskManager

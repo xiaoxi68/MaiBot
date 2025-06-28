@@ -1,7 +1,7 @@
 import json
 import os
 
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 
 LOCAL_STORE_FILE_PATH = "data/local_store.json"
 
@@ -50,20 +50,20 @@ class LocalStoreManager:
             try:
                 with open(self.file_path, "r", encoding="utf-8") as f:
                     self.store = json.load(f)
-                    logger.success("全都记起来了！")
+                    logger.info("全都记起来了！")
             except json.JSONDecodeError:
                 logger.warning("啊咧？记事本被弄脏了，正在重建记事本......")
                 self.store = {}
                 with open(self.file_path, "w", encoding="utf-8") as f:
                     json.dump({}, f, ensure_ascii=False, indent=4)
-                logger.success("记事本重建成功！")
+                logger.info("记事本重建成功！")
         else:
             # 不存在本地存储文件，创建新的目录和文件
             logger.warning("啊咧？记事本不存在，正在创建新的记事本......")
             os.makedirs(os.path.dirname(self.file_path), exist_ok=True)
             with open(self.file_path, "w", encoding="utf-8") as f:
                 json.dump({}, f, ensure_ascii=False, indent=4)
-            logger.success("记事本创建成功！")
+            logger.info("记事本创建成功！")
 
     def save_local_store(self):
         """保存本地存储数据"""

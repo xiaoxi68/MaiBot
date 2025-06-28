@@ -40,20 +40,19 @@ class ClassicalWillingManager(BaseWillingManager):
             else:
                 is_emoji_not_reply = True
 
+        # 处理picid格式消息，直接不回复
+        is_picid_not_reply = False
+        if willing_info.is_picid:
+            is_picid_not_reply = True
+
         self.chat_reply_willing[chat_id] = min(current_willing, 3.0)
 
-        reply_probability = min(
-            max((current_willing - 0.5), 0.01) * global_config.normal_chat.response_willing_amplifier * 2, 1
-        )
-
-        # 检查群组权限（如果是群聊）
-        if (
-            willing_info.group_info
-            and willing_info.group_info.group_id in global_config.normal_chat.talk_frequency_down_groups
-        ):
-            reply_probability = reply_probability / global_config.normal_chat.down_frequency_rate
+        reply_probability = min(max((current_willing - 0.5), 0.01) * 2, 1)
 
         if is_emoji_not_reply:
+            reply_probability = 0
+
+        if is_picid_not_reply:
             reply_probability = 0
 
         return reply_probability

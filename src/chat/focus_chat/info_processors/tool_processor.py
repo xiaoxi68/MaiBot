@@ -2,14 +2,13 @@ from src.chat.heart_flow.observation.chatting_observation import ChattingObserva
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 import time
-from src.common.logger_manager import get_logger
-from src.individuality.individuality import individuality
+from src.common.logger import get_logger
+from src.individuality.individuality import get_individuality
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.tools.tool_use import ToolUser
 from src.chat.utils.json_utils import process_llm_tool_calls
-from src.person_info.relationship_manager import relationship_manager
 from .base_processor import BaseProcessor
-from typing import List, Optional, Dict
+from typing import List
 from src.chat.heart_flow.observation.observation import Observation
 from src.chat.focus_chat.info.structured_info import StructuredInfo
 from src.chat.heart_flow.observation.structure_observation import StructureObservation
@@ -23,17 +22,14 @@ def init_prompt():
     # 添加工具执行器提示词
     tool_executor_prompt = """
 你是一个专门执行工具的助手。你的名字是{bot_name}。现在是{time_now}。
-{memory_str}
 群里正在进行的聊天内容：
 {chat_observe_info}
 
 请仔细分析聊天内容，考虑以下几点：
 1. 内容中是否包含需要查询信息的问题
-2. 是否需要执行特定操作
-3. 是否有明确的工具使用指令
-4. 考虑用户与你的关系以及当前的对话氛围
+2. 是否有明确的工具使用指令
 
-如果需要使用工具，请直接调用相应的工具函数。如果不需要使用工具，请简单输出"无需使用工具"。
+If you need to use a tool, please directly call the corresponding tool function. If you do not need to use any tool, simply output "No tool needed".
 """
     Prompt(tool_executor_prompt, "tool_executor_prompt")
 
@@ -47,33 +43,39 @@ class ToolProcessor(BaseProcessor):
         self.log_prefix = f"[{subheartflow_id}:ToolExecutor] "
         self.llm_model = LLMRequest(
             model=global_config.model.focus_tool_use,
-            max_tokens=500,
             request_type="focus.processor.tool",
         )
         self.structured_info = []
 
     async def process_info(
-        self, observations: Optional[List[Observation]] = None, running_memorys: Optional[List[Dict]] = None, *infos
-    ) -> List[dict]:
+        self,
+        observations: List[Observation] = None,
+        action_type: str = None,
+        action_data: dict = None,
+        **kwargs,
+    ) -> List[StructuredInfo]:
         """处理信息对象
 
         Args:
-            *infos: 可变数量的InfoBase类型的信息对象
+            observations: 可选的观察列表，包含ChattingObservation和StructureObservation类型
+            action_type: 动作类型
+            action_data: 动作数据
+            **kwargs: 其他可选参数
 
         Returns:
             list: 处理后的结构化信息列表
         """
 
         working_infos = []
+        result = []
 
         if observations:
             for observation in observations:
                 if isinstance(observation, ChattingObservation):
-                    result, used_tools, prompt = await self.execute_tools(observation, running_memorys)
+                    result, used_tools, prompt = await self.execute_tools(observation)
 
+            logger.info(f"工具调用结果: {result}")
             # 更新WorkingObservation中的结构化信息
-            logger.debug(f"工具调用结果: {result}")
-
             for observation in observations:
                 if isinstance(observation, StructureObservation):
                     for structured_info in result:
@@ -86,16 +88,11 @@ class ToolProcessor(BaseProcessor):
         structured_info = StructuredInfo()
         if working_infos:
             for working_info in working_infos:
-                # print(f"working_info: {working_info}")
-                # print(f"working_info.get('type'): {working_info.get('type')}")
-                # print(f"working_info.get('content'): {working_info.get('content')}")
                 structured_info.set_info(key=working_info.get("type"), value=working_info.get("content"))
-                # info = structured_info.get_processed_info()
-                # print(f"info: {info}")
 
         return [structured_info]
 
-    async def execute_tools(self, observation: ChattingObservation, running_memorys: Optional[List[Dict]] = None):
+    async def execute_tools(self, observation: ChattingObservation, action_type: str = None, action_data: dict = None):
         """
         并行执行工具，返回结构化信息
 
@@ -105,6 +102,8 @@ class ToolProcessor(BaseProcessor):
             is_group_chat: 是否为群聊，默认为False
             return_details: 是否返回详细信息，默认为False
             cycle_info: 循环信息对象，可用于记录详细执行信息
+            action_type: 动作类型
+            action_data: 动作数据
 
         返回:
             如果return_details为False:
@@ -122,23 +121,9 @@ class ToolProcessor(BaseProcessor):
 
         is_group_chat = observation.is_group_chat
 
-        chat_observe_info = observation.get_observe_info()
-        person_list = observation.person_list
-
-        memory_str = ""
-        if running_memorys:
-            memory_str = "以下是当前在聊天中，你回忆起的记忆：\n"
-            for running_memory in running_memorys:
-                memory_str += f"{running_memory['topic']}: {running_memory['content']}\n"
-
-        # 构建关系信息
-        relation_prompt = "【关系信息】\n"
-        for person in person_list:
-            relation_prompt += await relationship_manager.build_relationship_info(person, is_id=True)
-
-        # 获取个性信息
-
-        # prompt_personality = individuality.get_prompt(x_person=2, level=2)
+        #   chat_observe_info = observation.get_observe_info()
+        chat_observe_info = observation.talking_message_str_truncate_short
+        # person_list = observation.person_list
 
         # 获取时间信息
         time_now = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
@@ -146,24 +131,25 @@ class ToolProcessor(BaseProcessor):
         # 构建专用于工具调用的提示词
         prompt = await global_prompt_manager.format_prompt(
             "tool_executor_prompt",
-            memory_str=memory_str,
-            # extra_info="extra_structured_info",
             chat_observe_info=chat_observe_info,
-            # chat_target_name=chat_target_name,
             is_group_chat=is_group_chat,
-            # relation_prompt=relation_prompt,
-            # prompt_personality=prompt_personality,
-            # mood_info=mood_info,
-            bot_name=individuality.name,
+            bot_name=get_individuality().name,
             time_now=time_now,
         )
 
         # 调用LLM，专注于工具使用
-        logger.debug(f"开始执行工具调用{prompt}")
-        response, _, tool_calls = await self.llm_model.generate_response_tool_async(prompt=prompt, tools=tools)
+        # logger.info(f"开始执行工具调用{prompt}")
+        response, other_info = await self.llm_model.generate_response_async(prompt=prompt, tools=tools)
 
+        if len(other_info) == 3:
+            reasoning_content, model_name, tool_calls = other_info
+        else:
+            reasoning_content, model_name = other_info
+            tool_calls = None
+
+        # print("tooltooltooltooltooltooltooltooltooltooltooltooltooltooltooltooltool")
         if tool_calls:
-            logger.debug(f"获取到工具原始输出:\n{tool_calls}")
+            logger.info(f"获取到工具原始输出:\n{tool_calls}")
             # 处理工具调用和结果收集，类似于SubMind中的逻辑
         new_structured_items = []
         used_tools = []  # 记录使用了哪些工具

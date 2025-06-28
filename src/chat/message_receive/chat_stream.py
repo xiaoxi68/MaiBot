@@ -13,7 +13,7 @@ from maim_message import GroupInfo, UserInfo
 if TYPE_CHECKING:
     from .message import MessageRecv
 
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from rich.traceback import install
 
 install(extra_lines=3)
@@ -135,7 +135,7 @@ class ChatManager:
         """异步初始化"""
         try:
             await self.load_all_streams()
-            logger.success(f"聊天管理器已启动，已加载 {len(self.streams)} 个聊天流")
+            logger.info(f"聊天管理器已启动，已加载 {len(self.streams)} 个聊天流")
         except Exception as e:
             logger.error(f"聊天管理器启动失败: {str(e)}")
 
@@ -157,7 +157,7 @@ class ChatManager:
             message.message_info.group_info,
         )
         self.last_messages[stream_id] = message
-        logger.debug(f"注册消息到聊天流: {stream_id}")
+        # logger.debug(f"注册消息到聊天流: {stream_id}")
 
     @staticmethod
     def _generate_stream_id(platform: str, user_info: UserInfo, group_info: Optional[GroupInfo] = None) -> str:
@@ -169,6 +169,15 @@ class ChatManager:
             components = [platform, str(user_info.user_id), "private"]
 
         # 使用MD5生成唯一ID
+        key = "_".join(components)
+        return hashlib.md5(key.encode()).hexdigest()
+
+    def get_stream_id(self, platform: str, id: str, is_group: bool = True) -> str:
+        """获取聊天流ID"""
+        if is_group:
+            components = [platform, str(id)]
+        else:
+            components = [platform, str(id), "private"]
         key = "_".join(components)
         return hashlib.md5(key.encode()).hexdigest()
 
@@ -335,6 +344,7 @@ class ChatManager:
 
     async def load_all_streams(self):
         """从数据库加载所有聊天流"""
+        logger.info("正在从数据库加载所有聊天流")
 
         def _db_load_all_streams_sync():
             loaded_streams_data = []
@@ -377,5 +387,11 @@ class ChatManager:
             logger.error(f"从数据库加载所有聊天流失败 (Peewee): {e}", exc_info=True)
 
 
-# 创建全局单例
-chat_manager = ChatManager()
+chat_manager = None
+
+
+def get_chat_manager():
+    global chat_manager
+    if chat_manager is None:
+        chat_manager = ChatManager()
+    return chat_manager

@@ -3,14 +3,14 @@ import re
 from contextlib import asynccontextmanager
 import asyncio
 import contextvars
-from src.common.logger import get_module_logger
+from src.common.logger import get_logger
 
 # import traceback
 from rich.traceback import install
 
 install(extra_lines=3)
 
-logger = get_module_logger("prompt_build")
+logger = get_logger("prompt_build")
 
 
 class PromptContext:
@@ -35,14 +35,23 @@ class PromptContext:
         """创建一个异步的临时提示模板作用域"""
         # 保存当前上下文并设置新上下文
         if context_id is not None:
-            async with self._context_lock:
-                if context_id not in self._context_prompts:
-                    self._context_prompts[context_id] = {}
+            try:
+                # 添加超时保护，避免长时间等待锁
+                await asyncio.wait_for(self._context_lock.acquire(), timeout=5.0)
+                try:
+                    if context_id not in self._context_prompts:
+                        self._context_prompts[context_id] = {}
+                finally:
+                    self._context_lock.release()
+            except asyncio.TimeoutError:
+                logger.warning(f"获取上下文锁超时，context_id: {context_id}")
+                # 超时时直接进入，不设置上下文
+                context_id = None
 
             # 保存当前协程的上下文值，不影响其他协程
             previous_context = self._current_context
             # 设置当前协程的新上下文
-            token = self._current_context_var.set(context_id)
+            token = self._current_context_var.set(context_id) if context_id else None
         else:
             # 如果没有提供新上下文，保持当前上下文不变
             previous_context = self._current_context
@@ -51,12 +60,17 @@ class PromptContext:
         try:
             yield self
         finally:
-            # 恢复之前的上下文
-            if context_id is not None:
-                if token:
+            # 恢复之前的上下文，添加异常保护
+            if context_id is not None and token is not None:
+                try:
                     self._current_context_var.reset(token)
-                else:
-                    self._current_context = previous_context
+                except Exception as e:
+                    logger.warning(f"恢复上下文时出错: {e}")
+                    # 如果reset失败，尝试直接设置
+                    try:
+                        self._current_context = previous_context
+                    except Exception:
+                        pass  # 静默忽略恢复失败
 
     async def get_prompt_async(self, name: str) -> Optional["Prompt"]:
         """异步获取当前作用域中的提示模板"""
@@ -100,7 +114,7 @@ class PromptManager:
             return context_prompt
         # 如果上下文中不存在，则使用全局提示模板
         async with self._lock:
-            logger.debug(f"从全局获取提示词: {name}")
+            # logger.debug(f"从全局获取提示词: {name}")
             if name not in self._prompts:
                 raise KeyError(f"Prompt '{name}' not found")
             return self._prompts[name]
@@ -136,8 +150,14 @@ class Prompt(str):
     _TEMP_RIGHT_BRACE = "__ESCAPED_RIGHT_BRACE__"
 
     @staticmethod
-    def _process_escaped_braces(template: str) -> str:
+    def _process_escaped_braces(template) -> str:
         """处理模板中的转义花括号，将 \{ 和 \} 替换为临时标记"""
+        # 如果传入的是列表，将其转换为字符串
+        if isinstance(template, list):
+            template = "\n".join(str(item) for item in template)
+        elif not isinstance(template, str):
+            template = str(template)
+
         return template.replace("\\{", Prompt._TEMP_LEFT_BRACE).replace("\\}", Prompt._TEMP_RIGHT_BRACE)
 
     @staticmethod
@@ -145,7 +165,7 @@ class Prompt(str):
         """将临时标记还原为实际的花括号字符"""
         return template.replace(Prompt._TEMP_LEFT_BRACE, "{").replace(Prompt._TEMP_RIGHT_BRACE, "}")
 
-    def __new__(cls, fstr: str, name: Optional[str] = None, args: Union[List[Any], tuple[Any, ...]] = None, **kwargs):
+    def __new__(cls, fstr, name: Optional[str] = None, args: Union[List[Any], tuple[Any, ...]] = None, **kwargs):
         # 如果传入的是元组，转换为列表
         if isinstance(args, tuple):
             args = list(args)
@@ -187,7 +207,7 @@ class Prompt(str):
 
     @classmethod
     async def create_async(
-        cls, fstr: str, name: Optional[str] = None, args: Union[List[Any], tuple[Any, ...]] = None, **kwargs
+        cls, fstr, name: Optional[str] = None, args: Union[List[Any], tuple[Any, ...]] = None, **kwargs
     ):
         """异步创建Prompt实例"""
         prompt = cls(fstr, name, args, **kwargs)
@@ -196,7 +216,7 @@ class Prompt(str):
         return prompt
 
     @classmethod
-    def _format_template(cls, template: str, args: List[Any] = None, kwargs: Dict[str, Any] = None) -> str:
+    def _format_template(cls, template, args: List[Any] = None, kwargs: Dict[str, Any] = None) -> str:
         # 预处理模板中的转义花括号
         processed_template = cls._process_escaped_braces(template)
 

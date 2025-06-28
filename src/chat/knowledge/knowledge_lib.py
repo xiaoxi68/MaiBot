@@ -1,10 +1,10 @@
-from .src.lpmmconfig import PG_NAMESPACE, global_config
-from .src.embedding_store import EmbeddingManager
-from .src.llm_client import LLMClient
-from .src.mem_active_manager import MemoryActiveManager
-from .src.qa_manager import QAManager
-from .src.kg_manager import KGManager
-from .src.global_logger import logger
+from src.chat.knowledge.lpmmconfig import PG_NAMESPACE, global_config
+from src.chat.knowledge.embedding_store import EmbeddingManager
+from src.chat.knowledge.llm_client import LLMClient
+from src.chat.knowledge.mem_active_manager import MemoryActiveManager
+from src.chat.knowledge.qa_manager import QAManager
+from src.chat.knowledge.kg_manager import KGManager
+from src.chat.knowledge.global_logger import logger
 # try:
 #     import quick_algo
 # except ImportError:
@@ -25,8 +25,8 @@ logger.info("正在从文件加载Embedding库")
 try:
     embed_manager.load_from_file()
 except Exception as e:
-    logger.error("从文件加载Embedding库时发生错误：{}".format(e))
-    logger.error("如果你是第一次导入知识，或者还未导入知识，请忽略此错误")
+    logger.warning("此消息不会影响正常使用：从文件加载Embedding库时，{}".format(e))
+    # logger.warning("如果你是第一次导入知识，或者还未导入知识，请忽略此错误")
 logger.info("Embedding库加载完成")
 # 初始化KG
 kg_manager = KGManager()
@@ -34,8 +34,8 @@ logger.info("正在从文件加载KG")
 try:
     kg_manager.load_from_file()
 except Exception as e:
-    logger.error("从文件加载KG时发生错误：{}".format(e))
-    logger.error("如果你是第一次导入知识，或者还未导入知识，请忽略此错误")
+    logger.warning("此消息不会影响正常使用：从文件加载KG时，{}".format(e))
+    # logger.warning("如果你是第一次导入知识，或者还未导入知识，请忽略此错误")
 logger.info("KG加载完成")
 
 logger.info(f"KG节点数量：{len(kg_manager.graph.get_node_list())}")

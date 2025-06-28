@@ -5,7 +5,7 @@ Mxp 模式：梦溪畔独家赞助
 此模式的可变参数暂时比较草率，需要调参仙人的大手
 此模式的特点：
 1.每个聊天流的每个用户的意愿是独立的
-2.接入关系系统，关系会影响意愿值
+2.接入关系系统，关系会影响意愿值（已移除，因为关系系统重构）
 3.会根据群聊的热度来调整基础意愿值
 4.限制同时思考的消息数量，防止喷射
 5.拥有单聊增益，无论在群里还是私聊，只要bot一直和你聊，就会增加意愿值
@@ -83,9 +83,10 @@ class MxpWillingManager(BaseWillingManager):
         """回复后处理"""
         async with self.lock:
             w_info = self.ongoing_messages[message_id]
-            rel_value = await w_info.person_info_manager.get_value(w_info.person_id, "relationship_value")
-            rel_level = self._get_relationship_level_num(rel_value)
-            self.chat_person_reply_willing[w_info.chat_id][w_info.person_id] += rel_level * 0.05
+            # 移除关系值相关代码
+            # rel_value = await w_info.person_info_manager.get_value(w_info.person_id, "relationship_value")
+            # rel_level = self._get_relationship_level_num(rel_value)
+            # self.chat_person_reply_willing[w_info.chat_id][w_info.person_id] += rel_level * 0.05
 
             now_chat_new_person = self.last_response_person.get(w_info.chat_id, [w_info.person_id, 0])
             if now_chat_new_person[0] == w_info.person_id:
@@ -135,12 +136,7 @@ class MxpWillingManager(BaseWillingManager):
 
             self.chat_person_reply_willing[w_info.chat_id][w_info.person_id] = current_willing
 
-            rel_value = await w_info.person_info_manager.get_value(w_info.person_id, "relationship_value")
-            rel_level = self._get_relationship_level_num(rel_value)
-            current_willing += rel_level * 0.1
-            if self.is_debug and rel_level != 0:
-                self.logger.debug(f"关系增益：{rel_level * 0.1}")
-
+            # 添加单聊增益
             if (
                 w_info.chat_id in self.last_response_person
                 and self.last_response_person[w_info.chat_id][0] == w_info.person_id
@@ -180,8 +176,8 @@ class MxpWillingManager(BaseWillingManager):
             if w_info.is_emoji:
                 probability *= global_config.normal_chat.emoji_response_penalty
 
-            if w_info.group_info and w_info.group_info.group_id in global_config.normal_chat.talk_frequency_down_groups:
-                probability /= global_config.normal_chat.down_frequency_rate
+            if w_info.is_picid:
+                probability = 0  # picid格式消息直接不回复
 
             self.temporary_willing = current_willing
 
@@ -284,25 +280,6 @@ class MxpWillingManager(BaseWillingManager):
                         self.chat_reply_willing[chat_id] = 0
                 if self.is_debug:
                     self.logger.debug(f"聊天流意愿值更新：{self.chat_reply_willing}")
-
-    @staticmethod
-    def _get_relationship_level_num(relationship_value) -> int:
-        """关系等级计算"""
-        if -1000 <= relationship_value < -227:
-            level_num = 0
-        elif -227 <= relationship_value < -73:
-            level_num = 1
-        elif -73 <= relationship_value < 227:
-            level_num = 2
-        elif 227 <= relationship_value < 587:
-            level_num = 3
-        elif 587 <= relationship_value < 900:
-            level_num = 4
-        elif 900 <= relationship_value <= 1000:
-            level_num = 5
-        else:
-            level_num = 5 if relationship_value > 1000 else 0
-        return level_num - 2
 
     def _basic_willing_culculate(self, t: float) -> float:
         """基础意愿值计算"""

@@ -1,15 +1,9 @@
 from typing import Dict, List, Optional, Type, Any
-from src.chat.focus_chat.planners.actions.base_action import BaseAction, _ACTION_REGISTRY
-from src.chat.heart_flow.observation.observation import Observation
-from src.chat.focus_chat.expressors.default_expressor import DefaultExpressor
+from src.plugin_system.base.base_action import BaseAction
 from src.chat.message_receive.chat_stream import ChatStream
-from src.common.logger_manager import get_logger
-import importlib
-import pkgutil
-import os
-
-# 导入动作类，确保装饰器被执行
-import src.chat.focus_chat.planners.actions  # noqa
+from src.common.logger import get_logger
+from src.plugin_system.core.component_registry import component_registry
+from src.plugin_system.base.component_types import ComponentType
 
 logger = get_logger("action_manager")
 
@@ -20,7 +14,14 @@ ActionInfo = Dict[str, Any]
 class ActionManager:
     """
     动作管理器，用于管理各种类型的动作
+
+    现在统一使用新插件系统，简化了原有的新旧兼容逻辑。
     """
+
+    # 类常量
+    DEFAULT_RANDOM_PROBABILITY = 0.3
+    DEFAULT_MODE = "all"
+    DEFAULT_ACTIVATION_TYPE = "always"
 
     def __init__(self):
         """初始化动作管理器"""
@@ -32,99 +33,76 @@ class ActionManager:
         # 默认动作集，仅作为快照，用于恢复默认
         self._default_actions: Dict[str, ActionInfo] = {}
 
-        # 加载所有已注册动作
-        self._load_registered_actions()
-
         # 加载插件动作
         self._load_plugin_actions()
 
         # 初始化时将默认动作加载到使用中的动作
         self._using_actions = self._default_actions.copy()
 
-    def _load_registered_actions(self) -> None:
-        """
-        加载所有通过装饰器注册的动作
-        """
-        try:
-            # 从_ACTION_REGISTRY获取所有已注册动作
-            for action_name, action_class in _ACTION_REGISTRY.items():
-                # 获取动作相关信息
-
-                # 不读取插件动作和基类
-                if action_name == "base_action" or action_name == "plugin_action":
-                    continue
-
-                action_description: str = getattr(action_class, "action_description", "")
-                action_parameters: dict[str:str] = getattr(action_class, "action_parameters", {})
-                action_require: list[str] = getattr(action_class, "action_require", [])
-                associated_types: list[str] = getattr(action_class, "associated_types", [])
-                is_default: bool = getattr(action_class, "default", False)
-
-                if action_name and action_description:
-                    # 创建动作信息字典
-                    action_info = {
-                        "description": action_description,
-                        "parameters": action_parameters,
-                        "require": action_require,
-                        "associated_types": associated_types,
-                    }
-
-                    # 添加到所有已注册的动作
-                    self._registered_actions[action_name] = action_info
-
-                    # 添加到默认动作（如果是默认动作）
-                    if is_default:
-                        self._default_actions[action_name] = action_info
-
-            # logger.info(f"所有注册动作: {list(self._registered_actions.keys())}")
-            # logger.info(f"默认动作: {list(self._default_actions.keys())}")
-            # for action_name, action_info in self._default_actions.items():
-            # logger.info(f"动作名称: {action_name}, 动作信息: {action_info}")
-
-        except Exception as e:
-            logger.error(f"加载已注册动作失败: {e}")
-
     def _load_plugin_actions(self) -> None:
         """
-        加载所有插件目录中的动作
+        加载所有插件系统中的动作
         """
         try:
-            # 检查插件目录是否存在
-            plugin_path = "src.plugins"
-            plugin_dir = plugin_path.replace(".", os.path.sep)
-            if not os.path.exists(plugin_dir):
-                logger.info(f"插件目录 {plugin_dir} 不存在，跳过插件动作加载")
-                return
-
-            # 导入插件包
-            try:
-                plugins_package = importlib.import_module(plugin_path)
-            except ImportError as e:
-                logger.error(f"导入插件包失败: {e}")
-                return
-
-            # 遍历插件包中的所有子包
-            for _, plugin_name, is_pkg in pkgutil.iter_modules(
-                plugins_package.__path__, plugins_package.__name__ + "."
-            ):
-                if not is_pkg:
-                    continue
-
-                # 检查插件是否有actions子包
-                plugin_actions_path = f"{plugin_name}.actions"
-                try:
-                    # 尝试导入插件的actions包
-                    importlib.import_module(plugin_actions_path)
-                    logger.info(f"成功加载插件动作模块: {plugin_actions_path}")
-                except ImportError as e:
-                    logger.debug(f"插件 {plugin_name} 没有actions子包或导入失败: {e}")
-                    continue
-
-            # 再次从_ACTION_REGISTRY获取所有动作（包括刚刚从插件加载的）
-            self._load_registered_actions()
+            # 从新插件系统获取Action组件
+            self._load_plugin_system_actions()
+            logger.debug("从插件系统加载Action组件成功")
 
         except Exception as e:
             logger.error(f"加载插件动作失败: {e}")
+
+    def _load_plugin_system_actions(self) -> None:
+        """从插件系统的component_registry加载Action组件"""
+        try:
+            from src.plugin_system.core.component_registry import component_registry
+            from src.plugin_system.base.component_types import ComponentType
+
+            # 获取所有Action组件
+            action_components = component_registry.get_components_by_type(ComponentType.ACTION)
+
+            for action_name, action_info in action_components.items():
+                if action_name in self._registered_actions:
+                    logger.debug(f"Action组件 {action_name} 已存在，跳过")
+                    continue
+
+                # 将插件系统的ActionInfo转换为ActionManager格式
+                converted_action_info = {
+                    "description": action_info.description,
+                    "parameters": getattr(action_info, "action_parameters", {}),
+                    "require": getattr(action_info, "action_require", []),
+                    "associated_types": getattr(action_info, "associated_types", []),
+                    "enable_plugin": action_info.enabled,
+                    # 激活类型相关
+                    "focus_activation_type": action_info.focus_activation_type.value,
+                    "normal_activation_type": action_info.normal_activation_type.value,
+                    "random_activation_probability": action_info.random_activation_probability,
+                    "llm_judge_prompt": action_info.llm_judge_prompt,
+                    "activation_keywords": action_info.activation_keywords,
+                    "keyword_case_sensitive": action_info.keyword_case_sensitive,
+                    # 模式和并行设置
+                    "mode_enable": action_info.mode_enable.value,
+                    "parallel_action": action_info.parallel_action,
+                    # 插件信息
+                    "_plugin_name": getattr(action_info, "plugin_name", ""),
+                }
+
+                self._registered_actions[action_name] = converted_action_info
+
+                # 如果启用，也添加到默认动作集
+                if action_info.enabled:
+                    self._default_actions[action_name] = converted_action_info
+
+                logger.debug(
+                    f"从插件系统加载Action组件: {action_name} (插件: {getattr(action_info, 'plugin_name', 'unknown')})"
+                )
+
+            logger.info(f"从插件系统加载了 {len(action_components)} 个Action组件")
+
+        except Exception as e:
+            logger.error(f"从插件系统加载Action组件失败: {e}")
+            import traceback
+
+            logger.error(traceback.format_exc())
 
     def create_action(
         self,
@@ -133,8 +111,6 @@ class ActionManager:
         reasoning: str,
         cycle_timers: dict,
         thinking_id: str,
-        observations: List[Observation],
-        expressor: DefaultExpressor,
         chat_stream: ChatStream,
         log_prefix: str,
         shutting_down: bool = False,
@@ -148,8 +124,6 @@ class ActionManager:
             reasoning: 执行理由
             cycle_timers: 计时器字典
             thinking_id: 思考ID
-            observations: 观察列表
-            expressor: 表达器
             chat_stream: 聊天流
             log_prefix: 日志前缀
             shutting_down: 是否正在关闭
@@ -157,34 +131,42 @@ class ActionManager:
         Returns:
             Optional[BaseAction]: 创建的动作处理器实例，如果动作名称未注册则返回None
         """
-        # 检查动作是否在当前使用的动作集中
-        # if action_name not in self._using_actions:
-        # logger.warning(f"当前不可用的动作类型: {action_name}")
-        # return None
-
-        handler_class = _ACTION_REGISTRY.get(action_name)
-        if not handler_class:
-            logger.warning(f"未注册的动作类型: {action_name}")
-            return None
-
         try:
+            # 获取组件类 - 明确指定查询Action类型
+            component_class = component_registry.get_component_class(action_name, ComponentType.ACTION)
+            if not component_class:
+                logger.warning(f"{log_prefix} 未找到Action组件: {action_name}")
+                return None
+
+            # 获取组件信息
+            component_info = component_registry.get_component_info(action_name, ComponentType.ACTION)
+            if not component_info:
+                logger.warning(f"{log_prefix} 未找到Action组件信息: {action_name}")
+                return None
+
+            # 获取插件配置
+            plugin_config = component_registry.get_plugin_config(component_info.plugin_name)
+
             # 创建动作实例
-            instance = handler_class(
+            instance = component_class(
                 action_data=action_data,
                 reasoning=reasoning,
                 cycle_timers=cycle_timers,
                 thinking_id=thinking_id,
-                observations=observations,
-                expressor=expressor,
                 chat_stream=chat_stream,
                 log_prefix=log_prefix,
                 shutting_down=shutting_down,
+                plugin_config=plugin_config,
             )
 
+            logger.debug(f"创建Action实例成功: {action_name}")
             return instance
 
         except Exception as e:
-            logger.error(f"创建动作处理器实例失败: {e}")
+            logger.error(f"创建Action实例失败 {action_name}: {e}")
+            import traceback
+
+            logger.error(traceback.format_exc())
             return None
 
     def get_registered_actions(self) -> Dict[str, ActionInfo]:
@@ -196,8 +178,31 @@ class ActionManager:
         return self._default_actions.copy()
 
     def get_using_actions(self) -> Dict[str, ActionInfo]:
-        """获取当前正在使用的动作集"""
+        """获取当前正在使用的动作集合"""
         return self._using_actions.copy()
+
+    def get_using_actions_for_mode(self, mode: str) -> Dict[str, ActionInfo]:
+        """
+        根据聊天模式获取可用的动作集合
+
+        Args:
+            mode: 聊天模式 ("focus", "normal", "all")
+
+        Returns:
+            Dict[str, ActionInfo]: 在指定模式下可用的动作集合
+        """
+        filtered_actions = {}
+
+        for action_name, action_info in self._using_actions.items():
+            action_mode = action_info.get("mode_enable", "all")
+
+            # 检查动作是否在当前模式下启用
+            if action_mode == "all" or action_mode == mode:
+                filtered_actions[action_name] = action_info
+                logger.debug(f"动作 {action_name} 在模式 {mode} 下可用 (mode_enable: {action_mode})")
+
+        logger.debug(f"模式 {mode} 下可用动作: {list(filtered_actions.keys())}")
+        return filtered_actions
 
     def add_action_to_using(self, action_name: str) -> bool:
         """
@@ -236,7 +241,7 @@ class ActionManager:
             return False
 
         del self._using_actions[action_name]
-        logger.info(f"已从使用集中移除动作 {action_name}")
+        logger.debug(f"已从使用集中移除动作 {action_name}")
         return True
 
     def add_action(self, action_name: str, description: str, parameters: Dict = None, require: List = None) -> bool:
@@ -291,6 +296,22 @@ class ActionManager:
         """恢复默认动作集到使用集"""
         self._using_actions = self._default_actions.copy()
 
+    def add_system_action_if_needed(self, action_name: str) -> bool:
+        """
+        根据需要添加系统动作到使用集
+
+        Args:
+            action_name: 动作名称
+
+        Returns:
+            bool: 是否成功添加
+        """
+        if action_name in self._registered_actions and action_name not in self._using_actions:
+            self._using_actions[action_name] = self._registered_actions[action_name]
+            logger.info(f"临时添加系统动作到使用集: {action_name}")
+            return True
+        return False
+
     def get_action(self, action_name: str) -> Optional[Type[BaseAction]]:
         """
         获取指定动作的处理器类
@@ -301,4 +322,6 @@ class ActionManager:
         Returns:
             Optional[Type[BaseAction]]: 动作处理器类，如果不存在则返回None
         """
-        return _ACTION_REGISTRY.get(action_name)
+        from src.plugin_system.core.component_registry import component_registry
+
+        return component_registry.get_component_class(action_name)

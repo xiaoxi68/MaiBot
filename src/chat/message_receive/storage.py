@@ -5,9 +5,9 @@ from typing import Union
 from .message import MessageSending, MessageRecv
 from .chat_stream import ChatStream
 from ...common.database.database_model import Messages, RecalledMessages  # Import Peewee models
-from src.common.logger import get_module_logger
+from src.common.logger import get_logger
 
-logger = get_module_logger("message_storage")
+logger = get_logger("message_storage")
 
 
 class MessageStorage:
@@ -18,7 +18,12 @@ class MessageStorage:
             # 莫越权 救世啊
             pattern = r"<MainRule>.*?</MainRule>|<schedule>.*?</schedule>|<UserMessage>.*?</UserMessage>"
 
+            # print(message)
+
             processed_plain_text = message.processed_plain_text
+
+            # print(processed_plain_text)
+
             if processed_plain_text:
                 filtered_processed_plain_text = re.sub(pattern, "", processed_plain_text, flags=re.DOTALL)
             else:

@@ -16,6 +16,8 @@ class ObsInfo(InfoBase):
     Data Fields:
         talking_message (str): 说话消息内容
         talking_message_str_truncate (str): 截断后的说话消息内容
+        talking_message_str_short (str): 简短版本的说话消息内容（使用最新一半消息）
+        talking_message_str_truncate_short (str): 截断简短版本的说话消息内容（使用最新一半消息）
         chat_type (str): 聊天类型，可以是 "private"（私聊）、"group"（群聊）或 "other"（其他）
     """
 
@@ -36,6 +38,22 @@ class ObsInfo(InfoBase):
             message (str): 截断后的说话消息内容
         """
         self.data["talking_message_str_truncate"] = message
+
+    def set_talking_message_str_short(self, message: str) -> None:
+        """设置简短版本的说话消息
+
+        Args:
+            message (str): 简短版本的说话消息内容
+        """
+        self.data["talking_message_str_short"] = message
+
+    def set_talking_message_str_truncate_short(self, message: str) -> None:
+        """设置截断简短版本的说话消息
+
+        Args:
+            message (str): 截断简短版本的说话消息内容
+        """
+        self.data["talking_message_str_truncate_short"] = message
 
     def set_previous_chat_info(self, message: str) -> None:
         """设置之前聊天信息
@@ -63,6 +81,22 @@ class ObsInfo(InfoBase):
         """
         self.data["chat_target"] = chat_target
 
+    def set_chat_id(self, chat_id: str) -> None:
+        """设置聊天ID
+
+        Args:
+            chat_id (str): 聊天ID
+        """
+        self.data["chat_id"] = chat_id
+
+    def get_chat_id(self) -> Optional[str]:
+        """获取聊天ID
+
+        Returns:
+            Optional[str]: 聊天ID，如果未设置则返回 None
+        """
+        return self.get_info("chat_id")
+
     def get_talking_message(self) -> Optional[str]:
         """获取说话消息
 
@@ -78,6 +112,22 @@ class ObsInfo(InfoBase):
             Optional[str]: 截断后的说话消息内容，如果未设置则返回 None
         """
         return self.get_info("talking_message_str_truncate")
+
+    def get_talking_message_str_short(self) -> Optional[str]:
+        """获取简短版本的说话消息
+
+        Returns:
+            Optional[str]: 简短版本的说话消息内容，如果未设置则返回 None
+        """
+        return self.get_info("talking_message_str_short")
+
+    def get_talking_message_str_truncate_short(self) -> Optional[str]:
+        """获取截断简短版本的说话消息
+
+        Returns:
+            Optional[str]: 截断简短版本的说话消息内容，如果未设置则返回 None
+        """
+        return self.get_info("talking_message_str_truncate_short")
 
     def get_chat_type(self) -> str:
         """获取聊天类型

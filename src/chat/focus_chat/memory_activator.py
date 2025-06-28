@@ -1,12 +1,11 @@
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 from src.chat.heart_flow.observation.structure_observation import StructureObservation
-from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from datetime import datetime
-from src.chat.memory_system.Hippocampus import HippocampusManager
+from src.chat.memory_system.Hippocampus import hippocampus_manager
 from typing import List, Dict
 import difflib
 import json
@@ -72,7 +71,6 @@ class MemoryActivator:
         self.summary_model = LLMRequest(
             model=global_config.model.memory_summary,
             temperature=0.7,
-            max_tokens=50,
             request_type="focus.memory_activator",
         )
         self.running_memory = []
@@ -88,18 +86,20 @@ class MemoryActivator:
         Returns:
             List[Dict]: 激活的记忆列表
         """
+        # 如果记忆系统被禁用，直接返回空列表
+        if not global_config.memory.enable_memory:
+            return []
+
         obs_info_text = ""
         for observation in observations:
             if isinstance(observation, ChattingObservation):
-                obs_info_text += observation.get_observe_info()
+                obs_info_text += observation.talking_message_str_truncate_short
             elif isinstance(observation, StructureObservation):
                 working_info = observation.get_observe_info()
                 for working_info_item in working_info:
                     obs_info_text += f"{working_info_item['type']}: {working_info_item['content']}\n"
-            elif isinstance(observation, HFCloopObservation):
-                obs_info_text += observation.get_observe_info()
 
-        # logger.debug(f"回忆待检索内容：obs_info_text: {obs_info_text}")
+        # logger.info(f"回忆待检索内容：obs_info_text: {obs_info_text}")
 
         # 将缓存的关键词转换为字符串，用于prompt
         cached_keywords_str = ", ".join(self.cached_keywords) if self.cached_keywords else "暂无历史关键词"
@@ -112,13 +112,9 @@ class MemoryActivator:
 
         # logger.debug(f"prompt: {prompt}")
 
-        response = await self.summary_model.generate_response(prompt)
+        response, (reasoning_content, model_name) = await self.summary_model.generate_response_async(prompt)
 
-        # logger.debug(f"response: {response}")
-
-        # 只取response的第一个元素（字符串）
-        response_str = response[0]
-        keywords = list(get_keywords_from_json(response_str))
+        keywords = list(get_keywords_from_json(response))
 
         # 更新关键词缓存
         if keywords:
@@ -130,17 +126,17 @@ class MemoryActivator:
 
             # 添加新的关键词到缓存
             self.cached_keywords.update(keywords)
-            logger.debug(f"当前激活的记忆关键词: {self.cached_keywords}")
+            logger.info(f"当前激活的记忆关键词: {self.cached_keywords}")
 
         # 调用记忆系统获取相关记忆
-        related_memory = await HippocampusManager.get_instance().get_memory_from_topic(
+        related_memory = await hippocampus_manager.get_memory_from_topic(
             valid_keywords=keywords, max_memory_num=3, max_memory_length=2, max_depth=3
         )
-        # related_memory = await HippocampusManager.get_instance().get_memory_from_text(
+        # related_memory = await hippocampus_manager.get_memory_from_text(
         #     text=obs_info_text, max_memory_num=5, max_memory_length=2, max_depth=3, fast_retrieval=False
         # )
 
-        # logger.debug(f"获取到的记忆: {related_memory}")
+        logger.info(f"获取到的记忆: {related_memory}")
 
         # 激活时，所有已有记忆的duration+1，达到3则移除
         for m in self.running_memory[:]:

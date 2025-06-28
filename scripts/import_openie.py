@@ -10,20 +10,29 @@ from time import sleep
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from src.chat.knowledge.src.lpmmconfig import PG_NAMESPACE, global_config
-from src.chat.knowledge.src.embedding_store import EmbeddingManager
-from src.chat.knowledge.src.llm_client import LLMClient
-from src.chat.knowledge.src.open_ie import OpenIE
-from src.chat.knowledge.src.kg_manager import KGManager
-from src.common.logger import get_module_logger
-from src.chat.knowledge.src.utils.hash import get_sha256
+from src.chat.knowledge.lpmmconfig import PG_NAMESPACE, global_config
+from src.chat.knowledge.embedding_store import EmbeddingManager
+from src.chat.knowledge.llm_client import LLMClient
+from src.chat.knowledge.open_ie import OpenIE
+from src.chat.knowledge.kg_manager import KGManager
+from src.common.logger import get_logger
+from src.chat.knowledge.utils.hash import get_sha256
 
 
 # 添加项目根目录到 sys.path
 ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-OPENIE_DIR = global_config["persistence"]["openie_data_path"] or os.path.join(ROOT_PATH, "data/openie")
+OPENIE_DIR = global_config["persistence"]["openie_data_path"] or os.path.join(ROOT_PATH, "data", "openie")
 
-logger = get_module_logger("OpenIE导入")
+logger = get_logger("OpenIE导入")
+
+
+def ensure_openie_dir():
+    """确保OpenIE数据目录存在"""
+    if not os.path.exists(OPENIE_DIR):
+        os.makedirs(OPENIE_DIR)
+        logger.info(f"创建OpenIE数据目录：{OPENIE_DIR}")
+    else:
+        logger.info(f"OpenIE数据目录已存在：{OPENIE_DIR}")
 
 
 def hash_deduplicate(
@@ -178,7 +187,7 @@ def main():  # sourcery skip: dict-comprehension
         print("操作已取消")
         sys.exit(1)
     print("\n" + "=" * 40 + "\n")
-
+    ensure_openie_dir()  # 确保OpenIE目录存在
     logger.info("----开始导入openie数据----\n")
 
     logger.info("创建LLM客户端")

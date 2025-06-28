@@ -1,4 +1,4 @@
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.common.database.database import db
 from src.common.database.database_model import PersonInfo  # 新增导入
 import copy
@@ -6,19 +6,11 @@ import hashlib
 from typing import Any, Callable, Dict
 import datetime
 import asyncio
-import numpy as np
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
-from src.individuality.individuality import individuality
 
-import matplotlib
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-from pathlib import Path
-import pandas as pd
 import json  # 新增导入
-import re
+from json_repair import repair_json
 
 
 """
@@ -31,25 +23,31 @@ PersonInfoManager 类方法功能摘要：
 6. get_values - 批量获取字段值（任一字段无效则返回空字典）
 7. del_all_undefined_field - 清理全集合中未定义的字段
 8. get_specific_value_list - 根据指定条件，返回person_id,value字典
-9. personal_habit_deduction - 定时推断个人习惯
 """
 
 
 logger = get_logger("person_info")
 
+JSON_SERIALIZED_FIELDS = ["points", "forgotten_points", "info_list"]
+
 person_info_default = {
     "person_id": None,
-    "person_name": None,  # 模型中已设为 null=True，此默认值OK
-    "name_reason": None,
-    "platform": "unknown",  # 提供非None的默认值
-    "user_id": "unknown",  # 提供非None的默认值
-    "nickname": "Unknown",  # 提供非None的默认值
-    "relationship_value": 0,
-    "know_time": 0,  # 修正拼写：konw_time -> know_time
-    "msg_interval": 2000,
-    "msg_interval_list": [],  # 将作为 JSON 字符串存储在 Peewee 的 TextField
-    "user_cardname": None,  # 注意：此字段不在 PersonInfo Peewee 模型中
-    "user_avatar": None,  # 注意：此字段不在 PersonInfo Peewee 模型中
+    "person_name": None,
+    "name_reason": None,  # Corrected from person_name_reason to match common usage if intended
+    "platform": "unknown",
+    "user_id": "unknown",
+    "nickname": "Unknown",
+    "know_times": 0,
+    "know_since": None,
+    "last_know": None,
+    # "user_cardname": None, # This field is not in Peewee model PersonInfo
+    # "user_avatar": None,   # This field is not in Peewee model PersonInfo
+    "impression": None,  # Corrected from persion_impression
+    "short_impression": None,
+    "info_list": None,
+    "points": None,
+    "forgotten_points": None,
+    "relation_value": None,
 }
 
 
@@ -59,11 +57,16 @@ class PersonInfoManager:
         # TODO: API-Adapter修改标记
         self.qv_name_llm = LLMRequest(
             model=global_config.model.utils,
-            max_tokens=256,
             request_type="relation.qv_name",
         )
         try:
             db.connect(reuse_if_open=True)
+            # 设置连接池参数
+            if hasattr(db, "execute_sql"):
+                # 设置SQLite优化参数
+                db.execute_sql("PRAGMA cache_size = -64000")  # 64MB缓存
+                db.execute_sql("PRAGMA temp_store = memory")  # 临时存储在内存中
+                db.execute_sql("PRAGMA mmap_size = 268435456")  # 256MB内存映射
             db.create_tables([PersonInfo], safe=True)
         except Exception as e:
             logger.error(f"数据库连接或 PersonInfo 表创建失败: {e}")
@@ -126,19 +129,28 @@ class PersonInfoManager:
 
         final_data = {"person_id": person_id}
 
+        # Start with defaults for all model fields
+        for key, default_value in _person_info_default.items():
+            if key in model_fields:
+                final_data[key] = default_value
+
+        # Override with provided data
         if data:
             for key, value in data.items():
                 if key in model_fields:
                     final_data[key] = value
 
-        for key, default_value in _person_info_default.items():
-            if key in model_fields and key not in final_data:
-                final_data[key] = default_value
+        # Ensure person_id is correctly set from the argument
+        final_data["person_id"] = person_id
 
-        if "msg_interval_list" in final_data and isinstance(final_data["msg_interval_list"], list):
-            final_data["msg_interval_list"] = json.dumps(final_data["msg_interval_list"])
-        elif "msg_interval_list" not in final_data and "msg_interval_list" in model_fields:
-            final_data["msg_interval_list"] = json.dumps([])
+        # Serialize JSON fields
+        for key in JSON_SERIALIZED_FIELDS:
+            if key in final_data:
+                if isinstance(final_data[key], (list, dict)):
+                    final_data[key] = json.dumps(final_data[key], ensure_ascii=False)
+                elif final_data[key] is None:  # Default for lists is [], store as "[]"
+                    final_data[key] = json.dumps([], ensure_ascii=False)
+                # If it's already a string, assume it's valid JSON or a non-JSON string field
 
         def _db_create_sync(p_data: dict):
             try:
@@ -153,31 +165,62 @@ class PersonInfoManager:
     async def update_one_field(self, person_id: str, field_name: str, value, data: dict = None):
         """更新某一个字段，会补全"""
         if field_name not in PersonInfo._meta.fields:
-            if field_name in person_info_default:
-                logger.debug(f"更新'{field_name}'跳过，字段存在于默认配置但不在 PersonInfo Peewee 模型中。")
-                return
             logger.debug(f"更新'{field_name}'失败，未在 PersonInfo Peewee 模型中定义的字段。")
             return
 
-        def _db_update_sync(p_id: str, f_name: str, val):
-            record = PersonInfo.get_or_none(PersonInfo.person_id == p_id)
-            if record:
-                if f_name == "msg_interval_list" and isinstance(val, list):
-                    setattr(record, f_name, json.dumps(val))
-                else:
-                    setattr(record, f_name, val)
-                record.save()
-                return True, False
-            return False, True
+        processed_value = value
+        if field_name in JSON_SERIALIZED_FIELDS:
+            if isinstance(value, (list, dict)):
+                processed_value = json.dumps(value, ensure_ascii=False, indent=None)
+            elif value is None:  # Store None as "[]" for JSON list fields
+                processed_value = json.dumps([], ensure_ascii=False, indent=None)
 
-        found, needs_creation = await asyncio.to_thread(_db_update_sync, person_id, field_name, value)
+        def _db_update_sync(p_id: str, f_name: str, val_to_set):
+            import time
+
+            start_time = time.time()
+            try:
+                record = PersonInfo.get_or_none(PersonInfo.person_id == p_id)
+                query_time = time.time()
+
+                if record:
+                    setattr(record, f_name, val_to_set)
+                    record.save()
+                    save_time = time.time()
+
+                    total_time = save_time - start_time
+                    if total_time > 0.5:  # 如果超过500ms就记录日志
+                        logger.warning(
+                            f"数据库更新操作耗时 {total_time:.3f}秒 (查询: {query_time - start_time:.3f}s, 保存: {save_time - query_time:.3f}s) person_id={p_id}, field={f_name}"
+                        )
+
+                    return True, False  # Found and updated, no creation needed
+                else:
+                    total_time = time.time() - start_time
+                    if total_time > 0.5:
+                        logger.warning(f"数据库查询操作耗时 {total_time:.3f}秒 person_id={p_id}, field={f_name}")
+                    return False, True  # Not found, needs creation
+            except Exception as e:
+                total_time = time.time() - start_time
+                logger.error(f"数据库操作异常，耗时 {total_time:.3f}秒: {e}")
+                raise
+
+        found, needs_creation = await asyncio.to_thread(_db_update_sync, person_id, field_name, processed_value)
 
         if needs_creation:
-            logger.debug(f"更新时 {person_id} 不存在，将新建。")
+            logger.info(f"{person_id} 不存在，将新建。")
             creation_data = data if data is not None else {}
-            creation_data[field_name] = value
-            if "platform" not in creation_data or "user_id" not in creation_data:
-                logger.warning(f"为 {person_id} 创建记录时，platform/user_id 可能缺失。")
+            # Ensure platform and user_id are present for context if available from 'data'
+            # but primarily, set the field that triggered the update.
+            # The create_person_info will handle defaults and serialization.
+            creation_data[field_name] = value  # Pass original value to create_person_info
+
+            # Ensure platform and user_id are in creation_data if available,
+            # otherwise create_person_info will use defaults.
+            if data and "platform" in data:
+                creation_data["platform"] = data["platform"]
+            if data and "user_id" in data:
+                creation_data["user_id"] = data["user_id"]
 
             await self.create_person_info(person_id, creation_data)
 
@@ -204,45 +247,42 @@ class PersonInfoManager:
     def _extract_json_from_text(text: str) -> dict:
         """从文本中提取JSON数据的高容错方法"""
         try:
-            parsed_json = json.loads(text)
-            if isinstance(parsed_json, list):
-                if parsed_json:
-                    parsed_json = parsed_json[0]
-                else:
-                    parsed_json = None
+            fixed_json = repair_json(text)
+            if isinstance(fixed_json, str):
+                parsed_json = json.loads(fixed_json)
+            else:
+                parsed_json = fixed_json
+
+            if isinstance(parsed_json, list) and parsed_json:
+                parsed_json = parsed_json[0]
+
             if isinstance(parsed_json, dict):
                 return parsed_json
 
-        except json.JSONDecodeError:
-            pass
         except Exception as e:
-            logger.warning(f"尝试直接解析JSON时发生意外错误: {e}")
-            pass
-
-        try:
-            json_pattern = r"\{[^{}]*\}"
-            matches = re.findall(json_pattern, text)
-            if matches:
-                parsed_obj = json.loads(matches[0])
-                if isinstance(parsed_obj, dict):
-                    return parsed_obj
-
-            nickname_pattern = r'"nickname"[:\s]+"([^"]+)"'
-            reason_pattern = r'"reason"[:\s]+"([^"]+)"'
-
-            nickname_match = re.search(nickname_pattern, text)
-            reason_match = re.search(reason_pattern, text)
-
-            if nickname_match:
-                return {
-                    "nickname": nickname_match.group(1),
-                    "reason": reason_match.group(1) if reason_match else "未提供理由",
-                }
-        except Exception as e:
-            logger.error(f"后备JSON提取失败: {str(e)}")
+            logger.warning(f"JSON提取失败: {e}")
 
         logger.warning(f"无法从文本中提取有效的JSON字典: {text}")
+        logger.info(f"文本: {text}")
         return {"nickname": "", "reason": ""}
+
+    async def _generate_unique_person_name(self, base_name: str) -> str:
+        """生成唯一的 person_name，如果存在重复则添加数字后缀"""
+        # 处理空昵称的情况
+        if not base_name or base_name.isspace():
+            base_name = "空格"
+
+        # 检查基础名称是否已存在
+        if base_name not in self.person_name_list.values():
+            return base_name
+
+        # 如果存在，添加数字后缀
+        counter = 1
+        while True:
+            new_name = f"{base_name}[{counter}]"
+            if new_name not in self.person_name_list.values():
+                return new_name
+            counter += 1
 
     async def qv_person_name(
         self, person_id: str, user_nickname: str, user_cardname: str, user_avatar: str, request: str = ""
@@ -255,14 +295,14 @@ class PersonInfoManager:
         old_name = await self.get_value(person_id, "person_name")
         old_reason = await self.get_value(person_id, "name_reason")
 
-        max_retries = 5
+        max_retries = 8
         current_try = 0
         existing_names_str = ""
         current_name_set = set(self.person_name_list.values())
 
         while current_try < max_retries:
-            # prompt_personality = individuality.get_prompt(x_person=2, level=1)
-            bot_name = individuality.personality.bot_nickname
+            # prompt_personality =get_individuality().get_prompt(x_person=2, level=1)
+            bot_name = global_config.bot.nickname
 
             qv_name_prompt = f"你是{bot_name}，一个伪装成人类的AI，你不能让别人发现这一点，"
             qv_name_prompt += f"现在你想给一个用户取一个昵称，用户的qq昵称是{user_nickname}，"
@@ -273,7 +313,7 @@ class PersonInfoManager:
                 qv_name_prompt += f"你之前叫他{old_name}，是因为{old_reason}，"
 
             qv_name_prompt += f"\n其他取名的要求是：{request}，不要太浮夸，简短，"
-            qv_name_prompt += "\n请根据以上用户信息，想想你叫他什么比较好，不要太浮夸，请最好使用用户的qq昵称，可以稍作修改，优先使用原文。优先使用用户的qq昵称或者群昵称原文。"
+            qv_name_prompt += "\n请根据以上用户信息，想想你叫他什么比较好，不要太浮夸，请最好使用用户的qq昵称或群昵称原文，可以稍作修改，优先使用原文。优先使用用户的qq昵称或者群昵称原文。"
 
             if existing_names_str:
                 qv_name_prompt += f"\n请注意，以下名称已被你尝试过或已知存在，请避免：{existing_names_str}。\n"
@@ -286,9 +326,9 @@ class PersonInfoManager:
                 "nickname": "昵称",
                 "reason": "理由"
             }"""
-            response = await self.qv_name_llm.generate_response(qv_name_prompt)
-            logger.trace(f"取名提示词：{qv_name_prompt}\n取名回复：{response}")
-            result = self._extract_json_from_text(response[0])
+            response, (reasoning_content, model_name) = await self.qv_name_llm.generate_response_async(qv_name_prompt)
+            # logger.info(f"取名提示词：{qv_name_prompt}\n取名回复：{response}")
+            result = self._extract_json_from_text(response)
 
             if not result or not result.get("nickname"):
                 logger.error("生成的昵称为空或结果格式不正确，重试中...")
@@ -300,6 +340,7 @@ class PersonInfoManager:
             is_duplicate = False
             if generated_nickname in current_name_set:
                 is_duplicate = True
+                logger.info(f"尝试给用户{user_nickname} {person_id} 取名，但是 {generated_nickname} 已存在，重试中...")
             else:
 
                 def _db_check_name_exists_sync(name_to_check):
@@ -313,6 +354,10 @@ class PersonInfoManager:
                 await self.update_one_field(person_id, "person_name", generated_nickname)
                 await self.update_one_field(person_id, "name_reason", result.get("reason", "未提供理由"))
 
+                logger.info(
+                    f"成功给用户{user_nickname} {person_id} 取名 {generated_nickname}，理由：{result.get('reason', '未提供理由')}"
+                )
+
                 self.person_name_list[person_id] = generated_nickname
                 return result
             else:
@@ -322,8 +367,13 @@ class PersonInfoManager:
                 logger.debug(f"生成的昵称 {generated_nickname} 已存在，重试中...")
                 current_try += 1
 
-        logger.error(f"在{max_retries}次尝试后仍未能生成唯一昵称 for {person_id}")
-        return None
+        # 如果多次尝试后仍未成功，使用唯一的 user_nickname 作为默认值
+        unique_nickname = await self._generate_unique_person_name(user_nickname)
+        logger.warning(f"在{max_retries}次尝试后未能生成唯一昵称，使用默认昵称 {unique_nickname}")
+        await self.update_one_field(person_id, "person_name", unique_nickname)
+        await self.update_one_field(person_id, "name_reason", "使用用户原始昵称作为默认值")
+        self.person_name_list[person_id] = unique_nickname
+        return {"nickname": unique_nickname, "reason": "使用用户原始昵称作为默认值"}
 
     @staticmethod
     async def del_one_document(person_id: str):
@@ -350,39 +400,70 @@ class PersonInfoManager:
 
     @staticmethod
     async def get_value(person_id: str, field_name: str):
-        """获取指定person_id文档的字段值，若不存在该字段，则返回该字段的全局默认值"""
-        if not person_id:
-            logger.debug("get_value获取失败：person_id不能为空")
-            return person_info_default.get(field_name)
-
-        if field_name not in PersonInfo._meta.fields:
-            if field_name in person_info_default:
-                logger.trace(f"字段'{field_name}'不在Peewee模型中，但存在于默认配置中。返回配置默认值。")
-                return copy.deepcopy(person_info_default[field_name])
-            logger.debug(f"get_value获取失败：字段'{field_name}'未在Peewee模型和默认配置中定义。")
-            return None
+        """获取指定用户指定字段的值"""
+        default_value_for_field = person_info_default.get(field_name)
+        if field_name in JSON_SERIALIZED_FIELDS and default_value_for_field is None:
+            default_value_for_field = []  # Ensure JSON fields default to [] if not in DB
 
         def _db_get_value_sync(p_id: str, f_name: str):
             record = PersonInfo.get_or_none(PersonInfo.person_id == p_id)
             if record:
-                val = getattr(record, f_name)
-                if f_name == "msg_interval_list" and isinstance(val, str):
+                val = getattr(record, f_name, None)
+                if f_name in JSON_SERIALIZED_FIELDS:
+                    if isinstance(val, str):
+                        try:
+                            return json.loads(val)
+                        except json.JSONDecodeError:
+                            logger.warning(f"字段 {f_name} for {p_id} 包含无效JSON: {val}. 返回默认值.")
+                            return []  # Default for JSON fields on error
+                    elif val is None:  # Field exists in DB but is None
+                        return []  # Default for JSON fields
+                    # If val is already a list/dict (e.g. if somehow set without serialization)
+                    return val  # Should ideally not happen if update_one_field is always used
+                return val
+            return None  # Record not found
+
+        try:
+            value_from_db = await asyncio.to_thread(_db_get_value_sync, person_id, field_name)
+            if value_from_db is not None:
+                return value_from_db
+            if field_name in person_info_default:
+                return default_value_for_field
+            logger.warning(f"字段 {field_name} 在 person_info_default 中未定义，且在数据库中未找到。")
+            return None  # Ultimate fallback
+        except Exception as e:
+            logger.error(f"获取字段 {field_name} for {person_id} 时出错 (Peewee): {e}")
+            # Fallback to default in case of any error during DB access
+            if field_name in person_info_default:
+                return default_value_for_field
+            return None
+
+    @staticmethod
+    def get_value_sync(person_id: str, field_name: str):
+        """同步获取指定用户指定字段的值"""
+        default_value_for_field = person_info_default.get(field_name)
+        if field_name in JSON_SERIALIZED_FIELDS and default_value_for_field is None:
+            default_value_for_field = []
+
+        record = PersonInfo.get_or_none(PersonInfo.person_id == person_id)
+        if record:
+            val = getattr(record, field_name, None)
+            if field_name in JSON_SERIALIZED_FIELDS:
+                if isinstance(val, str):
                     try:
                         return json.loads(val)
                     except json.JSONDecodeError:
-                        logger.warning(f"无法解析 {p_id} 的 msg_interval_list JSON: {val}")
-                        return copy.deepcopy(person_info_default.get(f_name, []))
+                        logger.warning(f"字段 {field_name} for {person_id} 包含无效JSON: {val}. 返回默认值.")
+                        return []
+                elif val is None:
+                    return []
                 return val
-            return None
+            return val
 
-        value = await asyncio.to_thread(_db_get_value_sync, person_id, field_name)
-
-        if value is not None:
-            return value
-        else:
-            default_value = copy.deepcopy(person_info_default.get(field_name))
-            logger.trace(f"获取{person_id}的{field_name}失败或值为None，已返回默认值{default_value} (Peewee)")
-            return default_value
+        if field_name in person_info_default:
+            return default_value_for_field
+        logger.warning(f"字段 {field_name} 在 person_info_default 中未定义，且在数据库中未找到。")
+        return None
 
     @staticmethod
     async def get_values(person_id: str, field_names: list) -> dict:
@@ -402,7 +483,7 @@ class PersonInfoManager:
             if field_name not in PersonInfo._meta.fields:
                 if field_name in person_info_default:
                     result[field_name] = copy.deepcopy(person_info_default[field_name])
-                    logger.trace(f"字段'{field_name}'不在Peewee模型中，使用默认配置值。")
+                    logger.debug(f"字段'{field_name}'不在Peewee模型中，使用默认配置值。")
                 else:
                     logger.debug(f"get_values查询失败：字段'{field_name}'未在Peewee模型和默认配置中定义。")
                     result[field_name] = None
@@ -410,13 +491,7 @@ class PersonInfoManager:
 
             if record:
                 value = getattr(record, field_name)
-                if field_name == "msg_interval_list" and isinstance(value, str):
-                    try:
-                        result[field_name] = json.loads(value)
-                    except json.JSONDecodeError:
-                        logger.warning(f"无法解析 {person_id} 的 msg_interval_list JSON: {value}")
-                        result[field_name] = copy.deepcopy(person_info_default.get(field_name, []))
-                elif value is not None:
+                if value is not None:
                     result[field_name] = value
                 else:
                     result[field_name] = copy.deepcopy(person_info_default.get(field_name))
@@ -424,14 +499,6 @@ class PersonInfoManager:
                 result[field_name] = copy.deepcopy(person_info_default.get(field_name))
 
         return result
-
-    # @staticmethod
-    # async def del_all_undefined_field():
-    #     """删除所有项里的未定义字段 - 对于Peewee (SQL)，此操作通常不适用，因为模式是固定的。"""
-    #     logger.info(
-    #         "del_all_undefined_field: 对于使用Peewee的SQL数据库，此操作通常不适用或不需要，因为表结构是预定义的。"
-    #     )
-    #     return
 
     @staticmethod
     async def get_specific_value_list(
@@ -450,17 +517,8 @@ class PersonInfoManager:
             try:
                 for record in PersonInfo.select(PersonInfo.person_id, getattr(PersonInfo, f_name)):
                     value = getattr(record, f_name)
-                    if f_name == "msg_interval_list" and isinstance(value, str):
-                        try:
-                            processed_value = json.loads(value)
-                        except json.JSONDecodeError:
-                            logger.warning(f"跳过记录 {record.person_id}，无法解析 msg_interval_list: {value}")
-                            continue
-                    else:
-                        processed_value = value
-
-                    if way(processed_value):
-                        found_results[record.person_id] = processed_value
+                    if way(value):
+                        found_results[record.person_id] = value
             except Exception as e_query:
                 logger.error(f"数据库查询失败 (Peewee specific_value_list for {f_name}): {str(e_query)}", exc_info=True)
             return found_results
@@ -470,86 +528,6 @@ class PersonInfoManager:
         except Exception as e:
             logger.error(f"执行 get_specific_value_list 线程时出错: {str(e)}", exc_info=True)
             return {}
-
-    async def personal_habit_deduction(self):
-        """启动个人信息推断，每天根据一定条件推断一次"""
-        try:
-            while 1:
-                await asyncio.sleep(600)
-                current_time_dt = datetime.datetime.now()
-                logger.info(f"个人信息推断启动: {current_time_dt.strftime('%Y-%m-%d %H:%M:%S')}")
-
-                msg_interval_map_generated = False
-                msg_interval_lists_map = await self.get_specific_value_list(
-                    "msg_interval_list", lambda x: isinstance(x, list) and len(x) >= 100
-                )
-
-                for person_id, actual_msg_interval_list in msg_interval_lists_map.items():
-                    await asyncio.sleep(0.3)
-                    try:
-                        time_interval = []
-                        for t1, t2 in zip(actual_msg_interval_list, actual_msg_interval_list[1:]):
-                            delta = t2 - t1
-                            if delta > 0:
-                                time_interval.append(delta)
-
-                        time_interval = [t for t in time_interval if 200 <= t <= 8000]
-
-                        if len(time_interval) >= 30 + 10:
-                            time_interval.sort()
-                            msg_interval_map_generated = True
-                            log_dir = Path("logs/person_info")
-                            log_dir.mkdir(parents=True, exist_ok=True)
-                            plt.figure(figsize=(10, 6))
-                            time_series_original = pd.Series(time_interval)
-                            plt.hist(
-                                time_series_original,
-                                bins=50,
-                                density=True,
-                                alpha=0.4,
-                                color="pink",
-                                label="Histogram (Original Filtered)",
-                            )
-                            time_series_original.plot(
-                                kind="kde", color="mediumpurple", linewidth=1, label="Density (Original Filtered)"
-                            )
-                            plt.grid(True, alpha=0.2)
-                            plt.xlim(0, 8000)
-                            plt.title(f"Message Interval Distribution (User: {person_id[:8]}...)")
-                            plt.xlabel("Interval (ms)")
-                            plt.ylabel("Density")
-                            plt.legend(framealpha=0.9, facecolor="white")
-                            img_path = log_dir / f"interval_distribution_{person_id[:8]}.png"
-                            plt.savefig(img_path)
-                            plt.close()
-
-                            trimmed_interval = time_interval[5:-5]
-                            if trimmed_interval:
-                                msg_interval_val = int(round(np.percentile(trimmed_interval, 37)))
-                                await self.update_one_field(person_id, "msg_interval", msg_interval_val)
-                                logger.trace(
-                                    f"用户{person_id}的msg_interval通过头尾截断和37分位数更新为{msg_interval_val}"
-                                )
-                            else:
-                                logger.trace(f"用户{person_id}截断后数据为空，无法计算msg_interval")
-                        else:
-                            logger.trace(
-                                f"用户{person_id}有效消息间隔数量 ({len(time_interval)}) 不足进行推断 (需要至少 {30 + 10} 条)"
-                            )
-                    except Exception as e_inner:
-                        logger.trace(f"用户{person_id}消息间隔计算失败: {type(e_inner).__name__}: {str(e_inner)}")
-                        continue
-
-                if msg_interval_map_generated:
-                    logger.trace("已保存分布图到: logs/person_info")
-
-                current_time_dt_end = datetime.datetime.now()
-                logger.trace(f"个人信息推断结束: {current_time_dt_end.strftime('%Y-%m-%d %H:%M:%S')}")
-                await asyncio.sleep(86400)
-
-        except Exception as e:
-            logger.error(f"个人信息推断运行时出错: {str(e)}")
-            logger.exception("详细错误信息：")
 
     async def get_or_create_person(
         self, platform: str, user_id: int, nickname: str = None, user_cardname: str = None, user_avatar: str = None
@@ -567,17 +545,26 @@ class PersonInfoManager:
 
         if record is None:
             logger.info(f"用户 {platform}:{user_id} (person_id: {person_id}) 不存在，将创建新记录 (Peewee)。")
+            unique_nickname = await self._generate_unique_person_name(nickname)
             initial_data = {
+                "person_id": person_id,
                 "platform": platform,
                 "user_id": str(user_id),
                 "nickname": nickname,
-                "know_time": int(datetime.datetime.now().timestamp()),  # 修正拼写：konw_time -> know_time
+                "person_name": unique_nickname,  # 使用群昵称作为person_name
+                "name_reason": "从群昵称获取",
+                "know_times": 0,
+                "know_since": int(datetime.datetime.now().timestamp()),
+                "last_know": int(datetime.datetime.now().timestamp()),
+                "impression": None,
+                "points": [],
+                "forgotten_points": [],
             }
             model_fields = PersonInfo._meta.fields.keys()
             filtered_initial_data = {k: v for k, v in initial_data.items() if v is not None and k in model_fields}
 
             await self.create_person_info(person_id, data=filtered_initial_data)
-            logger.debug(f"已为 {person_id} 创建新记录，初始数据 (filtered for model): {filtered_initial_data}")
+            logger.info(f"已为 {person_id} 创建新记录，初始数据 (filtered for model): {filtered_initial_data}")
 
         return person_id
 
@@ -638,4 +625,11 @@ class PersonInfoManager:
         return None
 
 
-person_info_manager = PersonInfoManager()
+person_info_manager = None
+
+
+def get_person_info_manager():
+    global person_info_manager
+    if person_info_manager is None:
+        person_info_manager = PersonInfoManager()
+    return person_info_manager

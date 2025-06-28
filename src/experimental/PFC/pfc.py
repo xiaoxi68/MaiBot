@@ -1,10 +1,10 @@
 from typing import List, Tuple, TYPE_CHECKING
-from src.common.logger import get_module_logger
+from src.common.logger import get_logger
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.experimental.PFC.chat_observer import ChatObserver
 from src.experimental.PFC.pfc_utils import get_items_from_json
-from src.individuality.individuality import individuality
+from src.individuality.individuality import get_individuality
 from src.experimental.PFC.conversation_info import ConversationInfo
 from src.experimental.PFC.observation_info import ObservationInfo
 from src.chat.utils.chat_message_builder import build_readable_messages
@@ -15,7 +15,7 @@ install(extra_lines=3)
 if TYPE_CHECKING:
     pass
 
-logger = get_module_logger("pfc")
+logger = get_logger("pfc")
 
 
 def _calculate_similarity(goal1: str, goal2: str) -> float:
@@ -47,7 +47,7 @@ class GoalAnalyzer:
             model=global_config.model.utils, temperature=0.7, max_tokens=1000, request_type="conversation_goal"
         )
 
-        self.personality_info = individuality.get_prompt(x_person=2, level=3)
+        self.personality_info = get_individuality().get_prompt(x_person=2, level=3)
         self.name = global_config.bot.nickname
         self.nick_name = global_config.bot.alias_names
         self.private_name = private_name
@@ -91,7 +91,7 @@ class GoalAnalyzer:
 
         if observation_info.new_messages_count > 0:
             new_messages_list = observation_info.unprocessed_messages
-            new_messages_str = await build_readable_messages(
+            new_messages_str = build_readable_messages(
                 new_messages_list,
                 replace_bot_name=True,
                 merge_messages=False,
@@ -224,7 +224,7 @@ class GoalAnalyzer:
 
     async def analyze_conversation(self, goal, reasoning):
         messages = self.chat_observer.get_cached_messages()
-        chat_history_text = await build_readable_messages(
+        chat_history_text = build_readable_messages(
             messages,
             replace_bot_name=True,
             merge_messages=False,
@@ -289,13 +289,13 @@ class GoalAnalyzer:
 #     """直接发送消息到平台的发送器"""
 
 #     def __init__(self, private_name: str):
-#         self.logger = get_module_logger("direct_sender")
+#         self.logger = get_logger("direct_sender")
 #         self.storage = MessageStorage()
 #         self.private_name = private_name
 
 #     async def send_via_ws(self, message: MessageSending) -> None:
 #         try:
-#             await global_api.send_message(message)
+#             await get_global_api().send_message(message)
 #         except Exception as e:
 #             raise ValueError(f"未找到平台：{message.message_info.platform} 的url配置，请检查配置文件") from e
 
@@ -341,6 +341,6 @@ class GoalAnalyzer:
 #         try:
 #             await self.send_via_ws(message)
 #             await self.storage.store_message(message, chat_stream)
-#             logger.success(f"[私聊][{self.private_name}]PFC消息已发送: {content}")
+#             logger.info(f"[私聊][{self.private_name}]PFC消息已发送: {content}")
 #         except Exception as e:
 #             logger.error(f"[私聊][{self.private_name}]PFC消息发送失败: {str(e)}")

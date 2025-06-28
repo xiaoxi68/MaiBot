@@ -1,0 +1,51 @@
+{
+  "manifest_version": 1,
+  "name": "AI拍照插件 (Take Picture Plugin)",
+  "version": "1.0.0",
+  "description": "基于AI图像生成的拍照插件，可以生成逼真的自拍照片，支持照片存储和展示功能。",
+  "author": {
+    "name": "SengokuCola",
+    "url": "https://github.com/SengokuCola"
+  },
+  "license": "GPL-v3.0-or-later",
+  
+  "host_application": {
+    "min_version": "0.8.0",
+    "max_version": "0.8.0"
+  },
+  "homepage_url": "https://github.com/MaiM-with-u/maibot",
+  "repository_url": "https://github.com/MaiM-with-u/maibot",
+  "keywords": ["camera", "photo", "selfie", "ai", "image", "generation"],
+  "categories": ["AI Tools", "Image Processing", "Entertainment"],
+  
+  "default_locale": "zh-CN",
+  "locales_path": "_locales",
+  
+  "plugin_info": {
+    "is_built_in": false,
+    "plugin_type": "image_generator",
+    "api_dependencies": ["volcengine"],
+    "components": [
+      {
+        "type": "action",
+        "name": "take_picture",
+        "description": "生成一张用手机拍摄的照片，比如自拍或者近照",
+        "activation_modes": ["keyword"],
+        "keywords": ["拍张照", "自拍", "发张照片", "看看你", "你的照片"]
+      },
+      {
+        "type": "command",
+        "name": "show_recent_pictures",
+        "description": "展示最近生成的5张照片",
+        "pattern": "/show_pics"
+      }
+    ],
+    "features": [
+      "AI驱动的自拍照生成",
+      "个性化照片风格",
+      "照片历史记录",
+      "缓存机制优化",
+      "火山引擎API集成"
+    ]
+  }
+}

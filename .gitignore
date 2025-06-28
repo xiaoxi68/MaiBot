@@ -16,9 +16,11 @@ MaiBot-Napcat-Adapter
 /log_debug
 /src/test
 nonebot-maibot-adapter/
+MaiMBot-LPMM
 *.zip
 run.bat
 log_debug/
+run_amds.bat
 run_none.bat
 run.py
 message_queue_content.txt
@@ -307,3 +309,10 @@ src/chat/focus_chat/working_memory/test/test4.txt
 run_maiserver.bat
 src/plugins/test_plugin_pic/actions/pic_action_config.toml
 run_pet.bat
+
+/plugins/*
+!/plugins
+!/plugins/hello_world_plugin
+!/plugins/take_picture_plugin
+
+config.toml

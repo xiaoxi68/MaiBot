@@ -1,20 +1,24 @@
 import random
-from src.common.logger_manager import get_logger
+
+from src.common.logger import get_logger
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from typing import List, Tuple
 import os
 import json
+from datetime import datetime
 
 logger = get_logger("expressor")
 
 
 def init_prompt() -> None:
     personality_expression_prompt = """
-{personality}
+你的人物设定：{personality}
 
-请从以上人设中总结出这个角色可能的语言风格，你必须严格根据人设引申，不要输出例子
+你说话的表达方式：{expression_style}
+
+请从以上表达方式中总结出这个角色可能的语言风格，你必须严格根据人设引申，不要输出例子
 思考回复的特殊内容和情感
 思考有没有特殊的梗，一并总结成语言风格
 总结成如下格式的规律，总结的内容要详细，但具有概括性：
@@ -33,7 +37,7 @@ def init_prompt() -> None:
 class PersonalityExpression:
     def __init__(self):
         self.express_learn_model: LLMRequest = LLMRequest(
-            model=global_config.model.focus_expressor,
+            model=global_config.model.replyer_1,
             max_tokens=512,
             request_type="expressor.learner",
         )
@@ -44,35 +48,60 @@ class PersonalityExpression:
     def _read_meta_data(self):
         if os.path.exists(self.meta_file_path):
             try:
-                with open(self.meta_file_path, "r", encoding="utf-8") as f:
-                    return json.load(f)
+                with open(self.meta_file_path, "r", encoding="utf-8") as meta_file:
+                    meta_data = json.load(meta_file)
+                    # 检查是否有last_update_time字段
+                    if "last_update_time" not in meta_data:
+                        logger.warning(f"{self.meta_file_path} 中缺少last_update_time字段，将重新开始。")
+                        # 清空并重写元数据文件
+                        self._write_meta_data({"last_style_text": None, "count": 0, "last_update_time": None})
+                        # 清空并重写表达文件
+                        if os.path.exists(self.expressions_file_path):
+                            with open(self.expressions_file_path, "w", encoding="utf-8") as expressions_file:
+                                json.dump([], expressions_file, ensure_ascii=False, indent=2)
+                            logger.debug(f"已清空表达文件: {self.expressions_file_path}")
+                        return {"last_style_text": None, "count": 0, "last_update_time": None}
+                    return meta_data
             except json.JSONDecodeError:
                 logger.warning(f"无法解析 {self.meta_file_path} 中的JSON数据，将重新开始。")
-                return {"last_style_text": None, "count": 0}
-        return {"last_style_text": None, "count": 0}
+                # 清空并重写元数据文件
+                self._write_meta_data({"last_style_text": None, "count": 0, "last_update_time": None})
+                # 清空并重写表达文件
+                if os.path.exists(self.expressions_file_path):
+                    with open(self.expressions_file_path, "w", encoding="utf-8") as expressions_file:
+                        json.dump([], expressions_file, ensure_ascii=False, indent=2)
+                    logger.debug(f"已清空表达文件: {self.expressions_file_path}")
+                return {"last_style_text": None, "count": 0, "last_update_time": None}
+        return {"last_style_text": None, "count": 0, "last_update_time": None}
 
     def _write_meta_data(self, data):
         os.makedirs(os.path.dirname(self.meta_file_path), exist_ok=True)
-        with open(self.meta_file_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+        with open(self.meta_file_path, "w", encoding="utf-8") as meta_file:
+            json.dump(data, meta_file, ensure_ascii=False, indent=2)
 
     async def extract_and_store_personality_expressions(self):
         """
         检查data/expression/personality目录，不存在则创建。
         用peronality变量作为chat_str，调用LLM生成表达风格，解析后count=100，存储到expressions.json。
-        如果expression_style发生变化，则删除旧的expressions.json并重置计数。
+        如果expression_style、personality或identity发生变化，则删除旧的expressions.json并重置计数。
         对于相同的expression_style，最多计算self.max_calculations次。
         """
         os.makedirs(os.path.dirname(self.expressions_file_path), exist_ok=True)
 
         current_style_text = global_config.expression.expression_style
+        current_personality = global_config.personality.personality_core
+
         meta_data = self._read_meta_data()
 
         last_style_text = meta_data.get("last_style_text")
+        last_personality = meta_data.get("last_personality")
         count = meta_data.get("count", 0)
 
-        if current_style_text != last_style_text:
-            logger.info(f"表达风格已从 '{last_style_text}' 变为 '{current_style_text}'。重置计数。")
+        # 检查是否有任何变化
+        if current_style_text != last_style_text or current_personality != last_personality:
+            logger.info(
+                f"检测到变化：\n风格: '{last_style_text}' -> '{current_style_text}'\n人格: '{last_personality}' -> '{current_personality}'"
+            )
             count = 0
             if os.path.exists(self.expressions_file_path):
                 try:
@@ -82,47 +111,98 @@ class PersonalityExpression:
                     logger.error(f"删除旧的表达文件 {self.expressions_file_path} 失败: {e}")
 
         if count >= self.max_calculations:
-            logger.debug(f"对于风格 '{current_style_text}' 已达到最大计算次数 ({self.max_calculations})。跳过提取。")
-            # 即使跳过，也更新元数据以反映当前风格已被识别且计数已满
-            self._write_meta_data({"last_style_text": current_style_text, "count": count})
+            logger.debug(f"对于当前配置已达到最大计算次数 ({self.max_calculations})。跳过提取。")
+            # 即使跳过，也更新元数据以反映当前配置已被识别且计数已满
+            self._write_meta_data(
+                {
+                    "last_style_text": current_style_text,
+                    "last_personality": current_personality,
+                    "count": count,
+                    "last_update_time": meta_data.get("last_update_time"),
+                }
+            )
             return
 
         # 构建prompt
         prompt = await global_prompt_manager.format_prompt(
             "personality_expression_prompt",
-            personality=current_style_text,
+            personality=current_personality,
+            expression_style=current_style_text,
         )
-        # logger.info(f"个性表达方式提取prompt: {prompt}")
 
         try:
             response, _ = await self.express_learn_model.generate_response_async(prompt)
         except Exception as e:
             logger.error(f"个性表达方式提取失败: {e}")
-            # 如果提取失败，保存当前的风格和未增加的计数
-            self._write_meta_data({"last_style_text": current_style_text, "count": count})
+            # 如果提取失败，保存当前的配置和未增加的计数
+            self._write_meta_data(
+                {
+                    "last_style_text": current_style_text,
+                    "last_personality": current_personality,
+                    "count": count,
+                    "last_update_time": meta_data.get("last_update_time"),
+                }
+            )
             return
 
         logger.info(f"个性表达方式提取response: {response}")
-        # chat_id用personality
-        expressions = self.parse_expression_response(response, "personality")
+
         # 转为dict并count=100
-        result = []
-        for _, situation, style in expressions:
-            result.append({"situation": situation, "style": style, "count": 100})
-        # 超过50条时随机删除多余的，只保留50条
-        if len(result) > 50:
-            remove_count = len(result) - 50
-            remove_indices = set(random.sample(range(len(result)), remove_count))
-            result = [item for idx, item in enumerate(result) if idx not in remove_indices]
+        if response != "":
+            expressions = self.parse_expression_response(response, "personality")
+            # 读取已有的表达方式
+            existing_expressions = []
+            if os.path.exists(self.expressions_file_path):
+                try:
+                    with open(self.expressions_file_path, "r", encoding="utf-8") as f:
+                        existing_expressions = json.load(f)
+                except (json.JSONDecodeError, FileNotFoundError):
+                    logger.warning(f"无法读取或解析 {self.expressions_file_path}，将创建新的表达文件。")
 
-        with open(self.expressions_file_path, "w", encoding="utf-8") as f:
-            json.dump(result, f, ensure_ascii=False, indent=2)
-        logger.info(f"已写入{len(result)}条表达到{self.expressions_file_path}")
+            # 创建新的表达方式
+            new_expressions = []
+            for _, situation, style in expressions:
+                new_expressions.append({"situation": situation, "style": style, "count": 1})
 
-        # 成功提取后更新元数据
-        count += 1
-        self._write_meta_data({"last_style_text": current_style_text, "count": count})
-        logger.info(f"成功处理。风格 '{current_style_text}' 的计数现在是 {count}。")
+            # 合并表达方式，如果situation和style相同则累加count
+            merged_expressions = existing_expressions.copy()
+            for new_expr in new_expressions:
+                found = False
+                for existing_expr in merged_expressions:
+                    if (
+                        existing_expr["situation"] == new_expr["situation"]
+                        and existing_expr["style"] == new_expr["style"]
+                    ):
+                        existing_expr["count"] += new_expr["count"]
+                        found = True
+                        break
+                if not found:
+                    merged_expressions.append(new_expr)
+
+            # 超过50条时随机删除多余的，只保留50条
+            if len(merged_expressions) > 50:
+                remove_count = len(merged_expressions) - 50
+                remove_indices = set(random.sample(range(len(merged_expressions)), remove_count))
+                merged_expressions = [item for idx, item in enumerate(merged_expressions) if idx not in remove_indices]
+
+            with open(self.expressions_file_path, "w", encoding="utf-8") as f:
+                json.dump(merged_expressions, f, ensure_ascii=False, indent=2)
+            logger.info(f"已写入{len(merged_expressions)}条表达到{self.expressions_file_path}")
+
+            # 成功提取后更新元数据
+            count += 1
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            self._write_meta_data(
+                {
+                    "last_style_text": current_style_text,
+                    "last_personality": current_personality,
+                    "count": count,
+                    "last_update_time": current_time,
+                }
+            )
+            logger.info(f"成功处理。当前配置的计数现在是 {count}，最后更新时间：{current_time}。")
+        else:
+            logger.warning(f"个性表达方式提取失败，模型返回空内容: {response}")
 
     def parse_expression_response(self, response: str, chat_id: str) -> List[Tuple[str, str, str]]:
         """

@@ -4,7 +4,7 @@ import asyncio
 from asyncio import Task, Event, Lock
 from typing import Callable, Dict
 
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 
 logger = get_logger("async_task_manager")
 
@@ -90,8 +90,19 @@ class AsyncTaskManager:
         async with self._lock:  # 由于可能需要await等待任务完成，所以需要加异步锁
             if task.task_name in self.tasks:
                 logger.warning(f"已存在名称为 '{task.task_name}' 的任务，正在尝试取消并替换")
-                self.tasks[task.task_name].cancel()  # 取消已存在的任务
-                await self.tasks[task.task_name]  # 等待任务完成
+                old_task = self.tasks[task.task_name]
+                old_task.cancel()  # 取消已存在的任务
+
+                # 添加超时保护，避免无限等待
+                try:
+                    await asyncio.wait_for(old_task, timeout=5.0)
+                except asyncio.TimeoutError:
+                    logger.warning(f"等待任务 '{task.task_name}' 完成超时")
+                except asyncio.CancelledError:
+                    logger.info(f"任务 '{task.task_name}' 已成功取消")
+                except Exception as e:
+                    logger.error(f"等待任务 '{task.task_name}' 完成时发生异常: {e}")
+
                 logger.info(f"成功结束任务 '{task.task_name}'")
 
             # 创建新任务
@@ -123,27 +134,64 @@ class AsyncTaskManager:
         async with self._lock:  # 由于可能需要await等待任务完成，所以需要加异步锁
             # 设置中止标志
             self.abort_flag.set()
-            # 取消所有任务
-            for name, inst in self.tasks.items():
-                try:
-                    inst.cancel()
-                except asyncio.CancelledError:
-                    logger.info(f"已取消任务 '{name}'")
 
-            # 等待所有任务完成
-            for task_name, task_inst in self.tasks.items():
+            # 首先收集所有任务的引用，避免在迭代过程中字典被修改
+            task_items = list(self.tasks.items())
+
+            # 取消所有任务
+            for name, inst in task_items:
+                if not inst.done():
+                    try:
+                        inst.cancel()
+                        logger.debug(f"已请求取消任务 '{name}'")
+                    except Exception as e:
+                        logger.warning(f"取消任务 '{name}' 时发生异常: {e}")
+
+            # 等待所有任务完成，添加超时保护
+            for task_name, task_inst in task_items:
                 if not task_inst.done():
                     try:
-                        await task_inst
-                    except asyncio.CancelledError:  # 此处再次捕获取消异常，防止stop_all_tasks()时延迟抛出异常
-                        logger.info(f"任务 {task_name} 已取消")
+                        await asyncio.wait_for(task_inst, timeout=10.0)
+                        logger.debug(f"任务 '{task_name}' 已完成")
+                    except asyncio.TimeoutError:
+                        logger.warning(f"等待任务 '{task_name}' 完成超时")
+                    except asyncio.CancelledError:
+                        logger.info(f"任务 '{task_name}' 已取消")
                     except Exception as e:
-                        logger.error(f"任务 {task_name} 执行时发生异常: {e}", ext_info=True)
+                        logger.error(f"任务 '{task_name}' 执行时发生异常: {e}", exc_info=True)
 
             # 清空任务列表
             self.tasks.clear()
             self.abort_flag.clear()
             logger.info("所有异步任务已停止")
+
+    def debug_task_status(self):
+        """
+        调试函数：打印所有任务的状态信息
+        """
+        logger.info("=== 异步任务状态调试信息 ===")
+        logger.info(f"当前管理的任务数量: {len(self.tasks)}")
+        logger.info(f"中止标志状态: {self.abort_flag.is_set()}")
+
+        for task_name, task in self.tasks.items():
+            status = []
+            if task.done():
+                status.append("已完成")
+                if task.cancelled():
+                    status.append("已取消")
+                elif task.exception():
+                    status.append(f"异常: {task.exception()}")
+                else:
+                    status.append("正常完成")
+            else:
+                status.append("运行中")
+
+            logger.info(f"任务 '{task_name}': {', '.join(status)}")
+
+        # 检查所有asyncio任务
+        all_tasks = asyncio.all_tasks()
+        logger.info(f"当前事件循环中的所有任务数量: {len(all_tasks)}")
+        logger.info("=== 调试信息结束 ===")
 
 
 async_task_manager = AsyncTaskManager()

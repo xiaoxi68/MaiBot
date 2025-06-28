@@ -3,16 +3,16 @@ import asyncio
 import time
 from asyncio import Task
 from typing import Union
-from src.common.message.api import global_api
+from src.common.message.api import get_global_api
 
 # from ...common.database import db # 数据库依赖似乎不需要了，注释掉
 from .message import MessageSending, MessageThinking, MessageSet
 
-from .storage import MessageStorage
+from src.chat.message_receive.storage import MessageStorage
 from ...config.config import global_config
 from ..utils.utils import truncate_message, calculate_typing_time, count_messages_between
 
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from rich.traceback import install
 
 install(extra_lines=3)
@@ -24,7 +24,7 @@ logger = get_logger("sender")
 async def send_via_ws(message: MessageSending) -> None:
     """通过 WebSocket 发送消息"""
     try:
-        await global_api.send_message(message)
+        await get_global_api().send_message(message)
     except Exception as e:
         logger.error(f"WS发送失败: {e}")
         raise ValueError(f"未找到平台：{message.message_info.platform} 的url配置，请检查配置文件") from e
@@ -41,16 +41,16 @@ async def send_message(
         thinking_start_time=message.thinking_start_time,
         is_emoji=message.is_emoji,
     )
-    # logger.trace(f"{message.processed_plain_text},{typing_time},计算输入时间结束") # 减少日志
+    # logger.debug(f"{message.processed_plain_text},{typing_time},计算输入时间结束") # 减少日志
     await asyncio.sleep(typing_time)
-    # logger.trace(f"{message.processed_plain_text},{typing_time},等待输入时间结束") # 减少日志
+    # logger.debug(f"{message.processed_plain_text},{typing_time},等待输入时间结束") # 减少日志
     # --- 结束打字延迟 ---
 
     message_preview = truncate_message(message.processed_plain_text)
 
     try:
         await send_via_ws(message)
-        logger.success(f"发送消息   '{message_preview}'   成功")  # 调整日志格式
+        logger.info(f"发送消息   '{message_preview}'   成功")  # 调整日志格式
     except Exception as e:
         logger.error(f"发送消息   '{message_preview}'   失败: {str(e)}")
 
@@ -223,8 +223,6 @@ class MessageManager:
             #     f"[message.apply_set_reply_logic:{message.apply_set_reply_logic},message.is_head:{message.is_head},thinking_messages_count:{thinking_messages_count},thinking_messages_length:{thinking_messages_length},message.is_private_message():{message.is_private_message()}]"
             # )
             if (
-                # message.apply_set_reply_logic  # 检查标记
-                # and message.is_head
                 message.is_head
                 and (thinking_messages_count > 3 or thinking_messages_length > 200)
                 and not message.is_private_message()
@@ -232,7 +230,7 @@ class MessageManager:
                 logger.debug(
                     f"[{message.chat_stream.stream_id}] 应用 set_reply 逻辑: {message.processed_plain_text[:20]}..."
                 )
-                message.set_reply(message.reply)
+                message.build_reply()
             # --- 结束条件 set_reply ---
 
             await message.process()  # 预处理消息内容

@@ -1,6 +1,6 @@
 from src.chat.heart_flow.heartflow import heartflow
 from src.chat.heart_flow.sub_heartflow import ChatState
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 import time
 
 logger = get_logger("api")

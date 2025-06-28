@@ -1,6 +1,10 @@
 import time
 import os
 from typing import Optional, Dict, Any
+from src.common.logger import get_logger
+import json
+
+logger = get_logger("hfc")  # Logger Name Changed
 
 log_dir = "log/log_cycle_debug/"
 
@@ -18,9 +22,10 @@ class CycleDetail:
 
         # 新字段
         self.loop_observation_info: Dict[str, Any] = {}
-        self.loop_process_info: Dict[str, Any] = {}
+        self.loop_processor_info: Dict[str, Any] = {}  # 前处理器信息
         self.loop_plan_info: Dict[str, Any] = {}
         self.loop_action_info: Dict[str, Any] = {}
+        self.loop_post_processor_info: Dict[str, Any] = {}  # 后处理器信息
 
     def to_dict(self) -> Dict[str, Any]:
         """将循环信息转换为字典格式"""
@@ -72,26 +77,35 @@ class CycleDetail:
             "timers": self.timers,
             "thinking_id": self.thinking_id,
             "loop_observation_info": convert_to_serializable(self.loop_observation_info),
-            "loop_process_info": convert_to_serializable(self.loop_process_info),
+            "loop_processor_info": convert_to_serializable(self.loop_processor_info),
             "loop_plan_info": convert_to_serializable(self.loop_plan_info),
             "loop_action_info": convert_to_serializable(self.loop_action_info),
+            "loop_post_processor_info": convert_to_serializable(self.loop_post_processor_info),
         }
 
     def complete_cycle(self):
         """完成循环，记录结束时间"""
         self.end_time = time.time()
 
-        # 处理 prefix，只保留中英文字符
+        # 处理 prefix，只保留中英文字符和基本标点
         if not self.prefix:
             self.prefix = "group"
         else:
-            # 只保留中文和英文字符
-            self.prefix = "".join(char for char in self.prefix if "\u4e00" <= char <= "\u9fff" or char.isascii())
-            if not self.prefix:
-                self.prefix = "group"
+            # 只保留中文、英文字母、数字和基本标点
+            allowed_chars = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_")
+            self.prefix = (
+                "".join(char for char in self.prefix if "\u4e00" <= char <= "\u9fff" or char in allowed_chars)
+                or "group"
+            )
 
-        current_time_minute = time.strftime("%Y%m%d_%H%M", time.localtime())
-        self.log_cycle_to_file(log_dir + self.prefix + f"/{current_time_minute}_cycle_" + str(self.cycle_id) + ".json")
+        # current_time_minute = time.strftime("%Y%m%d_%H%M", time.localtime())
+
+        # try:
+        #     self.log_cycle_to_file(
+        #         log_dir + self.prefix + f"/{current_time_minute}_cycle_" + str(self.cycle_id) + ".json"
+        #     )
+        # except Exception as e:
+        #     logger.warning(f"写入文件日志，可能是群名称包含非法字符: {e}")
 
     def log_cycle_to_file(self, file_path: str):
         """将循环信息写入文件"""
@@ -101,14 +115,13 @@ class CycleDetail:
         dir_name = "".join(
             char for char in dir_name if char.isalnum() or char in ["_", "-", "/"] or "\u4e00" <= char <= "\u9fff"
         )
-        print("dir_name:", dir_name)
+        # print("dir_name:", dir_name)
         if dir_name and not os.path.exists(dir_name):
             os.makedirs(dir_name, exist_ok=True)
         # 写入文件
-        import json
 
         file_path = os.path.join(dir_name, os.path.basename(file_path))
-        print("file_path:", file_path)
+        # print("file_path:", file_path)
         with open(file_path, "a", encoding="utf-8") as f:
             f.write(json.dumps(self.to_dict(), ensure_ascii=False) + "\n")
 
@@ -122,3 +135,4 @@ class CycleDetail:
         self.loop_processor_info = loop_info["loop_processor_info"]
         self.loop_plan_info = loop_info["loop_plan_info"]
         self.loop_action_info = loop_info["loop_action_info"]
+        self.loop_post_processor_info = loop_info["loop_post_processor_info"]

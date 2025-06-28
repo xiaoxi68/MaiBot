@@ -1,15 +1,15 @@
 from typing import Tuple, List, Dict, Any
-from src.common.logger import get_module_logger
+from src.common.logger import get_logger
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.experimental.PFC.chat_observer import ChatObserver
 from src.experimental.PFC.reply_checker import ReplyChecker
-from src.individuality.individuality import individuality
+from src.individuality.individuality import get_individuality
 from .observation_info import ObservationInfo
 from .conversation_info import ConversationInfo
 from src.chat.utils.chat_message_builder import build_readable_messages
 
-logger = get_module_logger("reply_generator")
+logger = get_logger("reply_generator")
 
 # --- 定义 Prompt 模板 ---
 
@@ -89,10 +89,9 @@ class ReplyGenerator:
         self.llm = LLMRequest(
             model=global_config.llm_PFC_chat,
             temperature=global_config.llm_PFC_chat["temp"],
-            max_tokens=300,
             request_type="reply_generation",
         )
-        self.personality_info = individuality.get_prompt(x_person=2, level=3)
+        self.personality_info = get_individuality().get_prompt(x_person=2, level=3)
         self.name = global_config.bot.nickname
         self.private_name = private_name
         self.chat_observer = ChatObserver.get_instance(stream_id, private_name)
@@ -173,7 +172,7 @@ class ReplyGenerator:
         chat_history_text = observation_info.chat_history_str
         if observation_info.new_messages_count > 0 and observation_info.unprocessed_messages:
             new_messages_list = observation_info.unprocessed_messages
-            new_messages_str = await build_readable_messages(
+            new_messages_str = build_readable_messages(
                 new_messages_list,
                 replace_bot_name=True,
                 merge_messages=False,

@@ -12,12 +12,12 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from rich.progress import Progress  # 替换为 rich 进度条
 
-from src.common.logger import get_module_logger
-from src.chat.knowledge.src.lpmmconfig import global_config
-from src.chat.knowledge.src.ie_process import info_extract_from_str
-from src.chat.knowledge.src.llm_client import LLMClient
-from src.chat.knowledge.src.open_ie import OpenIE
-from src.chat.knowledge.src.raw_processing import load_raw_data
+from src.common.logger import get_logger
+from src.chat.knowledge.lpmmconfig import global_config
+from src.chat.knowledge.ie_process import info_extract_from_str
+from src.chat.knowledge.llm_client import LLMClient
+from src.chat.knowledge.open_ie import OpenIE
+from src.chat.knowledge.raw_processing import load_raw_data
 from rich.progress import (
     BarColumn,
     TimeElapsedColumn,
@@ -28,15 +28,15 @@ from rich.progress import (
     TextColumn,
 )
 
-logger = get_module_logger("LPMM知识库-信息提取")
+logger = get_logger("LPMM知识库-信息提取")
 
 
 ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 TEMP_DIR = os.path.join(ROOT_PATH, "temp")
 IMPORTED_DATA_PATH = global_config["persistence"]["imported_data_path"] or os.path.join(
-    ROOT_PATH, "data/imported_lpmm_data"
+    ROOT_PATH, "data", "imported_lpmm_data"
 )
-OPENIE_OUTPUT_DIR = global_config["persistence"]["openie_data_path"] or os.path.join(ROOT_PATH, "data/openie")
+OPENIE_OUTPUT_DIR = global_config["persistence"]["openie_data_path"] or os.path.join(ROOT_PATH, "data", "openie")
 
 # 创建一个线程安全的锁，用于保护文件操作和共享数据
 file_lock = Lock()
@@ -44,6 +44,19 @@ open_ie_doc_lock = Lock()
 
 # 创建一个事件标志，用于控制程序终止
 shutdown_event = Event()
+
+
+def ensure_dirs():
+    """确保临时目录和输出目录存在"""
+    if not os.path.exists(TEMP_DIR):
+        os.makedirs(TEMP_DIR)
+        logger.info(f"已创建临时目录: {TEMP_DIR}")
+    if not os.path.exists(OPENIE_OUTPUT_DIR):
+        os.makedirs(OPENIE_OUTPUT_DIR)
+        logger.info(f"已创建输出目录: {OPENIE_OUTPUT_DIR}")
+    if not os.path.exists(IMPORTED_DATA_PATH):
+        os.makedirs(IMPORTED_DATA_PATH)
+        logger.info(f"已创建导入数据目录: {IMPORTED_DATA_PATH}")
 
 
 def process_single_text(pg_hash, raw_data, llm_client_list):
@@ -114,7 +127,7 @@ def main():  # sourcery skip: comprehension-to-generator, extract-method
         print("操作已取消")
         sys.exit(1)
     print("\n" + "=" * 40 + "\n")
-
+    ensure_dirs()  # 确保目录存在
     logger.info("--------进行信息提取--------\n")
 
     logger.info("创建LLM客户端")

@@ -1,17 +1,13 @@
-from typing import List, Optional, Any
+from typing import List, Any
 from src.chat.focus_chat.info.obs_info import ObsInfo
 from src.chat.heart_flow.observation.observation import Observation
 from src.chat.focus_chat.info.info_base import InfoBase
 from .base_processor import BaseProcessor
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
-from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
-from src.chat.focus_chat.info.cycle_info import CycleInfo
 from datetime import datetime
-from typing import Dict
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
-import asyncio
 
 logger = get_logger("processor")
 
@@ -31,14 +27,12 @@ class ChattingInfoProcessor(BaseProcessor):
         self.model_summary = LLMRequest(
             model=global_config.model.utils_small,
             temperature=0.7,
-            max_tokens=300,
             request_type="focus.observation.chat",
         )
 
     async def process_info(
         self,
-        observations: Optional[List[Observation]] = None,
-        running_memorys: Optional[List[Dict]] = None,
+        observations: List[Observation] = None,
         **kwargs: Any,
     ) -> List[InfoBase]:
         """处理Observation对象
@@ -59,12 +53,11 @@ class ChattingInfoProcessor(BaseProcessor):
             for obs in observations:
                 # print(f"obs: {obs}")
                 if isinstance(obs, ChattingObservation):
-                    # print("1111111111111111111111读取111111111111111")
-
                     obs_info = ObsInfo()
 
-                    # 改为异步任务，不阻塞主流程
-                    asyncio.create_task(self.chat_compress(obs))
+                    # 设置聊天ID
+                    if hasattr(obs, "chat_id"):
+                        obs_info.set_chat_id(obs.chat_id)
 
                     # 设置说话消息
                     if hasattr(obs, "talking_message_str"):
@@ -76,6 +69,14 @@ class ChattingInfoProcessor(BaseProcessor):
                         # print(f"设置截断后的说话消息：obs.talking_message_str_truncate: {obs.talking_message_str_truncate}")
                         obs_info.set_talking_message_str_truncate(obs.talking_message_str_truncate)
 
+                    # 设置简短版本的说话消息
+                    if hasattr(obs, "talking_message_str_short"):
+                        obs_info.set_talking_message_str_short(obs.talking_message_str_short)
+
+                    # 设置截断简短版本的说话消息
+                    if hasattr(obs, "talking_message_str_truncate_short"):
+                        obs_info.set_talking_message_str_truncate_short(obs.talking_message_str_truncate_short)
+
                     if hasattr(obs, "mid_memory_info"):
                         # print(f"设置之前聊天信息：obs.mid_memory_info: {obs.mid_memory_info}")
                         obs_info.set_previous_chat_info(obs.mid_memory_info)
@@ -86,15 +87,12 @@ class ChattingInfoProcessor(BaseProcessor):
                         chat_type = "group"
                     else:
                         chat_type = "private"
-                        obs_info.set_chat_target(obs.chat_target_info.get("person_name", "某人"))
+                        if hasattr(obs, "chat_target_info") and obs.chat_target_info:
+                            obs_info.set_chat_target(obs.chat_target_info.get("person_name", "某人"))
                     obs_info.set_chat_type(chat_type)
 
                     # logger.debug(f"聊天信息处理器处理后的信息: {obs_info}")
 
-                    processed_infos.append(obs_info)
-                if isinstance(obs, HFCloopObservation):
-                    obs_info = CycleInfo()
-                    obs_info.set_observe_info(obs.observe_info)
                     processed_infos.append(obs_info)
 
         return processed_infos

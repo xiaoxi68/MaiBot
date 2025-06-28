@@ -4,9 +4,9 @@ import asyncio
 import time
 from typing import Optional, List, Dict, Tuple
 import traceback
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.chat.message_receive.message import MessageRecv
-from src.chat.message_receive.chat_stream import chat_manager
+from src.chat.message_receive.chat_stream import get_chat_manager
 from src.chat.focus_chat.heartFC_chat import HeartFChatting
 from src.chat.normal_chat.normal_chat import NormalChat
 from src.chat.heart_flow.chat_state_info import ChatState, ChatStateInfo
@@ -41,11 +41,8 @@ class SubHeartflow:
         self.chat_state_last_time: float = 0
         self.history_chat_state: List[Tuple[ChatState, float]] = []
 
-        # --- Initialize attributes ---
-        self.is_group_chat: bool = False
-        self.chat_target_info: Optional[dict] = None
-        # --- End Initialization ---
-
+        self.is_group_chat, self.chat_target_info = get_chat_type_and_target_info(self.chat_id)
+        self.log_prefix = get_chat_manager().get_stream_name(self.subheartflow_id) or self.subheartflow_id
         # 兴趣消息集合
         self.interest_dict: Dict[str, tuple[MessageRecv, float, bool]] = {}
 
@@ -53,31 +50,16 @@ class SubHeartflow:
         self.should_stop = False  # 停止标志
         self.task: Optional[asyncio.Task] = None  # 后台任务
 
+        # focus模式退出冷却时间管理
+        self.last_focus_exit_time: float = 0  # 上次退出focus模式的时间
+
         # 随便水群 normal_chat 和 认真水群 focus_chat 实例
         # CHAT模式激活 随便水群  FOCUS模式激活 认真水群
         self.heart_fc_instance: Optional[HeartFChatting] = None  # 该sub_heartflow的HeartFChatting实例
         self.normal_chat_instance: Optional[NormalChat] = None  # 该sub_heartflow的NormalChat实例
 
-        # 观察，目前只有聊天观察，可以载入多个
-        # 负责对处理过的消息进行观察
-        self.observations: List[ChattingObservation] = []  # 观察列表
-        # self.running_knowledges = []  # 运行中的知识，待完善
-
-        # 日志前缀 - Moved determination to initialize
-        self.log_prefix = str(subheartflow_id)  # Initial default prefix
-
     async def initialize(self):
         """异步初始化方法，创建兴趣流并确定聊天类型"""
-
-        # --- Use utility function to determine chat type and fetch info ---
-        self.is_group_chat, self.chat_target_info = await get_chat_type_and_target_info(self.chat_id)
-        # Update log prefix after getting info (potential stream name)
-        self.log_prefix = (
-            chat_manager.get_stream_name(self.subheartflow_id) or self.subheartflow_id
-        )  # Keep this line or adjust if utils provides name
-        logger.debug(
-            f"SubHeartflow {self.chat_id} initialized: is_group={self.is_group_chat}, target_info={self.chat_target_info}"
-        )
 
         # 根据配置决定初始状态
         if global_config.chat.chat_mode == "focus":
@@ -96,12 +78,26 @@ class SubHeartflow:
         切出 CHAT 状态时使用
         """
         if self.normal_chat_instance:
-            logger.info(f"{self.log_prefix} 离开CHAT模式，结束 随便水群")
+            logger.info(f"{self.log_prefix} 离开normal模式")
             try:
-                await self.normal_chat_instance.stop_chat()  # 调用 stop_chat
+                logger.debug(f"{self.log_prefix} 开始调用 stop_chat()")
+                # 使用更短的超时时间，强制快速停止
+                await asyncio.wait_for(self.normal_chat_instance.stop_chat(), timeout=3.0)
+                logger.debug(f"{self.log_prefix} stop_chat() 调用完成")
+            except asyncio.TimeoutError:
+                logger.warning(f"{self.log_prefix} 停止 NormalChat 超时，强制清理")
+                # 超时时强制清理实例
+                self.normal_chat_instance = None
             except Exception as e:
                 logger.error(f"{self.log_prefix} 停止 NormalChat 监控任务时出错: {e}")
-                logger.error(traceback.format_exc())
+                # 出错时也要清理实例，避免状态不一致
+                self.normal_chat_instance = None
+            finally:
+                # 确保实例被清理
+                if self.normal_chat_instance:
+                    logger.warning(f"{self.log_prefix} 强制清理 NormalChat 实例")
+                    self.normal_chat_instance = None
+                logger.debug(f"{self.log_prefix} _stop_normal_chat 完成")
 
     async def _start_normal_chat(self, rewind=False) -> bool:
         """
@@ -116,7 +112,7 @@ class SubHeartflow:
         log_prefix = self.log_prefix
         try:
             # 获取聊天流并创建 NormalChat 实例 (同步部分)
-            chat_stream = chat_manager.get_stream(self.chat_id)
+            chat_stream = get_chat_manager().get_stream(self.chat_id)
             if not chat_stream:
                 logger.error(f"{log_prefix} 无法获取 chat_stream，无法启动 NormalChat。")
                 return False
@@ -129,10 +125,6 @@ class SubHeartflow:
                     on_switch_to_focus_callback=self._handle_switch_to_focus_request,
                 )
 
-            # 进行异步初始化
-            await self.normal_chat_instance.initialize()
-
-            # 启动聊天任务
             logger.info(f"{log_prefix} 开始普通聊天，随便水群...")
             await self.normal_chat_instance.start_chat()  # start_chat now ensures init is called again if needed
             return True
@@ -150,6 +142,11 @@ class SubHeartflow:
             stream_id: 请求切换的stream_id
         """
         logger.info(f"{self.log_prefix} 收到NormalChat请求切换到focus模式")
+
+        # 检查是否在focus冷却期内
+        if self.is_in_focus_cooldown():
+            logger.info(f"{self.log_prefix} 正在focus冷却期内，忽略切换到focus模式的请求")
+            return
 
         # 切换到focus模式
         current_state = self.chat_state.chat_status
@@ -189,53 +186,71 @@ class SubHeartflow:
 
     async def _start_heart_fc_chat(self) -> bool:
         """启动 HeartFChatting 实例，确保 NormalChat 已停止"""
-        await self._stop_normal_chat()  # 确保普通聊天监控已停止
-        self.interest_dict.clear()
+        logger.debug(f"{self.log_prefix} 开始启动 HeartFChatting")
 
-        log_prefix = self.log_prefix
-        # 如果实例已存在，检查其循环任务状态
-        if self.heart_fc_instance:
-            # 如果任务已完成或不存在，则尝试重新启动
-            if self.heart_fc_instance._loop_task is None or self.heart_fc_instance._loop_task.done():
-                logger.info(f"{log_prefix} HeartFChatting 实例存在但循环未运行，尝试启动...")
-                try:
-                    await self.heart_fc_instance.start()  # 启动循环
-                    logger.info(f"{log_prefix} HeartFChatting 循环已启动。")
-                    return True
-                except Exception as e:
-                    logger.error(f"{log_prefix} 尝试启动现有 HeartFChatting 循环时出错: {e}")
-                    logger.error(traceback.format_exc())
-                    return False  # 启动失败
-            else:
-                # 任务正在运行
-                logger.debug(f"{log_prefix} HeartFChatting 已在运行中。")
-                return True  # 已经在运行
-
-        # 如果实例不存在，则创建并启动
-        logger.info(f"{log_prefix} 麦麦准备开始专注聊天...")
         try:
-            # 创建 HeartFChatting 实例，并传递 从构造函数传入的 回调函数
+            # 确保普通聊天监控已停止
+            await self._stop_normal_chat()
+            self.interest_dict.clear()
 
-            self.heart_fc_instance = HeartFChatting(
-                chat_id=self.subheartflow_id,
-                observations=self.observations,
-                on_stop_focus_chat=self._handle_stop_focus_chat_request,
-            )
+            log_prefix = self.log_prefix
+            # 如果实例已存在，检查其循环任务状态
+            if self.heart_fc_instance:
+                logger.debug(f"{log_prefix} HeartFChatting 实例已存在，检查状态")
+                # 如果任务已完成或不存在，则尝试重新启动
+                if self.heart_fc_instance._loop_task is None or self.heart_fc_instance._loop_task.done():
+                    logger.info(f"{log_prefix} HeartFChatting 实例存在但循环未运行，尝试启动...")
+                    try:
+                        # 添加超时保护
+                        await asyncio.wait_for(self.heart_fc_instance.start(), timeout=15.0)
+                        logger.info(f"{log_prefix} HeartFChatting 循环已启动。")
+                        return True
+                    except asyncio.TimeoutError:
+                        logger.error(f"{log_prefix} 启动现有 HeartFChatting 循环超时")
+                        # 超时时清理实例，准备重新创建
+                        self.heart_fc_instance = None
+                    except Exception as e:
+                        logger.error(f"{log_prefix} 尝试启动现有 HeartFChatting 循环时出错: {e}")
+                        logger.error(traceback.format_exc())
+                        # 出错时清理实例，准备重新创建
+                        self.heart_fc_instance = None
+                else:
+                    # 任务正在运行
+                    logger.debug(f"{log_prefix} HeartFChatting 已在运行中。")
+                    return True  # 已经在运行
 
-            # 初始化并启动 HeartFChatting
-            if await self.heart_fc_instance._initialize():
-                await self.heart_fc_instance.start()
+            # 如果实例不存在，则创建并启动
+            logger.info(f"{log_prefix} 麦麦准备开始专注聊天...")
+            try:
+                logger.debug(f"{log_prefix} 创建新的 HeartFChatting 实例")
+                self.heart_fc_instance = HeartFChatting(
+                    chat_id=self.subheartflow_id,
+                    # observations=self.observations,
+                    on_stop_focus_chat=self._handle_stop_focus_chat_request,
+                )
+
+                logger.debug(f"{log_prefix} 启动 HeartFChatting 实例")
+                # 添加超时保护
+                await asyncio.wait_for(self.heart_fc_instance.start(), timeout=15.0)
                 logger.debug(f"{log_prefix} 麦麦已成功进入专注聊天模式 (新实例已启动)。")
                 return True
-            else:
-                logger.error(f"{log_prefix} HeartFChatting 初始化失败，无法进入专注模式。")
-                self.heart_fc_instance = None  # 初始化失败，清理实例
+
+            except asyncio.TimeoutError:
+                logger.error(f"{log_prefix} 创建或启动新 HeartFChatting 实例超时")
+                self.heart_fc_instance = None  # 超时时清理实例
                 return False
+            except Exception as e:
+                logger.error(f"{log_prefix} 创建或启动 HeartFChatting 实例时出错: {e}")
+                logger.error(traceback.format_exc())
+                self.heart_fc_instance = None  # 创建或初始化异常，清理实例
+                return False
+
         except Exception as e:
-            logger.error(f"{log_prefix} 创建或启动 HeartFChatting 实例时出错: {e}")
+            logger.error(f"{self.log_prefix} _start_heart_fc_chat 执行时出错: {e}")
             logger.error(traceback.format_exc())
-            self.heart_fc_instance = None  # 创建或初始化异常，清理实例
             return False
+        finally:
+            logger.debug(f"{self.log_prefix} _start_heart_fc_chat 完成")
 
     async def change_chat_state(self, new_state: ChatState) -> None:
         """
@@ -247,7 +262,7 @@ class SubHeartflow:
         log_prefix = f"[{self.log_prefix}]"
 
         if new_state == ChatState.NORMAL:
-            logger.debug(f"{log_prefix} 准备进入或保持 普通聊天 状态")
+            logger.debug(f"{log_prefix} 准备进入 normal聊天 状态")
             if await self._start_normal_chat():
                 logger.debug(f"{log_prefix} 成功进入或保持 NormalChat 状态。")
                 state_changed = True
@@ -257,7 +272,7 @@ class SubHeartflow:
                 return
 
         elif new_state == ChatState.FOCUSED:
-            logger.debug(f"{log_prefix} 准备进入或保持 专注聊天 状态")
+            logger.debug(f"{log_prefix} 准备进入 focus聊天 状态")
             if await self._start_heart_fc_chat():
                 logger.debug(f"{log_prefix} 成功进入或保持 HeartFChatting 状态。")
                 state_changed = True
@@ -272,6 +287,11 @@ class SubHeartflow:
             await self._stop_normal_chat()
             await self._stop_heart_fc_chat()
             state_changed = True
+
+        # --- 记录focus模式退出时间 ---
+        if state_changed and current_state == ChatState.FOCUSED and new_state != ChatState.FOCUSED:
+            self.last_focus_exit_time = time.time()
+            logger.debug(f"{log_prefix} 记录focus模式退出时间: {self.last_focus_exit_time}")
 
         # --- 更新状态和最后活动时间 ---
         if state_changed:
@@ -330,6 +350,27 @@ class SubHeartflow:
             oldest_key = next(iter(self.interest_dict))
             self.interest_dict.pop(oldest_key)
 
+    def get_normal_chat_action_manager(self):
+        """获取NormalChat的ActionManager实例
+
+        Returns:
+            ActionManager: NormalChat的ActionManager实例，如果不存在则返回None
+        """
+        if self.normal_chat_instance:
+            return self.normal_chat_instance.get_action_manager()
+        return None
+
+    def set_normal_chat_planner_enabled(self, enabled: bool):
+        """设置NormalChat的planner是否启用
+
+        Args:
+            enabled: 是否启用planner
+        """
+        if self.normal_chat_instance:
+            self.normal_chat_instance.set_planner_enabled(enabled)
+        else:
+            logger.warning(f"{self.log_prefix} NormalChat实例不存在，无法设置planner状态")
+
     async def get_full_state(self) -> dict:
         """获取子心流的完整状态，包括兴趣、思维和聊天状态。"""
         return {
@@ -368,3 +409,30 @@ class SubHeartflow:
         self.chat_state.chat_status = ChatState.ABSENT  # 状态重置为不参与
 
         logger.info(f"{self.log_prefix} 子心流关闭完成。")
+
+    def is_in_focus_cooldown(self) -> bool:
+        """检查是否在focus模式的冷却期内
+
+        Returns:
+            bool: 如果在冷却期内返回True，否则返回False
+        """
+        if self.last_focus_exit_time == 0:
+            return False
+
+        # 基础冷却时间10分钟，受auto_focus_threshold调控
+        base_cooldown = 10 * 60  # 10分钟转换为秒
+        cooldown_duration = base_cooldown / global_config.chat.auto_focus_threshold
+
+        current_time = time.time()
+        elapsed_since_exit = current_time - self.last_focus_exit_time
+
+        is_cooling = elapsed_since_exit < cooldown_duration
+
+        if is_cooling:
+            remaining_time = cooldown_duration - elapsed_since_exit
+            remaining_minutes = remaining_time / 60
+            logger.debug(
+                f"[{self.log_prefix}] focus冷却中，剩余时间: {remaining_minutes:.1f}分钟 (阈值: {global_config.chat.auto_focus_threshold})"
+            )
+
+        return is_cooling

@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Any, Literal
+import re
 
 from src.config.config_base import ConfigBase
 
@@ -36,6 +37,9 @@ class PersonalityConfig(ConfigBase):
     personality_sides: list[str] = field(default_factory=lambda: [])
     """人格侧写"""
 
+    compress_personality: bool = True
+    """是否压缩人格，压缩后会精简人格信息，节省token消耗并提高回复性能，但是会丢失一些信息，如果人设不长，可以关闭"""
+
 
 @dataclass
 class IdentityConfig(ConfigBase):
@@ -44,13 +48,24 @@ class IdentityConfig(ConfigBase):
     identity_detail: list[str] = field(default_factory=lambda: [])
     """身份特征"""
 
+    compress_indentity: bool = True
+    """是否压缩身份，压缩后会精简身份信息，节省token消耗并提高回复性能，但是会丢失一些信息，如果不长，可以关闭"""
+
 
 @dataclass
 class RelationshipConfig(ConfigBase):
     """关系配置类"""
 
+    enable_relationship: bool = True
+
     give_name: bool = False
     """是否给其他人取名"""
+
+    build_relationship_interval: int = 600
+    """构建关系间隔 单位秒，如果为0则不构建关系"""
+
+    relation_frequency: int = 1
+    """关系频率，麦麦构建关系的速度，仅在normal_chat模式下有效"""
 
 
 @dataclass
@@ -60,11 +75,175 @@ class ChatConfig(ConfigBase):
     chat_mode: str = "normal"
     """聊天模式"""
 
+    talk_frequency: float = 1
+    """回复频率阈值"""
+
+    # 修改：基于时段的回复频率配置，改为数组格式
+    time_based_talk_frequency: list[str] = field(default_factory=lambda: [])
+    """
+    基于时段的回复频率配置（全局）
+    格式：["HH:MM,frequency", "HH:MM,frequency", ...]
+    示例：["8:00,1", "12:00,2", "18:00,1.5", "00:00,0.5"]
+    表示从该时间开始使用该频率，直到下一个时间点
+    """
+
+    # 新增：基于聊天流的个性化时段频率配置
+    talk_frequency_adjust: list[list[str]] = field(default_factory=lambda: [])
+    """
+    基于聊天流的个性化时段频率配置
+    格式：[["platform:chat_id:type", "HH:MM,frequency", "HH:MM,frequency", ...], ...]
+    示例：[
+        ["qq:1026294844:group", "12:20,1", "16:10,2", "20:10,1", "00:10,0.3"],
+        ["qq:729957033:group", "8:20,1", "12:10,2", "20:10,1.5", "00:10,0.2"]
+    ]
+    每个子列表的第一个元素是聊天流标识符，后续元素是"时间,频率"格式
+    表示从该时间开始使用该频率，直到下一个时间点
+    """
+
     auto_focus_threshold: float = 1.0
     """自动切换到专注聊天的阈值，越低越容易进入专注聊天"""
 
     exit_focus_threshold: float = 1.0
     """自动退出专注聊天的阈值，越低越容易退出专注聊天"""
+
+    def get_current_talk_frequency(self, chat_stream_id: str = None) -> float:
+        """
+        根据当前时间和聊天流获取对应的 talk_frequency
+
+        Args:
+            chat_stream_id: 聊天流ID，格式为 "platform:chat_id:type"
+
+        Returns:
+            float: 对应的频率值
+        """
+        # 优先检查聊天流特定的配置
+        if chat_stream_id and self.talk_frequency_adjust:
+            stream_frequency = self._get_stream_specific_frequency(chat_stream_id)
+            if stream_frequency is not None:
+                return stream_frequency
+
+        # 如果没有聊天流特定配置，检查全局时段配置
+        if self.time_based_talk_frequency:
+            global_frequency = self._get_time_based_frequency(self.time_based_talk_frequency)
+            if global_frequency is not None:
+                return global_frequency
+
+        # 如果都没有匹配，返回默认值
+        return self.talk_frequency
+
+    def _get_time_based_frequency(self, time_freq_list: list[str]) -> float:
+        """
+        根据时间配置列表获取当前时段的频率
+
+        Args:
+            time_freq_list: 时间频率配置列表，格式为 ["HH:MM,frequency", ...]
+
+        Returns:
+            float: 频率值，如果没有配置则返回 None
+        """
+        from datetime import datetime
+
+        current_time = datetime.now().strftime("%H:%M")
+        current_hour, current_minute = map(int, current_time.split(":"))
+        current_minutes = current_hour * 60 + current_minute
+
+        # 解析时间频率配置
+        time_freq_pairs = []
+        for time_freq_str in time_freq_list:
+            try:
+                time_str, freq_str = time_freq_str.split(",")
+                hour, minute = map(int, time_str.split(":"))
+                frequency = float(freq_str)
+                minutes = hour * 60 + minute
+                time_freq_pairs.append((minutes, frequency))
+            except (ValueError, IndexError):
+                continue
+
+        if not time_freq_pairs:
+            return None
+
+        # 按时间排序
+        time_freq_pairs.sort(key=lambda x: x[0])
+
+        # 查找当前时间对应的频率
+        current_frequency = None
+        for minutes, frequency in time_freq_pairs:
+            if current_minutes >= minutes:
+                current_frequency = frequency
+            else:
+                break
+
+        # 如果当前时间在所有配置时间之前，使用最后一个时间段的频率（跨天逻辑）
+        if current_frequency is None and time_freq_pairs:
+            current_frequency = time_freq_pairs[-1][1]
+
+        return current_frequency
+
+    def _get_stream_specific_frequency(self, chat_stream_id: str) -> float:
+        """
+        获取特定聊天流在当前时间的频率
+
+        Args:
+            chat_stream_id: 聊天流ID（哈希值）
+
+        Returns:
+            float: 频率值，如果没有配置则返回 None
+        """
+        # 查找匹配的聊天流配置
+        for config_item in self.talk_frequency_adjust:
+            if not config_item or len(config_item) < 2:
+                continue
+
+            stream_config_str = config_item[0]  # 例如 "qq:1026294844:group"
+
+            # 解析配置字符串并生成对应的 chat_id
+            config_chat_id = self._parse_stream_config_to_chat_id(stream_config_str)
+            if config_chat_id is None:
+                continue
+
+            # 比较生成的 chat_id
+            if config_chat_id != chat_stream_id:
+                continue
+
+            # 使用通用的时间频率解析方法
+            return self._get_time_based_frequency(config_item[1:])
+
+        return None
+
+    def _parse_stream_config_to_chat_id(self, stream_config_str: str) -> str:
+        """
+        解析流配置字符串并生成对应的 chat_id
+
+        Args:
+            stream_config_str: 格式为 "platform:id:type" 的字符串
+
+        Returns:
+            str: 生成的 chat_id，如果解析失败则返回 None
+        """
+        try:
+            parts = stream_config_str.split(":")
+            if len(parts) != 3:
+                return None
+
+            platform = parts[0]
+            id_str = parts[1]
+            stream_type = parts[2]
+
+            # 判断是否为群聊
+            is_group = stream_type == "group"
+
+            # 使用与 ChatStream.get_stream_id 相同的逻辑生成 chat_id
+            import hashlib
+
+            if is_group:
+                components = [platform, str(id_str)]
+            else:
+                components = [platform, str(id_str), "private"]
+            key = "_".join(components)
+            return hashlib.md5(key.encode()).hexdigest()
+
+        except (ValueError, IndexError):
+            return None
 
 
 @dataclass
@@ -103,20 +282,8 @@ class NormalChatConfig(ConfigBase):
     willing_mode: str = "classical"
     """意愿模式"""
 
-    talk_frequency: float = 1
-    """回复频率阈值"""
-
-    response_willing_amplifier: float = 1.0
-    """回复意愿放大系数"""
-
     response_interested_rate_amplifier: float = 1.0
     """回复兴趣度放大系数"""
-
-    talk_frequency_down_groups: list[str] = field(default_factory=lambda: [])
-    """降低回复频率的群组"""
-
-    down_frequency_rate: float = 3.0
-    """降低回复频率的群组回复意愿降低系数"""
 
     emoji_response_penalty: float = 0.0
     """表情包回复惩罚系数"""
@@ -127,12 +294,15 @@ class NormalChatConfig(ConfigBase):
     at_bot_inevitable_reply: bool = False
     """@bot 必然回复"""
 
+    enable_planner: bool = False
+    """是否启用动作规划器"""
+
 
 @dataclass
 class FocusChatConfig(ConfigBase):
     """专注聊天配置类"""
 
-    observation_context_size: int = 12
+    observation_context_size: int = 20
     """可观察到的最长上下文大小，超过这个值的上下文会被压缩"""
 
     compressed_length: int = 5
@@ -158,8 +328,8 @@ class FocusChatConfig(ConfigBase):
 class FocusChatProcessorConfig(ConfigBase):
     """专注聊天处理器配置类"""
 
-    self_identify_processor: bool = True
-    """是否启用自我识别处理器"""
+    person_impression_processor: bool = True
+    """是否启用关系识别处理器"""
 
     tool_use_processor: bool = True
     """是否启用工具使用处理器"""
@@ -167,8 +337,8 @@ class FocusChatProcessorConfig(ConfigBase):
     working_memory_processor: bool = True
     """是否启用工作记忆处理器"""
 
-    lite_chat_mind_processor: bool = False
-    """是否启用轻量级聊天思维处理器，可以节省token消耗和时间"""
+    expression_selector_processor: bool = True
+    """是否启用表达方式选择处理器"""
 
 
 @dataclass
@@ -184,6 +354,12 @@ class ExpressionConfig(ConfigBase):
     enable_expression_learning: bool = True
     """是否启用表达学习"""
 
+    expression_groups: list[list[str]] = field(default_factory=list)
+    """
+    表达学习互通组
+    格式: [["qq:12345:group", "qq:67890:private"]]
+    """
+
 
 @dataclass
 class EmojiConfig(ConfigBase):
@@ -198,15 +374,6 @@ class EmojiConfig(ConfigBase):
     check_interval: int = 120
     """表情包检查间隔（分钟）"""
 
-    save_pic: bool = True
-    """是否保存图片"""
-
-    save_emoji: bool = True
-    """是否保存表情包"""
-
-    cache_emoji: bool = True
-    """是否缓存表情包"""
-
     steal_emoji: bool = True
     """是否偷取表情包，让麦麦可以发送她保存的这些表情包"""
 
@@ -220,6 +387,8 @@ class EmojiConfig(ConfigBase):
 @dataclass
 class MemoryConfig(ConfigBase):
     """记忆配置类"""
+
+    enable_memory: bool = True
 
     memory_build_interval: int = 600
     """记忆构建间隔（秒）"""
@@ -283,9 +452,6 @@ class MoodConfig(ConfigBase):
 class KeywordRuleConfig(ConfigBase):
     """关键词规则配置类"""
 
-    enable: bool = True
-    """是否启用关键词规则"""
-
     keywords: list[str] = field(default_factory=lambda: [])
     """关键词列表"""
 
@@ -295,16 +461,46 @@ class KeywordRuleConfig(ConfigBase):
     reaction: str = ""
     """关键词触发的反应"""
 
+    def __post_init__(self):
+        """验证配置"""
+        if not self.keywords and not self.regex:
+            raise ValueError("关键词规则必须至少包含keywords或regex中的一个")
+
+        if not self.reaction:
+            raise ValueError("关键词规则必须包含reaction")
+
+        # 验证正则表达式
+        for pattern in self.regex:
+            try:
+                re.compile(pattern)
+            except re.error as e:
+                raise ValueError(f"无效的正则表达式 '{pattern}': {str(e)}") from e
+
 
 @dataclass
 class KeywordReactionConfig(ConfigBase):
     """关键词配置类"""
 
-    enable: bool = True
-    """是否启用关键词反应"""
+    keyword_rules: list[KeywordRuleConfig] = field(default_factory=lambda: [])
+    """关键词规则列表"""
 
-    rules: list[KeywordRuleConfig] = field(default_factory=lambda: [])
-    """关键词反应规则列表"""
+    regex_rules: list[KeywordRuleConfig] = field(default_factory=lambda: [])
+    """正则表达式规则列表"""
+
+    def __post_init__(self):
+        """验证配置"""
+        # 验证所有规则
+        for rule in self.keyword_rules + self.regex_rules:
+            if not isinstance(rule, KeywordRuleConfig):
+                raise ValueError(f"规则必须是KeywordRuleConfig类型，而不是{type(rule).__name__}")
+
+
+@dataclass
+class ResponsePostProcessConfig(ConfigBase):
+    """回复后处理配置类"""
+
+    enable_response_post_process: bool = True
+    """是否启用回复后处理，包括错别字生成器，回复分割器"""
 
 
 @dataclass
@@ -396,6 +592,44 @@ class MaimMessageConfig(ConfigBase):
 
 
 @dataclass
+class LPMMKnowledgeConfig(ConfigBase):
+    """LPMM知识库配置类"""
+
+    enable: bool = True
+    """是否启用LPMM知识库"""
+
+    rag_synonym_search_top_k: int = 10
+    """RAG同义词搜索的Top K数量"""
+
+    rag_synonym_threshold: float = 0.8
+    """RAG同义词搜索的相似度阈值"""
+
+    info_extraction_workers: int = 3
+    """信息提取工作线程数"""
+
+    qa_relation_search_top_k: int = 10
+    """QA关系搜索的Top K数量"""
+
+    qa_relation_threshold: float = 0.75
+    """QA关系搜索的相似度阈值"""
+
+    qa_paragraph_search_top_k: int = 1000
+    """QA段落搜索的Top K数量"""
+
+    qa_paragraph_node_weight: float = 0.05
+    """QA段落节点权重"""
+
+    qa_ent_filter_top_k: int = 10
+    """QA实体过滤的Top K数量"""
+
+    qa_ppr_damping: float = 0.8
+    """QA PageRank阻尼系数"""
+
+    qa_res_top_k: int = 10
+    """QA最终结果的Top K数量"""
+
+
+@dataclass
 class ModelConfig(ConfigBase):
     """模型配置类"""
 
@@ -407,10 +641,10 @@ class ModelConfig(ConfigBase):
     utils_small: dict[str, Any] = field(default_factory=lambda: {})
     """组件小模型配置"""
 
-    normal_chat_1: dict[str, Any] = field(default_factory=lambda: {})
+    replyer_1: dict[str, Any] = field(default_factory=lambda: {})
     """normal_chat首要回复模型模型配置"""
 
-    normal_chat_2: dict[str, Any] = field(default_factory=lambda: {})
+    replyer_2: dict[str, Any] = field(default_factory=lambda: {})
     """normal_chat次要回复模型配置"""
 
     memory_summary: dict[str, Any] = field(default_factory=lambda: {})
@@ -422,20 +656,14 @@ class ModelConfig(ConfigBase):
     focus_working_memory: dict[str, Any] = field(default_factory=lambda: {})
     """专注工作记忆模型配置"""
 
-    focus_chat_mind: dict[str, Any] = field(default_factory=lambda: {})
-    """专注聊天规划模型配置"""
-
-    focus_self_recognize: dict[str, Any] = field(default_factory=lambda: {})
-    """专注自我识别模型配置"""
-
     focus_tool_use: dict[str, Any] = field(default_factory=lambda: {})
     """专注工具使用模型配置"""
 
-    focus_planner: dict[str, Any] = field(default_factory=lambda: {})
-    """专注规划模型配置"""
+    planner: dict[str, Any] = field(default_factory=lambda: {})
+    """规划模型配置"""
 
-    focus_expressor: dict[str, Any] = field(default_factory=lambda: {})
-    """专注表达器模型配置"""
+    relation: dict[str, Any] = field(default_factory=lambda: {})
+    """关系模型配置"""
 
     embedding: dict[str, Any] = field(default_factory=lambda: {})
     """嵌入模型配置"""

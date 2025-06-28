@@ -1,14 +1,13 @@
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Union
 import random
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.chat.message_receive.message import MessageThinking
 from src.chat.normal_chat.normal_prompt import prompt_builder
-from src.chat.utils.utils import process_llm_response
 from src.chat.utils.timer_calculator import Timer
-from src.common.logger_manager import get_logger
-from src.chat.utils.info_catcher import info_catcher_manager
-from src.person_info.person_info import person_info_manager
+from src.common.logger import get_logger
+from src.person_info.person_info import PersonInfoManager, get_person_info_manager
+from src.chat.utils.utils import process_llm_response
 
 
 logger = get_logger("normal_chat_response")
@@ -18,25 +17,21 @@ class NormalChatGenerator:
     def __init__(self):
         # TODO: API-Adapter修改标记
         self.model_reasoning = LLMRequest(
-            model=global_config.model.normal_chat_1,
-            # temperature=0.7,
-            max_tokens=3000,
+            model=global_config.model.replyer_1,
             request_type="normal.chat_1",
         )
         self.model_normal = LLMRequest(
-            model=global_config.model.normal_chat_2,
-            # temperature=global_config.model.normal_chat_2["temp"],
-            max_tokens=256,
+            model=global_config.model.replyer_2,
             request_type="normal.chat_2",
         )
 
-        self.model_sum = LLMRequest(
-            model=global_config.model.memory_summary, temperature=0.7, max_tokens=3000, request_type="relation"
-        )
+        self.model_sum = LLMRequest(model=global_config.model.memory_summary, temperature=0.7, request_type="relation")
         self.current_model_type = "r1"  # 默认使用 R1
         self.current_model_name = "unknown model"
 
-    async def generate_response(self, message: MessageThinking, thinking_id: str) -> Optional[Union[str, List[str]]]:
+    async def generate_response(
+        self, message: MessageThinking, thinking_id: str, enable_planner: bool = False, available_actions=None
+    ) -> Optional[Union[str, List[str]]]:
         """根据当前模型类型选择对应的生成函数"""
         # 从global_config中获取模型概率值并选择模型
         if random.random() < global_config.normal_chat.normal_chat_first_probability:
@@ -50,24 +45,31 @@ class NormalChatGenerator:
             f"{self.current_model_name}思考:{message.processed_plain_text[:30] + '...' if len(message.processed_plain_text) > 30 else message.processed_plain_text}"
         )  # noqa: E501
 
-        model_response = await self._generate_response_with_model(message, current_model, thinking_id)
+        model_response = await self._generate_response_with_model(
+            message, current_model, thinking_id, enable_planner, available_actions
+        )
 
         if model_response:
-            logger.debug(f"{global_config.bot.nickname}的原始回复是：{model_response}")
-            model_response = await self._process_response(model_response)
+            logger.debug(f"{global_config.bot.nickname}的备选回复是：{model_response}")
+            model_response = process_llm_response(model_response)
 
             return model_response
         else:
             logger.info(f"{self.current_model_name}思考，失败")
             return None
 
-    async def _generate_response_with_model(self, message: MessageThinking, model: LLMRequest, thinking_id: str):
-        info_catcher = info_catcher_manager.get_info_catcher(thinking_id)
-
-        person_id = person_info_manager.get_person_id(
+    async def _generate_response_with_model(
+        self,
+        message: MessageThinking,
+        model: LLMRequest,
+        thinking_id: str,
+        enable_planner: bool = False,
+        available_actions=None,
+    ):
+        person_id = PersonInfoManager.get_person_id(
             message.chat_stream.user_info.platform, message.chat_stream.user_info.user_id
         )
-
+        person_info_manager = get_person_info_manager()
         person_name = await person_info_manager.get_value(person_id, "person_name")
 
         if message.chat_stream.user_info.user_cardname and message.chat_stream.user_info.user_nickname:
@@ -82,23 +84,21 @@ class NormalChatGenerator:
 
         # 构建prompt
         with Timer() as t_build_prompt:
-            prompt = await prompt_builder.build_prompt(
+            prompt = await prompt_builder.build_prompt_normal(
                 message_txt=message.processed_plain_text,
                 sender_name=sender_name,
                 chat_stream=message.chat_stream,
+                enable_planner=enable_planner,
+                available_actions=available_actions,
             )
         logger.debug(f"构建prompt时间: {t_build_prompt.human_readable}")
 
         try:
-            content, reasoning_content, self.current_model_name = await model.generate_response(prompt)
+            content, (reasoning_content, model_name) = await model.generate_response_async(prompt)
 
-            logger.debug(f"prompt:{prompt}\n生成回复：{content}")
+            logger.info(f"prompt:{prompt}\n生成回复：{content}")
 
             logger.info(f"对  {message.processed_plain_text}  的回复：{content}")
-
-            info_catcher.catch_after_llm_generated(
-                prompt=prompt, response=content, reasoning_content=reasoning_content, model_name=self.current_model_name
-            )
 
         except Exception:
             logger.exception("生成回复时出错")
@@ -134,7 +134,7 @@ class NormalChatGenerator:
             """
 
             # 调用模型生成结果
-            result, _, _ = await self.model_sum.generate_response(prompt)
+            result, (reasoning_content, model_name) = await self.model_sum.generate_response_async(prompt)
             result = result.strip()
 
             # 解析模型输出的结果
@@ -154,15 +154,3 @@ class NormalChatGenerator:
         except Exception as e:
             logger.debug(f"获取情感标签时出错: {e}")
             return "中立", "平静"  # 出错时返回默认值
-
-    @staticmethod
-    async def _process_response(content: str) -> Tuple[List[str], List[str]]:
-        """处理响应内容，返回处理后的内容和情感标签"""
-        if not content:
-            return None, []
-
-        processed_response = process_llm_response(content)
-
-        # print(f"得到了处理后的llm返回{processed_response}")
-
-        return processed_response

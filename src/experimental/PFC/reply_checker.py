@@ -1,12 +1,12 @@
 import json
 from typing import Tuple, List, Dict, Any
-from src.common.logger import get_module_logger
+from src.common.logger import get_logger
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.experimental.PFC.chat_observer import ChatObserver
 from maim_message import UserInfo
 
-logger = get_module_logger("reply_checker")
+logger = get_logger("reply_checker")
 
 
 class ReplyChecker:

@@ -8,7 +8,7 @@ from datetime import datetime
 from tomlkit import TOMLDocument
 from tomlkit.items import Table
 
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from rich.traceback import install
 
 from src.config.config_base import ConfigBase
@@ -25,6 +25,7 @@ from src.config.official_configs import (
     MoodConfig,
     KeywordReactionConfig,
     ChineseTypoConfig,
+    ResponsePostProcessConfig,
     ResponseSplitterConfig,
     TelemetryConfig,
     ExperimentalConfig,
@@ -32,6 +33,7 @@ from src.config.official_configs import (
     FocusChatProcessorConfig,
     MessageReceiveConfig,
     MaimMessageConfig,
+    LPMMKnowledgeConfig,
     RelationshipConfig,
 )
 
@@ -41,22 +43,24 @@ install(extra_lines=3)
 # 配置主程序日志格式
 logger = get_logger("config")
 
-CONFIG_DIR = "config"
-TEMPLATE_DIR = "template"
+# 获取当前文件所在目录的父目录的父目录（即MaiBot项目根目录）
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+CONFIG_DIR = os.path.join(PROJECT_ROOT, "config")
+TEMPLATE_DIR = os.path.join(PROJECT_ROOT, "template")
 
 # 考虑到，实际上配置文件中的mai_version是不会自动更新的,所以采用硬编码
 # 对该字段的更新，请严格参照语义化版本规范：https://semver.org/lang/zh-CN/
-MMC_VERSION = "0.7.0"
+MMC_VERSION = "0.8.0"
 
 
 def update_config():
     # 获取根目录路径
-    old_config_dir = f"{CONFIG_DIR}/old"
+    old_config_dir = os.path.join(CONFIG_DIR, "old")
 
     # 定义文件路径
-    template_path = f"{TEMPLATE_DIR}/bot_config_template.toml"
-    old_config_path = f"{CONFIG_DIR}/bot_config.toml"
-    new_config_path = f"{CONFIG_DIR}/bot_config.toml"
+    template_path = os.path.join(TEMPLATE_DIR, "bot_config_template.toml")
+    old_config_path = os.path.join(CONFIG_DIR, "bot_config.toml")
+    new_config_path = os.path.join(CONFIG_DIR, "bot_config.toml")
 
     # 检查配置文件是否存在
     if not os.path.exists(old_config_path):
@@ -86,11 +90,9 @@ def update_config():
         logger.info("已有配置文件未检测到版本号，可能是旧版本。将进行更新")
 
     # 创建old目录（如果不存在）
-    os.makedirs(old_config_dir, exist_ok=True)
-
-    # 生成带时间戳的新文件名
+    os.makedirs(old_config_dir, exist_ok=True)  # 生成带时间戳的新文件名
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    old_backup_path = f"{old_config_dir}/bot_config_{timestamp}.toml"
+    old_backup_path = os.path.join(old_config_dir, f"bot_config_{timestamp}.toml")
 
     # 移动旧配置文件到old目录
     shutil.move(old_config_path, old_backup_path)
@@ -156,11 +158,13 @@ class Config(ConfigBase):
     mood: MoodConfig
     keyword_reaction: KeywordReactionConfig
     chinese_typo: ChineseTypoConfig
+    response_post_process: ResponsePostProcessConfig
     response_splitter: ResponseSplitterConfig
     telemetry: TelemetryConfig
     experimental: ExperimentalConfig
     model: ModelConfig
     maim_message: MaimMessageConfig
+    lpmm_knowledge: LPMMKnowledgeConfig
 
 
 def load_config(config_path: str) -> Config:
@@ -181,10 +185,18 @@ def load_config(config_path: str) -> Config:
         raise e
 
 
+def get_config_dir() -> str:
+    """
+    获取配置目录
+    :return: 配置目录路径
+    """
+    return CONFIG_DIR
+
+
 # 获取配置文件路径
 logger.info(f"MaiCore当前版本: {MMC_VERSION}")
 update_config()
 
 logger.info("正在品鉴配置文件...")
-global_config = load_config(config_path=f"{CONFIG_DIR}/bot_config.toml")
+global_config = load_config(config_path=os.path.join(CONFIG_DIR, "bot_config.toml"))
 logger.info("非常的新鲜，非常的美味！")

@@ -1,4 +1,4 @@
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.chat.message_receive.message import MessageRecv
 from src.chat.message_receive.storage import MessageStorage
 from src.config.config import global_config

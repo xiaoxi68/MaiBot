@@ -5,8 +5,7 @@ from datetime import datetime
 from typing import Tuple, Union, Dict, Any
 import aiohttp
 from aiohttp.client import ClientResponse
-from src.common.logger import get_module_logger
-from src.common.tcp_connector import get_tcp_connector
+from src.common.logger import get_logger
 import base64
 from PIL import Image
 import io
@@ -14,11 +13,12 @@ import os
 from src.common.database.database import db  # 确保 db 被导入用于 create_tables
 from src.common.database.database_model import LLMUsage  # 导入 LLMUsage 模型
 from src.config.config import global_config
+from src.common.tcp_connector import get_tcp_connector
 from rich.traceback import install
 
 install(extra_lines=3)
 
-logger = get_module_logger("model_utils")
+logger = get_logger("model_utils")
 
 
 class PayLoadTooLargeError(Exception):
@@ -109,12 +109,17 @@ class LLMRequest:
     def __init__(self, model: dict, **kwargs):
         # 将大写的配置键转换为小写并从config中获取实际值
         try:
+            # print(f"model['provider']: {model['provider']}")
             self.api_key = os.environ[f"{model['provider']}_KEY"]
             self.base_url = os.environ[f"{model['provider']}_BASE_URL"]
         except AttributeError as e:
             logger.error(f"原始 model dict 信息：{model}")
             logger.error(f"配置错误：找不到对应的配置项 - {str(e)}")
             raise ValueError(f"配置错误：找不到对应的配置项 - {str(e)}") from e
+        except KeyError:
+            logger.warning(
+                f"找不到{model['provider']}_KEY或{model['provider']}_BASE_URL环境变量，请检查配置文件或环境变量设置。"
+            )
         self.model_name: str = model["name"]
         self.params = kwargs
 
@@ -124,6 +129,8 @@ class LLMRequest:
         self.stream = model.get("stream", False)
         self.pri_in = model.get("pri_in", 0)
         self.pri_out = model.get("pri_out", 0)
+        self.max_tokens = model.get("max_tokens", global_config.model.model_max_output_length)
+        # print(f"max_tokens: {self.max_tokens}")
 
         # 获取数据库实例
         self._init_database()
@@ -137,7 +144,7 @@ class LLMRequest:
         try:
             # 使用 Peewee 创建表，safe=True 表示如果表已存在则不会抛出错误
             db.create_tables([LLMUsage], safe=True)
-            logger.debug("LLMUsage 表已初始化/确保存在。")
+            # logger.debug("LLMUsage 表已初始化/确保存在。")
         except Exception as e:
             logger.error(f"创建 LLMUsage 表失败: {str(e)}")
 
@@ -177,7 +184,7 @@ class LLMRequest:
                 status="success",
                 timestamp=datetime.now(),  # Peewee 会处理 DateTimeField
             )
-            logger.trace(
+            logger.debug(
                 f"Token使用情况 - 模型: {self.model_name}, "
                 f"用户: {user_id}, 类型: {request_type}, "
                 f"提示词: {prompt_tokens}, 完成: {completion_tokens}, "
@@ -243,6 +250,25 @@ class LLMRequest:
 
         if stream_mode:
             payload["stream"] = stream_mode
+
+        if self.temp != 0.7:
+            payload["temperature"] = self.temp
+
+        # 添加enable_thinking参数（如果不是默认值False）
+        if not self.enable_thinking:
+            payload["enable_thinking"] = False
+
+        if self.thinking_budget != 4096:
+            payload["thinking_budget"] = self.thinking_budget
+
+        if self.max_tokens:
+            payload["max_tokens"] = self.max_tokens
+
+        # if "max_tokens" not in payload and "max_completion_tokens" not in payload:
+        # payload["max_tokens"] = global_config.model.model_max_output_length
+        # 如果 payload 中依然存在 max_tokens 且需要转换，在这里进行再次检查
+        if self.model_name.lower() in self.MODELS_NEEDING_TRANSFORMATION and "max_tokens" in payload:
+            payload["max_completion_tokens"] = payload.pop("max_tokens")
 
         return {
             "policy": policy,
@@ -463,8 +489,8 @@ class LLMRequest:
             logger.error(
                 f"模型 {self.model_name} 错误码: {response.status} - {error_code_mapping.get(response.status)}"
             )
-            print(request_content)
-            print(response)
+            # print(request_content)
+            # print(response)
             # 尝试获取并记录服务器返回的详细错误信息
             try:
                 error_json = await response.json()
@@ -501,11 +527,11 @@ class LLMRequest:
                 logger.warning(f"检测到403错误，模型从 {old_model_name} 降级为 {self.model_name}")
 
                 # 对全局配置进行更新
-                if global_config.model.normal_chat_2.get("name") == old_model_name:
-                    global_config.model.normal_chat_2["name"] = self.model_name
+                if global_config.model.replyer_2.get("name") == old_model_name:
+                    global_config.model.replyer_2["name"] = self.model_name
                     logger.warning(f"将全局配置中的 llm_normal 模型临时降级至{self.model_name}")
-                if global_config.model.normal_chat_1.get("name") == old_model_name:
-                    global_config.model.normal_chat_1["name"] = self.model_name
+                if global_config.model.replyer_1.get("name") == old_model_name:
+                    global_config.model.replyer_1["name"] = self.model_name
                     logger.warning(f"将全局配置中的 llm_reasoning 模型临时降级至{self.model_name}")
 
                 if payload and "model" in payload:
@@ -632,6 +658,7 @@ class LLMRequest:
             ]
         else:
             messages = [{"role": "user", "content": prompt}]
+
         payload = {
             "model": self.model_name,
             "messages": messages,
@@ -649,8 +676,11 @@ class LLMRequest:
         if self.thinking_budget != 4096:
             payload["thinking_budget"] = self.thinking_budget
 
-        if "max_tokens" not in payload and "max_completion_tokens" not in payload:
-            payload["max_tokens"] = global_config.model.model_max_output_length
+        if self.max_tokens:
+            payload["max_tokens"] = self.max_tokens
+
+        # if "max_tokens" not in payload and "max_completion_tokens" not in payload:
+        # payload["max_tokens"] = global_config.model.model_max_output_length
         # 如果 payload 中依然存在 max_tokens 且需要转换，在这里进行再次检查
         if self.model_name.lower() in self.MODELS_NEEDING_TRANSFORMATION and "max_tokens" in payload:
             payload["max_completion_tokens"] = payload.pop("max_tokens")
@@ -716,18 +746,6 @@ class LLMRequest:
             return {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
             # 防止小朋友们截图自己的key
 
-    async def generate_response(self, prompt: str) -> Tuple:
-        """根据输入的提示生成模型的异步响应"""
-
-        response = await self._execute_request(endpoint="/chat/completions", prompt=prompt)
-        # 根据返回值的长度决定怎么处理
-        if len(response) == 3:
-            content, reasoning_content, tool_calls = response
-            return content, reasoning_content, self.model_name, tool_calls
-        else:
-            content, reasoning_content = response
-            return content, reasoning_content, self.model_name
-
     async def generate_response_for_image(self, prompt: str, image_base64: str, image_format: str) -> Tuple:
         """根据输入的提示和图片生成模型的异步响应"""
 
@@ -761,29 +779,6 @@ class LLMRequest:
         else:
             content, reasoning_content = response
             return content, (reasoning_content, self.model_name)
-
-    async def generate_response_tool_async(self, prompt: str, tools: list, **kwargs) -> tuple[str, str, list]:
-        """异步方式根据输入的提示生成模型的响应"""
-        # 构建请求体，不硬编码max_tokens
-        data = {
-            "model": self.model_name,
-            "messages": [{"role": "user", "content": prompt}],
-            **self.params,
-            **kwargs,
-            "tools": tools,
-        }
-
-        response = await self._execute_request(endpoint="/chat/completions", payload=data, prompt=prompt)
-        logger.debug(f"向模型 {self.model_name} 发送工具调用请求，包含 {len(tools)} 个工具，返回结果: {response}")
-        # 检查响应是否包含工具调用
-        if len(response) == 3:
-            content, reasoning_content, tool_calls = response
-            logger.debug(f"收到工具调用响应，包含 {len(tool_calls) if tool_calls else 0} 个工具调用")
-            return content, reasoning_content, tool_calls
-        else:
-            content, reasoning_content = response
-            logger.debug("收到普通响应，无工具调用")
-            return content, reasoning_content, None
 
     async def get_embedding(self, text: str) -> Union[list, None]:
         """异步方法：获取文本的embedding向量
@@ -842,6 +837,9 @@ def compress_base64_image_by_scale(base64_data: str, target_size: int = 0.8 * 10
     """
     try:
         # 将base64转换为字节数据
+        # 确保base64字符串只包含ASCII字符
+        if isinstance(base64_data, str):
+            base64_data = base64_data.encode("ascii", errors="ignore").decode("ascii")
         image_data = base64.b64decode(base64_data)
 
         # 如果已经小于目标大小，直接返回原图
@@ -895,7 +893,7 @@ def compress_base64_image_by_scale(base64_data: str, target_size: int = 0.8 * 10
 
         # 获取压缩后的数据并转换为base64
         compressed_data = output_buffer.getvalue()
-        logger.success(f"压缩图片: {original_width}x{original_height} -> {new_width}x{new_height}")
+        logger.info(f"压缩图片: {original_width}x{original_height} -> {new_width}x{new_height}")
         logger.info(f"压缩前大小: {len(image_data) / 1024:.1f}KB, 压缩后大小: {len(compressed_data) / 1024:.1f}KB")
 
         return base64.b64encode(compressed_data).decode("utf-8")

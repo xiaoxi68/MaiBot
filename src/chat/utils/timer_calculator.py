@@ -111,11 +111,13 @@ class Timer:
         async def async_wrapper(*args, **kwargs):
             with self:
                 return await func(*args, **kwargs)
+            return None
 
         @wraps(func)
         def sync_wrapper(*args, **kwargs):
             with self:
                 return func(*args, **kwargs)
+            return None
 
         wrapper = async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
         wrapper.__timer__ = self  # 保留计时器引用

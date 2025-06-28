@@ -1,7 +1,7 @@
 from peewee import Model, DoubleField, IntegerField, BooleanField, TextField, FloatField, DateTimeField
 from .database import db
 import datetime
-from ..logger_manager import get_logger
+from src.common.logger import get_logger
 
 logger = get_logger("database_model")
 # 请在此处定义您的数据库实例。
@@ -156,19 +156,46 @@ class Messages(BaseModel):
         table_name = "messages"
 
 
+class ActionRecords(BaseModel):
+    """
+    用于存储动作记录数据的模型。
+    """
+
+    action_id = TextField(index=True)  # 消息 ID (更改自 IntegerField)
+    time = DoubleField()  # 消息时间戳
+
+    action_name = TextField()
+    action_data = TextField()
+    action_done = BooleanField(default=False)
+
+    action_build_into_prompt = BooleanField(default=False)
+    action_prompt_display = TextField()
+
+    chat_id = TextField(index=True)  # 对应的 ChatStreams stream_id
+    chat_info_stream_id = TextField()
+    chat_info_platform = TextField()
+
+    class Meta:
+        # database = db # 继承自 BaseModel
+        table_name = "action_records"
+
+
 class Images(BaseModel):
     """
     用于存储图像信息的模型。
     """
 
+    image_id = TextField(default="")  # 图片唯一ID
     emoji_hash = TextField(index=True)  # 图像的哈希值
     description = TextField(null=True)  # 图像的描述
     path = TextField(unique=True)  # 图像文件的路径
+    # base64 = TextField()  # 图片的base64编码
+    count = IntegerField(default=1)  # 图片被引用的次数
     timestamp = FloatField()  # 时间戳
     type = TextField()  # 图像类型，例如 "emoji"
+    vlm_processed = BooleanField(default=False)  # 是否已经过VLM处理
 
     class Meta:
-        # database = db # 继承自 BaseModel
         table_name = "images"
 
 
@@ -214,11 +241,17 @@ class PersonInfo(BaseModel):
     platform = TextField()  # 平台
     user_id = TextField(index=True)  # 用户ID
     nickname = TextField()  # 用户昵称
-    relationship_value = IntegerField(default=0)  # 关系值
-    know_time = FloatField()  # 认识时间 (时间戳)
-    msg_interval = IntegerField()  # 消息间隔
-    # msg_interval_list: 存储为 JSON 字符串的列表
-    msg_interval_list = TextField(null=True)
+    impression = TextField(null=True)  # 个人印象
+    short_impression = TextField(null=True)  # 个人印象的简短描述
+    points = TextField(null=True)  # 个人印象的点
+    forgotten_points = TextField(null=True)  # 被遗忘的点
+    info_list = TextField(null=True)  # 与Bot的互动
+
+    know_times = FloatField(null=True)  # 认识时间 (时间戳)
+    know_since = FloatField(null=True)  # 首次印象总结时间
+    last_know = FloatField(null=True)  # 最后一次印象总结时间
+    familiarity_value = IntegerField(null=True, default=0)  # 熟悉度，0-100，从完全陌生到非常熟悉
+    liking_value = IntegerField(null=True, default=50)  # 好感度，0-100，从非常厌恶到十分喜欢
 
     class Meta:
         # database = db # 继承自 BaseModel
@@ -327,6 +360,7 @@ def create_tables():
                 RecalledMessages,  # 添加新模型
                 GraphNodes,  # 添加图节点表
                 GraphEdges,  # 添加图边表
+                ActionRecords,  # 添加 ActionRecords 到初始化列表
             ]
         )
 
@@ -334,9 +368,8 @@ def create_tables():
 def initialize_database():
     """
     检查所有定义的表是否存在，如果不存在则创建它们。
-    检查所有表的所有字段是否存在，如果缺失则警告用户并退出程序。
+    检查所有表的所有字段是否存在，如果缺失则自动添加。
     """
-    import sys
 
     models = [
         ChatStreams,
@@ -350,44 +383,80 @@ def initialize_database():
         Knowledges,
         ThinkingLog,
         RecalledMessages,
-        GraphNodes,  # 添加图节点表
-        GraphEdges,  # 添加图边表
+        GraphNodes,
+        GraphEdges,
+        ActionRecords,  # 添加 ActionRecords 到初始化列表
     ]
 
-    needs_creation = False
     try:
         with db:  # 管理 table_exists 检查的连接
             for model in models:
                 table_name = model._meta.table_name
                 if not db.table_exists(model):
-                    logger.warning(f"表 '{table_name}' 未找到。")
-                    needs_creation = True
-                    break  # 一个表丢失，无需进一步检查。
-            if not needs_creation:
+                    logger.warning(f"表 '{table_name}' 未找到，正在创建...")
+                    db.create_tables([model])
+                    logger.info(f"表 '{table_name}' 创建成功")
+                    continue
+
                 # 检查字段
-                for model in models:
-                    table_name = model._meta.table_name
-                    cursor = db.execute_sql(f"PRAGMA table_info('{table_name}')")
-                    existing_columns = {row[1] for row in cursor.fetchall()}
-                    model_fields = model._meta.fields
-                    for field_name in model_fields:
-                        if field_name not in existing_columns:
-                            logger.error(f"表 '{table_name}' 缺失字段 '{field_name}'，请手动迁移数据库结构后重启程序。")
-                            sys.exit(1)
+                cursor = db.execute_sql(f"PRAGMA table_info('{table_name}')")
+                existing_columns = {row[1] for row in cursor.fetchall()}
+                model_fields = set(model._meta.fields.keys())
+
+                # 检查并添加缺失字段（原有逻辑）
+                missing_fields = model_fields - existing_columns
+                if missing_fields:
+                    logger.warning(f"表 '{table_name}' 缺失字段: {missing_fields}")
+
+                for field_name, field_obj in model._meta.fields.items():
+                    if field_name not in existing_columns:
+                        logger.info(f"表 '{table_name}' 缺失字段 '{field_name}'，正在添加...")
+                        field_type = field_obj.__class__.__name__
+                        sql_type = {
+                            "TextField": "TEXT",
+                            "IntegerField": "INTEGER",
+                            "FloatField": "FLOAT",
+                            "DoubleField": "DOUBLE",
+                            "BooleanField": "INTEGER",
+                            "DateTimeField": "DATETIME",
+                        }.get(field_type, "TEXT")
+                        alter_sql = f"ALTER TABLE {table_name} ADD COLUMN {field_name} {sql_type}"
+                        if field_obj.null:
+                            alter_sql += " NULL"
+                        else:
+                            alter_sql += " NOT NULL"
+                        if hasattr(field_obj, "default") and field_obj.default is not None:
+                            # 正确处理不同类型的默认值
+                            default_value = field_obj.default
+                            if isinstance(default_value, str):
+                                alter_sql += f" DEFAULT '{default_value}'"
+                            elif isinstance(default_value, bool):
+                                alter_sql += f" DEFAULT {int(default_value)}"
+                            else:
+                                alter_sql += f" DEFAULT {default_value}"
+                        try:
+                            db.execute_sql(alter_sql)
+                            logger.info(f"字段 '{field_name}' 添加成功")
+                        except Exception as e:
+                            logger.error(f"添加字段 '{field_name}' 失败: {e}")
+
+                # 检查并删除多余字段（新增逻辑）
+                extra_fields = existing_columns - model_fields
+                if extra_fields:
+                    logger.warning(f"表 '{table_name}' 存在多余字段: {extra_fields}")
+                for field_name in extra_fields:
+                    try:
+                        logger.warning(f"表 '{table_name}' 存在多余字段 '{field_name}'，正在尝试删除...")
+                        db.execute_sql(f"ALTER TABLE {table_name} DROP COLUMN {field_name}")
+                        logger.info(f"字段 '{field_name}' 删除成功")
+                    except Exception as e:
+                        logger.error(f"删除字段 '{field_name}' 失败: {e}")
     except Exception as e:
         logger.exception(f"检查表或字段是否存在时出错: {e}")
         # 如果检查失败（例如数据库不可用），则退出
         return
 
-    if needs_creation:
-        logger.info("正在初始化数据库：一个或多个表丢失。正在尝试创建所有定义的表...")
-        try:
-            create_tables()  # 此函数有其自己的 'with db:' 上下文管理。
-            logger.info("数据库表创建过程完成。")
-        except Exception as e:
-            logger.exception(f"创建表期间出错: {e}")
-    else:
-        logger.info("所有数据库表及字段均已存在。")
+    logger.info("数据库初始化完成")
 
 
 # 模块加载时调用初始化函数

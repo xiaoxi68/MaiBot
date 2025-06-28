@@ -1,7 +1,7 @@
 # 定义了来自外部世界的信息
 # 外部世界可以是某个聊天 不同平台的聊天 也可以是任意媒体
 from datetime import datetime
-from src.common.logger_manager import get_logger
+from src.common.logger import get_logger
 from src.chat.focus_chat.heartFC_Cycleinfo import CycleDetail
 from typing import List
 # Import the new utility function
@@ -42,11 +42,14 @@ class HFCloopObservation:
 
         # 检查这最近的活动循环中有多少是连续的文本回复 (从最近的开始看)
         for cycle in recent_active_cycles:
-            action_type = cycle.loop_plan_info["action_result"]["action_type"]
-            action_reasoning = cycle.loop_plan_info["action_result"]["reasoning"]
-            is_taken = cycle.loop_action_info["action_taken"]
-            action_taken_time = cycle.loop_action_info["taken_time"]
-            action_taken_time_str = datetime.fromtimestamp(action_taken_time).strftime("%H:%M:%S")
+            action_result = cycle.loop_plan_info.get("action_result", {})
+            action_type = action_result.get("action_type", "unknown")
+            action_reasoning = action_result.get("reasoning", "未提供理由")
+            is_taken = cycle.loop_action_info.get("action_taken", False)
+            action_taken_time = cycle.loop_action_info.get("taken_time", 0)
+            action_taken_time_str = (
+                datetime.fromtimestamp(action_taken_time).strftime("%H:%M:%S") if action_taken_time > 0 else "未知时间"
+            )
             # print(action_type)
             # print(action_reasoning)
             # print(is_taken)
@@ -60,7 +63,7 @@ class HFCloopObservation:
 
             if action_type == "reply":
                 consecutive_text_replies += 1
-                response_text = cycle.loop_plan_info["action_result"]["action_data"].get("text", "[空回复]")
+                response_text = cycle.loop_action_info.get("reply_text", "")
                 responses_for_prompt.append(response_text)
 
                 if is_taken:
@@ -68,9 +71,10 @@ class HFCloopObservation:
                 else:
                     action_detailed_str += f"{action_taken_time_str}时，你选择回复(action:{action_type},内容是:'{response_text}')，但是动作失败了。{action_reasoning_str}\n"
             elif action_type == "no_reply":
-                action_detailed_str += (
-                    f"{action_taken_time_str}时，你选择不回复(action:{action_type})，{action_reasoning_str}\n"
-                )
+                # action_detailed_str += (
+                #     f"{action_taken_time_str}时，你选择不回复(action:{action_type})，{action_reasoning_str}\n"
+                # )
+                pass
             else:
                 if is_taken:
                     action_detailed_str += (

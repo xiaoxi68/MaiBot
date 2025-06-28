@@ -1,13 +1,13 @@
 from typing import List, Optional, Dict, Any, Set
 from maim_message import UserInfo
 import time
-from src.common.logger import get_module_logger
+from src.common.logger import get_logger
 from src.experimental.PFC.chat_observer import ChatObserver
 from src.experimental.PFC.chat_states import NotificationHandler, NotificationType, Notification
 from src.chat.utils.chat_message_builder import build_readable_messages
 import traceback  # 导入 traceback 用于调试
 
-logger = get_module_logger("observation_info")
+logger = get_logger("observation_info")
 
 
 class ObservationInfoHandler(NotificationHandler):
@@ -366,7 +366,7 @@ class ObservationInfo:
         # 更新历史记录字符串 (只使用最近一部分生成，例如20条)
         history_slice_for_str = self.chat_history[-20:]
         try:
-            self.chat_history_str = await build_readable_messages(
+            self.chat_history_str = build_readable_messages(
                 history_slice_for_str,
                 replace_bot_name=True,
                 merge_messages=False,

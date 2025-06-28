@@ -7,7 +7,7 @@ import jieba
 import numpy as np
 from maim_message import UserInfo
 
-from src.common.logger import get_module_logger
+from src.common.logger import get_logger
 from src.manager.mood_manager import mood_manager
 from ..message_receive.message import MessageRecv
 from src.llm_models.utils_model import LLMRequest
@@ -15,7 +15,7 @@ from .typo_generator import ChineseTypoGenerator
 from ...config.config import global_config
 from ...common.message_repository import find_messages, count_messages
 
-logger = get_module_logger("chat_utils")
+logger = get_logger("chat_utils")
 
 
 def is_english_letter(char: str) -> bool:
@@ -247,8 +247,6 @@ def split_into_sentences_w_remove_punctuation(text: str) -> list[str]:
 
     # 如果分割后为空（例如，输入全是分隔符且不满足保留条件），恢复颜文字并返回
     if not segments:
-        # recovered_text = recover_kaomoji([text], mapping) # 恢复原文本中的颜文字 - 已移至上层处理
-        # return [s for s in recovered_text if s] # 返回非空结果
         return [text] if text else []  # 如果原始文本非空，则返回原始文本（可能只包含未被分割的字符或颜文字占位符）
 
     # 2. 概率合并
@@ -324,16 +322,18 @@ def random_remove_punctuation(text: str) -> str:
 
 
 def process_llm_response(text: str) -> list[str]:
+    if not global_config.response_post_process.enable_response_post_process:
+        return [text]
+
     # 先保护颜文字
     if global_config.response_splitter.enable_kaomoji_protection:
         protected_text, kaomoji_mapping = protect_kaomoji(text)
-        logger.trace(f"保护颜文字后的文本: {protected_text}")
+        logger.debug(f"保护颜文字后的文本: {protected_text}")
     else:
         protected_text = text
         kaomoji_mapping = {}
     # 提取被 () 或 [] 或 （）包裹且包含中文的内容
     pattern = re.compile(r"[(\[（](?=.*[一-鿿]).*?[)\]）]")
-    # _extracted_contents = pattern.findall(text)
     _extracted_contents = pattern.findall(protected_text)  # 在保护后的文本上查找
     # 去除 () 和 [] 及其包裹的内容
     cleaned_text = pattern.sub("", protected_text)
@@ -392,8 +392,8 @@ def process_llm_response(text: str) -> list[str]:
 def calculate_typing_time(
     input_string: str,
     thinking_start_time: float,
-    chinese_time: float = 0.2,
-    english_time: float = 0.1,
+    chinese_time: float = 0.3,
+    english_time: float = 0.15,
     is_emoji: bool = False,
 ) -> float:
     """
@@ -616,129 +616,24 @@ def translate_timestamp_to_human_readable(timestamp: float, mode: str = "normal"
     """
     if mode == "normal":
         return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp))
+    if mode == "normal_no_YMD":
+        return time.strftime("%H:%M:%S", time.localtime(timestamp))
     elif mode == "relative":
         now = time.time()
         diff = now - timestamp
 
         if diff < 20:
-            return "刚刚:\n"
+            return "刚刚"
         elif diff < 60:
-            return f"{int(diff)}秒前:\n"
+            return f"{int(diff)}秒前"
         elif diff < 3600:
-            return f"{int(diff / 60)}分钟前:\n"
+            return f"{int(diff / 60)}分钟前"
         elif diff < 86400:
-            return f"{int(diff / 3600)}小时前:\n"
+            return f"{int(diff / 3600)}小时前"
         elif diff < 86400 * 2:
-            return f"{int(diff / 86400)}天前:\n"
+            return f"{int(diff / 86400)}天前"
         else:
-            return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp)) + ":\n"
+            return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp)) + ":"
     else:  # mode = "lite" or unknown
         # 只返回时分秒格式，喵~
         return time.strftime("%H:%M:%S", time.localtime(timestamp))
-
-
-def parse_text_timestamps(text: str, mode: str = "normal") -> str:
-    """解析文本中的时间戳并转换为可读时间格式
-
-    Args:
-        text: 包含时间戳的文本，时间戳应以[]包裹
-        mode: 转换模式，传递给translate_timestamp_to_human_readable，"normal"或"relative"
-
-    Returns:
-        str: 替换后的文本
-
-    转换规则:
-    - normal模式: 将文本中所有时间戳转换为可读格式
-    - lite模式:
-        - 第一个和最后一个时间戳必须转换
-        - 以5秒为间隔划分时间段，每段最多转换一个时间戳
-        - 不转换的时间戳替换为空字符串
-    """
-    # 匹配[数字]或[数字.数字]格式的时间戳
-    pattern = r"\[(\d+(?:\.\d+)?)\]"
-
-    # 找出所有匹配的时间戳
-    matches = list(re.finditer(pattern, text))
-
-    if not matches:
-        return text
-
-    # normal模式: 直接转换所有时间戳
-    if mode == "normal":
-        result_text = text
-        for match in matches:
-            timestamp = float(match.group(1))
-            readable_time = translate_timestamp_to_human_readable(timestamp, "normal")
-            # 由于替换会改变文本长度，需要使用正则替换而非直接替换
-            pattern_instance = re.escape(match.group(0))
-            result_text = re.sub(pattern_instance, readable_time, result_text, count=1)
-        return result_text
-    else:
-        # lite模式: 按5秒间隔划分并选择性转换
-        result_text = text
-
-        # 提取所有时间戳及其位置
-        timestamps = [(float(m.group(1)), m) for m in matches]
-        timestamps.sort(key=lambda x: x[0])  # 按时间戳升序排序
-
-        if not timestamps:
-            return text
-
-        # 获取第一个和最后一个时间戳
-        first_timestamp, first_match = timestamps[0]
-        last_timestamp, last_match = timestamps[-1]
-
-        # 将时间范围划分成5秒间隔的时间段
-        time_segments = {}
-
-        # 对所有时间戳按15秒间隔分组
-        for ts, match in timestamps:
-            segment_key = int(ts // 15)  # 将时间戳除以15取整，作为时间段的键
-            if segment_key not in time_segments:
-                time_segments[segment_key] = []
-            time_segments[segment_key].append((ts, match))
-
-        # 记录需要转换的时间戳
-        to_convert = []
-
-        # 从每个时间段中选择一个时间戳进行转换
-        for _, segment_timestamps in time_segments.items():
-            # 选择这个时间段中的第一个时间戳
-            to_convert.append(segment_timestamps[0])
-
-        # 确保第一个和最后一个时间戳在转换列表中
-        first_in_list = False
-        last_in_list = False
-
-        for ts, _ in to_convert:
-            if ts == first_timestamp:
-                first_in_list = True
-            if ts == last_timestamp:
-                last_in_list = True
-
-        if not first_in_list:
-            to_convert.append((first_timestamp, first_match))
-        if not last_in_list:
-            to_convert.append((last_timestamp, last_match))
-
-        # 创建需要转换的时间戳集合，用于快速查找
-        to_convert_set = {match.group(0) for _, match in to_convert}
-
-        # 首先替换所有不需要转换的时间戳为空字符串
-        for _, match in timestamps:
-            if match.group(0) not in to_convert_set:
-                pattern_instance = re.escape(match.group(0))
-                result_text = re.sub(pattern_instance, "", result_text, count=1)
-
-        # 按照时间戳原始顺序排序，避免替换时位置错误
-        to_convert.sort(key=lambda x: x[1].start())
-
-        # 执行替换
-        # 由于替换会改变文本长度，从后向前替换
-        to_convert.reverse()
-        for ts, match in to_convert:
-            readable_time = translate_timestamp_to_human_readable(ts, "relative")
-            pattern_instance = re.escape(match.group(0))
-            result_text = re.sub(pattern_instance, readable_time, result_text, count=1)
-
-        return result_text
