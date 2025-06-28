@@ -13,7 +13,6 @@ from typing import List
 from typing import Dict
 from src.chat.focus_chat.info.info_base import InfoBase
 from src.chat.focus_chat.info.relation_info import RelationInfo
-from src.person_info.person_info import PersonInfoManager
 from json_repair import repair_json
 from src.person_info.person_info import get_person_info_manager
 import json
@@ -26,7 +25,6 @@ from src.chat.utils.chat_message_builder import (
 )
 import os
 import pickle
-import random
 
 
 # 消息段清理配置
@@ -37,83 +35,8 @@ SEGMENT_CLEANUP_CONFIG = {
     "cleanup_interval_hours": 1,  # 清理间隔（小时）
 }
 
-# 用于随机生成prompt示例的资源池
-USER_EXAMPLE_KEYS = ["用户A", "小明", "Alice", "陈皮", "老王", "Bob", "张三", "李四"]
-USER_EXAMPLE_VALUES = [
-    "ta的昵称",
-    "ta对你的态度",
-    "你对ta的印象",
-    "ta最近心情如何",
-    "你们的关系",
-    "ta的身份",
-    "ta的兴趣爱好",
-    "ta和你的共同点",
-    "ta的习惯",
-    "你们最近做的事",
-    "你对ta的语气",
-    "你们的互动方式",
-    "给你的第一印象",
-    "你们最近聊过什么",
-]
-BOT_EXAMPLE_VALUES = [
-    "身份",
-    "性格",
-    "你的原则",
-    "你的知识",
-    "你的目标",
-    "你的爱好",
-    "你最近在做什么",
-    "头像",
-    "年龄",
-    "性别",
-    "职业",
-    "兴趣爱好",
-    "习惯",
-    "目标",
-    "原则",
-    "知识",
-    "爱好",
-]
-
 
 logger = get_logger("processor")
-
-
-def _generate_random_prompt_example() -> str:
-    """动态生成一个随机的、符合规则的JSON示例字符串"""
-
-    bot_nickname = global_config.bot.nickname
-    bot_aliases = list(global_config.bot.alias_names)
-
-    # 确定示例数量
-    num_user_examples = random.randint(1, 2)
-    num_bot_examples = random.randint(1, 2)
-
-    example_dict = {}
-
-    # 1. 生成用户提取示例
-    user_keys = random.sample(USER_EXAMPLE_KEYS, min(num_user_examples, len(USER_EXAMPLE_KEYS)))
-    user_values = random.sample(USER_EXAMPLE_VALUES, min(num_user_examples, len(USER_EXAMPLE_VALUES)))
-    for i in range(len(user_keys)):
-        example_dict[user_keys[i]] = user_values[i]
-
-    # 2. 生成bot自身示例 (使用昵称和别名避免key重复)
-    bot_name_pool = [bot_nickname] + bot_aliases
-    random.shuffle(bot_name_pool)
-    bot_values = random.sample(BOT_EXAMPLE_VALUES, min(num_bot_examples, len(BOT_EXAMPLE_VALUES)))
-
-    for i in range(min(num_bot_examples, len(bot_name_pool), len(bot_values))):
-        example_dict[bot_name_pool[i]] = bot_values[i]
-
-    # 3. 添加固定示例
-    example_dict["person_name"] = "其他信息"
-
-    # 随机化顺序并格式化为JSON字符串
-    items = list(example_dict.items())
-    random.shuffle(items)
-    shuffled_dict = dict(items)
-
-    return json.dumps(shuffled_dict, ensure_ascii=False, indent=4)
 
 
 def init_prompt():
@@ -122,53 +45,40 @@ def init_prompt():
 {chat_observe_info}
 </聊天记录>
 
-{info_cache_block}
-请不要重复调取相同的信息
-
 {name_block}
-请你阅读聊天记录，查看是否需要调取某个人的信息，这个人可以是出现在聊天记录中的，也可以是记录中提到的人，也可以是你自己({bot_name})。
-你不同程度上认识群聊里的人，以及他们谈论到的人，你可以根据聊天记录，回忆起有关他们的信息，帮助你参与聊天
-1.你需要提供用户名和你想要提取的信息名称类型来进行调取
-2.请注意，提取的信息类型一定要和用户有关，不要提取无关的信息
-3.你也可以调取有关自己({bot_name})的信息
-4.如果当前聊天记录中没有需要查询的信息，或者现有信息已经足够回复，请返回{{"none": "不需要查询"}}
+现在，你想要回复{person_name}的消息，消息内容是：{target_message}。请根据聊天记录和你要回复的消息，从你对{person_name}的了解中提取有关的信息：
+1.你需要提供你想要提取的信息具体是哪方面的信息，例如：年龄，性别，对ta的印象，最近发生的事等等。
+2.请注意，请不要重复调取相同的信息，已经调取的信息如下：
+{info_cache_block}
+3.如果当前聊天记录中没有需要查询的信息，或者现有信息已经足够回复，请返回{{"none": "不需要查询"}}
 
 请以json格式输出，例如：
 
-{example_json}
+{{
+    "info_type": "信息类型",
+}}
 
-如果不需要查询任何信息，请输出：
-{{"none": "不需要查询"}}
-
-请严格按照json输出格式，不要输出多余内容，可以同时查询多个人的信息：
-
+请严格按照json输出格式，不要输出多余内容：
 """
     Prompt(relationship_prompt, "relationship_prompt")
 
     fetch_info_prompt = """
     
 {name_block}
-以下是你在之前与{person_name}的交流中，产生的对{person_name}的了解，请你从中提取用户的有关"{info_type}"的信息，如果用户没有相关信息，请输出none：
+以下是你在之前与{person_name}的交流中，产生的对{person_name}的了解：
 {person_impression_block}
 {points_text_block}
-请严格按照以下json输出格式，不要输出多余内容：
+
+请从中提取用户"{person_name}"的有关"{info_type}"信息
+请以json格式输出，例如：
+
 {{
     {info_json_str}
 }}
+
+请严格按照json输出格式，不要输出多余内容：
 """
     Prompt(fetch_info_prompt, "fetch_person_info_prompt")
-
-    fetch_bot_info_prompt = """
-你是{nickname}，你的昵称有{alias_names}。
-以下是你对自己的了解，请你从中提取和"{info_type}"有关的信息，如果无法提取，请输出none：
-{person_impression_block}
-{points_text_block}
-请严格按照以下json输出格式，不要输出多余内容：
-{{
-    "{info_type}": "有关你自己的{info_type}的信息内容"
-}}
-"""
-    Prompt(fetch_bot_info_prompt, "fetch_bot_info_prompt")
 
 
 class PersonImpressionpProcessor(BaseProcessor):
@@ -293,7 +203,7 @@ class PersonImpressionpProcessor(BaseProcessor):
             }
             segments.append(new_segment)
 
-            person_name = get_person_info_manager().get_value(person_id, "person_name") or person_id
+            person_name = get_person_info_manager().get_value_sync(person_id, "person_name") or person_id
             logger.info(
                 f"{self.log_prefix} 眼熟用户 {person_name} 在 {time.strftime('%H:%M:%S', time.localtime(potential_start_time))} - {time.strftime('%H:%M:%S', time.localtime(message_time))} 之间有 {new_segment['message_count']} 条消息"
             )
@@ -341,7 +251,8 @@ class PersonImpressionpProcessor(BaseProcessor):
                 "message_count": self._count_messages_in_timerange(potential_start_time, message_time),
             }
             segments.append(new_segment)
-            person_name = get_person_info_manager().get_value(person_id, "person_name") or person_id
+            person_info_manager = get_person_info_manager()
+            person_name = person_info_manager.get_value_sync(person_id, "person_name") or person_id
             logger.info(f"{self.log_prefix} 重新眼熟用户 {person_name} 创建新消息段（超过10条消息间隔）: {new_segment}")
 
         self._save_cache()
@@ -515,16 +426,26 @@ class PersonImpressionpProcessor(BaseProcessor):
     # 统筹各模块协作、对外提供服务接口
     # ================================
 
-    async def process_info(self, observations: List[Observation] = None, *infos) -> List[InfoBase]:
+    async def process_info(
+        self,
+        observations: List[Observation] = None,
+        action_type: str = None,
+        action_data: dict = None,
+        **kwargs,
+    ) -> List[InfoBase]:
         """处理信息对象
 
         Args:
-            *infos: 可变数量的InfoBase类型的信息对象
+            observations: 观察对象列表
+            action_type: 动作类型
+            action_data: 动作数据
 
         Returns:
             List[InfoBase]: 处理后的结构化信息列表
         """
-        relation_info_str = await self.relation_identify(observations)
+        await self.build_relation(observations)
+
+        relation_info_str = await self.relation_identify(observations, action_type, action_data)
 
         if relation_info_str:
             relation_info = RelationInfo()
@@ -535,28 +456,14 @@ class PersonImpressionpProcessor(BaseProcessor):
 
         return [relation_info]
 
-    async def relation_identify(
-        self,
-        observations: List[Observation] = None,
-    ):
-        """
-        在回复前进行思考，生成内心想法并收集工具调用结果
-        """
-        # 0. 执行定期清理
+    async def build_relation(self, observations: List[Observation] = None):
+        """构建关系"""
         self._cleanup_old_segments()
-
-        # 1. 从观察信息中提取所需数据
-        # 需要兼容私聊
-
-        chat_observe_info = ""
         current_time = time.time()
+
         if observations:
             for observation in observations:
                 if isinstance(observation, ChattingObservation):
-                    chat_observe_info = observation.get_observe_info()
-                    # latest_message_time = observation.last_observe_time
-                    # 从聊天观察中提取用户信息并更新消息段
-                    # 获取最新的非bot消息来更新消息段
                     latest_messages = get_raw_msg_by_timestamp_with_chat(
                         self.subheartflow_id,
                         self.last_processed_message_time,
@@ -610,6 +517,54 @@ class PersonImpressionpProcessor(BaseProcessor):
             del self.person_engaged_cache[person_id]
             self._save_cache()
 
+    async def relation_identify(
+        self,
+        observations: List[Observation] = None,
+        action_type: str = None,
+        action_data: dict = None,
+    ):
+        """
+        从人物获取信息
+        """
+
+        chat_observe_info = ""
+        current_time = time.time()
+        if observations:
+            for observation in observations:
+                if isinstance(observation, ChattingObservation):
+                    chat_observe_info = observation.get_observe_info()
+                    # latest_message_time = observation.last_observe_time
+                    # 从聊天观察中提取用户信息并更新消息段
+                    # 获取最新的非bot消息来更新消息段
+                    latest_messages = get_raw_msg_by_timestamp_with_chat(
+                        self.subheartflow_id,
+                        self.last_processed_message_time,
+                        current_time,
+                        limit=50,  # 获取自上次处理后的消息
+                    )
+                    if latest_messages:
+                        # 处理所有新的非bot消息
+                        for latest_msg in latest_messages:
+                            user_id = latest_msg.get("user_id")
+                            platform = latest_msg.get("user_platform") or latest_msg.get("chat_info_platform")
+                            msg_time = latest_msg.get("time", 0)
+
+                            if (
+                                user_id
+                                and platform
+                                and user_id != global_config.bot.qq_account
+                                and msg_time > self.last_processed_message_time
+                            ):
+                                from src.person_info.person_info import PersonInfoManager
+
+                                person_id = PersonInfoManager.get_person_id(platform, user_id)
+                                self._update_message_segments(person_id, msg_time)
+                                logger.debug(
+                                    f"{self.log_prefix} 更新用户 {person_id} 的消息段，消息时间：{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(msg_time))}"
+                                )
+                                self.last_processed_message_time = max(self.last_processed_message_time, msg_time)
+                    break
+
         for person_id in list(self.info_fetched_cache.keys()):
             for info_type in list(self.info_fetched_cache[person_id].keys()):
                 self.info_fetched_cache[person_id][info_type]["ttl"] -= 1
@@ -618,7 +573,33 @@ class PersonImpressionpProcessor(BaseProcessor):
             if not self.info_fetched_cache[person_id]:
                 del self.info_fetched_cache[person_id]
 
-        # 5. 为需要处理的人员准备LLM prompt
+        if action_type != "reply":
+            return None
+
+        target_message = action_data.get("reply_to", "")
+
+        if ":" in target_message:
+            parts = target_message.split(":", 1)
+        elif "：" in target_message:
+            parts = target_message.split("：", 1)
+        else:
+            logger.warning(f"reply_to格式不正确: {target_message}，跳过关系识别")
+            return None
+
+        if len(parts) != 2:
+            logger.warning(f"reply_to格式不正确: {target_message}，跳过关系识别")
+            return None
+
+        sender = parts[0].strip()
+        text = parts[1].strip()
+
+        person_info_manager = get_person_info_manager()
+        person_id = person_info_manager.get_person_id_by_person_name(sender)
+
+        if not person_id:
+            logger.warning(f"未找到用户 {sender} 的ID，跳过关系识别")
+            return None
+
         nickname_str = ",".join(global_config.bot.alias_names)
         name_block = f"你的名字是{global_config.bot.nickname},你的昵称有{nickname_str}，有人也会用这些昵称称呼你。"
 
@@ -638,19 +619,16 @@ class PersonImpressionpProcessor(BaseProcessor):
                     f"你已经调取了[{info_fetching['person_name']}]的[{info_fetching['info_type']}]信息\n"
                 )
 
-        example_json = _generate_random_prompt_example()
-
         prompt = (await global_prompt_manager.get_prompt_async("relationship_prompt")).format(
-            name_block=name_block,
-            bot_name=global_config.bot.nickname,
-            time_now=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
             chat_observe_info=chat_observe_info,
+            name_block=name_block,
             info_cache_block=info_cache_block,
-            example_json=example_json,
+            person_name=sender,
+            target_message=text,
         )
 
         try:
-            logger.debug(f"{self.log_prefix} 人物信息prompt: \n{prompt}\n")
+            logger.info(f"{self.log_prefix} 人物信息prompt: \n{prompt}\n")
             content, _ = await self.llm_model.generate_response_async(prompt=prompt)
             if content:
                 # print(f"content: {content}")
@@ -661,29 +639,12 @@ class PersonImpressionpProcessor(BaseProcessor):
                     logger.info(f"{self.log_prefix} LLM判断当前不需要查询任何信息：{content_json.get('none', '')}")
                     # 跳过新的信息提取，但仍会处理已有缓存
                 else:
-                    # 收集即时提取任务
-                    instant_tasks = []
-                    async_tasks = []
-
-                    person_info_manager = get_person_info_manager()
-                    for person_name, info_type in content_json.items():
-                        is_bot = (
-                            person_name == global_config.bot.nickname or person_name in global_config.bot.alias_names
-                        )
-                        if is_bot:
-                            person_id = person_info_manager.get_person_id("system", "bot_id")
-                            logger.info(f"{self.log_prefix} 检测到对bot自身({person_name})的信息查询，使用特殊ID。")
-                        else:
-                            person_id = person_info_manager.get_person_id_by_person_name(person_name)
-
-                        if not person_id:
-                            logger.warning(f"{self.log_prefix} 未找到用户 {person_name} 的ID，跳过调取信息。")
-                            continue
-
+                    info_type = content_json.get("info_type")
+                    if info_type:
                         self.info_fetching_cache.append(
                             {
                                 "person_id": person_id,
-                                "person_name": person_name,
+                                "person_name": sender,
                                 "info_type": info_type,
                                 "start_time": time.time(),
                                 "forget": False,
@@ -692,22 +653,12 @@ class PersonImpressionpProcessor(BaseProcessor):
                         if len(self.info_fetching_cache) > 20:
                             self.info_fetching_cache.pop(0)
 
-                        logger.info(f"{self.log_prefix} 调取用户 {person_name} 的 {info_type} 信息。")
+                        logger.info(f"{self.log_prefix} 调取用户 {sender} 的[{info_type}]信息。")
 
-                        # 收集即时提取任务
-                        instant_tasks.append((person_id, info_type, time.time()))
-
-                    # 执行即时提取任务
-                    if instant_tasks:
-                        await self._execute_instant_extraction_batch(instant_tasks)
-
-                    # 启动异步任务（如果不是即时模式）
-                    if async_tasks:
-                        # 异步任务不需要等待完成
-                        pass
-
-            else:
-                logger.warning(f"{self.log_prefix} LLM返回空结果，关系识别失败。")
+                        # 执行信息提取
+                        await self._fetch_single_info_instant(person_id, info_type, time.time())
+                    else:
+                        logger.warning(f"{self.log_prefix} LLM did not return a valid info_type. Response: {content}")
 
         except Exception as e:
             logger.error(f"{self.log_prefix} 执行LLM请求或处理响应时出错: {e}")
@@ -838,31 +789,6 @@ class PersonImpressionpProcessor(BaseProcessor):
     # 负责实时分析对话需求、提取用户信息、管理信息缓存
     # ================================
 
-    async def _execute_instant_extraction_batch(self, instant_tasks: list):
-        """
-        批量执行即时提取任务
-        """
-        if not instant_tasks:
-            return
-
-        logger.info(f"{self.log_prefix} [即时提取] 开始批量提取 {len(instant_tasks)} 个信息")
-
-        # 创建所有提取任务
-        extraction_tasks = []
-        for person_id, info_type, start_time in instant_tasks:
-            # 检查缓存中是否已存在且未过期的信息
-            if person_id in self.info_fetched_cache and info_type in self.info_fetched_cache[person_id]:
-                logger.debug(f"{self.log_prefix} 用户 {person_id} 的 {info_type} 信息已存在且未过期，跳过调取。")
-                continue
-
-            task = asyncio.create_task(self._fetch_single_info_instant(person_id, info_type, start_time))
-            extraction_tasks.append(task)
-
-        # 并行执行所有提取任务并等待完成
-        if extraction_tasks:
-            await asyncio.gather(*extraction_tasks, return_exceptions=True)
-            logger.info(f"{self.log_prefix} [即时提取] 批量提取完成")
-
     async def _fetch_single_info_instant(self, person_id: str, info_type: str, start_time: float):
         """
         使用小模型提取单个信息类型
@@ -890,16 +816,13 @@ class PersonImpressionpProcessor(BaseProcessor):
 
             self.info_fetched_cache[person_id][info_type] = {
                 "info": cached_info,
-                "ttl": 4,
+                "ttl": 2,
                 "start_time": start_time,
                 "person_name": person_name,
                 "unknow": cached_info == "none",
             }
             logger.info(f"{self.log_prefix} 记得 {person_name} 的 {info_type}: {cached_info}")
             return
-
-        bot_person_id = PersonInfoManager.get_person_id("system", "bot_id")
-        is_bot = person_id == bot_person_id
 
         try:
             person_name = await person_info_manager.get_value(person_id, "person_name")
@@ -923,7 +846,7 @@ class PersonImpressionpProcessor(BaseProcessor):
                     self.info_fetched_cache[person_id] = {}
                 self.info_fetched_cache[person_id][info_type] = {
                     "info": "none",
-                    "ttl": 4,
+                    "ttl": 2,
                     "start_time": start_time,
                     "person_name": person_name,
                     "unknow": True,
@@ -932,27 +855,16 @@ class PersonImpressionpProcessor(BaseProcessor):
                 await self._save_info_to_cache(person_id, info_type, "none")
                 return
 
-            if is_bot:
-                prompt = (await global_prompt_manager.get_prompt_async("fetch_bot_info_prompt")).format(
-                    nickname=global_config.bot.nickname,
-                    alias_names=",".join(global_config.bot.alias_names),
-                    info_type=info_type,
-                    person_impression_block=person_impression_block,
-                    points_text_block=points_text_block,
-                )
-            else:
-                nickname_str = ",".join(global_config.bot.alias_names)
-                name_block = (
-                    f"你的名字是{global_config.bot.nickname},你的昵称有{nickname_str}，有人也会用这些昵称称呼你。"
-                )
-                prompt = (await global_prompt_manager.get_prompt_async("fetch_person_info_prompt")).format(
-                    name_block=name_block,
-                    info_type=info_type,
-                    person_impression_block=person_impression_block,
-                    person_name=person_name,
-                    info_json_str=f'"{info_type}": "有关{info_type}的信息内容"',
-                    points_text_block=points_text_block,
-                )
+            nickname_str = ",".join(global_config.bot.alias_names)
+            name_block = f"你的名字是{global_config.bot.nickname},你的昵称有{nickname_str}，有人也会用这些昵称称呼你。"
+            prompt = (await global_prompt_manager.get_prompt_async("fetch_person_info_prompt")).format(
+                name_block=name_block,
+                info_type=info_type,
+                person_impression_block=person_impression_block,
+                person_name=person_name,
+                info_json_str=f'"{info_type}": "有关{info_type}的信息内容"',
+                points_text_block=points_text_block,
+            )
         except Exception:
             logger.error(traceback.format_exc())
             return
@@ -972,7 +884,7 @@ class PersonImpressionpProcessor(BaseProcessor):
                         self.info_fetched_cache[person_id] = {}
                     self.info_fetched_cache[person_id][info_type] = {
                         "info": "unknow" if is_unknown else info_content,
-                        "ttl": 8,
+                        "ttl": 3,
                         "start_time": start_time,
                         "person_name": person_name,
                         "unknow": is_unknown,

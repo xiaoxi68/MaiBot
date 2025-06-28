@@ -470,7 +470,7 @@ class ActionModifier:
             response = response.strip().lower()
 
             # print(base_prompt)
-            print(f"LLM判定动作 {action_name}：响应='{response}'")
+            # print(f"LLM判定动作 {action_name}：响应='{response}'")
 
             should_activate = "是" in response or "yes" in response or "true" in response
 

@@ -53,7 +53,9 @@ async def generate_with_model(
         Tuple[bool, str, str, str]: (是否成功, 生成的内容, 推理过程, 模型名称)
     """
     try:
-        logger.info(f"[LLMAPI] 使用模型生成内容，提示词: {prompt[:200]}...")
+        model_name = model_config.get("name")
+        logger.info(f"[LLMAPI] 使用模型 {model_name} 生成内容")
+        logger.debug(f"[LLMAPI] 完整提示词: {prompt}")
 
         llm_request = LLMRequest(model=model_config, request_type=request_type, **kwargs)
 

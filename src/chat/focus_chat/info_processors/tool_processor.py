@@ -8,7 +8,7 @@ from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.tools.tool_use import ToolUser
 from src.chat.utils.json_utils import process_llm_tool_calls
 from .base_processor import BaseProcessor
-from typing import List, Optional
+from typing import List
 from src.chat.heart_flow.observation.observation import Observation
 from src.chat.focus_chat.info.structured_info import StructuredInfo
 from src.chat.heart_flow.observation.structure_observation import StructureObservation
@@ -47,13 +47,20 @@ class ToolProcessor(BaseProcessor):
         )
         self.structured_info = []
 
-    async def process_info(self, observations: Optional[List[Observation]] = None) -> List[StructuredInfo]:
+    async def process_info(
+        self,
+        observations: List[Observation] = None,
+        action_type: str = None,
+        action_data: dict = None,
+        **kwargs,
+    ) -> List[StructuredInfo]:
         """处理信息对象
 
         Args:
             observations: 可选的观察列表，包含ChattingObservation和StructureObservation类型
-            running_memories: 可选的运行时记忆列表，包含字典类型的记忆信息
-            *infos: 可变数量的InfoBase类型的信息对象
+            action_type: 动作类型
+            action_data: 动作数据
+            **kwargs: 其他可选参数
 
         Returns:
             list: 处理后的结构化信息列表
@@ -85,7 +92,7 @@ class ToolProcessor(BaseProcessor):
 
         return [structured_info]
 
-    async def execute_tools(self, observation: ChattingObservation):
+    async def execute_tools(self, observation: ChattingObservation, action_type: str = None, action_data: dict = None):
         """
         并行执行工具，返回结构化信息
 
@@ -95,6 +102,8 @@ class ToolProcessor(BaseProcessor):
             is_group_chat: 是否为群聊，默认为False
             return_details: 是否返回详细信息，默认为False
             cycle_info: 循环信息对象，可用于记录详细执行信息
+            action_type: 动作类型
+            action_data: 动作数据
 
         返回:
             如果return_details为False:

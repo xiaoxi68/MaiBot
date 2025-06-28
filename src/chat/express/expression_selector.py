@@ -15,10 +15,10 @@ logger = get_logger("expression_selector")
 
 def init_prompt():
     expression_evaluation_prompt = """
-你的名字是{bot_name}
-
 以下是正在进行的聊天内容：
 {chat_observe_info}
+
+你的名字是{bot_name}{target_message}
 
 以下是可选的表达情境：
 {all_situations}
@@ -28,6 +28,7 @@ def init_prompt():
 1. 聊天的情绪氛围（轻松、严肃、幽默等）
 2. 话题类型（日常、技术、游戏、情感等）
 3. 情境与当前语境的匹配度
+{target_message_extra_block}
 
 请以JSON格式输出，只需要输出选中的情境编号：
 例如：
@@ -156,7 +157,7 @@ class ExpressionSelector:
                         new_count = min(current_count + increment, 5.0)
                         expr_in_map["count"] = new_count
                         expr_in_map["last_active_time"] = time.time()
-                        logger.info(
+                        logger.debug(
                             f"表达方式激活: 原count={current_count:.3f}, 增量={increment}, 新count={new_count:.3f} in {file_path}"
                         )
 
@@ -168,7 +169,7 @@ class ExpressionSelector:
                 logger.error(f"批量更新表达方式count失败 for {file_path}: {e}")
 
     async def select_suitable_expressions_llm(
-        self, chat_id: str, chat_info: str, max_num: int = 10, min_num: int = 5
+        self, chat_id: str, chat_info: str, max_num: int = 10, min_num: int = 5, target_message: str = None
     ) -> List[Dict[str, str]]:
         """使用LLM选择适合的表达方式"""
 
@@ -209,6 +210,13 @@ class ExpressionSelector:
 
         all_situations_str = "\n".join(all_situations)
 
+        if target_message:
+            target_message_str = f"，现在你想要回复消息：{target_message}"
+            target_message_extra_block = "4.考虑你要回复的目标消息"
+        else:
+            target_message_str = ""
+            target_message_extra_block = ""
+
         # 3. 构建prompt（只包含情境，不包含完整的表达方式）
         prompt = (await global_prompt_manager.get_prompt_async("expression_evaluation_prompt")).format(
             bot_name=global_config.bot.nickname,
@@ -216,7 +224,11 @@ class ExpressionSelector:
             all_situations=all_situations_str,
             min_num=min_num,
             max_num=max_num,
+            target_message=target_message_str,
+            target_message_extra_block=target_message_extra_block,
         )
+
+        # print(prompt)
 
         # 4. 调用LLM
         try:

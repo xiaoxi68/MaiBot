@@ -183,7 +183,7 @@ class NormalChat:
                 "message_count": self._count_messages_in_timerange(potential_start_time, message_time),
             }
             segments.append(new_segment)
-            logger.info(
+            logger.debug(
                 f"[{self.stream_name}] 为用户 {person_id} 创建新消息段: 时间范围 {time.strftime('%H:%M:%S', time.localtime(potential_start_time))} - {time.strftime('%H:%M:%S', time.localtime(message_time))}, 消息数: {new_segment['message_count']}"
             )
             self._save_cache()
@@ -230,7 +230,7 @@ class NormalChat:
                 "message_count": self._count_messages_in_timerange(potential_start_time, message_time),
             }
             segments.append(new_segment)
-            logger.info(f"[{self.stream_name}] 为用户 {person_id} 创建新消息段（超过10条消息间隔）: {new_segment}")
+            logger.debug(f"[{self.stream_name}] 为用户 {person_id} 创建新消息段（超过10条消息间隔）: {new_segment}")
 
         self._save_cache()
 

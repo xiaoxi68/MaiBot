@@ -343,14 +343,15 @@ class NoReplyAction(BaseAction):
 
                                 if success and response:
                                     response = response.strip()
-                                    logger.info(f"{self.log_prefix} 模型({model_name})原始JSON响应: {response}")
+                                    logger.debug(f"{self.log_prefix} 模型({model_name})原始JSON响应: {response}")
 
                                     # 解析LLM的JSON响应，提取判断结果和理由
                                     judge_result, reason = self._parse_llm_judge_response(response)
 
-                                    logger.info(
-                                        f"{self.log_prefix} JSON解析结果 - 判断: {judge_result}, 理由: {reason}"
-                                    )
+                                    if judge_result:
+                                        logger.info(f"{self.log_prefix} 决定继续参与讨论，结束等待，原因: {reason}")
+                                    else:
+                                        logger.info(f"{self.log_prefix} 决定不参与讨论，继续等待，原因: {reason}")
 
                                     # 将判断结果保存到历史中
                                     judge_history.append((current_time, judge_result, reason))
