@@ -1,13 +1,10 @@
 import re
-import base64
-import hashlib
-from typing import Union, List
+from typing import Union
 
 # from ...common.database.database import db  # db is now Peewee's SqliteDatabase instance
 from .message import MessageSending, MessageRecv
 from .chat_stream import ChatStream
 from ...common.database.database_model import Messages, RecalledMessages  # Import Peewee models
-from ...common.database.database_model import Images
 from src.common.logger import get_logger
 
 logger = get_logger("message_storage")
