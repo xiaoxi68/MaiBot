@@ -134,7 +134,6 @@ class ChatBot:
             if message.message_info.additional_config:
                 sent_message = message.message_info.additional_config.get("echo", False)
                 if sent_message: # 这一段只是为了在一切处理前劫持上报的自身消息，用于更新message_id，需要ada支持上报事件，实际测试中不会对正常使用造成任何问题
-                    await message.process()
                     await MessageStorage.update_message(message)
                     return
                 
