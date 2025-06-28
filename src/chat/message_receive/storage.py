@@ -107,7 +107,7 @@ class MessageStorage:
     async def update_message(message: MessageRecv) -> None: # 用于实时更新数据库的自身发送消息ID，目前能处理text,reply,image和emoji
         """更新最新一条匹配消息的message_id"""
         try:
-            if message.message_segment.get("type") == "notify":
+            if message.message_segment.type == "notify":
                 mmc_message_id = message.message_segment.data.get("echo")
                 qq_message_id = message.message_segment.data.get("actual_id")
             else:
