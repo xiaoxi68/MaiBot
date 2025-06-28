@@ -111,7 +111,7 @@ class MessageStorage:
                 mmc_message_id = message.message_segment.data.get("echo")
                 qq_message_id = message.message_segment.data.get("actual_id")
             else:
-                logger.info(f"更新消息ID错误，seg类型为{message.message_segment.get('type')}")
+                logger.info(f"更新消息ID错误，seg类型为{message.message_segment.type}")
                 return
             if not qq_message_id:
                 logger.info("消息不存在message_id，无法更新")
