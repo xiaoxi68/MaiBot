@@ -27,7 +27,13 @@ class ExpressionSelectorProcessor(BaseProcessor):
         name = get_chat_manager().get_stream_name(self.subheartflow_id)
         self.log_prefix = f"[{name}] 表达选择器"
 
-    async def process_info(self, observations: List[Observation] = None, *infos) -> List[InfoBase]:
+    async def process_info(
+        self,
+        observations: List[Observation] = None,
+        action_type: str = None,
+        action_data: dict = None,
+        **kwargs,
+    ) -> List[InfoBase]:
         """处理信息对象
 
         Args:
@@ -70,9 +76,14 @@ class ExpressionSelectorProcessor(BaseProcessor):
             return []
 
         try:
+            if action_type == "reply":
+                target_message = action_data.get("reply_to", "")
+            else:
+                target_message = ""
+
             # LLM模式：调用LLM选择5-10个，然后随机选5个
             selected_expressions = await expression_selector.select_suitable_expressions_llm(
-                self.subheartflow_id, chat_info, max_num=12, min_num=2
+                self.subheartflow_id, chat_info, max_num=12, min_num=2, target_message=target_message
             )
             cache_size = len(selected_expressions) if selected_expressions else 0
             mode_desc = f"LLM模式（已缓存{cache_size}个）"
