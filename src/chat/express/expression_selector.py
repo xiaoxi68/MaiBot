@@ -209,14 +209,14 @@ class ExpressionSelector:
             return []
 
         all_situations_str = "\n".join(all_situations)
-        
+
         if target_message:
             target_message_str = f"，现在你想要回复消息：{target_message}"
-            target_message_extra_block = f"4.考虑你要回复的目标消息"
+            target_message_extra_block = "4.考虑你要回复的目标消息"
         else:
             target_message_str = ""
             target_message_extra_block = ""
-    
+
         # 3. 构建prompt（只包含情境，不包含完整的表达方式）
         prompt = (await global_prompt_manager.get_prompt_async("expression_evaluation_prompt")).format(
             bot_name=global_config.bot.nickname,
@@ -227,7 +227,7 @@ class ExpressionSelector:
             target_message=target_message_str,
             target_message_extra_block=target_message_extra_block,
         )
-        
+
         # print(prompt)
 
         # 4. 调用LLM

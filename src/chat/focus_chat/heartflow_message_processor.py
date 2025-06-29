@@ -181,14 +181,13 @@ class HeartFCMessageReceiver:
             mes_name = chat.group_info.group_name if chat.group_info else "私聊"
             # current_time = time.strftime("%H:%M:%S", time.localtime(message.message_info.time))
             current_talk_frequency = global_config.chat.get_current_talk_frequency(chat.stream_id)
-            
+
             # 如果消息中包含图片标识，则日志展示为图片
             import re
+
             picid_match = re.search(r"\[picid:([^\]]+)\]", message.processed_plain_text)
             if picid_match:
-                logger.info(
-                    f"[{mes_name}]{userinfo.user_nickname}: [图片] [当前回复频率: {current_talk_frequency}]"
-                )
+                logger.info(f"[{mes_name}]{userinfo.user_nickname}: [图片] [当前回复频率: {current_talk_frequency}]")
             else:
                 logger.info(
                     f"[{mes_name}]{userinfo.user_nickname}:{message.processed_plain_text}[当前回复频率: {current_talk_frequency}]"
