@@ -73,8 +73,8 @@ async def generate_reply(
     chat_stream=None,
     action_data: Dict[str, Any] = None,
     chat_id: str = None,
-    enable_splitter: bool=True,
-    enable_chinese_typo: bool=True
+    enable_splitter: bool = True,
+    enable_chinese_typo: bool = True,
 ) -> Tuple[bool, List[Tuple[str, Any]]]:
     """生成回复
 
@@ -99,9 +99,7 @@ async def generate_reply(
 
         # 调用回复器生成回复
         success, reply_set = await replyer.generate_reply_with_context(
-            reply_data=action_data or {},
-            enable_splitter=enable_splitter,
-            enable_chinese_typo=enable_chinese_typo
+            reply_data=action_data or {}, enable_splitter=enable_splitter, enable_chinese_typo=enable_chinese_typo
         )
 
         if success:
@@ -120,8 +118,8 @@ async def rewrite_reply(
     chat_stream=None,
     reply_data: Dict[str, Any] = None,
     chat_id: str = None,
-    enable_splitter: bool=True,
-    enable_chinese_typo: bool=True
+    enable_splitter: bool = True,
+    enable_chinese_typo: bool = True,
 ) -> Tuple[bool, List[Tuple[str, Any]]]:
     """重写回复
 
@@ -146,9 +144,7 @@ async def rewrite_reply(
 
         # 调用回复器重写回复
         success, reply_set = await replyer.rewrite_reply_with_context(
-            reply_data=reply_data or {},
-            enable_splitter=enable_splitter,
-            enable_chinese_typo=enable_chinese_typo
+            reply_data=reply_data or {}, enable_splitter=enable_splitter, enable_chinese_typo=enable_chinese_typo
         )
 
         if success:
