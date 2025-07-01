@@ -28,7 +28,6 @@ from src.chat.focus_chat.planners.action_manager import ActionManager
 from src.config.config import global_config
 from src.chat.focus_chat.hfc_performance_logger import HFCPerformanceLogger
 from src.chat.focus_chat.hfc_version_manager import get_hfc_version
-from src.chat.focus_chat.info.relation_info import RelationInfo
 from src.chat.focus_chat.info.structured_info import StructuredInfo
 from src.person_info.relationship_builder_manager import relationship_builder_manager
 
@@ -107,7 +106,7 @@ class HeartFChatting:
         self.log_prefix = f"[{get_chat_manager().get_stream_name(self.stream_id) or self.stream_id}]"
 
         self.memory_activator = MemoryActivator()
-        
+
         self.relationship_builder = relationship_builder_manager.get_or_create_builder(self.stream_id)
 
         # 新增：消息计数器和疲惫阈值
@@ -737,13 +736,11 @@ class HeartFChatting:
         # 将后期处理器的结果整合到 action_data 中
         updated_action_data = action_data.copy()
 
-
         structured_info = ""
 
         for info in all_post_plan_info:
             if isinstance(info, StructuredInfo):
                 structured_info = info.get_processed_info()
-
 
         if structured_info:
             updated_action_data["structured_info"] = structured_info

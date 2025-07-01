@@ -2,7 +2,7 @@ import time
 import traceback
 import os
 import pickle
-from typing import List, Dict, Optional
+from typing import List, Dict
 from src.config.config import global_config
 from src.common.logger import get_logger
 from src.chat.message_receive.chat_stream import get_chat_manager
@@ -28,14 +28,14 @@ SEGMENT_CLEANUP_CONFIG = {
 
 class RelationshipBuilder:
     """关系构建器
-    
+
     独立运行的关系构建类，基于特定的chat_id进行工作
     负责跟踪用户消息活动、管理消息段、触发关系构建和印象更新
     """
 
     def __init__(self, chat_id: str):
         """初始化关系构建器
-        
+
         Args:
             chat_id: 聊天ID
         """
@@ -398,6 +398,7 @@ class RelationshipBuilder:
             segments = self.person_engaged_cache[person_id]
             # 异步执行关系构建
             import asyncio
+
             asyncio.create_task(self.update_impression_on_segments(person_id, self.chat_id, segments))
             # 移除已处理的用户缓存
             del self.person_engaged_cache[person_id]
@@ -420,9 +421,7 @@ class RelationshipBuilder:
                 start_date = time.strftime("%Y-%m-%d %H:%M", time.localtime(start_time))
 
                 # 获取该段的消息（包含边界）
-                segment_messages = get_raw_msg_by_timestamp_with_chat_inclusive(
-                    self.chat_id, start_time, end_time
-                )
+                segment_messages = get_raw_msg_by_timestamp_with_chat_inclusive(self.chat_id, start_time, end_time)
                 logger.info(
                     f"消息段 {i + 1}: {start_date} - {time.strftime('%Y-%m-%d %H:%M', time.localtime(end_time))}, 消息数: {len(segment_messages)}"
                 )
@@ -463,4 +462,4 @@ class RelationshipBuilder:
 
         except Exception as e:
             logger.error(f"为 {person_id} 更新印象时发生错误: {e}")
-            logger.error(traceback.format_exc()) 
+            logger.error(traceback.format_exc())
