@@ -106,10 +106,11 @@ class MessageStorage:
         except Exception:
             logger.exception("删除撤回消息失败")
 
-
-# 如果需要其他存储相关的函数，可以在这里添加
+    # 如果需要其他存储相关的函数，可以在这里添加
     @staticmethod
-    async def update_message(message: MessageRecv) -> None: # 用于实时更新数据库的自身发送消息ID，目前能处理text,reply,image和emoji
+    async def update_message(
+        message: MessageRecv,
+    ) -> None:  # 用于实时更新数据库的自身发送消息ID，目前能处理text,reply,image和emoji
         """更新最新一条匹配消息的message_id"""
         try:
             if message.message_segment.type == "notify":
@@ -122,18 +123,16 @@ class MessageStorage:
                 logger.info("消息不存在message_id，无法更新")
                 return
             # 查询最新一条匹配消息
-            matched_message = Messages.select().where(
-                (Messages.message_id == mmc_message_id)
-            ).order_by(Messages.time.desc()).first()
-            
+            matched_message = (
+                Messages.select().where((Messages.message_id == mmc_message_id)).order_by(Messages.time.desc()).first()
+            )
+
             if matched_message:
                 # 更新找到的消息记录
-                Messages.update(message_id=qq_message_id).where(
-                    Messages.id == matched_message.id
-                ).execute()
+                Messages.update(message_id=qq_message_id).where(Messages.id == matched_message.id).execute()
                 logger.info(f"更新消息ID成功: {matched_message.message_id} -> {qq_message_id}")
             else:
                 logger.debug("未找到匹配的消息")
-                
+
         except Exception as e:
             logger.error(f"更新消息ID失败: {e}")

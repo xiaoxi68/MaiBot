@@ -321,7 +321,7 @@ def random_remove_punctuation(text: str) -> str:
     return result
 
 
-def process_llm_response(text: str, enable_splitter: bool=True, enable_chinese_typo: bool=True) -> list[str]:
+def process_llm_response(text: str, enable_splitter: bool = True, enable_chinese_typo: bool = True) -> list[str]:
     if not global_config.response_post_process.enable_response_post_process:
         return [text]
 
