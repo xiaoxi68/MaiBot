@@ -143,14 +143,14 @@ class DefaultReplyer:
     ):
         self.log_prefix = "replyer"
         self.request_type = request_type
-        
+
         self.enable_tool = enable_tool
 
         if model_configs:
             self.express_model_configs = model_configs
         else:
             # 当未提供配置时，使用默认配置并赋予默认权重
-            
+
             model_config_1 = global_config.model.replyer_1.copy()
             model_config_2 = global_config.model.replyer_2.copy()
             prob_first = global_config.chat.replyer_random_probability
@@ -172,11 +172,7 @@ class DefaultReplyer:
 
         self.heart_fc_sender = HeartFCSender()
         self.memory_activator = MemoryActivator()
-        self.tool_executor = ToolExecutor(
-            chat_id=self.chat_stream.stream_id,
-            enable_cache=True,
-            cache_ttl=3
-        )
+        self.tool_executor = ToolExecutor(chat_id=self.chat_stream.stream_id, enable_cache=True, cache_ttl=3)
 
     def _select_weighted_model_config(self) -> Dict[str, Any]:
         """使用加权随机选择来挑选一个模型配置"""
@@ -574,8 +570,6 @@ class DefaultReplyer:
             )
         else:
             tool_info_block = ""
-
-
 
         if extra_info_block:
             extra_info_block = f"以下是你在回复时需要参考的信息，现在请你阅读以下内容，进行决策\n{extra_info_block}\n以上是你在回复时需要参考的信息，现在请你阅读以下内容，进行决策"

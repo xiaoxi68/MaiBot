@@ -337,6 +337,7 @@ class ExpressionConfig(ConfigBase):
     格式: [["qq:12345:group", "qq:67890:private"]]
     """
 
+
 @dataclass
 class ToolConfig(ConfigBase):
     """工具配置类"""
@@ -346,7 +347,8 @@ class ToolConfig(ConfigBase):
 
     enable_in_focus_chat: bool = True
     """是否在专注聊天中启用工具"""
-    
+
+
 @dataclass
 class EmojiConfig(ConfigBase):
     """表情包配置类"""

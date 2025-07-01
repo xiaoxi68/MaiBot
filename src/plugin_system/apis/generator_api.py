@@ -94,7 +94,9 @@ async def generate_reply(
     """
     try:
         # 获取回复器
-        replyer = get_replyer(chat_stream, chat_id, model_configs=model_configs, request_type=request_type, enable_tool=enable_tool)
+        replyer = get_replyer(
+            chat_stream, chat_id, model_configs=model_configs, request_type=request_type, enable_tool=enable_tool
+        )
         if not replyer:
             logger.error("[GeneratorAPI] 无法获取回复器")
             return False, []

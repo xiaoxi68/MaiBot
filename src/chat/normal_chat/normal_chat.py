@@ -29,7 +29,6 @@ import traceback
 
 from .normal_chat_generator import NormalChatGenerator
 from src.chat.normal_chat.normal_chat_expressor import NormalChatExpressor
-from src.chat.replyer.default_generator import DefaultReplyer
 from src.chat.normal_chat.normal_chat_planner import NormalChatPlanner
 from src.chat.normal_chat.normal_chat_action_modifier import NormalChatActionModifier
 

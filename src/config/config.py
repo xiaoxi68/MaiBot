@@ -166,6 +166,7 @@ class Config(ConfigBase):
     lpmm_knowledge: LPMMKnowledgeConfig
     tool: ToolConfig
 
+
 def load_config(config_path: str) -> Config:
     """
     加载配置文件
