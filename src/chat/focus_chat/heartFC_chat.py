@@ -139,14 +139,14 @@ class HeartFChatting:
                 # 检查全局关系开关
                 if not global_config.relationship.enable_relationship:
                     continue
-                    
+
                 # 检查处理器特定配置，同时支持向后兼容
                 processor_enabled = getattr(config_processor_settings, config_key, True)
-                
+
                 # 向后兼容：如果旧的person_impression_processor为True，则启用两个新处理器
                 if not processor_enabled and getattr(config_processor_settings, "person_impression_processor", True):
                     processor_enabled = True
-                    
+
                 if processor_enabled:
                     self.enabled_post_planning_processor_names.append(proc_name)
             else:

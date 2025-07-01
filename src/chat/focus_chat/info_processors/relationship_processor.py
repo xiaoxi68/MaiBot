@@ -1,6 +1,5 @@
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 from src.chat.heart_flow.observation.observation import Observation
-from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 import time
 import traceback
@@ -36,10 +35,10 @@ logger = get_logger("relationship_build_processor")
 
 class RelationshipBuildProcessor(BaseProcessor):
     """关系构建处理器
-    
+
     负责跟踪用户消息活动、管理消息段、触发关系构建和印象更新
     """
-    
+
     log_prefix = "关系构建"
 
     def __init__(self, subheartflow_id: str):
@@ -446,6 +445,7 @@ class RelationshipBuildProcessor(BaseProcessor):
             segments = self.person_engaged_cache[person_id]
             # 异步执行关系构建
             import asyncio
+
             asyncio.create_task(self.update_impression_on_segments(person_id, self.subheartflow_id, segments))
             # 移除已处理的用户缓存
             del self.person_engaged_cache[person_id]

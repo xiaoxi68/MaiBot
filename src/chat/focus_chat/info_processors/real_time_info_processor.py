@@ -63,20 +63,20 @@ def init_real_time_info_prompts():
 
 class RealTimeInfoProcessor(BaseProcessor):
     """实时信息提取处理器
-    
+
     负责从对话中识别需要的用户信息，并从用户档案中实时提取相关信息
     """
-    
+
     log_prefix = "实时信息"
 
     def __init__(self, subheartflow_id: str):
         super().__init__()
-        
+
         self.subheartflow_id = subheartflow_id
-        
+
         # 信息获取缓存：记录正在获取的信息请求
         self.info_fetching_cache: List[Dict[str, any]] = []
-        
+
         # 信息结果缓存：存储已获取的信息结果，带TTL
         self.info_fetched_cache: Dict[str, Dict[str, any]] = {}
         # 结构：{person_id: {info_type: {"info": str, "ttl": int, "start_time": float, "person_name": str, "unknow": bool}}}
@@ -94,6 +94,7 @@ class RealTimeInfoProcessor(BaseProcessor):
         )
 
         from src.chat.message_receive.chat_stream import get_chat_manager
+
         name = get_chat_manager().get_stream_name(self.subheartflow_id)
         self.log_prefix = f"[{name}] 实时信息"
 
@@ -105,21 +106,21 @@ class RealTimeInfoProcessor(BaseProcessor):
         **kwargs,
     ) -> List[InfoBase]:
         """处理信息对象
-        
+
         Args:
             observations: 观察对象列表
             action_type: 动作类型
             action_data: 动作数据
-            
+
         Returns:
             List[InfoBase]: 处理后的结构化信息列表
         """
         # 清理过期的信息缓存
         self._cleanup_expired_cache()
-        
+
         # 执行实时信息识别和提取
         relation_info_str = await self._identify_and_extract_info(observations, action_type, action_data)
-        
+
         if relation_info_str:
             relation_info = RelationInfo()
             relation_info.set_relation_info(relation_info_str)
@@ -144,12 +145,12 @@ class RealTimeInfoProcessor(BaseProcessor):
         action_data: dict = None,
     ) -> str:
         """识别并提取用户信息
-        
+
         Args:
             observations: 观察对象列表
             action_type: 动作类型
             action_data: 动作数据
-            
+
         Returns:
             str: 提取到的用户信息字符串
         """
@@ -178,7 +179,7 @@ class RealTimeInfoProcessor(BaseProcessor):
 
         # 识别需要提取的信息类型
         info_type = await self._identify_needed_info(chat_observe_info, sender, text)
-        
+
         # 如果需要提取新信息，执行提取
         if info_type:
             await self._extract_single_info(person_id, info_type, sender)
@@ -188,10 +189,10 @@ class RealTimeInfoProcessor(BaseProcessor):
 
     def _parse_reply_target(self, target_message: str) -> tuple:
         """解析回复目标消息
-        
+
         Args:
             target_message: 目标消息，格式为 "用户名:消息内容"
-            
+
         Returns:
             tuple: (发送者, 消息内容)
         """
@@ -213,16 +214,16 @@ class RealTimeInfoProcessor(BaseProcessor):
 
     def _extract_chat_observe_info(self, observations: List[Observation]) -> str:
         """从观察对象中提取聊天信息
-        
+
         Args:
             observations: 观察对象列表
-            
+
         Returns:
             str: 聊天观察信息
         """
         if not observations:
             return ""
-            
+
         for observation in observations:
             if isinstance(observation, ChattingObservation):
                 return observation.get_observe_info()
@@ -230,12 +231,12 @@ class RealTimeInfoProcessor(BaseProcessor):
 
     async def _identify_needed_info(self, chat_observe_info: str, sender: str, text: str) -> str:
         """识别需要提取的信息类型
-        
+
         Args:
             chat_observe_info: 聊天观察信息
             sender: 发送者
             text: 消息内容
-            
+
         Returns:
             str: 需要提取的信息类型，如果不需要则返回None
         """
@@ -258,39 +259,41 @@ class RealTimeInfoProcessor(BaseProcessor):
         try:
             logger.debug(f"{self.log_prefix} 信息识别prompt: \n{prompt}\n")
             content, _ = await self.llm_model.generate_response_async(prompt=prompt)
-            
+
             if content:
                 content_json = json.loads(repair_json(content))
-                
+
                 # 检查是否返回了不需要查询的标志
                 if "none" in content_json:
                     logger.info(f"{self.log_prefix} LLM判断当前不需要查询任何信息：{content_json.get('none', '')}")
                     return None
-                    
+
                 info_type = content_json.get("info_type")
                 if info_type:
                     # 记录信息获取请求
-                    self.info_fetching_cache.append({
-                        "person_id": get_person_info_manager().get_person_id_by_person_name(sender),
-                        "person_name": sender,
-                        "info_type": info_type,
-                        "start_time": time.time(),
-                        "forget": False,
-                    })
-                    
+                    self.info_fetching_cache.append(
+                        {
+                            "person_id": get_person_info_manager().get_person_id_by_person_name(sender),
+                            "person_name": sender,
+                            "info_type": info_type,
+                            "start_time": time.time(),
+                            "forget": False,
+                        }
+                    )
+
                     # 限制缓存大小
                     if len(self.info_fetching_cache) > 20:
                         self.info_fetching_cache.pop(0)
-                    
+
                     logger.info(f"{self.log_prefix} 识别到需要调取用户 {sender} 的[{info_type}]信息")
                     return info_type
                 else:
                     logger.warning(f"{self.log_prefix} LLM未返回有效的info_type。响应: {content}")
-                    
+
         except Exception as e:
             logger.error(f"{self.log_prefix} 执行信息识别LLM请求时出错: {e}")
             logger.error(traceback.format_exc())
-            
+
         return None
 
     def _build_info_cache_block(self) -> str:
@@ -314,7 +317,7 @@ class RealTimeInfoProcessor(BaseProcessor):
 
     async def _extract_single_info(self, person_id: str, info_type: str, person_name: str):
         """提取单个信息类型
-        
+
         Args:
             person_id: 用户ID
             info_type: 信息类型
@@ -353,7 +356,7 @@ class RealTimeInfoProcessor(BaseProcessor):
         try:
             person_impression = await person_info_manager.get_value(person_id, "impression")
             points = await person_info_manager.get_value(person_id, "points")
-            
+
             # 构建印象信息块
             if person_impression:
                 person_impression_block = (
@@ -387,7 +390,7 @@ class RealTimeInfoProcessor(BaseProcessor):
             # 使用LLM提取信息
             nickname_str = ",".join(global_config.bot.alias_names)
             name_block = f"你的名字是{global_config.bot.nickname},你的昵称有{nickname_str}，有人也会用这些昵称称呼你。"
-            
+
             prompt = (await global_prompt_manager.get_prompt_async("real_time_fetch_person_info_prompt")).format(
                 name_block=name_block,
                 info_type=info_type,
@@ -426,14 +429,14 @@ class RealTimeInfoProcessor(BaseProcessor):
                         logger.info(f"{self.log_prefix} 思考了也不知道{person_name} 的 {info_type} 信息")
             else:
                 logger.warning(f"{self.log_prefix} 小模型返回空结果，获取 {person_name} 的 {info_type} 信息失败。")
-                
+
         except Exception as e:
             logger.error(f"{self.log_prefix} 执行信息提取时出错: {e}")
             logger.error(traceback.format_exc())
 
     async def _save_info_to_cache(self, person_id: str, info_type: str, info_content: str):
         """将提取到的信息保存到 person_info 的 info_list 字段中
-        
+
         Args:
             person_id: 用户ID
             info_type: 信息类型
@@ -476,12 +479,12 @@ class RealTimeInfoProcessor(BaseProcessor):
 
     def _organize_known_info(self) -> str:
         """组织已知的用户信息为字符串
-        
+
         Returns:
             str: 格式化的用户信息字符串
         """
         persons_infos_str = ""
-        
+
         if self.info_fetched_cache:
             persons_with_known_info = []  # 有已知信息的人员
             persons_with_unknown_info = []  # 有未知信息的人员
@@ -534,7 +537,7 @@ class RealTimeInfoProcessor(BaseProcessor):
         status_lines = [f"{self.log_prefix} 实时信息缓存状态："]
         status_lines.append(f"获取请求缓存数：{len(self.info_fetching_cache)}")
         status_lines.append(f"结果缓存用户数：{len(self.info_fetched_cache)}")
-        
+
         if self.info_fetched_cache:
             for person_id, info_types in self.info_fetched_cache.items():
                 person_name = list(info_types.values())[0]["person_name"] if info_types else person_id
@@ -544,9 +547,9 @@ class RealTimeInfoProcessor(BaseProcessor):
                     unknow = info_data["unknow"]
                     status = "未知" if unknow else "已知"
                     status_lines.append(f"    {info_type}: {status} (TTL: {ttl})")
-        
+
         return "\n".join(status_lines)
 
 
 # 初始化提示词
-init_real_time_info_prompts() 
+init_real_time_info_prompts()
