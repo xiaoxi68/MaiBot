@@ -35,7 +35,6 @@ from src.person_info.relationship_builder_manager import relationship_builder_ma
 install(extra_lines=3)
 
 # 超时常量配置
-MEMORY_ACTIVATION_TIMEOUT = 5.0  # 记忆激活任务超时时限（秒）
 ACTION_MODIFICATION_TIMEOUT = 15.0  # 动作修改任务超时时限（秒）
 
 # 定义观察器映射：键是观察器名称，值是 (观察器类, 初始化参数)
