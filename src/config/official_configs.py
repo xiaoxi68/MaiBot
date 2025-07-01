@@ -75,6 +75,9 @@ class ChatConfig(ConfigBase):
     chat_mode: str = "normal"
     """聊天模式"""
 
+    max_context_size: int = 18
+    """上下文长度"""
+
     talk_frequency: float = 1
     """回复频率阈值"""
 
@@ -267,9 +270,6 @@ class NormalChatConfig(ConfigBase):
     选择普通模型的概率为 1 - reasoning_normal_model_probability
     """
 
-    max_context_size: int = 15
-    """上下文长度"""
-
     message_buffer: bool = False
     """消息缓冲器"""
 
@@ -302,9 +302,6 @@ class NormalChatConfig(ConfigBase):
 class FocusChatConfig(ConfigBase):
     """专注聊天配置类"""
 
-    observation_context_size: int = 20
-    """可观察到的最长上下文大小，超过这个值的上下文会被压缩"""
-
     compressed_length: int = 5
     """心流上下文压缩的最短压缩长度，超过心流观察到的上下文长度，会压缩，最短压缩长度为5"""
 
@@ -317,28 +314,16 @@ class FocusChatConfig(ConfigBase):
     consecutive_replies: float = 1
     """连续回复能力，值越高，麦麦连续回复的概率越高"""
 
-    parallel_processing: bool = False
-    """是否允许处理器阶段和回忆阶段并行执行"""
-
-    processor_max_time: int = 25
-    """处理器最大时间，单位秒，如果超过这个时间，处理器会自动停止"""
-
 
 @dataclass
 class FocusChatProcessorConfig(ConfigBase):
     """专注聊天处理器配置类"""
-
-    person_impression_processor: bool = True
-    """是否启用关系识别处理器"""
 
     tool_use_processor: bool = True
     """是否启用工具使用处理器"""
 
     working_memory_processor: bool = True
     """是否启用工作记忆处理器"""
-
-    expression_selector_processor: bool = True
-    """是否启用表达方式选择处理器"""
 
 
 @dataclass
@@ -437,6 +422,9 @@ class MemoryConfig(ConfigBase):
 @dataclass
 class MoodConfig(ConfigBase):
     """情绪配置类"""
+
+    enable_mood: bool = False
+    """是否启用情绪系统"""
 
     mood_update_interval: int = 1
     """情绪更新间隔（秒）"""

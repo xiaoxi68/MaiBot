@@ -1,5 +1,3 @@
-from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
-from src.chat.heart_flow.observation.structure_observation import StructureObservation
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.common.logger import get_logger
@@ -76,7 +74,7 @@ class MemoryActivator:
         self.running_memory = []
         self.cached_keywords = set()  # 用于缓存历史关键词
 
-    async def activate_memory(self, observations) -> List[Dict]:
+    async def activate_memory_with_chat_history(self, chat_id, target_message, chat_history_prompt) -> List[Dict]:
         """
         激活记忆
 
@@ -90,14 +88,14 @@ class MemoryActivator:
         if not global_config.memory.enable_memory:
             return []
 
-        obs_info_text = ""
-        for observation in observations:
-            if isinstance(observation, ChattingObservation):
-                obs_info_text += observation.talking_message_str_truncate_short
-            elif isinstance(observation, StructureObservation):
-                working_info = observation.get_observe_info()
-                for working_info_item in working_info:
-                    obs_info_text += f"{working_info_item['type']}: {working_info_item['content']}\n"
+        # obs_info_text = ""
+        # for observation in observations:
+        #     if isinstance(observation, ChattingObservation):
+        #         obs_info_text += observation.talking_message_str_truncate_short
+        #     elif isinstance(observation, StructureObservation):
+        #         working_info = observation.get_observe_info()
+        #         for working_info_item in working_info:
+        #             obs_info_text += f"{working_info_item['type']}: {working_info_item['content']}\n"
 
         # logger.info(f"回忆待检索内容：obs_info_text: {obs_info_text}")
 
@@ -106,7 +104,7 @@ class MemoryActivator:
 
         prompt = await global_prompt_manager.format_prompt(
             "memory_activator_prompt",
-            obs_info_text=obs_info_text,
+            obs_info_text=chat_history_prompt,
             cached_keywords=cached_keywords_str,
         )
 

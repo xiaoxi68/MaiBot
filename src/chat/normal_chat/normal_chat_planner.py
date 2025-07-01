@@ -122,7 +122,7 @@ class NormalChatPlanner:
             message_list_before_now = get_raw_msg_before_timestamp_with_chat(
                 chat_id=message.chat_stream.stream_id,
                 timestamp=time.time(),
-                limit=global_config.focus_chat.observation_context_size,
+                limit=global_config.chat.max_context_size,
             )
 
             chat_context = build_readable_messages(

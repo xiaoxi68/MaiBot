@@ -12,6 +12,7 @@ from typing import List, Tuple, Type
 # 导入新插件系统
 from src.plugin_system import BasePlugin, register_plugin, BaseAction, ComponentInfo, ActionActivationType, ChatMode
 from src.plugin_system.base.config_types import ConfigField
+from src.config.config import global_config
 
 # 导入依赖的系统组件
 from src.common.logger import get_logger
@@ -61,6 +62,7 @@ class ReplyAction(BaseAction):
             success, reply_set = await generator_api.generate_reply(
                 action_data=self.action_data,
                 chat_id=self.chat_id,
+                request_type="focus.replyer",
             )
 
             # 检查从start_time以来的新消息数量
@@ -197,7 +199,6 @@ class CoreActionsPlugin(BasePlugin):
         "plugin": "插件启用配置",
         "components": "核心组件启用配置",
         "no_reply": "不回复动作配置（智能等待机制）",
-        "emoji": "表情动作配置",
     }
 
     # 配置Schema定义
@@ -231,18 +232,13 @@ class CoreActionsPlugin(BasePlugin):
                 type=int, default=600, description="回复频率检查窗口时间（秒）", example=600
             ),
         },
-        "emoji": {
-            "random_probability": ConfigField(
-                type=float, default=0.1, description="Normal模式下，随机发送表情的概率（0.0到1.0）", example=0.15
-            )
-        },
     }
 
     def get_plugin_components(self) -> List[Tuple[ComponentInfo, Type]]:
         """返回插件包含的组件列表"""
 
         # --- 从配置动态设置Action/Command ---
-        emoji_chance = self.get_config("emoji.random_probability", 0.1)
+        emoji_chance = global_config.normal_chat.emoji_chance
         EmojiAction.random_activation_probability = emoji_chance
 
         no_reply_probability = self.get_config("no_reply.random_probability", 0.8)
