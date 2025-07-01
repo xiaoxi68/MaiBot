@@ -1,4 +1,5 @@
 import traceback
+import os
 from typing import Dict, Any
 
 from src.common.logger import get_logger
@@ -16,8 +17,14 @@ from src.plugin_system.base.base_command import BaseCommand
 from src.mais4u.mais4u_chat.s4u_msg_processor import S4UMessageProcessor
 # 定义日志配置
 
-ENABLE_S4U_CHAT = True
-# 仅内部开启
+# 获取项目根目录（假设本文件在src/chat/message_receive/下，根目录为上上上级目录）
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
+
+ENABLE_S4U_CHAT = os.path.isfile(os.path.join(PROJECT_ROOT, 's4u.s4u'))
+
+if ENABLE_S4U_CHAT:
+    print('''\nS4U私聊模式已开启\n!!!!!!!!!!!!!!!!!\n''')
+    # 仅内部开启
 
 # 配置主程序日志格式
 logger = get_logger("chat")
@@ -180,19 +187,10 @@ class ChatBot:
                 # 如果在私聊中
                 if group_info is None:
                     logger.debug("检测到私聊消息")
-
                     if ENABLE_S4U_CHAT:
                         logger.debug("进入S4U私聊处理流程")
                         await self.s4u_message_processor.process_message(message)
                         return
-
-                    if global_config.experimental.pfc_chatting:
-                        logger.debug("进入PFC私聊处理流程")
-                        # 创建聊天流
-                        logger.debug(f"为{user_info.user_id}创建/获取聊天流")
-                        await self.only_process_chat.process_message(message)
-                        await self._create_pfc_chat(message)
-                    # 禁止PFC，进入普通的心流消息处理逻辑
                     else:
                         logger.debug("进入普通心流私聊处理")
                         await self.heartflow_message_receiver.process_message(message)
@@ -202,9 +200,9 @@ class ChatBot:
                         logger.debug("进入S4U私聊处理流程")
                         await self.s4u_message_processor.process_message(message)
                         return
-
-                    logger.debug(f"检测到群聊消息，群ID: {group_info.group_id}")
-                    await self.heartflow_message_receiver.process_message(message)
+                    else:
+                        logger.debug(f"检测到群聊消息，群ID: {group_info.group_id}")
+                        await self.heartflow_message_receiver.process_message(message)
 
             if template_group_name:
                 async with global_prompt_manager.async_message_scope(template_group_name):

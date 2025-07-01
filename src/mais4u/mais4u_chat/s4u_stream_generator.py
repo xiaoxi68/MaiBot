@@ -38,6 +38,7 @@ class S4UStreamGenerator:
 
         self.model_sum = LLMRequest(model=global_config.model.memory_summary, temperature=0.7, request_type="relation")
         self.current_model_name = "unknown model"
+        self.partial_response = ""
 
         # 正则表达式用于按句子切分，同时处理各种标点和边缘情况
         # 匹配常见的句子结束符，但会忽略引号内和数字中的标点
@@ -52,6 +53,7 @@ class S4UStreamGenerator:
     ) -> AsyncGenerator[str, None]:
         """根据当前模型类型选择对应的生成函数"""
         # 从global_config中获取模型概率值并选择模型
+        self.partial_response = ""
         current_client = self.client_1
         self.current_model_name = self.model_1_name
 
@@ -133,7 +135,8 @@ class S4UStreamGenerator:
                             to_yield = punctuation_buffer + sentence
                             if to_yield.endswith((",", "，")):
                                 to_yield = to_yield.rstrip(",，")
-
+                            
+                            self.partial_response += to_yield
                             yield to_yield
                             punctuation_buffer = ""  # 清空标点符号缓冲区
                             await asyncio.sleep(0)  # 允许其他任务运行
@@ -150,4 +153,5 @@ class S4UStreamGenerator:
             if to_yield.endswith(("，", ",")):
                 to_yield = to_yield.rstrip("，,")
             if to_yield:
+                self.partial_response += to_yield
                 yield to_yield
