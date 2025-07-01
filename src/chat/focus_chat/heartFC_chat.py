@@ -215,8 +215,6 @@ class HeartFChatting:
         else:
             logger.warning(f"{self.log_prefix} 没有注册任何处理器。这可能是由于配置错误或所有处理器都被禁用了。")
 
-
-
     async def start(self):
         """检查是否需要启动主循环，如果未激活则启动。"""
         logger.debug(f"{self.log_prefix} 开始启动 HeartFChatting")
@@ -397,8 +395,6 @@ class HeartFChatting:
                         ("\n前处理器耗时: " + "; ".join(processor_time_strings)) if processor_time_strings else ""
                     )
 
-
-
                     logger.info(
                         f"{self.log_prefix} 第{self._current_cycle_detail.cycle_id}次思考,"
                         f"耗时: {self._current_cycle_detail.end_time - self._current_cycle_detail.start_time:.1f}秒, "
@@ -556,8 +552,6 @@ class HeartFChatting:
         # logger.debug(f"{self.log_prefix} 所有信息处理器处理后的信息: {all_plan_info}")
 
         return all_plan_info, processor_time_costs
-
-
 
     async def _observe_process_plan_action_loop(self, cycle_timers: dict, thinking_id: str) -> dict:
         try:

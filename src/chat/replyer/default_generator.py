@@ -166,10 +166,10 @@ class DefaultReplyer:
             fallback_config = global_config.model.replyer_1.copy()
             fallback_config.setdefault("weight", 1.0)
             self.express_model_configs = [fallback_config]
-            
+
         self.chat_stream = chat_stream
         self.is_group_chat, self.chat_target_info = get_chat_type_and_target_info(self.chat_stream.stream_id)
-        
+
         self.heart_fc_sender = HeartFCSender()
         self.memory_activator = MemoryActivator()
         self.tool_executor = ToolExecutor(
@@ -409,48 +409,45 @@ class DefaultReplyer:
 
     async def build_tool_info(self, reply_data=None, chat_history=None):
         """构建工具信息块
-        
+
         Args:
             reply_data: 回复数据，包含要回复的消息内容
             chat_history: 聊天历史
-            
+
         Returns:
             str: 工具信息字符串
         """
         if not reply_data:
             return ""
-        
+
         reply_to = reply_data.get("reply_to", "")
         sender, text = self._parse_reply_target(reply_to)
-        
+
         if not text:
             return ""
-        
+
         try:
             # 使用工具执行器获取信息
             tool_results = await self.tool_executor.execute_from_chat_message(
-                sender = sender,
-                target_message=text,
-                chat_history=chat_history,
-                return_details=False
+                sender=sender, target_message=text, chat_history=chat_history, return_details=False
             )
-            
+
             if tool_results:
                 tool_info_str = "以下是你通过工具获取到的实时信息：\n"
                 for tool_result in tool_results:
                     tool_name = tool_result.get("tool_name", "unknown")
                     content = tool_result.get("content", "")
                     result_type = tool_result.get("type", "info")
-                    
+
                     tool_info_str += f"- 【{tool_name}】{result_type}: {content}\n"
-                
+
                 tool_info_str += "以上是你获取到的实时信息，请在回复时参考这些信息。"
                 logger.info(f"{self.log_prefix} 获取到 {len(tool_results)} 个工具结果")
                 return tool_info_str
             else:
                 logger.debug(f"{self.log_prefix} 未获取到任何工具结果")
                 return ""
-                
+
         except Exception as e:
             logger.error(f"{self.log_prefix} 工具信息获取失败: {e}")
             return ""
