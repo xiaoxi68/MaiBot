@@ -59,8 +59,6 @@ class HFCPerformanceLogger:
                 f"time={record['total_time']:.2f}s",
             ]
 
-
-
             logger.debug(f"记录HFC循环数据: {', '.join(log_parts)}")
 
         except Exception as e:

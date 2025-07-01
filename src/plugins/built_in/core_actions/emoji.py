@@ -14,7 +14,6 @@ from src.plugins.built_in.core_actions.no_reply import NoReplyAction
 logger = get_logger("core_actions")
 
 
-
 class EmojiAction(BaseAction):
     """表情动作 - 发送表情包"""
 
@@ -43,7 +42,11 @@ class EmojiAction(BaseAction):
     action_parameters = {"description": "文字描述你想要发送的表情包内容"}
 
     # 动作使用场景
-    action_require = ["发送表情包辅助表达情绪","表达情绪时可以选择使用", "不要连续发送，如果你已经发过[表情包]，就不要选择此动作"]
+    action_require = [
+        "发送表情包辅助表达情绪",
+        "表达情绪时可以选择使用",
+        "不要连续发送，如果你已经发过[表情包]，就不要选择此动作",
+    ]
 
     # 关联类型
     associated_types = ["emoji"]
