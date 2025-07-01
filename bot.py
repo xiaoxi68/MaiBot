@@ -314,6 +314,7 @@ if __name__ == "__main__":
             # Schedule tasks returns a future that runs forever.
             # We can run console_input_loop concurrently.
             main_tasks = loop.create_task(main_system.schedule_tasks())
+
             # 仅在 TTY 中启用 console_input_loop
             if sys.stdin.isatty():
                 logger.info("检测到终端环境，启用控制台输入循环")
@@ -324,6 +325,7 @@ if __name__ == "__main__":
                 logger.info("非终端环境，跳过控制台输入循环")
                 # Wait for all tasks to complete (which they won't, normally)
                 loop.run_until_complete(main_tasks)
+
 
         except KeyboardInterrupt:
             # loop.run_until_complete(get_global_api().stop())
