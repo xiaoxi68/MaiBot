@@ -160,8 +160,7 @@ class DefaultReplyer:
         return None
 
     async def generate_reply_with_context(
-        self,
-        reply_data: Dict[str, Any],
+        self, reply_data: Dict[str, Any], enable_splitter: bool = True, enable_chinese_typo: bool = True
     ) -> Tuple[bool, Optional[List[str]]]:
         """
         回复器 (Replier): 核心逻辑，负责生成回复文本。
@@ -191,7 +190,7 @@ class DefaultReplyer:
                 logger.error(f"{self.log_prefix}LLM 生成失败: {llm_e}")
                 return False, None  # LLM 调用失败则无法生成回复
 
-            processed_response = process_llm_response(content)
+            processed_response = process_llm_response(content, enable_splitter, enable_chinese_typo)
 
             # 5. 处理 LLM 响应
             if not content:
@@ -214,8 +213,7 @@ class DefaultReplyer:
             return False, None
 
     async def rewrite_reply_with_context(
-        self,
-        reply_data: Dict[str, Any],
+        self, reply_data: Dict[str, Any], enable_splitter: bool = True, enable_chinese_typo: bool = True
     ) -> Tuple[bool, Optional[List[str]]]:
         """
         表达器 (Expressor): 核心逻辑，负责生成回复文本。
@@ -252,7 +250,7 @@ class DefaultReplyer:
                 logger.error(f"{self.log_prefix}LLM 生成失败: {llm_e}")
                 return False, None  # LLM 调用失败则无法生成回复
 
-            processed_response = process_llm_response(content)
+            processed_response = process_llm_response(content, enable_splitter, enable_chinese_typo)
 
             # 5. 处理 LLM 响应
             if not content:

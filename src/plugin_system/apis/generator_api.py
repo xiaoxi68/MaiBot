@@ -73,6 +73,8 @@ async def generate_reply(
     chat_stream=None,
     action_data: Dict[str, Any] = None,
     chat_id: str = None,
+    enable_splitter: bool = True,
+    enable_chinese_typo: bool = True,
 ) -> Tuple[bool, List[Tuple[str, Any]]]:
     """生成回复
 
@@ -80,6 +82,8 @@ async def generate_reply(
         chat_stream: 聊天流对象（优先）
         action_data: 动作数据
         chat_id: 聊天ID（备用）
+        enable_splitter: 是否启用消息分割器
+        enable_chinese_typo: 是否启用错字生成器
 
     Returns:
         Tuple[bool, List[Tuple[str, Any]]]: (是否成功, 回复集合)
@@ -95,7 +99,7 @@ async def generate_reply(
 
         # 调用回复器生成回复
         success, reply_set = await replyer.generate_reply_with_context(
-            reply_data=action_data or {},
+            reply_data=action_data or {}, enable_splitter=enable_splitter, enable_chinese_typo=enable_chinese_typo
         )
 
         if success:
@@ -114,6 +118,8 @@ async def rewrite_reply(
     chat_stream=None,
     reply_data: Dict[str, Any] = None,
     chat_id: str = None,
+    enable_splitter: bool = True,
+    enable_chinese_typo: bool = True,
 ) -> Tuple[bool, List[Tuple[str, Any]]]:
     """重写回复
 
@@ -121,6 +127,8 @@ async def rewrite_reply(
         chat_stream: 聊天流对象（优先）
         reply_data: 回复数据
         chat_id: 聊天ID（备用）
+        enable_splitter: 是否启用消息分割器
+        enable_chinese_typo: 是否启用错字生成器
 
     Returns:
         Tuple[bool, List[Tuple[str, Any]]]: (是否成功, 回复集合)
@@ -136,7 +144,7 @@ async def rewrite_reply(
 
         # 调用回复器重写回复
         success, reply_set = await replyer.rewrite_reply_with_context(
-            reply_data=reply_data or {},
+            reply_data=reply_data or {}, enable_splitter=enable_splitter, enable_chinese_typo=enable_chinese_typo
         )
 
         if success:
