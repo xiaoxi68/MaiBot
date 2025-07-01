@@ -17,7 +17,6 @@ from src.chat.focus_chat.info_processors.working_memory_processor import Working
 from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
 from src.chat.heart_flow.observation.working_observation import WorkingMemoryObservation
 from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
-from src.chat.heart_flow.observation.structure_observation import StructureObservation
 from src.chat.heart_flow.observation.actions_observation import ActionObservation
 
 from src.chat.focus_chat.memory_activator import MemoryActivator
@@ -28,7 +27,6 @@ from src.chat.focus_chat.planners.action_manager import ActionManager
 from src.config.config import global_config
 from src.chat.focus_chat.hfc_performance_logger import HFCPerformanceLogger
 from src.chat.focus_chat.hfc_version_manager import get_hfc_version
-from src.chat.focus_chat.info.structured_info import StructuredInfo
 from src.person_info.relationship_builder_manager import relationship_builder_manager
 
 
@@ -41,7 +39,6 @@ OBSERVATION_CLASSES = {
     "ChattingObservation": (ChattingObservation, "chat_id"),
     "WorkingMemoryObservation": (WorkingMemoryObservation, "observe_id"),
     "HFCloopObservation": (HFCloopObservation, "observe_id"),
-    "StructureObservation": (StructureObservation, "observe_id"),
 }
 
 # 定义处理器映射：键是处理器名称，值是 (处理器类, 可选的配置键名)

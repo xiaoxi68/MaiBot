@@ -2,7 +2,6 @@ from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 import time
 from src.common.logger import get_logger
-from src.individuality.individuality import get_individuality
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.tools.tool_use import ToolUser
 from src.chat.utils.json_utils import process_llm_tool_calls
@@ -45,7 +44,7 @@ class ToolExecutor:
         self.chat_id = chat_id
         self.log_prefix = f"[ToolExecutor:{self.chat_id}] "
         self.llm_model = LLMRequest(
-            model=global_config.model.focus_tool_use,
+            model=global_config.model.tool_use,
             request_type="tool_executor",
         )
         

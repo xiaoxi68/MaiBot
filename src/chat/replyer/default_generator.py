@@ -137,19 +137,28 @@ class DefaultReplyer:
     def __init__(
         self,
         chat_stream: ChatStream,
+        enable_tool: bool = False,
         model_configs: Optional[List[Dict[str, Any]]] = None,
         request_type: str = "focus.replyer",
     ):
         self.log_prefix = "replyer"
         self.request_type = request_type
+        
+        self.enable_tool = enable_tool
 
         if model_configs:
             self.express_model_configs = model_configs
         else:
             # 当未提供配置时，使用默认配置并赋予默认权重
-            default_config = global_config.model.replyer_1.copy()
-            default_config.setdefault("weight", 1.0)
-            self.express_model_configs = [default_config]
+            
+            model_config_1 = global_config.model.replyer_1.copy()
+            model_config_2 = global_config.model.replyer_2.copy()
+            prob_first = global_config.chat.replyer_random_probability
+
+            model_config_1["weight"] = prob_first
+            model_config_2["weight"] = 1.0 - prob_first
+
+        self.express_model_configs = [model_config_1, model_config_2]
 
         if not self.express_model_configs:
             logger.warning("未找到有效的模型配置，回复生成可能会失败。")
@@ -168,9 +177,6 @@ class DefaultReplyer:
             enable_cache=True,
             cache_ttl=3
         )
-
-        
-        
 
     def _select_weighted_model_config(self) -> Dict[str, Any]:
         """使用加权随机选择来挑选一个模型配置"""
@@ -214,7 +220,6 @@ class DefaultReplyer:
         reply_data: Dict[str, Any] = None,
         reply_to: str = "",
         relation_info: str = "",
-        structured_info: str = "",
         extra_info: str = "",
         available_actions: List[str] = None,
     ) -> Tuple[bool, Optional[str]]:
@@ -231,7 +236,6 @@ class DefaultReplyer:
                 reply_data = {
                     "reply_to": reply_to,
                     "relation_info": relation_info,
-                    "structured_info": structured_info,
                     "extra_info": extra_info,
                 }
                 for key, value in reply_data.items():
@@ -514,8 +518,6 @@ class DefaultReplyer:
         person_info_manager = get_person_info_manager()
         bot_person_id = person_info_manager.get_person_id("system", "bot_id")
         is_group_chat = bool(chat_stream.group_info)
-
-        structured_info = reply_data.get("structured_info", "")
         reply_to = reply_data.get("reply_to", "none")
         extra_info_block = reply_data.get("extra_info", "") or reply_data.get("extra_info_block", "")
 
@@ -569,17 +571,14 @@ class DefaultReplyer:
 
         keywords_reaction_prompt = await self.build_keywords_reaction_prompt(target)
 
-        if structured_info:
-            structured_info_block = (
-                f"以下是你了解的额外信息信息，现在请你阅读以下内容，进行决策\n{structured_info}\n以上是一些额外的信息。"
+        if tool_info:
+            tool_info_block = (
+                f"以下是你了解的额外信息信息，现在请你阅读以下内容，进行决策\n{tool_info}\n以上是一些额外的信息。"
             )
         else:
-            structured_info_block = ""
-
-        if tool_info:
-            tool_info_block = f"{tool_info}"
-        else:
             tool_info_block = ""
+
+
 
         if extra_info_block:
             extra_info_block = f"以下是你在回复时需要参考的信息，现在请你阅读以下内容，进行决策\n{extra_info_block}\n以上是你在回复时需要参考的信息，现在请你阅读以下内容，进行决策"
@@ -652,7 +651,6 @@ class DefaultReplyer:
                 chat_target=chat_target_1,
                 chat_info=chat_talking_prompt,
                 memory_block=memory_block,
-                structured_info_block=structured_info_block,
                 tool_info_block=tool_info_block,
                 extra_info_block=extra_info_block,
                 relation_info_block=relation_info,
@@ -683,7 +681,6 @@ class DefaultReplyer:
                 chat_target=chat_target_1,
                 chat_info=chat_talking_prompt,
                 memory_block=memory_block,
-                structured_info_block=structured_info_block,
                 tool_info_block=tool_info_block,
                 relation_info_block=relation_info,
                 extra_info_block=extra_info_block,

@@ -69,7 +69,6 @@ class NormalChat:
 
         # 初始化Normal Chat专用表达器
         self.expressor = NormalChatExpressor(self.chat_stream)
-        self.replyer = DefaultReplyer(self.chat_stream)
 
         # Interest dict
         self.interest_dict = interest_dict

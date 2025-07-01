@@ -30,11 +30,11 @@ from src.config.official_configs import (
     TelemetryConfig,
     ExperimentalConfig,
     ModelConfig,
-    FocusChatProcessorConfig,
     MessageReceiveConfig,
     MaimMessageConfig,
     LPMMKnowledgeConfig,
     RelationshipConfig,
+    ToolConfig,
 )
 
 install(extra_lines=3)
@@ -151,7 +151,6 @@ class Config(ConfigBase):
     message_receive: MessageReceiveConfig
     normal_chat: NormalChatConfig
     focus_chat: FocusChatConfig
-    focus_chat_processor: FocusChatProcessorConfig
     emoji: EmojiConfig
     expression: ExpressionConfig
     memory: MemoryConfig
@@ -165,7 +164,7 @@ class Config(ConfigBase):
     model: ModelConfig
     maim_message: MaimMessageConfig
     lpmm_knowledge: LPMMKnowledgeConfig
-
+    tool: ToolConfig
 
 def load_config(config_path: str) -> Config:
     """

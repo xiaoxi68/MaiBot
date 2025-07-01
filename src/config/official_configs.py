@@ -78,6 +78,12 @@ class ChatConfig(ConfigBase):
     max_context_size: int = 18
     """上下文长度"""
 
+    replyer_random_probability: float = 0.5
+    """
+    发言时选择推理模型的概率（0-1之间）
+    选择普通模型的概率为 1 - reasoning_normal_model_probability
+    """
+
     talk_frequency: float = 1
     """回复频率阈值"""
 
@@ -264,12 +270,6 @@ class MessageReceiveConfig(ConfigBase):
 class NormalChatConfig(ConfigBase):
     """普通聊天配置类"""
 
-    normal_chat_first_probability: float = 0.3
-    """
-    发言时选择推理模型的概率（0-1之间）
-    选择普通模型的概率为 1 - reasoning_normal_model_probability
-    """
-
     message_buffer: bool = False
     """消息缓冲器"""
 
@@ -337,7 +337,16 @@ class ExpressionConfig(ConfigBase):
     格式: [["qq:12345:group", "qq:67890:private"]]
     """
 
+@dataclass
+class ToolConfig(ConfigBase):
+    """工具配置类"""
 
+    enable_in_normal_chat: bool = False
+    """是否在普通聊天中启用工具"""
+
+    enable_in_focus_chat: bool = True
+    """是否在专注聊天中启用工具"""
+    
 @dataclass
 class EmojiConfig(ConfigBase):
     """表情包配置类"""
@@ -636,7 +645,7 @@ class ModelConfig(ConfigBase):
     focus_working_memory: dict[str, Any] = field(default_factory=lambda: {})
     """专注工作记忆模型配置"""
 
-    focus_tool_use: dict[str, Any] = field(default_factory=lambda: {})
+    tool_use: dict[str, Any] = field(default_factory=lambda: {})
     """专注工具使用模型配置"""
 
     planner: dict[str, Any] = field(default_factory=lambda: {})

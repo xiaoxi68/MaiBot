@@ -27,6 +27,7 @@ logger = get_logger("generator_api")
 def get_replyer(
     chat_stream: Optional[ChatStream] = None,
     chat_id: Optional[str] = None,
+    enable_tool: bool = False,
     model_configs: Optional[List[Dict[str, Any]]] = None,
     request_type: str = "replyer",
 ) -> Optional[DefaultReplyer]:
@@ -47,7 +48,11 @@ def get_replyer(
     try:
         logger.debug(f"[GeneratorAPI] 正在获取回复器，chat_id: {chat_id}, chat_stream: {'有' if chat_stream else '无'}")
         return replyer_manager.get_replyer(
-            chat_stream=chat_stream, chat_id=chat_id, model_configs=model_configs, request_type=request_type
+            chat_stream=chat_stream,
+            chat_id=chat_id,
+            model_configs=model_configs,
+            request_type=request_type,
+            enable_tool=enable_tool,
         )
     except Exception as e:
         logger.error(f"[GeneratorAPI] 获取回复器时发生意外错误: {e}", exc_info=True)
@@ -66,9 +71,9 @@ async def generate_reply(
     action_data: Dict[str, Any] = None,
     reply_to: str = "",
     relation_info: str = "",
-    structured_info: str = "",
     extra_info: str = "",
     available_actions: List[str] = None,
+    enable_tool: bool = False,
     enable_splitter: bool = True,
     enable_chinese_typo: bool = True,
     return_prompt: bool = False,
@@ -89,7 +94,7 @@ async def generate_reply(
     """
     try:
         # 获取回复器
-        replyer = get_replyer(chat_stream, chat_id, model_configs=model_configs, request_type=request_type)
+        replyer = get_replyer(chat_stream, chat_id, model_configs=model_configs, request_type=request_type, enable_tool=enable_tool)
         if not replyer:
             logger.error("[GeneratorAPI] 无法获取回复器")
             return False, []
@@ -101,7 +106,6 @@ async def generate_reply(
             reply_data=action_data or {},
             reply_to=reply_to,
             relation_info=relation_info,
-            structured_info=structured_info,
             extra_info=extra_info,
             available_actions=available_actions,
         )

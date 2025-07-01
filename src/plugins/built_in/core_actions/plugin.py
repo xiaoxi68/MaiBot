@@ -63,6 +63,7 @@ class ReplyAction(BaseAction):
                 action_data=self.action_data,
                 chat_id=self.chat_id,
                 request_type="focus.replyer",
+                enable_tool=global_config.tool.enable_in_focus_chat,
             )
 
             # 检查从start_time以来的新消息数量

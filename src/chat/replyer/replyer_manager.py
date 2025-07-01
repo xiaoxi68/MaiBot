@@ -14,6 +14,7 @@ class ReplyerManager:
         self,
         chat_stream: Optional[ChatStream] = None,
         chat_id: Optional[str] = None,
+        enable_tool: bool = False,
         model_configs: Optional[List[Dict[str, Any]]] = None,
         request_type: str = "replyer",
     ) -> Optional[DefaultReplyer]:
@@ -49,6 +50,7 @@ class ReplyerManager:
         # model_configs 只在此时（初始化时）生效
         replyer = DefaultReplyer(
             chat_stream=target_stream,
+            enable_tool=enable_tool,
             model_configs=model_configs,  # 可以是None，此时使用默认模型
             request_type=request_type,
         )
