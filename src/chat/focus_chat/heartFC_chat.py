@@ -23,7 +23,6 @@ from src.chat.heart_flow.observation.actions_observation import ActionObservatio
 from src.chat.focus_chat.info_processors.tool_processor import ToolProcessor
 from src.chat.focus_chat.memory_activator import MemoryActivator
 from src.chat.focus_chat.info_processors.base_processor import BaseProcessor
-from src.chat.focus_chat.info_processors.expression_selector_processor import ExpressionSelectorProcessor
 from src.chat.focus_chat.planners.planner_factory import PlannerFactory
 from src.chat.focus_chat.planners.modify_actions import ActionModifier
 from src.chat.focus_chat.planners.action_manager import ActionManager
@@ -31,7 +30,6 @@ from src.config.config import global_config
 from src.chat.focus_chat.hfc_performance_logger import HFCPerformanceLogger
 from src.chat.focus_chat.hfc_version_manager import get_hfc_version
 from src.chat.focus_chat.info.relation_info import RelationInfo
-from src.chat.focus_chat.info.expression_selection_info import ExpressionSelectionInfo
 from src.chat.focus_chat.info.structured_info import StructuredInfo
 
 
@@ -59,7 +57,6 @@ PROCESSOR_CLASSES = {
 POST_PLANNING_PROCESSOR_CLASSES = {
     "ToolProcessor": (ToolProcessor, "tool_use_processor"),
     "PersonImpressionpProcessor": (PersonImpressionpProcessor, "person_impression_processor"),
-    "ExpressionSelectorProcessor": (ExpressionSelectorProcessor, "expression_selector_processor"),
 }
 
 logger = get_logger("hfc")  # Logger Name Changed
@@ -699,30 +696,6 @@ class HeartFChatting:
             task_start_times[task] = time.time()
             logger.info(f"{self.log_prefix} 启动后期处理器任务: {processor_name}")
 
-        # 添加记忆激活器任务
-        async def run_memory_with_timeout_and_timing():
-            start_time = time.time()
-            try:
-                result = await asyncio.wait_for(
-                    self.memory_activator.activate_memory(observations),
-                    timeout=MEMORY_ACTIVATION_TIMEOUT,
-                )
-                end_time = time.time()
-                post_processor_time_costs["MemoryActivator"] = end_time - start_time
-                logger.debug(f"{self.log_prefix} 记忆激活器耗时: {end_time - start_time:.3f}秒")
-                return result
-            except Exception as e:
-                end_time = time.time()
-                post_processor_time_costs["MemoryActivator"] = end_time - start_time
-                logger.warning(f"{self.log_prefix} 记忆激活器执行异常，耗时: {end_time - start_time:.3f}秒")
-                raise e
-
-        memory_task = asyncio.create_task(run_memory_with_timeout_and_timing())
-        task_list.append(memory_task)
-        task_to_name_map[memory_task] = ("memory", "MemoryActivator")
-        task_start_times[memory_task] = time.time()
-        logger.info(f"{self.log_prefix} 启动记忆激活器任务")
-
         # 如果没有任何后期任务，直接返回
         if not task_list:
             logger.info(f"{self.log_prefix} 没有启用的后期处理器或记忆激活器")
@@ -731,7 +704,6 @@ class HeartFChatting:
         # 等待所有任务完成
         pending_tasks = set(task_list)
         all_post_plan_info = []
-        running_memorys = []
 
         while pending_tasks:
             done, pending_tasks = await asyncio.wait(pending_tasks, return_when=asyncio.FIRST_COMPLETED)
@@ -748,13 +720,6 @@ class HeartFChatting:
                             all_post_plan_info.extend(result)
                         else:
                             logger.warning(f"{self.log_prefix} 后期处理器 {task_name} 返回了 None")
-                    elif task_type == "memory":
-                        logger.info(f"{self.log_prefix} 记忆激活器已完成!")
-                        if result is not None:
-                            running_memorys = result
-                        else:
-                            logger.warning(f"{self.log_prefix} 记忆激活器返回了 None")
-                            running_memorys = []
 
                 except asyncio.TimeoutError:
                     # 对于超时任务，记录已用时间
@@ -764,12 +729,6 @@ class HeartFChatting:
                         logger.warning(
                             f"{self.log_prefix} 后期处理器 {task_name} 超时（>{global_config.focus_chat.processor_max_time}s），已跳过，耗时: {elapsed_time:.3f}秒"
                         )
-                    elif task_type == "memory":
-                        post_processor_time_costs["MemoryActivator"] = elapsed_time
-                        logger.warning(
-                            f"{self.log_prefix} 记忆激活器超时（>{MEMORY_ACTIVATION_TIMEOUT}s），已跳过，耗时: {elapsed_time:.3f}秒"
-                        )
-                        running_memorys = []
                 except Exception as e:
                     # 对于异常任务，记录已用时间
                     elapsed_time = time.time() - task_start_times[task]
@@ -779,49 +738,29 @@ class HeartFChatting:
                             f"{self.log_prefix} 后期处理器 {task_name} 执行失败，耗时: {elapsed_time:.3f}秒. 错误: {e}",
                             exc_info=True,
                         )
-                    elif task_type == "memory":
-                        post_processor_time_costs["MemoryActivator"] = elapsed_time
-                        logger.error(
-                            f"{self.log_prefix} 记忆激活器执行失败，耗时: {elapsed_time:.3f}秒. 错误: {e}",
-                            exc_info=True,
-                        )
-                        running_memorys = []
 
         # 将后期处理器的结果整合到 action_data 中
         updated_action_data = action_data.copy()
 
         relation_info = ""
-        selected_expressions = []
         structured_info = ""
 
         for info in all_post_plan_info:
             if isinstance(info, RelationInfo):
                 relation_info = info.get_processed_info()
-            elif isinstance(info, ExpressionSelectionInfo):
-                selected_expressions = info.get_expressions_for_action_data()
             elif isinstance(info, StructuredInfo):
                 structured_info = info.get_processed_info()
 
         if relation_info:
-            updated_action_data["relation_info_block"] = relation_info
+            updated_action_data["relation_info"] = relation_info
 
-        if selected_expressions:
-            updated_action_data["selected_expressions"] = selected_expressions
 
         if structured_info:
             updated_action_data["structured_info"] = structured_info
 
-        # 特殊处理running_memorys
-        if running_memorys:
-            memory_str = "以下是当前在聊天中，你回忆起的记忆：\n"
-            for running_memory in running_memorys:
-                memory_str += f"{running_memory['content']}\n"
-            updated_action_data["memory_block"] = memory_str
-            logger.info(f"{self.log_prefix} 添加了 {len(running_memorys)} 个激活的记忆到action_data")
-
-        if all_post_plan_info or running_memorys:
+        if all_post_plan_info:
             logger.info(
-                f"{self.log_prefix} 后期处理完成，产生了 {len(all_post_plan_info)} 个信息项和 {len(running_memorys)} 个记忆"
+                f"{self.log_prefix} 后期处理完成，产生了 {len(all_post_plan_info)} 个信息项"
             )
 
         # 输出详细统计信息
@@ -908,7 +847,7 @@ class HeartFChatting:
             logger.debug(f"{self.log_prefix} 并行阶段完成，准备进入规划器，plan_info数量: {len(all_plan_info)}")
 
             with Timer("规划器", cycle_timers):
-                plan_result = await self.action_planner.plan(all_plan_info, [], loop_start_time)
+                plan_result = await self.action_planner.plan(all_plan_info, self.observations, loop_start_time)
 
                 loop_plan_info = {
                     "action_result": plan_result.get("action_result", {}),

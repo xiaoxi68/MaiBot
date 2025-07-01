@@ -44,7 +44,7 @@ compress_indentity = true # 是否压缩身份，压缩后会精简身份信息�
 
 [expression]
 # 表达方式
-expression_style = "描述麦麦说话的表达风格，表达习惯，例如：(回复尽量简短一些。可以参考贴吧，知乎和微博的回复风格，回复不要浮夸，不要用夸张修辞，平淡一些。不要有额外的符号，尽量简单简短)"
+expression_style = "描述麦麦说话的表达风格，表达习惯，例如：(请回复的平淡一些，简短一些，说中文，不要刻意突出自身学科背景。)"
 enable_expression_learning = false # 是否启用表达学习，麦麦会学习不同群里人类说话风格（群之间不互通）
 learning_interval = 600 # 学习间隔 单位秒
 

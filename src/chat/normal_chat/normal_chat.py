@@ -685,8 +685,6 @@ class NormalChat:
                 try:
                     return await self.gpt.generate_response(
                         message=message,
-                        thinking_id=thinking_id,
-                        enable_planner=self.enable_planner,
                         available_actions=available_actions,
                     )
                 except Exception as e:

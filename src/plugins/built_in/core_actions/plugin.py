@@ -62,6 +62,7 @@ class ReplyAction(BaseAction):
             success, reply_set = await generator_api.generate_reply(
                 action_data=self.action_data,
                 chat_id=self.chat_id,
+                request_type="focus.replyer",
             )
 
             # 检查从start_time以来的新消息数量
