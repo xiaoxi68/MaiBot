@@ -804,7 +804,6 @@ class NormalChat:
         # 回复前处理
         thinking_id = await self._create_thinking_message(message)
 
-
         # 如果启用planner，预先修改可用actions（避免在并行任务中重复调用）
         available_actions = None
         if self.enable_planner:
