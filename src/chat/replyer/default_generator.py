@@ -44,6 +44,7 @@ def init_prompt():
         """
 {expression_habits_block}
 {tool_info_block}
+{knowledge_prompt}
 {memory_block}
 {relation_info_block}
 {extra_info_block}
@@ -69,6 +70,7 @@ def init_prompt():
         """
 {expression_habits_block}
 {tool_info_block}
+{knowledge_prompt}
 {memory_block}
 {relation_info_block}
 {extra_info_block}
@@ -643,6 +645,7 @@ class DefaultReplyer:
                 chat_info=chat_talking_prompt,
                 memory_block=memory_block,
                 tool_info_block=tool_info_block,
+                knowledge_prompt=prompt_info,
                 extra_info_block=extra_info_block,
                 relation_info_block=relation_info,
                 time_block=time_block,
@@ -673,6 +676,7 @@ class DefaultReplyer:
                 chat_info=chat_talking_prompt,
                 memory_block=memory_block,
                 tool_info_block=tool_info_block,
+                knowledge_prompt=prompt_info,
                 relation_info_block=relation_info,
                 extra_info_block=extra_info_block,
                 time_block=time_block,

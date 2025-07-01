@@ -104,5 +104,3 @@ class RenamePersonTool(BaseTool):
             return {"type": "info_error", "id": f"rename_error_{time.time()}", "content": error_msg}
 
 
-# 注册工具
-register_tool(RenamePersonTool)

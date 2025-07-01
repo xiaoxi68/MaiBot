@@ -141,14 +141,12 @@ class CoreActionsPlugin(BasePlugin):
     config_schema = {
         "plugin": {
             "enabled": ConfigField(type=bool, default=True, description="是否启用插件"),
-            "config_version": ConfigField(type=str, default="0.1.0", description="配置文件版本"),
+            "config_version": ConfigField(type=str, default="0.2.0", description="配置文件版本"),
         },
         "components": {
             "enable_reply": ConfigField(type=bool, default=True, description="是否启用'回复'动作"),
             "enable_no_reply": ConfigField(type=bool, default=True, description="是否启用'不回复'动作"),
             "enable_emoji": ConfigField(type=bool, default=True, description="是否启用'表情'动作"),
-            "enable_change_to_focus": ConfigField(type=bool, default=True, description="是否启用'切换到专注模式'动作"),
-            "enable_exit_focus": ConfigField(type=bool, default=True, description="是否启用'退出专注模式'动作"),
         },
         "no_reply": {
             "max_timeout": ConfigField(type=int, default=1200, description="最大等待超时时间（秒）"),
