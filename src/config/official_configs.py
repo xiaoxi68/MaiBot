@@ -74,7 +74,7 @@ class ChatConfig(ConfigBase):
 
     chat_mode: str = "normal"
     """聊天模式"""
-    
+
     max_context_size: int = 18
     """上下文长度"""
 
@@ -315,7 +315,6 @@ class FocusChatConfig(ConfigBase):
     """连续回复能力，值越高，麦麦连续回复的概率越高"""
 
 
-
 @dataclass
 class FocusChatProcessorConfig(ConfigBase):
     """专注聊天处理器配置类"""
@@ -325,7 +324,6 @@ class FocusChatProcessorConfig(ConfigBase):
 
     working_memory_processor: bool = True
     """是否启用工作记忆处理器"""
-
 
 
 @dataclass
@@ -424,7 +422,7 @@ class MemoryConfig(ConfigBase):
 @dataclass
 class MoodConfig(ConfigBase):
     """情绪配置类"""
-    
+
     enable_mood: bool = False
     """是否启用情绪系统"""
 

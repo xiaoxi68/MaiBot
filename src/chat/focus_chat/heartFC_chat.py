@@ -580,10 +580,7 @@ class HeartFChatting:
             processor_name = processor.__class__.log_prefix
 
             async def run_with_timeout(proc=processor):
-                return await asyncio.wait_for(
-                    proc.process_info(observations=observations),
-                    30
-                )
+                return await asyncio.wait_for(proc.process_info(observations=observations), 30)
 
             task = asyncio.create_task(run_with_timeout())
 
@@ -612,9 +609,7 @@ class HeartFChatting:
                     # 记录耗时
                     processor_time_costs[processor_name] = duration_since_parallel_start
                 except asyncio.TimeoutError:
-                    logger.info(
-                        f"{self.log_prefix} 处理器 {processor_name} 超时（>30s），已跳过"
-                    )
+                    logger.info(f"{self.log_prefix} 处理器 {processor_name} 超时（>30s），已跳过")
                     processor_time_costs[processor_name] = 30
                 except Exception as e:
                     logger.error(
@@ -672,7 +667,7 @@ class HeartFChatting:
                 try:
                     result = await asyncio.wait_for(
                         proc.process_info(observations=observations, action_type=action_type, action_data=action_data),
-                        30
+                        30,
                     )
                     end_time = time.time()
                     post_processor_time_costs[name] = end_time - start_time
