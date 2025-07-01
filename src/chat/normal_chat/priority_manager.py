@@ -11,10 +11,10 @@ logger = get_logger("normal_chat")
 class PrioritizedMessage:
     """带有优先级的消息对象"""
 
-    def __init__(self, message: MessageRecv, interest_score: float, is_vip: bool = False):
+    def __init__(self, message: MessageRecv, interest_scores: List[float], is_vip: bool = False):
         self.message = message
         self.arrival_time = time.time()
-        self.interest_score = interest_score
+        self.interest_scores = interest_scores
         self.is_vip = is_vip
         self.priority = self.calculate_priority()
 
@@ -25,7 +25,7 @@ class PrioritizedMessage:
         """
         age = time.time() - self.arrival_time
         decay_factor = math.exp(-decay_rate * age)
-        priority = self.interest_score * decay_factor
+        priority = sum(self.interest_scores) + decay_factor
         return priority
 
     def __lt__(self, other: "PrioritizedMessage") -> bool:
@@ -43,25 +43,20 @@ class PriorityManager:
         self.normal_queue: List[PrioritizedMessage] = []  # 普通消息队列 (最大堆)
         self.interest_dict = interest_dict if interest_dict is not None else {}
         self.normal_queue_max_size = normal_queue_max_size
-        self.vip_users = self.interest_dict.get("vip_users", [])  # 假设vip用户在interest_dict中指定
 
     def _get_interest_score(self, user_id: str) -> float:
         """获取用户的兴趣分，默认为1.0"""
         return self.interest_dict.get("interests", {}).get(user_id, 1.0)
 
-    def _is_vip(self, user_id: str) -> bool:
-        """检查用户是否为VIP"""
-        return user_id in self.vip_users
-
-    def add_message(self, message: MessageRecv):
+    def add_message(self, message: MessageRecv, interest_score: Optional[float] = None):
         """
         添加新消息到合适的队列中。
         """
         user_id = message.message_info.user_info.user_id
-        is_vip = self._is_vip(user_id)
-        interest_score = self._get_interest_score(user_id)
+        is_vip = message.priority_info.get("message_type") == "vip" if message.priority_info else False
+        message_priority = message.priority_info.get("message_priority", 0.0) if message.priority_info else 0.0
 
-        p_message = PrioritizedMessage(message, interest_score, is_vip)
+        p_message = PrioritizedMessage(message, [interest_score, message_priority], is_vip)
 
         if is_vip:
             heapq.heappush(self.vip_queue, p_message)
@@ -97,12 +92,7 @@ class PriorityManager:
         vip_msg = self.vip_queue[0] if self.vip_queue else None
         normal_msg = self.normal_queue[0] if self.normal_queue else None
 
-        if vip_msg and normal_msg:
-            if vip_msg.priority >= normal_msg.priority:
-                return heapq.heappop(self.vip_queue).message
-            else:
-                return heapq.heappop(self.normal_queue).message
-        elif vip_msg:
+        if vip_msg:
             return heapq.heappop(self.vip_queue).message
         elif normal_msg:
             return heapq.heappop(self.normal_queue).message
