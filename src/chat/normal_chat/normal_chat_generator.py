@@ -1,4 +1,3 @@
-from typing import List, Optional, Union
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.chat.message_receive.message import MessageThinking
@@ -18,12 +17,12 @@ class NormalChatGenerator:
         model_config_2 = global_config.model.replyer_2.copy()
 
         prob_first = global_config.normal_chat.normal_chat_first_probability
-        
-        model_config_1['weight'] = prob_first
-        model_config_2['weight'] = 1.0 - prob_first
+
+        model_config_1["weight"] = prob_first
+        model_config_2["weight"] = 1.0 - prob_first
 
         self.model_configs = [model_config_1, model_config_2]
-        
+
         self.model_sum = LLMRequest(model=global_config.model.memory_summary, temperature=0.7, request_type="relation")
         self.memory_activator = MemoryActivator()
 
@@ -42,7 +41,7 @@ class NormalChatGenerator:
         person_name = await person_info_manager.get_value(person_id, "person_name")
         relation_info = await person_info_manager.get_value(person_id, "short_impression")
         reply_to_str = f"{person_name}:{message.processed_plain_text}"
-        
+
         structured_info = ""
 
         try:
@@ -54,7 +53,7 @@ class NormalChatGenerator:
                 available_actions=available_actions,
                 model_configs=self.model_configs,
                 request_type="normal.replyer",
-                return_prompt=True
+                return_prompt=True,
             )
 
             if not success or not reply_set:
@@ -63,7 +62,7 @@ class NormalChatGenerator:
 
             content = " ".join([item[1] for item in reply_set if item[0] == "text"])
             logger.debug(f"对 {message.processed_plain_text} 的回复：{content}")
-            
+
             if content:
                 logger.info(f"{global_config.bot.nickname}的备选回复是：{content}")
                 content = process_llm_response(content)

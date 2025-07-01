@@ -1,5 +1,3 @@
-from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
-from src.chat.heart_flow.observation.structure_observation import StructureObservation
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.common.logger import get_logger
@@ -10,7 +8,6 @@ from typing import List, Dict
 import difflib
 import json
 from json_repair import repair_json
-from src.person_info.person_info import get_person_info_manager
 
 
 logger = get_logger("memory_activator")
@@ -76,7 +73,7 @@ class MemoryActivator:
         )
         self.running_memory = []
         self.cached_keywords = set()  # 用于缓存历史关键词
-    
+
     async def activate_memory_with_chat_history(self, chat_id, target_message, chat_history_prompt) -> List[Dict]:
         """
         激活记忆

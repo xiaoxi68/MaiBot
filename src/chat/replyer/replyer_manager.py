@@ -5,6 +5,7 @@ from src.common.logger import get_logger
 
 logger = get_logger("ReplyerManager")
 
+
 class ReplyerManager:
     def __init__(self):
         self._replyers: Dict[str, DefaultReplyer] = {}
@@ -14,7 +15,7 @@ class ReplyerManager:
         chat_stream: Optional[ChatStream] = None,
         chat_id: Optional[str] = None,
         model_configs: Optional[List[Dict[str, Any]]] = None,
-        request_type: str = "replyer"
+        request_type: str = "replyer",
     ) -> Optional[DefaultReplyer]:
         """
         获取或创建回复器实例。
@@ -31,16 +32,16 @@ class ReplyerManager:
         if stream_id in self._replyers:
             logger.debug(f"[ReplyerManager] 为 stream_id '{stream_id}' 返回已存在的回复器实例。")
             return self._replyers[stream_id]
-        
+
         # 如果没有缓存，则创建新实例（首次初始化）
         logger.debug(f"[ReplyerManager] 为 stream_id '{stream_id}' 创建新的回复器实例并缓存。")
-        
+
         target_stream = chat_stream
         if not target_stream:
             chat_manager = get_chat_manager()
             if chat_manager:
                 target_stream = chat_manager.get_stream(stream_id)
-        
+
         if not target_stream:
             logger.warning(f"[ReplyerManager] 未找到 stream_id='{stream_id}' 的聊天流，无法创建回复器。")
             return None
@@ -49,10 +50,11 @@ class ReplyerManager:
         replyer = DefaultReplyer(
             chat_stream=target_stream,
             model_configs=model_configs,  # 可以是None，此时使用默认模型
-            request_type=request_type
+            request_type=request_type,
         )
         self._replyers[stream_id] = replyer
         return replyer
 
+
 # 创建一个全局实例
-replyer_manager = ReplyerManager() 
+replyer_manager = ReplyerManager()

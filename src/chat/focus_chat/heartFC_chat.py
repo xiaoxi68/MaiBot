@@ -754,14 +754,11 @@ class HeartFChatting:
         if relation_info:
             updated_action_data["relation_info"] = relation_info
 
-
         if structured_info:
             updated_action_data["structured_info"] = structured_info
 
         if all_post_plan_info:
-            logger.info(
-                f"{self.log_prefix} 后期处理完成，产生了 {len(all_post_plan_info)} 个信息项"
-            )
+            logger.info(f"{self.log_prefix} 后期处理完成，产生了 {len(all_post_plan_info)} 个信息项")
 
         # 输出详细统计信息
         if post_processor_time_costs:

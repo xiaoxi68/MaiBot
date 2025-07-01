@@ -24,10 +24,10 @@ logger = get_logger("generator_api")
 
 
 def get_replyer(
-    chat_stream: Optional[ChatStream] = None, 
+    chat_stream: Optional[ChatStream] = None,
     chat_id: Optional[str] = None,
     model_configs: Optional[List[Dict[str, Any]]] = None,
-    request_type: str = "replyer"
+    request_type: str = "replyer",
 ) -> Optional[DefaultReplyer]:
     """获取回复器对象
 
@@ -46,10 +46,7 @@ def get_replyer(
     try:
         logger.debug(f"[GeneratorAPI] 正在获取回复器，chat_id: {chat_id}, chat_stream: {'有' if chat_stream else '无'}")
         return replyer_manager.get_replyer(
-            chat_stream=chat_stream,
-            chat_id=chat_id,
-            model_configs=model_configs,
-            request_type=request_type
+            chat_stream=chat_stream, chat_id=chat_id, model_configs=model_configs, request_type=request_type
         )
     except Exception as e:
         logger.error(f"[GeneratorAPI] 获取回复器时发生意外错误: {e}", exc_info=True)
@@ -106,7 +103,7 @@ async def generate_reply(
             extra_info=extra_info,
             available_actions=available_actions,
         )
-        
+
         reply_set = await process_human_text(content, enable_splitter, enable_chinese_typo)
 
         if success:
@@ -154,10 +151,8 @@ async def rewrite_reply(
         logger.info("[GeneratorAPI] 开始重写回复")
 
         # 调用回复器重写回复
-        success, content = await replyer.rewrite_reply_with_context(
-            reply_data=reply_data or {}
-        )
-        
+        success, content = await replyer.rewrite_reply_with_context(reply_data=reply_data or {})
+
         reply_set = await process_human_text(content, enable_splitter, enable_chinese_typo)
 
         if success:
@@ -170,13 +165,9 @@ async def rewrite_reply(
     except Exception as e:
         logger.error(f"[GeneratorAPI] 重写回复时出错: {e}")
         return False, []
-    
-    
-async def process_human_text(
-    content:str,
-    enable_splitter:bool,
-    enable_chinese_typo:bool
-) -> List[Tuple[str, Any]]:
+
+
+async def process_human_text(content: str, enable_splitter: bool, enable_chinese_typo: bool) -> List[Tuple[str, Any]]:
     """将文本处理为更拟人化的文本
 
     Args:
@@ -186,14 +177,14 @@ async def process_human_text(
     """
     try:
         processed_response = process_llm_response(content, enable_splitter, enable_chinese_typo)
-        
+
         reply_set = []
         for str in processed_response:
             reply_seg = ("text", str)
             reply_set.append(reply_seg)
-            
+
         return reply_set
-    
+
     except Exception as e:
         logger.error(f"[GeneratorAPI] 处理人形文本时出错: {e}")
         return []
