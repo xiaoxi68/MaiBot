@@ -49,6 +49,11 @@ class MessageStorage:
             # 安全地获取 user_info, 如果为 None 则视为空字典 (以防万一)
             user_info_from_chat = chat_info_dict.get("user_info") or {}
 
+            # 使用正则表达式匹配 @<XXX:xxxxxxxxx> 格式
+            pattern_at = r'@<([^:>]+):\d+>'
+            # 替换为 @XXX 格式(对含艾特的消息进行处理，使其符合原本展示的文本形态，方便引用回复)
+            filtered_processed_plain_text = re.sub(pattern_at, r'@\1', filtered_processed_plain_text)
+
             Messages.create(
                 message_id=msg_id,
                 time=float(message.message_info.time),
