@@ -1,26 +1,21 @@
-from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
-from src.chat.heart_flow.observation.observation import Observation
-from src.llm_models.utils_model import LLMRequest
-from src.config.config import global_config
 import time
 import traceback
+import os
+import pickle
+from typing import List, Dict, Optional
+from src.config.config import global_config
 from src.common.logger import get_logger
 from src.chat.message_receive.chat_stream import get_chat_manager
 from src.person_info.relationship_manager import get_relationship_manager
-from .base_processor import BaseProcessor
-from typing import List
-from typing import Dict
-from src.chat.focus_chat.info.info_base import InfoBase
-from src.person_info.person_info import get_person_info_manager
+from src.person_info.person_info import get_person_info_manager, PersonInfoManager
 from src.chat.utils.chat_message_builder import (
     get_raw_msg_by_timestamp_with_chat,
     get_raw_msg_by_timestamp_with_chat_inclusive,
     get_raw_msg_before_timestamp_with_chat,
     num_new_messages_since,
 )
-import os
-import pickle
 
+logger = get_logger("relationship_builder")
 
 # 消息段清理配置
 SEGMENT_CLEANUP_CONFIG = {
@@ -31,28 +26,26 @@ SEGMENT_CLEANUP_CONFIG = {
 }
 
 
-logger = get_logger("relationship_build_processor")
-
-
-class RelationshipBuildProcessor(BaseProcessor):
-    """关系构建处理器
+class RelationshipBuilder:
+    """关系构建器
     
+    独立运行的关系构建类，基于特定的chat_id进行工作
     负责跟踪用户消息活动、管理消息段、触发关系构建和印象更新
     """
-    
-    log_prefix = "关系构建"
 
-    def __init__(self, subheartflow_id: str):
-        super().__init__()
-
-        self.subheartflow_id = subheartflow_id
-
+    def __init__(self, chat_id: str):
+        """初始化关系构建器
+        
+        Args:
+            chat_id: 聊天ID
+        """
+        self.chat_id = chat_id
         # 新的消息段缓存结构：
         # {person_id: [{"start_time": float, "end_time": float, "last_msg_time": float, "message_count": int}, ...]}
         self.person_engaged_cache: Dict[str, List[Dict[str, any]]] = {}
 
         # 持久化存储文件路径
-        self.cache_file_path = os.path.join("data", "relationship", f"relationship_cache_{self.subheartflow_id}.pkl")
+        self.cache_file_path = os.path.join("data", "relationship", f"relationship_cache_{self.chat_id}.pkl")
 
         # 最后处理的消息时间，避免重复处理相同消息
         current_time = time.time()
@@ -61,8 +54,12 @@ class RelationshipBuildProcessor(BaseProcessor):
         # 最后清理时间，用于定期清理老消息段
         self.last_cleanup_time = 0.0
 
-        name = get_chat_manager().get_stream_name(self.subheartflow_id)
-        self.log_prefix = f"[{name}] 关系构建"
+        # 获取聊天名称用于日志
+        try:
+            chat_name = get_chat_manager().get_stream_name(self.chat_id)
+            self.log_prefix = f"[{chat_name}] 关系构建"
+        except Exception:
+            self.log_prefix = f"[{self.chat_id}] 关系构建"
 
         # 加载持久化的缓存
         self._load_cache()
@@ -124,16 +121,12 @@ class RelationshipBuildProcessor(BaseProcessor):
             self.person_engaged_cache[person_id] = []
 
         segments = self.person_engaged_cache[person_id]
-        current_time = time.time()
 
         # 获取该消息前5条消息的时间作为潜在的开始时间
-        before_messages = get_raw_msg_before_timestamp_with_chat(self.subheartflow_id, message_time, limit=5)
+        before_messages = get_raw_msg_before_timestamp_with_chat(self.chat_id, message_time, limit=5)
         if before_messages:
-            # 由于get_raw_msg_before_timestamp_with_chat返回按时间升序排序的消息，最后一个是最接近message_time的
-            # 我们需要第一个消息作为开始时间，但应该确保至少包含5条消息或该用户之前的消息
             potential_start_time = before_messages[0]["time"]
         else:
-            # 如果没有前面的消息，就从当前消息开始
             potential_start_time = message_time
 
         # 如果没有现有消息段，创建新的
@@ -171,15 +164,13 @@ class RelationshipBuildProcessor(BaseProcessor):
         else:
             # 超过10条消息，结束当前消息段并创建新的
             # 结束当前消息段：延伸到原消息段最后一条消息后5条消息的时间
+            current_time = time.time()
             after_messages = get_raw_msg_by_timestamp_with_chat(
-                self.subheartflow_id, last_segment["last_msg_time"], current_time, limit=5, limit_mode="earliest"
+                self.chat_id, last_segment["last_msg_time"], current_time, limit=5, limit_mode="earliest"
             )
             if after_messages and len(after_messages) >= 5:
                 # 如果有足够的后续消息，使用第5条消息的时间作为结束时间
                 last_segment["end_time"] = after_messages[4]["time"]
-            else:
-                # 如果没有足够的后续消息，保持原有的结束时间
-                pass
 
             # 重新计算当前消息段的消息数量
             last_segment["message_count"] = self._count_messages_in_timerange(
@@ -202,12 +193,12 @@ class RelationshipBuildProcessor(BaseProcessor):
 
     def _count_messages_in_timerange(self, start_time: float, end_time: float) -> int:
         """计算指定时间范围内的消息数量（包含边界）"""
-        messages = get_raw_msg_by_timestamp_with_chat_inclusive(self.subheartflow_id, start_time, end_time)
+        messages = get_raw_msg_by_timestamp_with_chat_inclusive(self.chat_id, start_time, end_time)
         return len(messages)
 
     def _count_messages_between(self, start_time: float, end_time: float) -> int:
         """计算两个时间点之间的消息数量（不包含边界），用于间隔检查"""
-        return num_new_messages_since(self.subheartflow_id, start_time, end_time)
+        return num_new_messages_since(self.chat_id, start_time, end_time)
 
     def _get_total_message_count(self, person_id: str) -> int:
         """获取用户所有消息段的总消息数量"""
@@ -221,11 +212,7 @@ class RelationshipBuildProcessor(BaseProcessor):
         return total_count
 
     def _cleanup_old_segments(self) -> bool:
-        """清理老旧的消息段
-
-        Returns:
-            bool: 是否执行了清理操作
-        """
+        """清理老旧的消息段"""
         if not SEGMENT_CLEANUP_CONFIG["enable_cleanup"]:
             return False
 
@@ -277,8 +264,6 @@ class RelationshipBuildProcessor(BaseProcessor):
                     f"{self.log_prefix} 用户 {person_id} 消息段数量过多，移除 {segments_removed_count} 个最老的消息段"
                 )
 
-            # 使用清理后的消息段
-
             # 更新缓存
             if len(segments_after_age_cleanup) == 0:
                 # 如果没有剩余消息段，标记用户为待移除
@@ -313,14 +298,7 @@ class RelationshipBuildProcessor(BaseProcessor):
         return cleanup_stats["segments_removed"] > 0 or len(users_to_remove) > 0
 
     def force_cleanup_user_segments(self, person_id: str) -> bool:
-        """强制清理指定用户的所有消息段
-
-        Args:
-            person_id: 用户ID
-
-        Returns:
-            bool: 是否成功清理
-        """
+        """强制清理指定用户的所有消息段"""
         if person_id in self.person_engaged_cache:
             segments_count = len(self.person_engaged_cache[person_id])
             del self.person_engaged_cache[person_id]
@@ -369,62 +347,36 @@ class RelationshipBuildProcessor(BaseProcessor):
     # 统筹各模块协作、对外提供服务接口
     # ================================
 
-    async def process_info(
-        self,
-        observations: List[Observation] = None,
-        action_type: str = None,
-        action_data: dict = None,
-        **kwargs,
-    ) -> List[InfoBase]:
-        """处理信息对象
-
-        Args:
-            observations: 观察对象列表
-            action_type: 动作类型
-            action_data: 动作数据
-
-        Returns:
-            List[InfoBase]: 处理后的结构化信息列表
-        """
-        await self.build_relation(observations)
-        return []  # 关系构建处理器不返回信息，只负责后台构建关系
-
-    async def build_relation(self, observations: List[Observation] = None):
+    async def build_relation(self):
         """构建关系"""
         self._cleanup_old_segments()
         current_time = time.time()
 
-        if observations:
-            for observation in observations:
-                if isinstance(observation, ChattingObservation):
-                    latest_messages = get_raw_msg_by_timestamp_with_chat(
-                        self.subheartflow_id,
-                        self.last_processed_message_time,
-                        current_time,
-                        limit=50,  # 获取自上次处理后的消息
+        latest_messages = get_raw_msg_by_timestamp_with_chat(
+            self.chat_id,
+            self.last_processed_message_time,
+            current_time,
+            limit=50,  # 获取自上次处理后的消息
+        )
+        if latest_messages:
+            # 处理所有新的非bot消息
+            for latest_msg in latest_messages:
+                user_id = latest_msg.get("user_id")
+                platform = latest_msg.get("user_platform") or latest_msg.get("chat_info_platform")
+                msg_time = latest_msg.get("time", 0)
+
+                if (
+                    user_id
+                    and platform
+                    and user_id != global_config.bot.qq_account
+                    and msg_time > self.last_processed_message_time
+                ):
+                    person_id = PersonInfoManager.get_person_id(platform, user_id)
+                    self._update_message_segments(person_id, msg_time)
+                    logger.debug(
+                        f"{self.log_prefix} 更新用户 {person_id} 的消息段，消息时间：{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(msg_time))}"
                     )
-                    if latest_messages:
-                        # 处理所有新的非bot消息
-                        for latest_msg in latest_messages:
-                            user_id = latest_msg.get("user_id")
-                            platform = latest_msg.get("user_platform") or latest_msg.get("chat_info_platform")
-                            msg_time = latest_msg.get("time", 0)
-
-                            if (
-                                user_id
-                                and platform
-                                and user_id != global_config.bot.qq_account
-                                and msg_time > self.last_processed_message_time
-                            ):
-                                from src.person_info.person_info import PersonInfoManager
-
-                                person_id = PersonInfoManager.get_person_id(platform, user_id)
-                                self._update_message_segments(person_id, msg_time)
-                                logger.debug(
-                                    f"{self.log_prefix} 更新用户 {person_id} 的消息段，消息时间：{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(msg_time))}"
-                                )
-                                self.last_processed_message_time = max(self.last_processed_message_time, msg_time)
-                    break
+                    self.last_processed_message_time = max(self.last_processed_message_time, msg_time)
 
         # 1. 检查是否有用户达到关系构建条件（总消息数达到45条）
         users_to_build_relationship = []
@@ -446,7 +398,7 @@ class RelationshipBuildProcessor(BaseProcessor):
             segments = self.person_engaged_cache[person_id]
             # 异步执行关系构建
             import asyncio
-            asyncio.create_task(self.update_impression_on_segments(person_id, self.subheartflow_id, segments))
+            asyncio.create_task(self.update_impression_on_segments(person_id, self.chat_id, segments))
             # 移除已处理的用户缓存
             del self.person_engaged_cache[person_id]
             self._save_cache()
@@ -457,14 +409,7 @@ class RelationshipBuildProcessor(BaseProcessor):
     # ================================
 
     async def update_impression_on_segments(self, person_id: str, chat_id: str, segments: List[Dict[str, any]]):
-        """
-        基于消息段更新用户印象
-
-        Args:
-            person_id: 用户ID
-            chat_id: 聊天ID
-            segments: 消息段列表
-        """
+        """基于消息段更新用户印象"""
         logger.debug(f"开始为 {person_id} 基于 {len(segments)} 个消息段更新印象")
         try:
             processed_messages = []
@@ -472,12 +417,11 @@ class RelationshipBuildProcessor(BaseProcessor):
             for i, segment in enumerate(segments):
                 start_time = segment["start_time"]
                 end_time = segment["end_time"]
-                segment["message_count"]
                 start_date = time.strftime("%Y-%m-%d %H:%M", time.localtime(start_time))
 
                 # 获取该段的消息（包含边界）
                 segment_messages = get_raw_msg_by_timestamp_with_chat_inclusive(
-                    self.subheartflow_id, start_time, end_time
+                    self.chat_id, start_time, end_time
                 )
                 logger.info(
                     f"消息段 {i + 1}: {start_date} - {time.strftime('%Y-%m-%d %H:%M', time.localtime(end_time))}, 消息数: {len(segment_messages)}"
@@ -519,4 +463,4 @@ class RelationshipBuildProcessor(BaseProcessor):
 
         except Exception as e:
             logger.error(f"为 {person_id} 更新印象时发生错误: {e}")
-            logger.error(traceback.format_exc())
+            logger.error(traceback.format_exc()) 

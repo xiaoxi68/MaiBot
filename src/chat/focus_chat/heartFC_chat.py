@@ -13,8 +13,6 @@ from src.chat.heart_flow.observation.observation import Observation
 from src.chat.focus_chat.heartFC_Cycleinfo import CycleDetail
 from src.chat.focus_chat.info.info_base import InfoBase
 from src.chat.focus_chat.info_processors.chattinginfo_processor import ChattingInfoProcessor
-from src.chat.focus_chat.info_processors.relationship_processor import RelationshipBuildProcessor
-from src.chat.focus_chat.info_processors.real_time_info_processor import RealTimeInfoProcessor
 from src.chat.focus_chat.info_processors.working_memory_processor import WorkingMemoryProcessor
 from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
 from src.chat.heart_flow.observation.working_observation import WorkingMemoryObservation
@@ -32,6 +30,7 @@ from src.chat.focus_chat.hfc_performance_logger import HFCPerformanceLogger
 from src.chat.focus_chat.hfc_version_manager import get_hfc_version
 from src.chat.focus_chat.info.relation_info import RelationInfo
 from src.chat.focus_chat.info.structured_info import StructuredInfo
+from src.person_info.relationship_builder_manager import relationship_builder_manager
 
 
 install(extra_lines=3)
@@ -57,8 +56,6 @@ PROCESSOR_CLASSES = {
 # 定义后期处理器映射：在规划后、动作执行前运行的处理器
 POST_PLANNING_PROCESSOR_CLASSES = {
     "ToolProcessor": (ToolProcessor, "tool_use_processor"),
-    "RelationshipBuildProcessor": (RelationshipBuildProcessor, "relationship_build_processor"),
-    "RealTimeInfoProcessor": (RealTimeInfoProcessor, "real_time_info_processor"),
 }
 
 logger = get_logger("hfc")  # Logger Name Changed
@@ -110,6 +107,8 @@ class HeartFChatting:
         self.log_prefix = f"[{get_chat_manager().get_stream_name(self.stream_id) or self.stream_id}]"
 
         self.memory_activator = MemoryActivator()
+        
+        self.relationship_builder = relationship_builder_manager.get_or_create_builder(self.stream_id)
 
         # 新增：消息计数器和疲惫阈值
         self._message_count = 0  # 发送的消息计数
@@ -135,24 +134,8 @@ class HeartFChatting:
         self.enabled_post_planning_processor_names = []
         for proc_name, (_proc_class, config_key) in POST_PLANNING_PROCESSOR_CLASSES.items():
             # 对于关系相关处理器，需要同时检查关系配置项
-            if proc_name in ["RelationshipBuildProcessor", "RealTimeInfoProcessor"]:
-                # 检查全局关系开关
-                if not global_config.relationship.enable_relationship:
-                    continue
-                    
-                # 检查处理器特定配置，同时支持向后兼容
-                processor_enabled = getattr(config_processor_settings, config_key, True)
-                
-                # 向后兼容：如果旧的person_impression_processor为True，则启用两个新处理器
-                if not processor_enabled and getattr(config_processor_settings, "person_impression_processor", True):
-                    processor_enabled = True
-                    
-                if processor_enabled:
-                    self.enabled_post_planning_processor_names.append(proc_name)
-            else:
-                # 其他后期处理器的逻辑
-                if not config_key or getattr(config_processor_settings, config_key, True):
-                    self.enabled_post_planning_processor_names.append(proc_name)
+            if not config_key or getattr(config_processor_settings, config_key, True):
+                self.enabled_post_planning_processor_names.append(proc_name)
 
         # logger.info(f"{self.log_prefix} 将启用的处理器: {self.enabled_processor_names}")
         # logger.info(f"{self.log_prefix} 将启用的后期处理器: {self.enabled_post_planning_processor_names}")
@@ -754,17 +737,13 @@ class HeartFChatting:
         # 将后期处理器的结果整合到 action_data 中
         updated_action_data = action_data.copy()
 
-        relation_info = ""
+
         structured_info = ""
 
         for info in all_post_plan_info:
-            if isinstance(info, RelationInfo):
-                relation_info = info.get_processed_info()
-            elif isinstance(info, StructuredInfo):
+            if isinstance(info, StructuredInfo):
                 structured_info = info.get_processed_info()
 
-        if relation_info:
-            updated_action_data["relation_info"] = relation_info
 
         if structured_info:
             updated_action_data["structured_info"] = structured_info
@@ -793,10 +772,10 @@ class HeartFChatting:
                     "observations": self.observations,
                 }
 
-            # 根据配置决定是否并行执行调整动作、回忆和处理器阶段
+            await self.relationship_builder.build_relation()
 
             # 并行执行调整动作、回忆和处理器阶段
-            with Timer("并行调整动作、处理", cycle_timers):
+            with Timer("调整动作、处理", cycle_timers):
                 # 创建并行任务
                 async def modify_actions_task():
                     # 调用完整的动作修改流程
