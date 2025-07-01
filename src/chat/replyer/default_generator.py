@@ -17,6 +17,7 @@ from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_before_timestamp_with_chat
 from src.chat.express.exprssion_learner import get_expression_learner
 import time
+import asyncio
 from src.chat.express.expression_selector import expression_selector
 from src.manager.mood_manager import mood_manager
 from src.person_info.relationship_fetcher import relationship_fetcher_manager
@@ -503,7 +504,6 @@ class DefaultReplyer:
         )
 
         # 并行执行三个构建任务
-        import asyncio
         expression_habits_block, relation_info, memory_block = await asyncio.gather(
             self.build_expression_habits(chat_talking_prompt_half, target),
             self.build_relation_info(reply_data, chat_talking_prompt_half),
