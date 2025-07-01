@@ -158,7 +158,7 @@ class DefaultReplyer:
             model_config_1["weight"] = prob_first
             model_config_2["weight"] = 1.0 - prob_first
 
-        self.express_model_configs = [model_config_1, model_config_2]
+            self.express_model_configs = [model_config_1, model_config_2]
 
         if not self.express_model_configs:
             logger.warning("未找到有效的模型配置，回复生成可能会失败。")
