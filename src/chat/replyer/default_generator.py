@@ -394,7 +394,7 @@ class DefaultReplyer:
 
         return memory_block
 
-    async def _parse_reply_target(self, target_message: str) -> tuple:
+    def _parse_reply_target(self, target_message: str) -> tuple:
         sender = ""
         target = ""
         if ":" in target_message or "：" in target_message:
