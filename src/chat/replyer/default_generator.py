@@ -350,7 +350,7 @@ class DefaultReplyer:
         # 使用从处理器传来的选中表达方式
         # LLM模式：调用LLM选择5-10个，然后随机选5个
         selected_expressions = await expression_selector.select_suitable_expressions_llm(
-            self.chat_stream.stream_id, chat_history, max_num=12, min_num=2, target_message=target
+            self.chat_stream.stream_id, chat_history, max_num=8, min_num=2, target_message=target
         )
 
         if selected_expressions:
@@ -476,7 +476,7 @@ class DefaultReplyer:
         message_list_before_now = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_id,
             timestamp=time.time(),
-            limit=global_config.focus_chat.observation_context_size,
+            limit=global_config.chat.max_context_size,
         )
         chat_talking_prompt = build_readable_messages(
             message_list_before_now,
@@ -491,7 +491,7 @@ class DefaultReplyer:
         message_list_before_now_half = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_id,
             timestamp=time.time(),
-            limit=int(global_config.focus_chat.observation_context_size * 0.5),
+            limit=int(global_config.chat.max_context_size * 0.5),
         )
         chat_talking_prompt_half = build_readable_messages(
             message_list_before_now_half,
@@ -654,7 +654,7 @@ class DefaultReplyer:
         message_list_before_now = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_stream.stream_id,
             timestamp=time.time(),
-            limit=global_config.focus_chat.observation_context_size,
+            limit=global_config.chat.max_context_size,
         )
         chat_talking_prompt = build_readable_messages(
             message_list_before_now,

@@ -582,7 +582,7 @@ class HeartFChatting:
             async def run_with_timeout(proc=processor):
                 return await asyncio.wait_for(
                     proc.process_info(observations=observations),
-                    timeout=global_config.focus_chat.processor_max_time,
+                    30
                 )
 
             task = asyncio.create_task(run_with_timeout())
@@ -613,9 +613,9 @@ class HeartFChatting:
                     processor_time_costs[processor_name] = duration_since_parallel_start
                 except asyncio.TimeoutError:
                     logger.info(
-                        f"{self.log_prefix} 处理器 {processor_name} 超时（>{global_config.focus_chat.processor_max_time}s），已跳过"
+                        f"{self.log_prefix} 处理器 {processor_name} 超时（>30s），已跳过"
                     )
-                    processor_time_costs[processor_name] = global_config.focus_chat.processor_max_time
+                    processor_time_costs[processor_name] = 30
                 except Exception as e:
                     logger.error(
                         f"{self.log_prefix} 处理器 {processor_name} 执行失败，耗时 (自并行开始): {duration_since_parallel_start:.2f}秒. 错误: {e}",
@@ -672,7 +672,7 @@ class HeartFChatting:
                 try:
                     result = await asyncio.wait_for(
                         proc.process_info(observations=observations, action_type=action_type, action_data=action_data),
-                        timeout=global_config.focus_chat.processor_max_time,
+                        30
                     )
                     end_time = time.time()
                     post_processor_time_costs[name] = end_time - start_time
@@ -721,7 +721,7 @@ class HeartFChatting:
                     if task_type == "processor":
                         post_processor_time_costs[task_name] = elapsed_time
                         logger.warning(
-                            f"{self.log_prefix} 后期处理器 {task_name} 超时（>{global_config.focus_chat.processor_max_time}s），已跳过，耗时: {elapsed_time:.3f}秒"
+                            f"{self.log_prefix} 后期处理器 {task_name} 超时（>30s），已跳过，耗时: {elapsed_time:.3f}秒"
                         )
                 except Exception as e:
                     # 对于异常任务，记录已用时间
