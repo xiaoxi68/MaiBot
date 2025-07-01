@@ -1,7 +1,7 @@
 import asyncio
 import time
 from random import random
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional
 import os
 import pickle
 from maim_message import UserInfo, Seg
@@ -462,7 +462,7 @@ class NormalChat:
                         if self.priority_manager:
                             self.priority_manager.add_message(message, interest_value)
                             self.interest_dict.pop(msg_id, None)
-            except Exception as e:
+            except Exception:
                 logger.error(
                     f"[{self.stream_name}] 优先级聊天循环添加消息时出现错误: {traceback.format_exc()}", exc_info=True
                 )
@@ -502,7 +502,7 @@ class NormalChat:
             except asyncio.CancelledError:
                 logger.info(f"[{self.stream_name}] 优先级聊天循环被取消。")
                 break
-            except Exception as e:
+            except Exception:
                 logger.error(f"[{self.stream_name}] 优先级聊天循环出现错误: {traceback.format_exc()}", exc_info=True)
                 # 出现错误时，等待更长时间避免频繁报错
                 await asyncio.sleep(10)
