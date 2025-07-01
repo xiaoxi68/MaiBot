@@ -391,7 +391,7 @@ class DefaultReplyer:
 
     async def build_memory_block(self, chat_history, target):
         running_memorys = await self.memory_activator.activate_memory_with_chat_history(
-            chat_id=self.chat_stream.stream_id, target_message=target, chat_history_prompt=chat_history
+            target_message=target, chat_history_prompt=chat_history
         )
 
         if running_memorys:
