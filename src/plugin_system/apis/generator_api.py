@@ -8,6 +8,7 @@
     success, reply_set = await generator_api.generate_reply(chat_stream, action_data, reasoning)
 """
 
+import traceback
 from typing import Tuple, Any, Dict, List, Optional
 from src.common.logger import get_logger
 from src.chat.replyer.default_generator import DefaultReplyer
@@ -50,6 +51,7 @@ def get_replyer(
         )
     except Exception as e:
         logger.error(f"[GeneratorAPI] 获取回复器时发生意外错误: {e}", exc_info=True)
+        traceback.print_exc()
         return None
 
 

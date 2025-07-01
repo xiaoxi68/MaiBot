@@ -314,15 +314,7 @@ class FocusChatConfig(ConfigBase):
     consecutive_replies: float = 1
     """连续回复能力，值越高，麦麦连续回复的概率越高"""
 
-
-@dataclass
-class FocusChatProcessorConfig(ConfigBase):
-    """专注聊天处理器配置类"""
-
-    tool_use_processor: bool = True
-    """是否启用工具使用处理器"""
-
-    working_memory_processor: bool = True
+    working_memory_processor: bool = False
     """是否启用工作记忆处理器"""
 
 
