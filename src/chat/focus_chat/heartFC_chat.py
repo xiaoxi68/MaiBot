@@ -13,7 +13,8 @@ from src.chat.heart_flow.observation.observation import Observation
 from src.chat.focus_chat.heartFC_Cycleinfo import CycleDetail
 from src.chat.focus_chat.info.info_base import InfoBase
 from src.chat.focus_chat.info_processors.chattinginfo_processor import ChattingInfoProcessor
-from src.chat.focus_chat.info_processors.relationship_processor import PersonImpressionpProcessor
+from src.chat.focus_chat.info_processors.relationship_processor import RelationshipBuildProcessor
+from src.chat.focus_chat.info_processors.real_time_info_processor import RealTimeInfoProcessor
 from src.chat.focus_chat.info_processors.working_memory_processor import WorkingMemoryProcessor
 from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
 from src.chat.heart_flow.observation.working_observation import WorkingMemoryObservation
@@ -56,7 +57,8 @@ PROCESSOR_CLASSES = {
 # 定义后期处理器映射：在规划后、动作执行前运行的处理器
 POST_PLANNING_PROCESSOR_CLASSES = {
     "ToolProcessor": (ToolProcessor, "tool_use_processor"),
-    "PersonImpressionpProcessor": (PersonImpressionpProcessor, "person_impression_processor"),
+    "RelationshipBuildProcessor": (RelationshipBuildProcessor, "relationship_build_processor"),
+    "RealTimeInfoProcessor": (RealTimeInfoProcessor, "real_time_info_processor"),
 }
 
 logger = get_logger("hfc")  # Logger Name Changed
@@ -132,11 +134,20 @@ class HeartFChatting:
         # 初始化后期处理器（规划后执行的处理器）
         self.enabled_post_planning_processor_names = []
         for proc_name, (_proc_class, config_key) in POST_PLANNING_PROCESSOR_CLASSES.items():
-            # 对于关系处理器，需要同时检查两个配置项
-            if proc_name == "PersonImpressionpProcessor":
-                if global_config.relationship.enable_relationship and getattr(
-                    config_processor_settings, config_key, True
-                ):
+            # 对于关系相关处理器，需要同时检查关系配置项
+            if proc_name in ["RelationshipBuildProcessor", "RealTimeInfoProcessor"]:
+                # 检查全局关系开关
+                if not global_config.relationship.enable_relationship:
+                    continue
+                    
+                # 检查处理器特定配置，同时支持向后兼容
+                processor_enabled = getattr(config_processor_settings, config_key, True)
+                
+                # 向后兼容：如果旧的person_impression_processor为True，则启用两个新处理器
+                if not processor_enabled and getattr(config_processor_settings, "person_impression_processor", True):
+                    processor_enabled = True
+                    
+                if processor_enabled:
                     self.enabled_post_planning_processor_names.append(proc_name)
             else:
                 # 其他后期处理器的逻辑
@@ -258,7 +269,8 @@ class HeartFChatting:
                 # 根据处理器类名判断是否需要 subheartflow_id
                 if name in [
                     "ToolProcessor",
-                    "PersonImpressionpProcessor",
+                    "RelationshipBuildProcessor",
+                    "RealTimeInfoProcessor",
                     "ExpressionSelectorProcessor",
                 ]:
                     self.post_planning_processors.append(processor_actual_class(subheartflow_id=self.stream_id))

@@ -329,7 +329,13 @@ class FocusChatProcessorConfig(ConfigBase):
     """专注聊天处理器配置类"""
 
     person_impression_processor: bool = True
-    """是否启用关系识别处理器"""
+    """是否启用关系识别处理器（已废弃，为了兼容性保留）"""
+
+    relationship_build_processor: bool = True
+    """是否启用关系构建处理器"""
+
+    real_time_info_processor: bool = True
+    """是否启用实时信息提取处理器"""
 
     tool_use_processor: bool = True
     """是否启用工具使用处理器"""
