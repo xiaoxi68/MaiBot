@@ -263,7 +263,6 @@ def _build_readable_messages_internal(
         # 处理图片ID
         if show_pic:
             content = process_pic_ids(content)
-            
 
         # 检查必要信息是否存在
         if not all([platform, user_id, timestamp is not None]):
@@ -632,10 +631,17 @@ def build_readable_messages(
             truncate,
             pic_id_mapping,
             pic_counter,
-            show_pic=show_pic
+            show_pic=show_pic,
         )
         formatted_after, _, pic_id_mapping, _ = _build_readable_messages_internal(
-            messages_after_mark, replace_bot_name, merge_messages, timestamp_mode, False, pic_id_mapping, pic_counter, show_pic=show_pic
+            messages_after_mark,
+            replace_bot_name,
+            merge_messages,
+            timestamp_mode,
+            False,
+            pic_id_mapping,
+            pic_counter,
+            show_pic=show_pic,
         )
 
         read_mark_line = "\n--- 以上消息是你已经看过，请关注以下未读的新消息---\n"

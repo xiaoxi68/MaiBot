@@ -1,10 +1,8 @@
-
 from src.config.config import global_config
 from src.common.logger import get_logger
 from src.individuality.individuality import get_individuality
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_before_timestamp_with_chat
-from src.chat.message_receive.message import MessageRecv
 import time
 from src.chat.utils.utils import get_recent_group_speaker
 from src.chat.memory_system.Hippocampus import hippocampus_manager
@@ -22,7 +20,6 @@ def init_prompt():
     Prompt("和{sender_name}私聊", "chat_target_private2")
 
     Prompt("\n你有以下这些**知识**：\n{prompt_info}\n请你**记住上面的知识**，之后可能会用到。\n", "knowledge_prompt")
-
 
     Prompt(
         """
@@ -79,7 +76,6 @@ class PromptBuilder:
                 relationship_manager = get_relationship_manager()
                 relation_prompt += await relationship_manager.build_relationship_info(person)
 
-
         memory_prompt = ""
         related_memory = await hippocampus_manager.get_memory_from_text(
             text=message_txt, max_memory_num=2, max_memory_length=2, max_depth=3, fast_retrieval=False
@@ -98,23 +94,20 @@ class PromptBuilder:
             timestamp=time.time(),
             limit=100,
         )
-        
-        
+
         talk_type = message.message_info.platform + ":" + message.chat_stream.user_info.user_id
         print(f"talk_type: {talk_type}")
-        
 
         # 分别筛选核心对话和背景对话
         core_dialogue_list = []
         background_dialogue_list = []
         bot_id = str(global_config.bot.qq_account)
         target_user_id = str(message.chat_stream.user_info.user_id)
-        
 
         for msg_dict in message_list_before_now:
             try:
                 # 直接通过字典访问
-                msg_user_id = str(msg_dict.get('user_id'))
+                msg_user_id = str(msg_dict.get("user_id"))
                 if msg_user_id == bot_id:
                     if msg_dict.get("reply_to") and talk_type == msg_dict.get("reply_to"):
                         print(f"reply: {msg_dict.get('reply_to')}")
@@ -127,24 +120,24 @@ class PromptBuilder:
                     background_dialogue_list.append(msg_dict)
             except Exception as e:
                 logger.error(f"无法处理历史消息记录: {msg_dict}, 错误: {e}")
-                
+
         if background_dialogue_list:
             latest_25_msgs = background_dialogue_list[-25:]
             background_dialogue_prompt = build_readable_messages(
                 latest_25_msgs,
                 merge_messages=True,
-                timestamp_mode = "normal_no_YMD",
-                show_pic = False,
+                timestamp_mode="normal_no_YMD",
+                show_pic=False,
             )
             background_dialogue_prompt = f"这是其他用户的发言：\n{background_dialogue_prompt}"
         else:
             background_dialogue_prompt = ""
-                
+
         # 分别获取最新50条和最新25条（从message_list_before_now截取）
         core_dialogue_list = core_dialogue_list[-50:]
-        
+
         first_msg = core_dialogue_list[0]
-        start_speaking_user_id = first_msg.get('user_id')
+        start_speaking_user_id = first_msg.get("user_id")
         if start_speaking_user_id == bot_id:
             last_speaking_user_id = bot_id
             msg_seg_str = "你的发言：\n"
@@ -152,30 +145,33 @@ class PromptBuilder:
             start_speaking_user_id = target_user_id
             last_speaking_user_id = start_speaking_user_id
             msg_seg_str = "对方的发言：\n"
-        
+
         msg_seg_str += f"{time.strftime('%H:%M:%S', time.localtime(first_msg.get('time')))}: {first_msg.get('processed_plain_text')}\n"
 
         all_msg_seg_list = []
         for msg in core_dialogue_list[1:]:
-            speaker = msg.get('user_id')
+            speaker = msg.get("user_id")
             if speaker == last_speaking_user_id:
-                #还是同一个人讲话
-                msg_seg_str += f"{time.strftime('%H:%M:%S', time.localtime(msg.get('time')))}: {msg.get('processed_plain_text')}\n"
+                # 还是同一个人讲话
+                msg_seg_str += (
+                    f"{time.strftime('%H:%M:%S', time.localtime(msg.get('time')))}: {msg.get('processed_plain_text')}\n"
+                )
             else:
-                #换人了
+                # 换人了
                 msg_seg_str = f"{msg_seg_str}\n"
                 all_msg_seg_list.append(msg_seg_str)
-                
+
                 if speaker == bot_id:
                     msg_seg_str = "你的发言：\n"
                 else:
                     msg_seg_str = "对方的发言：\n"
-                
-                msg_seg_str += f"{time.strftime('%H:%M:%S', time.localtime(msg.get('time')))}: {msg.get('processed_plain_text')}\n"
-                last_speaking_user_id = speaker
-            
-        all_msg_seg_list.append(msg_seg_str)
 
+                msg_seg_str += (
+                    f"{time.strftime('%H:%M:%S', time.localtime(msg.get('time')))}: {msg.get('processed_plain_text')}\n"
+                )
+                last_speaking_user_id = speaker
+
+        all_msg_seg_list.append(msg_seg_str)
 
         core_msg_str = ""
         for msg in all_msg_seg_list:

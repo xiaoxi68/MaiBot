@@ -1,21 +1,10 @@
-from src.chat.memory_system.Hippocampus import hippocampus_manager
-from src.config.config import global_config
 from src.chat.message_receive.message import MessageRecv
 from src.chat.message_receive.storage import MessageStorage
-from src.chat.heart_flow.heartflow import heartflow
-from src.chat.message_receive.chat_stream import get_chat_manager, ChatStream
+from src.chat.message_receive.chat_stream import get_chat_manager
 from src.chat.utils.utils import is_mentioned_bot_in_message
-from src.chat.utils.timer_calculator import Timer
 from src.common.logger import get_logger
 from .s4u_chat import get_s4u_chat_manager
 
-import math
-import re
-import traceback
-from typing import Optional, Tuple
-from maim_message import UserInfo
-
-from src.person_info.relationship_manager import get_relationship_manager
 
 # from ..message_receive.message_buffer import message_buffer
 
@@ -44,7 +33,7 @@ class S4UMessageProcessor:
         """
 
         target_user_id_list = ["1026294844", "964959351"]
-        
+
         # 1. 消息解析与初始化
         groupinfo = message.message_info.group_info
         userinfo = message.message_info.user_info
@@ -60,7 +49,7 @@ class S4UMessageProcessor:
 
         is_mentioned = is_mentioned_bot_in_message(message)
         s4u_chat = get_s4u_chat_manager().get_or_create_chat(chat)
-        
+
         if userinfo.user_id in target_user_id_list:
             await s4u_chat.response(message, is_mentioned=is_mentioned, interested_rate=1.0)
         else:
@@ -68,4 +57,3 @@ class S4UMessageProcessor:
 
         # 7. 日志记录
         logger.info(f"[S4U]{userinfo.user_nickname}:{message.processed_plain_text}")
-

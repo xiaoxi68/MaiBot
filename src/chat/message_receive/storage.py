@@ -35,11 +35,11 @@ class MessageStorage:
                     filtered_display_message = re.sub(pattern, "", display_message, flags=re.DOTALL)
                 else:
                     filtered_display_message = ""
-                    
+
                 reply_to = message.reply_to
             else:
                 filtered_display_message = ""
-                
+
                 reply_to = ""
 
             chat_info_dict = chat_stream.to_dict()

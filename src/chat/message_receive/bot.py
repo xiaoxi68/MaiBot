@@ -180,14 +180,12 @@ class ChatBot:
                 # 如果在私聊中
                 if group_info is None:
                     logger.debug("检测到私聊消息")
-                    
+
                     if ENABLE_S4U_CHAT:
                         logger.debug("进入S4U私聊处理流程")
                         await self.s4u_message_processor.process_message(message)
                         return
-                    
-                    
-                    
+
                     if global_config.experimental.pfc_chatting:
                         logger.debug("进入PFC私聊处理流程")
                         # 创建聊天流
@@ -200,13 +198,11 @@ class ChatBot:
                         await self.heartflow_message_receiver.process_message(message)
                 # 群聊默认进入心流消息处理逻辑
                 else:
-                    
                     if ENABLE_S4U_CHAT:
                         logger.debug("进入S4U私聊处理流程")
                         await self.s4u_message_processor.process_message(message)
                         return
-                    
-                    
+
                     logger.debug(f"检测到群聊消息，群ID: {group_info.group_id}")
                     await self.heartflow_message_receiver.process_message(message)
 

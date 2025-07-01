@@ -126,7 +126,7 @@ class Messages(BaseModel):
     time = DoubleField()  # 消息时间戳
 
     chat_id = TextField(index=True)  # 对应的 ChatStreams stream_id
-    
+
     reply_to = TextField(null=True)
 
     # 从 chat_info 扁平化而来的字段

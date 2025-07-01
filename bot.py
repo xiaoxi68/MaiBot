@@ -326,7 +326,6 @@ if __name__ == "__main__":
                 # Wait for all tasks to complete (which they won't, normally)
                 loop.run_until_complete(main_tasks)
 
-
         except KeyboardInterrupt:
             # loop.run_until_complete(get_global_api().stop())
             logger.warning("收到中断信号，正在优雅关闭...")
