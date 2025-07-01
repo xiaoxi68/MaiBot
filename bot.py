@@ -315,7 +315,6 @@ if __name__ == "__main__":
             # We can run console_input_loop concurrently.
             main_tasks = loop.create_task(main_system.schedule_tasks())
             console_task = loop.create_task(console_input_loop(main_system))
-
             # Wait for all tasks to complete (which they won't, normally)
             loop.run_until_complete(asyncio.gather(main_tasks, console_task))
 
