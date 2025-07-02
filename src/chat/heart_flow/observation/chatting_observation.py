@@ -67,7 +67,7 @@ class ChattingObservation(Observation):
         self.talking_message_str_truncate_short = ""
         self.name = global_config.bot.nickname
         self.nick_name = global_config.bot.alias_names
-        self.max_now_obs_len = global_config.focus_chat.observation_context_size
+        self.max_now_obs_len = global_config.chat.max_context_size
         self.overlap_len = global_config.focus_chat.compressed_length
         self.person_list = []
         self.compressor_prompt = ""
