@@ -808,7 +808,6 @@ class NormalChat:
         # 回复前处理
         thinking_id = await self._create_thinking_message(message)
 
-
         # 如果启用planner，预先修改可用actions（避免在并行任务中重复调用）
         available_actions = None
         if self.enable_planner:
@@ -821,19 +820,17 @@ class NormalChat:
                 logger.warning(f"[{self.stream_name}] 获取available_actions失败: {e}")
                 available_actions = None
 
-          # 定义并行执行的任务
-          async def generate_normal_response():
-              """生成普通回复"""
-              try:
-                  return await self.gpt.generate_response(
-                      message=message,
-                      available_actions=available_actions,
-                  )
-              except Exception as e:
-                  logger.error(f"[{self.stream_name}] 回复生成出现错误：{str(e)} {traceback.format_exc()}")
-                  return None
-
-
+        # 定义并行执行的任务
+        async def generate_normal_response():
+            """生成普通回复"""
+            try:
+                return await self.gpt.generate_response(
+                    message=message,
+                    available_actions=available_actions,
+                )
+            except Exception as e:
+                logger.error(f"[{self.stream_name}] 回复生成出现错误：{str(e)} {traceback.format_exc()}")
+                return None
 
         async def plan_and_execute_actions():
             """规划和执行额外动作"""
