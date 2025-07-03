@@ -302,22 +302,6 @@ class BasePlugin(ABC):
             return str(config["plugin"].get("config_version", ""))
         return ""  # 返回空字符串表示未找到
 
-    def _backup_config_file(self, config_file_path: str) -> str:
-        """备份配置文件"""
-        import shutil
-        import datetime
-
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_path = f"{config_file_path}.backup_{timestamp}"
-
-        try:
-            shutil.copy2(config_file_path, backup_path)
-            logger.info(f"{self.log_prefix} 配置文件已备份到: {backup_path}")
-            return backup_path
-        except Exception as e:
-            logger.error(f"{self.log_prefix} 备份配置文件失败: {e}")
-            return ""
-
     def _migrate_config_values(self, old_config: Dict[str, Any], new_config: Dict[str, Any]) -> Dict[str, Any]:
         """将旧配置值迁移到新配置结构中
 
@@ -496,9 +480,11 @@ class BasePlugin(ABC):
             logger.debug(f"{self.log_prefix} 插件未指定配置文件，跳过加载")
             return
 
-        config_dir = os.path.join("config", "plugins", self.plugin_name)
-        os.makedirs(config_dir, exist_ok=True)
-        config_file_path = os.path.join(config_dir, self.config_file_name)
+        if not self.plugin_dir:
+            logger.warning(f"{self.log_prefix} 插件目录未设置，无法加载配置文件")
+            return
+
+        config_file_path = os.path.join(self.plugin_dir, self.config_file_name)
 
         # 1. 配置文件不存在
         if not os.path.exists(config_file_path):
@@ -534,10 +520,6 @@ class BasePlugin(ABC):
         else:
             # 如果配置文件中没有版本信息，也触发更新
             logger.info(f"{self.log_prefix} 未在配置文件中找到版本信息，将执行更新...")
-
-        # 备份旧文件
-        backup_path = self._backup_config_file(config_file_path)
-        logger.info(f"{self.log_prefix} 已备份旧配置文件到: {backup_path}")
 
         # 生成新的配置结构
         new_config = self._generate_config_from_schema()
