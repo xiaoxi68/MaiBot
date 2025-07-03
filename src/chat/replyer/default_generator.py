@@ -257,7 +257,7 @@ class DefaultReplyer:
                     # 加权随机选择一个模型配置
                     selected_model_config = self._select_weighted_model_config()
                     logger.info(
-                        f"{self.log_prefix} 使用模型配置: {selected_model_config.get('model_name', 'N/A')} (权重: {selected_model_config.get('weight', 1.0)})"
+                        f"{self.log_prefix} 使用模型配置: {selected_model_config.get('name', 'N/A')} (权重: {selected_model_config.get('weight', 1.0)})"
                     )
 
                     express_model = LLMRequest(
