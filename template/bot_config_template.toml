@@ -116,7 +116,6 @@ ban_msgs_regex = [
 
 [normal_chat] #普通聊天
 #一般回复参数
-replyer_random_probability = 0.5 # 麦麦回答时选择首要模型的概率（与之相对的，次要模型的概率为1 - replyer_random_probability）
 emoji_chance = 0.2 # 麦麦一般回复时使用表情包的概率，设置为1让麦麦自己决定发不发
 thinking_timeout = 120 # 麦麦最长思考时间，超过这个时间的思考会放弃（往往是api反应太慢）
 
