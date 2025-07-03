@@ -8,14 +8,9 @@ from src.chat.utils.chat_message_builder import (
     get_person_id_list,
 )
 from src.chat.utils.prompt_builder import global_prompt_manager, Prompt
-from typing import Optional
-import difflib
-from src.chat.message_receive.message import MessageRecv
 from src.chat.heart_flow.observation.observation import Observation
 from src.common.logger import get_logger
 from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
-from src.chat.message_receive.chat_stream import get_chat_manager
-from src.person_info.person_info import get_person_info_manager
 
 logger = get_logger("observation")
 
@@ -107,7 +102,6 @@ class ChattingObservation(Observation):
 
     def get_observe_info(self, ids=None):
         return self.talking_message_str
-
 
     async def observe(self):
         # 自上一次观察的新消息
