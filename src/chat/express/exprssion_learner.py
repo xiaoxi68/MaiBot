@@ -74,9 +74,7 @@ class ExpressionLearner:
         )
         self.llm_model = None
 
-    def get_expression_by_chat_id(
-        self, chat_id: str
-    ) -> Tuple[List[Dict[str, str]], List[Dict[str, str]]]:
+    def get_expression_by_chat_id(self, chat_id: str) -> Tuple[List[Dict[str, str]], List[Dict[str, str]]]:
         """
         获取指定chat_id的style和grammar表达方式
         返回的每个表达方式字典中都包含了source_id, 用于后续的更新操作
@@ -109,7 +107,6 @@ class ExpressionLearner:
                         learnt_grammar_expressions.append(expr)
             except Exception as e:
                 logger.error(f"读取grammar表达方式失败: {e}")
-
 
         return learnt_style_expressions, learnt_grammar_expressions
 

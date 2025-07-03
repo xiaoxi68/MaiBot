@@ -170,7 +170,7 @@ class ExpressionSelector:
         """使用LLM选择适合的表达方式"""
 
         # 1. 获取35个随机表达方式（现在按权重抽取）
-        style_exprs, grammar_exprs= self.get_random_expressions(chat_id, 50, 0.5, 0.5)
+        style_exprs, grammar_exprs = self.get_random_expressions(chat_id, 50, 0.5, 0.5)
 
         # 2. 构建所有表达方式的索引和情境列表
         all_expressions = []
@@ -191,7 +191,6 @@ class ExpressionSelector:
                 expr_with_type["type"] = "grammar"
                 all_expressions.append(expr_with_type)
                 all_situations.append(f"{len(all_expressions)}.{expr['situation']}")
-
 
         if not all_expressions:
             logger.warning("没有找到可用的表达方式")

@@ -32,6 +32,7 @@ if ENABLE_S4U_CHAT:
 # 配置主程序日志格式
 logger = get_logger("chat")
 
+
 def _check_ban_words(text: str, chat: ChatStream, userinfo: UserInfo) -> bool:
     """检查消息是否包含过滤词
 
@@ -70,6 +71,7 @@ def _check_ban_regex(text: str, chat: ChatStream, userinfo: UserInfo) -> bool:
             logger.info(f"[正则表达式过滤]消息匹配到{pattern}，filtered")
             return True
     return False
+
 
 class ChatBot:
     def __init__(self):
@@ -179,15 +181,15 @@ class ChatBot:
                     return
 
             get_chat_manager().register_message(message)
-            
+
             chat = await get_chat_manager().get_or_create_stream(
                 platform=message.message_info.platform,
                 user_info=user_info,
                 group_info=group_info,
             )
-            
+
             message.update_chat_stream(chat)
-            
+
             # 过滤检查
             if _check_ban_words(message.processed_plain_text, chat, user_info) or _check_ban_regex(
                 message.raw_message, chat, user_info

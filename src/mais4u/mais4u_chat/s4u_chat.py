@@ -188,7 +188,7 @@ class S4UChat:
             f"@{alias}" in message.processed_plain_text for alias in global_config.bot.alias_names
         ):
             score += self.at_bot_priority_bonus
-        
+
         # 加上用户的固有兴趣分
         score += self._get_interest_score(message.message_info.user_info.user_id)
         return score
@@ -196,7 +196,7 @@ class S4UChat:
     async def add_message(self, message: MessageRecv) -> None:
         """根据VIP状态和中断逻辑将消息放入相应队列。"""
         is_vip = self._is_vip(message)
-        new_priority = self._get_message_priority(message)
+        self._get_message_priority(message)
 
         should_interrupt = False
         if self._current_generation_task and not self._current_generation_task.done():
@@ -236,7 +236,7 @@ class S4UChat:
         # asyncio.PriorityQueue 是最小堆，所以我们存入分数的相反数
         # 这样，原始分数越高的消息，在队列中的优先级数字越小，越靠前
         item = (-new_priority_score, self._entry_counter, time.time(), message)
-        
+
         if is_vip:
             await self._vip_queue.put(item)
             logger.info(f"[{self.stream_name}] VIP message added to queue.")
@@ -245,7 +245,9 @@ class S4UChat:
             if self._normal_queue.qsize() >= self.normal_queue_max_size:
                 # 队列已满，简单忽略新消息
                 # 更复杂的逻辑（如替换掉队列中优先级最低的）对于 asyncio.PriorityQueue 来说实现复杂
-                logger.debug(f"[{self.stream_name}] Normal queue is full, ignoring new message from {message.message_info.user_info.user_id}")
+                logger.debug(
+                    f"[{self.stream_name}] Normal queue is full, ignoring new message from {message.message_info.user_info.user_id}"
+                )
                 return
 
             await self._normal_queue.put(item)

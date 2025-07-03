@@ -88,9 +88,6 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool]:
     return interested_rate, is_mentioned
 
 
-
-
-
 class HeartFCMessageReceiver:
     """心流处理器，负责处理接收到的消息并计算兴趣度"""
 

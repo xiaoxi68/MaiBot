@@ -424,7 +424,7 @@ class DefaultReplyer:
         Returns:
             str: 工具信息字符串
         """
-        
+
         if not reply_data:
             return ""
 
