@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Dict, List, Type, Optional, Any, Union
 import os
+import inspect
 import toml
 import json
 from src.common.logger import get_logger
@@ -291,15 +292,31 @@ class BasePlugin(ABC):
         if "plugin" in self.config_schema and isinstance(self.config_schema["plugin"], dict):
             config_version_field = self.config_schema["plugin"].get("config_version")
             if isinstance(config_version_field, ConfigField):
-                return str(config_version_field.default)
-        return ""
+                return config_version_field.default
+        return "1.0.0"
 
     def _get_current_config_version(self, config: Dict[str, Any]) -> str:
-        """从已加载的配置中获取当前版本号"""
-        # 兼容旧版，尝试从'plugin'或'Plugin'节获取
-        if "plugin" in config and isinstance(config.get("plugin"), dict):
-            return str(config["plugin"].get("config_version", ""))
-        return ""  # 返回空字符串表示未找到
+        """从配置文件中获取当前版本号"""
+        if "plugin" in config and "config_version" in config["plugin"]:
+            return str(config["plugin"]["config_version"])
+        # 如果没有config_version字段，视为最早的版本
+        return "0.0.0"
+
+    def _backup_config_file(self, config_file_path: str) -> str:
+        """备份配置文件"""
+        import shutil
+        import datetime
+
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_path = f"{config_file_path}.backup_{timestamp}"
+
+        try:
+            shutil.copy2(config_file_path, backup_path)
+            logger.info(f"{self.log_prefix} 配置文件已备份到: {backup_path}")
+            return backup_path
+        except Exception as e:
+            logger.error(f"{self.log_prefix} 备份配置文件失败: {e}")
+            return ""
 
     def _migrate_config_values(self, old_config: Dict[str, Any], new_config: Dict[str, Any]) -> Dict[str, Any]:
         """将旧配置值迁移到新配置结构中
@@ -363,23 +380,6 @@ class BasePlugin(ABC):
         for section_name in old_config.keys():
             if section_name not in migrated_config:
                 logger.warning(f"{self.log_prefix} 配置节 {section_name} 在新版本中已被移除")
-
-        return migrated_config
-
-    def _ensure_config_completeness(self, existing_config: Dict[str, Any]) -> Dict[str, Any]:
-        """确保现有配置的完整性，用schema中的默认值填充缺失的键"""
-        if not self.config_schema:
-            return existing_config
-
-        # 创建一个基于schema的完整配置作为参考
-        full_config = self._generate_config_from_schema()
-        migrated_config = self._migrate_config_values(existing_config, full_config)
-
-        # 检查是否有任何值被修改过（即，有缺失的键被填充）
-        if migrated_config != existing_config:
-            logger.info(f"{self.log_prefix} 检测到配置文件中缺少部分字段，已使用默认值补全。")
-            # 注意：这里可以选择是否要自动写回文件，目前只在内存中更新
-            # self._save_config_to_file(migrated_config, config_file_path)
 
         return migrated_config
 
@@ -474,63 +474,86 @@ class BasePlugin(ABC):
             logger.error(f"{self.log_prefix} 保存配置文件失败: {e}", exc_info=True)
 
     def _load_plugin_config(self):
-        """加载插件配置文件，并处理版本迁移"""
+        """加载插件配置文件，支持版本检查和自动迁移"""
         if not self.config_file_name:
-            logger.debug(f"{self.log_prefix} 插件未指定配置文件，跳过加载")
+            logger.debug(f"{self.log_prefix} 未指定配置文件，跳过加载")
             return
 
-        if not self.plugin_dir:
-            logger.warning(f"{self.log_prefix} 插件目录未设置，无法加载配置文件")
-            return
-
-        config_file_path = os.path.join(self.plugin_dir, self.config_file_name)
-
-        # 1. 配置文件不存在
-        if not os.path.exists(config_file_path):
-            logger.info(f"{self.log_prefix} 未找到配置文件，将创建默认配置: {config_file_path}")
-            self.config = self._generate_config_from_schema()
-            self._save_config_to_file(self.config, config_file_path)
-            return
-
-        # 2. 配置文件存在，加载并检查版本
-        try:
-            with open(config_file_path, "r", encoding="utf-8") as f:
-                loaded_config = toml.load(f)
-        except Exception as e:
-            logger.error(f"{self.log_prefix} 加载配置文件失败: {e}，将使用默认配置")
-            self.config = self._generate_config_from_schema()
-            return
-
-        expected_version = self._get_expected_config_version()
-        current_version = self._get_current_config_version(loaded_config)
-
-        # 3. 版本匹配，直接加载
-        # 如果版本匹配，或者没有可预期的版本（例如插件未定义），则直接加载
-        if not expected_version or (current_version and expected_version == current_version):
-            logger.debug(f"{self.log_prefix} 配置文件版本匹配 (v{current_version})，直接加载")
-            self.config = self._ensure_config_completeness(loaded_config)
-            return
-
-        # 4. 版本不匹配或当前版本未知，执行迁移
-        if current_version:
-            logger.info(
-                f"{self.log_prefix} 配置文件版本不匹配 (v{current_version} -> v{expected_version})，开始迁移..."
-            )
+        # 优先使用传入的插件目录路径
+        if self.plugin_dir:
+            plugin_dir = self.plugin_dir
         else:
-            # 如果配置文件中没有版本信息，也触发更新
-            logger.info(f"{self.log_prefix} 未在配置文件中找到版本信息，将执行更新...")
+            # fallback：尝试从类的模块信息获取路径
+            try:
+                plugin_module_path = inspect.getfile(self.__class__)
+                plugin_dir = os.path.dirname(plugin_module_path)
+            except (TypeError, OSError):
+                # 最后的fallback：从模块的__file__属性获取
+                module = inspect.getmodule(self.__class__)
+                if module and hasattr(module, "__file__") and module.__file__:
+                    plugin_dir = os.path.dirname(module.__file__)
+                else:
+                    logger.warning(f"{self.log_prefix} 无法获取插件目录路径，跳过配置加载")
+                    return
 
-        # 生成新的配置结构
-        new_config = self._generate_config_from_schema()
+        config_file_path = os.path.join(plugin_dir, self.config_file_name)
 
-        # 迁移旧的配置值
-        migrated_config = self._migrate_config_values(loaded_config, new_config)
+        # 如果配置文件不存在，生成默认配置
+        if not os.path.exists(config_file_path):
+            logger.info(f"{self.log_prefix} 配置文件 {config_file_path} 不存在，将生成默认配置。")
+            self._generate_and_save_default_config(config_file_path)
 
-        # 保存新的配置文件
-        self._save_config_to_file(migrated_config, config_file_path)
-        logger.info(f"{self.log_prefix} 配置文件更新完成！")
+        if not os.path.exists(config_file_path):
+            logger.warning(f"{self.log_prefix} 配置文件 {config_file_path} 不存在且无法生成。")
+            return
 
-        self.config = migrated_config
+        file_ext = os.path.splitext(self.config_file_name)[1].lower()
+
+        if file_ext == ".toml":
+            # 加载现有配置
+            with open(config_file_path, "r", encoding="utf-8") as f:
+                existing_config = toml.load(f) or {}
+
+            # 检查配置版本
+            current_version = self._get_current_config_version(existing_config)
+
+            # 如果配置文件没有版本信息，跳过版本检查
+            if current_version == "0.0.0":
+                logger.debug(f"{self.log_prefix} 配置文件无版本信息，跳过版本检查")
+                self.config = existing_config
+            else:
+                expected_version = self._get_expected_config_version()
+
+                if current_version != expected_version:
+                    logger.info(
+                        f"{self.log_prefix} 检测到配置版本需要更新: 当前=v{current_version}, 期望=v{expected_version}"
+                    )
+
+                    # 生成新的默认配置结构
+                    new_config_structure = self._generate_config_from_schema()
+
+                    # 迁移旧配置值到新结构
+                    migrated_config = self._migrate_config_values(existing_config, new_config_structure)
+
+                    # 保存迁移后的配置
+                    self._save_config_to_file(migrated_config, config_file_path)
+
+                    logger.info(f"{self.log_prefix} 配置文件已从 v{current_version} 更新到 v{expected_version}")
+
+                    self.config = migrated_config
+                else:
+                    logger.debug(f"{self.log_prefix} 配置版本匹配 (v{current_version})，直接加载")
+                    self.config = existing_config
+
+            logger.debug(f"{self.log_prefix} 配置已从 {config_file_path} 加载")
+
+            # 从配置中更新 enable_plugin
+            if "plugin" in self.config and "enabled" in self.config["plugin"]:
+                self.enable_plugin = self.config["plugin"]["enabled"]
+                logger.debug(f"{self.log_prefix} 从配置更新插件启用状态: {self.enable_plugin}")
+        else:
+            logger.warning(f"{self.log_prefix} 不支持的配置文件格式: {file_ext}，仅支持 .toml")
+            self.config = {}
 
     @abstractmethod
     def get_plugin_components(self) -> List[tuple[ComponentInfo, Type]]:
