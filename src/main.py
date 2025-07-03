@@ -205,7 +205,7 @@ class MainSystem:
         expression_learner = get_expression_learner()
         while True:
             await asyncio.sleep(global_config.expression.learning_interval)
-            if global_config.expression.enable_expression_learning:
+            if global_config.expression.enable_expression_learning and global_config.expression.enable_expression:
                 logger.info("[表达方式学习] 开始学习表达方式...")
                 await expression_learner.learn_and_store_expression()
                 logger.info("[表达方式学习] 表达方式学习完成")

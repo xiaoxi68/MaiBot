@@ -414,11 +414,11 @@ class ExpressionLearner:
 init_prompt()
 
 
-if global_config.expression.enable_expression:
-    expression_learner = None
 
-    def get_expression_learner():
-        global expression_learner
-        if expression_learner is None:
-            expression_learner = ExpressionLearner()
-        return expression_learner
+expression_learner = None
+
+def get_expression_learner():
+    global expression_learner
+    if expression_learner is None:
+        expression_learner = ExpressionLearner()
+    return expression_learner
