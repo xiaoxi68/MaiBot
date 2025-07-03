@@ -62,7 +62,10 @@ class SubHeartflow:
         """异步初始化方法，创建兴趣流并确定聊天类型"""
 
         # 根据配置决定初始状态
-        if global_config.chat.chat_mode == "focus":
+        if not self.is_group_chat:
+            logger.debug(f"{self.log_prefix} 检测到是私聊，将直接尝试进入 FOCUSED 状态。")
+            await self.change_chat_state(ChatState.FOCUSED)
+        elif global_config.chat.chat_mode == "focus":
             logger.debug(f"{self.log_prefix} 配置为 focus 模式，将直接尝试进入 FOCUSED 状态。")
             await self.change_chat_state(ChatState.FOCUSED)
         else:  # "auto" 或其他模式保持原有逻辑或默认为 NORMAL

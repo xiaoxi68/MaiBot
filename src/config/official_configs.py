@@ -322,6 +322,9 @@ class FocusChatConfig(ConfigBase):
 class ExpressionConfig(ConfigBase):
     """表达配置类"""
 
+    enable_expression: bool = True
+    """是否启用表达方式"""
+    
     expression_style: str = ""
     """表达风格"""
 

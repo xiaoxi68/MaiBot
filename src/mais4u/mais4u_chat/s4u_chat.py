@@ -155,13 +155,18 @@ class S4UChat:
         self._vip_queue = asyncio.PriorityQueue()
         self._normal_queue = asyncio.PriorityQueue()
         
+        # 优先级管理配置
+        self.normal_queue_max_size = 20  # 普通队列最大容量，可以后续移到配置文件
+        self.interest_dict = {}  # 用户兴趣分字典，可以后续移到配置文件. e.g. {"user_id": 5.0}
+        self.at_bot_priority_bonus = 100.0 # @机器人时的额外优先分
+
         self._entry_counter = 0  # 保证FIFO的全局计数器
         self._new_message_event = asyncio.Event() # 用于唤醒处理器
 
         self._processing_task = asyncio.create_task(self._message_processor())
         self._current_generation_task: Optional[asyncio.Task] = None
-        # 当前消息的元数据：(队列类型, 优先级, 计数器, 消息对象)
-        self._current_message_being_replied: Optional[Tuple[str, int, int, MessageRecv]] = None
+        # 当前消息的元数据：(队列类型, 优先级分数, 计数器, 消息对象)
+        self._current_message_being_replied: Optional[Tuple[str, float, int, MessageRecv]] = None
 
         self._is_replying = False
         self.gpt = S4UStreamGenerator()
@@ -174,23 +179,35 @@ class S4UChat:
         vip_user_ids = [""]
         return message.message_info.user_info.user_id in vip_user_ids
 
-    def _get_message_priority(self, message: MessageRecv) -> int:
-        """为消息分配优先级。数字越小，优先级越高。"""
+    def _get_interest_score(self, user_id: str) -> float:
+        """获取用户的兴趣分，默认为1.0"""
+        return self.interest_dict.get(user_id, 1.0)
+
+    def _calculate_base_priority_score(self, message: MessageRecv) -> float:
+        """
+        为消息计算基础优先级分数。分数越高，优先级越高。
+        """
+        score = 0.0
+        # 如果消息 @ 了机器人，则增加一个很大的分数
         if f"@{global_config.bot.nickname}" in message.processed_plain_text or any(
             f"@{alias}" in message.processed_plain_text for alias in global_config.bot.alias_names
         ):
-            return 0
-        return 1
+            score += self.at_bot_priority_bonus
+        
+        # 加上用户的固有兴趣分
+        score += self._get_interest_score(message.message_info.user_info.user_id)
+        return score
 
     async def add_message(self, message: MessageRecv) -> None:
         """根据VIP状态和中断逻辑将消息放入相应队列。"""
         is_vip = self._is_vip(message)
-        new_priority = self._get_message_priority(message)
+        # 优先级分数越高，优先级越高。
+        new_priority_score = self._calculate_base_priority_score(message)
         
         should_interrupt = False
         if self._current_generation_task and not self._current_generation_task.done():
             if self._current_message_being_replied:
-                current_queue, current_priority, _, current_msg = self._current_message_being_replied
+                current_queue, current_priority_score, _, current_msg = self._current_message_being_replied
                 
                 # 规则：VIP从不被打断
                 if current_queue == "vip":
@@ -207,11 +224,11 @@ class S4UChat:
                         new_sender_id = message.message_info.user_info.user_id
                         current_sender_id = current_msg.message_info.user_info.user_id
                         # 新消息优先级更高
-                        if new_priority < current_priority:
+                        if new_priority_score > current_priority_score:
                             should_interrupt = True
                             logger.info(f"[{self.stream_name}] New normal message has higher priority, interrupting.")
-                        # 同用户，同级或更高级
-                        elif new_sender_id == current_sender_id and new_priority <= current_priority:
+                        # 同用户，新消息的优先级不能更低
+                        elif new_sender_id == current_sender_id and new_priority_score >= current_priority_score:
                             should_interrupt = True
                             logger.info(f"[{self.stream_name}] Same user sent new message, interrupting.")
         
@@ -220,12 +237,21 @@ class S4UChat:
                 logger.warning(f"[{self.stream_name}] Interrupting reply. Already generated: '{self.gpt.partial_response}'")
             self._current_generation_task.cancel()
 
-        # 将消息放入对应的队列
-        item = (new_priority, self._entry_counter, time.time(), message)
+        # asyncio.PriorityQueue 是最小堆，所以我们存入分数的相反数
+        # 这样，原始分数越高的消息，在队列中的优先级数字越小，越靠前
+        item = (-new_priority_score, self._entry_counter, time.time(), message)
+        
         if is_vip:
             await self._vip_queue.put(item)
             logger.info(f"[{self.stream_name}] VIP message added to queue.")
         else:
+            # 应用普通队列的最大容量限制
+            if self._normal_queue.qsize() >= self.normal_queue_max_size:
+                # 队列已满，简单忽略新消息
+                # 更复杂的逻辑（如替换掉队列中优先级最低的）对于 asyncio.PriorityQueue 来说实现复杂
+                logger.debug(f"[{self.stream_name}] Normal queue is full, ignoring new message from {message.message_info.user_info.user_id}")
+                return
+
             await self._normal_queue.put(item)
         
         self._entry_counter += 1
@@ -241,11 +267,13 @@ class S4UChat:
 
                 # 优先处理VIP队列
                 if not self._vip_queue.empty():
-                    priority, entry_count, _, message = self._vip_queue.get_nowait()
+                    neg_priority, entry_count, _, message = self._vip_queue.get_nowait()
+                    priority = -neg_priority
                     queue_name = "vip"
                 # 其次处理普通队列
                 elif not self._normal_queue.empty():
-                    priority, entry_count, timestamp, message = self._normal_queue.get_nowait()
+                    neg_priority, entry_count, timestamp, message = self._normal_queue.get_nowait()
+                    priority = -neg_priority
                     # 检查普通消息是否超时
                     if time.time() - timestamp > self._MESSAGE_TIMEOUT_SECONDS:
                         logger.info(f"[{self.stream_name}] Discarding stale normal message: {message.processed_plain_text[:20]}...")

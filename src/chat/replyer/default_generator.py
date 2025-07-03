@@ -336,6 +336,9 @@ class DefaultReplyer:
             return False, None
 
     async def build_relation_info(self, reply_data=None, chat_history=None):
+        if not global_config.relationship.enable_relationship:
+            return ""
+
         relationship_fetcher = relationship_fetcher_manager.get_fetcher(self.chat_stream.stream_id)
         if not reply_data:
             return ""
@@ -355,6 +358,9 @@ class DefaultReplyer:
         return relation_info
 
     async def build_expression_habits(self, chat_history, target):
+        if not global_config.expression.enable_expression:
+            return ""
+
         style_habbits = []
         grammar_habbits = []
 
@@ -390,6 +396,9 @@ class DefaultReplyer:
         return expression_habits_block
 
     async def build_memory_block(self, chat_history, target):
+        if not global_config.memory.enable_memory:
+            return ""
+
         running_memorys = await self.memory_activator.activate_memory_with_chat_history(
             target_message=target, chat_history_prompt=chat_history
         )
@@ -415,6 +424,7 @@ class DefaultReplyer:
         Returns:
             str: 工具信息字符串
         """
+        
         if not reply_data:
             return ""
 

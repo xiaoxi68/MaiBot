@@ -1,5 +1,5 @@
 [inner]
-version = "3.0.0"
+version = "3.1.0"
 
 #----以下是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 #如果你想要修改配置文件，请在修改后将version的值进行变更
@@ -44,6 +44,7 @@ compress_indentity = true # 是否压缩身份，压缩后会精简身份信息�
 
 [expression]
 # 表达方式
+enable_expression = true # 是否启用表达方式
 expression_style = "描述麦麦说话的表达风格，表达习惯，例如：(请回复的平淡一些，简短一些，说中文，不要刻意突出自身学科背景。)"
 enable_expression_learning = false # 是否启用表达学习，麦麦会学习不同群里人类说话风格（群之间不互通）
 learning_interval = 600 # 学习间隔 单位秒
