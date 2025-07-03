@@ -414,8 +414,8 @@ class ExpressionLearner:
 init_prompt()
 
 
-
 expression_learner = None
+
 
 def get_expression_learner():
     global expression_learner
