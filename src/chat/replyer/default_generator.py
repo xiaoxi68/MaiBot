@@ -623,7 +623,7 @@ class DefaultReplyer:
             chat_target_2 = await global_prompt_manager.format_prompt(
                 "chat_target_private2", sender_name=chat_target_name
             )
-        
+
         prompt = await global_prompt_manager.format_prompt(
             template_name,
             expression_habits_block=expression_habits_block,
@@ -753,7 +753,7 @@ class DefaultReplyer:
             chat_target_2 = await global_prompt_manager.format_prompt(
                 "chat_target_private2", sender_name=chat_target_name
             )
-        
+
         template_name = "default_expressor_prompt"
 
         prompt = await global_prompt_manager.format_prompt(
