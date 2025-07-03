@@ -617,13 +617,13 @@ class DefaultReplyer:
                 chat_target_name = (
                     self.chat_target_info.get("person_name") or self.chat_target_info.get("user_nickname") or "对方"
                 )
-            chat_target_1 = await global_prompt_manager.get_prompt_async(
+            chat_target_1 = await global_prompt_manager.format_prompt(
                 "chat_target_private1", sender_name=chat_target_name
             )
-            chat_target_2 = await global_prompt_manager.get_prompt_async(
+            chat_target_2 = await global_prompt_manager.format_prompt(
                 "chat_target_private2", sender_name=chat_target_name
             )
-
+        
         prompt = await global_prompt_manager.format_prompt(
             template_name,
             expression_habits_block=expression_habits_block,
@@ -747,13 +747,13 @@ class DefaultReplyer:
                 chat_target_name = (
                     self.chat_target_info.get("person_name") or self.chat_target_info.get("user_nickname") or "对方"
                 )
-            chat_target_1 = await global_prompt_manager.get_prompt_async(
+            chat_target_1 = await global_prompt_manager.format_prompt(
                 "chat_target_private1", sender_name=chat_target_name
             )
-            chat_target_2 = await global_prompt_manager.get_prompt_async(
+            chat_target_2 = await global_prompt_manager.format_prompt(
                 "chat_target_private2", sender_name=chat_target_name
             )
-
+        
         template_name = "default_expressor_prompt"
 
         prompt = await global_prompt_manager.format_prompt(
