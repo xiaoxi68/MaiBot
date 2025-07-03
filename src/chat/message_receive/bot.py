@@ -21,12 +21,12 @@ import re
 # 定义日志配置
 
 # 获取项目根目录（假设本文件在src/chat/message_receive/下，根目录为上上上级目录）
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 
-ENABLE_S4U_CHAT = os.path.isfile(os.path.join(PROJECT_ROOT, 's4u.s4u'))
+ENABLE_S4U_CHAT = os.path.isfile(os.path.join(PROJECT_ROOT, "s4u.s4u"))
 
 if ENABLE_S4U_CHAT:
-    print('''\nS4U私聊模式已开启\n!!!!!!!!!!!!!!!!!\n''')
+    print("""\nS4U私聊模式已开启\n!!!!!!!!!!!!!!!!!\n""")
     # 仅内部开启
 
 # 配置主程序日志格式

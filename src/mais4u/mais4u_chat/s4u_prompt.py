@@ -104,7 +104,9 @@ class PromptBuilder:
             )
             relation_info = "".join(relation_info_list)
             if relation_info:
-                relation_prompt = await global_prompt_manager.format_prompt("relation_prompt", relation_info=relation_info)
+                relation_prompt = await global_prompt_manager.format_prompt(
+                    "relation_prompt", relation_info=relation_info
+                )
         return relation_prompt
 
     async def build_memory_block(self, text: str) -> str:
@@ -127,7 +129,7 @@ class PromptBuilder:
         )
 
         talk_type = message.message_info.platform + ":" + message.chat_stream.user_info.user_id
-        
+
         core_dialogue_list = []
         background_dialogue_list = []
         bot_id = str(global_config.bot.qq_account)
@@ -147,7 +149,7 @@ class PromptBuilder:
                     background_dialogue_list.append(msg_dict)
             except Exception as e:
                 logger.error(f"无法处理历史消息记录: {msg_dict}, 错误: {e}")
-        
+
         background_dialogue_prompt = ""
         if background_dialogue_list:
             latest_25_msgs = background_dialogue_list[-25:]
@@ -195,9 +197,8 @@ class PromptBuilder:
             all_msg_seg_list.append(msg_seg_str)
             for msg in all_msg_seg_list:
                 core_msg_str += msg
-        
-        return core_msg_str, background_dialogue_prompt
 
+        return core_msg_str, background_dialogue_prompt
 
     async def build_prompt_normal(
         self,
@@ -206,19 +207,16 @@ class PromptBuilder:
         message_txt: str,
         sender_name: str = "某人",
     ) -> str:
-        
         identity_block, relation_info_block, memory_block = await asyncio.gather(
-            self.build_identity_block(),
-            self.build_relation_info(chat_stream),
-            self.build_memory_block(message_txt)
+            self.build_identity_block(), self.build_relation_info(chat_stream), self.build_memory_block(message_txt)
         )
 
         core_dialogue_prompt, background_dialogue_prompt = self.build_chat_history_prompts(chat_stream, message)
-        
+
         time_block = f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-        
+
         template_name = "s4u_prompt"
-        
+
         prompt = await global_prompt_manager.format_prompt(
             template_name,
             identity_block=identity_block,

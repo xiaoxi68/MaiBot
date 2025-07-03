@@ -135,7 +135,7 @@ class S4UStreamGenerator:
                             to_yield = punctuation_buffer + sentence
                             if to_yield.endswith((",", "，")):
                                 to_yield = to_yield.rstrip(",，")
-                            
+
                             self.partial_response += to_yield
                             yield to_yield
                             punctuation_buffer = ""  # 清空标点符号缓冲区
