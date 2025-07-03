@@ -42,9 +42,6 @@ willing_manager = get_willing_manager()
 
 logger = get_logger("main")
 
-from src.manager.local_store_manager import local_storage
-from src.manager.mood_manager import MoodUpdateTask, MoodPrintTask
-
 
 class MainSystem:
     def __init__(self):
