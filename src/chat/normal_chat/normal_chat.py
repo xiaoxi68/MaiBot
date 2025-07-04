@@ -124,8 +124,6 @@ class NormalChat:
         self._chat_task: Optional[asyncio.Task] = None
         self._disabled = False  # 停用标志
 
-        self.on_switch_to_focus_callback = on_switch_to_focus_callback
-
         # 新增：回复模式和优先级管理器
         self.reply_mode = self.chat_stream.context.get_priority_mode()
         if self.reply_mode == "priority":
@@ -729,10 +727,14 @@ class NormalChat:
         # 新增：在auto模式下检查是否需要直接切换到focus模式
         if global_config.chat.chat_mode == "auto":
             if await self._check_should_switch_to_focus():
-                logger.info(f"[{self.stream_name}] 检测到切换到focus聊天模式的条件，直接执行切换")
+                logger.info(f"[{self.stream_name}] 检测到切换到focus聊天模式的条件，尝试执行切换")
                 if self.on_switch_to_focus_callback:
-                    await self.on_switch_to_focus_callback()
-                    return
+                    switched_successfully = await self.on_switch_to_focus_callback()
+                    if switched_successfully:
+                        logger.info(f"[{self.stream_name}] 成功切换到focus模式，中止NormalChat处理")
+                        return
+                    else:
+                        logger.info(f"[{self.stream_name}] 切换到focus模式失败（可能在冷却中），继续NormalChat处理")
                 else:
                     logger.warning(f"[{self.stream_name}] 没有设置切换到focus聊天模式的回调函数，无法执行切换")
 

@@ -137,27 +137,31 @@ class SubHeartflow:
             self.normal_chat_instance = None  # 启动/初始化失败，清理实例
             return False
 
-    async def _handle_switch_to_focus_request(self) -> None:
+    async def _handle_switch_to_focus_request(self) -> bool:
         """
         处理来自NormalChat的切换到focus模式的请求
 
         Args:
             stream_id: 请求切换的stream_id
+        Returns:
+            bool: 切换成功返回True，失败返回False
         """
         logger.info(f"{self.log_prefix} 收到NormalChat请求切换到focus模式")
 
         # 检查是否在focus冷却期内
         if self.is_in_focus_cooldown():
             logger.info(f"{self.log_prefix} 正在focus冷却期内，忽略切换到focus模式的请求")
-            return
+            return False
 
         # 切换到focus模式
         current_state = self.chat_state.chat_status
         if current_state == ChatState.NORMAL:
             await self.change_chat_state(ChatState.FOCUSED)
             logger.info(f"{self.log_prefix} 已根据NormalChat请求从NORMAL切换到FOCUSED状态")
+            return True
         else:
             logger.warning(f"{self.log_prefix} 当前状态为{current_state.value}，无法切换到FOCUSED状态")
+            return False
 
     async def _handle_stop_focus_chat_request(self) -> None:
         """

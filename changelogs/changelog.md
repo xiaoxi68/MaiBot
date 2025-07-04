@@ -2,8 +2,21 @@
 
 ## [0.8.1] - 2025-6-27
 
+功能更新:
+
+- normal现在和focus一样支持tool
+- focus现在和normal一样每次调用lpmm
+- 移除人格表达
+
+优化和修复：
+
 - 修复表情包配置无效问题
 - 合并normal和focus的prompt构建
+- 非TTY环境禁用console_input_loop
+- 修复过滤消息仍被存储至数据库的问题
+- 私聊强制开启focus模式
+- 支持解析reply_to和at
+- 修复focus冷却时间导致的固定沉默
 
 
 
