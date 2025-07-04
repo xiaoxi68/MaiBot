@@ -369,10 +369,10 @@ class MuteCommand(BaseCommand):
 
             # 获取用户ID
             person_id = person_api.get_person_id_by_name(target)
-            user_id = person_api.get_person_value(person_id, "user_id")
-            if not user_id:
-                error_msg = f"未找到用户 {target} 的ID"
-                await self.send_text(f"❌ 找不到用户: {target}")
+            user_id = await person_api.get_person_value(person_id, "user_id")
+            if not user_id or user_id == "unknown":
+                error_msg = f"未找到用户 {target} 的ID，请输入person_name进行禁言"
+                await self.send_text(f"❌ 找不到用户 {target} 的ID，请输入person_name进行禁言，而不是qq号或者昵称")
                 logger.error(f"{self.log_prefix} {error_msg}")
                 return False, error_msg
 
