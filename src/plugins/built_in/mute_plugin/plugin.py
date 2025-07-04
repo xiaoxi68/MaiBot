@@ -475,7 +475,9 @@ class MutePlugin(BasePlugin):
         },
         "components": {
             "enable_smart_mute": ConfigField(type=bool, default=True, description="是否启用智能禁言Action"),
-            "enable_mute_command": ConfigField(type=bool, default=False, description="是否启用禁言命令Command（调试用）"),
+            "enable_mute_command": ConfigField(
+                type=bool, default=False, description="是否启用禁言命令Command（调试用）"
+            ),
         },
         "permissions": {
             "allowed_users": ConfigField(
