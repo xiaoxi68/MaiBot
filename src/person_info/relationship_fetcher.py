@@ -23,7 +23,7 @@ def init_real_time_info_prompts():
 
 {name_block}
 现在，你想要回复{person_name}的消息，消息内容是：{target_message}。请根据聊天记录和你要回复的消息，从你对{person_name}的了解中提取有关的信息：
-1.你需要提供你想要提取的信息具体是哪方面的信息，例如：年龄，性别，对ta的印象，最近发生的事等等。
+1.你需要提供你想要提取的信息具体是哪方面的信息，例如：年龄，性别，你们之间的交流方式，最近发生的事等等。
 2.请注意，请不要重复调取相同的信息，已经调取的信息如下：
 {info_cache_block}
 3.如果当前聊天记录中没有需要查询的信息，或者现有信息已经足够回复，请返回{{"none": "不需要查询"}}
@@ -71,13 +71,13 @@ class RelationshipFetcher:
         # LLM模型配置
         self.llm_model = LLMRequest(
             model=global_config.model.relation,
-            request_type="focus.real_time_info",
+            request_type="relation",
         )
 
         # 小模型用于即时信息提取
         self.instant_llm_model = LLMRequest(
             model=global_config.model.utils_small,
-            request_type="focus.real_time_info.instant",
+            request_type="relation.instant",
         )
 
         name = get_chat_manager().get_stream_name(self.chat_id)

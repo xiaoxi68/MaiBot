@@ -35,8 +35,12 @@ class MessageStorage:
                     filtered_display_message = re.sub(pattern, "", display_message, flags=re.DOTALL)
                 else:
                     filtered_display_message = ""
+
+                reply_to = message.reply_to
             else:
                 filtered_display_message = ""
+
+                reply_to = ""
 
             chat_info_dict = chat_stream.to_dict()
             user_info_dict = message.message_info.user_info.to_dict()
@@ -54,6 +58,7 @@ class MessageStorage:
                 time=float(message.message_info.time),
                 chat_id=chat_stream.stream_id,
                 # Flattened chat_info
+                reply_to=reply_to,
                 chat_info_stream_id=chat_info_dict.get("stream_id"),
                 chat_info_platform=chat_info_dict.get("platform"),
                 chat_info_user_platform=user_info_from_chat.get("platform"),

@@ -29,7 +29,6 @@ import traceback
 
 from .normal_chat_generator import NormalChatGenerator
 from src.chat.normal_chat.normal_chat_expressor import NormalChatExpressor
-from src.chat.replyer.default_generator import DefaultReplyer
 from src.chat.normal_chat.normal_chat_planner import NormalChatPlanner
 from src.chat.normal_chat.normal_chat_action_modifier import NormalChatActionModifier
 
@@ -69,7 +68,6 @@ class NormalChat:
 
         # 初始化Normal Chat专用表达器
         self.expressor = NormalChatExpressor(self.chat_stream)
-        self.replyer = DefaultReplyer(self.chat_stream)
 
         # Interest dict
         self.interest_dict = interest_dict

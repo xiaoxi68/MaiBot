@@ -16,7 +16,7 @@ class NormalChatGenerator:
         model_config_1 = global_config.model.replyer_1.copy()
         model_config_2 = global_config.model.replyer_2.copy()
 
-        prob_first = global_config.normal_chat.normal_chat_first_probability
+        prob_first = global_config.chat.replyer_random_probability
 
         model_config_1["weight"] = prob_first
         model_config_2["weight"] = 1.0 - prob_first
@@ -42,15 +42,13 @@ class NormalChatGenerator:
         relation_info = await person_info_manager.get_value(person_id, "short_impression")
         reply_to_str = f"{person_name}:{message.processed_plain_text}"
 
-        structured_info = ""
-
         try:
             success, reply_set, prompt = await generator_api.generate_reply(
                 chat_stream=message.chat_stream,
                 reply_to=reply_to_str,
                 relation_info=relation_info,
-                structured_info=structured_info,
                 available_actions=available_actions,
+                enable_tool=global_config.tool.enable_in_normal_chat,
                 model_configs=self.model_configs,
                 request_type="normal.replyer",
                 return_prompt=True,
