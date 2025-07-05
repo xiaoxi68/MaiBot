@@ -129,13 +129,12 @@ class ChattingObservation(Observation):
                         or chat_target_name
                     )
                 chat_type_description = f"你和{chat_target_name}的私聊记录"
-                
+
             prompt = await global_prompt_manager.format_prompt(
                 prompt_template_name,
                 chat_type_description=chat_type_description,
                 chat_logs=oldest_messages_str,
             )
-
 
             self.compressor_prompt = prompt
 
