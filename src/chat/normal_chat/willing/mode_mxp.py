@@ -171,7 +171,7 @@ class MxpWillingManager(BaseWillingManager):
                     self.logger.debug("进行中消息惩罚：归0")
 
             probability = self._willing_to_probability(current_willing)
-            
+
             self.temporary_willing = current_willing
 
             return probability

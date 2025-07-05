@@ -53,6 +53,5 @@ class ClassicalWillingManager(BaseWillingManager):
         if current_willing < 1:
             self.chat_reply_willing[chat_id] = min(1.0, current_willing + 0.4)
 
-
     async def not_reply_handle(self, message_id):
         return await super().not_reply_handle(message_id)

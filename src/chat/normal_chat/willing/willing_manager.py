@@ -136,7 +136,6 @@ class BaseWillingManager(ABC):
         """抽象方法：获取回复概率"""
         raise NotImplementedError
 
-
     async def get_willing(self, chat_id: str):
         """获取指定聊天流的回复意愿"""
         async with self.lock:

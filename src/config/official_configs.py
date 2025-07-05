@@ -285,7 +285,6 @@ class NormalChatConfig(ConfigBase):
     response_interested_rate_amplifier: float = 1.0
     """回复兴趣度放大系数"""
 
-
     mentioned_bot_inevitable_reply: bool = False
     """提及 bot 必然回复"""
 

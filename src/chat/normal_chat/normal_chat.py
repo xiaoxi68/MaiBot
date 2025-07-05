@@ -116,7 +116,7 @@ class NormalChat:
         self.get_cooldown_progress_callback = get_cooldown_progress_callback
 
         self._disabled = False  # 增加停用标志
-        
+
         self.timeout_count = 0
 
         # 加载持久化的缓存
@@ -489,7 +489,6 @@ class NormalChat:
                             f"[{self.stream_name}] 从队列中取出消息进行处理: User {message.message_info.user_info.user_id}, Time: {time.strftime('%H:%M:%S', time.localtime(message.message_info.time))}"
                         )
 
-
                         # 检查是否有用户满足关系构建条件
                         asyncio.create_task(self._check_relation_building_conditions(message))
 
@@ -716,9 +715,8 @@ class NormalChat:
             if self.priority_manager:
                 self.priority_manager.add_message(message)
             return
-        
-        
-                # 新增：在auto模式下检查是否需要直接切换到focus模式
+
+            # 新增：在auto模式下检查是否需要直接切换到focus模式
         if global_config.chat.chat_mode == "auto":
             if await self._check_should_switch_to_focus():
                 logger.info(f"[{self.stream_name}] 检测到切换到focus聊天模式的条件，尝试执行切换")
@@ -741,8 +739,6 @@ class NormalChat:
         """
         if self._disabled:
             return
-
-
 
         # 检查是否有用户满足关系构建条件
         asyncio.create_task(self._check_relation_building_conditions(message))
@@ -769,7 +765,7 @@ class NormalChat:
 
         # 处理表情包
         if message.is_emoji or message.is_picid:
-                reply_probability = 0
+            reply_probability = 0
 
         # 应用疲劳期回复频率调整
         fatigue_multiplier = self._get_fatigue_reply_multiplier()
@@ -799,8 +795,7 @@ class NormalChat:
                 await willing_manager.before_generate_reply_handle(message.message_info.message_id)
                 do_reply = await self.reply_one_message(message)
                 response_set = do_reply if do_reply else None
-        
-        
+
         # 输出性能计时结果
         if do_reply and response_set:  # 确保 response_set 不是 None
             timing_str = " | ".join([f"{step}: {duration:.2f}秒" for step, duration in timing_results.items()])
@@ -852,7 +847,6 @@ class NormalChat:
                 return None
 
             try:
-
                 no_action = {
                     "action_result": {
                         "action_type": "no_action",
@@ -921,12 +915,16 @@ class NormalChat:
             )
             response_set, plan_result = results
         except asyncio.TimeoutError:
-            logger.warning(f"[{self.stream_name}] 并行执行回复生成和动作规划超时 ({gather_timeout}秒)，正在取消相关任务...")
+            logger.warning(
+                f"[{self.stream_name}] 并行执行回复生成和动作规划超时 ({gather_timeout}秒)，正在取消相关任务..."
+            )
             self.timeout_count += 1
             if self.timeout_count > 5:
-                logger.error(f"[{self.stream_name}] 连续回复超时，{global_config.normal_chat.thinking_timeout}秒 内大模型没有返回有效内容，请检查你的api是否速度过慢或配置错误。建议不要使用推理模型，推理模型生成速度过慢。")
+                logger.error(
+                    f"[{self.stream_name}] 连续回复超时，{global_config.normal_chat.thinking_timeout}秒 内大模型没有返回有效内容，请检查你的api是否速度过慢或配置错误。建议不要使用推理模型，推理模型生成速度过慢。"
+                )
                 return False
-            
+
             # 取消未完成的任务
             if not gen_task.done():
                 gen_task.cancel()
@@ -935,7 +933,7 @@ class NormalChat:
 
             # 清理思考消息
             await self._cleanup_thinking_message_by_id(thinking_id)
-            
+
             response_set = None
             plan_result = None
 
@@ -1252,12 +1250,12 @@ class NormalChat:
 
     async def _check_relation_building_conditions(self, message: MessageRecv):
         """检查person_engaged_cache中是否有满足关系构建条件的用户"""
-                # 执行定期清理
+        # 执行定期清理
         self._cleanup_old_segments()
 
         # 更新消息段信息
         self._update_user_message_segments(message)
-        
+
         users_to_build_relationship = []
 
         for person_id, segments in list(self.person_engaged_cache.items()):

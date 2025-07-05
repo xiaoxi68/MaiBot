@@ -191,7 +191,6 @@ class MessageManager:
         container = await self.get_container(chat_stream.stream_id)
         container.add_message(message)
 
-
     async def _handle_sending_message(self, container: MessageContainer, message: MessageSending):
         """处理单个 MessageSending 消息 (包含 set_reply 逻辑)"""
         try:

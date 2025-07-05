@@ -368,7 +368,6 @@ class SubHeartflow:
             return self.normal_chat_instance.get_action_manager()
         return None
 
-
     async def get_full_state(self) -> dict:
         """获取子心流的完整状态，包括兴趣、思维和聊天状态。"""
         return {
