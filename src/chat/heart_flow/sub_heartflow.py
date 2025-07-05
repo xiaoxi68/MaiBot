@@ -447,23 +447,23 @@ class SubHeartflow:
 
     def get_cooldown_progress(self) -> float:
         """获取冷却进度，返回0-1之间的值
-        
+
         Returns:
             float: 0表示刚开始冷却，1表示冷却完成
         """
         if self.last_focus_exit_time == 0:
             return 1.0  # 没有冷却，返回1表示完全恢复
-        
+
         # 基础冷却时间10分钟，受auto_focus_threshold调控
         base_cooldown = 10 * 60  # 10分钟转换为秒
         cooldown_duration = base_cooldown / global_config.chat.auto_focus_threshold
-        
+
         current_time = time.time()
         elapsed_since_exit = current_time - self.last_focus_exit_time
-        
+
         if elapsed_since_exit >= cooldown_duration:
             return 1.0  # 冷却完成
-        
+
         # 计算进度：0表示刚开始冷却，1表示冷却完成
         progress = elapsed_since_exit / cooldown_duration
         return progress

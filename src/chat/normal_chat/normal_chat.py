@@ -54,7 +54,13 @@ class NormalChat:
     每个聊天（私聊或群聊）都会有一个独立的NormalChat实例。
     """
 
-    def __init__(self, chat_stream: ChatStream, interest_dict: dict = None, on_switch_to_focus_callback=None, get_cooldown_progress_callback=None):
+    def __init__(
+        self,
+        chat_stream: ChatStream,
+        interest_dict: dict = None,
+        on_switch_to_focus_callback=None,
+        get_cooldown_progress_callback=None,
+    ):
         """
         初始化NormalChat实例。
 
@@ -109,7 +115,7 @@ class NormalChat:
 
         # 添加回调函数，用于在满足条件时通知切换到focus_chat模式
         self.on_switch_to_focus_callback = on_switch_to_focus_callback
-        
+
         # 添加回调函数，用于获取冷却进度
         self.get_cooldown_progress_callback = get_cooldown_progress_callback
 
@@ -774,7 +780,7 @@ class NormalChat:
         fatigue_multiplier = self._get_fatigue_reply_multiplier()
         original_probability = reply_probability
         reply_probability *= fatigue_multiplier
-        
+
         # 如果应用了疲劳调整，记录日志
         if fatigue_multiplier < 1.0:
             logger.info(
@@ -1339,23 +1345,23 @@ class NormalChat:
 
     def _get_fatigue_reply_multiplier(self) -> float:
         """获取疲劳期回复频率调整系数
-        
+
         Returns:
             float: 回复频率调整系数，范围0.5-1.0
         """
         if not self.get_cooldown_progress_callback:
             return 1.0  # 没有冷却进度回调，返回正常系数
-        
+
         try:
             cooldown_progress = self.get_cooldown_progress_callback()
-            
+
             if cooldown_progress >= 1.0:
                 return 1.0  # 冷却完成，正常回复频率
-            
+
             # 疲劳期间：从0.5逐渐恢复到1.0
             # progress=0时系数为0.5，progress=1时系数为1.0
             multiplier = 0.2 + (0.8 * cooldown_progress)
-            
+
             return multiplier
         except Exception as e:
             logger.warning(f"[{self.stream_name}] 获取疲劳调整系数时出错: {e}")
