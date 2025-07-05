@@ -255,8 +255,6 @@ class DefaultReplyer:
 
             with Timer("构建Prompt", {}):  # 内部计时器，可选保留
                 prompt = await self.build_prompt_rewrite_context(
-                    raw_reply=raw_reply,
-                    reason=reason,
                     reply_data=reply_data,
                 )
 
@@ -652,8 +650,6 @@ class DefaultReplyer:
     async def build_prompt_rewrite_context(
         self,
         reply_data: Dict[str, Any],
-        raw_reply: str = "",
-        reason: str = "",
     ) -> str:
         chat_stream = self.chat_stream
         chat_id = chat_stream.stream_id
@@ -662,6 +658,8 @@ class DefaultReplyer:
         is_group_chat = bool(chat_stream.group_info)
 
         reply_to = reply_data.get("reply_to", "none")
+        raw_reply = reply_data.get("raw_reply", "")
+        reason = reply_data.get("reason", "")
         sender, target = self._parse_reply_target(reply_to)
 
         message_list_before_now_half = get_raw_msg_before_timestamp_with_chat(
