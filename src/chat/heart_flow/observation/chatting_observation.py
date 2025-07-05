@@ -16,7 +16,7 @@ logger = get_logger("observation")
 
 # 定义提示模板
 Prompt(
-    """这是qq群聊的聊天记录，请总结以下聊天记录的主题：
+    """这是{chat_type_description}，请总结以下聊天记录的主题：
 {chat_logs}
 请概括这段聊天记录的主题和主要内容
 主题：简短的概括，包括时间，人物和事件，不要超过20个字
@@ -28,22 +28,7 @@ Prompt(
     "content": "内容，可以是对聊天记录的概括，也可以是聊天记录的详细内容"
 }}
 """,
-    "chat_summary_group_prompt",  # Template for group chat
-)
-
-Prompt(
-    """这是你和{chat_target}的私聊记录，请总结以下聊天记录的主题：
-{chat_logs}
-请用一句话概括，包括事件，时间，和主要信息，不要分点。
-主题：简短的介绍，不要超过10个字
-内容：包括人物、事件和主要信息，不要分点。
-
-请用json格式返回，格式如下：
-{{
-    "theme": "主题",
-    "content": "内容"
-}}""",
-    "chat_summary_private_prompt",  # Template for private chat
+    "chat_summary_prompt",
 )
 
 
@@ -132,11 +117,10 @@ class ChattingObservation(Observation):
             )
 
             # 根据聊天类型选择提示模板
+            prompt_template_name = "chat_summary_prompt"
             if self.is_group_chat:
-                prompt_template_name = "chat_summary_group_prompt"
-                prompt = await global_prompt_manager.format_prompt(prompt_template_name, chat_logs=oldest_messages_str)
+                chat_type_description = "qq群聊的聊天记录"
             else:
-                prompt_template_name = "chat_summary_private_prompt"
                 chat_target_name = "对方"
                 if self.chat_target_info:
                     chat_target_name = (
@@ -144,11 +128,14 @@ class ChattingObservation(Observation):
                         or self.chat_target_info.get("user_nickname")
                         or chat_target_name
                     )
-                prompt = await global_prompt_manager.format_prompt(
-                    prompt_template_name,
-                    chat_target=chat_target_name,
-                    chat_logs=oldest_messages_str,
-                )
+                chat_type_description = f"你和{chat_target_name}的私聊记录"
+                
+            prompt = await global_prompt_manager.format_prompt(
+                prompt_template_name,
+                chat_type_description=chat_type_description,
+                chat_logs=oldest_messages_str,
+            )
+
 
             self.compressor_prompt = prompt
 
