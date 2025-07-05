@@ -72,7 +72,7 @@ class NormalChatPlanner:
 
         self.action_manager = action_manager
 
-    async def plan(self, message: MessageThinking, sender_name: str = "某人") -> Dict[str, Any]:
+    async def plan(self, message: MessageThinking) -> Dict[str, Any]:
         """
         Normal Chat 规划器: 使用LLM根据上下文决定做出什么动作。
 

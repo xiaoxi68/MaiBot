@@ -28,7 +28,6 @@ from .priority_manager import PriorityManager
 import traceback
 
 from .normal_chat_generator import NormalChatGenerator
-from src.chat.normal_chat.normal_chat_expressor import NormalChatExpressor
 from src.chat.normal_chat.normal_chat_planner import NormalChatPlanner
 from src.chat.normal_chat.normal_chat_action_modifier import NormalChatActionModifier
 
@@ -71,9 +70,6 @@ class NormalChat:
         self.stream_id = chat_stream.stream_id
 
         self.stream_name = get_chat_manager().get_stream_name(self.stream_id) or self.stream_id
-
-        # 初始化Normal Chat专用表达器
-        self.expressor = NormalChatExpressor(self.chat_stream)
 
         # Interest dict
         self.interest_dict = interest_dict
@@ -120,6 +116,8 @@ class NormalChat:
         self.get_cooldown_progress_callback = get_cooldown_progress_callback
 
         self._disabled = False  # 增加停用标志
+        
+        self.timeout_count = 0
 
         # 加载持久化的缓存
         self._load_cache()
@@ -490,14 +488,10 @@ class NormalChat:
                         logger.info(
                             f"[{self.stream_name}] 从队列中取出消息进行处理: User {message.message_info.user_info.user_id}, Time: {time.strftime('%H:%M:%S', time.localtime(message.message_info.time))}"
                         )
-                        # 执行定期清理
-                        self._cleanup_old_segments()
 
-                        # 更新消息段信息
-                        self._update_user_message_segments(message)
 
                         # 检查是否有用户满足关系构建条件
-                        asyncio.create_task(self._check_relation_building_conditions())
+                        asyncio.create_task(self._check_relation_building_conditions(message))
 
                         await self.reply_one_message(message)
 
@@ -722,18 +716,9 @@ class NormalChat:
             if self.priority_manager:
                 self.priority_manager.add_message(message)
             return
-
-        # --- 以下为原有的 "兴趣" 模式逻辑 ---
-        await self._process_message(message, is_mentioned, interested_rate)
-
-    async def _process_message(self, message: MessageRecv, is_mentioned: bool, interested_rate: float) -> None:
-        """
-        实际处理单条消息的逻辑，包括意愿判断、回复生成、动作执行等。
-        """
-        if self._disabled:
-            return
-
-        # 新增：在auto模式下检查是否需要直接切换到focus模式
+        
+        
+                # 新增：在auto模式下检查是否需要直接切换到focus模式
         if global_config.chat.chat_mode == "auto":
             if await self._check_should_switch_to_focus():
                 logger.info(f"[{self.stream_name}] 检测到切换到focus聊天模式的条件，尝试执行切换")
@@ -747,14 +732,20 @@ class NormalChat:
                 else:
                     logger.warning(f"[{self.stream_name}] 没有设置切换到focus聊天模式的回调函数，无法执行切换")
 
-        # 执行定期清理
-        self._cleanup_old_segments()
+        # --- 以下为原有的 "兴趣" 模式逻辑 ---
+        await self._process_message(message, is_mentioned, interested_rate)
 
-        # 更新消息段信息
-        self._update_user_message_segments(message)
+    async def _process_message(self, message: MessageRecv, is_mentioned: bool, interested_rate: float) -> None:
+        """
+        实际处理单条消息的逻辑，包括意愿判断、回复生成、动作执行等。
+        """
+        if self._disabled:
+            return
+
+
 
         # 检查是否有用户满足关系构建条件
-        asyncio.create_task(self._check_relation_building_conditions())
+        asyncio.create_task(self._check_relation_building_conditions(message))
 
         timing_results = {}
         reply_probability = (
@@ -775,6 +766,10 @@ class NormalChat:
                 if "maimcore_reply_probability_gain" in message.message_info.additional_config.keys():
                     reply_probability += message.message_info.additional_config["maimcore_reply_probability_gain"]
                     reply_probability = min(max(reply_probability, 0), 1)  # 确保概率在 0-1 之间
+
+        # 处理表情包
+        if message.is_emoji or message.is_picid:
+                reply_probability = 0
 
         # 应用疲劳期回复频率调整
         fatigue_multiplier = self._get_fatigue_reply_multiplier()
@@ -804,6 +799,8 @@ class NormalChat:
                 await willing_manager.before_generate_reply_handle(message.message_info.message_id)
                 do_reply = await self.reply_one_message(message)
                 response_set = do_reply if do_reply else None
+        
+        
         # 输出性能计时结果
         if do_reply and response_set:  # 确保 response_set 不是 None
             timing_str = " | ".join([f"{step}: {duration:.2f}秒" for step, duration in timing_results.items()])
@@ -855,8 +852,6 @@ class NormalChat:
                 return None
 
             try:
-                # 获取发送者名称（动作修改已在并行执行前完成）
-                sender_name = self._get_sender_name(message)
 
                 no_action = {
                     "action_result": {
@@ -876,7 +871,7 @@ class NormalChat:
                     return no_action
 
                 # 执行规划
-                plan_result = await self.planner.plan(message, sender_name)
+                plan_result = await self.planner.plan(message)
                 action_type = plan_result["action_result"]["action_type"]
                 action_data = plan_result["action_result"]["action_data"]
                 reasoning = plan_result["action_result"]["reasoning"]
@@ -914,9 +909,35 @@ class NormalChat:
         # 并行执行回复生成和动作规划
         self.action_type = None  # 初始化动作类型
         self.is_parallel_action = False  # 初始化并行动作标志
-        response_set, plan_result = await asyncio.gather(
-            generate_normal_response(), plan_and_execute_actions(), return_exceptions=True
-        )
+
+        gen_task = asyncio.create_task(generate_normal_response())
+        plan_task = asyncio.create_task(plan_and_execute_actions())
+
+        try:
+            gather_timeout = global_config.normal_chat.thinking_timeout
+            results = await asyncio.wait_for(
+                asyncio.gather(gen_task, plan_task, return_exceptions=True),
+                timeout=gather_timeout,
+            )
+            response_set, plan_result = results
+        except asyncio.TimeoutError:
+            logger.warning(f"[{self.stream_name}] 并行执行回复生成和动作规划超时 ({gather_timeout}秒)，正在取消相关任务...")
+            self.timeout_count += 1
+            if self.timeout_count > 5:
+                logger.error(f"[{self.stream_name}] 连续回复超时，{global_config.normal_chat.thinking_timeout}秒 内大模型没有返回有效内容，请检查你的api是否速度过慢或配置错误。建议不要使用推理模型，推理模型生成速度过慢。")
+                return False
+            
+            # 取消未完成的任务
+            if not gen_task.done():
+                gen_task.cancel()
+            if not plan_task.done():
+                plan_task.cancel()
+
+            # 清理思考消息
+            await self._cleanup_thinking_message_by_id(thinking_id)
+            
+            response_set = None
+            plan_result = None
 
         # 处理生成回复的结果
         if isinstance(response_set, Exception):
@@ -937,14 +958,7 @@ class NormalChat:
             elif self.enable_planner and self.action_type not in ["no_action"] and not self.is_parallel_action:
                 logger.info(f"[{self.stream_name}] 模型选择其他动作（非并行动作）")
             # 如果模型未生成回复，移除思考消息
-            container = await message_manager.get_container(self.stream_id)  # 使用 self.stream_id
-            for msg in container.messages[:]:
-                if isinstance(msg, MessageThinking) and msg.message_info.message_id == thinking_id:
-                    container.messages.remove(msg)
-                    logger.debug(f"[{self.stream_name}] 已移除未产生回复的思考消息 {thinking_id}")
-                    break
-            # 需要在此处也调用 not_reply_handle 和 delete 吗？
-            # 如果是因为模型没回复，也算是一种 "未回复"
+            await self._cleanup_thinking_message_by_id(thinking_id)
             return False
 
         # logger.info(f"[{self.stream_name}] 回复内容: {response_set}")
@@ -969,9 +983,7 @@ class NormalChat:
                     "user_nickname": message.message_info.user_info.user_nickname,
                 },
                 "response": response_set,
-                # "is_mentioned": is_mentioned,
                 "is_reference_reply": message.reply is not None,  # 判断是否为引用回复
-                # "timing": {k: round(v, 2) for k, v in timing_results.items()},
             }
             self.recent_replies.append(reply_info)
             # 保持最近回复历史在限定数量内
@@ -1198,18 +1210,6 @@ class NormalChat:
                 f"意愿放大器更新为: {self.willing_amplifier:.2f}"
             )
 
-    def _get_sender_name(self, message: MessageRecv) -> str:
-        """获取发送者名称，用于planner"""
-        if message.chat_stream.user_info:
-            user_info = message.chat_stream.user_info
-            if user_info.user_cardname and user_info.user_nickname:
-                return f"[{user_info.user_nickname}][群昵称：{user_info.user_cardname}]"
-            elif user_info.user_nickname:
-                return f"[{user_info.user_nickname}]"
-            else:
-                return f"用户({user_info.user_id})"
-        return "某人"
-
     async def _execute_action(
         self, action_type: str, action_data: dict, message: MessageRecv, thinking_id: str
     ) -> Optional[bool]:
@@ -1246,17 +1246,18 @@ class NormalChat:
 
         return False
 
-    def set_planner_enabled(self, enabled: bool):
-        """设置是否启用planner"""
-        self.enable_planner = enabled
-        logger.info(f"[{self.stream_name}] Planner {'启用' if enabled else '禁用'}")
-
     def get_action_manager(self) -> ActionManager:
         """获取动作管理器实例"""
         return self.action_manager
 
-    async def _check_relation_building_conditions(self):
+    async def _check_relation_building_conditions(self, message: MessageRecv):
         """检查person_engaged_cache中是否有满足关系构建条件的用户"""
+                # 执行定期清理
+        self._cleanup_old_segments()
+
+        # 更新消息段信息
+        self._update_user_message_segments(message)
+        
         users_to_build_relationship = []
 
         for person_id, segments in list(self.person_engaged_cache.items()):
@@ -1401,3 +1402,16 @@ class NormalChat:
             )
 
         return should_switch
+
+    async def _cleanup_thinking_message_by_id(self, thinking_id: str):
+        """根据ID清理思考消息"""
+        try:
+            container = await message_manager.get_container(self.stream_id)
+            if container:
+                for msg in container.messages[:]:
+                    if isinstance(msg, MessageThinking) and msg.message_info.message_id == thinking_id:
+                        container.messages.remove(msg)
+                        logger.info(f"[{self.stream_name}] 已清理思考消息 {thinking_id}")
+                        break
+        except Exception as e:
+            logger.error(f"[{self.stream_name}] 清理思考消息 {thinking_id} 时出错: {e}")

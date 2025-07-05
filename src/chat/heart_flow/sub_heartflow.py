@@ -368,16 +368,6 @@ class SubHeartflow:
             return self.normal_chat_instance.get_action_manager()
         return None
 
-    def set_normal_chat_planner_enabled(self, enabled: bool):
-        """设置NormalChat的planner是否启用
-
-        Args:
-            enabled: 是否启用planner
-        """
-        if self.normal_chat_instance:
-            self.normal_chat_instance.set_planner_enabled(enabled)
-        else:
-            logger.warning(f"{self.log_prefix} NormalChat实例不存在，无法设置planner状态")
 
     async def get_full_state(self) -> dict:
         """获取子心流的完整状态，包括兴趣、思维和聊天状态。"""

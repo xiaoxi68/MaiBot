@@ -285,8 +285,6 @@ class NormalChatConfig(ConfigBase):
     response_interested_rate_amplifier: float = 1.0
     """回复兴趣度放大系数"""
 
-    emoji_response_penalty: float = 0.0
-    """表情包回复惩罚系数"""
 
     mentioned_bot_inevitable_reply: bool = False
     """提及 bot 必然回复"""
@@ -296,6 +294,15 @@ class NormalChatConfig(ConfigBase):
 
     enable_planner: bool = False
     """是否启用动作规划器"""
+
+    gather_timeout: int = 110  # planner和generator的并行执行超时时间
+    """planner和generator的并行执行超时时间"""
+
+    auto_focus_threshold: float = 1.0  # 自动切换到专注模式的阈值，值越大越难触发
+    """自动切换到专注模式的阈值，值越大越难触发"""
+
+    fatigue_talk_frequency: float = 0.2  # 疲劳模式下的基础对话频率 (条/分钟)
+    """疲劳模式下的基础对话频率 (条/分钟)"""
 
 
 @dataclass

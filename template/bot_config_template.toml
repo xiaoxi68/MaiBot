@@ -1,5 +1,5 @@
 [inner]
-version = "3.1.0"
+version = "3.2.0"
 
 #----以下是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 #如果你想要修改配置文件，请在修改后将version的值进行变更
@@ -61,7 +61,7 @@ enable_relationship = true # 是否启用关系系统
 relation_frequency = 1 # 关系频率，麦麦构建关系的速度，仅在normal_chat模式下有效
 
 [chat] #麦麦的聊天通用设置
-chat_mode = "normal" # 聊天模式 —— 普通模式：normal，专注模式：focus，在普通模式和专注模式之间自动切换
+chat_mode = "normal" # 聊天模式 —— 普通模式：normal，专注模式：focus，自动auto：在普通模式和专注模式之间自动切换
 # chat_mode = "focus"
 # chat_mode = "auto"
 
@@ -116,18 +116,17 @@ ban_msgs_regex = [
 
 [normal_chat] #普通聊天
 #一般回复参数
-emoji_chance = 0.2 # 麦麦一般回复时使用表情包的概率，设置为1让麦麦自己决定发不发
-thinking_timeout = 120 # 麦麦最长思考时间，超过这个时间的思考会放弃（往往是api反应太慢）
+emoji_chance = 0.2 # 麦麦一般回复时使用表情包的概率
+thinking_timeout = 30 # 麦麦最长思考规划时间，超过这个时间的思考会放弃（往往是api反应太慢）
 
 willing_mode = "classical" # 回复意愿模式 —— 经典模式：classical，mxp模式：mxp，自定义模式：custom（需要你自己实现）
 
 response_interested_rate_amplifier = 1 # 麦麦回复兴趣度放大系数
 
-emoji_response_penalty = 0 # 对其他人发的表情包回复惩罚系数，设为0为不回复单个表情包，减少单独回复表情包的概率
 mentioned_bot_inevitable_reply = true # 提及 bot 必然回复
 at_bot_inevitable_reply = true # @bot 必然回复（包含提及）
 
-enable_planner = false # 是否启用动作规划器（与focus_chat共享actions）
+enable_planner = true # 是否启用动作规划器（与focus_chat共享actions）
 
 
 [focus_chat] #专注聊天
@@ -168,7 +167,7 @@ consolidation_check_percentage = 0.05 # 检查节点比例
 #不希望记忆的词，已经记忆的不会受到影响，需要手动清理
 memory_ban_words = [ "表情包", "图片", "回复", "聊天记录" ]
 
-[mood] # 仅在 普通聊天 有效
+[mood] # 暂时不再有效，请不要使用
 enable_mood = false # 是否启用情绪系统
 mood_update_interval = 1.0 # 情绪更新间隔 单位秒
 mood_decay_rate = 0.95 # 情绪衰减率
@@ -242,7 +241,7 @@ library_log_levels = { "aiohttp" = "WARNING"} # 设置特定库的日志级别
 # thinking_budget = <int> : 用于指定模型思考最长长度
 
 [model]
-model_max_output_length = 800 # 模型单次返回的最大token数
+model_max_output_length = 1000 # 模型单次返回的最大token数
 
 #------------必填：组件模型------------
 
@@ -272,11 +271,12 @@ pri_out = 8 #模型的输出价格（非必填，可以记录消耗）
 temp = 0.2 #模型的温度，新V3建议0.1-0.3
 
 [model.replyer_2] # 次要回复模型
-name = "Pro/deepseek-ai/DeepSeek-R1"
+name = "Pro/deepseek-ai/DeepSeek-V3"
 provider = "SILICONFLOW"
-pri_in = 4.0 #模型的输入价格（非必填，可以记录消耗）
-pri_out = 16.0 #模型的输出价格（非必填，可以记录消耗）
-temp = 0.7
+pri_in = 2 #模型的输入价格（非必填，可以记录消耗）
+pri_out = 8 #模型的输出价格（非必填，可以记录消耗）
+#默认temp 0.2 如果你使用的是老V3或者其他模型，请自己修改temp参数
+temp = 0.2 #模型的温度，新V3建议0.1-0.3
 
 
 [model.memory_summary] # 记忆的概括模型
