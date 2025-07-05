@@ -310,9 +310,7 @@ class HeartFChatting:
 
                                     # 如果是私聊，则不停止，而是重置疲劳度并继续
                                     if not self.chat_stream.group_info:
-                                        logger.info(
-                                            f"{self.log_prefix} 私聊模式下收到停止请求，不退出。"
-                                        )
+                                        logger.info(f"{self.log_prefix} 私聊模式下收到停止请求，不退出。")
                                         continue  # 继续下一次循环，而不是退出
 
                                     # 如果是群聊，则执行原来的停止逻辑
