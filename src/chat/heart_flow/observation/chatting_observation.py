@@ -8,14 +8,9 @@ from src.chat.utils.chat_message_builder import (
     get_person_id_list,
 )
 from src.chat.utils.prompt_builder import global_prompt_manager, Prompt
-from typing import Optional
-import difflib
-from src.chat.message_receive.message import MessageRecv
 from src.chat.heart_flow.observation.observation import Observation
 from src.common.logger import get_logger
 from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
-from src.chat.message_receive.chat_stream import get_chat_manager
-from src.person_info.person_info import get_person_info_manager
 
 logger = get_logger("observation")
 
@@ -67,7 +62,7 @@ class ChattingObservation(Observation):
         self.talking_message_str_truncate_short = ""
         self.name = global_config.bot.nickname
         self.nick_name = global_config.bot.alias_names
-        self.max_now_obs_len = global_config.focus_chat.observation_context_size
+        self.max_now_obs_len = global_config.chat.max_context_size
         self.overlap_len = global_config.focus_chat.compressed_length
         self.person_list = []
         self.compressor_prompt = ""
@@ -107,75 +102,6 @@ class ChattingObservation(Observation):
 
     def get_observe_info(self, ids=None):
         return self.talking_message_str
-
-    def get_recv_message_by_text(self, sender: str, text: str) -> Optional[MessageRecv]:
-        """
-        根据回复的纯文本
-        1. 在talking_message中查找最新的，最匹配的消息
-        2. 如果找到，则返回消息
-        """
-        find_msg = None
-        reverse_talking_message = list(reversed(self.talking_message))
-
-        for message in reverse_talking_message:
-            user_id = message["user_id"]
-            platform = message["platform"]
-            person_id = get_person_info_manager().get_person_id(platform, user_id)
-            person_name = get_person_info_manager().get_value(person_id, "person_name")
-            if person_name == sender:
-                similarity = difflib.SequenceMatcher(None, text, message["processed_plain_text"]).ratio()
-                if similarity >= 0.9:
-                    find_msg = message
-                    break
-
-        if not find_msg:
-            return None
-
-        user_info = {
-            "platform": find_msg.get("user_platform", ""),
-            "user_id": find_msg.get("user_id", ""),
-            "user_nickname": find_msg.get("user_nickname", ""),
-            "user_cardname": find_msg.get("user_cardname", ""),
-        }
-
-        group_info = {}
-        if find_msg.get("chat_info_group_id"):
-            group_info = {
-                "platform": find_msg.get("chat_info_group_platform", ""),
-                "group_id": find_msg.get("chat_info_group_id", ""),
-                "group_name": find_msg.get("chat_info_group_name", ""),
-            }
-
-        content_format = ""
-        accept_format = ""
-        template_items = {}
-
-        format_info = {"content_format": content_format, "accept_format": accept_format}
-        template_info = {
-            "template_items": template_items,
-        }
-
-        message_info = {
-            "platform": self.platform,
-            "message_id": find_msg.get("message_id"),
-            "time": find_msg.get("time"),
-            "group_info": group_info,
-            "user_info": user_info,
-            "additional_config": find_msg.get("additional_config"),
-            "format_info": format_info,
-            "template_info": template_info,
-        }
-        message_dict = {
-            "message_info": message_info,
-            "raw_message": find_msg.get("processed_plain_text"),
-            "detailed_plain_text": find_msg.get("processed_plain_text"),
-            "processed_plain_text": find_msg.get("processed_plain_text"),
-        }
-        find_rec_msg = MessageRecv(message_dict)
-
-        find_rec_msg.update_chat_stream(get_chat_manager().get_or_create_stream(self.chat_id))
-
-        return find_rec_msg
 
     async def observe(self):
         # 自上一次观察的新消息

@@ -12,13 +12,15 @@ from typing import List, Tuple, Type
 # 导入新插件系统
 from src.plugin_system import BasePlugin, register_plugin, BaseAction, ComponentInfo, ActionActivationType, ChatMode
 from src.plugin_system.base.config_types import ConfigField
+from src.config.config import global_config
 
 # 导入依赖的系统组件
 from src.common.logger import get_logger
 
 # 导入API模块 - 标准Python包方式
-from src.plugin_system.apis import emoji_api, generator_api, message_api
+from src.plugin_system.apis import generator_api, message_api
 from src.plugins.built_in.core_actions.no_reply import NoReplyAction
+from src.plugins.built_in.core_actions.emoji import EmojiAction
 
 logger = get_logger("core_actions")
 
@@ -61,6 +63,8 @@ class ReplyAction(BaseAction):
             success, reply_set = await generator_api.generate_reply(
                 action_data=self.action_data,
                 chat_id=self.chat_id,
+                request_type="focus.replyer",
+                enable_tool=global_config.tool.enable_in_focus_chat,
             )
 
             # 检查从start_time以来的新消息数量
@@ -109,72 +113,6 @@ class ReplyAction(BaseAction):
             return False, f"回复失败: {str(e)}"
 
 
-class EmojiAction(BaseAction):
-    """表情动作 - 发送表情包"""
-
-    # 激活设置
-    focus_activation_type = ActionActivationType.LLM_JUDGE
-    normal_activation_type = ActionActivationType.RANDOM
-    mode_enable = ChatMode.ALL
-    parallel_action = True
-    random_activation_probability = 0.2  # 默认值，可通过配置覆盖
-
-    # 动作基本信息
-    action_name = "emoji"
-    action_description = "发送表情包辅助表达情绪"
-
-    # LLM判断提示词
-    llm_judge_prompt = """
-    判定是否需要使用表情动作的条件：
-    1. 用户明确要求使用表情包
-    2. 这是一个适合表达强烈情绪的场合
-    3. 不要发送太多表情包，如果你已经发送过多个表情包则回答"否"
-    
-    请回答"是"或"否"。
-    """
-
-    # 动作参数定义
-    action_parameters = {"description": "文字描述你想要发送的表情包内容"}
-
-    # 动作使用场景
-    action_require = ["表达情绪时可以选择使用", "重点：不要连续发，如果你已经发过[表情包]，就不要选择此动作"]
-
-    # 关联类型
-    associated_types = ["emoji"]
-
-    async def execute(self) -> Tuple[bool, str]:
-        """执行表情动作"""
-        logger.info(f"{self.log_prefix} 决定发送表情")
-
-        try:
-            # 1. 根据描述选择表情包
-            description = self.action_data.get("description", "")
-            emoji_result = await emoji_api.get_by_description(description)
-
-            if not emoji_result:
-                logger.warning(f"{self.log_prefix} 未找到匹配描述 '{description}' 的表情包")
-                return False, f"未找到匹配 '{description}' 的表情包"
-
-            emoji_base64, emoji_description, matched_emotion = emoji_result
-            logger.info(f"{self.log_prefix} 找到表情包: {emoji_description}, 匹配情感: {matched_emotion}")
-
-            # 使用BaseAction的便捷方法发送表情包
-            success = await self.send_emoji(emoji_base64)
-
-            if not success:
-                logger.error(f"{self.log_prefix} 表情包发送失败")
-                return False, "表情包发送失败"
-
-            # 重置NoReplyAction的连续计数器
-            NoReplyAction.reset_consecutive_count()
-
-            return True, f"发送表情包: {emoji_description}"
-
-        except Exception as e:
-            logger.error(f"{self.log_prefix} 表情动作执行失败: {e}")
-            return False, f"表情发送失败: {str(e)}"
-
-
 @register_plugin
 class CoreActionsPlugin(BasePlugin):
     """核心动作插件
@@ -197,21 +135,18 @@ class CoreActionsPlugin(BasePlugin):
         "plugin": "插件启用配置",
         "components": "核心组件启用配置",
         "no_reply": "不回复动作配置（智能等待机制）",
-        "emoji": "表情动作配置",
     }
 
     # 配置Schema定义
     config_schema = {
         "plugin": {
             "enabled": ConfigField(type=bool, default=True, description="是否启用插件"),
-            "config_version": ConfigField(type=str, default="0.1.0", description="配置文件版本"),
+            "config_version": ConfigField(type=str, default="0.3.1", description="配置文件版本"),
         },
         "components": {
             "enable_reply": ConfigField(type=bool, default=True, description="是否启用'回复'动作"),
             "enable_no_reply": ConfigField(type=bool, default=True, description="是否启用'不回复'动作"),
             "enable_emoji": ConfigField(type=bool, default=True, description="是否启用'表情'动作"),
-            "enable_change_to_focus": ConfigField(type=bool, default=True, description="是否启用'切换到专注模式'动作"),
-            "enable_exit_focus": ConfigField(type=bool, default=True, description="是否启用'退出专注模式'动作"),
         },
         "no_reply": {
             "max_timeout": ConfigField(type=int, default=1200, description="最大等待超时时间（秒）"),
@@ -231,18 +166,13 @@ class CoreActionsPlugin(BasePlugin):
                 type=int, default=600, description="回复频率检查窗口时间（秒）", example=600
             ),
         },
-        "emoji": {
-            "random_probability": ConfigField(
-                type=float, default=0.1, description="Normal模式下，随机发送表情的概率（0.0到1.0）", example=0.15
-            )
-        },
     }
 
     def get_plugin_components(self) -> List[Tuple[ComponentInfo, Type]]:
         """返回插件包含的组件列表"""
 
         # --- 从配置动态设置Action/Command ---
-        emoji_chance = self.get_config("emoji.random_probability", 0.1)
+        emoji_chance = global_config.normal_chat.emoji_chance
         EmojiAction.random_activation_probability = emoji_chance
 
         no_reply_probability = self.get_config("no_reply.random_probability", 0.8)
