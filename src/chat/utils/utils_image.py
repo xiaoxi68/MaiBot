@@ -409,7 +409,7 @@ class ImageManager:
                         existing_image.count = 0
                     if existing_image.vlm_processed is None:
                         existing_image.vlm_processed = False
-                    
+
                     existing_image.count += 1
                     existing_image.save()
                     return existing_image.image_id, f"[picid:{existing_image.image_id}]"
