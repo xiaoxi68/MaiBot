@@ -295,20 +295,12 @@ class NormalChatConfig(ConfigBase):
 class FocusChatConfig(ConfigBase):
     """专注聊天配置类"""
 
-    compressed_length: int = 5
-    """心流上下文压缩的最短压缩长度，超过心流观察到的上下文长度，会压缩，最短压缩长度为5"""
-
-    compress_length_limit: int = 5
-    """最多压缩份数，超过该数值的压缩上下文会被删除"""
-
     think_interval: float = 1
     """思考间隔（秒）"""
 
     consecutive_replies: float = 1
     """连续回复能力，值越高，麦麦连续回复的概率越高"""
 
-    working_memory_processor: bool = False
-    """是否启用工作记忆处理器"""
 
 
 @dataclass

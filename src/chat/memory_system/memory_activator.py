@@ -80,12 +80,6 @@ class MemoryActivator:
     async def activate_memory_with_chat_history(self, target_message, chat_history_prompt) -> List[Dict]:
         """
         激活记忆
-
-        Args:
-            observations: 现有的进行观察后的 观察列表
-
-        Returns:
-            List[Dict]: 激活的记忆列表
         """
         # 如果记忆系统被禁用，直接返回空列表
         if not global_config.memory.enable_memory:

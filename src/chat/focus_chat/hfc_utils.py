@@ -5,7 +5,6 @@ from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.message_receive.message import UserInfo
 from src.common.logger import get_logger
 import json
-import os
 from typing import Dict, Any
 
 logger = get_logger(__name__)
@@ -24,9 +23,6 @@ class CycleDetail:
         self.end_time: Optional[float] = None
         self.timers: Dict[str, float] = {}
 
-        # 新字段
-        self.loop_observation_info: Dict[str, Any] = {}
-        self.loop_processor_info: Dict[str, Any] = {}  # 前处理器信息
         self.loop_plan_info: Dict[str, Any] = {}
         self.loop_action_info: Dict[str, Any] = {}
 
@@ -79,8 +75,6 @@ class CycleDetail:
             "end_time": self.end_time,
             "timers": self.timers,
             "thinking_id": self.thinking_id,
-            "loop_observation_info": convert_to_serializable(self.loop_observation_info),
-            "loop_processor_info": convert_to_serializable(self.loop_processor_info),
             "loop_plan_info": convert_to_serializable(self.loop_plan_info),
             "loop_action_info": convert_to_serializable(self.loop_action_info),
         }
@@ -100,41 +94,12 @@ class CycleDetail:
                 or "group"
             )
 
-        # current_time_minute = time.strftime("%Y%m%d_%H%M", time.localtime())
-
-        # try:
-        #     self.log_cycle_to_file(
-        #         log_dir + self.prefix + f"/{current_time_minute}_cycle_" + str(self.cycle_id) + ".json"
-        #     )
-        # except Exception as e:
-        #     logger.warning(f"写入文件日志，可能是群名称包含非法字符: {e}")
-
-    def log_cycle_to_file(self, file_path: str):
-        """将循环信息写入文件"""
-        # 如果目录不存在，则创建目
-        dir_name = os.path.dirname(file_path)
-        # 去除特殊字符，保留字母、数字、下划线、中划线和中文
-        dir_name = "".join(
-            char for char in dir_name if char.isalnum() or char in ["_", "-", "/"] or "\u4e00" <= char <= "\u9fff"
-        )
-        # print("dir_name:", dir_name)
-        if dir_name and not os.path.exists(dir_name):
-            os.makedirs(dir_name, exist_ok=True)
-        # 写入文件
-
-        file_path = os.path.join(dir_name, os.path.basename(file_path))
-        # print("file_path:", file_path)
-        with open(file_path, "a", encoding="utf-8") as f:
-            f.write(json.dumps(self.to_dict(), ensure_ascii=False) + "\n")
-
     def set_thinking_id(self, thinking_id: str):
         """设置思考消息ID"""
         self.thinking_id = thinking_id
 
     def set_loop_info(self, loop_info: Dict[str, Any]):
         """设置循环信息"""
-        self.loop_observation_info = loop_info["loop_observation_info"]
-        self.loop_processor_info = loop_info["loop_processor_info"]
         self.loop_plan_info = loop_info["loop_plan_info"]
         self.loop_action_info = loop_info["loop_action_info"]
 

@@ -1,7 +1,6 @@
 from typing import List, Optional, Any, Dict
-from src.chat.focus_chat.observation.observation import Observation
 from src.common.logger import get_logger
-from src.chat.focus_chat.observation.hfcloop_observation import HFCloopObservation
+from src.chat.focus_chat.focus_loop_info import FocusLoopInfo
 from src.chat.message_receive.chat_stream import get_chat_manager
 from src.config.config import global_config
 from src.llm_models.utils_model import LLMRequest
@@ -44,8 +43,8 @@ class ActionModifier:
 
     async def modify_actions(
         self,
+        loop_info = None,
         mode: str = "focus",
-        observations: Optional[List[Observation]] = None,
         message_content: str = "",
     ):
         """
@@ -83,13 +82,10 @@ class ActionModifier:
             chat_content = chat_content + "\n" + f"现在，最新的消息是：{message_content}"
 
         # === 第一阶段：传统观察处理 ===
-        if observations:
-            for obs in observations:
-                if isinstance(obs, HFCloopObservation):
-                    # 获取适用于FOCUS模式的动作
-                    removals_from_loop = await self.analyze_loop_actions(obs)
-                    if removals_from_loop:
-                        removals_s1.extend(removals_from_loop)
+        if loop_info:
+            removals_from_loop = await self.analyze_loop_actions(loop_info)
+            if removals_from_loop:
+                removals_s1.extend(removals_from_loop)
 
         # 检查动作的关联类型
         chat_context = self.chat_stream.context
@@ -466,7 +462,7 @@ class ActionModifier:
             logger.debug(f"{self.log_prefix}动作 {action_name} 未匹配到任何关键词: {activation_keywords}")
             return False
 
-    async def analyze_loop_actions(self, obs: HFCloopObservation) -> List[tuple[str, str]]:
+    async def analyze_loop_actions(self, obs: FocusLoopInfo) -> List[tuple[str, str]]:
         """分析最近的循环内容并决定动作的移除
 
         Returns:

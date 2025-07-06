@@ -12,7 +12,7 @@ from src.chat.utils.timer_calculator import Timer
 from src.common.message_repository import count_messages
 from src.chat.utils.prompt_builder import global_prompt_manager
 from ..message_receive.message import MessageSending, MessageRecv, MessageThinking, MessageSet
-from src.chat.message_receive.message_sender import message_manager
+from src.chat.message_receive.normal_message_sender import message_manager
 from src.chat.normal_chat.willing.willing_manager import get_willing_manager
 from src.chat.planner_actions.action_manager import ActionManager
 from src.person_info.relationship_builder_manager import relationship_builder_manager

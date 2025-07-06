@@ -12,6 +12,7 @@
 - normal的插件允许llm激活
 - 合并action激活器
 - emoji统一可选随机激活或llm激活
+- 移除observation和processor，简化focus的代码逻辑
 
 ## [0.8.1] - 2025-7-5
 

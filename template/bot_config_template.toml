@@ -1,5 +1,5 @@
 [inner]
-version = "3.4.0"
+version = "3.5.0"
 
 #----以下是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 #如果你想要修改配置文件，请在修改后将version的值进行变更
@@ -61,12 +61,15 @@ enable_relationship = true # 是否启用关系系统
 relation_frequency = 1 # 关系频率，麦麦构建关系的速度，仅在normal_chat模式下有效
 
 [chat] #麦麦的聊天通用设置
-chat_mode = "normal" # 聊天模式 —— 普通模式：normal，专注模式：focus，自动auto：在普通模式和专注模式之间自动切换
-# chat_mode = "focus"
-# chat_mode = "auto"
+chat_mode = "normal" # 聊天模式 —— 普通模式：normal，专注模式：focus，在普通模式和专注模式之间自动切换
+auto_focus_threshold = 1 # 自动切换到专注聊天的阈值，越低越容易进入专注聊天
+exit_focus_threshold = 1 # 自动退出专注聊天的阈值，越低越容易退出专注聊天
+# 普通模式下，麦麦会针对感兴趣的消息进行回复，token消耗量较低
+# 专注模式下，麦麦会进行主动的观察，并给出回复，token消耗量略高，但是回复时机更准确
+# 自动模式下，麦麦会根据消息内容自动切换到专注模式或普通模式
 
 max_context_size = 18 # 上下文长度
-
+thinking_timeout = 20 # 麦麦一次回复最长思考规划时间，超过这个时间的思考会放弃（往往是api反应太慢）
 replyer_random_probability = 0.5 # 首要replyer模型被选择的概率
 
 talk_frequency = 1 # 麦麦回复频率，越高，麦麦回复越频繁
@@ -96,13 +99,6 @@ talk_frequency_adjust = [
 # - 时间支持跨天，例如 "00:10,0.3" 表示从凌晨0:10开始使用频率0.3
 # - 系统会自动将 "platform:id:type" 转换为内部的哈希chat_id进行匹配
 
-auto_focus_threshold = 1 # 自动切换到专注聊天的阈值，越低越容易进入专注聊天
-exit_focus_threshold = 1 # 自动退出专注聊天的阈值，越低越容易退出专注聊天
-# 普通模式下，麦麦会针对感兴趣的消息进行回复，token消耗量较低
-# 专注模式下，麦麦会进行主动的观察和回复，并给出回复，token消耗量较高
-# 自动模式下，麦麦会根据消息内容自动切换到专注模式或普通模式
-
-thinking_timeout = 30 # 麦麦一次回复最长思考规划时间，超过这个时间的思考会放弃（往往是api反应太慢）
 
 [message_receive]
 # 以下是消息过滤，可以根据规则过滤特定消息，将不会读取这些消息
@@ -127,9 +123,6 @@ enable_planner = true # 是否启用动作规划器（与focus_chat共享actions
 [focus_chat] #专注聊天
 think_interval = 3 # 思考间隔 单位秒，可以有效减少消耗
 consecutive_replies = 1 # 连续回复能力，值越高，麦麦连续回复的概率越高
-compressed_length = 8 # 不能大于observation_context_size,心流上下文压缩的最短压缩长度，超过心流观察到的上下文长度，会压缩，最短压缩长度为5
-compress_length_limit = 4 #最多压缩份数，超过该数值的压缩上下文会被删除
-working_memory_processor = false # 是否启用工作记忆处理器，消耗量大
 
 [tool]
 enable_in_normal_chat = false # 是否在普通聊天中启用工具

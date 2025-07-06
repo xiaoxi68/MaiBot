@@ -352,7 +352,6 @@ MODULE_COLORS = {
     "heartflow_utils": "\033[38;5;219m",  # 浅粉色
     "sub_heartflow": "\033[38;5;207m",  # 粉紫色
     "subheartflow_manager": "\033[38;5;201m",  # 深粉色
-    "observation": "\033[38;5;141m",  # 紫色
     "background_tasks": "\033[38;5;240m",  # 灰色
     "chat_message": "\033[38;5;45m",  # 青色
     "chat_stream": "\033[38;5;51m",  # 亮青色

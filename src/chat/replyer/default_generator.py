@@ -9,7 +9,7 @@ from src.common.logger import get_logger
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.chat.utils.timer_calculator import Timer  # <--- Import Timer
-from src.chat.focus_chat.heartFC_sender import HeartFCSender
+from src.chat.message_receive.uni_message_sender import HeartFCSender
 from src.chat.utils.utils import get_chat_type_and_target_info
 from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.focus_chat.hfc_utils import parse_thinking_id_to_timestamp

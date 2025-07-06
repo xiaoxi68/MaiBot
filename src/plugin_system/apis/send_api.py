@@ -28,7 +28,7 @@ from src.common.logger import get_logger
 
 # 导入依赖
 from src.chat.message_receive.chat_stream import get_chat_manager
-from src.chat.focus_chat.heartFC_sender import HeartFCSender
+from src.chat.message_receive.uni_message_sender import HeartFCSender
 from src.chat.message_receive.message import MessageSending, MessageRecv
 from src.chat.utils.chat_message_builder import get_raw_msg_before_timestamp_with_chat
 from src.person_info.person_info import get_person_info_manager

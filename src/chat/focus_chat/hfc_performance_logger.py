@@ -41,7 +41,6 @@ class HFCPerformanceLogger:
                 "action_type": cycle_data.get("action_type", "unknown"),
                 "total_time": cycle_data.get("total_time", 0),
                 "step_times": cycle_data.get("step_times", {}),
-                "processor_time_costs": cycle_data.get("processor_time_costs", {}),  # 前处理器时间
                 "reasoning": cycle_data.get("reasoning", ""),
                 "success": cycle_data.get("success", False),
             }

@@ -7,7 +7,6 @@ import traceback
 from src.common.logger import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.message_receive.chat_stream import get_chat_manager
-from .base_processor import BaseProcessor
 from typing import List
 from src.chat.focus_chat.observation.working_observation import WorkingMemoryObservation
 from src.chat.focus_chat.working_memory.working_memory import WorkingMemory
@@ -44,12 +43,10 @@ def init_prompt():
     Prompt(memory_proces_prompt, "prompt_memory_proces")
 
 
-class WorkingMemoryProcessor(BaseProcessor):
+class WorkingMemoryProcessor:
     log_prefix = "工作记忆"
 
     def __init__(self, subheartflow_id: str):
-        super().__init__()
-
         self.subheartflow_id = subheartflow_id
 
         self.llm_model = LLMRequest(
