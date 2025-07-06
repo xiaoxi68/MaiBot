@@ -29,6 +29,11 @@ def init_prompt():
 {chat_context_description}，以下是具体的聊天内容：
 {chat_content_block}
 {moderation_prompt}
+
+重要提醒：避免重复回复同一话题
+- 如果你在最近1分钟内已经对某个话题进行了回复，不要再次回复相同或相似的内容
+- 如果聊天记录显示你刚刚已经回复过相似内容，即使话题仍然在进行，也应该选择no_reply
+
 现在请你根据聊天内容选择合适的action:
 
 {action_options_text}
