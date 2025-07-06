@@ -45,7 +45,7 @@ class ToolExecutor:
         self.chat_id = chat_id
         self.chat_stream = get_chat_manager().get_stream(self.chat_id)
         self.log_prefix = f"[{get_chat_manager().get_stream_name(self.chat_id) or self.chat_id}]"
-        
+
         self.llm_model = LLMRequest(
             model=global_config.model.tool_use,
             request_type="tool_executor",

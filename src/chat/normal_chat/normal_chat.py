@@ -28,6 +28,7 @@ willing_manager = get_willing_manager()
 
 logger = get_logger("normal_chat")
 
+
 class NormalChat:
     """
     普通聊天处理类，负责处理非核心对话的聊天逻辑。
@@ -61,7 +62,7 @@ class NormalChat:
 
         self.willing_amplifier = 1
         self.start_time = time.time()
-        
+
         self.mood_manager = mood_manager
         self.start_time = time.time()
 
@@ -76,7 +77,6 @@ class NormalChat:
         # 记录最近的回复内容，每项包含: {time, user_message, response, is_mentioned, is_reference_reply}
         self.recent_replies = []
         self.max_replies_history = 20  # 最多保存最近20条回复记录
-
 
         # 添加回调函数，用于在满足条件时通知切换到focus_chat模式
         self.on_switch_to_focus_callback = on_switch_to_focus_callback
@@ -561,16 +561,14 @@ class NormalChat:
     async def reply_one_message(self, message: MessageRecv) -> None:
         # 回复前处理
         await self.relationship_builder.build_relation()
-        
+
         thinking_id = await self._create_thinking_message(message)
 
         # 如果启用planner，预先修改可用actions（避免在并行任务中重复调用）
         available_actions = None
         if self.enable_planner:
             try:
-                await self.action_modifier.modify_actions(
-                    mode="normal", message_content=message.processed_plain_text
-                )
+                await self.action_modifier.modify_actions(mode="normal", message_content=message.processed_plain_text)
                 available_actions = self.action_manager.get_using_actions_for_mode("normal")
             except Exception as e:
                 logger.warning(f"[{self.stream_name}] 获取available_actions失败: {e}")
@@ -647,7 +645,7 @@ class NormalChat:
             logger.info(f"[{self.stream_name}] 回复内容中没有文本，不发送消息")
             await self._cleanup_thinking_message_by_id(thinking_id)
             return False
-            
+
         # 发送回复 (不再需要传入 chat)
         first_bot_msg = await self._add_messages_to_manager(message, reply_texts, thinking_id)
 
@@ -954,6 +952,7 @@ class NormalChat:
         except Exception as e:
             logger.warning(f"[{self.stream_name}] 获取疲劳调整系数时出错: {e}")
             return 1.0  # 出错时返回正常系数
+
     async def _check_should_switch_to_focus(self) -> bool:
         """
         检查是否满足切换到focus模式的条件

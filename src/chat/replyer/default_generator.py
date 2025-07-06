@@ -98,7 +98,6 @@ class DefaultReplyer:
         self.log_prefix = "replyer"
         self.request_type = request_type
 
-
         if model_configs:
             self.express_model_configs = model_configs
         else:
@@ -470,7 +469,13 @@ class DefaultReplyer:
         duration = end_time - start_time
         return name, result, duration
 
-    async def build_prompt_reply_context(self, reply_data=None, available_actions: List[str] = None, enable_timeout: bool = False, enable_tool: bool = True) -> str:
+    async def build_prompt_reply_context(
+        self,
+        reply_data=None,
+        available_actions: List[str] = None,
+        enable_timeout: bool = False,
+        enable_tool: bool = True,
+    ) -> str:
         """
         构建回复器上下文
 
@@ -537,10 +542,16 @@ class DefaultReplyer:
 
         # 并行执行四个构建任务
         task_results = await asyncio.gather(
-            self._time_and_run_task(self.build_expression_habits(chat_talking_prompt_half, target), "build_expression_habits"),
-            self._time_and_run_task(self.build_relation_info(reply_data, chat_talking_prompt_half), "build_relation_info"),
+            self._time_and_run_task(
+                self.build_expression_habits(chat_talking_prompt_half, target), "build_expression_habits"
+            ),
+            self._time_and_run_task(
+                self.build_relation_info(reply_data, chat_talking_prompt_half), "build_relation_info"
+            ),
             self._time_and_run_task(self.build_memory_block(chat_talking_prompt_half, target), "build_memory_block"),
-            self._time_and_run_task(self.build_tool_info(reply_data, chat_talking_prompt_half, enable_tool=enable_tool), "build_tool_info"),
+            self._time_and_run_task(
+                self.build_tool_info(reply_data, chat_talking_prompt_half, enable_tool=enable_tool), "build_tool_info"
+            ),
         )
 
         # 处理结果

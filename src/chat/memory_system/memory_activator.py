@@ -111,7 +111,6 @@ class MemoryActivator:
 
             # 添加新的关键词到缓存
             self.cached_keywords.update(keywords)
-            
 
         # 调用记忆系统获取相关记忆
         related_memory = await hippocampus_manager.get_memory_from_topic(
