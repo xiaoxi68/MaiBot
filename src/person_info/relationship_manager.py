@@ -124,7 +124,7 @@ class RelationshipManager:
         if not person_name or person_name == "none":
             return ""
         short_impression = await person_info_manager.get_value(person_id, "short_impression")
-        
+
         current_points = await person_info_manager.get_value(person_id, "points") or []
         if isinstance(current_points, str):
             try:
@@ -134,7 +134,7 @@ class RelationshipManager:
                 current_points = []
         elif not isinstance(current_points, list):
             current_points = []
-        
+
         # 按时间排序forgotten_points
         current_points.sort(key=lambda x: x[2])
         # 按权重加权随机抽取3个points，point[1]的值在1-10之间，权重越高被抽到概率越大
@@ -146,9 +146,7 @@ class RelationshipManager:
             points = current_points
 
         # 构建points文本
-        points_text = "\n".join(
-            [f"{point[2]}：{point[0]}\n" for point in points]
-        )
+        points_text = "\n".join([f"{point[2]}：{point[0]}\n" for point in points])
 
         nickname_str = await person_info_manager.get_value(person_id, "nickname")
         platform = await person_info_manager.get_value(person_id, "platform")
@@ -163,7 +161,7 @@ class RelationshipManager:
 
         if short_impression:
             relation_prompt += f"你对ta的印象是：{short_impression}。\n"
-            
+
         if points_text:
             relation_prompt += f"你记得ta最近做的事：{points_text}"
 
