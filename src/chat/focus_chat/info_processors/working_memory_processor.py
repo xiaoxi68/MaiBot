@@ -193,7 +193,7 @@ class WorkingMemoryProcessor(BaseProcessor):
         if working_memory is None:
             logger.warning(f"{self.log_prefix} 工作记忆对象为None，无法压缩聊天记忆")
             return
-            
+
         try:
             summary_result, _ = await self.llm_model.generate_response_async(obs.compressor_prompt)
             if not summary_result:
@@ -250,7 +250,7 @@ class WorkingMemoryProcessor(BaseProcessor):
         if working_memory is None:
             logger.warning(f"{self.log_prefix} 工作记忆对象为None，无法合并记忆")
             return
-            
+
         try:
             merged_memory = await working_memory.merge_memory(memory_id1, memory_id2)
             logger.debug(f"{self.log_prefix} 合并后的记忆梗概: {merged_memory.brief}")

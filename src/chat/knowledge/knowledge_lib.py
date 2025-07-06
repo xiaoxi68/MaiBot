@@ -44,7 +44,6 @@ if bot_global_config.lpmm_knowledge.enable:
     logger.info(f"KG节点数量：{len(kg_manager.graph.get_node_list())}")
     logger.info(f"KG边数量：{len(kg_manager.graph.get_edge_list())}")
 
-
     # 数据比对：Embedding库与KG的段落hash集合
     for pg_hash in kg_manager.stored_paragraph_hashes:
         key = PG_NAMESPACE + "-" + pg_hash

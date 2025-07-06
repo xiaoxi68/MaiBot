@@ -39,7 +39,7 @@ class KnowledgeFetcher:
             if qa_manager is None:
                 logger.debug(f"[私聊][{self.private_name}]LPMM知识库已禁用，跳过知识获取")
                 return "未找到匹配的知识"
-                
+
             knowledge_info = qa_manager.get_knowledge(query)
             logger.debug(f"[私聊][{self.private_name}]LPMM知识库查询结果: {knowledge_info:150}")
             return knowledge_info
