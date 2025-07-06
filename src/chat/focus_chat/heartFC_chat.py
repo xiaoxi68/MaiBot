@@ -9,17 +9,14 @@ from rich.traceback import install
 from src.chat.utils.prompt_builder import global_prompt_manager
 from src.common.logger import get_logger
 from src.chat.utils.timer_calculator import Timer
-from src.chat.heart_flow.observation.observation import Observation
-from src.chat.focus_chat.heartFC_Cycleinfo import CycleDetail
+from src.chat.focus_chat.observation.observation import Observation
 from src.chat.focus_chat.info.info_base import InfoBase
 from src.chat.focus_chat.info_processors.chattinginfo_processor import ChattingInfoProcessor
 from src.chat.focus_chat.info_processors.working_memory_processor import WorkingMemoryProcessor
-from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
-from src.chat.heart_flow.observation.working_observation import WorkingMemoryObservation
-from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
-from src.chat.heart_flow.observation.actions_observation import ActionObservation
-
-from src.chat.focus_chat.memory_activator import MemoryActivator
+from src.chat.focus_chat.observation.hfcloop_observation import HFCloopObservation
+from src.chat.focus_chat.observation.working_observation import WorkingMemoryObservation
+from src.chat.focus_chat.observation.chatting_observation import ChattingObservation
+from src.chat.focus_chat.observation.actions_observation import ActionObservation
 from src.chat.focus_chat.info_processors.base_processor import BaseProcessor
 from src.chat.planner_actions.planner_focus import ActionPlanner
 from src.chat.planner_actions.action_modifier import ActionModifier
@@ -28,6 +25,7 @@ from src.config.config import global_config
 from src.chat.focus_chat.hfc_performance_logger import HFCPerformanceLogger
 from src.chat.focus_chat.hfc_version_manager import get_hfc_version
 from src.person_info.relationship_builder_manager import relationship_builder_manager
+from src.chat.focus_chat.hfc_utils import CycleDetail
 
 
 install(extra_lines=3)
@@ -75,8 +73,6 @@ class HeartFChatting:
         self.stream_id: str = chat_id  # 聊天流ID
         self.chat_stream = get_chat_manager().get_stream(self.stream_id)
         self.log_prefix = f"[{get_chat_manager().get_stream_name(self.stream_id) or self.stream_id}]"
-
-        self.memory_activator = MemoryActivator()
 
         self.relationship_builder = relationship_builder_manager.get_or_create_builder(self.stream_id)
 

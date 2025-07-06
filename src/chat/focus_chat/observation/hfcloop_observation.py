@@ -2,7 +2,7 @@
 # 外部世界可以是某个聊天 不同平台的聊天 也可以是任意媒体
 from datetime import datetime
 from src.common.logger import get_logger
-from src.chat.focus_chat.heartFC_Cycleinfo import CycleDetail
+from src.chat.focus_chat.hfc_utils import CycleDetail
 from typing import List
 # Import the new utility function
 

@@ -9,7 +9,7 @@ from src.chat.message_receive.message import MessageRecv
 from src.experimental.only_message_process import MessageProcessor
 from src.chat.message_receive.storage import MessageStorage
 from src.experimental.PFC.pfc_manager import PFCManager
-from src.chat.focus_chat.heartflow_message_processor import HeartFCMessageReceiver
+from src.chat.heart_flow.heartflow_message_processor import HeartFCMessageReceiver
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.config.config import global_config
 from src.plugin_system.core.component_registry import component_registry  # 导入新插件系统

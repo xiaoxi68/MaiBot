@@ -1,5 +1,5 @@
-from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
-from src.chat.heart_flow.observation.observation import Observation
+from src.chat.focus_chat.observation.chatting_observation import ChattingObservation
+from src.chat.focus_chat.observation.observation import Observation
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 import time
@@ -9,7 +9,7 @@ from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.message_receive.chat_stream import get_chat_manager
 from .base_processor import BaseProcessor
 from typing import List
-from src.chat.heart_flow.observation.working_observation import WorkingMemoryObservation
+from src.chat.focus_chat.observation.working_observation import WorkingMemoryObservation
 from src.chat.focus_chat.working_memory.working_memory import WorkingMemory
 from src.chat.focus_chat.info.info_base import InfoBase
 from json_repair import repair_json

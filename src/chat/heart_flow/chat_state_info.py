@@ -7,7 +7,6 @@ class ChatState(enum.Enum):
     NORMAL = "随便水群"
     FOCUSED = "认真水群"
 
-
 class ChatStateInfo:
     def __init__(self):
         self.chat_status: ChatState = ChatState.NORMAL

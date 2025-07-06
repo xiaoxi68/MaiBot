@@ -21,7 +21,7 @@ import traceback
 from src.chat.planner_actions.planner_normal import NormalChatPlanner
 from src.chat.planner_actions.action_modifier import ActionModifier
 
-from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
+from src.chat.utils.utils import get_chat_type_and_target_info
 from src.manager.mood_manager import mood_manager
 
 willing_manager = get_willing_manager()

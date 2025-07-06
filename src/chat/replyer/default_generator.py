@@ -10,7 +10,7 @@ from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.chat.utils.timer_calculator import Timer  # <--- Import Timer
 from src.chat.focus_chat.heartFC_sender import HeartFCSender
-from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
+from src.chat.utils.utils import get_chat_type_and_target_info
 from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.focus_chat.hfc_utils import parse_thinking_id_to_timestamp
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
@@ -26,7 +26,7 @@ from src.person_info.person_info import get_person_info_manager
 from datetime import datetime
 import re
 from src.chat.knowledge.knowledge_lib import qa_manager
-from src.chat.focus_chat.memory_activator import MemoryActivator
+from src.chat.memory_system.memory_activator import MemoryActivator
 from src.tools.tool_executor import ToolExecutor
 
 logger = get_logger("replyer")

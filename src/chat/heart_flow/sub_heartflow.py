@@ -1,5 +1,3 @@
-from .observation.observation import Observation
-from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 import asyncio
 import time
 from typing import Optional, List, Dict, Tuple
@@ -10,7 +8,7 @@ from src.chat.message_receive.chat_stream import get_chat_manager
 from src.chat.focus_chat.heartFC_chat import HeartFChatting
 from src.chat.normal_chat.normal_chat import NormalChat
 from src.chat.heart_flow.chat_state_info import ChatState, ChatStateInfo
-from .utils_chat import get_chat_type_and_target_info
+from src.chat.utils.utils import get_chat_type_and_target_info
 from src.config.config import global_config
 from rich.traceback import install
 
@@ -314,24 +312,6 @@ class SubHeartflow:
                 f"{log_prefix} 尝试将状态从 {current_state.value} 变为 {new_state.value}，但未成功或未执行更改。"
             )
 
-    def add_observation(self, observation: Observation):
-        for existing_obs in self.observations:
-            if existing_obs.observe_id == observation.observe_id:
-                return
-        self.observations.append(observation)
-
-    def remove_observation(self, observation: Observation):
-        if observation in self.observations:
-            self.observations.remove(observation)
-
-    def get_all_observations(self) -> list[Observation]:
-        return self.observations
-
-    def _get_primary_observation(self) -> Optional[ChattingObservation]:
-        if self.observations and isinstance(self.observations[0], ChattingObservation):
-            return self.observations[0]
-        logger.warning(f"SubHeartflow {self.subheartflow_id} 没有找到有效的 ChattingObservation")
-        return None
 
     def get_normal_chat_last_speak_time(self) -> float:
         if self.normal_chat_instance:

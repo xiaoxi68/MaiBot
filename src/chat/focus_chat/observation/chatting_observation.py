@@ -8,9 +8,9 @@ from src.chat.utils.chat_message_builder import (
     get_person_id_list,
 )
 from src.chat.utils.prompt_builder import global_prompt_manager, Prompt
-from src.chat.heart_flow.observation.observation import Observation
+from src.chat.focus_chat.observation.observation import Observation
 from src.common.logger import get_logger
-from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
+from src.chat.utils.utils import get_chat_type_and_target_info
 
 logger = get_logger("observation")
 
