@@ -18,7 +18,6 @@ from src.chat.planner_actions.action_manager import ActionManager
 from src.person_info.relationship_builder_manager import relationship_builder_manager
 from .priority_manager import PriorityManager
 import traceback
-from src.chat.planner_actions.planner_normal import NormalChatPlanner
 from src.chat.planner_actions.planner_focus import ActionPlanner
 from src.chat.planner_actions.action_modifier import ActionModifier
 

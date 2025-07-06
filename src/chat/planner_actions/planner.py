@@ -156,7 +156,7 @@ class ActionPlanner:
                     if action == "no_action":
                         action = "no_reply"
                         reasoning = "决定不使用额外动作"
-                    
+
                     if action not in current_available_actions and action != "no_action":
                         logger.warning(
                             f"{self.log_prefix}LLM 返回了当前不可用或无效的动作: '{action}' (可用: {list(current_available_actions.keys())})，将强制使用 'no_reply'"
@@ -175,7 +175,6 @@ class ActionPlanner:
             traceback.print_exc()
             action = "no_reply"
             reasoning = f"Planner 内部处理错误: {outer_e}"
-
 
         is_parallel = False
         if action in current_available_actions:
@@ -220,7 +219,6 @@ class ActionPlanner:
             )
 
             self.last_obs_time_mark = time.time()
-            
 
             if self.mode == "focus":
                 by_what = "聊天内容"
@@ -230,7 +228,7 @@ class ActionPlanner:
                 no_action_block = """重要说明：
 - 'no_action' 表示只进行普通聊天回复，不执行任何额外动作
 - 其他action表示在普通回复的基础上，执行相应的额外动作"""
-            
+
             chat_context_description = "你现在正在一个群聊中"
             chat_target_name = None  # Only relevant for private
             if not is_group_chat and chat_target_info:
@@ -238,7 +236,6 @@ class ActionPlanner:
                     chat_target_info.get("person_name") or chat_target_info.get("user_nickname") or "对方"
                 )
                 chat_context_description = f"你正在和 {chat_target_name} 私聊"
-
 
             action_options_block = ""
 
