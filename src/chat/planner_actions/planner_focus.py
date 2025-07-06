@@ -55,7 +55,7 @@ class ActionPlanner:
     def __init__(self, chat_id: str, action_manager: ActionManager):
         self.chat_id = chat_id
         self.log_prefix = f"[{get_chat_manager().get_stream_name(chat_id) or chat_id}]"
-        
+
         self.action_manager = action_manager
         # LLM规划器配置
         self.planner_llm = LLMRequest(
@@ -67,7 +67,7 @@ class ActionPlanner:
             model=global_config.model.utils_small,
             request_type="focus.planner",  # 用于动作规划
         )
-        
+
         self.last_obs_time_mark = 0.0
 
     async def plan(self) -> Dict[str, Any]:
@@ -81,7 +81,7 @@ class ActionPlanner:
 
         try:
             is_group_chat = True
-            
+
             message_list_before_now = get_raw_msg_before_timestamp_with_chat(
                 chat_id=self.chat_id,
                 timestamp=time.time(),
@@ -95,7 +95,7 @@ class ActionPlanner:
                 truncate=True,
                 show_actions=True,
             )
-            
+
             self.last_obs_time_mark = time.time()
 
             # 获取聊天类型和目标信息
@@ -104,9 +104,7 @@ class ActionPlanner:
             try:
                 # 重新获取更准确的聊天信息
                 is_group_chat, chat_target_info = get_chat_type_and_target_info(self.chat_id)
-                logger.debug(
-                    f"{self.log_prefix}获取到聊天信息 - 群聊: {is_group_chat}, 目标信息: {chat_target_info}"
-                )
+                logger.debug(f"{self.log_prefix}获取到聊天信息 - 群聊: {is_group_chat}, 目标信息: {chat_target_info}")
             except Exception as e:
                 logger.warning(f"{self.log_prefix}获取聊天目标信息失败: {e}")
                 chat_target_info = None
@@ -201,7 +199,6 @@ class ActionPlanner:
                         if key not in ["action", "reasoning"]:
                             action_data[key] = value
 
-
                     if extracted_action not in current_available_actions:
                         logger.warning(
                             f"{self.log_prefix}LLM 返回了当前不可用或无效的动作: '{extracted_action}' (可用: {list(current_available_actions.keys())})，将强制使用 'no_reply'"
@@ -266,8 +263,6 @@ class ActionPlanner:
             action_options_block = ""
 
             for using_actions_name, using_actions_info in current_available_actions.items():
-                
-
                 if using_actions_info["parameters"]:
                     param_text = "\n"
                     for param_name, param_description in using_actions_info["parameters"].items():

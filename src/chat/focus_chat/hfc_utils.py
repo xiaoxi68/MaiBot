@@ -104,7 +104,6 @@ class CycleDetail:
         self.loop_action_info = loop_info["loop_action_info"]
 
 
-
 async def create_empty_anchor_message(
     platform: str, group_info: dict, chat_stream: ChatStream
 ) -> Optional[MessageRecv]:

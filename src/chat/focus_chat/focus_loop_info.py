@@ -76,7 +76,6 @@ class FocusLoopInfo:
         else:
             cycle_info_block = "\n"
 
-
         # 获取history_loop中最新添加的
         if self.history_loop:
             last_loop = self.history_loop[0]

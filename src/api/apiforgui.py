@@ -19,7 +19,6 @@ async def forced_change_subheartflow_status(subheartflow_id: str, status: ChatSt
     return False
 
 
-
 async def get_all_states():
     """获取所有状态"""
     all_states = await heartflow.api_get_all_states()

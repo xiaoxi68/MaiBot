@@ -17,6 +17,7 @@ from src.person_info.relationship_manager import get_relationship_manager
 
 logger = get_logger("chat")
 
+
 async def _process_relationship(message: MessageRecv) -> None:
     """处理用户关系逻辑
 

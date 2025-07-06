@@ -642,6 +642,7 @@ def translate_timestamp_to_human_readable(timestamp: float, mode: str = "normal"
         # 只返回时分秒格式，喵~
         return time.strftime("%H:%M:%S", time.localtime(timestamp))
 
+
 def get_chat_type_and_target_info(chat_id: str) -> Tuple[bool, Optional[Dict]]:
     """
     获取聊天类型（是否群聊）和私聊对象信息。

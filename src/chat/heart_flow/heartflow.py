@@ -3,6 +3,7 @@ from src.common.logger import get_logger
 from typing import Any, Optional
 from typing import Dict
 from src.chat.message_receive.chat_stream import get_chat_manager
+
 logger = get_logger("heartflow")
 
 
@@ -36,12 +37,11 @@ class Heartflow:
             logger.error(f"创建子心流 {subheartflow_id} 失败: {e}", exc_info=True)
             return None
 
-
     async def force_change_subheartflow_status(self, subheartflow_id: str, status: ChatState) -> None:
         """强制改变子心流的状态"""
         # 这里的 message 是可选的，可能是一个消息对象，也可能是其他类型的数据
         return await self.force_change_state(subheartflow_id, status)
-    
+
     async def force_change_state(self, subflow_id: Any, target_state: ChatState) -> bool:
         """强制改变指定子心流的状态"""
         subflow = self.subheartflows.get(subflow_id)

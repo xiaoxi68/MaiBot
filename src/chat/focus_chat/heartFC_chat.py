@@ -26,6 +26,7 @@ install(extra_lines=3)
 
 logger = get_logger("hfc")  # Logger Name Changed
 
+
 class HeartFChatting:
     """
     管理一个连续的Focus Chat循环
@@ -63,10 +64,7 @@ class HeartFChatting:
         self.loop_info: FocusLoopInfo = FocusLoopInfo(observe_id=self.stream_id)
 
         self.action_manager = ActionManager()
-        self.action_planner = ActionPlanner(
-            chat_id = self.stream_id,
-            action_manager=self.action_manager
-        )
+        self.action_planner = ActionPlanner(chat_id=self.stream_id, action_manager=self.action_manager)
         self.action_modifier = ActionModifier(action_manager=self.action_manager, chat_id=self.stream_id)
 
         self._processing_lock = asyncio.Lock()
@@ -238,7 +236,6 @@ class HeartFChatting:
 
                         self._current_cycle_detail.set_loop_info(loop_info)
 
-
                         self.loop_info.add_loop_info(self._current_cycle_detail)
 
                         self._current_cycle_detail.timers = cycle_timers
@@ -252,7 +249,6 @@ class HeartFChatting:
                     for name, elapsed in cycle_timers.items():
                         formatted_time = f"{elapsed * 1000:.2f}毫秒" if elapsed < 1 else f"{elapsed:.2f}秒"
                         timer_strings.append(f"{name}: {formatted_time}")
-
 
                     logger.info(
                         f"{self.log_prefix} 第{self._current_cycle_detail.cycle_id}次思考,"
@@ -275,7 +271,7 @@ class HeartFChatting:
                         self.performance_logger.record_cycle(cycle_performance_data)
                     except Exception as perf_e:
                         logger.warning(f"{self.log_prefix} 记录性能数据失败: {perf_e}")
-                    
+
                     await asyncio.sleep(global_config.focus_chat.think_interval)
 
                 except asyncio.CancelledError:
@@ -352,7 +348,7 @@ class HeartFChatting:
                 try:
                     # 调用完整的动作修改流程
                     await self.action_modifier.modify_actions(
-                        loop_info = self.loop_info,
+                        loop_info=self.loop_info,
                         mode="focus",
                     )
                 except Exception as e:
@@ -371,7 +367,7 @@ class HeartFChatting:
                 plan_result.get("action_result", {}).get("action_data", {}),
                 plan_result.get("action_result", {}).get("reasoning", "未提供理由"),
             )
-            
+
             action_data["loop_start_time"] = loop_start_time
 
             if action_type == "reply":

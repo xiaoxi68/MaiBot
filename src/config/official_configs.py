@@ -300,7 +300,6 @@ class FocusChatConfig(ConfigBase):
     """连续回复能力，值越高，麦麦连续回复的概率越高"""
 
 
-
 @dataclass
 class ExpressionConfig(ConfigBase):
     """表达配置类"""
