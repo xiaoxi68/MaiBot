@@ -168,6 +168,7 @@ class Config(ConfigBase):
     tool: ToolConfig
     debug: DebugConfig
 
+
 def load_config(config_path: str) -> Config:
     """
     加载配置文件
