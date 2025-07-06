@@ -86,7 +86,7 @@ class HeartFChatting:
 
         # 初始化性能记录器
         # 如果没有指定版本号，则使用全局版本管理器的版本号
-        
+
         self.performance_logger = HFCPerformanceLogger(chat_id)
 
         logger.info(
