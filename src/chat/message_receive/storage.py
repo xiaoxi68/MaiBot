@@ -142,23 +142,24 @@ class MessageStorage:
     def replace_image_descriptions(text: str) -> str:
         """将[图片：描述]替换为[picid:image_id]"""
         # 先检查文本中是否有图片标记
-        pattern = r'\[图片：([^\]]+)\]'
+        pattern = r"\[图片：([^\]]+)\]"
         matches = re.findall(pattern, text)
-        
+
         if not matches:
             logger.debug("文本中没有图片标记，直接返回原文本")
             return text
+
         def replace_match(match):
             description = match.group(1).strip()
             try:
-                image_record = (Images.select()
-                            .where(Images.description == description)
-                            .order_by(Images.timestamp.desc())
-                            .first())
+                image_record = (
+                    Images.select().where(Images.description == description).order_by(Images.timestamp.desc()).first()
+                )
                 if image_record:
                     return f"[picid:{image_record.image_id}]"
-                else:  
-                    return match.group(0)  # 保持原样           
-            except Exception as e:
+                else:
+                    return match.group(0)  # 保持原样
+            except Exception:
                 return match.group(0)
-        return re.sub(r'\[图片：([^\]]+)\]', replace_match, text)
+
+        return re.sub(r"\[图片：([^\]]+)\]", replace_match, text)

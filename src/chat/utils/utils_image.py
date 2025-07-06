@@ -187,12 +187,12 @@ class ImageManager:
             existing_image = Images.get_or_none(Images.emoji_hash == image_hash)
             if existing_image:
                 # 更新计数
-                if hasattr(existing_image, 'count') and existing_image.count is not None:
+                if hasattr(existing_image, "count") and existing_image.count is not None:
                     existing_image.count += 1
                 else:
                     existing_image.count = 1
                 existing_image.save()
-                
+
                 # 如果已有描述，直接返回
                 if existing_image.description:
                     return f"[图片：{existing_image.description}]"
@@ -229,9 +229,9 @@ class ImageManager:
                     existing_image.path = file_path
                     existing_image.description = description
                     existing_image.timestamp = current_timestamp
-                    if not hasattr(existing_image, 'image_id') or not existing_image.image_id:
+                    if not hasattr(existing_image, "image_id") or not existing_image.image_id:
                         existing_image.image_id = str(uuid.uuid4())
-                    if not hasattr(existing_image, 'vlm_processed') or existing_image.vlm_processed is None:
+                    if not hasattr(existing_image, "vlm_processed") or existing_image.vlm_processed is None:
                         existing_image.vlm_processed = True
                     existing_image.save()
                 else:
