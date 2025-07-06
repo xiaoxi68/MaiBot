@@ -18,7 +18,7 @@ from src.chat.planner_actions.action_manager import ActionManager
 from src.person_info.relationship_builder_manager import relationship_builder_manager
 from .priority_manager import PriorityManager
 import traceback
-from src.chat.planner_actions.planner_focus import ActionPlanner
+from src.chat.planner_actions.planner import ActionPlanner
 from src.chat.planner_actions.action_modifier import ActionModifier
 
 from src.chat.utils.utils import get_chat_type_and_target_info
@@ -773,13 +773,8 @@ class NormalChat:
         # 尝试优雅取消任务
         task_to_cancel.cancel()
 
-        # 不等待任务完成，让它自然结束
-        # 这样可以避免等待过程中的潜在递归问题
-
         # 异步清理思考消息，不阻塞当前流程
         asyncio.create_task(self._cleanup_thinking_messages_async())
-
-        logger.debug(f"[{self.stream_name}] 聊天任务停止完成")
 
     async def _cleanup_thinking_messages_async(self):
         """异步清理思考消息，避免阻塞主流程"""
@@ -798,26 +793,6 @@ class NormalChat:
         except Exception as e:
             logger.error(f"[{self.stream_name}] 异步清理思考消息时出错: {e}")
             # 不打印完整栈跟踪，避免日志污染
-
-    # 获取最近回复记录的方法
-    def get_recent_replies(self, limit: int = 10) -> List[dict]:
-        """获取最近的回复记录
-
-        Args:
-            limit: 最大返回数量，默认10条
-
-        Returns:
-            List[dict]: 最近的回复记录列表，每项包含：
-                time: 回复时间戳
-                user_message: 用户消息内容
-                user_info: 用户信息(user_id, user_nickname)
-                response: 回复内容
-                is_mentioned: 是否被提及(@)
-                is_reference_reply: 是否为引用回复
-                timing: 各阶段耗时
-        """
-        # 返回最近的limit条记录，按时间倒序排列
-        return sorted(self.recent_replies[-limit:], key=lambda x: x["time"], reverse=True)
 
     def adjust_reply_frequency(self):
         """

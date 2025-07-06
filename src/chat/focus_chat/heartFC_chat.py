@@ -10,12 +10,11 @@ from src.chat.utils.prompt_builder import global_prompt_manager
 from src.common.logger import get_logger
 from src.chat.utils.timer_calculator import Timer
 from src.chat.focus_chat.focus_loop_info import FocusLoopInfo
-from src.chat.planner_actions.planner_focus import ActionPlanner
+from src.chat.planner_actions.planner import ActionPlanner
 from src.chat.planner_actions.action_modifier import ActionModifier
 from src.chat.planner_actions.action_manager import ActionManager
 from src.config.config import global_config
 from src.chat.focus_chat.hfc_performance_logger import HFCPerformanceLogger
-from src.chat.focus_chat.hfc_version_manager import get_hfc_version
 from src.person_info.relationship_builder_manager import relationship_builder_manager
 from src.chat.focus_chat.hfc_utils import CycleDetail
 
@@ -87,8 +86,8 @@ class HeartFChatting:
 
         # 初始化性能记录器
         # 如果没有指定版本号，则使用全局版本管理器的版本号
-        actual_version = get_hfc_version()
-        self.performance_logger = HFCPerformanceLogger(chat_id, actual_version)
+        
+        self.performance_logger = HFCPerformanceLogger(chat_id)
 
         logger.info(
             f"{self.log_prefix} HeartFChatting 初始化完成，消息疲惫阈值: {self._message_threshold}条（基于exit_focus_threshold={global_config.chat.exit_focus_threshold}计算，仅在auto模式下生效）"

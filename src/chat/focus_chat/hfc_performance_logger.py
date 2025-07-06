@@ -11,11 +11,11 @@ class HFCPerformanceLogger:
     """HFC性能记录管理器"""
 
     # 版本号常量，可在启动时修改
-    INTERNAL_VERSION = "v1.0.0"
+    INTERNAL_VERSION = "v7.0.0"
 
-    def __init__(self, chat_id: str, version: str = None):
+    def __init__(self, chat_id: str):
         self.chat_id = chat_id
-        self.version = version or self.INTERNAL_VERSION
+        self.version = self.INTERNAL_VERSION
         self.log_dir = Path("log/hfc_loop")
         self.session_start_time = datetime.now()
 
