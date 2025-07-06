@@ -30,8 +30,6 @@ def init_prompt():
 {chat_content_block}
 {moderation_prompt}
 
-重要提醒：如果聊天记录显示你刚刚已经回复过相似内容，即使话题仍然在进行，必须选择no_reply
-
 现在请你根据聊天内容选择合适的action:
 
 {action_options_text}
