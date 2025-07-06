@@ -29,6 +29,7 @@ def init_prompt():
 {chat_context_description}，以下是具体的聊天内容：
 {chat_content_block}
 {moderation_prompt}
+
 现在请你根据聊天内容选择合适的action:
 
 {action_options_text}
