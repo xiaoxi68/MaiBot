@@ -126,6 +126,7 @@ class RelationshipManager:
         short_impression = await person_info_manager.get_value(person_id, "short_impression")
 
         current_points = await person_info_manager.get_value(person_id, "points") or []
+        print(f"current_points: {current_points}")
         if isinstance(current_points, str):
             try:
                 current_points = json.loads(current_points)

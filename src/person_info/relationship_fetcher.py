@@ -9,7 +9,7 @@ from typing import List, Dict
 from json_repair import repair_json
 from src.chat.message_receive.chat_stream import get_chat_manager
 import json
-
+import random
 
 logger = get_logger("relationship_fetcher")
 
@@ -100,22 +100,69 @@ class RelationshipFetcher:
         person_info_manager = get_person_info_manager()
         person_name = await person_info_manager.get_value(person_id, "person_name")
         short_impression = await person_info_manager.get_value(person_id, "short_impression")
+        
+        nickname_str = await person_info_manager.get_value(person_id, "nickname")
+        platform = await person_info_manager.get_value(person_id, "platform")
+        
+        if person_name == nickname_str and not short_impression:
+            return ""
+        
+        current_points = await person_info_manager.get_value(person_id, "points") or []
+
+        if isinstance(current_points, str):
+            try:
+                current_points = json.loads(current_points)
+            except json.JSONDecodeError:
+                logger.error(f"解析points JSON失败: {current_points}")
+                current_points = []
+        elif not isinstance(current_points, list):
+            current_points = []
+
+        # 按时间排序forgotten_points
+        current_points.sort(key=lambda x: x[2])
+        # 按权重加权随机抽取3个points，point[1]的值在1-10之间，权重越高被抽到概率越大
+        if len(current_points) > 3:
+            # point[1] 取值范围1-10，直接作为权重
+            weights = [max(1, min(10, int(point[1]))) for point in current_points]
+            points = random.choices(current_points, weights=weights, k=3)
+        else:
+            points = current_points
+
+        # 构建points文本
+        points_text = "\n".join([f"{point[2]}：{point[0]}" for point in points])
 
         info_type = await self._build_fetch_query(person_id, target_message, chat_history)
         if info_type:
             await self._extract_single_info(person_id, info_type, person_name)
 
         relation_info = self._organize_known_info()
+        
+        nickname_str = ""
+        if person_name != nickname_str:
+            nickname_str = f"(ta在{platform}上的昵称是{nickname_str})"
+        
         if short_impression and relation_info:
-            relation_info = f"你对{person_name}的印象是：{short_impression}。具体来说：{relation_info}"
+            if points_text:
+                relation_info = f"你对{person_name}的印象是{nickname_str}：{short_impression}。具体来说：{relation_info}。你还记得ta最近做的事：{points_text}"
+            else:
+                relation_info = f"你对{person_name}的印象是{nickname_str}：{short_impression}。具体来说：{relation_info}"
         elif short_impression:
-            relation_info = f"你对{person_name}的印象是：{short_impression}"
+            if points_text:
+                relation_info = f"你对{person_name}的印象是{nickname_str}：{short_impression}。你还记得ta最近做的事：{points_text}"
+            else:
+                relation_info = f"你对{person_name}的印象是{nickname_str}：{short_impression}"
         elif relation_info:
-            relation_info = f"你对{person_name}的了解：{relation_info}"
+            if points_text:
+                relation_info = f"你对{person_name}的了解{nickname_str}：{relation_info}。你还记得ta最近做的事：{points_text}"
+            else:
+                relation_info = f"你对{person_name}的了解{nickname_str}：{relation_info}"
+        elif points_text:
+            relation_info = f"你记得{person_name}{nickname_str}最近做的事：{points_text}"
         else:
             relation_info = ""
 
         return relation_info
+
 
     async def _build_fetch_query(self, person_id, target_message, chat_history):
         nickname_str = ",".join(global_config.bot.alias_names)
