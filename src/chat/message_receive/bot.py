@@ -189,6 +189,9 @@ class ChatBot:
             )
 
             message.update_chat_stream(chat)
+            
+            # 处理消息内容，生成纯文本
+            await message.process()
 
             # 过滤检查
             if _check_ban_words(message.processed_plain_text, chat, user_info) or _check_ban_regex(
@@ -196,8 +199,6 @@ class ChatBot:
             ):
                 return
 
-            # 处理消息内容，生成纯文本
-            await message.process()
 
             # 命令处理 - 使用新插件系统检查并处理命令
             is_command, cmd_result, continue_process = await self._process_commands_with_new_system(message)
