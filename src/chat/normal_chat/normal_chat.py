@@ -9,18 +9,17 @@ from src.plugin_system.apis import generator_api
 from maim_message import UserInfo, Seg
 from src.chat.message_receive.chat_stream import ChatStream, get_chat_manager
 from src.chat.utils.timer_calculator import Timer
-
+from src.common.message_repository import count_messages
 from src.chat.utils.prompt_builder import global_prompt_manager
 from ..message_receive.message import MessageSending, MessageRecv, MessageThinking, MessageSet
 from src.chat.message_receive.message_sender import message_manager
 from src.chat.normal_chat.willing.willing_manager import get_willing_manager
-from src.chat.normal_chat.normal_chat_utils import get_recent_message_stats
-from src.chat.focus_chat.planners.action_manager import ActionManager
+from src.chat.planner_actions.action_manager import ActionManager
 from src.person_info.relationship_builder_manager import relationship_builder_manager
 from .priority_manager import PriorityManager
 import traceback
-from src.chat.normal_chat.normal_chat_planner import NormalChatPlanner
-from src.chat.normal_chat.normal_chat_action_modifier import NormalChatActionModifier
+from src.chat.planner_actions.planner_normal import NormalChatPlanner
+from src.chat.planner_actions.action_modifier import ActionModifier
 
 from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
 from src.manager.mood_manager import mood_manager
@@ -71,7 +70,7 @@ class NormalChat:
         # Planner相关初始化
         self.action_manager = ActionManager()
         self.planner = NormalChatPlanner(self.stream_name, self.action_manager)
-        self.action_modifier = NormalChatActionModifier(self.action_manager, self.stream_id, self.stream_name)
+        self.action_modifier = ActionModifier(self.action_manager, self.stream_id)
         self.enable_planner = global_config.normal_chat.enable_planner  # 从配置中读取是否启用planner
 
         # 记录最近的回复内容，每项包含: {time, user_message, response, is_mentioned, is_reference_reply}
@@ -569,8 +568,8 @@ class NormalChat:
         available_actions = None
         if self.enable_planner:
             try:
-                await self.action_modifier.modify_actions_for_normal_chat(
-                    self.chat_stream, self.recent_replies, message.processed_plain_text
+                await self.action_modifier.modify_actions(
+                    mode="normal", message_content=message.processed_plain_text
                 )
                 available_actions = self.action_manager.get_using_actions_for_mode("normal")
             except Exception as e:
@@ -1003,3 +1002,29 @@ class NormalChat:
         except Exception as e:
             logger.error(f"[{self.stream_name}] 清理思考消息 {thinking_id} 时出错: {e}")
 
+
+def get_recent_message_stats(minutes: int = 30, chat_id: str = None) -> dict:
+    """
+    Args:
+        minutes (int): 检索的分钟数，默认30分钟
+        chat_id (str, optional): 指定的chat_id，仅统计该chat下的消息。为None时统计全部。
+    Returns:
+        dict: {"bot_reply_count": int, "total_message_count": int}
+    """
+
+    now = time.time()
+    start_time = now - minutes * 60
+    bot_id = global_config.bot.qq_account
+
+    filter_base = {"time": {"$gte": start_time}}
+    if chat_id is not None:
+        filter_base["chat_id"] = chat_id
+
+    # 总消息数
+    total_message_count = count_messages(filter_base)
+    # bot自身回复数
+    bot_filter = filter_base.copy()
+    bot_filter["user_id"] = bot_id
+    bot_reply_count = count_messages(bot_filter)
+
+    return {"bot_reply_count": bot_reply_count, "total_message_count": total_message_count}

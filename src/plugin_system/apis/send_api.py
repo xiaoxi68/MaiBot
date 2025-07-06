@@ -116,7 +116,7 @@ async def _send_to_target(
         )
 
         if sent_msg:
-            logger.info(f"[SendAPI] 成功发送消息到 {stream_id}")
+            logger.debug(f"[SendAPI] 成功发送消息到 {stream_id}")
             return True
         else:
             logger.error("[SendAPI] 发送消息失败")

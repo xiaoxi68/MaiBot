@@ -273,12 +273,6 @@ class MessageReceiveConfig(ConfigBase):
 class NormalChatConfig(ConfigBase):
     """普通聊天配置类"""
 
-    message_buffer: bool = False
-    """消息缓冲器"""
-
-    emoji_chance: float = 0.2
-    """发送表情包的基础概率"""
-
 
     willing_mode: str = "classical"
     """意愿模式"""
@@ -295,14 +289,6 @@ class NormalChatConfig(ConfigBase):
     enable_planner: bool = False
     """是否启用动作规划器"""
 
-    gather_timeout: int = 110  # planner和generator的并行执行超时时间
-    """planner和generator的并行执行超时时间"""
-
-    auto_focus_threshold: float = 1.0  # 自动切换到专注模式的阈值，值越大越难触发
-    """自动切换到专注模式的阈值，值越大越难触发"""
-
-    fatigue_talk_frequency: float = 0.2  # 疲劳模式下的基础对话频率 (条/分钟)
-    """疲劳模式下的基础对话频率 (条/分钟)"""
 
 
 @dataclass
@@ -362,6 +348,12 @@ class ToolConfig(ConfigBase):
 @dataclass
 class EmojiConfig(ConfigBase):
     """表情包配置类"""
+    
+    emoji_chance: float = 0.6
+    """发送表情包的基础概率"""
+
+    emoji_activate_type: str = "random"
+    """表情包激活类型，可选：random，llm，random下，表情包动作随机启用，llm下，表情包动作根据llm判断是否启用"""
 
     max_reg_num: int = 200
     """表情包最大注册数量"""

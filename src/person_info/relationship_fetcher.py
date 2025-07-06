@@ -142,7 +142,7 @@ class RelationshipFetcher:
 
                 # 检查是否返回了不需要查询的标志
                 if "none" in content_json:
-                    logger.info(f"{self.log_prefix} LLM判断当前不需要查询任何信息：{content_json.get('none', '')}")
+                    logger.debug(f"{self.log_prefix} LLM判断当前不需要查询任何信息：{content_json.get('none', '')}")
                     return None
 
                 info_type = content_json.get("info_type")

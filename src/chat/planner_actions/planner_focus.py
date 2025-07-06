@@ -9,9 +9,8 @@ from src.chat.focus_chat.info.obs_info import ObsInfo
 from src.chat.focus_chat.info.action_info import ActionInfo
 from src.common.logger import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
-from src.chat.focus_chat.planners.action_manager import ActionManager
+from src.chat.planner_actions.action_manager import ActionManager
 from json_repair import repair_json
-from src.chat.focus_chat.planners.base_planner import BasePlanner
 from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
 from datetime import datetime
 
@@ -69,9 +68,10 @@ def init_prompt():
     )
 
 
-class ActionPlanner(BasePlanner):
+class ActionPlanner:
     def __init__(self, log_prefix: str, action_manager: ActionManager):
-        super().__init__(log_prefix, action_manager)
+        self.log_prefix = log_prefix
+        self.action_manager = action_manager
         # LLM规划器配置
         self.planner_llm = LLMRequest(
             model=global_config.model.planner,
@@ -84,7 +84,7 @@ class ActionPlanner(BasePlanner):
         )
 
     async def plan(
-        self, all_plan_info: List[InfoBase], running_memorys: List[Dict[str, Any]], loop_start_time: float
+        self, all_plan_info: List[InfoBase],loop_start_time: float
     ) -> Dict[str, Any]:
         """
         规划器 (Planner): 使用LLM根据上下文决定做出什么动作。

@@ -21,9 +21,9 @@ from src.chat.heart_flow.observation.actions_observation import ActionObservatio
 
 from src.chat.focus_chat.memory_activator import MemoryActivator
 from src.chat.focus_chat.info_processors.base_processor import BaseProcessor
-from src.chat.focus_chat.planners.planner_simple import ActionPlanner
-from src.chat.focus_chat.planners.modify_actions import ActionModifier
-from src.chat.focus_chat.planners.action_manager import ActionManager
+from src.chat.planner_actions.planner_focus import ActionPlanner
+from src.chat.planner_actions.action_modifier import ActionModifier
+from src.chat.planner_actions.action_manager import ActionManager
 from src.config.config import global_config
 from src.chat.focus_chat.hfc_performance_logger import HFCPerformanceLogger
 from src.chat.focus_chat.hfc_version_manager import get_hfc_version
@@ -50,24 +50,6 @@ PROCESSOR_CLASSES = {
 logger = get_logger("hfc")  # Logger Name Changed
 
 
-async def _handle_cycle_delay(action_taken_this_cycle: bool, cycle_start_time: float, log_prefix: str):
-    """处理循环延迟"""
-    cycle_duration = time.monotonic() - cycle_start_time
-
-    try:
-        sleep_duration = 0.0
-        if not action_taken_this_cycle and cycle_duration < 1:
-            sleep_duration = 1 - cycle_duration
-        elif cycle_duration < 0.2:
-            sleep_duration = 0.2
-
-        if sleep_duration > 0:
-            await asyncio.sleep(sleep_duration)
-
-    except asyncio.CancelledError:
-        logger.info(f"{log_prefix} Sleep interrupted, loop likely cancelling.")
-        raise
-
 
 class HeartFChatting:
     """
@@ -80,7 +62,6 @@ class HeartFChatting:
         self,
         chat_id: str,
         on_stop_focus_chat: Optional[Callable[[], Awaitable[None]]] = None,
-        performance_version: str = None,
     ):
         """
         HeartFChatting 初始化函数
@@ -122,7 +103,7 @@ class HeartFChatting:
         self.action_planner = ActionPlanner(
             log_prefix=self.log_prefix, action_manager=self.action_manager
         )
-        self.action_modifier = ActionModifier(action_manager=self.action_manager)
+        self.action_modifier = ActionModifier(action_manager=self.action_manager, chat_id=self.stream_id)
         self.action_observation = ActionObservation(observe_id=self.stream_id)
         self.action_observation.set_action_manager(self.action_manager)
 
@@ -146,7 +127,7 @@ class HeartFChatting:
 
         # 初始化性能记录器
         # 如果没有指定版本号，则使用全局版本管理器的版本号
-        actual_version = performance_version or get_hfc_version()
+        actual_version = get_hfc_version()
         self.performance_logger = HFCPerformanceLogger(chat_id, actual_version)
 
         logger.info(
@@ -287,7 +268,6 @@ class HeartFChatting:
 
                 # 初始化周期状态
                 cycle_timers = {}
-                loop_cycle_start_time = time.monotonic()
 
                 # 执行规划和处理阶段
                 try:
@@ -370,11 +350,6 @@ class HeartFChatting:
 
                         self._current_cycle_detail.timers = cycle_timers
 
-                        # 防止循环过快消耗资源
-                        await _handle_cycle_delay(
-                            loop_info["loop_action_info"]["action_taken"], loop_cycle_start_time, self.log_prefix
-                        )
-
                     # 完成当前循环并保存历史
                     self._current_cycle_detail.complete_cycle()
                     self._cycle_history.append(self._current_cycle_detail)
@@ -407,7 +382,7 @@ class HeartFChatting:
                         self.performance_logger.record_cycle(cycle_performance_data)
                     except Exception as perf_e:
                         logger.warning(f"{self.log_prefix} 记录性能数据失败: {perf_e}")
-
+                    
                     await asyncio.sleep(global_config.focus_chat.think_interval)
 
                 except asyncio.CancelledError:
@@ -543,6 +518,7 @@ class HeartFChatting:
                     # 调用完整的动作修改流程
                     await self.action_modifier.modify_actions(
                         observations=self.observations,
+                        mode="focus",
                     )
 
                     await self.action_observation.observe()
@@ -567,7 +543,7 @@ class HeartFChatting:
             logger.debug(f"{self.log_prefix} 并行阶段完成，准备进入规划器，plan_info数量: {len(all_plan_info)}")
 
             with Timer("规划器", cycle_timers):
-                plan_result = await self.action_planner.plan(all_plan_info, self.observations, loop_start_time)
+                plan_result = await self.action_planner.plan(all_plan_info, loop_start_time)
 
                 loop_plan_info = {
                     "action_result": plan_result.get("action_result", {}),

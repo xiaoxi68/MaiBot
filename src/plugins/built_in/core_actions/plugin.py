@@ -180,8 +180,15 @@ class CoreActionsPlugin(BasePlugin):
         """返回插件包含的组件列表"""
 
         # --- 从配置动态设置Action/Command ---
-        emoji_chance = global_config.normal_chat.emoji_chance
-        EmojiAction.random_activation_probability = emoji_chance
+        emoji_chance = global_config.emoji.emoji_chance
+        if global_config.emoji.emoji_activate_type == "random":
+            EmojiAction.random_activation_probability = emoji_chance
+            EmojiAction.focus_activation_type = ActionActivationType.RANDOM
+            EmojiAction.normal_activation_type = ActionActivationType.RANDOM
+        elif global_config.emoji.emoji_activate_type == "llm":
+            EmojiAction.random_activation_probability = 0.0
+            EmojiAction.focus_activation_type = ActionActivationType.LLM_JUDGE
+            EmojiAction.normal_activation_type = ActionActivationType.LLM_JUDGE
 
         no_reply_probability = self.get_config("no_reply.random_probability", 0.8)
         NoReplyAction.random_activation_probability = no_reply_probability

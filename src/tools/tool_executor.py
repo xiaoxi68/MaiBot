@@ -128,7 +128,8 @@ class ToolExecutor:
         if tool_results:
             self._set_cache(cache_key, tool_results)
 
-        logger.info(f"{self.log_prefix}工具执行完成，共执行{len(used_tools)}个工具: {used_tools}")
+        if used_tools:
+            logger.info(f"{self.log_prefix}工具执行完成，共执行{len(used_tools)}个工具: {used_tools}")
 
         if return_details:
             return tool_results, used_tools, prompt

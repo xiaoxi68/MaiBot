@@ -18,7 +18,7 @@ class EmojiAction(BaseAction):
     """表情动作 - 发送表情包"""
 
     # 激活设置
-    focus_activation_type = ActionActivationType.LLM_JUDGE
+    focus_activation_type = ActionActivationType.RANDOM
     normal_activation_type = ActionActivationType.RANDOM
     mode_enable = ChatMode.ALL
     parallel_action = True

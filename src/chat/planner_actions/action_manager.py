@@ -292,10 +292,6 @@ class ActionManager:
         )
         self._using_actions = self._default_actions.copy()
 
-    def restore_default_actions(self) -> None:
-        """恢复默认动作集到使用集"""
-        self._using_actions = self._default_actions.copy()
-
     def add_system_action_if_needed(self, action_name: str) -> bool:
         """
         根据需要添加系统动作到使用集

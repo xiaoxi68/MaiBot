@@ -340,7 +340,7 @@ MODULE_COLORS = {
     "memory": "\033[34m",
     "hfc": "\033[96m",
     "base_action": "\033[96m",
-    "action_manager": "\033[34m",
+    "action_manager": "\033[32m",
     # 关系系统
     "relation": "\033[38;5;201m",  # 深粉色
     # 聊天相关模块
@@ -414,7 +414,7 @@ MODULE_COLORS = {
     "confirm": "\033[1;93m",  # 黄色+粗体
     # 模型相关
     "model_utils": "\033[38;5;164m",  # 紫红色
-    
+    "relationship_fetcher": "\033[38;5;170m",  # 浅紫色
     "relationship_builder": "\033[38;5;117m",  # 浅蓝色
 }
 
