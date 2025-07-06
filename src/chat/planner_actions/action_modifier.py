@@ -2,7 +2,6 @@ from typing import List, Optional, Any, Dict
 from src.chat.focus_chat.observation.observation import Observation
 from src.common.logger import get_logger
 from src.chat.focus_chat.observation.hfcloop_observation import HFCloopObservation
-from src.chat.focus_chat.observation.chatting_observation import ChattingObservation
 from src.chat.message_receive.chat_stream import get_chat_manager
 from src.config.config import global_config
 from src.llm_models.utils_model import LLMRequest
