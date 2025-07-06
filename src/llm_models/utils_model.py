@@ -135,10 +135,9 @@ class LLMRequest:
         custom_params_str = model.get("custom_params", "{}")
         try:
             self.custom_params = json.loads(custom_params_str)
-        except json.JSONDecodeError as e:
+        except json.JSONDecodeError:
             logger.error(f"Invalid JSON in custom_params for model '{self.model_name}': {custom_params_str}")
             self.custom_params = {}
-
 
         # 获取数据库实例
         self._init_database()
