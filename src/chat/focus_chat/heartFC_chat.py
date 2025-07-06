@@ -50,7 +50,6 @@ PROCESSOR_CLASSES = {
 logger = get_logger("hfc")  # Logger Name Changed
 
 
-
 class HeartFChatting:
     """
     管理一个连续的Focus Chat循环
@@ -100,9 +99,7 @@ class HeartFChatting:
         self._register_default_processors()
 
         self.action_manager = ActionManager()
-        self.action_planner = ActionPlanner(
-            log_prefix=self.log_prefix, action_manager=self.action_manager
-        )
+        self.action_planner = ActionPlanner(log_prefix=self.log_prefix, action_manager=self.action_manager)
         self.action_modifier = ActionModifier(action_manager=self.action_manager, chat_id=self.stream_id)
         self.action_observation = ActionObservation(observe_id=self.stream_id)
         self.action_observation.set_action_manager(self.action_manager)
@@ -360,7 +357,6 @@ class HeartFChatting:
                         formatted_time = f"{elapsed * 1000:.2f}毫秒" if elapsed < 1 else f"{elapsed:.2f}秒"
                         timer_strings.append(f"{name}: {formatted_time}")
 
-
                     logger.info(
                         f"{self.log_prefix} 第{self._current_cycle_detail.cycle_id}次思考,"
                         f"耗时: {self._current_cycle_detail.end_time - self._current_cycle_detail.start_time:.1f}秒, "
@@ -382,7 +378,7 @@ class HeartFChatting:
                         self.performance_logger.record_cycle(cycle_performance_data)
                     except Exception as perf_e:
                         logger.warning(f"{self.log_prefix} 记录性能数据失败: {perf_e}")
-                    
+
                     await asyncio.sleep(global_config.focus_chat.think_interval)
 
                 except asyncio.CancelledError:
@@ -494,7 +490,6 @@ class HeartFChatting:
                     )
                     traceback.print_exc()
 
-
         return all_plan_info
 
     async def _observe_process_plan_action_loop(self, cycle_timers: dict, thinking_id: str) -> dict:
@@ -527,7 +522,6 @@ class HeartFChatting:
                 except Exception as e:
                     logger.error(f"{self.log_prefix} 动作修改失败: {e}")
                     # 继续执行，不中断流程
-
 
             try:
                 all_plan_info = await self._process_processors(self.observations)

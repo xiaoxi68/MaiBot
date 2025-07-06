@@ -83,9 +83,7 @@ class ActionPlanner:
             request_type="focus.planner",  # 用于动作规划
         )
 
-    async def plan(
-        self, all_plan_info: List[InfoBase],loop_start_time: float
-    ) -> Dict[str, Any]:
+    async def plan(self, all_plan_info: List[InfoBase], loop_start_time: float) -> Dict[str, Any]:
         """
         规划器 (Planner): 使用LLM根据上下文决定做出什么动作。
 

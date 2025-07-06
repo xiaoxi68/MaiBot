@@ -2,7 +2,6 @@ from typing import List, Optional, Any, Dict
 from src.chat.heart_flow.observation.observation import Observation
 from src.common.logger import get_logger
 from src.chat.heart_flow.observation.hfcloop_observation import HFCloopObservation
-from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
 from src.chat.message_receive.chat_stream import get_chat_manager
 from src.config.config import global_config
 from src.llm_models.utils_model import LLMRequest
@@ -62,10 +61,10 @@ class ActionModifier:
 
         removals_s1 = []
         removals_s2 = []
-        
+
         self.action_manager.restore_actions()
         all_actions = self.action_manager.get_using_actions_for_mode(mode)
-        
+
         message_list_before_now_half = get_raw_msg_before_timestamp_with_chat(
             chat_id=self.chat_stream.stream_id,
             timestamp=time.time(),
@@ -79,7 +78,7 @@ class ActionModifier:
             read_mark=0.0,
             show_actions=True,
         )
-        
+
         if message_content:
             chat_content = chat_content + "\n" + f"现在，最新的消息是：{message_content}"
 
@@ -104,14 +103,13 @@ class ActionModifier:
             self.action_manager.remove_action_from_using(action_name)
             logger.debug(f"{self.log_prefix}阶段一移除动作: {action_name}，原因: {reason}")
 
-
         # === 第二阶段：激活类型判定 ===
         if chat_content is not None:
             logger.debug(f"{self.log_prefix}开始激活类型判定阶段")
 
             # 获取当前使用的动作集（经过第一阶段处理）
             current_using_actions = self.action_manager.get_using_actions_for_mode(mode)
-            
+
             # 获取因激活类型判定而需要移除的动作
             removals_s2 = await self._get_deactivated_actions_by_type(
                 current_using_actions,
@@ -123,7 +121,7 @@ class ActionModifier:
             for action_name, reason in removals_s2:
                 self.action_manager.remove_action_from_using(action_name)
                 logger.debug(f"{self.log_prefix}阶段二移除动作: {action_name}，原因: {reason}")
-        
+
         # === 统一日志记录 ===
         all_removals = removals_s1 + removals_s2
         if all_removals:
@@ -141,11 +139,9 @@ class ActionModifier:
                     associated_types_str = ", ".join(data["associated_types"])
                     reason = f"适配器不支持（需要: {associated_types_str}）"
                     type_mismatched_actions.append((action_name, reason))
-                    logger.debug(
-                        f"{self.log_prefix}决定移除动作: {action_name}，原因: {reason}"
-                    )
+                    logger.debug(f"{self.log_prefix}决定移除动作: {action_name}，原因: {reason}")
         return type_mismatched_actions
-    
+
     async def _get_deactivated_actions_by_type(
         self,
         actions_with_info: Dict[str, Any],
@@ -166,7 +162,7 @@ class ActionModifier:
 
         # 分类处理不同激活类型的actions
         llm_judge_actions = {}
-        
+
         actions_to_check = list(actions_with_info.items())
         random.shuffle(actions_to_check)
 
@@ -193,7 +189,7 @@ class ActionModifier:
 
             elif activation_type == "llm_judge":
                 llm_judge_actions[action_name] = action_info
-            
+
             else:
                 logger.warning(f"{self.log_prefix}未知的激活类型: {activation_type}，跳过处理")
 
@@ -517,20 +513,22 @@ class ActionModifier:
             # 如果最近sec_thres_reply_num次都是reply，40%概率移除
             removal_probability = 0.4 / global_config.focus_chat.consecutive_replies
             if random.random() < removal_probability:
-                reason = f"连续回复较多（最近{sec_thres_reply_num}次全是reply，{removal_probability:.2f}概率移除，触发移除）"
+                reason = (
+                    f"连续回复较多（最近{sec_thres_reply_num}次全是reply，{removal_probability:.2f}概率移除，触发移除）"
+                )
                 removals.append(("reply", reason))
         elif len(last_max_reply_num) >= one_thres_reply_num and all(last_max_reply_num[-one_thres_reply_num:]):
             # 如果最近one_thres_reply_num次都是reply，20%概率移除
             removal_probability = 0.2 / global_config.focus_chat.consecutive_replies
             if random.random() < removal_probability:
-                reason = f"连续回复检测（最近{one_thres_reply_num}次全是reply，{removal_probability:.2f}概率移除，触发移除）"
+                reason = (
+                    f"连续回复检测（最近{one_thres_reply_num}次全是reply，{removal_probability:.2f}概率移除，触发移除）"
+                )
                 removals.append(("reply", reason))
         else:
             logger.debug(f"{self.log_prefix}连续回复检测：无需移除reply动作，最近回复模式正常")
 
         return removals
-
-
 
     def get_available_actions_count(self) -> int:
         """获取当前可用动作数量（排除默认的no_action）"""

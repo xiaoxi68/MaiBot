@@ -273,7 +273,6 @@ class MessageReceiveConfig(ConfigBase):
 class NormalChatConfig(ConfigBase):
     """普通聊天配置类"""
 
-
     willing_mode: str = "classical"
     """意愿模式"""
 
@@ -288,7 +287,6 @@ class NormalChatConfig(ConfigBase):
 
     enable_planner: bool = False
     """是否启用动作规划器"""
-
 
 
 @dataclass
@@ -348,7 +346,7 @@ class ToolConfig(ConfigBase):
 @dataclass
 class EmojiConfig(ConfigBase):
     """表情包配置类"""
-    
+
     emoji_chance: float = 0.6
     """发送表情包的基础概率"""
 
