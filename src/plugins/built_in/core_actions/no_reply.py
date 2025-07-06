@@ -77,7 +77,7 @@ class NoReplyAction(BaseAction):
 
             reason = self.action_data.get("reason", "")
             start_time = time.time()
-            last_judge_time = 0  # 上次进行LLM判断的时间
+            last_judge_time = start_time  # 上次进行LLM判断的时间
             min_judge_interval = self._min_judge_interval  # 最小判断间隔，从配置获取
             check_interval = 0.2  # 检查新消息的间隔，设为0.2秒提高响应性
 
@@ -357,7 +357,7 @@ class NoReplyAction(BaseAction):
                                     judge_history.append((current_time, judge_result, reason))
 
                                     if judge_result == "需要回复":
-                                        logger.info(f"{self.log_prefix} 模型判断需要回复，结束等待")
+                                        # logger.info(f"{self.log_prefix} 模型判断需要回复，结束等待")
 
                                         full_prompt = f"{global_config.bot.nickname}（你）的想法是：{reason}"
                                         await self.store_action_info(

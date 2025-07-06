@@ -5,6 +5,7 @@ from src.chat.utils.chat_message_builder import build_readable_messages, get_raw
 from src.config.config import global_config
 import random
 import time
+import asyncio
 
 logger = get_logger("normal_chat_action_modifier")
 
@@ -184,6 +185,7 @@ class NormalChatActionModifier:
         always_actions = {}
         random_actions = {}
         keyword_actions = {}
+        llm_judge_actions = {}
 
         for action_name, action_info in actions_with_info.items():
             # 使用normal_activation_type
@@ -192,8 +194,10 @@ class NormalChatActionModifier:
             # 现在统一是字符串格式的激活类型值
             if activation_type == "always":
                 always_actions[action_name] = action_info
-            elif activation_type == "random" or activation_type == "llm_judge":
+            elif activation_type == "random":
                 random_actions[action_name] = action_info
+            elif activation_type == "llm_judge":
+                llm_judge_actions[action_name] = action_info
             elif activation_type == "keyword":
                 keyword_actions[action_name] = action_info
             else:
@@ -224,6 +228,24 @@ class NormalChatActionModifier:
             else:
                 keywords = action_info.get("activation_keywords", [])
                 logger.debug(f"{self.log_prefix}未激活动作: {action_name}，原因: KEYWORD类型未匹配关键词（{keywords}）")
+
+        # 4. 处理LLM_JUDGE类型（并行判定）
+        if llm_judge_actions:
+            # 直接并行处理所有LLM判定actions
+            llm_results = await self._process_llm_judge_actions_parallel(
+                llm_judge_actions,
+                chat_content,
+            )
+
+            # 添加激活的LLM判定actions
+            for action_name, should_activate in llm_results.items():
+                if should_activate:
+                    activated_actions[action_name] = llm_judge_actions[action_name]
+                    logger.debug(f"{self.log_prefix}激活动作: {action_name}，原因: LLM_JUDGE类型判定通过")
+                else:
+                    logger.debug(f"{self.log_prefix}未激活动作: {action_name}，原因: LLM_JUDGE类型判定未通过")
+
+
 
         logger.debug(f"{self.log_prefix}Normal模式激活类型过滤完成: {list(activated_actions.keys())}")
         return activated_actions
@@ -277,6 +299,93 @@ class NormalChatActionModifier:
         else:
             logger.debug(f"{self.log_prefix}动作 {action_name} 未匹配到任何关键词: {activation_keywords}")
             return False
+        
+        
+    async def _process_llm_judge_actions_parallel(
+        self,
+        llm_judge_actions: Dict[str, Any],
+        chat_content: str = "",
+    ) -> Dict[str, bool]:
+        """
+        并行处理LLM判定actions，支持智能缓存
+
+        Args:
+            llm_judge_actions: 需要LLM判定的actions
+            chat_content: 聊天内容
+
+        Returns:
+            Dict[str, bool]: action名称到激活结果的映射
+        """
+
+        # 生成当前上下文的哈希值
+        current_context_hash = self._generate_context_hash(chat_content)
+        current_time = time.time()
+
+        results = {}
+        tasks_to_run = {}
+
+        # 检查缓存
+        for action_name, action_info in llm_judge_actions.items():
+            cache_key = f"{action_name}_{current_context_hash}"
+
+            # 检查是否有有效的缓存
+            if (
+                cache_key in self._llm_judge_cache
+                and current_time - self._llm_judge_cache[cache_key]["timestamp"] < self._cache_expiry_time
+            ):
+                results[action_name] = self._llm_judge_cache[cache_key]["result"]
+                logger.debug(
+                    f"{self.log_prefix}使用缓存结果 {action_name}: {'激活' if results[action_name] else '未激活'}"
+                )
+            else:
+                # 需要进行LLM判定
+                tasks_to_run[action_name] = action_info
+
+        # 如果有需要运行的任务，并行执行
+        if tasks_to_run:
+            logger.debug(f"{self.log_prefix}并行执行LLM判定，任务数: {len(tasks_to_run)}")
+
+            # 创建并行任务
+            tasks = []
+            task_names = []
+
+            for action_name, action_info in tasks_to_run.items():
+                task = self._llm_judge_action(
+                    action_name,
+                    action_info,
+                    chat_content,
+                )
+                tasks.append(task)
+                task_names.append(action_name)
+
+            # 并行执行所有任务
+            try:
+                task_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+                # 处理结果并更新缓存
+                for _, (action_name, result) in enumerate(zip(task_names, task_results)):
+                    if isinstance(result, Exception):
+                        logger.error(f"{self.log_prefix}LLM判定action {action_name} 时出错: {result}")
+                        results[action_name] = False
+                    else:
+                        results[action_name] = result
+
+                        # 更新缓存
+                        cache_key = f"{action_name}_{current_context_hash}"
+                        self._llm_judge_cache[cache_key] = {"result": result, "timestamp": current_time}
+
+                logger.debug(f"{self.log_prefix}并行LLM判定完成，耗时: {time.time() - current_time:.2f}s")
+
+            except Exception as e:
+                logger.error(f"{self.log_prefix}并行LLM判定失败: {e}")
+                # 如果并行执行失败，为所有任务返回False
+                for action_name in tasks_to_run.keys():
+                    results[action_name] = False
+
+        # 清理过期缓存
+        self._cleanup_expired_cache(current_time)
+
+        return results
 
     def get_available_actions_count(self) -> int:
         """获取当前可用动作数量（排除默认的no_action）"""

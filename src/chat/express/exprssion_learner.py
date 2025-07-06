@@ -29,7 +29,7 @@ def init_prompt() -> None:
 4. 思考有没有特殊的梗，一并总结成语言风格
 5. 例子仅供参考，请严格根据群聊内容总结!!!
 注意：总结成如下格式的规律，总结的内容要详细，但具有概括性：
-当"xxxxxx"时，可以"xxxxxx", xxxxxx不超过20个字，为特定句式或表达
+例如：当"AAAAA"时，可以"BBBBB", AAAAA代表某个具体的场景，不超过20个字。BBBBB代表对应的语言风格，特定句式或表达方式，不超过20个字。
 
 例如：
 当"对某件事表示十分惊叹，有些意外"时，使用"我嘞个xxxx"
@@ -69,7 +69,7 @@ class ExpressionLearner:
         # TODO: API-Adapter修改标记
         self.express_learn_model: LLMRequest = LLMRequest(
             model=global_config.model.replyer_1,
-            temperature=0.2,
+            temperature=0.3,
             request_type="expressor.learner",
         )
         self.llm_model = None

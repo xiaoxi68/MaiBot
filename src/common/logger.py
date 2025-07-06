@@ -346,7 +346,6 @@ MODULE_COLORS = {
     # 聊天相关模块
     "normal_chat": "\033[38;5;81m",  # 亮蓝绿色
     "normal_chat_response": "\033[38;5;123m",  # 青绿色
-    "normal_chat_expressor": "\033[38;5;117m",  # 浅蓝色
     "normal_chat_action_modifier": "\033[38;5;111m",  # 蓝色
     "normal_chat_planner": "\033[38;5;75m",  # 浅蓝色
     "heartflow": "\033[38;5;213m",  # 粉色
@@ -362,7 +361,6 @@ MODULE_COLORS = {
     # 专注聊天模块
     "replyer": "\033[38;5;166m",  # 橙色
     "expressor": "\033[38;5;172m",  # 黄橙色
-    "planner_factory": "\033[38;5;178m",  # 黄色
     "processor": "\033[38;5;184m",  # 黄绿色
     "base_processor": "\033[38;5;190m",  # 绿黄色
     "working_memory": "\033[38;5;22m",  # 深绿色
@@ -370,6 +368,7 @@ MODULE_COLORS = {
     # 插件系统
     "plugin_manager": "\033[38;5;208m",  # 红色
     "base_plugin": "\033[38;5;202m",  # 橙红色
+    "send_api": "\033[38;5;208m",  # 橙色
     "base_command": "\033[38;5;208m",  # 橙色
     "component_registry": "\033[38;5;214m",  # 橙黄色
     "stream_api": "\033[38;5;220m",  # 黄色
@@ -388,10 +387,8 @@ MODULE_COLORS = {
     "willing": "\033[38;5;147m",  # 浅紫色
     # 工具模块
     "tool_use": "\033[38;5;64m",  # 深绿色
+    "tool_executor": "\033[38;5;64m",  # 深绿色
     "base_tool": "\033[38;5;70m",  # 绿色
-    "compare_numbers_tool": "\033[38;5;76m",  # 浅绿色
-    "change_mood_tool": "\033[38;5;82m",  # 绿色
-    "relationship_tool": "\033[38;5;88m",  # 深红色
     # 工具和实用模块
     "prompt": "\033[38;5;99m",  # 紫色
     "prompt_build": "\033[38;5;105m",  # 紫色
@@ -417,6 +414,8 @@ MODULE_COLORS = {
     "confirm": "\033[1;93m",  # 黄色+粗体
     # 模型相关
     "model_utils": "\033[38;5;164m",  # 紫红色
+    
+    "relationship_builder": "\033[38;5;117m",  # 浅蓝色
 }
 
 RESET_COLOR = "\033[0m"

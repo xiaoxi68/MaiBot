@@ -21,7 +21,7 @@ from src.chat.heart_flow.observation.actions_observation import ActionObservatio
 
 from src.chat.focus_chat.memory_activator import MemoryActivator
 from src.chat.focus_chat.info_processors.base_processor import BaseProcessor
-from src.chat.focus_chat.planners.planner_factory import PlannerFactory
+from src.chat.focus_chat.planners.planner_simple import ActionPlanner
 from src.chat.focus_chat.planners.modify_actions import ActionModifier
 from src.chat.focus_chat.planners.action_manager import ActionManager
 from src.config.config import global_config
@@ -119,7 +119,7 @@ class HeartFChatting:
         self._register_default_processors()
 
         self.action_manager = ActionManager()
-        self.action_planner = PlannerFactory.create_planner(
+        self.action_planner = ActionPlanner(
             log_prefix=self.log_prefix, action_manager=self.action_manager
         )
         self.action_modifier = ActionModifier(action_manager=self.action_manager)
@@ -140,6 +140,9 @@ class HeartFChatting:
 
         # 存储回调函数
         self.on_stop_focus_chat = on_stop_focus_chat
+
+        self.reply_timeout_count = 0
+        self.plan_timeout_count = 0
 
         # 初始化性能记录器
         # 如果没有指定版本号，则使用全局版本管理器的版本号
@@ -382,24 +385,12 @@ class HeartFChatting:
                         formatted_time = f"{elapsed * 1000:.2f}毫秒" if elapsed < 1 else f"{elapsed:.2f}秒"
                         timer_strings.append(f"{name}: {formatted_time}")
 
-                    # 新增：输出每个处理器的耗时
-                    processor_time_costs = self._current_cycle_detail.loop_processor_info.get(
-                        "processor_time_costs", {}
-                    )
-                    processor_time_strings = []
-                    for pname, ptime in processor_time_costs.items():
-                        formatted_ptime = f"{ptime * 1000:.2f}毫秒" if ptime < 1 else f"{ptime:.2f}秒"
-                        processor_time_strings.append(f"{pname}: {formatted_ptime}")
-                    processor_time_log = (
-                        ("\n前处理器耗时: " + "; ".join(processor_time_strings)) if processor_time_strings else ""
-                    )
 
                     logger.info(
                         f"{self.log_prefix} 第{self._current_cycle_detail.cycle_id}次思考,"
                         f"耗时: {self._current_cycle_detail.end_time - self._current_cycle_detail.start_time:.1f}秒, "
-                        f"动作: {self._current_cycle_detail.loop_plan_info.get('action_result', {}).get('action_type', '未知动作')}"
+                        f"选择动作: {self._current_cycle_detail.loop_plan_info.get('action_result', {}).get('action_type', '未知动作')}"
                         + (f"\n详情: {'; '.join(timer_strings)}" if timer_strings else "")
-                        + processor_time_log
                     )
 
                     # 记录性能数据
@@ -410,7 +401,6 @@ class HeartFChatting:
                             "action_type": action_result.get("action_type", "unknown"),
                             "total_time": self._current_cycle_detail.end_time - self._current_cycle_detail.start_time,
                             "step_times": cycle_timers.copy(),
-                            "processor_time_costs": processor_time_costs,  # 处理器时间
                             "reasoning": action_result.get("reasoning", ""),
                             "success": self._current_cycle_detail.loop_action_info.get("action_taken", False),
                         }
@@ -491,13 +481,12 @@ class HeartFChatting:
 
         processor_tasks = []
         task_to_name_map = {}
-        processor_time_costs = {}  # 新增: 记录每个处理器耗时
 
         for processor in self.processors:
             processor_name = processor.__class__.log_prefix
 
             async def run_with_timeout(proc=processor):
-                return await asyncio.wait_for(proc.process_info(observations=observations), 30)
+                return await proc.process_info(observations=observations)
 
             task = asyncio.create_task(run_with_timeout())
 
@@ -518,39 +507,20 @@ class HeartFChatting:
 
                 try:
                     result_list = await task
-                    logger.info(f"{self.log_prefix} 处理器 {processor_name} 已完成!")
+                    logger.debug(f"{self.log_prefix} 处理器 {processor_name} 已完成!")
                     if result_list is not None:
                         all_plan_info.extend(result_list)
                     else:
                         logger.warning(f"{self.log_prefix} 处理器 {processor_name} 返回了 None")
-                    # 记录耗时
-                    processor_time_costs[processor_name] = duration_since_parallel_start
-                except asyncio.TimeoutError:
-                    logger.info(f"{self.log_prefix} 处理器 {processor_name} 超时（>30s），已跳过")
-                    processor_time_costs[processor_name] = 30
                 except Exception as e:
                     logger.error(
                         f"{self.log_prefix} 处理器 {processor_name} 执行失败，耗时 (自并行开始): {duration_since_parallel_start:.2f}秒. 错误: {e}",
                         exc_info=True,
                     )
                     traceback.print_exc()
-                    processor_time_costs[processor_name] = duration_since_parallel_start
 
-            if pending_tasks:
-                current_progress_time = time.time()
-                elapsed_for_log = current_progress_time - parallel_start_time
-                pending_names_for_log = [task_to_name_map[t] for t in pending_tasks]
-                logger.info(
-                    f"{self.log_prefix} 信息处理已进行 {elapsed_for_log:.2f}秒，待完成任务: {', '.join(pending_names_for_log)}"
-                )
 
-        # 所有任务完成后的最终日志
-        parallel_end_time = time.time()
-        total_duration = parallel_end_time - parallel_start_time
-        logger.info(f"{self.log_prefix} 所有处理器任务全部完成，总耗时: {total_duration:.2f}秒")
-        # logger.debug(f"{self.log_prefix} 所有信息处理器处理后的信息: {all_plan_info}")
-
-        return all_plan_info, processor_time_costs
+        return all_plan_info
 
     async def _observe_process_plan_action_loop(self, cycle_timers: dict, thinking_id: str) -> dict:
         try:
@@ -582,19 +552,16 @@ class HeartFChatting:
                     logger.error(f"{self.log_prefix} 动作修改失败: {e}")
                     # 继续执行，不中断流程
 
-            # 第二步：信息处理器
-            with Timer("信息处理器", cycle_timers):
-                try:
-                    all_plan_info, processor_time_costs = await self._process_processors(self.observations)
-                except Exception as e:
-                    logger.error(f"{self.log_prefix} 信息处理器失败: {e}")
-                    # 设置默认值以继续执行
-                    all_plan_info = []
-                    processor_time_costs = {}
+
+            try:
+                all_plan_info = await self._process_processors(self.observations)
+            except Exception as e:
+                logger.error(f"{self.log_prefix} 信息处理器失败: {e}")
+                # 设置默认值以继续执行
+                all_plan_info = []
 
             loop_processor_info = {
                 "all_plan_info": all_plan_info,
-                "processor_time_costs": processor_time_costs,
             }
 
             logger.debug(f"{self.log_prefix} 并行阶段完成，准备进入规划器，plan_info数量: {len(all_plan_info)}")
@@ -737,8 +704,15 @@ class HeartFChatting:
                     logger.info(
                         f"{self.log_prefix} [非auto模式] 已发送 {self._message_count} 条消息，达到疲惫阈值 {current_threshold}，但非auto模式不会自动退出"
                     )
-
-            logger.debug(f"{self.log_prefix} 麦麦执行了'{action}', 返回结果'{success}', '{reply_text}', '{command}'")
+            else:
+                if reply_text == "timeout":
+                    self.reply_timeout_count += 1
+                    if self.reply_timeout_count > 5:
+                        logger.warning(
+                            f"[{self.log_prefix} ] 连续回复超时次数过多，{global_config.chat.thinking_timeout}秒 内大模型没有返回有效内容，请检查你的api是否速度过慢或配置错误。建议不要使用推理模型，推理模型生成速度过慢。或者尝试拉高thinking_timeout参数，这可能导致回复时间过长。"
+                        )
+                    logger.warning(f"{self.log_prefix} 回复生成超时{global_config.chat.thinking_timeout}s，已跳过")
+                    return False, "", ""
 
             return success, reply_text, command
 

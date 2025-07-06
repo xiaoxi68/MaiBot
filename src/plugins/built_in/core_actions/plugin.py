@@ -8,6 +8,7 @@
 import random
 import time
 from typing import List, Tuple, Type
+import asyncio
 
 # 导入新插件系统
 from src.plugin_system import BasePlugin, register_plugin, BaseAction, ComponentInfo, ActionActivationType, ChatMode
@@ -55,17 +56,24 @@ class ReplyAction(BaseAction):
 
     async def execute(self) -> Tuple[bool, str]:
         """执行回复动作"""
-        logger.info(f"{self.log_prefix} 决定回复: {self.reasoning}")
+        logger.info(f"{self.log_prefix} 决定进行回复")
 
         start_time = self.action_data.get("loop_start_time", time.time())
 
         try:
-            success, reply_set = await generator_api.generate_reply(
-                action_data=self.action_data,
-                chat_id=self.chat_id,
-                request_type="focus.replyer",
-                enable_tool=global_config.tool.enable_in_focus_chat,
-            )
+            try:
+                success, reply_set = await asyncio.wait_for(
+                    generator_api.generate_reply(
+                        action_data=self.action_data,
+                        chat_id=self.chat_id,
+                        request_type="focus.replyer",
+                        enable_tool=global_config.tool.enable_in_focus_chat,
+                    ),
+                    timeout=global_config.chat.thinking_timeout,
+                )
+            except asyncio.TimeoutError:
+                logger.warning(f"{self.log_prefix} 回复生成超时 ({global_config.chat.thinking_timeout}s)")
+                return False, "timeout"
 
             # 检查从start_time以来的新消息数量
             # 获取动作触发时间或使用默认值
@@ -77,7 +85,7 @@ class ReplyAction(BaseAction):
             # 根据新消息数量决定是否使用reply_to
             need_reply = new_message_count >= random.randint(2, 5)
             logger.info(
-                f"{self.log_prefix} 从{start_time}到{current_time}共有{new_message_count}条新消息，{'使用' if need_reply else '不使用'}reply_to"
+                f"{self.log_prefix} 从思考到回复，共有{new_message_count}条新消息，{'使用' if need_reply else '不使用'}引用回复"
             )
 
             # 构建回复文本

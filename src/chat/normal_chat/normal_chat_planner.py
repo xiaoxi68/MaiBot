@@ -49,10 +49,8 @@ def init_prompt():
     Prompt(
         """
 动作：{action_name}
-该动作的描述：{action_description}
-使用该动作的场景：
+动作描述：{action_description}
 {action_require}
-输出要求：
 {{
     "action": "{action_name}",{action_parameters}
 }}
@@ -160,8 +158,8 @@ class NormalChatPlanner:
 
                 logger.info(f"{self.log_prefix}规划器原始提示词: {prompt}")
                 logger.info(f"{self.log_prefix}规划器原始响应: {content}")
-                logger.info(f"{self.log_prefix}规划器推理: {reasoning_content}")
-                logger.info(f"{self.log_prefix}规划器模型: {model_name}")
+                if reasoning_content:
+                    logger.info(f"{self.log_prefix}规划器推理: {reasoning_content}")
 
                 # 解析JSON响应
                 try:

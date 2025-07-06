@@ -106,7 +106,15 @@ class RelationshipFetcher:
             await self._extract_single_info(person_id, info_type, person_name)
 
         relation_info = self._organize_known_info()
-        relation_info = f"你对{person_name}的印象是：{short_impression}\n{relation_info}"
+        if short_impression and relation_info: 
+            relation_info = f"你对{person_name}的印象是：{short_impression}。具体来说：{relation_info}"
+        elif short_impression:
+            relation_info = f"你对{person_name}的印象是：{short_impression}"
+        elif relation_info:
+            relation_info = f"你对{person_name}的了解：{relation_info}"
+        else:
+            relation_info = ""
+
         return relation_info
 
     async def _build_fetch_query(self, person_id, target_message, chat_history):

@@ -66,7 +66,7 @@ async def _send_to_target(
         bool: 是否发送成功
     """
     try:
-        logger.info(f"[SendAPI] 发送{message_type}消息到 {stream_id}")
+        logger.debug(f"[SendAPI] 发送{message_type}消息到 {stream_id}")
 
         # 查找目标聊天流
         target_stream = get_chat_manager().get_stream(stream_id)

@@ -81,7 +81,7 @@ def is_mentioned_bot_in_message(message: MessageRecv) -> tuple[bool, float]:
 
     if is_at and global_config.normal_chat.at_bot_inevitable_reply:
         reply_probability = 1.0
-        logger.info("被@，回复概率设置为100%")
+        logger.debug("被@，回复概率设置为100%")
     else:
         if not is_mentioned:
             # 判断是否被回复
@@ -106,7 +106,7 @@ def is_mentioned_bot_in_message(message: MessageRecv) -> tuple[bool, float]:
                         is_mentioned = True
         if is_mentioned and global_config.normal_chat.mentioned_bot_inevitable_reply:
             reply_probability = 1.0
-            logger.info("被提及，回复概率设置为100%")
+            logger.debug("被提及，回复概率设置为100%")
     return is_mentioned, reply_probability
 
 

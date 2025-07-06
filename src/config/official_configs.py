@@ -84,6 +84,9 @@ class ChatConfig(ConfigBase):
     选择普通模型的概率为 1 - reasoning_normal_model_probability
     """
 
+    thinking_timeout: int = 30
+    """麦麦最长思考规划时间，超过这个时间的思考会放弃（往往是api反应太慢）"""
+
     talk_frequency: float = 1
     """回复频率阈值"""
 
@@ -276,8 +279,6 @@ class NormalChatConfig(ConfigBase):
     emoji_chance: float = 0.2
     """发送表情包的基础概率"""
 
-    thinking_timeout: int = 120
-    """最长思考时间"""
 
     willing_mode: str = "classical"
     """意愿模式"""
