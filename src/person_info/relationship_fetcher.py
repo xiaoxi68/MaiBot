@@ -100,13 +100,13 @@ class RelationshipFetcher:
         person_info_manager = get_person_info_manager()
         person_name = await person_info_manager.get_value(person_id, "person_name")
         short_impression = await person_info_manager.get_value(person_id, "short_impression")
-        
+
         nickname_str = await person_info_manager.get_value(person_id, "nickname")
         platform = await person_info_manager.get_value(person_id, "platform")
-        
+
         if person_name == nickname_str and not short_impression:
             return ""
-        
+
         current_points = await person_info_manager.get_value(person_id, "points") or []
 
         if isinstance(current_points, str):
@@ -136,24 +136,30 @@ class RelationshipFetcher:
             await self._extract_single_info(person_id, info_type, person_name)
 
         relation_info = self._organize_known_info()
-        
+
         nickname_str = ""
         if person_name != nickname_str:
             nickname_str = f"(ta在{platform}上的昵称是{nickname_str})"
-        
+
         if short_impression and relation_info:
             if points_text:
                 relation_info = f"你对{person_name}的印象是{nickname_str}：{short_impression}。具体来说：{relation_info}。你还记得ta最近做的事：{points_text}"
             else:
-                relation_info = f"你对{person_name}的印象是{nickname_str}：{short_impression}。具体来说：{relation_info}"
+                relation_info = (
+                    f"你对{person_name}的印象是{nickname_str}：{short_impression}。具体来说：{relation_info}"
+                )
         elif short_impression:
             if points_text:
-                relation_info = f"你对{person_name}的印象是{nickname_str}：{short_impression}。你还记得ta最近做的事：{points_text}"
+                relation_info = (
+                    f"你对{person_name}的印象是{nickname_str}：{short_impression}。你还记得ta最近做的事：{points_text}"
+                )
             else:
                 relation_info = f"你对{person_name}的印象是{nickname_str}：{short_impression}"
         elif relation_info:
             if points_text:
-                relation_info = f"你对{person_name}的了解{nickname_str}：{relation_info}。你还记得ta最近做的事：{points_text}"
+                relation_info = (
+                    f"你对{person_name}的了解{nickname_str}：{relation_info}。你还记得ta最近做的事：{points_text}"
+                )
             else:
                 relation_info = f"你对{person_name}的了解{nickname_str}：{relation_info}"
         elif points_text:
@@ -162,7 +168,6 @@ class RelationshipFetcher:
             relation_info = ""
 
         return relation_info
-
 
     async def _build_fetch_query(self, person_id, target_message, chat_history):
         nickname_str = ",".join(global_config.bot.alias_names)
