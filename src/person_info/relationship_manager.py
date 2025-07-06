@@ -124,6 +124,31 @@ class RelationshipManager:
         if not person_name or person_name == "none":
             return ""
         short_impression = await person_info_manager.get_value(person_id, "short_impression")
+        
+        current_points = await person_info_manager.get_value(person_id, "points") or []
+        if isinstance(current_points, str):
+            try:
+                current_points = json.loads(current_points)
+            except json.JSONDecodeError:
+                logger.error(f"解析points JSON失败: {current_points}")
+                current_points = []
+        elif not isinstance(current_points, list):
+            current_points = []
+        
+        # 按时间排序forgotten_points
+        current_points.sort(key=lambda x: x[2])
+        # 按权重加权随机抽取3个points，point[1]的值在1-10之间，权重越高被抽到概率越大
+        if len(current_points) > 3:
+            # point[1] 取值范围1-10，直接作为权重
+            weights = [max(1, min(10, int(point[1]))) for point in current_points]
+            points = random.choices(current_points, weights=weights, k=3)
+        else:
+            points = current_points
+
+        # 构建points文本
+        points_text = "\n".join(
+            [f"{point[2]}：{point[0]}\n" for point in points]
+        )
 
         nickname_str = await person_info_manager.get_value(person_id, "nickname")
         platform = await person_info_manager.get_value(person_id, "platform")
@@ -137,7 +162,10 @@ class RelationshipManager:
             relation_prompt = f"'{person_name}' ，ta在{platform}上的昵称是{nickname_str}。"
 
         if short_impression:
-            relation_prompt += f"你对ta的印象是：{short_impression}。"
+            relation_prompt += f"你对ta的印象是：{short_impression}。\n"
+            
+        if points_text:
+            relation_prompt += f"你记得ta最近做的事：{points_text}"
 
         return relation_prompt
 
@@ -241,16 +269,16 @@ class RelationshipManager:
         "weight": 10
     }},
     {{
-        "point": "我让{person_name}帮我写作业，他拒绝了",
-        "weight": 4
+        "point": "我让{person_name}帮我写化学作业，他拒绝了，我感觉他对我有意见，或者ta不喜欢我",
+        "weight": 3
     }},
     {{
-        "point": "{person_name}居然搞错了我的名字，生气了",
+        "point": "{person_name}居然搞错了我的名字，我感到生气了，之后不理ta了",
         "weight": 8
     }},
     {{
-        "point": "{person_name}喜欢吃辣，我和她关系不错",
-        "weight": 8
+        "point": "{person_name}喜欢吃辣，具体来说，没有辣的食物ta都不喜欢吃，可能是因为ta是湖南人。",
+        "weight": 7
     }}
 }}
 
@@ -456,7 +484,7 @@ class RelationshipManager:
 你对{person_name}的了解是：
 {compressed_summary}
 
-请你用一句话概括你对{person_name}的了解。突出:
+请你概括你对{person_name}的了解。突出:
 1.对{person_name}的直观印象
 2.{global_config.bot.nickname}与{person_name}的关系
 3.{person_name}的关键信息
@@ -487,8 +515,8 @@ class RelationshipManager:
 2.  **好感度 (liking_value)**: 0-100的整数，表示这些信息让你对ta的喜。
     - 0: 非常厌恶
     - 25: 有点反感
-    - 50: 中立/无感
-    - 75: 有点喜欢
+    - 50: 中立/无感（或者文本中无法明显看出）
+    - 75: 喜欢这个人
     - 100: 非常喜欢/开心对这个人
 
 请严格按照json格式输出，不要有其他多余内容：
