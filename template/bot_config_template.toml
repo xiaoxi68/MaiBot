@@ -61,7 +61,7 @@ enable_relationship = true # 是否启用关系系统
 relation_frequency = 1 # 关系频率，麦麦构建关系的速度，仅在normal_chat模式下有效
 
 [chat] #麦麦的聊天通用设置
-chat_mode = "normal" # 聊天模式 —— 普通模式：normal，专注模式：focus，在普通模式和专注模式之间自动切换
+chat_mode = "normal" # 聊天模式 —— 普通模式：normal，专注模式：focus，auto模式：在普通模式和专注模式之间自动切换
 auto_focus_threshold = 1 # 自动切换到专注聊天的阈值，越低越容易进入专注聊天
 exit_focus_threshold = 1 # 自动退出专注聊天的阈值，越低越容易退出专注聊天
 # 普通模式下，麦麦会针对感兴趣的消息进行回复，token消耗量较低

@@ -19,6 +19,7 @@ from src.person_info.relationship_builder_manager import relationship_builder_ma
 from .priority_manager import PriorityManager
 import traceback
 from src.chat.planner_actions.planner_normal import NormalChatPlanner
+from src.chat.planner_actions.planner_focus import ActionPlanner
 from src.chat.planner_actions.action_modifier import ActionModifier
 
 from src.chat.utils.utils import get_chat_type_and_target_info
@@ -70,7 +71,7 @@ class NormalChat:
 
         # Planner相关初始化
         self.action_manager = ActionManager()
-        self.planner = NormalChatPlanner(self.stream_name, self.action_manager)
+        self.planner = ActionPlanner(self.stream_id, self.action_manager, mode="normal")
         self.action_modifier = ActionModifier(self.action_manager, self.stream_id)
         self.enable_planner = global_config.normal_chat.enable_planner  # 从配置中读取是否启用planner
 
@@ -525,7 +526,7 @@ class NormalChat:
                 return no_action
 
             # 执行规划
-            plan_result = await self.planner.plan(message)
+            plan_result = await self.planner.plan()
             action_type = plan_result["action_result"]["action_type"]
             action_data = plan_result["action_result"]["action_data"]
             reasoning = plan_result["action_result"]["reasoning"]
