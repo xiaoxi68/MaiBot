@@ -154,8 +154,7 @@ class ActionPlanner:
                             action_data[key] = value
 
                     if action == "no_action":
-                        action = "no_reply"
-                        reasoning = "决定不使用额外动作"
+                        reasoning = "normal决定不使用额外动作"
                     elif action not in current_available_actions:
                         logger.warning(
                             f"{self.log_prefix}LLM 返回了当前不可用或无效的动作: '{action}' (可用: {list(current_available_actions.keys())})，将强制使用 'no_reply'"

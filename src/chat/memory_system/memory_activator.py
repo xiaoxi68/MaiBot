@@ -69,11 +69,13 @@ def init_prompt():
 class MemoryActivator:
     def __init__(self):
         # TODO: API-Adapter修改标记
-        self.summary_model = LLMRequest(
-            model=global_config.model.memory_summary,
-            temperature=0.7,
+
+        self.key_words_model = LLMRequest(
+            model=global_config.model.utils_small,
+            temperature=0.5,
             request_type="memory_activator",
         )
+
         self.running_memory = []
         self.cached_keywords = set()  # 用于缓存历史关键词
 
@@ -97,7 +99,7 @@ class MemoryActivator:
 
         # logger.debug(f"prompt: {prompt}")
 
-        response, (reasoning_content, model_name) = await self.summary_model.generate_response_async(prompt)
+        response, (reasoning_content, model_name) = await self.key_words_model.generate_response_async(prompt)
 
         keywords = list(get_keywords_from_json(response))
 

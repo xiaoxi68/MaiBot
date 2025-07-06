@@ -70,14 +70,14 @@ class RelationshipFetcher:
 
         # LLM模型配置
         self.llm_model = LLMRequest(
-            model=global_config.model.relation,
-            request_type="relation",
+            model=global_config.model.utils_small,
+            request_type="relation.fetcher",
         )
 
         # 小模型用于即时信息提取
         self.instant_llm_model = LLMRequest(
             model=global_config.model.utils_small,
-            request_type="relation.instant",
+            request_type="relation.fetch",
         )
 
         name = get_chat_manager().get_stream_name(self.chat_id)
