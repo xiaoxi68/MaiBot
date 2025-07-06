@@ -77,8 +77,6 @@ class MessageSenderContainer:
                 msg_id = f"{current_time}_{random.randint(1000, 9999)}"
 
                 text_to_send = chunk
-                if global_config.experimental.debug_show_chat_mode:
-                    text_to_send += "ⁿ"
 
                 message_segment = Seg(type="text", data=text_to_send)
                 bot_message = MessageSending(

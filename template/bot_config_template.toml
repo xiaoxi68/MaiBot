@@ -1,5 +1,5 @@
 [inner]
-version = "3.5.0"
+version = "3.6.0"
 
 #----以下是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 #如果你想要修改配置文件，请在修改后将version的值进行变更
@@ -231,6 +231,11 @@ library_log_levels = { "aiohttp" = "WARNING"} # 设置特定库的日志级别
 # enable_thinking = <true|false> : 用于指定模型是否启用思考
 # thinking_budget = <int> : 用于指定模型思考最长长度
 
+[debug]
+show_prompt = false # 是否显示prompt
+debug_show_chat_mode = false # 是否在回复后显示当前聊天模式
+
+
 [model]
 model_max_output_length = 1000 # 模型单次返回的最大token数
 
@@ -366,7 +371,6 @@ key_file = "" # SSL密钥文件路径，仅在use_wss=true时有效
 enable = true
 
 [experimental] #实验性功能
-debug_show_chat_mode = false # 是否在回复后显示当前聊天模式
 enable_friend_chat = false # 是否启用好友聊天
 
 

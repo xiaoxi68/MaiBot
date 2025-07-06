@@ -217,7 +217,9 @@ class DefaultReplyer:
                         request_type=self.request_type,
                     )
 
-                    logger.info(f"{self.log_prefix}Prompt:\n{prompt}\n")
+                    if global_config.debug.show_prompt:
+                        logger.info(f"{self.log_prefix}Prompt:\n{prompt}\n")
+
                     content, (reasoning_content, model_name) = await express_model.generate_response_async(prompt)
 
                     logger.info(f"最终回复: {content}")
@@ -560,7 +562,9 @@ class DefaultReplyer:
         for name, result, duration in task_results:
             results_dict[name] = result
             timing_logs.append(f"{name}: {duration:.4f}s")
-        logger.info(f"回复生成前信息获取时间: {'; '.join(timing_logs)}")
+            if duration > 8:
+                logger.warning(f"回复生成前信息获取耗时过长: {name} 耗时: {duration:.4f}s，请使用更快的模型")
+        logger.info(f"回复生成前信息获取耗时: {'; '.join(timing_logs)}")
 
         expression_habits_block = results_dict["build_expression_habits"]
         relation_info = results_dict["build_relation_info"]
@@ -850,7 +854,7 @@ class DefaultReplyer:
             type = msg_text[0]
             data = msg_text[1]
 
-            if global_config.experimental.debug_show_chat_mode and type == "text":
+            if global_config.debug.debug_show_chat_mode and type == "text":
                 data += "ᶠ"
 
             part_message_id = f"{thinking_id}_{i}"

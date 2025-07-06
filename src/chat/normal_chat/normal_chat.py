@@ -224,7 +224,7 @@ class NormalChat:
         mark_head = False
         first_bot_msg = None
         for msg in response_set:
-            if global_config.experimental.debug_show_chat_mode:
+            if global_config.debug.debug_show_chat_mode:
                 msg += "ⁿ"
             message_segment = Seg(type="text", data=msg)
             bot_message = MessageSending(
@@ -434,11 +434,12 @@ class NormalChat:
         # current_time = time.strftime("%H:%M:%S", time.localtime(message.message_info.time))
         # 使用 self.stream_id
         # willing_log = f"[激活值:{await willing_manager.get_willing(self.stream_id):.2f}]" if is_willing else ""
-        logger.info(
-            f"[{mes_name}]"
-            f"{message.message_info.user_info.user_nickname}:"  # 使用 self.chat_stream
-            f"{message.processed_plain_text}[兴趣:{interested_rate:.2f}][回复概率:{reply_probability * 100:.1f}%]"
-        )
+        if reply_probability > 0.1:
+            logger.info(
+                f"[{mes_name}]"
+                f"{message.message_info.user_info.user_nickname}:"  # 使用 self.chat_stream
+                f"{message.processed_plain_text}[兴趣:{interested_rate:.2f}][回复概率:{reply_probability * 100:.1f}%]"
+            )
         do_reply = False
         response_set = None  # 初始化 response_set
         if random() < reply_probability:

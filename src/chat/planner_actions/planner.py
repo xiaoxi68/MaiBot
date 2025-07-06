@@ -119,10 +119,11 @@ class ActionPlanner:
             try:
                 llm_content, (reasoning_content, _) = await self.planner_llm.generate_response_async(prompt=prompt)
 
-                logger.info(f"{self.log_prefix}规划器原始提示词: {prompt}")
-                logger.info(f"{self.log_prefix}规划器原始响应: {llm_content}")
-                if reasoning_content:
-                    logger.info(f"{self.log_prefix}规划器推理: {reasoning_content}")
+                if global_config.debug.show_prompt:
+                    logger.info(f"{self.log_prefix}规划器原始提示词: {prompt}")
+                    logger.info(f"{self.log_prefix}规划器原始响应: {llm_content}")
+                    if reasoning_content:
+                        logger.info(f"{self.log_prefix}规划器推理: {reasoning_content}")
 
             except Exception as req_e:
                 logger.error(f"{self.log_prefix}LLM 请求执行失败: {req_e}")

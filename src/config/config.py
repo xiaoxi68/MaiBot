@@ -35,6 +35,7 @@ from src.config.official_configs import (
     LPMMKnowledgeConfig,
     RelationshipConfig,
     ToolConfig,
+    DebugConfig,
 )
 
 install(extra_lines=3)
@@ -165,7 +166,7 @@ class Config(ConfigBase):
     maim_message: MaimMessageConfig
     lpmm_knowledge: LPMMKnowledgeConfig
     tool: ToolConfig
-
+    debug: DebugConfig
 
 def load_config(config_path: str) -> Config:
     """
