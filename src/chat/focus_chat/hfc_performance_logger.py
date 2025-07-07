@@ -11,11 +11,11 @@ class HFCPerformanceLogger:
     """HFC性能记录管理器"""
 
     # 版本号常量，可在启动时修改
-    INTERNAL_VERSION = "v1.0.0"
+    INTERNAL_VERSION = "v7.0.0"
 
-    def __init__(self, chat_id: str, version: str = None):
+    def __init__(self, chat_id: str):
         self.chat_id = chat_id
-        self.version = version or self.INTERNAL_VERSION
+        self.version = self.INTERNAL_VERSION
         self.log_dir = Path("log/hfc_loop")
         self.session_start_time = datetime.now()
 
@@ -41,7 +41,6 @@ class HFCPerformanceLogger:
                 "action_type": cycle_data.get("action_type", "unknown"),
                 "total_time": cycle_data.get("total_time", 0),
                 "step_times": cycle_data.get("step_times", {}),
-                "processor_time_costs": cycle_data.get("processor_time_costs", {}),  # 前处理器时间
                 "reasoning": cycle_data.get("reasoning", ""),
                 "success": cycle_data.get("success", False),
             }

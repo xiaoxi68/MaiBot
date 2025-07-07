@@ -784,12 +784,12 @@ class Hippocampus:
 
         # 计算激活节点数与总节点数的比值
         total_activation = sum(activate_map.values())
-        logger.debug(f"总激活值: {total_activation:.2f}")
+        # logger.debug(f"总激活值: {total_activation:.2f}")
         total_nodes = len(self.memory_graph.G.nodes())
         # activated_nodes = len(activate_map)
         activation_ratio = total_activation / total_nodes if total_nodes > 0 else 0
         activation_ratio = activation_ratio * 60
-        logger.info(f"总激活值: {total_activation:.2f}, 总节点数: {total_nodes}, 激活: {activation_ratio}")
+        logger.debug(f"总激活值: {total_activation:.2f}, 总节点数: {total_nodes}, 激活: {activation_ratio}")
 
         return activation_ratio
 

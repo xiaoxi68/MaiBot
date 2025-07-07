@@ -1,5 +1,5 @@
-from src.chat.heart_flow.observation.chatting_observation import ChattingObservation
-from src.chat.heart_flow.observation.observation import Observation
+from src.chat.focus_chat.observation.chatting_observation import ChattingObservation
+from src.chat.focus_chat.observation.observation import Observation
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 import time
@@ -7,9 +7,8 @@ import traceback
 from src.common.logger import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.message_receive.chat_stream import get_chat_manager
-from .base_processor import BaseProcessor
 from typing import List
-from src.chat.heart_flow.observation.working_observation import WorkingMemoryObservation
+from src.chat.focus_chat.observation.working_observation import WorkingMemoryObservation
 from src.chat.focus_chat.working_memory.working_memory import WorkingMemory
 from src.chat.focus_chat.info.info_base import InfoBase
 from json_repair import repair_json
@@ -44,12 +43,10 @@ def init_prompt():
     Prompt(memory_proces_prompt, "prompt_memory_proces")
 
 
-class WorkingMemoryProcessor(BaseProcessor):
+class WorkingMemoryProcessor:
     log_prefix = "工作记忆"
 
     def __init__(self, subheartflow_id: str):
-        super().__init__()
-
         self.subheartflow_id = subheartflow_id
 
         self.llm_model = LLMRequest(
@@ -71,6 +68,7 @@ class WorkingMemoryProcessor(BaseProcessor):
         """
         working_memory = None
         chat_info = ""
+        chat_obs = None
         try:
             for observation in observations:
                 if isinstance(observation, WorkingMemoryObservation):
@@ -79,9 +77,14 @@ class WorkingMemoryProcessor(BaseProcessor):
                     chat_info = observation.get_observe_info()
                     chat_obs = observation
                     # 检查是否有待压缩内容
-            if chat_obs.compressor_prompt:
+            if chat_obs and chat_obs.compressor_prompt:
                 logger.debug(f"{self.log_prefix} 压缩聊天记忆")
                 await self.compress_chat_memory(working_memory, chat_obs)
+
+            # 检查working_memory是否为None
+            if working_memory is None:
+                logger.debug(f"{self.log_prefix} 没有找到工作记忆观察，跳过处理")
+                return []
 
             all_memory = working_memory.get_all_memories()
             if not all_memory:
@@ -183,6 +186,11 @@ class WorkingMemoryProcessor(BaseProcessor):
             working_memory: 工作记忆对象
             obs: 聊天观察对象
         """
+        # 检查working_memory是否为None
+        if working_memory is None:
+            logger.warning(f"{self.log_prefix} 工作记忆对象为None，无法压缩聊天记忆")
+            return
+
         try:
             summary_result, _ = await self.llm_model.generate_response_async(obs.compressor_prompt)
             if not summary_result:
@@ -235,6 +243,11 @@ class WorkingMemoryProcessor(BaseProcessor):
             memory_id1: 第一个记忆ID
             memory_id2: 第二个记忆ID
         """
+        # 检查working_memory是否为None
+        if working_memory is None:
+            logger.warning(f"{self.log_prefix} 工作记忆对象为None，无法合并记忆")
+            return
+
         try:
             merged_memory = await working_memory.merge_memory(memory_id1, memory_id2)
             logger.debug(f"{self.log_prefix} 合并后的记忆梗概: {merged_memory.brief}")

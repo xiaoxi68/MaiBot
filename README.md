@@ -44,7 +44,9 @@
 
 ## 🔥 更新和安装
 
+
 **最新版本: v0.8.1** ([更新日志](changelogs/changelog.md))
+
 可前往 [Release](https://github.com/MaiM-with-u/MaiBot/releases/) 页面下载最新版本
 可前往 [启动器发布页面](https://github.com/MaiM-with-u/mailauncher/releases/tag/v0.1.0)下载最新启动器
 **GitHub 分支说明：**

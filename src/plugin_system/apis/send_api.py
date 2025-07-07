@@ -28,7 +28,7 @@ from src.common.logger import get_logger
 
 # 导入依赖
 from src.chat.message_receive.chat_stream import get_chat_manager
-from src.chat.focus_chat.heartFC_sender import HeartFCSender
+from src.chat.message_receive.uni_message_sender import HeartFCSender
 from src.chat.message_receive.message import MessageSending, MessageRecv
 from src.chat.utils.chat_message_builder import get_raw_msg_before_timestamp_with_chat
 from src.person_info.person_info import get_person_info_manager
@@ -66,7 +66,7 @@ async def _send_to_target(
         bool: 是否发送成功
     """
     try:
-        logger.info(f"[SendAPI] 发送{message_type}消息到 {stream_id}")
+        logger.debug(f"[SendAPI] 发送{message_type}消息到 {stream_id}")
 
         # 查找目标聊天流
         target_stream = get_chat_manager().get_stream(stream_id)
@@ -116,7 +116,7 @@ async def _send_to_target(
         )
 
         if sent_msg:
-            logger.info(f"[SendAPI] 成功发送消息到 {stream_id}")
+            logger.debug(f"[SendAPI] 成功发送消息到 {stream_id}")
             return True
         else:
             logger.error("[SendAPI] 发送消息失败")

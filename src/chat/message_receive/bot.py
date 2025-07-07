@@ -9,7 +9,7 @@ from src.chat.message_receive.message import MessageRecv
 from src.experimental.only_message_process import MessageProcessor
 from src.chat.message_receive.storage import MessageStorage
 from src.experimental.PFC.pfc_manager import PFCManager
-from src.chat.focus_chat.heartflow_message_processor import HeartFCMessageReceiver
+from src.chat.heart_flow.heartflow_message_processor import HeartFCMessageReceiver
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.config.config import global_config
 from src.plugin_system.core.component_registry import component_registry  # 导入新插件系统
@@ -190,14 +190,14 @@ class ChatBot:
 
             message.update_chat_stream(chat)
 
+            # 处理消息内容，生成纯文本
+            await message.process()
+
             # 过滤检查
             if _check_ban_words(message.processed_plain_text, chat, user_info) or _check_ban_regex(
                 message.raw_message, chat, user_info
             ):
                 return
-
-            # 处理消息内容，生成纯文本
-            await message.process()
 
             # 命令处理 - 使用新插件系统检查并处理命令
             is_command, cmd_result, continue_process = await self._process_commands_with_new_system(message)

@@ -1243,7 +1243,7 @@ class StatisticOutputTask(AsyncTask):
             focus_chat_rows = ""
             if stat_data[FOCUS_AVG_TIMES_BY_CHAT_ACTION]:
                 # 获取前三个阶段（不包括执行动作）
-                basic_stages = ["观察", "并行调整动作、处理", "规划器"]
+                basic_stages = ["观察", "规划器"]
                 existing_basic_stages = []
                 for stage in basic_stages:
                     # 检查是否有任何聊天流在这个阶段有数据
@@ -1352,7 +1352,7 @@ class StatisticOutputTask(AsyncTask):
             focus_action_stage_rows = ""
             if stat_data[FOCUS_AVG_TIMES_BY_ACTION]:
                 # 获取所有阶段（按固定顺序）
-                stage_order = ["观察", "并行调整动作、处理", "规划器", "执行动作"]
+                stage_order = ["观察", "规划器", "执行动作"]
                 all_stages = []
                 for stage in stage_order:
                     if any(stage in stage_times for stage_times in stat_data[FOCUS_AVG_TIMES_BY_ACTION].values()):
@@ -1618,7 +1618,7 @@ class StatisticOutputTask(AsyncTask):
             focus_version_stage_rows = ""
             if stat_data[FOCUS_AVG_TIMES_BY_VERSION]:
                 # 基础三个阶段
-                basic_stages = ["观察", "并行调整动作、处理", "规划器"]
+                basic_stages = ["观察", "规划器"]
 
                 # 获取所有action类型用于执行时间列
                 all_action_types_for_exec = set()

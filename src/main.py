@@ -10,8 +10,7 @@ from src.manager.mood_manager import MoodPrintTask, MoodUpdateTask
 from src.chat.emoji_system.emoji_manager import get_emoji_manager
 from src.chat.normal_chat.willing.willing_manager import get_willing_manager
 from src.chat.message_receive.chat_stream import get_chat_manager
-from src.chat.heart_flow.heartflow import heartflow
-from src.chat.message_receive.message_sender import message_manager
+from src.chat.message_receive.normal_message_sender import message_manager
 from src.chat.message_receive.storage import MessageStorage
 from src.config.config import global_config
 from src.chat.message_receive.bot import chat_bot
@@ -141,10 +140,6 @@ class MainSystem:
             # 启动全局消息管理器 (负责消息发送/排队)
             await message_manager.start()
             logger.info("全局消息管理器启动成功")
-
-            # 启动心流系统主循环
-            asyncio.create_task(heartflow.heartflow_start_working())
-            logger.info("心流系统启动成功")
 
             init_time = int(1000 * (time.time() - init_start_time))
             logger.info(f"初始化完成，神经元放电{init_time}次")

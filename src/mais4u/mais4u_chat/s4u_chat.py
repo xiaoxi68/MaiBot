@@ -77,8 +77,6 @@ class MessageSenderContainer:
                 msg_id = f"{current_time}_{random.randint(1000, 9999)}"
 
                 text_to_send = chunk
-                if global_config.experimental.debug_show_chat_mode:
-                    text_to_send += "ⁿ"
 
                 message_segment = Seg(type="text", data=text_to_send)
                 bot_message = MessageSending(
@@ -165,6 +163,9 @@ class S4UChat:
 
         self._is_replying = False
         self.gpt = S4UStreamGenerator()
+        self.interest_dict: Dict[str, float] = {}  # 用户兴趣分
+        self.at_bot_priority_bonus = 100.0  # @机器人的优先级加成
+        self.normal_queue_max_size = 50  # 普通队列最大容量
         logger.info(f"[{self.stream_name}] S4UChat with two-queue system initialized.")
 
     def _is_vip(self, message: MessageRecv) -> bool:
@@ -196,7 +197,7 @@ class S4UChat:
     async def add_message(self, message: MessageRecv) -> None:
         """根据VIP状态和中断逻辑将消息放入相应队列。"""
         is_vip = self._is_vip(message)
-        self._get_message_priority(message)
+        new_priority_score = self._calculate_base_priority_score(message)
 
         should_interrupt = False
         if self._current_generation_task and not self._current_generation_task.done():
@@ -218,11 +219,11 @@ class S4UChat:
                         new_sender_id = message.message_info.user_info.user_id
                         current_sender_id = current_msg.message_info.user_info.user_id
                         # 新消息优先级更高
-                        if new_priority_score > current_priority_score:
+                        if new_priority_score > current_priority:
                             should_interrupt = True
                             logger.info(f"[{self.stream_name}] New normal message has higher priority, interrupting.")
                         # 同用户，新消息的优先级不能更低
-                        elif new_sender_id == current_sender_id and new_priority_score >= current_priority_score:
+                        elif new_sender_id == current_sender_id and new_priority_score >= current_priority:
                             should_interrupt = True
                             logger.info(f"[{self.stream_name}] Same user sent new message, interrupting.")
 

@@ -9,8 +9,8 @@ from src.common.logger import get_logger
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.chat.utils.timer_calculator import Timer  # <--- Import Timer
-from src.chat.focus_chat.heartFC_sender import HeartFCSender
-from src.chat.heart_flow.utils_chat import get_chat_type_and_target_info
+from src.chat.message_receive.uni_message_sender import HeartFCSender
+from src.chat.utils.utils import get_chat_type_and_target_info
 from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.focus_chat.hfc_utils import parse_thinking_id_to_timestamp
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
@@ -26,7 +26,7 @@ from src.person_info.person_info import get_person_info_manager
 from datetime import datetime
 import re
 from src.chat.knowledge.knowledge_lib import qa_manager
-from src.chat.focus_chat.memory_activator import MemoryActivator
+from src.chat.memory_system.memory_activator import MemoryActivator
 from src.tools.tool_executor import ToolExecutor
 
 logger = get_logger("replyer")
@@ -92,14 +92,11 @@ class DefaultReplyer:
     def __init__(
         self,
         chat_stream: ChatStream,
-        enable_tool: bool = False,
         model_configs: Optional[List[Dict[str, Any]]] = None,
         request_type: str = "focus.replyer",
     ):
         self.log_prefix = "replyer"
         self.request_type = request_type
-
-        self.enable_tool = enable_tool
 
         if model_configs:
             self.express_model_configs = model_configs
@@ -170,9 +167,10 @@ class DefaultReplyer:
         self,
         reply_data: Dict[str, Any] = None,
         reply_to: str = "",
-        relation_info: str = "",
         extra_info: str = "",
         available_actions: List[str] = None,
+        enable_tool: bool = True,
+        enable_timeout: bool = False,
     ) -> Tuple[bool, Optional[str]]:
         """
         回复器 (Replier): 核心逻辑，负责生成回复文本。
@@ -186,7 +184,6 @@ class DefaultReplyer:
             if not reply_data:
                 reply_data = {
                     "reply_to": reply_to,
-                    "relation_info": relation_info,
                     "extra_info": extra_info,
                 }
                 for key, value in reply_data.items():
@@ -198,6 +195,8 @@ class DefaultReplyer:
                 prompt = await self.build_prompt_reply_context(
                     reply_data=reply_data,  # 传递action_data
                     available_actions=available_actions,
+                    enable_timeout=enable_timeout,
+                    enable_tool=enable_tool,
                 )
 
             # 4. 调用 LLM 生成回复
@@ -218,7 +217,9 @@ class DefaultReplyer:
                         request_type=self.request_type,
                     )
 
-                    logger.info(f"{self.log_prefix}Prompt:\n{prompt}\n")
+                    if global_config.debug.show_prompt:
+                        logger.info(f"{self.log_prefix}Prompt:\n{prompt}\n")
+
                     content, (reasoning_content, model_name) = await express_model.generate_response_async(prompt)
 
                     logger.info(f"最终回复: {content}")
@@ -255,8 +256,6 @@ class DefaultReplyer:
 
             with Timer("构建Prompt", {}):  # 内部计时器，可选保留
                 prompt = await self.build_prompt_rewrite_context(
-                    raw_reply=raw_reply,
-                    reason=reason,
                     reply_data=reply_data,
                 )
 
@@ -313,7 +312,7 @@ class DefaultReplyer:
         person_id = person_info_manager.get_person_id_by_person_name(sender)
         if not person_id:
             logger.warning(f"{self.log_prefix} 未找到用户 {sender} 的ID，跳过信息提取")
-            return None
+            return f"你完全不认识{sender}，不理解ta的相关信息。"
 
         relation_info = await relationship_fetcher.build_relation_info(person_id, text, chat_history)
         return relation_info
@@ -369,13 +368,12 @@ class DefaultReplyer:
             for running_memory in running_memorys:
                 memory_str += f"- {running_memory['content']}\n"
             memory_block = memory_str
-            logger.info(f"{self.log_prefix} 添加了 {len(running_memorys)} 个激活的记忆到prompt")
         else:
             memory_block = ""
 
         return memory_block
 
-    async def build_tool_info(self, reply_data=None, chat_history=None):
+    async def build_tool_info(self, reply_data=None, chat_history=None, enable_tool: bool = True):
         """构建工具信息块
 
         Args:
@@ -385,6 +383,9 @@ class DefaultReplyer:
         Returns:
             str: 工具信息字符串
         """
+
+        if not enable_tool:
+            return ""
 
         if not reply_data:
             return ""
@@ -462,7 +463,21 @@ class DefaultReplyer:
 
         return keywords_reaction_prompt
 
-    async def build_prompt_reply_context(self, reply_data=None, available_actions: List[str] = None) -> str:
+    async def _time_and_run_task(self, coro, name: str):
+        """一个简单的帮助函数，用于计时和运行异步任务，返回任务名、结果和耗时"""
+        start_time = time.time()
+        result = await coro
+        end_time = time.time()
+        duration = end_time - start_time
+        return name, result, duration
+
+    async def build_prompt_reply_context(
+        self,
+        reply_data=None,
+        available_actions: List[str] = None,
+        enable_timeout: bool = False,
+        enable_tool: bool = True,
+    ) -> str:
         """
         构建回复器上下文
 
@@ -528,12 +543,33 @@ class DefaultReplyer:
         )
 
         # 并行执行四个构建任务
-        expression_habits_block, relation_info, memory_block, tool_info = await asyncio.gather(
-            self.build_expression_habits(chat_talking_prompt_half, target),
-            self.build_relation_info(reply_data, chat_talking_prompt_half),
-            self.build_memory_block(chat_talking_prompt_half, target),
-            self.build_tool_info(reply_data, chat_talking_prompt_half),
+        task_results = await asyncio.gather(
+            self._time_and_run_task(
+                self.build_expression_habits(chat_talking_prompt_half, target), "build_expression_habits"
+            ),
+            self._time_and_run_task(
+                self.build_relation_info(reply_data, chat_talking_prompt_half), "build_relation_info"
+            ),
+            self._time_and_run_task(self.build_memory_block(chat_talking_prompt_half, target), "build_memory_block"),
+            self._time_and_run_task(
+                self.build_tool_info(reply_data, chat_talking_prompt_half, enable_tool=enable_tool), "build_tool_info"
+            ),
         )
+
+        # 处理结果
+        timing_logs = []
+        results_dict = {}
+        for name, result, duration in task_results:
+            results_dict[name] = result
+            timing_logs.append(f"{name}: {duration:.4f}s")
+            if duration > 8:
+                logger.warning(f"回复生成前信息获取耗时过长: {name} 耗时: {duration:.4f}s，请使用更快的模型")
+        logger.info(f"回复生成前信息获取耗时: {'; '.join(timing_logs)}")
+
+        expression_habits_block = results_dict["build_expression_habits"]
+        relation_info = results_dict["build_relation_info"]
+        memory_block = results_dict["build_memory_block"]
+        tool_info = results_dict["build_tool_info"]
 
         keywords_reaction_prompt = await self.build_keywords_reaction_prompt(target)
 
@@ -617,10 +653,10 @@ class DefaultReplyer:
                 chat_target_name = (
                     self.chat_target_info.get("person_name") or self.chat_target_info.get("user_nickname") or "对方"
                 )
-            chat_target_1 = await global_prompt_manager.get_prompt_async(
+            chat_target_1 = await global_prompt_manager.format_prompt(
                 "chat_target_private1", sender_name=chat_target_name
             )
-            chat_target_2 = await global_prompt_manager.get_prompt_async(
+            chat_target_2 = await global_prompt_manager.format_prompt(
                 "chat_target_private2", sender_name=chat_target_name
             )
 
@@ -652,8 +688,6 @@ class DefaultReplyer:
     async def build_prompt_rewrite_context(
         self,
         reply_data: Dict[str, Any],
-        raw_reply: str = "",
-        reason: str = "",
     ) -> str:
         chat_stream = self.chat_stream
         chat_id = chat_stream.stream_id
@@ -662,6 +696,8 @@ class DefaultReplyer:
         is_group_chat = bool(chat_stream.group_info)
 
         reply_to = reply_data.get("reply_to", "none")
+        raw_reply = reply_data.get("raw_reply", "")
+        reason = reply_data.get("reason", "")
         sender, target = self._parse_reply_target(reply_to)
 
         message_list_before_now_half = get_raw_msg_before_timestamp_with_chat(
@@ -747,10 +783,10 @@ class DefaultReplyer:
                 chat_target_name = (
                     self.chat_target_info.get("person_name") or self.chat_target_info.get("user_nickname") or "对方"
                 )
-            chat_target_1 = await global_prompt_manager.get_prompt_async(
+            chat_target_1 = await global_prompt_manager.format_prompt(
                 "chat_target_private1", sender_name=chat_target_name
             )
-            chat_target_2 = await global_prompt_manager.get_prompt_async(
+            chat_target_2 = await global_prompt_manager.format_prompt(
                 "chat_target_private2", sender_name=chat_target_name
             )
 
@@ -818,7 +854,7 @@ class DefaultReplyer:
             type = msg_text[0]
             data = msg_text[1]
 
-            if global_config.experimental.debug_show_chat_mode and type == "text":
+            if global_config.debug.debug_show_chat_mode and type == "text":
                 data += "ᶠ"
 
             part_message_id = f"{thinking_id}_{i}"
@@ -958,6 +994,11 @@ async def get_prompt_info(message: str, threshold: float):
     logger.debug(f"获取知识库内容，元消息：{message[:30]}...，消息长度: {len(message)}")
     # 从LPMM知识库获取知识
     try:
+        # 检查LPMM知识库是否启用
+        if qa_manager is None:
+            logger.debug("LPMM知识库已禁用，跳过知识获取")
+            return ""
+
         found_knowledge_from_lpmm = qa_manager.get_knowledge(message)
 
         end_time = time.time()

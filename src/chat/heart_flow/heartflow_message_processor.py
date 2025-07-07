@@ -10,27 +10,12 @@ from src.common.logger import get_logger
 import re
 import math
 import traceback
-from typing import Optional, Tuple
+from typing import Tuple
 
 from src.person_info.relationship_manager import get_relationship_manager
 
-# from ..message_receive.message_buffer import message_buffer
 
 logger = get_logger("chat")
-
-
-async def _handle_error(error: Exception, context: str, message: Optional[MessageRecv] = None) -> None:
-    """统一的错误处理函数
-
-    Args:
-        error: 捕获到的异常
-        context: 错误发生的上下文描述
-        message: 可选的消息对象，用于记录相关消息内容
-    """
-    logger.error(f"{context}: {error}")
-    logger.error(traceback.format_exc())
-    if message and hasattr(message, "raw_message"):
-        logger.error(f"相关消息原始内容: {message.raw_message}")
 
 
 async def _process_relationship(message: MessageRecv) -> None:
@@ -149,4 +134,5 @@ class HeartFCMessageReceiver:
                 await _process_relationship(message)
 
         except Exception as e:
-            await _handle_error(e, "消息处理失败", message)
+            logger.error(f"消息处理失败: {e}")
+            print(traceback.format_exc())

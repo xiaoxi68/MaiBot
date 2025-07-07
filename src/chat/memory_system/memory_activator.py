@@ -69,23 +69,19 @@ def init_prompt():
 class MemoryActivator:
     def __init__(self):
         # TODO: API-Adapter修改标记
-        self.summary_model = LLMRequest(
-            model=global_config.model.memory_summary,
-            temperature=0.7,
+
+        self.key_words_model = LLMRequest(
+            model=global_config.model.utils_small,
+            temperature=0.5,
             request_type="memory_activator",
         )
+
         self.running_memory = []
         self.cached_keywords = set()  # 用于缓存历史关键词
 
     async def activate_memory_with_chat_history(self, target_message, chat_history_prompt) -> List[Dict]:
         """
         激活记忆
-
-        Args:
-            observations: 现有的进行观察后的 观察列表
-
-        Returns:
-            List[Dict]: 激活的记忆列表
         """
         # 如果记忆系统被禁用，直接返回空列表
         if not global_config.memory.enable_memory:
@@ -103,7 +99,7 @@ class MemoryActivator:
 
         # logger.debug(f"prompt: {prompt}")
 
-        response, (reasoning_content, model_name) = await self.summary_model.generate_response_async(prompt)
+        response, (reasoning_content, model_name) = await self.key_words_model.generate_response_async(prompt)
 
         keywords = list(get_keywords_from_json(response))
 
@@ -117,14 +113,13 @@ class MemoryActivator:
 
             # 添加新的关键词到缓存
             self.cached_keywords.update(keywords)
-            logger.info(f"当前激活的记忆关键词: {self.cached_keywords}")
 
         # 调用记忆系统获取相关记忆
         related_memory = await hippocampus_manager.get_memory_from_topic(
             valid_keywords=keywords, max_memory_num=3, max_memory_length=2, max_depth=3
         )
 
-        logger.info(f"获取到的记忆: {related_memory}")
+        logger.info(f"当前记忆关键词: {self.cached_keywords} 。获取到的记忆: {related_memory}")
 
         # 激活时，所有已有记忆的duration+1，达到3则移除
         for m in self.running_memory[:]:
