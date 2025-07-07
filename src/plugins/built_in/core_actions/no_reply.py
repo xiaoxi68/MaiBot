@@ -110,7 +110,9 @@ class NoReplyAction(BaseAction):
                 if global_config.chat.chat_mode == "auto" and self.is_group:
                     # 检查是否超时
                     if elapsed_time >= self._max_timeout or self._check_no_activity_and_exit_focus(current_time):
-                        logger.info(f"{self.log_prefix} 等待时间过久（{self._max_timeout}秒）或过去10分钟完全没有发言，退出专注模式")
+                        logger.info(
+                            f"{self.log_prefix} 等待时间过久（{self._max_timeout}秒）或过去10分钟完全没有发言，退出专注模式"
+                        )
                         # 标记退出专注模式
                         self.action_data["_system_command"] = "stop_focus_chat"
                         exit_reason = f"{global_config.bot.nickname}（你）等待了{self._max_timeout}秒，或完全没有说话，感觉群里没有新内容，决定退出专注模式，稍作休息"
@@ -259,7 +261,7 @@ class NoReplyAction(BaseAction):
                             frequency_block = ""
 
                         # 如果决定跳过LLM判断，直接更新时间并继续等待
-                        
+
                         if should_skip_llm_judge:
                             last_judge_time = time.time()  # 更新判断时间，避免立即重新判断
                             continue  # 跳过本次LLM判断，继续循环等待
@@ -352,8 +354,6 @@ class NoReplyAction(BaseAction):
                             logger.error(f"{self.log_prefix} 模型判断异常: {e}，继续等待")
                             last_judge_time = time.time()  # 异常时也更新时间，避免频繁重试
 
-                
-                
                 # 每10秒输出一次等待状态
                 logger.info(f"{self.log_prefix} 开始等待新消息...")
                 if elapsed_time < 60:
