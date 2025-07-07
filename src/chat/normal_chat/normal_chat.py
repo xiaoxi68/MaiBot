@@ -302,50 +302,44 @@ class NormalChat:
                                 logger.info(f"[{self.stream_name}] 在处理上下文中检测到停止信号，退出")
                                 break
 
-                            # 并行处理兴趣消息
-                            async def process_single_message(msg_id, message, interest_value, is_mentioned):
-                                """处理单个兴趣消息"""
-                                try:
-                                    # 在处理每个消息前检查停止状态
-                                    if self._disabled:
-                                        logger.debug(f"[{self.stream_name}] 处理消息时检测到停用，跳过消息 {msg_id}")
-                                        return
+                            semaphore = asyncio.Semaphore(5)
 
-                                    # 处理消息
-                                    self.adjust_reply_frequency()
+                            async def process_and_acquire(msg_id, message, interest_value, is_mentioned):
+                                """处理单个兴趣消息并管理信号量"""
+                                async with semaphore:
+                                    try:
+                                        # 在处理每个消息前检查停止状态
+                                        if self._disabled:
+                                            logger.debug(
+                                                f"[{self.stream_name}] 处理消息时检测到停用，跳过消息 {msg_id}"
+                                            )
+                                            return
 
-                                    await self.normal_response(
-                                        message=message,
-                                        is_mentioned=is_mentioned,
-                                        interested_rate=interest_value * self.willing_amplifier,
-                                    )
-                                except asyncio.CancelledError:
-                                    logger.debug(f"[{self.stream_name}] 处理消息 {msg_id} 时被取消")
-                                    raise  # 重新抛出取消异常
-                                except Exception as e:
-                                    logger.error(f"[{self.stream_name}] 处理兴趣消息{msg_id}时出错: {e}")
-                                    # 不打印完整traceback，避免日志污染
-                                finally:
-                                    # 无论如何都要清理消息
-                                    self.interest_dict.pop(msg_id, None)
+                                        # 处理消息
+                                        self.adjust_reply_frequency()
 
-                            # 创建并行任务列表
-                            coroutines = []
-                            for msg_id, (message, interest_value, is_mentioned) in items_to_process:
-                                coroutine = process_single_message(msg_id, message, interest_value, is_mentioned)
-                                coroutines.append(coroutine)
+                                        await self.normal_response(
+                                            message=message,
+                                            is_mentioned=is_mentioned,
+                                            interested_rate=interest_value * self.willing_amplifier,
+                                        )
+                                    except asyncio.CancelledError:
+                                        logger.debug(f"[{self.stream_name}] 处理消息 {msg_id} 时被取消")
+                                        raise  # 重新抛出取消异常
+                                    except Exception as e:
+                                        logger.error(f"[{self.stream_name}] 处理兴趣消息{msg_id}时出错: {e}")
+                                        # 不打印完整traceback，避免日志污染
+                                    finally:
+                                        # 无论如何都要清理消息
+                                        self.interest_dict.pop(msg_id, None)
 
-                            # 并行执行所有任务，限制并发数量避免资源过度消耗
-                            if coroutines:
-                                # 使用信号量控制并发数，最多同时处理5个消息
-                                semaphore = asyncio.Semaphore(5)
+                            tasks = [
+                                process_and_acquire(msg_id, message, interest_value, is_mentioned)
+                                for msg_id, (message, interest_value, is_mentioned) in items_to_process
+                            ]
 
-                                async def limited_process(coroutine, sem):
-                                    async with sem:
-                                        await coroutine
-
-                                limited_tasks = [limited_process(coroutine, semaphore) for coroutine in coroutines]
-                                await asyncio.gather(*limited_tasks, return_exceptions=True)
+                            if tasks:
+                                await asyncio.gather(*tasks, return_exceptions=True)
 
                     except asyncio.CancelledError:
                         logger.info(f"[{self.stream_name}] 处理上下文时任务被取消")
@@ -469,9 +463,6 @@ class NormalChat:
     ) -> Optional[list]:
         """生成普通回复"""
         try:
-            logger.info(
-                f"NormalChat思考:{message.processed_plain_text[:30] + '...' if len(message.processed_plain_text) > 30 else message.processed_plain_text}"
-            )
             person_info_manager = get_person_info_manager()
             person_id = person_info_manager.get_person_id(
                 message.chat_stream.user_info.platform, message.chat_stream.user_info.user_id
@@ -490,10 +481,6 @@ class NormalChat:
             if not success or not reply_set:
                 logger.info(f"对 {message.processed_plain_text} 的回复生成失败")
                 return None
-
-            content = " ".join([item[1] for item in reply_set if item[0] == "text"])
-            if content:
-                logger.info(f"{global_config.bot.nickname}的备选回复是：{content}")
 
             return reply_set
 
@@ -532,7 +519,15 @@ class NormalChat:
             reasoning = plan_result["action_result"]["reasoning"]
             is_parallel = plan_result["action_result"].get("is_parallel", False)
 
-            logger.info(f"[{self.stream_name}] Planner决策: {action_type}, 理由: {reasoning}, 并行执行: {is_parallel}")
+            if action_type == "no_action":
+                logger.info(f"[{self.stream_name}] {global_config.bot.nickname} 决定进行回复")
+            elif is_parallel:
+                logger.info(
+                    f"[{self.stream_name}] {global_config.bot.nickname} 决定进行回复, 同时执行{action_type}动作"
+                )
+            else:
+                logger.info(f"[{self.stream_name}] {global_config.bot.nickname} 决定执行{action_type}动作")
+
             self.action_type = action_type  # 更新实例属性
             self.is_parallel_action = is_parallel  # 新增：保存并行执行标志
 
@@ -590,10 +585,21 @@ class NormalChat:
             )
             response_set, plan_result = results
         except asyncio.TimeoutError:
+            gen_timed_out = not gen_task.done()
+            plan_timed_out = not plan_task.done()
+
+            timeout_details = []
+            if gen_timed_out:
+                timeout_details.append("回复生成(gen)")
+            if plan_timed_out:
+                timeout_details.append("动作规划(plan)")
+
+            timeout_source = " 和 ".join(timeout_details)
+
             logger.warning(
-                f"[{self.stream_name}] 并行执行回复生成和动作规划超时 ({gather_timeout}秒)，正在取消相关任务..."
+                f"[{self.stream_name}] {timeout_source} 任务超时 ({global_config.chat.thinking_timeout}秒)，正在取消相关任务..."
             )
-            print(f"111{self.timeout_count}")
+            # print(f"111{self.timeout_count}")
             self.timeout_count += 1
             if self.timeout_count > 5:
                 logger.warning(
@@ -623,18 +629,23 @@ class NormalChat:
         elif plan_result:
             logger.debug(f"[{self.stream_name}] 额外动作处理完成: {self.action_type}")
 
+        if response_set:
+            content = " ".join([item[1] for item in response_set if item[0] == "text"])
+
         if not response_set or (
             self.enable_planner and self.action_type not in ["no_action"] and not self.is_parallel_action
         ):
             if not response_set:
-                logger.info(f"[{self.stream_name}] 模型未生成回复内容")
+                logger.warning(f"[{self.stream_name}] 模型未生成回复内容")
             elif self.enable_planner and self.action_type not in ["no_action"] and not self.is_parallel_action:
-                logger.info(f"[{self.stream_name}] 模型选择其他动作（非并行动作）")
+                logger.info(
+                    f"[{self.stream_name}] {global_config.bot.nickname} 原本想要回复：{content}，但选择执行{self.action_type}，不发表回复"
+                )
             # 如果模型未生成回复，移除思考消息
             await self._cleanup_thinking_message_by_id(thinking_id)
             return False
 
-        # logger.info(f"[{self.stream_name}] 回复内容: {response_set}")
+        logger.info(f"[{self.stream_name}] {global_config.bot.nickname} 决定的回复内容: {content}")
 
         if self._disabled:
             logger.info(f"[{self.stream_name}] 已停用，忽略 normal_response。")

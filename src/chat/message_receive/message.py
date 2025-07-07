@@ -107,7 +107,9 @@ class MessageRecv(Message):
         self.processed_plain_text = message_dict.get("processed_plain_text", "")
         self.detailed_plain_text = message_dict.get("detailed_plain_text", "")
         self.is_emoji = False
+        self.has_emoji = False
         self.is_picid = False
+        self.has_picid = False
         self.is_mentioned = None
         self.priority_mode = "interest"
         self.priority_info = None
@@ -134,25 +136,35 @@ class MessageRecv(Message):
         """
         try:
             if segment.type == "text":
+                self.is_picid = False
+                self.is_emoji = False
                 return segment.data
             elif segment.type == "image":
                 # 如果是base64图片数据
                 if isinstance(segment.data, str):
+                    self.has_picid = True
                     self.is_picid = True
+                    self.is_emoji = False
                     image_manager = get_image_manager()
                     # print(f"segment.data: {segment.data}")
                     _, processed_text = await image_manager.process_image(segment.data)
                     return processed_text
                 return "[发了一张图片，网卡了加载不出来]"
             elif segment.type == "emoji":
+                self.has_emoji = True
                 self.is_emoji = True
+                self.is_picid = False
                 if isinstance(segment.data, str):
                     return await get_image_manager().get_emoji_description(segment.data)
                 return "[发了一个表情包，网卡了加载不出来]"
             elif segment.type == "mention_bot":
+                self.is_picid = False
+                self.is_emoji = False
                 self.is_mentioned = float(segment.data)
                 return ""
             elif segment.type == "priority_info":
+                self.is_picid = False
+                self.is_emoji = False
                 if isinstance(segment.data, dict):
                     # 处理优先级信息
                     self.priority_mode = "priority"

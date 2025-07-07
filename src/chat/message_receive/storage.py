@@ -136,7 +136,7 @@ class MessageStorage:
             if matched_message:
                 # 更新找到的消息记录
                 Messages.update(message_id=qq_message_id).where(Messages.id == matched_message.id).execute()
-                logger.info(f"更新消息ID成功: {matched_message.message_id} -> {qq_message_id}")
+                logger.debug(f"更新消息ID成功: {matched_message.message_id} -> {qq_message_id}")
             else:
                 logger.debug("未找到匹配的消息")
 
