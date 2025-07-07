@@ -190,12 +190,6 @@ class HeartFChatting:
                                 if loop_info["loop_action_info"]["command"] == "stop_focus_chat":
                                     logger.info(f"{self.log_prefix} 麦麦决定停止专注聊天")
 
-                                    # 如果是私聊，则不停止，而是重置疲劳度并继续
-                                    if not self.chat_stream.group_info:
-                                        logger.info(f"{self.log_prefix} 私聊模式下收到停止请求，不退出。")
-                                        continue  # 继续下一次循环，而不是退出
-
-                                    # 如果是群聊，则执行原来的停止逻辑
                                     # 如果设置了回调函数，则调用它
                                     if self.on_stop_focus_chat:
                                         try:
