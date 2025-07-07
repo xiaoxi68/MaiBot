@@ -355,14 +355,13 @@ class NoReplyAction(BaseAction):
                             last_judge_time = time.time()  # 异常时也更新时间，避免频繁重试
 
                 # 每10秒输出一次等待状态
-                logger.info(f"{self.log_prefix} 开始等待新消息...")
                 if elapsed_time < 60:
                     if int(elapsed_time) % 10 == 0 and int(elapsed_time) > 0:
                         logger.debug(f"{self.log_prefix} 已等待{elapsed_time:.0f}秒，等待新消息...")
                         await asyncio.sleep(1)
                 else:
-                    if int(elapsed_time) % 60 == 0 and int(elapsed_time) > 0:
-                        logger.debug(f"{self.log_prefix} 已等待{elapsed_time / 60:.0f}分钟，等待新消息...")
+                    if int(elapsed_time) % 180 == 0 and int(elapsed_time) > 0:
+                        logger.info(f"{self.log_prefix} 已等待{elapsed_time / 60:.0f}分钟，等待新消息...")
                         await asyncio.sleep(1)
 
                 # 短暂等待后继续检查
