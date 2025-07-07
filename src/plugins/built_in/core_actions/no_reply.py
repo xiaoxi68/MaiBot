@@ -107,43 +107,13 @@ class NoReplyAction(BaseAction):
                 current_time = time.time()
                 elapsed_time = current_time - start_time
 
-                if global_config.chat.chat_mode == "auto":
+                if global_config.chat.chat_mode == "auto" and self.is_group:
                     # 检查是否超时
-                    if elapsed_time >= self._max_timeout:
-                        logger.info(f"{self.log_prefix} 达到最大等待时间{self._max_timeout}秒，退出专注模式")
+                    if elapsed_time >= self._max_timeout or self._check_no_activity_and_exit_focus(current_time):
+                        logger.info(f"{self.log_prefix} 等待时间过久（{self._max_timeout}秒）或过去10分钟完全没有发言，退出专注模式")
                         # 标记退出专注模式
                         self.action_data["_system_command"] = "stop_focus_chat"
-                        exit_reason = f"{global_config.bot.nickname}（你）等待了{self._max_timeout}秒，感觉群里没有新内容，决定退出专注模式，稍作休息"
-                        await self.store_action_info(
-                            action_build_into_prompt=True,
-                            action_prompt_display=exit_reason,
-                            action_done=True,
-                        )
-                        return True, exit_reason
-
-                    # **新增**：检查回复频率，决定是否退出专注模式
-                    should_exit_focus = await self._check_frequency_and_exit_focus(current_time)
-                    if should_exit_focus:
-                        logger.info(f"{self.log_prefix} 检测到回复频率过高，退出专注模式")
-                        # 标记退出专注模式
-                        self.action_data["_system_command"] = "stop_focus_chat"
-                        exit_reason = (
-                            f"{global_config.bot.nickname}（你）发现自己回复太频繁了，决定退出专注模式，稍作休息"
-                        )
-                        await self.store_action_info(
-                            action_build_into_prompt=True,
-                            action_prompt_display=exit_reason,
-                            action_done=True,
-                        )
-                        return True, exit_reason
-
-                    # **新增**：检查过去10分钟是否完全没有发言，如果是则退出专注模式
-                    should_exit_no_activity = await self._check_no_activity_and_exit_focus(current_time)
-                    if should_exit_no_activity:
-                        logger.info(f"{self.log_prefix} 检测到过去10分钟完全没有发言，退出专注模式")
-                        # 标记退出专注模式
-                        self.action_data["_system_command"] = "stop_focus_chat"
-                        exit_reason = f"{global_config.bot.nickname}（你）发现自己过去10分钟完全没有说话，感觉可能不太活跃，决定退出专注模式"
+                        exit_reason = f"{global_config.bot.nickname}（你）等待了{self._max_timeout}秒，或完全没有说话，感觉群里没有新内容，决定退出专注模式，稍作休息"
                         await self.store_action_info(
                             action_build_into_prompt=True,
                             action_prompt_display=exit_reason,
@@ -289,15 +259,17 @@ class NoReplyAction(BaseAction):
                             frequency_block = ""
 
                         # 如果决定跳过LLM判断，直接更新时间并继续等待
+                        
                         if should_skip_llm_judge:
                             last_judge_time = time.time()  # 更新判断时间，避免立即重新判断
                             continue  # 跳过本次LLM判断，继续循环等待
 
                         # 构建判断上下文
+                        chat_context = "QQ群" if self.is_group else "私聊"
                         judge_prompt = f"""
 {identity_block}
 
-你现在正在QQ群参与聊天，以下是聊天内容：
+你现在正在{chat_context}参与聊天，以下是聊天内容：
 {context_str}
 在以上的聊天中，你选择了暂时不回复，现在，你看到了新的聊天消息如下：
 {messages_text}
@@ -380,14 +352,17 @@ class NoReplyAction(BaseAction):
                             logger.error(f"{self.log_prefix} 模型判断异常: {e}，继续等待")
                             last_judge_time = time.time()  # 异常时也更新时间，避免频繁重试
 
+                
+                
                 # 每10秒输出一次等待状态
+                logger.info(f"{self.log_prefix} 开始等待新消息...")
                 if elapsed_time < 60:
                     if int(elapsed_time) % 10 == 0 and int(elapsed_time) > 0:
-                        logger.info(f"{self.log_prefix} 已等待{elapsed_time:.0f}秒，等待新消息...")
+                        logger.debug(f"{self.log_prefix} 已等待{elapsed_time:.0f}秒，等待新消息...")
                         await asyncio.sleep(1)
                 else:
                     if int(elapsed_time) % 60 == 0 and int(elapsed_time) > 0:
-                        logger.info(f"{self.log_prefix} 已等待{elapsed_time / 60:.0f}分钟，等待新消息...")
+                        logger.debug(f"{self.log_prefix} 已等待{elapsed_time / 60:.0f}分钟，等待新消息...")
                         await asyncio.sleep(1)
 
                 # 短暂等待后继续检查
@@ -405,65 +380,7 @@ class NoReplyAction(BaseAction):
             )
             return False, f"不回复动作执行失败: {e}"
 
-    async def _check_frequency_and_exit_focus(self, current_time: float) -> bool:
-        """检查回复频率，决定是否退出专注模式
-
-        Args:
-            current_time: 当前时间戳
-
-        Returns:
-            bool: 是否应该退出专注模式
-        """
-        try:
-            # 只在auto模式下进行频率检查
-            if global_config.chat.chat_mode != "auto":
-                return False
-
-            # 获取检查窗口内的所有消息
-            window_start_time = current_time - self._frequency_check_window
-            all_messages = message_api.get_messages_by_time_in_chat(
-                chat_id=self.chat_id,
-                start_time=window_start_time,
-                end_time=current_time,
-            )
-
-            if not all_messages:
-                return False
-
-            # 统计bot自己的回复数量
-            bot_message_count = 0
-            user_id = global_config.bot.qq_account
-
-            for message in all_messages:
-                sender_id = message.get("user_id", "")
-                if sender_id == user_id:
-                    bot_message_count += 1
-
-            # 计算当前回复频率（每分钟回复数）
-            window_minutes = self._frequency_check_window / 60
-            current_frequency = bot_message_count / window_minutes
-
-            # 计算阈值频率：使用 exit_focus_threshold * 1.5
-            threshold_multiplier = global_config.chat.exit_focus_threshold * 1.5
-            threshold_frequency = global_config.chat.get_current_talk_frequency(self.chat_id) * threshold_multiplier
-
-            # 判断是否超过阈值
-            if current_frequency > threshold_frequency:
-                logger.info(
-                    f"{self.log_prefix} 回复频率检查：当前频率 {current_frequency:.2f}/分钟，超过阈值 {threshold_frequency:.2f}/分钟 (exit_threshold={global_config.chat.exit_focus_threshold} * 1.5)，准备退出专注模式"
-                )
-                return True
-            else:
-                logger.debug(
-                    f"{self.log_prefix} 回复频率检查：当前频率 {current_frequency:.2f}/分钟，未超过阈值 {threshold_frequency:.2f}/分钟 (exit_threshold={global_config.chat.exit_focus_threshold} * 1.5)"
-                )
-                return False
-
-        except Exception as e:
-            logger.error(f"{self.log_prefix} 检查回复频率时出错: {e}")
-            return False
-
-    async def _check_no_activity_and_exit_focus(self, current_time: float) -> bool:
+    def _check_no_activity_and_exit_focus(self, current_time: float) -> bool:
         """检查过去10分钟是否完全没有发言，决定是否退出专注模式
 
         Args:
