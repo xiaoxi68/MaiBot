@@ -123,9 +123,7 @@ class HeartFCMessageReceiver:
             picid_pattern = r"\[picid:([^\]]+)\]"
             processed_plain_text = re.sub(picid_pattern, "[图片]", message.processed_plain_text)
 
-            logger.info(
-                f"[{mes_name}]{userinfo.user_nickname}:{processed_plain_text}"
-            )
+            logger.info(f"[{mes_name}]{userinfo.user_nickname}:{processed_plain_text}")
 
             logger.debug(f"[{mes_name}][当前时段回复频率: {current_talk_frequency}]")
 

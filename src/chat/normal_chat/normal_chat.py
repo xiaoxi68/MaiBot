@@ -596,7 +596,9 @@ class NormalChat:
 
             timeout_source = " 和 ".join(timeout_details)
 
-            logger.warning(f"[{self.stream_name}] {timeout_source} 任务超时 ({global_config.chat.thinking_timeout}秒)，正在取消相关任务...")
+            logger.warning(
+                f"[{self.stream_name}] {timeout_source} 任务超时 ({global_config.chat.thinking_timeout}秒)，正在取消相关任务..."
+            )
             # print(f"111{self.timeout_count}")
             self.timeout_count += 1
             if self.timeout_count > 5:

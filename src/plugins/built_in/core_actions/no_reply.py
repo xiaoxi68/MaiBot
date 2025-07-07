@@ -103,7 +103,6 @@ class NoReplyAction(BaseAction):
 
             logger.info(f"{self.log_prefix} 选择不回复(第{count}次)，开始摸鱼，原因: {reason}")
 
-            
             # 进入等待状态
             while True:
                 current_time = time.time()
@@ -387,7 +386,9 @@ class NoReplyAction(BaseAction):
                         f"{self.log_prefix} 发言过多(超过{over_count}条)，随机决定跳过此次LLM判断(概率{skip_probability * 100:.0f}%)"
                     )
 
-                logger.info(f"{self.log_prefix} 过去10分钟发言{bot_message_count}条，超过阈值{talk_frequency_threshold}，添加疲惫提示")
+                logger.info(
+                    f"{self.log_prefix} 过去10分钟发言{bot_message_count}条，超过阈值{talk_frequency_threshold}，添加疲惫提示"
+                )
                 return frequency_block, should_skip_judge
             else:
                 # 回复次数少时的正向提示
@@ -398,7 +399,9 @@ class NoReplyAction(BaseAction):
                 elif under_count >= talk_frequency_threshold * 0.5:
                     frequency_block = "你感觉状态不错。\n"
 
-                logger.info(f"{self.log_prefix} 过去10分钟发言{bot_message_count}条，未超过阈值{talk_frequency_threshold}，添加正向提示")
+                logger.info(
+                    f"{self.log_prefix} 过去10分钟发言{bot_message_count}条，未超过阈值{talk_frequency_threshold}，添加正向提示"
+                )
                 return frequency_block, False
 
         except Exception as e:
