@@ -324,8 +324,6 @@ async def clear_temp_emoji() -> None:
                         os.remove(file_path)
                         logger.debug(f"[清理] 删除: {filename}")
 
-    logger.info("[清理] 完成")
-
 
 async def clean_unused_emojis(emoji_dir: str, emoji_objects: List["MaiEmoji"], removed_count: int) -> int:
     """清理指定目录中未被 emoji_objects 追踪的表情包文件"""
@@ -590,7 +588,7 @@ class EmojiManager:
         """定期检查表情包完整性和数量"""
         await self.get_all_emoji_from_db()
         while True:
-            logger.info("[扫描] 开始检查表情包完整性...")
+            # logger.info("[扫描] 开始检查表情包完整性...")
             await self.check_emoji_file_integrity()
             await clear_temp_emoji()
             logger.info("[扫描] 开始扫描新表情包...")

@@ -585,10 +585,19 @@ class NormalChat:
             )
             response_set, plan_result = results
         except asyncio.TimeoutError:
-            logger.warning(
-                f"[{self.stream_name}] 并行执行回复生成和动作规划超时 ({gather_timeout}秒)，正在取消相关任务..."
-            )
-            print(f"111{self.timeout_count}")
+            gen_timed_out = not gen_task.done()
+            plan_timed_out = not plan_task.done()
+
+            timeout_details = []
+            if gen_timed_out:
+                timeout_details.append("回复生成(gen)")
+            if plan_timed_out:
+                timeout_details.append("动作规划(plan)")
+
+            timeout_source = " 和 ".join(timeout_details)
+
+            logger.warning(f"[{self.stream_name}] {timeout_source} 任务超时 ({global_config.chat.thinking_timeout}秒)，正在取消相关任务...")
+            # print(f"111{self.timeout_count}")
             self.timeout_count += 1
             if self.timeout_count > 5:
                 logger.warning(
