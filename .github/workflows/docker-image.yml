@@ -155,7 +155,7 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
-            type=sha
+            type=sha,prefix=${{ github.ref_name }}-,enable=${{ github.ref_type == 'branch' }}
 
       - name: Create and Push Manifest
         run: |
