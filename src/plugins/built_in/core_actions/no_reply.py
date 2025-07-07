@@ -107,7 +107,7 @@ class NoReplyAction(BaseAction):
                 current_time = time.time()
                 elapsed_time = current_time - start_time
 
-                if global_config.chat.chat_mode == "auto":
+                if global_config.chat.chat_mode == "auto" and self.is_group:
                     # 检查是否超时
                     if elapsed_time >= self._max_timeout:
                         logger.info(f"{self.log_prefix} 达到最大等待时间{self._max_timeout}秒，退出专注模式")
@@ -220,73 +220,81 @@ class NoReplyAction(BaseAction):
                         frequency_block = ""
                         should_skip_llm_judge = False  # 是否跳过LLM判断
 
-                        try:
-                            # 获取过去10分钟的所有消息
-                            past_10min_time = current_time - 600  # 10分钟前
-                            all_messages_10min = message_api.get_messages_by_time_in_chat(
-                                chat_id=self.chat_id,
-                                start_time=past_10min_time,
-                                end_time=current_time,
-                            )
+                        # 【新增】如果是私聊环境，跳过疲劳度检查
+                        if not self.is_group:
+                            frequency_block = "你正在和别人私聊，你不会疲惫，正常聊天即可。"
+                            should_skip_llm_judge = False
+                            logger.debug(f"{self.log_prefix} 私聊环境，跳过疲劳度检查")
 
-                            # 手动过滤bot自己的消息
-                            bot_message_count = 0
-                            if all_messages_10min:
-                                user_id = global_config.bot.qq_account
+                        else:
 
-                                for message in all_messages_10min:
-                                    # 检查消息发送者是否是bot
-                                    sender_id = message.get("user_id", "")
+                            try:
+                                # 获取过去10分钟的所有消息
+                                past_10min_time = current_time - 600  # 10分钟前
+                                all_messages_10min = message_api.get_messages_by_time_in_chat(
+                                    chat_id=self.chat_id,
+                                    start_time=past_10min_time,
+                                    end_time=current_time,
+                                )
 
-                                    if sender_id == user_id:
-                                        bot_message_count += 1
+                                # 手动过滤bot自己的消息
+                                bot_message_count = 0
+                                if all_messages_10min:
+                                    user_id = global_config.bot.qq_account
 
-                            talk_frequency_threshold = global_config.chat.get_current_talk_frequency(self.chat_id) * 10
+                                    for message in all_messages_10min:
+                                        # 检查消息发送者是否是bot
+                                        sender_id = message.get("user_id", "")
 
-                            if bot_message_count > talk_frequency_threshold:
-                                over_count = bot_message_count - talk_frequency_threshold
+                                        if sender_id == user_id:
+                                            bot_message_count += 1
 
-                                # 根据超过的数量设置不同的提示词和跳过概率
-                                skip_probability = 0
-                                if over_count <= 3:
-                                    frequency_block = "你感觉稍微有些累，回复的有点多了。\n"
-                                elif over_count <= 5:
-                                    frequency_block = "你今天说话比较多，感觉有点疲惫，想要稍微休息一下。\n"
-                                elif over_count <= 8:
-                                    frequency_block = "你发现自己说话太多了，感觉很累，想要安静一会儿，除非有重要的事情否则不想回复。\n"
-                                    skip_probability = self._skip_probability
-                                else:
-                                    frequency_block = "你感觉非常累，想要安静一会儿。\n"
-                                    skip_probability = 1
+                                talk_frequency_threshold = global_config.chat.get_current_talk_frequency(self.chat_id) * 10
 
-                                # 根据配置和概率决定是否跳过LLM判断
-                                if self._skip_judge_when_tired and random.random() < skip_probability:
-                                    should_skip_llm_judge = True
+                                if bot_message_count > talk_frequency_threshold:
+                                    over_count = bot_message_count - talk_frequency_threshold
+
+                                    # 根据超过的数量设置不同的提示词和跳过概率
+                                    skip_probability = 0
+                                    if over_count <= 3:
+                                        frequency_block = "你感觉稍微有些累，回复的有点多了。\n"
+                                    elif over_count <= 5:
+                                        frequency_block = "你今天说话比较多，感觉有点疲惫，想要稍微休息一下。\n"
+                                    elif over_count <= 8:
+                                        frequency_block = "你发现自己说话太多了，感觉很累，想要安静一会儿，除非有重要的事情否则不想回复。\n"
+                                        skip_probability = self._skip_probability
+                                    else:
+                                        frequency_block = "你感觉非常累，想要安静一会儿。\n"
+                                        skip_probability = 1
+
+                                    # 根据配置和概率决定是否跳过LLM判断
+                                    if self._skip_judge_when_tired and random.random() < skip_probability:
+                                        should_skip_llm_judge = True
+                                        logger.info(
+                                            f"{self.log_prefix} 发言过多(超过{over_count}条)，随机决定跳过此次LLM判断(概率{skip_probability * 100:.0f}%)"
+                                        )
+
                                     logger.info(
-                                        f"{self.log_prefix} 发言过多(超过{over_count}条)，随机决定跳过此次LLM判断(概率{skip_probability * 100:.0f}%)"
+                                        f"{self.log_prefix} 过去10分钟发言{bot_message_count}条，超过阈值{talk_frequency_threshold}，添加疲惫提示"
+                                    )
+                                else:
+                                    # 回复次数少时的正向提示
+                                    under_count = talk_frequency_threshold - bot_message_count
+
+                                    if under_count >= talk_frequency_threshold * 0.8:  # 回复很少（少于20%）
+                                        frequency_block = "你感觉精力充沛，状态很好，积极参与聊天。\n"
+                                    elif under_count >= talk_frequency_threshold * 0.5:  # 回复较少（少于50%）
+                                        frequency_block = "你感觉状态不错。\n"
+                                    else:  # 刚好达到阈值
+                                        frequency_block = ""
+
+                                    logger.info(
+                                        f"{self.log_prefix} 过去10分钟发言{bot_message_count}条，未超过阈值{talk_frequency_threshold}，添加正向提示"
                                     )
 
-                                logger.info(
-                                    f"{self.log_prefix} 过去10分钟发言{bot_message_count}条，超过阈值{talk_frequency_threshold}，添加疲惫提示"
-                                )
-                            else:
-                                # 回复次数少时的正向提示
-                                under_count = talk_frequency_threshold - bot_message_count
-
-                                if under_count >= talk_frequency_threshold * 0.8:  # 回复很少（少于20%）
-                                    frequency_block = "你感觉精力充沛，状态很好，积极参与聊天。\n"
-                                elif under_count >= talk_frequency_threshold * 0.5:  # 回复较少（少于50%）
-                                    frequency_block = "你感觉状态不错。\n"
-                                else:  # 刚好达到阈值
-                                    frequency_block = ""
-
-                                logger.info(
-                                    f"{self.log_prefix} 过去10分钟发言{bot_message_count}条，未超过阈值{talk_frequency_threshold}，添加正向提示"
-                                )
-
-                        except Exception as e:
-                            logger.warning(f"{self.log_prefix} 检查发言频率时出错: {e}")
-                            frequency_block = ""
+                            except Exception as e:
+                                logger.warning(f"{self.log_prefix} 检查发言频率时出错: {e}")
+                                frequency_block = ""
 
                         # 如果决定跳过LLM判断，直接更新时间并继续等待
                         if should_skip_llm_judge:
@@ -294,10 +302,11 @@ class NoReplyAction(BaseAction):
                             continue  # 跳过本次LLM判断，继续循环等待
 
                         # 构建判断上下文
+                        chat_context = "QQ群" if self.is_group else "私聊"
                         judge_prompt = f"""
 {identity_block}
 
-你现在正在QQ群参与聊天，以下是聊天内容：
+你现在正在{chat_context}参与聊天，以下是聊天内容：
 {context_str}
 在以上的聊天中，你选择了暂时不回复，现在，你看到了新的聊天消息如下：
 {messages_text}
@@ -383,11 +392,11 @@ class NoReplyAction(BaseAction):
                 # 每10秒输出一次等待状态
                 if elapsed_time < 60:
                     if int(elapsed_time) % 10 == 0 and int(elapsed_time) > 0:
-                        logger.info(f"{self.log_prefix} 已等待{elapsed_time:.0f}秒，等待新消息...")
+                        logger.debug(f"{self.log_prefix} 已等待{elapsed_time:.0f}秒，等待新消息...")
                         await asyncio.sleep(1)
                 else:
                     if int(elapsed_time) % 60 == 0 and int(elapsed_time) > 0:
-                        logger.info(f"{self.log_prefix} 已等待{elapsed_time / 60:.0f}分钟，等待新消息...")
+                        logger.debug(f"{self.log_prefix} 已等待{elapsed_time / 60:.0f}分钟，等待新消息...")
                         await asyncio.sleep(1)
 
                 # 短暂等待后继续检查
