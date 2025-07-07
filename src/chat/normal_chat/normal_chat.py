@@ -310,7 +310,9 @@ class NormalChat:
                                     try:
                                         # 在处理每个消息前检查停止状态
                                         if self._disabled:
-                                            logger.debug(f"[{self.stream_name}] 处理消息时检测到停用，跳过消息 {msg_id}")
+                                            logger.debug(
+                                                f"[{self.stream_name}] 处理消息时检测到停用，跳过消息 {msg_id}"
+                                            )
                                             return
 
                                         # 处理消息
@@ -330,7 +332,7 @@ class NormalChat:
                                     finally:
                                         # 无论如何都要清理消息
                                         self.interest_dict.pop(msg_id, None)
-                            
+
                             tasks = [
                                 process_and_acquire(msg_id, message, interest_value, is_mentioned)
                                 for msg_id, (message, interest_value, is_mentioned) in items_to_process
