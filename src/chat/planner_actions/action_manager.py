@@ -96,7 +96,7 @@ class ActionManager:
                     f"从插件系统加载Action组件: {action_name} (插件: {getattr(action_info, 'plugin_name', 'unknown')})"
                 )
 
-            logger.info(f"从插件系统加载了 {len(action_components)} 个Action组件")
+            logger.info(f"加载了 {len(action_components)} 个Action动作")
 
         except Exception as e:
             logger.error(f"从插件系统加载Action组件失败: {e}")

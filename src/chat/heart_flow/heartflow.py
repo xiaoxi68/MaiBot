@@ -30,7 +30,7 @@ class Heartflow:
             # 注册子心流
             self.subheartflows[subheartflow_id] = new_subflow
             heartflow_name = get_chat_manager().get_stream_name(subheartflow_id) or subheartflow_id
-            logger.info(f"[{heartflow_name}] 开始接收消息")
+            logger.debug(f"[{heartflow_name}] 开始接收消息")
 
             return new_subflow
         except Exception as e:

@@ -124,6 +124,11 @@ class ActionPlanner:
                     logger.info(f"{self.log_prefix}规划器原始响应: {llm_content}")
                     if reasoning_content:
                         logger.info(f"{self.log_prefix}规划器推理: {reasoning_content}")
+                else:
+                    logger.debug(f"{self.log_prefix}规划器原始提示词: {prompt}")
+                    logger.debug(f"{self.log_prefix}规划器原始响应: {llm_content}")
+                    if reasoning_content:
+                        logger.debug(f"{self.log_prefix}规划器推理: {reasoning_content}")
 
             except Exception as req_e:
                 logger.error(f"{self.log_prefix}LLM 请求执行失败: {req_e}")
