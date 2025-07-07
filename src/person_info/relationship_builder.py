@@ -140,7 +140,7 @@ class RelationshipBuilder:
             segments.append(new_segment)
 
             person_name = get_person_info_manager().get_value_sync(person_id, "person_name") or person_id
-            logger.info(
+            logger.debug(
                 f"{self.log_prefix} 眼熟用户 {person_name} 在 {time.strftime('%H:%M:%S', time.localtime(potential_start_time))} - {time.strftime('%H:%M:%S', time.localtime(message_time))} 之间有 {new_segment['message_count']} 条消息"
             )
             self._save_cache()
@@ -187,7 +187,7 @@ class RelationshipBuilder:
             segments.append(new_segment)
             person_info_manager = get_person_info_manager()
             person_name = person_info_manager.get_value_sync(person_id, "person_name") or person_id
-            logger.info(f"{self.log_prefix} 重新眼熟用户 {person_name} 创建新消息段（超过10条消息间隔）: {new_segment}")
+            logger.debug(f"{self.log_prefix} 重新眼熟用户 {person_name} 创建新消息段（超过10条消息间隔）: {new_segment}")
 
         self._save_cache()
 
@@ -384,7 +384,7 @@ class RelationshipBuilder:
             total_message_count = self._get_total_message_count(person_id)
             if total_message_count >= 45:
                 users_to_build_relationship.append(person_id)
-                logger.info(
+                logger.debug(
                     f"{self.log_prefix} 用户 {person_id} 满足关系构建条件，总消息数：{total_message_count}，消息段数：{len(segments)}"
                 )
             elif total_message_count > 0:
@@ -422,7 +422,7 @@ class RelationshipBuilder:
 
                 # 获取该段的消息（包含边界）
                 segment_messages = get_raw_msg_by_timestamp_with_chat_inclusive(self.chat_id, start_time, end_time)
-                logger.info(
+                logger.debug(
                     f"消息段 {i + 1}: {start_date} - {time.strftime('%Y-%m-%d %H:%M', time.localtime(end_time))}, 消息数: {len(segment_messages)}"
                 )
 
@@ -450,7 +450,7 @@ class RelationshipBuilder:
                 # 按时间排序所有消息（包括间隔标识）
                 processed_messages.sort(key=lambda x: x["time"])
 
-                logger.info(f"为 {person_id} 获取到总共 {len(processed_messages)} 条消息（包含间隔标识）用于印象更新")
+                logger.debug(f"为 {person_id} 获取到总共 {len(processed_messages)} 条消息（包含间隔标识）用于印象更新")
                 relationship_manager = get_relationship_manager()
 
                 # 调用原有的更新方法

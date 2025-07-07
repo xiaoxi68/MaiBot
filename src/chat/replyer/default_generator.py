@@ -188,7 +188,7 @@ class DefaultReplyer:
                 }
                 for key, value in reply_data.items():
                     if not value:
-                        logger.info(f"{self.log_prefix} 回复数据跳过{key}，生成回复时将忽略。")
+                        logger.debug(f"{self.log_prefix} 回复数据跳过{key}，生成回复时将忽略。")
 
             # 3. 构建 Prompt
             with Timer("构建Prompt", {}):  # 内部计时器，可选保留
@@ -218,11 +218,13 @@ class DefaultReplyer:
                     )
 
                     if global_config.debug.show_prompt:
-                        logger.info(f"{self.log_prefix}Prompt:\n{prompt}\n")
+                        logger.info(f"{self.log_prefix}\n{prompt}\n")
+                    else:
+                        logger.debug(f"{self.log_prefix}\n{prompt}\n")
 
                     content, (reasoning_content, model_name) = await express_model.generate_response_async(prompt)
 
-                    logger.info(f"最终回复: {content}")
+                    logger.debug(f"replyer生成内容: {content}")
 
             except Exception as llm_e:
                 # 精简报错信息
@@ -331,7 +333,7 @@ class DefaultReplyer:
         )
 
         if selected_expressions:
-            logger.info(f"{self.log_prefix} 使用处理器选中的{len(selected_expressions)}个表达方式")
+            logger.debug(f"{self.log_prefix} 使用处理器选中的{len(selected_expressions)}个表达方式")
             for expr in selected_expressions:
                 if isinstance(expr, dict) and "situation" in expr and "style" in expr:
                     expr_type = expr.get("type", "style")

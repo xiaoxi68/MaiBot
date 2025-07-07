@@ -11,7 +11,7 @@ from src.plugin_system.apis import emoji_api
 from src.plugins.built_in.core_actions.no_reply import NoReplyAction
 
 
-logger = get_logger("core_actions")
+logger = get_logger("emoji")
 
 
 class EmojiAction(BaseAction):
@@ -65,7 +65,7 @@ class EmojiAction(BaseAction):
                 return False, f"未找到匹配 '{description}' 的表情包"
 
             emoji_base64, emoji_description, matched_emotion = emoji_result
-            logger.info(f"{self.log_prefix} 找到表情包: {emoji_description}, 匹配情感: {matched_emotion}")
+            logger.info(f"{self.log_prefix} 找到表达{matched_emotion}的表情包")
 
             # 使用BaseAction的便捷方法发送表情包
             success = await self.send_emoji(emoji_base64)

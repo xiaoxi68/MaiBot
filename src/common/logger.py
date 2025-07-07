@@ -322,7 +322,7 @@ MODULE_COLORS = {
     "main": "\033[1;97m",  # 亮白色+粗体 (主程序)
     "api": "\033[92m",  # 亮绿色
     "emoji": "\033[92m",  # 亮绿色
-    "chat": "\033[94m",  # 亮蓝色
+    "chat": "\033[92m",  # 亮蓝色
     "config": "\033[93m",  # 亮黄色
     "common": "\033[95m",  # 亮紫色
     "tools": "\033[96m",  # 亮青色
@@ -346,10 +346,7 @@ MODULE_COLORS = {
     # 聊天相关模块
     "normal_chat": "\033[38;5;81m",  # 亮蓝绿色
     "normal_chat_response": "\033[38;5;123m",  # 青绿色
-    "normal_chat_action_modifier": "\033[38;5;111m",  # 蓝色
-    "normal_chat_planner": "\033[38;5;75m",  # 浅蓝色
     "heartflow": "\033[38;5;213m",  # 粉色
-    "heartflow_utils": "\033[38;5;219m",  # 浅粉色
     "sub_heartflow": "\033[38;5;207m",  # 粉紫色
     "subheartflow_manager": "\033[38;5;201m",  # 深粉色
     "background_tasks": "\033[38;5;240m",  # 灰色

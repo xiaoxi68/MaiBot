@@ -119,7 +119,8 @@ class MemoryActivator:
             valid_keywords=keywords, max_memory_num=3, max_memory_length=2, max_depth=3
         )
 
-        logger.info(f"当前记忆关键词: {self.cached_keywords} 。获取到的记忆: {related_memory}")
+        logger.debug(f"当前记忆关键词: {self.cached_keywords} ")
+        logger.debug(f"获取到的记忆: {related_memory}")
 
         # 激活时，所有已有记忆的duration+1，达到3则移除
         for m in self.running_memory[:]:

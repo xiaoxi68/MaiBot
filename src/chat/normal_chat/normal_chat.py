@@ -469,9 +469,6 @@ class NormalChat:
     ) -> Optional[list]:
         """生成普通回复"""
         try:
-            logger.info(
-                f"NormalChat思考:{message.processed_plain_text[:30] + '...' if len(message.processed_plain_text) > 30 else message.processed_plain_text}"
-            )
             person_info_manager = get_person_info_manager()
             person_id = person_info_manager.get_person_id(
                 message.chat_stream.user_info.platform, message.chat_stream.user_info.user_id
@@ -490,10 +487,6 @@ class NormalChat:
             if not success or not reply_set:
                 logger.info(f"对 {message.processed_plain_text} 的回复生成失败")
                 return None
-
-            content = " ".join([item[1] for item in reply_set if item[0] == "text"])
-            if content:
-                logger.info(f"{global_config.bot.nickname}的备选回复是：{content}")
 
             return reply_set
 
@@ -532,7 +525,19 @@ class NormalChat:
             reasoning = plan_result["action_result"]["reasoning"]
             is_parallel = plan_result["action_result"].get("is_parallel", False)
 
-            logger.info(f"[{self.stream_name}] Planner决策: {action_type}, 理由: {reasoning}, 并行执行: {is_parallel}")
+            if action_type == "no_action":
+                logger.info(
+                    f"[{self.stream_name}] {global_config.bot.nickname} 决定进行回复"
+                )
+            elif is_parallel:
+                logger.info(
+                    f"[{self.stream_name}] {global_config.bot.nickname} 决定进行回复, 同时执行{action_type}动作"
+                )
+            else:
+                logger.info(
+                    f"[{self.stream_name}] {global_config.bot.nickname} 决定执行{action_type}动作"
+                )
+                
             self.action_type = action_type  # 更新实例属性
             self.is_parallel_action = is_parallel  # 新增：保存并行执行标志
 
@@ -623,18 +628,21 @@ class NormalChat:
         elif plan_result:
             logger.debug(f"[{self.stream_name}] 额外动作处理完成: {self.action_type}")
 
+        if response_set:
+            content = " ".join([item[1] for item in response_set if item[0] == "text"])
+
         if not response_set or (
             self.enable_planner and self.action_type not in ["no_action"] and not self.is_parallel_action
         ):
             if not response_set:
-                logger.info(f"[{self.stream_name}] 模型未生成回复内容")
+                logger.warning(f"[{self.stream_name}] 模型未生成回复内容")
             elif self.enable_planner and self.action_type not in ["no_action"] and not self.is_parallel_action:
-                logger.info(f"[{self.stream_name}] 模型选择其他动作（非并行动作）")
+                logger.info(f"[{self.stream_name}] {global_config.bot.nickname} 原本想要回复：{content}，但选择执行{self.action_type}，不发表回复")
             # 如果模型未生成回复，移除思考消息
             await self._cleanup_thinking_message_by_id(thinking_id)
             return False
 
-        # logger.info(f"[{self.stream_name}] 回复内容: {response_set}")
+        logger.info(f"[{self.stream_name}] {global_config.bot.nickname} 决定的回复内容: {content}")
 
         if self._disabled:
             logger.info(f"[{self.stream_name}] 已停用，忽略 normal_response。")
