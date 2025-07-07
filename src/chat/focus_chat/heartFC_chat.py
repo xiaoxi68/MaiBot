@@ -478,10 +478,6 @@ class HeartFChatting:
                     )
                     # 设置系统命令，在下次循环检查时触发退出
                     command = "stop_focus_chat"
-                elif self._message_count >= current_threshold and global_config.chat.chat_mode != "auto":
-                    logger.info(
-                        f"{self.log_prefix} [非auto模式] 已发送 {self._message_count} 条消息，达到疲惫阈值 {current_threshold}，但非auto模式不会自动退出"
-                    )
             else:
                 if reply_text == "timeout":
                     self.reply_timeout_count += 1
