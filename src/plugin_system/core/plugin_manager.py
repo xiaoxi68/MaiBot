@@ -89,6 +89,8 @@ class PluginManager:
                 total_registered += 1
             else:
                 total_failed_registration += 1
+        
+        return total_registered, total_failed_registration
 
     def load_registered_plugin_classes(self, plugin_name: str) -> bool:
         # sourcery skip: extract-duplicate-method, extract-method
@@ -255,7 +257,7 @@ class PluginManager:
         all_optional_missing: List[PythonDependency] = []
         plugin_status = {}
 
-        for plugin_name, _plugin_instance in self.loaded_plugins.items():
+        for plugin_name in self.loaded_plugins:
             plugin_info = component_registry.get_plugin_info(plugin_name)
             if not plugin_info or not plugin_info.python_dependencies:
                 plugin_status[plugin_name] = {"status": "no_dependencies", "missing": []}
@@ -327,7 +329,7 @@ class PluginManager:
 
         all_dependencies = []
 
-        for plugin_name, _plugin_instance in self.loaded_plugins.items():
+        for plugin_name in self.loaded_plugins:
             plugin_info = component_registry.get_plugin_info(plugin_name)
             if plugin_info and plugin_info.python_dependencies:
                 all_dependencies.append(plugin_info.python_dependencies)
@@ -563,3 +565,6 @@ class PluginManager:
             )
         else:
             logger.info(f"✅ 插件加载成功: {plugin_name}")
+
+# 全局插件管理器实例
+plugin_manager = PluginManager()

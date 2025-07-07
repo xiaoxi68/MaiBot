@@ -305,7 +305,7 @@ class ManifestValidator:
         # 检查URL格式（可选字段）
         for url_field in ["homepage_url", "repository_url"]:
             if url_field in manifest_data and manifest_data[url_field]:
-                url = manifest_data[url_field]
+                url: str = manifest_data[url_field]
                 if not (url.startswith("http://") or url.startswith("https://")):
                     self.validation_warnings.append(f"{url_field}建议使用完整的URL格式")
 

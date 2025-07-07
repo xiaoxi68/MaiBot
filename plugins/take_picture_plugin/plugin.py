@@ -36,11 +36,12 @@ import urllib.error
 import base64
 import traceback
 
-from src.plugin_system.base.base_plugin import BasePlugin, register_plugin
+from src.plugin_system.base.base_plugin import BasePlugin
 from src.plugin_system.base.base_action import BaseAction
 from src.plugin_system.base.base_command import BaseCommand
 from src.plugin_system.base.component_types import ComponentInfo, ActionActivationType, ChatMode
 from src.plugin_system.base.config_types import ConfigField
+from src.plugin_system import register_plugin
 from src.common.logger import get_logger
 
 logger = get_logger("take_picture_plugin")

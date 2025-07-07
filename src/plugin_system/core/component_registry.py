@@ -9,8 +9,8 @@ from src.plugin_system.base.component_types import (
     ComponentType,
 )
 
-from ..base.base_command import BaseCommand
-from ..base.base_action import BaseAction
+from src.plugin_system.base.base_command import BaseCommand
+from src.plugin_system.base.base_action import BaseAction
 
 logger = get_logger("component_registry")
 

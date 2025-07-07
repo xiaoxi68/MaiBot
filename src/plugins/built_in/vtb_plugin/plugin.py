@@ -1,4 +1,5 @@
-from src.plugin_system.base.base_plugin import BasePlugin, register_plugin
+from src.plugin_system.apis.plugin_register_api import register_plugin
+from src.plugin_system.base.base_plugin import BasePlugin
 from src.plugin_system.base.component_types import ComponentInfo
 from src.common.logger import get_logger
 from src.plugin_system.base.base_action import BaseAction, ActionActivationType, ChatMode
