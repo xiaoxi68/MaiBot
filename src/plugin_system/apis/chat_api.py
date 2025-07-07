@@ -17,7 +17,6 @@ from src.common.logger import get_logger
 
 # 导入依赖
 from src.chat.message_receive.chat_stream import ChatStream, get_chat_manager
-from src.chat.focus_chat.info.obs_info import ObsInfo
 
 logger = get_logger("chat_api")
 
@@ -192,39 +191,6 @@ class ChatManager:
         except Exception as e:
             logger.error(f"[ChatAPI] 获取聊天流信息失败: {e}")
             return {}
-
-    @staticmethod
-    def get_recent_messages_from_obs(observations: List[Any], count: int = 5) -> List[Dict[str, Any]]:
-        """从观察对象获取最近的消息
-
-        Args:
-            observations: 观察对象列表
-            count: 要获取的消息数量
-
-        Returns:
-            List[Dict]: 消息列表，每个消息包含发送者、内容等信息
-        """
-        messages = []
-
-        try:
-            if observations and len(observations) > 0:
-                obs = observations[0]
-                if hasattr(obs, "get_talking_message"):
-                    obs: ObsInfo
-                    raw_messages = obs.get_talking_message()
-                    # 转换为简化格式
-                    for msg in raw_messages[-count:]:
-                        simple_msg = {
-                            "sender": msg.get("sender", "未知"),
-                            "content": msg.get("content", ""),
-                            "timestamp": msg.get("timestamp", 0),
-                        }
-                        messages.append(simple_msg)
-            logger.debug(f"[ChatAPI] 获取到 {len(messages)} 条最近消息")
-        except Exception as e:
-            logger.error(f"[ChatAPI] 获取最近消息失败: {e}")
-
-        return messages
 
     @staticmethod
     def get_streams_summary() -> Dict[str, int]:

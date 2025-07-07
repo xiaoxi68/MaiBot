@@ -374,7 +374,7 @@ async def store_action_info(
         )
 
         if saved_record:
-            logger.info(f"[DatabaseAPI] 成功存储动作信息: {action_name} (ID: {record_data['action_id']})")
+            logger.debug(f"[DatabaseAPI] 成功存储动作信息: {action_name} (ID: {record_data['action_id']})")
         else:
             logger.error(f"[DatabaseAPI] 存储动作信息失败: {action_name}")
 

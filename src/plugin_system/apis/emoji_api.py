@@ -31,7 +31,7 @@ async def get_by_description(description: str) -> Optional[Tuple[str, str, str]]
         Optional[Tuple[str, str, str]]: (base64编码, 表情包描述, 匹配的情感标签) 或 None
     """
     try:
-        logger.info(f"[EmojiAPI] 根据描述获取表情包: {description}")
+        logger.debug(f"[EmojiAPI] 根据描述获取表情包: {description}")
 
         emoji_manager = get_emoji_manager()
         emoji_result = await emoji_manager.get_emoji_for_text(description)
@@ -47,7 +47,7 @@ async def get_by_description(description: str) -> Optional[Tuple[str, str, str]]
             logger.error(f"[EmojiAPI] 无法将表情包文件转换为base64: {emoji_path}")
             return None
 
-        logger.info(f"[EmojiAPI] 成功获取表情包: {emoji_description}, 匹配情感: {matched_emotion}")
+        logger.debug(f"[EmojiAPI] 成功获取表情包: {emoji_description}, 匹配情感: {matched_emotion}")
         return emoji_base64, emoji_description, matched_emotion
 
     except Exception as e:

@@ -14,6 +14,9 @@ from src.llm_models.utils_model import LLMRequest
 from .typo_generator import ChineseTypoGenerator
 from ...config.config import global_config
 from ...common.message_repository import find_messages, count_messages
+from typing import Optional, Tuple, Dict
+from src.chat.message_receive.chat_stream import get_chat_manager
+from src.person_info.person_info import PersonInfoManager, get_person_info_manager
 
 logger = get_logger("chat_utils")
 
@@ -47,7 +50,8 @@ def is_mentioned_bot_in_message(message: MessageRecv) -> tuple[bool, float]:
     reply_probability = 0.0
     is_at = False
     is_mentioned = False
-
+    if message.is_mentioned is not None:
+        return bool(message.is_mentioned), message.is_mentioned
     if (
         message.message_info.additional_config is not None
         and message.message_info.additional_config.get("is_mentioned") is not None
@@ -80,7 +84,7 @@ def is_mentioned_bot_in_message(message: MessageRecv) -> tuple[bool, float]:
 
     if is_at and global_config.normal_chat.at_bot_inevitable_reply:
         reply_probability = 1.0
-        logger.info("被@，回复概率设置为100%")
+        logger.debug("被@，回复概率设置为100%")
     else:
         if not is_mentioned:
             # 判断是否被回复
@@ -105,7 +109,7 @@ def is_mentioned_bot_in_message(message: MessageRecv) -> tuple[bool, float]:
                         is_mentioned = True
         if is_mentioned and global_config.normal_chat.mentioned_bot_inevitable_reply:
             reply_probability = 1.0
-            logger.info("被提及，回复概率设置为100%")
+            logger.debug("被提及，回复概率设置为100%")
     return is_mentioned, reply_probability
 
 
@@ -637,3 +641,70 @@ def translate_timestamp_to_human_readable(timestamp: float, mode: str = "normal"
     else:  # mode = "lite" or unknown
         # 只返回时分秒格式，喵~
         return time.strftime("%H:%M:%S", time.localtime(timestamp))
+
+
+def get_chat_type_and_target_info(chat_id: str) -> Tuple[bool, Optional[Dict]]:
+    """
+    获取聊天类型（是否群聊）和私聊对象信息。
+
+    Args:
+        chat_id: 聊天流ID
+
+    Returns:
+        Tuple[bool, Optional[Dict]]:
+            - bool: 是否为群聊 (True 是群聊, False 是私聊或未知)
+            - Optional[Dict]: 如果是私聊，包含对方信息的字典；否则为 None。
+            字典包含: platform, user_id, user_nickname, person_id, person_name
+    """
+    is_group_chat = False  # Default to private/unknown
+    chat_target_info = None
+
+    try:
+        chat_stream = get_chat_manager().get_stream(chat_id)
+
+        if chat_stream:
+            if chat_stream.group_info:
+                is_group_chat = True
+                chat_target_info = None  # Explicitly None for group chat
+            elif chat_stream.user_info:  # It's a private chat
+                is_group_chat = False
+                user_info = chat_stream.user_info
+                platform = chat_stream.platform
+                user_id = user_info.user_id
+
+                # Initialize target_info with basic info
+                target_info = {
+                    "platform": platform,
+                    "user_id": user_id,
+                    "user_nickname": user_info.user_nickname,
+                    "person_id": None,
+                    "person_name": None,
+                }
+
+                # Try to fetch person info
+                try:
+                    # Assume get_person_id is sync (as per original code), keep using to_thread
+                    person_id = PersonInfoManager.get_person_id(platform, user_id)
+                    person_name = None
+                    if person_id:
+                        # get_value is async, so await it directly
+                        person_info_manager = get_person_info_manager()
+                        person_name = person_info_manager.get_value_sync(person_id, "person_name")
+
+                    target_info["person_id"] = person_id
+                    target_info["person_name"] = person_name
+                except Exception as person_e:
+                    logger.warning(
+                        f"获取 person_id 或 person_name 时出错 for {platform}:{user_id} in utils: {person_e}"
+                    )
+
+                chat_target_info = target_info
+        else:
+            logger.warning(f"无法获取 chat_stream for {chat_id} in utils")
+            # Keep defaults: is_group_chat=False, chat_target_info=None
+
+    except Exception as e:
+        logger.error(f"获取聊天类型和目标信息时出错 for {chat_id}: {e}", exc_info=True)
+        # Keep defaults on error
+
+    return is_group_chat, chat_target_info

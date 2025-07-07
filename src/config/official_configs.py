@@ -84,6 +84,9 @@ class ChatConfig(ConfigBase):
     选择普通模型的概率为 1 - reasoning_normal_model_probability
     """
 
+    thinking_timeout: int = 30
+    """麦麦最长思考规划时间，超过这个时间的思考会放弃（往往是api反应太慢）"""
+
     talk_frequency: float = 1
     """回复频率阈值"""
 
@@ -270,23 +273,11 @@ class MessageReceiveConfig(ConfigBase):
 class NormalChatConfig(ConfigBase):
     """普通聊天配置类"""
 
-    message_buffer: bool = False
-    """消息缓冲器"""
-
-    emoji_chance: float = 0.2
-    """发送表情包的基础概率"""
-
-    thinking_timeout: int = 120
-    """最长思考时间"""
-
     willing_mode: str = "classical"
     """意愿模式"""
 
     response_interested_rate_amplifier: float = 1.0
     """回复兴趣度放大系数"""
-
-    emoji_response_penalty: float = 0.0
-    """表情包回复惩罚系数"""
 
     mentioned_bot_inevitable_reply: bool = False
     """提及 bot 必然回复"""
@@ -302,25 +293,19 @@ class NormalChatConfig(ConfigBase):
 class FocusChatConfig(ConfigBase):
     """专注聊天配置类"""
 
-    compressed_length: int = 5
-    """心流上下文压缩的最短压缩长度，超过心流观察到的上下文长度，会压缩，最短压缩长度为5"""
-
-    compress_length_limit: int = 5
-    """最多压缩份数，超过该数值的压缩上下文会被删除"""
-
     think_interval: float = 1
     """思考间隔（秒）"""
 
     consecutive_replies: float = 1
     """连续回复能力，值越高，麦麦连续回复的概率越高"""
 
-    working_memory_processor: bool = False
-    """是否启用工作记忆处理器"""
-
 
 @dataclass
 class ExpressionConfig(ConfigBase):
     """表达配置类"""
+
+    enable_expression: bool = True
+    """是否启用表达方式"""
 
     expression_style: str = ""
     """表达风格"""
@@ -352,6 +337,12 @@ class ToolConfig(ConfigBase):
 @dataclass
 class EmojiConfig(ConfigBase):
     """表情包配置类"""
+
+    emoji_chance: float = 0.6
+    """发送表情包的基础概率"""
+
+    emoji_activate_type: str = "random"
+    """表情包激活类型，可选：random，llm，random下，表情包动作随机启用，llm下，表情包动作根据llm判断是否启用"""
 
     max_reg_num: int = 200
     """表情包最大注册数量"""
@@ -540,11 +531,19 @@ class TelemetryConfig(ConfigBase):
 
 
 @dataclass
-class ExperimentalConfig(ConfigBase):
-    """实验功能配置类"""
+class DebugConfig(ConfigBase):
+    """调试配置类"""
 
     debug_show_chat_mode: bool = False
     """是否在回复后显示当前聊天模式"""
+
+    show_prompt: bool = False
+    """是否显示prompt"""
+
+
+@dataclass
+class ExperimentalConfig(ConfigBase):
+    """实验功能配置类"""
 
     enable_friend_chat: bool = False
     """是否启用好友聊天"""

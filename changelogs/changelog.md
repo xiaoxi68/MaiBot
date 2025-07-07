@@ -1,12 +1,39 @@
 # Changelog
 
-## [0.8.1] - 2025-6-27
+## [0.8.2] - 2025-7-5
+
+优化和修复：
+
+- 修复在auto模式下，私聊会转为normal的bug
+- 修复一般过滤次序问题
+- 优化normal_chat代码，采用和focus一致的关系构建
+- 优化计时信息和Log
+- 添加回复超时检查
+- normal的插件允许llm激活
+- 合并action激活器
+- emoji统一可选随机激活或llm激活
+- 移除observation和processor，简化focus的代码逻辑
+
+## [0.8.1] - 2025-7-5
+
+功能更新:
+
+- normal现在和focus一样支持tool
+- focus现在和normal一样每次调用lpmm
+- 移除人格表达
+
+优化和修复：
 
 - 修复表情包配置无效问题
 - 合并normal和focus的prompt构建
-
-
-
+- 非TTY环境禁用console_input_loop
+- 修复过滤消息仍被存储至数据库的问题
+- 私聊强制开启focus模式
+- 支持解析reply_to和at
+- 修复focus冷却时间导致的固定沉默
+- 移除豆包画图插件，此插件现在插件广场提供
+- 修复表达器无法读取原始文本
+- 修复normal planner没有超时退出问题
 
 ## [0.8.0] - 2025-6-27
 

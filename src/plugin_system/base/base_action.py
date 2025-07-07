@@ -44,7 +44,6 @@ class BaseAction(ABC):
             reasoning: 执行该动作的理由
             cycle_timers: 计时器字典
             thinking_id: 思考ID
-            observations: 观察列表
             expressor: 表达器对象
             replyer: 回复器对象
             chat_stream: 聊天流对象

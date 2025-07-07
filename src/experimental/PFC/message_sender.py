@@ -5,7 +5,7 @@ from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.message_receive.message import Message
 from maim_message import UserInfo, Seg
 from src.chat.message_receive.message import MessageSending, MessageSet
-from src.chat.message_receive.message_sender import message_manager
+from src.chat.message_receive.normal_message_sender import message_manager
 from src.chat.message_receive.storage import MessageStorage
 from src.config.config import global_config
 from rich.traceback import install

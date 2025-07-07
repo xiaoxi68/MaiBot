@@ -25,7 +25,7 @@ class RelationshipBuilderManager:
         """
         if chat_id not in self.builders:
             self.builders[chat_id] = RelationshipBuilder(chat_id)
-            logger.info(f"创建聊天 {chat_id} 的关系构建器")
+            logger.debug(f"创建聊天 {chat_id} 的关系构建器")
 
         return self.builders[chat_id]
 
@@ -51,7 +51,7 @@ class RelationshipBuilderManager:
         """
         if chat_id in self.builders:
             del self.builders[chat_id]
-            logger.info(f"移除聊天 {chat_id} 的关系构建器")
+            logger.debug(f"移除聊天 {chat_id} 的关系构建器")
             return True
         return False
 

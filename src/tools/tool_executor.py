@@ -6,6 +6,7 @@ from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.tools.tool_use import ToolUser
 from src.chat.utils.json_utils import process_llm_tool_calls
 from typing import List, Dict, Tuple, Optional
+from src.chat.message_receive.chat_stream import get_chat_manager
 
 logger = get_logger("tool_executor")
 
@@ -42,7 +43,9 @@ class ToolExecutor:
             cache_ttl: 缓存生存时间（周期数）
         """
         self.chat_id = chat_id
-        self.log_prefix = f"[ToolExecutor:{self.chat_id}] "
+        self.chat_stream = get_chat_manager().get_stream(self.chat_id)
+        self.log_prefix = f"[{get_chat_manager().get_stream_name(self.chat_id) or self.chat_id}]"
+
         self.llm_model = LLMRequest(
             model=global_config.model.tool_use,
             request_type="tool_executor",
@@ -125,7 +128,8 @@ class ToolExecutor:
         if tool_results:
             self._set_cache(cache_key, tool_results)
 
-        logger.info(f"{self.log_prefix}工具执行完成，共执行{len(used_tools)}个工具: {used_tools}")
+        if used_tools:
+            logger.info(f"{self.log_prefix}工具执行完成，共执行{len(used_tools)}个工具: {used_tools}")
 
         if return_details:
             return tool_results, used_tools, prompt

@@ -10,8 +10,7 @@ from src.manager.mood_manager import MoodPrintTask, MoodUpdateTask
 from src.chat.emoji_system.emoji_manager import get_emoji_manager
 from src.chat.normal_chat.willing.willing_manager import get_willing_manager
 from src.chat.message_receive.chat_stream import get_chat_manager
-from src.chat.heart_flow.heartflow import heartflow
-from src.chat.message_receive.message_sender import message_manager
+from src.chat.message_receive.normal_message_sender import message_manager
 from src.chat.message_receive.storage import MessageStorage
 from src.config.config import global_config
 from src.chat.message_receive.bot import chat_bot
@@ -19,7 +18,7 @@ from src.common.logger import get_logger
 from src.individuality.individuality import get_individuality, Individuality
 from src.common.server import get_global_server, Server
 from rich.traceback import install
-from src.api.main import start_api_server
+# from src.api.main import start_api_server
 
 # 导入新的插件管理器
 from src.plugin_system.core.plugin_manager import plugin_manager
@@ -85,8 +84,8 @@ class MainSystem:
         await async_task_manager.add_task(TelemetryHeartBeatTask())
 
         # 启动API服务器
-        start_api_server()
-        logger.info("API服务器启动成功")
+        # start_api_server()
+        # logger.info("API服务器启动成功")
 
         # 加载所有actions，包括默认的和插件的
         plugin_count, component_count = plugin_manager.load_all_plugins()
@@ -141,10 +140,6 @@ class MainSystem:
             # 启动全局消息管理器 (负责消息发送/排队)
             await message_manager.start()
             logger.info("全局消息管理器启动成功")
-
-            # 启动心流系统主循环
-            asyncio.create_task(heartflow.heartflow_start_working())
-            logger.info("心流系统启动成功")
 
             init_time = int(1000 * (time.time() - init_start_time))
             logger.info(f"初始化完成，神经元放电{init_time}次")
@@ -205,7 +200,7 @@ class MainSystem:
         expression_learner = get_expression_learner()
         while True:
             await asyncio.sleep(global_config.expression.learning_interval)
-            if global_config.expression.enable_expression_learning:
+            if global_config.expression.enable_expression_learning and global_config.expression.enable_expression:
                 logger.info("[表达方式学习] 开始学习表达方式...")
                 await expression_learner.learn_and_store_expression()
                 logger.info("[表达方式学习] 表达方式学习完成")
