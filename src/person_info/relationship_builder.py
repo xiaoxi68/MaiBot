@@ -187,7 +187,9 @@ class RelationshipBuilder:
             segments.append(new_segment)
             person_info_manager = get_person_info_manager()
             person_name = person_info_manager.get_value_sync(person_id, "person_name") or person_id
-            logger.debug(f"{self.log_prefix} 重新眼熟用户 {person_name} 创建新消息段（超过10条消息间隔）: {new_segment}")
+            logger.debug(
+                f"{self.log_prefix} 重新眼熟用户 {person_name} 创建新消息段（超过10条消息间隔）: {new_segment}"
+            )
 
         self._save_cache()
 

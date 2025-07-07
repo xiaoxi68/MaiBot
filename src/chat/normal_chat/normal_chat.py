@@ -526,18 +526,14 @@ class NormalChat:
             is_parallel = plan_result["action_result"].get("is_parallel", False)
 
             if action_type == "no_action":
-                logger.info(
-                    f"[{self.stream_name}] {global_config.bot.nickname} 决定进行回复"
-                )
+                logger.info(f"[{self.stream_name}] {global_config.bot.nickname} 决定进行回复")
             elif is_parallel:
                 logger.info(
                     f"[{self.stream_name}] {global_config.bot.nickname} 决定进行回复, 同时执行{action_type}动作"
                 )
             else:
-                logger.info(
-                    f"[{self.stream_name}] {global_config.bot.nickname} 决定执行{action_type}动作"
-                )
-                
+                logger.info(f"[{self.stream_name}] {global_config.bot.nickname} 决定执行{action_type}动作")
+
             self.action_type = action_type  # 更新实例属性
             self.is_parallel_action = is_parallel  # 新增：保存并行执行标志
 
@@ -637,7 +633,9 @@ class NormalChat:
             if not response_set:
                 logger.warning(f"[{self.stream_name}] 模型未生成回复内容")
             elif self.enable_planner and self.action_type not in ["no_action"] and not self.is_parallel_action:
-                logger.info(f"[{self.stream_name}] {global_config.bot.nickname} 原本想要回复：{content}，但选择执行{self.action_type}，不发表回复")
+                logger.info(
+                    f"[{self.stream_name}] {global_config.bot.nickname} 原本想要回复：{content}，但选择执行{self.action_type}，不发表回复"
+                )
             # 如果模型未生成回复，移除思考消息
             await self._cleanup_thinking_message_by_id(thinking_id)
             return False
