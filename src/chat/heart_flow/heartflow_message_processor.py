@@ -110,15 +110,13 @@ class HeartFCMessageReceiver:
             # current_time = time.strftime("%H:%M:%S", time.localtime(message.message_info.time))
             current_talk_frequency = global_config.chat.get_current_talk_frequency(chat.stream_id)
 
-            # 如果消息中包含图片标识，则日志展示为图片
+            # 如果消息中包含图片标识，则将 [picid:...] 替换为 [图片]
+            picid_pattern = r"\[picid:([^\]]+)\]"
+            processed_plain_text = re.sub(picid_pattern, "[图片]", message.processed_plain_text)
 
-            picid_match = re.search(r"\[picid:([^\]]+)\]", message.processed_plain_text)
-            if picid_match:
-                logger.info(f"[{mes_name}]{userinfo.user_nickname}: [图片] [当前回复频率: {current_talk_frequency}]")
-            else:
-                logger.info(
-                    f"[{mes_name}]{userinfo.user_nickname}:{message.processed_plain_text}[当前回复频率: {current_talk_frequency}]"
-                )
+            logger.info(f"[{mes_name}]{userinfo.user_nickname}:{processed_plain_text}")
+
+            logger.debug(f"[{mes_name}][当前时段回复频率: {current_talk_frequency}]")
 
             # 8. 关系处理
             if global_config.relationship.enable_relationship:

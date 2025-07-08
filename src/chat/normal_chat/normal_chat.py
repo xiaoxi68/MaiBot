@@ -302,50 +302,44 @@ class NormalChat:
                                 logger.info(f"[{self.stream_name}] 在处理上下文中检测到停止信号，退出")
                                 break
 
-                            # 并行处理兴趣消息
-                            async def process_single_message(msg_id, message, interest_value, is_mentioned):
-                                """处理单个兴趣消息"""
-                                try:
-                                    # 在处理每个消息前检查停止状态
-                                    if self._disabled:
-                                        logger.debug(f"[{self.stream_name}] 处理消息时检测到停用，跳过消息 {msg_id}")
-                                        return
+                            semaphore = asyncio.Semaphore(5)
 
-                                    # 处理消息
-                                    self.adjust_reply_frequency()
+                            async def process_and_acquire(msg_id, message, interest_value, is_mentioned):
+                                """处理单个兴趣消息并管理信号量"""
+                                async with semaphore:
+                                    try:
+                                        # 在处理每个消息前检查停止状态
+                                        if self._disabled:
+                                            logger.debug(
+                                                f"[{self.stream_name}] 处理消息时检测到停用，跳过消息 {msg_id}"
+                                            )
+                                            return
 
-                                    await self.normal_response(
-                                        message=message,
-                                        is_mentioned=is_mentioned,
-                                        interested_rate=interest_value * self.willing_amplifier,
-                                    )
-                                except asyncio.CancelledError:
-                                    logger.debug(f"[{self.stream_name}] 处理消息 {msg_id} 时被取消")
-                                    raise  # 重新抛出取消异常
-                                except Exception as e:
-                                    logger.error(f"[{self.stream_name}] 处理兴趣消息{msg_id}时出错: {e}")
-                                    # 不打印完整traceback，避免日志污染
-                                finally:
-                                    # 无论如何都要清理消息
-                                    self.interest_dict.pop(msg_id, None)
+                                        # 处理消息
+                                        self.adjust_reply_frequency()
 
-                            # 创建并行任务列表
-                            coroutines = []
-                            for msg_id, (message, interest_value, is_mentioned) in items_to_process:
-                                coroutine = process_single_message(msg_id, message, interest_value, is_mentioned)
-                                coroutines.append(coroutine)
+                                        await self.normal_response(
+                                            message=message,
+                                            is_mentioned=is_mentioned,
+                                            interested_rate=interest_value * self.willing_amplifier,
+                                        )
+                                    except asyncio.CancelledError:
+                                        logger.debug(f"[{self.stream_name}] 处理消息 {msg_id} 时被取消")
+                                        raise  # 重新抛出取消异常
+                                    except Exception as e:
+                                        logger.error(f"[{self.stream_name}] 处理兴趣消息{msg_id}时出错: {e}")
+                                        # 不打印完整traceback，避免日志污染
+                                    finally:
+                                        # 无论如何都要清理消息
+                                        self.interest_dict.pop(msg_id, None)
 
-                            # 并行执行所有任务，限制并发数量避免资源过度消耗
-                            if coroutines:
-                                # 使用信号量控制并发数，最多同时处理5个消息
-                                semaphore = asyncio.Semaphore(5)
+                            tasks = [
+                                process_and_acquire(msg_id, message, interest_value, is_mentioned)
+                                for msg_id, (message, interest_value, is_mentioned) in items_to_process
+                            ]
 
-                                async def limited_process(coroutine, sem):
-                                    async with sem:
-                                        await coroutine
-
-                                limited_tasks = [limited_process(coroutine, semaphore) for coroutine in coroutines]
-                                await asyncio.gather(*limited_tasks, return_exceptions=True)
+                            if tasks:
+                                await asyncio.gather(*tasks, return_exceptions=True)
 
                     except asyncio.CancelledError:
                         logger.info(f"[{self.stream_name}] 处理上下文时任务被取消")
@@ -591,10 +585,21 @@ class NormalChat:
             )
             response_set, plan_result = results
         except asyncio.TimeoutError:
+            gen_timed_out = not gen_task.done()
+            plan_timed_out = not plan_task.done()
+
+            timeout_details = []
+            if gen_timed_out:
+                timeout_details.append("回复生成(gen)")
+            if plan_timed_out:
+                timeout_details.append("动作规划(plan)")
+
+            timeout_source = " 和 ".join(timeout_details)
+
             logger.warning(
-                f"[{self.stream_name}] 并行执行回复生成和动作规划超时 ({gather_timeout}秒)，正在取消相关任务..."
+                f"[{self.stream_name}] {timeout_source} 任务超时 ({global_config.chat.thinking_timeout}秒)，正在取消相关任务..."
             )
-            print(f"111{self.timeout_count}")
+            # print(f"111{self.timeout_count}")
             self.timeout_count += 1
             if self.timeout_count > 5:
                 logger.warning(

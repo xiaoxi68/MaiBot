@@ -48,6 +48,7 @@ person_info_default = {
     "points": None,
     "forgotten_points": None,
     "relation_value": None,
+    "attitude": 50,
 }
 
 
