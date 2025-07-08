@@ -18,7 +18,7 @@ from src.chat.utils.chat_message_builder import build_readable_messages, get_raw
 import time
 import asyncio
 from src.chat.express.expression_selector import expression_selector
-from src.manager.mood_manager import mood_manager
+from src.mood.mood_manager import mood_manager
 from src.person_info.relationship_fetcher import relationship_fetcher_manager
 import random
 import ast
@@ -55,9 +55,9 @@ def init_prompt():
 {identity}
 
 {action_descriptions}
-你正在{chat_target_2},现在请你读读之前的聊天记录，{mood_prompt}，请你给出回复
-{config_expression_style}。
-请回复的平淡一些，简短一些，说中文，不要刻意突出自身学科背景，注意不要复读你说过的话。
+你正在{chat_target_2},你现在的心情是：{mood_state}
+现在请你读读之前的聊天记录，并给出回复
+{config_expression_style}。注意不要复读你说过的话
 {keywords_reaction_prompt}
 请注意不要输出多余内容(包括前后缀，冒号和引号，at或 @等 )。只输出回复内容。
 {moderation_prompt}
@@ -503,6 +503,9 @@ class DefaultReplyer:
         is_group_chat = bool(chat_stream.group_info)
         reply_to = reply_data.get("reply_to", "none")
         extra_info_block = reply_data.get("extra_info", "") or reply_data.get("extra_info_block", "")
+        
+        chat_mood = mood_manager.get_mood_by_chat_id(chat_id)
+        mood_prompt = chat_mood.mood_state
 
         sender, target = self._parse_reply_target(reply_to)
 
@@ -639,8 +642,6 @@ class DefaultReplyer:
         else:
             reply_target_block = ""
 
-        mood_prompt = mood_manager.get_mood_prompt()
-
         prompt_info = await get_prompt_info(target, threshold=0.38)
         if prompt_info:
             prompt_info = await global_prompt_manager.format_prompt("knowledge_prompt", prompt_info=prompt_info)
@@ -682,7 +683,7 @@ class DefaultReplyer:
             config_expression_style=global_config.expression.expression_style,
             action_descriptions=action_descriptions,
             chat_target_2=chat_target_2,
-            mood_prompt=mood_prompt,
+            mood_state=mood_prompt,
         )
 
         return prompt
@@ -773,8 +774,6 @@ class DefaultReplyer:
                     reply_target_block = "现在，你想要回复。"
         else:
             reply_target_block = ""
-
-        mood_manager.get_mood_prompt()
 
         if is_group_chat:
             chat_target_1 = await global_prompt_manager.get_prompt_async("chat_target_group1")

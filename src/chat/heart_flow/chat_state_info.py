@@ -1,4 +1,4 @@
-from src.manager.mood_manager import mood_manager
+from src.mood.mood_manager import mood_manager
 import enum
 
 
@@ -12,6 +12,3 @@ class ChatStateInfo:
     def __init__(self):
         self.chat_status: ChatState = ChatState.NORMAL
         self.current_state_time = 120
-
-        self.mood_manager = mood_manager
-        self.mood = self.mood_manager.get_mood_prompt()

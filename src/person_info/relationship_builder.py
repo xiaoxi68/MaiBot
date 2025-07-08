@@ -426,7 +426,7 @@ class RelationshipBuilder:
             if not segments_to_process and segments:
                 segments.sort(key=lambda x: x["end_time"], reverse=True)
                 segments_to_process.append(segments[0])
-                logger.debug(f"随机丢弃了所有消息段，强制保留最新的一个以进行处理。")
+                logger.debug("随机丢弃了所有消息段，强制保留最新的一个以进行处理。")
 
             dropped_count = original_segment_count - len(segments_to_process)
             if dropped_count > 0:

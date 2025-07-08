@@ -22,7 +22,7 @@ from src.chat.planner_actions.planner import ActionPlanner
 from src.chat.planner_actions.action_modifier import ActionModifier
 
 from src.chat.utils.utils import get_chat_type_and_target_info
-from src.manager.mood_manager import mood_manager
+from src.mood.mood_manager import mood_manager
 
 willing_manager = get_willing_manager()
 

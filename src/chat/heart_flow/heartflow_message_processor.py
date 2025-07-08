@@ -1,5 +1,6 @@
 from src.chat.memory_system.Hippocampus import hippocampus_manager
 from src.config.config import global_config
+import asyncio
 from src.chat.message_receive.message import MessageRecv
 from src.chat.message_receive.storage import MessageStorage
 from src.chat.heart_flow.heartflow import heartflow
@@ -13,6 +14,7 @@ import traceback
 from typing import Tuple
 
 from src.person_info.relationship_manager import get_relationship_manager
+from src.mood.mood_manager import mood_manager
 
 
 logger = get_logger("chat")
@@ -113,6 +115,12 @@ class HeartFCMessageReceiver:
             # 6. 兴趣度计算与更新
             interested_rate, is_mentioned = await _calculate_interest(message)
             subheartflow.add_message_to_normal_chat_cache(message, interested_rate, is_mentioned)
+            
+            chat_mood = mood_manager.get_mood_by_chat_id(subheartflow.chat_id)
+            asyncio.create_task(chat_mood.update_mood_by_message(message, interested_rate))
+            
+            with open("interested_rates.txt", "a", encoding="utf-8") as f:
+                f.write(f"{interested_rate}\n")
 
             # 7. 日志记录
             mes_name = chat.group_info.group_name if chat.group_info else "私聊"

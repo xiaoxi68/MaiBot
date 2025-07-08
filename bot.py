@@ -236,67 +236,6 @@ def raw_main():
     return MainSystem()
 
 
-async def _create_console_message_dict(text: str) -> dict:
-    """使用配置创建消息字典"""
-    timestamp = time.time()
-
-    # --- User & Group Info (hardcoded for console) ---
-    user_info = UserInfo(
-        platform="console",
-        user_id="console_user",
-        user_nickname="ConsoleUser",
-        user_cardname="",
-    )
-    # Console input is private chat
-    group_info = None
-
-    # --- Base Message Info ---
-    message_info = BaseMessageInfo(
-        platform="console",
-        message_id=f"console_{int(timestamp * 1000)}_{hash(text) % 10000}",
-        time=timestamp,
-        user_info=user_info,
-        group_info=group_info,
-        # Other infos can be added here if needed, e.g., FormatInfo
-    )
-
-    # --- Message Segment ---
-    message_segment = Seg(type="text", data=text)
-
-    # --- Final MessageBase object to convert to dict ---
-    message = MessageBase(message_info=message_info, message_segment=message_segment, raw_message=text)
-
-    return message.to_dict()
-
-
-async def console_input_loop(main_system: MainSystem):
-    """异步循环以读取控制台输入并模拟接收消息"""
-    logger.info("控制台输入已准备就绪 (模拟接收消息)。输入 'exit()' 来停止。")
-    loop = asyncio.get_event_loop()
-    while True:
-        try:
-            line = await loop.run_in_executor(None, sys.stdin.readline)
-            text = line.strip()
-
-            if not text:
-                continue
-            if text.lower() == "exit()":
-                logger.info("收到 'exit()' 命令，正在停止...")
-                break
-
-            # Create message dict and pass to the processor
-            message_dict = await _create_console_message_dict(text)
-            await chat_bot.message_process(message_dict)
-            logger.info(f"已将控制台消息 '{text}' 作为接收消息处理。")
-
-        except asyncio.CancelledError:
-            logger.info("控制台输入循环被取消。")
-            break
-        except Exception as e:
-            logger.error(f"控制台输入循环出错: {e}", exc_info=True)
-            await asyncio.sleep(1)
-    logger.info("控制台输入循环结束。")
-
 
 if __name__ == "__main__":
     exit_code = 0  # 用于记录程序最终的退出状态
@@ -314,17 +253,7 @@ if __name__ == "__main__":
             # Schedule tasks returns a future that runs forever.
             # We can run console_input_loop concurrently.
             main_tasks = loop.create_task(main_system.schedule_tasks())
-
-            # 仅在 TTY 中启用 console_input_loop
-            if sys.stdin.isatty():
-                logger.info("检测到终端环境，启用控制台输入循环")
-                console_task = loop.create_task(console_input_loop(main_system))
-                # Wait for all tasks to complete (which they won't, normally)
-                loop.run_until_complete(asyncio.gather(main_tasks, console_task))
-            else:
-                logger.info("非终端环境，跳过控制台输入循环")
-                # Wait for all tasks to complete (which they won't, normally)
-                loop.run_until_complete(main_tasks)
+            loop.run_until_complete(main_tasks)
 
         except KeyboardInterrupt:
             # loop.run_until_complete(get_global_api().stop())
@@ -336,15 +265,6 @@ if __name__ == "__main__":
                     logger.error(f"优雅关闭时发生错误: {ge}")
         # 新增：检测外部请求关闭
 
-        # except Exception as e: # 将主异常捕获移到外层 try...except
-        #     logger.error(f"事件循环内发生错误: {str(e)} {str(traceback.format_exc())}")
-        #     exit_code = 1
-        # finally: # finally 块移到最外层，确保 loop 关闭和暂停总是执行
-        #     if loop and not loop.is_closed():
-        #         loop.close()
-        #     # 在这里添加 input() 来暂停
-        #     input("按 Enter 键退出...") # <--- 添加这行
-        #     sys.exit(exit_code) # <--- 使用记录的退出码
 
     except Exception as e:
         logger.error(f"主程序发生异常: {str(e)} {str(traceback.format_exc())}")

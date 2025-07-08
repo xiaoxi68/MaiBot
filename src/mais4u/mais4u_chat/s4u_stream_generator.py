@@ -1,6 +1,5 @@
 import os
 from typing import AsyncGenerator
-from src.llm_models.utils_model import LLMRequest
 from src.mais4u.openai_client import AsyncOpenAIClient
 from src.config.config import global_config
 from src.chat.message_receive.message import MessageRecv

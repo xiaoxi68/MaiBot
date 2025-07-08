@@ -6,7 +6,6 @@ from src.chat.express.exprssion_learner import get_expression_learner
 from src.common.remote import TelemetryHeartBeatTask
 from src.manager.async_task_manager import async_task_manager
 from src.chat.utils.statistic import OnlineTimeRecordTask, StatisticOutputTask
-from src.manager.mood_manager import MoodPrintTask, MoodUpdateTask
 from src.chat.emoji_system.emoji_manager import get_emoji_manager
 from src.chat.normal_chat.willing.willing_manager import get_willing_manager
 from src.chat.message_receive.chat_stream import get_chat_manager
@@ -94,13 +93,6 @@ class MainSystem:
         # 初始化表情管理器
         get_emoji_manager().initialize()
         logger.info("表情包管理器初始化成功")
-
-        # 添加情绪衰减任务
-        await async_task_manager.add_task(MoodUpdateTask())
-        # 添加情绪打印任务
-        await async_task_manager.add_task(MoodPrintTask())
-
-        logger.info("情绪管理器初始化成功")
 
         # 启动愿望管理器
         await willing_manager.async_task_starter()

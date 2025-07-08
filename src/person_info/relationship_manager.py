@@ -1,12 +1,10 @@
 from src.common.logger import get_logger
-import math
 from src.person_info.person_info import PersonInfoManager, get_person_info_manager
 import time
 import random
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.chat.utils.chat_message_builder import build_readable_messages
-from src.manager.mood_manager import mood_manager
 import json
 from json_repair import repair_json
 from datetime import datetime
