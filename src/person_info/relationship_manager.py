@@ -24,7 +24,6 @@ class RelationshipManager:
             request_type="relationship",  # 用于动作规划
         )
 
-
     @staticmethod
     async def is_known_some_one(platform, user_id):
         """判断是否认识某人"""
@@ -111,7 +110,6 @@ class RelationshipManager:
 
         return relation_prompt
 
-
     async def update_person_impression(self, person_id, timestamp, bot_engaged_messages=None):
         """更新用户印象
 
@@ -171,7 +169,7 @@ class RelationshipManager:
                     user_count += 1
                 name_mapping[replace_person_name] = f"用户{current_user}{user_count if user_count > 1 else ''}"
                 current_user = chr(ord(current_user) + 1)
-        
+
         readable_messages = build_readable_messages(
             messages=user_messages, replace_bot_name=True, timestamp_mode="normal_no_YMD", truncate=True
         )
@@ -341,7 +339,7 @@ class RelationshipManager:
         await person_info_manager.update_one_field(
             person_id, "points", json.dumps(current_points, ensure_ascii=False, indent=None)
         )
-        
+
         await person_info_manager.update_one_field(person_id, "know_times", know_times + 1)
         know_since = await person_info_manager.get_value(person_id, "know_since") or 0
         if know_since == 0:
@@ -349,17 +347,16 @@ class RelationshipManager:
         await person_info_manager.update_one_field(person_id, "last_know", timestamp)
 
         logger.debug(f"{person_name} 的印象更新完成")
-        
+
     async def _update_impression(self, person_id, current_points, timestamp):
         # 获取现有forgotten_points
         person_info_manager = get_person_info_manager()
-        
-        
+
         person_name = await person_info_manager.get_value(person_id, "person_name")
         nickname = await person_info_manager.get_value(person_id, "nickname")
         know_times = await person_info_manager.get_value(person_id, "know_times") or 0
         attitude = await person_info_manager.get_value(person_id, "attitude") or 50
-        
+
         # 根据熟悉度，调整印象和简短印象的最大长度
         if know_times > 300:
             max_impression_length = 2000
@@ -376,14 +373,12 @@ class RelationshipManager:
         else:
             max_impression_length = 100
             max_short_impression_length = 50
-            
+
         # 根据好感度，调整印象和简短印象的最大长度
-        attitude_multiplier = (abs(100-attitude) / 100) + 1
+        attitude_multiplier = (abs(100 - attitude) / 100) + 1
         max_impression_length = max_impression_length * attitude_multiplier
         max_short_impression_length = max_short_impression_length * attitude_multiplier
-        
-        
-        
+
         forgotten_points = await person_info_manager.get_value(person_id, "forgotten_points") or []
         if isinstance(forgotten_points, str):
             try:
@@ -553,9 +548,8 @@ class RelationshipManager:
         await person_info_manager.update_one_field(
             person_id, "forgotten_points", json.dumps(forgotten_points, ensure_ascii=False, indent=None)
         )
-        
-        return current_points
 
+        return current_points
 
     def calculate_time_weight(self, point_time: str, current_time: str) -> float:
         """计算基于时间的权重系数"""
