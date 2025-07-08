@@ -522,6 +522,7 @@ class BasePlugin(ABC):
     def register_plugin(self) -> bool:
         """注册插件及其所有组件"""
         from src.plugin_system.core.component_registry import component_registry
+
         components = self.get_plugin_components()
 
         # 检查依赖
@@ -552,6 +553,7 @@ class BasePlugin(ABC):
     def _check_dependencies(self) -> bool:
         """检查插件依赖"""
         from src.plugin_system.core.component_registry import component_registry
+
         if not self.dependencies:
             return True
 

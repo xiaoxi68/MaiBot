@@ -89,7 +89,9 @@ class PluginManager:
                 total_registered += 1
             else:
                 total_failed_registration += 1
-        
+
+        self._show_stats(total_registered, total_failed_registration)
+
         return total_registered, total_failed_registration
 
     def load_registered_plugin_classes(self, plugin_name: str) -> bool:
@@ -173,13 +175,14 @@ class PluginManager:
         """
         重新扫描插件根目录
         """
+        # --------------------------------------- NEED REFACTORING ---------------------------------------
         for directory in self.plugin_directories:
             if os.path.exists(directory):
                 logger.debug(f"重新扫描插件根目录: {directory}")
                 self._load_plugin_modules_from_directory(directory)
             else:
                 logger.warning(f"插件根目录不存在: {directory}")
-    
+
     def get_loaded_plugins(self) -> List[PluginInfo]:
         """获取所有已加载的插件信息"""
         return list(component_registry.get_all_plugins().values())
@@ -187,7 +190,7 @@ class PluginManager:
     def get_enabled_plugins(self) -> List[PluginInfo]:
         """获取所有启用的插件信息"""
         return list(component_registry.get_enabled_plugins().values())
-    
+
     def enable_plugin(self, plugin_name: str) -> bool:
         # -------------------------------- NEED REFACTORING --------------------------------
         """启用插件"""
@@ -222,7 +225,7 @@ class PluginManager:
             Optional[BasePlugin]: 插件实例或None
         """
         return self.loaded_plugins.get(plugin_name)
-    
+
     def get_plugin_stats(self) -> Dict[str, Any]:
         """获取插件统计信息"""
         all_plugins = component_registry.get_all_plugins()
@@ -241,7 +244,7 @@ class PluginManager:
             "loaded_plugin_files": len(self.loaded_plugins),
             "failed_plugin_details": self.failed_plugins.copy(),
         }
-    
+
     def check_all_dependencies(self, auto_install: bool = False) -> Dict[str, any]:
         """检查所有插件的Python依赖包
 
@@ -565,6 +568,7 @@ class PluginManager:
             )
         else:
             logger.info(f"✅ 插件加载成功: {plugin_name}")
+
 
 # 全局插件管理器实例
 plugin_manager = PluginManager()
