@@ -503,7 +503,7 @@ class DefaultReplyer:
         is_group_chat = bool(chat_stream.group_info)
         reply_to = reply_data.get("reply_to", "none")
         extra_info_block = reply_data.get("extra_info", "") or reply_data.get("extra_info_block", "")
-        
+
         chat_mood = mood_manager.get_mood_by_chat_id(chat_id)
         mood_prompt = chat_mood.mood_state
 

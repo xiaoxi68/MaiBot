@@ -631,10 +631,10 @@ class ModelConfig(ConfigBase):
 
     replyer_2: dict[str, Any] = field(default_factory=lambda: {})
     """normal_chat次要回复模型配置"""
-    
+
     memory: dict[str, Any] = field(default_factory=lambda: {})
     """记忆模型配置"""
-    
+
     emotion: dict[str, Any] = field(default_factory=lambda: {})
     """情绪模型配置"""
 

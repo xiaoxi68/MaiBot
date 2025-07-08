@@ -1,4 +1,3 @@
-from src.mood.mood_manager import mood_manager
 import enum
 
 

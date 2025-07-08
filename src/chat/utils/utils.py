@@ -8,6 +8,7 @@ import numpy as np
 from maim_message import UserInfo
 
 from src.common.logger import get_logger
+
 # from src.mood.mood_manager import mood_manager
 from ..message_receive.message import MessageRecv
 from src.llm_models.utils_model import LLMRequest

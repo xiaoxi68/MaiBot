@@ -16,8 +16,6 @@ from pathlib import Path
 from rich.traceback import install
 
 # maim_message imports for console input
-from maim_message import Seg, UserInfo, BaseMessageInfo, MessageBase
-from src.chat.message_receive.bot import chat_bot
 
 # 最早期初始化日志系统，确保所有后续模块都使用正确的日志格式
 from src.common.logger import initialize_logging, get_logger, shutdown_logging
@@ -236,7 +234,6 @@ def raw_main():
     return MainSystem()
 
 
-
 if __name__ == "__main__":
     exit_code = 0  # 用于记录程序最终的退出状态
     try:
@@ -264,7 +261,6 @@ if __name__ == "__main__":
                 except Exception as ge:  # 捕捉优雅关闭时可能发生的错误
                     logger.error(f"优雅关闭时发生错误: {ge}")
         # 新增：检测外部请求关闭
-
 
     except Exception as e:
         logger.error(f"主程序发生异常: {str(e)} {str(traceback.format_exc())}")

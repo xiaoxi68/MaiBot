@@ -35,7 +35,6 @@ class S4UStreamGenerator:
             raise ValueError("`replyer_1` 在配置文件中缺少 `model_name` 字段")
         self.replyer_1_config = replyer_1_config
 
-
         self.current_model_name = "unknown model"
         self.partial_response = ""
 
