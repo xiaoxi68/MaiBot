@@ -22,7 +22,7 @@ logger = get_logger("relation")
 class RelationshipManager:
     def __init__(self):
         self.relationship_llm = LLMRequest(
-            model=global_config.model.relation,
+            model=global_config.model.utils,
             request_type="relationship",  # 用于动作规划
         )
 

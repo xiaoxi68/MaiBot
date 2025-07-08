@@ -36,7 +36,7 @@ class S4UStreamGenerator:
             raise ValueError("`replyer_1` 在配置文件中缺少 `model_name` 字段")
         self.replyer_1_config = replyer_1_config
 
-        self.model_sum = LLMRequest(model=global_config.model.memory_summary, temperature=0.7, request_type="relation")
+
         self.current_model_name = "unknown model"
         self.partial_response = ""
 

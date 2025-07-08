@@ -20,10 +20,12 @@ logger = get_logger("relationship_builder")
 # 消息段清理配置
 SEGMENT_CLEANUP_CONFIG = {
     "enable_cleanup": True,  # 是否启用清理
-    "max_segment_age_days": 7,  # 消息段最大保存天数
+    "max_segment_age_days": 3,  # 消息段最大保存天数
     "max_segments_per_user": 10,  # 每用户最大消息段数
-    "cleanup_interval_hours": 1,  # 清理间隔（小时）
+    "cleanup_interval_hours": 0.5,  # 清理间隔（小时）
 }
+
+MAX_MESSAGE_COUNT = 80 / global_config.relationship.relation_frequency
 
 
 class RelationshipBuilder:
@@ -330,7 +332,7 @@ class RelationshipBuilder:
         for person_id, segments in self.person_engaged_cache.items():
             total_count = self._get_total_message_count(person_id)
             status_lines.append(f"用户 {person_id}:")
-            status_lines.append(f"  总消息数：{total_count} ({total_count}/45)")
+            status_lines.append(f"  总消息数：{total_count} ({total_count}/60)")
             status_lines.append(f"  消息段数：{len(segments)}")
 
             for i, segment in enumerate(segments):
@@ -384,7 +386,7 @@ class RelationshipBuilder:
         users_to_build_relationship = []
         for person_id, segments in self.person_engaged_cache.items():
             total_message_count = self._get_total_message_count(person_id)
-            if total_message_count >= 45:
+            if total_message_count >= MAX_MESSAGE_COUNT:
                 users_to_build_relationship.append(person_id)
                 logger.debug(
                     f"{self.log_prefix} 用户 {person_id} 满足关系构建条件，总消息数：{total_message_count}，消息段数：{len(segments)}"
@@ -392,7 +394,7 @@ class RelationshipBuilder:
             elif total_message_count > 0:
                 # 记录进度信息
                 logger.debug(
-                    f"{self.log_prefix} 用户 {person_id} 进度：{total_message_count}/45 条消息，{len(segments)} 个消息段"
+                    f"{self.log_prefix} 用户 {person_id} 进度：{total_message_count}60 条消息，{len(segments)} 个消息段"
                 )
 
         # 2. 为满足条件的用户构建关系

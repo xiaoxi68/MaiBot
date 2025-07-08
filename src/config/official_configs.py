@@ -57,15 +57,10 @@ class RelationshipConfig(ConfigBase):
     """关系配置类"""
 
     enable_relationship: bool = True
-
-    give_name: bool = False
-    """是否给其他人取名"""
-
-    build_relationship_interval: int = 600
-    """构建关系间隔 单位秒，如果为0则不构建关系"""
+    """是否启用关系系统"""
 
     relation_frequency: int = 1
-    """关系频率，麦麦构建关系的速度，仅在normal_chat模式下有效"""
+    """关系频率，麦麦构建关系的速度"""
 
 
 @dataclass
@@ -636,15 +631,12 @@ class ModelConfig(ConfigBase):
 
     replyer_2: dict[str, Any] = field(default_factory=lambda: {})
     """normal_chat次要回复模型配置"""
-
-    memory_summary: dict[str, Any] = field(default_factory=lambda: {})
-    """记忆的概括模型配置"""
+    
+    memory: dict[str, Any] = field(default_factory=lambda: {})
+    """记忆模型配置"""
 
     vlm: dict[str, Any] = field(default_factory=lambda: {})
     """视觉语言模型配置"""
-
-    focus_working_memory: dict[str, Any] = field(default_factory=lambda: {})
-    """专注工作记忆模型配置"""
 
     tool_use: dict[str, Any] = field(default_factory=lambda: {})
     """专注工具使用模型配置"""
@@ -652,17 +644,5 @@ class ModelConfig(ConfigBase):
     planner: dict[str, Any] = field(default_factory=lambda: {})
     """规划模型配置"""
 
-    relation: dict[str, Any] = field(default_factory=lambda: {})
-    """关系模型配置"""
-
     embedding: dict[str, Any] = field(default_factory=lambda: {})
     """嵌入模型配置"""
-
-    pfc_action_planner: dict[str, Any] = field(default_factory=lambda: {})
-    """PFC动作规划模型配置"""
-
-    pfc_chat: dict[str, Any] = field(default_factory=lambda: {})
-    """PFC聊天模型配置"""
-
-    pfc_reply_checker: dict[str, Any] = field(default_factory=lambda: {})
-    """PFC回复检查模型配置"""
