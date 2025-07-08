@@ -187,7 +187,7 @@ class ToolExecutor:
                     tool_results.append(tool_info)
 
                     logger.info(f"{self.log_prefix}工具{tool_name}执行成功，类型: {tool_info['type']}")
-                    content = tool_info['content']
+                    content = tool_info["content"]
                     if not isinstance(content, (str, list, tuple)):
                         content = str(content)
                     preview = content[:200]
