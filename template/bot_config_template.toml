@@ -282,6 +282,14 @@ pri_in = 2
 pri_out = 8
 temp = 0.3
 
+[model.emotion] #负责麦麦的情绪变化
+name = "Pro/deepseek-ai/DeepSeek-V3"
+provider = "SILICONFLOW"
+pri_in = 2
+pri_out = 8
+temp = 0.3
+
+
 [model.memory] # 记忆模型
 name = "Qwen/Qwen3-30B-A3B"
 provider = "SILICONFLOW"

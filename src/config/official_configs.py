@@ -634,6 +634,9 @@ class ModelConfig(ConfigBase):
     
     memory: dict[str, Any] = field(default_factory=lambda: {})
     """记忆模型配置"""
+    
+    emotion: dict[str, Any] = field(default_factory=lambda: {})
+    """情绪模型配置"""
 
     vlm: dict[str, Any] = field(default_factory=lambda: {})
     """视觉语言模型配置"""

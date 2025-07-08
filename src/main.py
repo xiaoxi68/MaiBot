@@ -16,6 +16,7 @@ from src.chat.message_receive.bot import chat_bot
 from src.common.logger import get_logger
 from src.individuality.individuality import get_individuality, Individuality
 from src.common.server import get_global_server, Server
+from src.mood.mood_manager import mood_manager
 from rich.traceback import install
 # from src.api.main import start_api_server
 
@@ -98,6 +99,10 @@ class MainSystem:
         await willing_manager.async_task_starter()
 
         logger.info("willing管理器初始化成功")
+
+        # 启动情绪管理器
+        await mood_manager.start()
+        logger.info("情绪管理器初始化成功")
 
         # 初始化聊天管理器
 
