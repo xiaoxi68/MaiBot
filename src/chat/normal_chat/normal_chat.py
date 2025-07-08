@@ -304,7 +304,7 @@ class NormalChat:
 
                             semaphore = asyncio.Semaphore(5)
 
-                            async def process_and_acquire(msg_id, message, interest_value, is_mentioned):
+                            async def process_and_acquire(msg_id, message, interest_value, is_mentioned, semaphore):
                                 """处理单个兴趣消息并管理信号量"""
                                 async with semaphore:
                                     try:
@@ -334,7 +334,7 @@ class NormalChat:
                                         self.interest_dict.pop(msg_id, None)
 
                             tasks = [
-                                process_and_acquire(msg_id, message, interest_value, is_mentioned)
+                                process_and_acquire(msg_id, message, interest_value, is_mentioned, semaphore)
                                 for msg_id, (message, interest_value, is_mentioned) in items_to_process
                             ]
 
