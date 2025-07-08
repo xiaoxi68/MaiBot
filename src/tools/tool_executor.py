@@ -187,7 +187,12 @@ class ToolExecutor:
                     tool_results.append(tool_info)
 
                     logger.info(f"{self.log_prefix}工具{tool_name}执行成功，类型: {tool_info['type']}")
-                    logger.debug(f"{self.log_prefix}工具{tool_name}结果内容: {tool_info['content'][:200]}...")
+                    content = tool_info['content']
+                    if isinstance(content, (str, list, tuple)):
+                        preview = content[:200]
+                    else:
+                        preview = str(content)[:200]
+                    logger.debug(f"{self.log_prefix}工具{tool_name}结果内容: {preview}...")
 
             except Exception as e:
                 logger.error(f"{self.log_prefix}工具{tool_name}执行失败: {e}")
