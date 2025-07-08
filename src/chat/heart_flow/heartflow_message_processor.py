@@ -3,7 +3,6 @@ from src.config.config import global_config
 from src.chat.message_receive.message import MessageRecv
 from src.chat.message_receive.storage import MessageStorage
 from src.chat.heart_flow.heartflow import heartflow
-from src.chat.message_receive.chat_stream import get_chat_manager
 from src.chat.utils.utils import is_mentioned_bot_in_message
 from src.chat.utils.timer_calculator import Timer
 from src.common.logger import get_logger
@@ -95,26 +94,18 @@ class HeartFCMessageReceiver:
         """
         try:
             # 1. 消息解析与初始化
-            groupinfo = message.message_info.group_info
             userinfo = message.message_info.user_info
-            messageinfo = message.message_info
-
-            chat = await get_chat_manager().get_or_create_stream(
-                platform=messageinfo.platform,
-                user_info=userinfo,
-                group_info=groupinfo,
-            )
+            chat = message.chat_stream
 
             await self.storage.store_message(message, chat)
 
             subheartflow = await heartflow.get_or_create_subheartflow(chat.stream_id)
-            message.update_chat_stream(chat)
 
-            # 6. 兴趣度计算与更新
+            # 2. 兴趣度计算与更新
             interested_rate, is_mentioned = await _calculate_interest(message)
             subheartflow.add_message_to_normal_chat_cache(message, interested_rate, is_mentioned)
 
-            # 7. 日志记录
+            # 3. 日志记录
             mes_name = chat.group_info.group_name if chat.group_info else "私聊"
             # current_time = time.strftime("%H:%M:%S", time.localtime(message.message_info.time))
             current_talk_frequency = global_config.chat.get_current_talk_frequency(chat.stream_id)
