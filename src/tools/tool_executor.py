@@ -188,10 +188,9 @@ class ToolExecutor:
 
                     logger.info(f"{self.log_prefix}工具{tool_name}执行成功，类型: {tool_info['type']}")
                     content = tool_info['content']
-                    if isinstance(content, (str, list, tuple)):
-                        preview = content[:200]
-                    else:
-                        preview = str(content)[:200]
+                    if not isinstance(content, (str, list, tuple)):
+                        content = str(content)
+                    preview = content[:200]
                     logger.debug(f"{self.log_prefix}工具{tool_name}结果内容: {preview}...")
 
             except Exception as e:
