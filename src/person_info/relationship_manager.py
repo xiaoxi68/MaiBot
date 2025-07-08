@@ -254,10 +254,26 @@ class RelationshipManager:
                 # 添加可读时间到每个point
                 points_list = [(item["point"], float(item["weight"]), current_time) for item in points_data]
 
-                logger_str = f"了解了有关{person_name}的新印象：\n"
-                for point in points_list:
-                    logger_str += f"{point[0]},重要性：{point[1]}\n"
-                logger.info(logger_str)
+                original_points_list = list(points_list)
+                points_list.clear()
+                discarded_count = 0
+
+                for point in original_points_list:
+                    weight = point[1]
+                    if weight < 3 and random.random() < 0.8:  # 80% 概率丢弃
+                        discarded_count += 1
+                    elif weight < 5 and random.random() < 0.5:  # 50% 概率丢弃
+                        discarded_count += 1
+                    else:
+                        points_list.append(point)
+
+                if points_list or discarded_count > 0:
+                    logger_str = f"了解了有关{person_name}的新印象：\n"
+                    for point in points_list:
+                        logger_str += f"{point[0]},重要性：{point[1]}\n"
+                    if discarded_count > 0:
+                        logger_str += f"({discarded_count} 条因重要性低被丢弃)\n"
+                    logger.info(logger_str)
 
         except json.JSONDecodeError:
             logger.error(f"解析points JSON失败: {points}")
