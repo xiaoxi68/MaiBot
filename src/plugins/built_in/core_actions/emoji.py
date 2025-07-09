@@ -80,7 +80,6 @@ class EmojiAction(BaseAction):
                 logger.warning(f"{self.log_prefix} 获取到的表情包均无情感标签, 将随机发送")
                 emoji_base64, emoji_description, _ = random.choice(sampled_emojis)
             else:
-                
                 # 获取最近的5条消息内容用于判断
                 recent_messages = message_api.get_recent_messages(chat_id=self.chat_id, limit=5)
                 messages_text = ""
@@ -92,7 +91,7 @@ class EmojiAction(BaseAction):
                         truncate=False,
                         show_actions=False,
                     )
-                
+
                 # 4. 构建prompt让LLM选择情感
                 prompt = f"""
                 你是一个正在进行聊天的网友，你需要根据一个理由和最近的聊天记录，从一个情感标签列表中选择最匹配的一个。
@@ -112,13 +111,15 @@ class EmojiAction(BaseAction):
                     logger.error(f"{self.log_prefix} 未找到'chat'模型配置，无法调用LLM")
                     return False, "未找到'chat'模型配置"
 
-                success, chosen_emotion, _, _ = await llm_api.generate_with_model(prompt, model_config=chat_model_config, request_type="emoji")
+                success, chosen_emotion, _, _ = await llm_api.generate_with_model(
+                    prompt, model_config=chat_model_config, request_type="emoji"
+                )
 
                 if not success:
                     logger.error(f"{self.log_prefix} LLM调用失败: {chosen_emotion}")
                     return False, f"LLM调用失败: {chosen_emotion}"
 
-                chosen_emotion = chosen_emotion.strip().replace("\"", "").replace("'", "")
+                chosen_emotion = chosen_emotion.strip().replace('"', "").replace("'", "")
                 logger.info(f"{self.log_prefix} LLM选择的情感: {chosen_emotion}")
 
                 # 6. 根据选择的情感匹配表情包
@@ -126,7 +127,9 @@ class EmojiAction(BaseAction):
                     emoji_base64, emoji_description = random.choice(emotion_map[chosen_emotion])
                     logger.info(f"{self.log_prefix} 找到匹配情感 '{chosen_emotion}' 的表情包: {emoji_description}")
                 else:
-                    logger.warning(f"{self.log_prefix} LLM选择的情感 '{chosen_emotion}' 不在可用列表中, 将随机选择一个表情包")
+                    logger.warning(
+                        f"{self.log_prefix} LLM选择的情感 '{chosen_emotion}' 不在可用列表中, 将随机选择一个表情包"
+                    )
                     emoji_base64, emoji_description, _ = random.choice(sampled_emojis)
 
             # 7. 发送表情包
