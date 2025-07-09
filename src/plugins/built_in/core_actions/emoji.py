@@ -1,3 +1,4 @@
+import random
 from typing import Tuple
 
 # 导入新插件系统
@@ -7,7 +8,7 @@ from src.plugin_system import BaseAction, ActionActivationType, ChatMode
 from src.common.logger import get_logger
 
 # 导入API模块 - 标准Python包方式
-from src.plugin_system.apis import emoji_api
+from src.plugin_system.apis import emoji_api, llm_api, message_api
 from src.plugins.built_in.core_actions.no_reply import NoReplyAction
 
 
@@ -39,7 +40,7 @@ class EmojiAction(BaseAction):
     """
 
     # 动作参数定义
-    action_parameters = {"description": "文字描述你想要发送的表情包内容"}
+    action_parameters = {"reason": "文字描述你想要发送的表情包原因"}
 
     # 动作使用场景
     action_require = [
@@ -56,18 +57,79 @@ class EmojiAction(BaseAction):
         logger.info(f"{self.log_prefix} 决定发送表情")
 
         try:
-            # 1. 根据描述选择表情包
-            description = self.action_data.get("description", "")
-            emoji_result = await emoji_api.get_by_description(description)
+            # 1. 获取发送表情的原因
+            reason = self.action_data.get("reason", "表达当前情绪")
+            logger.info(f"{self.log_prefix} 发送表情原因: {reason}")
 
-            if not emoji_result:
-                logger.warning(f"{self.log_prefix} 未找到匹配描述 '{description}' 的表情包")
-                return False, f"未找到匹配 '{description}' 的表情包"
+            # 2. 随机获取20个表情包
+            sampled_emojis = await emoji_api.get_random(30)
+            if not sampled_emojis:
+                logger.warning(f"{self.log_prefix} 无法获取随机表情包")
+                return False, "无法获取随机表情包"
 
-            emoji_base64, emoji_description, matched_emotion = emoji_result
-            logger.info(f"{self.log_prefix} 找到表达{matched_emotion}的表情包")
+            # 3. 准备情感数据
+            emotion_map = {}
+            for b64, desc, emo in sampled_emojis:
+                if emo not in emotion_map:
+                    emotion_map[emo] = []
+                emotion_map[emo].append((b64, desc))
 
-            # 使用BaseAction的便捷方法发送表情包
+            available_emotions = list(emotion_map.keys())
+
+            if not available_emotions:
+                logger.warning(f"{self.log_prefix} 获取到的表情包均无情感标签, 将随机发送")
+                emoji_base64, emoji_description, _ = random.choice(sampled_emojis)
+            else:
+                
+                # 获取最近的5条消息内容用于判断
+                recent_messages = message_api.get_recent_messages(chat_id=self.chat_id, limit=5)
+                messages_text = ""
+                if recent_messages:
+                    # 使用message_api构建可读的消息字符串
+                    messages_text = message_api.build_readable_messages(
+                        messages=recent_messages,
+                        timestamp_mode="normal_no_YMD",
+                        truncate=False,
+                        show_actions=False,
+                    )
+                
+                # 4. 构建prompt让LLM选择情感
+                prompt = f"""
+                你是一个正在进行聊天的网友，你需要根据一个理由和最近的聊天记录，从一个情感标签列表中选择最匹配的一个。
+                这是最近的聊天记录：
+                {messages_text}
+                
+                这是理由：“{reason}”
+                这里是可用的情感标签：{available_emotions}
+                请直接返回最匹配的那个情感标签，不要进行任何解释或添加其他多余的文字。
+                """
+                logger.info(f"{self.log_prefix} 生成的LLM Prompt: {prompt}")
+
+                # 5. 调用LLM
+                models = llm_api.get_available_models()
+                chat_model_config = getattr(models, "utils_small", None)  # 默认使用chat模型
+                if not chat_model_config:
+                    logger.error(f"{self.log_prefix} 未找到'chat'模型配置，无法调用LLM")
+                    return False, "未找到'chat'模型配置"
+
+                success, chosen_emotion, _, _ = await llm_api.generate_with_model(prompt, model_config=chat_model_config, request_type="emoji")
+
+                if not success:
+                    logger.error(f"{self.log_prefix} LLM调用失败: {chosen_emotion}")
+                    return False, f"LLM调用失败: {chosen_emotion}"
+
+                chosen_emotion = chosen_emotion.strip().replace("\"", "").replace("'", "")
+                logger.info(f"{self.log_prefix} LLM选择的情感: {chosen_emotion}")
+
+                # 6. 根据选择的情感匹配表情包
+                if chosen_emotion in emotion_map:
+                    emoji_base64, emoji_description = random.choice(emotion_map[chosen_emotion])
+                    logger.info(f"{self.log_prefix} 找到匹配情感 '{chosen_emotion}' 的表情包: {emoji_description}")
+                else:
+                    logger.warning(f"{self.log_prefix} LLM选择的情感 '{chosen_emotion}' 不在可用列表中, 将随机选择一个表情包")
+                    emoji_base64, emoji_description, _ = random.choice(sampled_emojis)
+
+            # 7. 发送表情包
             success = await self.send_emoji(emoji_base64)
 
             if not success:
@@ -80,5 +142,5 @@ class EmojiAction(BaseAction):
             return True, f"发送表情包: {emoji_description}"
 
         except Exception as e:
-            logger.error(f"{self.log_prefix} 表情动作执行失败: {e}")
+            logger.error(f"{self.log_prefix} 表情动作执行失败: {e}", exc_info=True)
             return False, f"表情发送失败: {str(e)}"
