@@ -1,6 +1,5 @@
 import os
 from typing import AsyncGenerator
-from src.llm_models.utils_model import LLMRequest
 from src.mais4u.openai_client import AsyncOpenAIClient
 from src.config.config import global_config
 from src.chat.message_receive.message import MessageRecv
@@ -36,7 +35,6 @@ class S4UStreamGenerator:
             raise ValueError("`replyer_1` 在配置文件中缺少 `model_name` 字段")
         self.replyer_1_config = replyer_1_config
 
-        self.model_sum = LLMRequest(model=global_config.model.memory_summary, temperature=0.7, request_type="relation")
         self.current_model_name = "unknown model"
         self.partial_response = ""
 
