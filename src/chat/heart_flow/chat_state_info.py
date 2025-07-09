@@ -5,6 +5,9 @@ class ChatState(enum.Enum):
     ABSENT = "没在看群"
     NORMAL = "随便水群"
     FOCUSED = "认真水群"
+    
+    def __str__(self):
+        return self.name
 
 
 class ChatStateInfo:

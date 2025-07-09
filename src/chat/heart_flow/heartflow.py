@@ -16,14 +16,11 @@ class Heartflow:
     async def get_or_create_subheartflow(self, subheartflow_id: Any) -> Optional["SubHeartflow"]:
         """获取或创建一个新的SubHeartflow实例"""
         if subheartflow_id in self.subheartflows:
-            subflow = self.subheartflows.get(subheartflow_id)
-            if subflow:
+            if subflow := self.subheartflows.get(subheartflow_id):
                 return subflow
 
         try:
-            new_subflow = SubHeartflow(
-                subheartflow_id,
-            )
+            new_subflow = SubHeartflow(subheartflow_id)
 
             await new_subflow.initialize()
 

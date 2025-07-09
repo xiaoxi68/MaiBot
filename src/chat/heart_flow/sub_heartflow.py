@@ -72,27 +72,28 @@ class SubHeartflow:
         停止 NormalChat 实例
         切出 CHAT 状态时使用
         """
-        if self.normal_chat_instance:
-            logger.info(f"{self.log_prefix} 离开normal模式")
-            try:
-                logger.debug(f"{self.log_prefix} 开始调用 stop_chat()")
-                # 使用更短的超时时间，强制快速停止
-                await asyncio.wait_for(self.normal_chat_instance.stop_chat(), timeout=3.0)
-                logger.debug(f"{self.log_prefix} stop_chat() 调用完成")
-            except asyncio.TimeoutError:
-                logger.warning(f"{self.log_prefix} 停止 NormalChat 超时，强制清理")
-                # 超时时强制清理实例
+        if not self.normal_chat_instance:
+            return
+        logger.info(f"{self.log_prefix} 离开normal模式")
+        try:
+            logger.debug(f"{self.log_prefix} 开始调用 stop_chat()")
+            # 使用更短的超时时间，强制快速停止
+            await asyncio.wait_for(self.normal_chat_instance.stop_chat(), timeout=3.0)
+            logger.debug(f"{self.log_prefix} stop_chat() 调用完成")
+        except asyncio.TimeoutError:
+            logger.warning(f"{self.log_prefix} 停止 NormalChat 超时，强制清理")
+            # 超时时强制清理实例
+            self.normal_chat_instance = None
+        except Exception as e:
+            logger.error(f"{self.log_prefix} 停止 NormalChat 监控任务时出错: {e}")
+            # 出错时也要清理实例，避免状态不一致
+            self.normal_chat_instance = None
+        finally:
+            # 确保实例被清理
+            if self.normal_chat_instance:
+                logger.warning(f"{self.log_prefix} 强制清理 NormalChat 实例")
                 self.normal_chat_instance = None
-            except Exception as e:
-                logger.error(f"{self.log_prefix} 停止 NormalChat 监控任务时出错: {e}")
-                # 出错时也要清理实例，避免状态不一致
-                self.normal_chat_instance = None
-            finally:
-                # 确保实例被清理
-                if self.normal_chat_instance:
-                    logger.warning(f"{self.log_prefix} 强制清理 NormalChat 实例")
-                    self.normal_chat_instance = None
-                logger.debug(f"{self.log_prefix} _stop_normal_chat 完成")
+            logger.debug(f"{self.log_prefix} _stop_normal_chat 完成")
 
     async def _start_normal_chat(self, rewind=False) -> bool:
         """
@@ -348,6 +349,4 @@ class SubHeartflow:
         if elapsed_since_exit >= cooldown_duration:
             return 1.0  # 冷却完成
 
-        # 计算进度：0表示刚开始冷却，1表示冷却完成
-        progress = elapsed_since_exit / cooldown_duration
-        return progress
+        return elapsed_since_exit / cooldown_duration

@@ -1,18 +1,21 @@
-import json  # <--- 确保导入 json
+import json
+import time
 import traceback
 from typing import Dict, Any, Optional
 from rich.traceback import install
+from datetime import datetime
+from json_repair import repair_json
+
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.common.logger import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
-from src.chat.planner_actions.action_manager import ActionManager
-from json_repair import repair_json
-from src.chat.utils.utils import get_chat_type_and_target_info
-from datetime import datetime
-from src.chat.message_receive.chat_stream import get_chat_manager
 from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_before_timestamp_with_chat
-import time
+from src.chat.utils.utils import get_chat_type_and_target_info
+from src.chat.planner_actions.action_manager import ActionManager
+from src.chat.message_receive.chat_stream import get_chat_manager
+from src.plugin_system.base.component_types import ChatMode
+
 
 logger = get_logger("planner")
 
@@ -54,7 +57,7 @@ def init_prompt():
 
 
 class ActionPlanner:
-    def __init__(self, chat_id: str, action_manager: ActionManager, mode: str = "focus"):
+    def __init__(self, chat_id: str, action_manager: ActionManager, mode: ChatMode = ChatMode.FOCUS):
         self.chat_id = chat_id
         self.log_prefix = f"[{get_chat_manager().get_stream_name(chat_id) or chat_id}]"
         self.mode = mode
@@ -62,7 +65,7 @@ class ActionPlanner:
         # LLM规划器配置
         self.planner_llm = LLMRequest(
             model=global_config.model.planner,
-            request_type=f"{self.mode}.planner",  # 用于动作规划
+            request_type=f"{self.mode.value}.planner",  # 用于动作规划
         )
 
         self.last_obs_time_mark = 0.0
@@ -224,7 +227,7 @@ class ActionPlanner:
 
             self.last_obs_time_mark = time.time()
 
-            if self.mode == "focus":
+            if self.mode == ChatMode.FOCUS:
                 by_what = "聊天内容"
                 no_action_block = ""
             else:

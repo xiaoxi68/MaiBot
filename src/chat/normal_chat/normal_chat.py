@@ -1,28 +1,30 @@
 import asyncio
 import time
+import traceback
 from random import random
 from typing import List, Optional
+from maim_message import UserInfo, Seg
+
 from src.config.config import global_config
 from src.common.logger import get_logger
-from src.person_info.person_info import get_person_info_manager
-from src.plugin_system.apis import generator_api
-from maim_message import UserInfo, Seg
-from src.chat.message_receive.chat_stream import ChatStream, get_chat_manager
-from src.chat.utils.timer_calculator import Timer
 from src.common.message_repository import count_messages
-from src.chat.utils.prompt_builder import global_prompt_manager
-from ..message_receive.message import MessageSending, MessageRecv, MessageThinking, MessageSet
+from src.plugin_system.apis import generator_api
+from src.plugin_system.base.component_types import ChatMode
+from src.chat.message_receive.chat_stream import ChatStream, get_chat_manager
+from src.chat.message_receive.message import MessageSending, MessageRecv, MessageThinking, MessageSet
 from src.chat.message_receive.normal_message_sender import message_manager
 from src.chat.normal_chat.willing.willing_manager import get_willing_manager
 from src.chat.planner_actions.action_manager import ActionManager
-from src.person_info.relationship_builder_manager import relationship_builder_manager
-from .priority_manager import PriorityManager
-import traceback
 from src.chat.planner_actions.planner import ActionPlanner
 from src.chat.planner_actions.action_modifier import ActionModifier
-
 from src.chat.utils.utils import get_chat_type_and_target_info
+from src.chat.utils.prompt_builder import global_prompt_manager
+from src.chat.utils.timer_calculator import Timer
 from src.mood.mood_manager import mood_manager
+from src.person_info.person_info import get_person_info_manager
+from src.person_info.relationship_builder_manager import relationship_builder_manager
+from .priority_manager import PriorityManager
+
 
 willing_manager = get_willing_manager()
 
@@ -70,7 +72,7 @@ class NormalChat:
 
         # Planner相关初始化
         self.action_manager = ActionManager()
-        self.planner = ActionPlanner(self.stream_id, self.action_manager, mode="normal")
+        self.planner = ActionPlanner(self.stream_id, self.action_manager, mode=ChatMode.NORMAL)
         self.action_modifier = ActionModifier(self.action_manager, self.stream_id)
         self.enable_planner = global_config.normal_chat.enable_planner  # 从配置中读取是否启用planner
 
@@ -126,13 +128,8 @@ class NormalChat:
                         continue  # 条目已被其他任务处理
 
                     message, interest_value, _ = value
-                    if not self._disabled:
-                        # 更新消息段信息
-                        # self._update_user_message_segments(message)
-
-                        # 添加消息到优先级管理器
-                        if self.priority_manager:
-                            self.priority_manager.add_message(message, interest_value)
+                    if not self._disabled and self.priority_manager:
+                        self.priority_manager.add_message(message, interest_value)
 
             except Exception:
                 logger.error(
@@ -564,8 +561,8 @@ class NormalChat:
         available_actions = None
         if self.enable_planner:
             try:
-                await self.action_modifier.modify_actions(mode="normal", message_content=message.processed_plain_text)
-                available_actions = self.action_manager.get_using_actions_for_mode("normal")
+                await self.action_modifier.modify_actions(mode=ChatMode.NORMAL, message_content=message.processed_plain_text)
+                available_actions = self.action_manager.get_using_actions_for_mode(ChatMode.NORMAL)
             except Exception as e:
                 logger.warning(f"[{self.stream_name}] 获取available_actions失败: {e}")
                 available_actions = None

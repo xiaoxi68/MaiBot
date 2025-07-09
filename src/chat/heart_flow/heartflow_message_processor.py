@@ -123,7 +123,7 @@ class HeartFCMessageReceiver:
 
             logger.debug(f"[{mes_name}][当前时段回复频率: {current_talk_frequency}]")
 
-            # 8. 关系处理
+            # 4. 关系处理
             if global_config.relationship.enable_relationship:
                 await _process_relationship(message)
 

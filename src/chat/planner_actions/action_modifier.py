@@ -1,15 +1,17 @@
-from typing import List, Optional, Any, Dict
-from src.common.logger import get_logger
-from src.chat.focus_chat.focus_loop_info import FocusLoopInfo
-from src.chat.message_receive.chat_stream import get_chat_manager
-from src.config.config import global_config
-from src.llm_models.utils_model import LLMRequest
 import random
 import asyncio
 import hashlib
 import time
+from typing import List, Optional, Any, Dict
+
+from src.common.logger import get_logger
+from src.config.config import global_config
+from src.llm_models.utils_model import LLMRequest
+from src.chat.focus_chat.focus_loop_info import FocusLoopInfo
+from src.chat.message_receive.chat_stream import get_chat_manager
 from src.chat.planner_actions.action_manager import ActionManager
 from src.chat.utils.chat_message_builder import get_raw_msg_before_timestamp_with_chat, build_readable_messages
+from src.plugin_system.base.component_types import ChatMode
 
 logger = get_logger("action_manager")
 
@@ -44,7 +46,7 @@ class ActionModifier:
     async def modify_actions(
         self,
         loop_info=None,
-        mode: str = "focus",
+        mode: ChatMode = ChatMode.FOCUS,
         message_content: str = "",
     ):
         """
@@ -528,7 +530,7 @@ class ActionModifier:
 
     def get_available_actions_count(self) -> int:
         """获取当前可用动作数量（排除默认的no_action）"""
-        current_actions = self.action_manager.get_using_actions_for_mode("normal")
+        current_actions = self.action_manager.get_using_actions_for_mode(ChatMode.NORMAL)
         # 排除no_action（如果存在）
         filtered_actions = {k: v for k, v in current_actions.items() if k != "no_action"}
         return len(filtered_actions)

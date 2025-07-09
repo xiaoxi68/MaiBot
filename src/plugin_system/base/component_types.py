@@ -23,6 +23,9 @@ class ActionActivationType(Enum):
     RANDOM = "random"  # 随机启用action到planner
     KEYWORD = "keyword"  # 关键词触发启用action到planner
 
+    def __str__(self):
+        return self.value
+
 
 # 聊天模式枚举
 class ChatMode(Enum):
@@ -31,6 +34,9 @@ class ChatMode(Enum):
     FOCUS = "focus"  # Focus聊天模式
     NORMAL = "normal"  # Normal聊天模式
     ALL = "all"  # 所有聊天模式
+
+    def __str__(self):
+        return self.value
 
 
 @dataclass

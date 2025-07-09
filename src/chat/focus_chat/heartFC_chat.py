@@ -4,20 +4,21 @@ import time
 import traceback
 from collections import deque
 from typing import List, Optional, Dict, Any, Deque, Callable, Awaitable
-from src.chat.message_receive.chat_stream import get_chat_manager
 from rich.traceback import install
-from src.chat.utils.prompt_builder import global_prompt_manager
+
+from src.config.config import global_config
 from src.common.logger import get_logger
+from src.chat.message_receive.chat_stream import get_chat_manager
+from src.chat.utils.prompt_builder import global_prompt_manager
 from src.chat.utils.timer_calculator import Timer
-from src.chat.focus_chat.focus_loop_info import FocusLoopInfo
 from src.chat.planner_actions.planner import ActionPlanner
 from src.chat.planner_actions.action_modifier import ActionModifier
 from src.chat.planner_actions.action_manager import ActionManager
-from src.config.config import global_config
+from src.chat.focus_chat.focus_loop_info import FocusLoopInfo
 from src.chat.focus_chat.hfc_performance_logger import HFCPerformanceLogger
-from src.person_info.relationship_builder_manager import relationship_builder_manager
 from src.chat.focus_chat.hfc_utils import CycleDetail
-
+from src.person_info.relationship_builder_manager import relationship_builder_manager
+from src.plugin_system.base.component_types import ChatMode
 
 install(extra_lines=3)
 
@@ -134,8 +135,7 @@ class HeartFChatting:
     def _handle_loop_completion(self, task: asyncio.Task):
         """当 _hfc_loop 任务完成时执行的回调。"""
         try:
-            exception = task.exception()
-            if exception:
+            if exception := task.exception():
                 logger.error(f"{self.log_prefix} HeartFChatting: 脱离了聊天(异常): {exception}")
                 logger.error(traceback.format_exc())  # Log full traceback for exceptions
             else:
@@ -342,7 +342,7 @@ class HeartFChatting:
                     # 调用完整的动作修改流程
                     await self.action_modifier.modify_actions(
                         loop_info=self.loop_info,
-                        mode="focus",
+                        mode=ChatMode.FOCUS,
                     )
                 except Exception as e:
                     logger.error(f"{self.log_prefix} 动作修改失败: {e}")

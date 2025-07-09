@@ -3,13 +3,9 @@ from src.plugin_system.base.base_action import BaseAction
 from src.chat.message_receive.chat_stream import ChatStream
 from src.common.logger import get_logger
 from src.plugin_system.core.component_registry import component_registry
-from src.plugin_system.base.component_types import ComponentType
+from src.plugin_system.base.component_types import ComponentType, ActionActivationType, ChatMode, ActionInfo
 
 logger = get_logger("action_manager")
-
-# 定义动作信息类型
-ActionInfo = Dict[str, Any]
-
 
 class ActionManager:
     """
@@ -20,8 +16,8 @@ class ActionManager:
 
     # 类常量
     DEFAULT_RANDOM_PROBABILITY = 0.3
-    DEFAULT_MODE = "all"
-    DEFAULT_ACTIVATION_TYPE = "always"
+    DEFAULT_MODE = ChatMode.ALL
+    DEFAULT_ACTIVATION_TYPE = ActionActivationType.ALWAYS
 
     def __init__(self):
         """初始化动作管理器"""
@@ -54,11 +50,8 @@ class ActionManager:
     def _load_plugin_system_actions(self) -> None:
         """从插件系统的component_registry加载Action组件"""
         try:
-            from src.plugin_system.core.component_registry import component_registry
-            from src.plugin_system.base.component_types import ComponentType
-
             # 获取所有Action组件
-            action_components = component_registry.get_components_by_type(ComponentType.ACTION)
+            action_components: Dict[str, ActionInfo] = component_registry.get_components_by_type(ComponentType.ACTION)
 
             for action_name, action_info in action_components.items():
                 if action_name in self._registered_actions:
@@ -181,28 +174,28 @@ class ActionManager:
         """获取当前正在使用的动作集合"""
         return self._using_actions.copy()
 
-    def get_using_actions_for_mode(self, mode: str) -> Dict[str, ActionInfo]:
+    def get_using_actions_for_mode(self, mode: ChatMode) -> Dict[str, ActionInfo]:
         """
         根据聊天模式获取可用的动作集合
 
         Args:
-            mode: 聊天模式 ("focus", "normal", "all")
+            mode: 聊天模式 (ChatMode.FOCUS, ChatMode.NORMAL, ChatMode.ALL)
 
         Returns:
             Dict[str, ActionInfo]: 在指定模式下可用的动作集合
         """
-        filtered_actions = {}
+        enabled_actions = {}
 
         for action_name, action_info in self._using_actions.items():
-            action_mode = action_info.get("mode_enable", "all")
+            action_mode = action_info.mode_enable
 
             # 检查动作是否在当前模式下启用
-            if action_mode == "all" or action_mode == mode:
-                filtered_actions[action_name] = action_info
+            if action_mode in [ChatMode.ALL, mode]:
+                enabled_actions[action_name] = action_info
                 logger.debug(f"动作 {action_name} 在模式 {mode} 下可用 (mode_enable: {action_mode})")
 
-        logger.debug(f"模式 {mode} 下可用动作: {list(filtered_actions.keys())}")
-        return filtered_actions
+        logger.debug(f"模式 {mode} 下可用动作: {list(enabled_actions.keys())}")
+        return enabled_actions
 
     def add_action_to_using(self, action_name: str) -> bool:
         """
