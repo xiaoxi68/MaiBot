@@ -27,12 +27,14 @@ def init_prompt():
 你现在需要根据聊天内容，选择的合适的action来参与聊天。
 {chat_context_description}，以下是具体的聊天内容：
 {chat_content_block}
-你刚刚进行过的action是：
-{actions_before_now_block}
+
 
 {moderation_prompt}
 
 现在请你根据{by_what}选择合适的action:
+你刚刚选择并执行过的action是：
+{actions_before_now_block}
+
 {no_action_block}
 {action_options_text}
 

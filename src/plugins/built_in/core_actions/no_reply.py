@@ -168,7 +168,7 @@ class NoReplyAction(BaseAction):
             try:
                 interested_rate = await hippocampus_manager.get_activate_from_text(
                     full_text,
-                    fast_retrieval=True,
+                    fast_retrieval=False,
                 )
             except Exception as e:
                 logger.error(f"{self.log_prefix} 记忆激活计算失败: {e}")

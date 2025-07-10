@@ -571,9 +571,9 @@ def build_readable_actions(actions: List[Dict[str, Any]]) -> str:
     current_time = time.time()
 
     # The get functions return actions sorted ascending by time. Let's reverse it to show newest first.
-    sorted_actions = sorted(actions, key=lambda x: x.get("time", 0), reverse=True)
+    # sorted_actions = sorted(actions, key=lambda x: x.get("time", 0), reverse=True)
 
-    for action in sorted_actions:
+    for action in actions:
         action_time = action.get("time", current_time)
         action_name = action.get("action_name", "未知动作")
         action_prompt_display = action.get("action_prompt_display", "无具体内容")
@@ -581,10 +581,10 @@ def build_readable_actions(actions: List[Dict[str, Any]]) -> str:
         time_diff_seconds = current_time - action_time
 
         if time_diff_seconds < 60:
-            time_ago_str = f"在{time_diff_seconds}秒前"
+            time_ago_str = f"在{int(time_diff_seconds)}秒前"
         else:
             time_diff_minutes = round(time_diff_seconds / 60)
-            time_ago_str = f"在{time_diff_minutes}分钟前"
+            time_ago_str = f"在{int(time_diff_minutes)}分钟前"
 
         line = f"{time_ago_str}，你使用了“{action_name}”，具体内容是：“{action_prompt_display}”"
         output_lines.append(line)
