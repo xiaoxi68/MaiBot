@@ -11,7 +11,12 @@ from json_repair import repair_json
 from src.chat.utils.utils import get_chat_type_and_target_info
 from datetime import datetime
 from src.chat.message_receive.chat_stream import get_chat_manager
-from src.chat.utils.chat_message_builder import build_readable_actions, build_readable_messages, get_actions_by_timestamp_with_chat, get_raw_msg_before_timestamp_with_chat
+from src.chat.utils.chat_message_builder import (
+    build_readable_actions,
+    build_readable_messages,
+    get_actions_by_timestamp_with_chat,
+    get_raw_msg_before_timestamp_with_chat,
+)
 import time
 
 logger = get_logger("planner")
@@ -226,13 +231,13 @@ class ActionPlanner:
                 truncate=True,
                 show_actions=True,
             )
-            
-            actions_before_now  = get_actions_by_timestamp_with_chat(
+
+            actions_before_now = get_actions_by_timestamp_with_chat(
                 chat_id=self.chat_id,
                 timestamp_end=time.time(),
                 limit=5,
             )
-            
+
             actions_before_now_block = build_readable_actions(
                 actions=actions_before_now,
             )

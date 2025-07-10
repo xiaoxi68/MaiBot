@@ -126,7 +126,6 @@ class RelationshipFetcher:
             weights = [max(1, min(10, int(point[1]))) for point in current_points]
             # 使用加权采样不放回，保证不重复
             indices = list(range(len(current_points)))
-            selected_indices = set()
             points = []
             for _ in range(3):
                 if not indices:
@@ -143,7 +142,7 @@ class RelationshipFetcher:
 
         # info_type = await self._build_fetch_query(person_id, target_message, chat_history)
         # if info_type:
-            # await self._extract_single_info(person_id, info_type, person_name)
+        # await self._extract_single_info(person_id, info_type, person_name)
 
         # relation_info = self._organize_known_info()
 

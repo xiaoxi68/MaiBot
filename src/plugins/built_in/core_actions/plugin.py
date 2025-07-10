@@ -54,7 +54,7 @@ class ReplyAction(BaseAction):
 
     # 关联类型
     associated_types = ["text"]
-    
+
     def _parse_reply_target(self, target_message: str) -> tuple:
         sender = ""
         target = ""
@@ -71,11 +71,9 @@ class ReplyAction(BaseAction):
         logger.info(f"{self.log_prefix} 决定进行回复")
 
         start_time = self.action_data.get("loop_start_time", time.time())
-        
+
         reply_to = self.action_data.get("reply_to", "")
         sender, target = self._parse_reply_target(reply_to)
-        
-        
 
         try:
             try:
@@ -126,7 +124,7 @@ class ReplyAction(BaseAction):
                 reply_text = f"你对{sender}说的{target}，进行了回复：{reply_text}"
             else:
                 reply_text = f"你进行发言：{reply_text}"
-            
+
             await self.store_action_info(
                 action_build_into_prompt=False,
                 action_prompt_display=reply_text,

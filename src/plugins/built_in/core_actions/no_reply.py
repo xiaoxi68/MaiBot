@@ -1,6 +1,5 @@
 import random
 import time
-import json
 from typing import Tuple
 
 # 导入新插件系统
@@ -12,11 +11,8 @@ from src.common.logger import get_logger
 # 导入API模块 - 标准Python包方式
 from src.plugin_system.apis import message_api
 from src.config.config import global_config
-from src.chat.message_receive.message import MessageRecv
-from src.chat.message_receive.chat_stream import get_chat_manager
 from src.chat.memory_system.Hippocampus import hippocampus_manager
 import math
-from src.chat.utils.utils import is_mentioned_bot_in_message
 
 
 logger = get_logger("core_actions")
@@ -91,7 +87,9 @@ class NoReplyAction(BaseAction):
 
                 # 2. 检查消息数量是否达到阈值
                 if new_message_count >= exit_message_count_threshold:
-                    logger.info(f"{self.log_prefix} 累计消息数量达到{new_message_count}条(>{exit_message_count_threshold})，结束等待")
+                    logger.info(
+                        f"{self.log_prefix} 累计消息数量达到{new_message_count}条(>{exit_message_count_threshold})，结束等待"
+                    )
                     exit_reason = f"{global_config.bot.nickname}（你）看到了{new_message_count}条新消息，可以考虑一下是否要进行回复"
                     await self.store_action_info(
                         action_build_into_prompt=False,
@@ -114,11 +112,16 @@ class NoReplyAction(BaseAction):
                             action_prompt_display=exit_reason,
                             action_done=True,
                         )
-                        return True, f"累计兴趣值达到{accumulated_interest:.2f}，结束等待 (等待时间: {elapsed_time:.1f}秒)"
+                        return (
+                            True,
+                            f"累计兴趣值达到{accumulated_interest:.2f}，结束等待 (等待时间: {elapsed_time:.1f}秒)",
+                        )
 
                 # 每10秒输出一次等待状态
                 if int(elapsed_time) > 0 and int(elapsed_time) % 10 == 0:
-                    logger.debug(f"{self.log_prefix} 已等待{elapsed_time:.0f}秒，累计{new_message_count}条消息，继续等待...")
+                    logger.debug(
+                        f"{self.log_prefix} 已等待{elapsed_time:.0f}秒，累计{new_message_count}条消息，继续等待..."
+                    )
                     # 使用 asyncio.sleep(1) 来避免在同一秒内重复打印日志
                     await asyncio.sleep(1)
 
@@ -141,8 +144,6 @@ class NoReplyAction(BaseAction):
         if not messages_dicts:
             return 0.0
 
-
-
         combined_text_parts = []
         is_any_mentioned = False
 
@@ -159,7 +160,7 @@ class NoReplyAction(BaseAction):
             return 0.0
 
         # --- 使用合并后的文本计算兴趣值 ---
-        
+
         if global_config.bot.nickname in full_text:
             is_any_mentioned = True
 

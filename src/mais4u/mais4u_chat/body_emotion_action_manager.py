@@ -1,6 +1,4 @@
 import json
-import math
-import random
 import time
 
 from src.chat.message_receive.message import MessageRecv
@@ -122,7 +120,7 @@ class ChatAction:
         logger.info(f"reasoning_content: {reasoning_content}")
 
         action_data = json.loads(repair_json(response))
-        
+
         if action_data:
             self.hand_action = action_data.get("hand_action", self.hand_action)
             self.upper_body_action = action_data.get("upper_body_action", self.upper_body_action)

@@ -78,7 +78,11 @@ def get_raw_msg_by_timestamp_with_chat_users(
 
 
 def get_actions_by_timestamp_with_chat(
-    chat_id: str, timestamp_start: float = 0, timestamp_end: float = time.time(), limit: int = 0, limit_mode: str = "latest"
+    chat_id: str,
+    timestamp_start: float = 0,
+    timestamp_end: float = time.time(),
+    limit: int = 0,
+    limit_mode: str = "latest",
 ) -> List[Dict[str, Any]]:
     """获取在特定聊天从指定时间戳到指定时间戳的动作记录，按时间升序排序，返回动作记录列表"""
     query = ActionRecords.select().where(
