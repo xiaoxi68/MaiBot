@@ -15,6 +15,7 @@ from src.chat.replyer.default_generator import DefaultReplyer
 from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.utils.utils import process_llm_response
 from src.chat.replyer.replyer_manager import replyer_manager
+from src.plugin_system.base.component_types import ActionInfo
 
 logger = get_logger("generator_api")
 
@@ -69,7 +70,7 @@ async def generate_reply(
     action_data: Dict[str, Any] = None,
     reply_to: str = "",
     extra_info: str = "",
-    available_actions: List[str] = None,
+    available_actions: Optional[Dict[str, ActionInfo]] = None,
     enable_tool: bool = False,
     enable_splitter: bool = True,
     enable_chinese_typo: bool = True,

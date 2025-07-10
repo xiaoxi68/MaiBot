@@ -11,7 +11,7 @@ from src.chat.focus_chat.focus_loop_info import FocusLoopInfo
 from src.chat.message_receive.chat_stream import get_chat_manager, ChatMessageContext
 from src.chat.planner_actions.action_manager import ActionManager
 from src.chat.utils.chat_message_builder import get_raw_msg_before_timestamp_with_chat, build_readable_messages
-from src.plugin_system.base.component_types import ChatMode, ActionInfo
+from src.plugin_system.base.component_types import ChatMode, ActionInfo, ActionActivationType
 
 logger = get_logger("action_manager")
 
@@ -131,9 +131,9 @@ class ActionModifier:
 
     def _check_action_associated_types(self, all_actions: Dict[str, ActionInfo], chat_context: ChatMessageContext):
         type_mismatched_actions = []
-        for action_name, data in all_actions.items():
-            if data["associated_types"] and not chat_context.check_types(data["associated_types"]):
-                associated_types_str = ", ".join(data["associated_types"])
+        for action_name, action_info in all_actions.items():
+            if action_info.associated_types and not chat_context.check_types(action_info.associated_types):
+                associated_types_str = ", ".join(action_info.associated_types)
                 reason = f"适配器不支持（需要: {associated_types_str}）"
                 type_mismatched_actions.append((action_name, reason))
                 logger.debug(f"{self.log_prefix}决定移除动作: {action_name}，原因: {reason}")
@@ -141,7 +141,7 @@ class ActionModifier:
 
     async def _get_deactivated_actions_by_type(
         self,
-        actions_with_info: Dict[str, Any],
+        actions_with_info: Dict[str, ActionInfo],
         mode: str = "focus",
         chat_content: str = "",
     ) -> List[tuple[str, str]]:
@@ -164,27 +164,26 @@ class ActionModifier:
         random.shuffle(actions_to_check)
 
         for action_name, action_info in actions_to_check:
-            activation_type = f"{mode}_activation_type"
-            activation_type = action_info.get(activation_type, "always")
-
-            if activation_type == "always":
+            mode_activation_type = f"{mode}_activation_type"
+            activation_type = getattr(action_info, mode_activation_type, ActionActivationType.ALWAYS)
+            if activation_type == ActionActivationType.ALWAYS:
                 continue  # 总是激活，无需处理
 
-            elif activation_type == "random":
-                probability = action_info.get("random_activation_probability", ActionManager.DEFAULT_RANDOM_PROBABILITY)
-                if not (random.random() < probability):
+            elif activation_type == ActionActivationType.RANDOM:
+                probability = action_info.random_activation_probability or ActionManager.DEFAULT_RANDOM_PROBABILITY
+                if random.random() >= probability:
                     reason = f"RANDOM类型未触发（概率{probability}）"
                     deactivated_actions.append((action_name, reason))
                     logger.debug(f"{self.log_prefix}未激活动作: {action_name}，原因: {reason}")
 
-            elif activation_type == "keyword":
+            elif activation_type == ActionActivationType.KEYWORD:
                 if not self._check_keyword_activation(action_name, action_info, chat_content):
-                    keywords = action_info.get("activation_keywords", [])
+                    keywords = action_info.activation_keywords
                     reason = f"关键词未匹配（关键词: {keywords}）"
                     deactivated_actions.append((action_name, reason))
                     logger.debug(f"{self.log_prefix}未激活动作: {action_name}，原因: {reason}")
 
-            elif activation_type == "llm_judge":
+            elif activation_type == ActionActivationType.LLM_JUDGE:
                 llm_judge_actions[action_name] = action_info
 
             else:

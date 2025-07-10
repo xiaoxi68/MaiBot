@@ -59,32 +59,11 @@ class ActionManager:
                     logger.debug(f"Action组件 {action_name} 已存在，跳过")
                     continue
 
-                # 将插件系统的ActionInfo转换为ActionManager格式
-                converted_action_info = {
-                    "description": action_info.description,
-                    "parameters": getattr(action_info, "action_parameters", {}),
-                    "require": getattr(action_info, "action_require", []),
-                    "associated_types": getattr(action_info, "associated_types", []),
-                    "enable_plugin": action_info.enabled,
-                    # 激活类型相关
-                    "focus_activation_type": action_info.focus_activation_type.value,
-                    "normal_activation_type": action_info.normal_activation_type.value,
-                    "random_activation_probability": action_info.random_activation_probability,
-                    "llm_judge_prompt": action_info.llm_judge_prompt,
-                    "activation_keywords": action_info.activation_keywords,
-                    "keyword_case_sensitive": action_info.keyword_case_sensitive,
-                    # 模式和并行设置
-                    "mode_enable": action_info.mode_enable,
-                    "parallel_action": action_info.parallel_action,
-                    # 插件信息
-                    "_plugin_name": getattr(action_info, "plugin_name", ""),
-                }
-
-                self._registered_actions[action_name] = converted_action_info
+                self._registered_actions[action_name] = action_info
 
                 # 如果启用，也添加到默认动作集
                 if action_info.enabled:
-                    self._default_actions[action_name] = converted_action_info
+                    self._default_actions[action_name] = action_info
 
                 logger.debug(
                     f"从插件系统加载Action组件: {action_name} (插件: {getattr(action_info, 'plugin_name', 'unknown')})"
@@ -188,7 +167,7 @@ class ActionManager:
         enabled_actions = {}
 
         for action_name, action_info in self._using_actions.items():
-            action_mode = action_info["mode_enable"]
+            action_mode = action_info.mode_enable
 
             # 检查动作是否在当前模式下启用
             if action_mode in [ChatMode.ALL, mode]:

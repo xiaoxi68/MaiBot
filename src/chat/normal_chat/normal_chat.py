@@ -2,14 +2,14 @@ import asyncio
 import time
 import traceback
 from random import random
-from typing import List, Optional
+from typing import List, Optional, Dict
 from maim_message import UserInfo, Seg
 
 from src.config.config import global_config
 from src.common.logger import get_logger
 from src.common.message_repository import count_messages
 from src.plugin_system.apis import generator_api
-from src.plugin_system.base.component_types import ChatMode
+from src.plugin_system.base.component_types import ChatMode, ActionInfo
 from src.chat.message_receive.chat_stream import ChatStream, get_chat_manager
 from src.chat.message_receive.message import MessageSending, MessageRecv, MessageThinking, MessageSet
 from src.chat.message_receive.normal_message_sender import message_manager
@@ -175,12 +175,12 @@ class NormalChat:
     # 改为实例方法
     async def _create_thinking_message(self, message: MessageRecv, timestamp: Optional[float] = None) -> str:
         """创建思考消息"""
-        messageinfo = message.message_info
+        message_info = message.message_info
 
         bot_user_info = UserInfo(
             user_id=global_config.bot.qq_account,
             user_nickname=global_config.bot.nickname,
-            platform=messageinfo.platform,
+            platform=message_info.platform,
         )
 
         thinking_time_point = round(time.time(), 2)
@@ -456,7 +456,7 @@ class NormalChat:
         willing_manager.delete(message.message_info.message_id)
 
     async def _generate_normal_response(
-        self, message: MessageRecv, available_actions: Optional[list]
+        self, message: MessageRecv, available_actions: Optional[Dict[str, ActionInfo]]
     ) -> Optional[list]:
         """生成普通回复"""
         try:

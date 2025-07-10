@@ -36,10 +36,10 @@ class S4UMessageProcessor:
         # 1. 消息解析与初始化
         groupinfo = message.message_info.group_info
         userinfo = message.message_info.user_info
-        messageinfo = message.message_info
+        message_info = message.message_info
 
         chat = await get_chat_manager().get_or_create_stream(
-            platform=messageinfo.platform,
+            platform=message_info.platform,
             user_info=userinfo,
             group_info=groupinfo,
         )

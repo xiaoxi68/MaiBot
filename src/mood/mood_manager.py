@@ -19,7 +19,7 @@ def init_prompt():
 {chat_talking_prompt}
 以上是群里正在进行的聊天记录
 
-{indentify_block}
+{identity_block}
 你刚刚的情绪状态是：{mood_state}
 
 现在，发送了消息，引起了你的注意，你对其进行了阅读和思考，请你输出一句话描述你新的情绪状态
@@ -32,7 +32,7 @@ def init_prompt():
 {chat_talking_prompt}
 以上是群里最近的聊天记录
 
-{indentify_block}
+{identity_block}
 你之前的情绪状态是：{mood_state}
 
 距离你上次关注群里消息已经过去了一段时间，你冷静了下来，请你输出一句话描述你现在的情绪状态
@@ -103,12 +103,12 @@ class ChatMood:
             bot_nickname = ""
 
         prompt_personality = global_config.personality.personality_core
-        indentify_block = f"你的名字是{bot_name}{bot_nickname}，你{prompt_personality}："
+        identity_block = f"你的名字是{bot_name}{bot_nickname}，你{prompt_personality}："
 
         prompt = await global_prompt_manager.format_prompt(
             "change_mood_prompt",
             chat_talking_prompt=chat_talking_prompt,
-            indentify_block=indentify_block,
+            identity_block=identity_block,
             mood_state=self.mood_state,
         )
 
@@ -147,12 +147,12 @@ class ChatMood:
             bot_nickname = ""
 
         prompt_personality = global_config.personality.personality_core
-        indentify_block = f"你的名字是{bot_name}{bot_nickname}，你{prompt_personality}："
+        identity_block = f"你的名字是{bot_name}{bot_nickname}，你{prompt_personality}："
 
         prompt = await global_prompt_manager.format_prompt(
             "regress_mood_prompt",
             chat_talking_prompt=chat_talking_prompt,
-            indentify_block=indentify_block,
+            identity_block=identity_block,
             mood_state=self.mood_state,
         )
 

@@ -66,7 +66,7 @@ class ComponentInfo:
 
     name: str  # 组件名称
     component_type: ComponentType  # 组件类型
-    description: str  # 组件描述
+    description: str = ""  # 组件描述
     enabled: bool = True  # 是否启用
     plugin_name: str = ""  # 所属插件名称
     is_built_in: bool = False  # 是否为内置组件
@@ -81,17 +81,19 @@ class ComponentInfo:
 class ActionInfo(ComponentInfo):
     """动作组件信息"""
 
+    action_parameters: Dict[str, str] = field(default_factory=dict)  # 动作参数与描述，例如 {"param1": "描述1", "param2": "描述2"}
+    action_require: List[str] = field(default_factory=list)  # 动作需求说明
+    associated_types: List[str] = field(default_factory=list)  # 关联的消息类型
+    # 激活类型相关
     focus_activation_type: ActionActivationType = ActionActivationType.ALWAYS
     normal_activation_type: ActionActivationType = ActionActivationType.ALWAYS
     random_activation_probability: float = 0.0
     llm_judge_prompt: str = ""
     activation_keywords: List[str] = field(default_factory=list)  # 激活关键词列表
     keyword_case_sensitive: bool = False
+    # 模式和并行设置
     mode_enable: ChatMode = ChatMode.ALL
     parallel_action: bool = False
-    action_parameters: Dict[str, Any] = field(default_factory=dict)  # 动作参数
-    action_require: List[str] = field(default_factory=list)  # 动作需求说明
-    associated_types: List[str] = field(default_factory=list)  # 关联的消息类型
 
     def __post_init__(self):
         super().__post_init__()

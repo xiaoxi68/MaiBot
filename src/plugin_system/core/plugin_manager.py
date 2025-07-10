@@ -24,12 +24,14 @@ class PluginManager:
     """
 
     def __init__(self):
-        self.plugin_directories: List[str] = []
-        self.loaded_plugins: Dict[str, "BasePlugin"] = {}
-        self.failed_plugins: Dict[str, str] = {}
-        self.plugin_paths: Dict[str, str] = {}  # 记录插件名到目录路径的映射
+        self.plugin_directories: List[str] = []  # 插件根目录列表
+        self.plugin_classes: Dict[str, Type[BasePlugin]] = {}  # 全局插件类注册表，插件名 -> 插件类
+        self.plugin_paths: Dict[str, str] = {}  # 记录插件名到目录路径的映射，插件名 -> 目录路径
+
+        self.loaded_plugins: Dict[str, BasePlugin] = {}  # 已加载的插件类实例注册表，插件名 -> 插件类实例
+        self.failed_plugins: Dict[str, str] = {}  # 记录加载失败的插件类及其错误信息，插件名 -> 错误信息
+
         self.events_subscriptions: Dict[EventType, List[Callable]] = {}
-        self.plugin_classes: Dict[str, Type[BasePlugin]] = {}  # 全局插件类注册表
 
         # 确保插件目录存在
         self._ensure_plugin_directories()
