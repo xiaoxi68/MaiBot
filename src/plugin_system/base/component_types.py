@@ -126,6 +126,7 @@ class CommandInfo(ComponentInfo):
 class PluginInfo:
     """插件信息"""
 
+    display_name: str  # 插件显示名称
     name: str  # 插件名称
     description: str  # 插件描述
     version: str = "1.0.0"  # 插件版本

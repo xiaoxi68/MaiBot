@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List, Type, Optional, Any, Union
+from typing import Dict, List, Type, Any, Union
 import os
 import inspect
 import toml
@@ -29,18 +29,41 @@ class BasePlugin(ABC):
     """
 
     # 插件基本信息（子类必须定义）
-    plugin_name: str = ""  # 插件内部标识符（如 "hello_world_plugin"）
-    enable_plugin: bool = False  # 是否启用插件
-    dependencies: List[str] = []  # 依赖的其他插件
-    python_dependencies: List[PythonDependency] = []  # Python包依赖
-    config_file_name: Optional[str] = None  # 配置文件名
+    @property
+    @abstractmethod
+    def plugin_name(self) -> str:
+        return ""  # 插件内部标识符（如 "hello_world_plugin"）
+
+    @property
+    @abstractmethod
+    def enable_plugin(self) -> bool:
+        return True  # 是否启用插件
+
+    @property
+    @abstractmethod
+    def dependencies(self) -> List[str]:
+        return []  # 依赖的其他插件
+
+    @property
+    @abstractmethod
+    def python_dependencies(self) -> List[PythonDependency]:
+        return []  # Python包依赖
+
+    @property
+    @abstractmethod
+    def config_file_name(self) -> str:
+        return ""  # 配置文件名
 
     # manifest文件相关
     manifest_file_name: str = "_manifest.json"  # manifest文件名
     manifest_data: Dict[str, Any] = {}  # manifest数据
 
     # 配置定义
-    config_schema: Dict[str, Union[Dict[str, ConfigField], str]] = {}
+    @property
+    @abstractmethod
+    def config_schema(self) -> Dict[str, Union[Dict[str, ConfigField], str]]:
+        return {}
+
     config_section_descriptions: Dict[str, str] = {}
 
     def __init__(self, plugin_dir: str = None):
@@ -70,7 +93,8 @@ class BasePlugin(ABC):
 
         # 创建插件信息对象
         self.plugin_info = PluginInfo(
-            name=self.display_name,  # 使用显示名称
+            name=self.plugin_name,
+            display_name=self.display_name,
             description=self.plugin_description,
             version=self.plugin_version,
             author=self.plugin_author,

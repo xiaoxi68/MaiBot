@@ -85,16 +85,17 @@ class PluginManager:
         total_failed_registration = 0
 
         for plugin_name in self.plugin_classes.keys():
-            if self.load_registered_plugin_classes(plugin_name):
+            load_status, count = self.load_registered_plugin_classes(plugin_name)
+            if load_status:
                 total_registered += 1
             else:
-                total_failed_registration += 1
+                total_failed_registration += count
 
         self._show_stats(total_registered, total_failed_registration)
 
         return total_registered, total_failed_registration
 
-    def load_registered_plugin_classes(self, plugin_name: str) -> bool:
+    def load_registered_plugin_classes(self, plugin_name: str) -> Tuple[bool, int]:
         # sourcery skip: extract-duplicate-method, extract-method
         """
         加载已经注册的插件类
@@ -102,7 +103,7 @@ class PluginManager:
         plugin_class: Type[BasePlugin] = self.plugin_classes.get(plugin_name)
         if not plugin_class:
             logger.error(f"插件 {plugin_name} 的插件类未注册或不存在")
-            return False
+            return False, 1
         try:
             # 使用记录的插件目录路径
             plugin_dir = self.plugin_paths.get(plugin_name)
@@ -116,7 +117,7 @@ class PluginManager:
             # 检查插件是否启用
             if not plugin_instance.enable_plugin:
                 logger.info(f"插件 {plugin_name} 已禁用，跳过加载")
-                return False
+                return False, 0
 
             # 检查版本兼容性
             is_compatible, compatibility_error = self._check_plugin_version_compatibility(
@@ -125,22 +126,22 @@ class PluginManager:
             if not is_compatible:
                 self.failed_plugins[plugin_name] = compatibility_error
                 logger.error(f"❌ 插件加载失败: {plugin_name} - {compatibility_error}")
-                return False
+                return False, 1
             if plugin_instance.register_plugin():
                 self.loaded_plugins[plugin_name] = plugin_instance
                 self._show_plugin_components(plugin_name)
-                return True
+                return True, 1
             else:
                 self.failed_plugins[plugin_name] = "插件注册失败"
                 logger.error(f"❌ 插件注册失败: {plugin_name}")
-                return False
+                return False, 1
 
         except FileNotFoundError as e:
             # manifest文件缺失
             error_msg = f"缺少manifest文件: {str(e)}"
             self.failed_plugins[plugin_name] = error_msg
             logger.error(f"❌ 插件加载失败: {plugin_name} - {error_msg}")
-            return False
+            return False, 1
 
         except ValueError as e:
             # manifest文件格式错误或验证失败
@@ -148,7 +149,7 @@ class PluginManager:
             error_msg = f"manifest验证失败: {str(e)}"
             self.failed_plugins[plugin_name] = error_msg
             logger.error(f"❌ 插件加载失败: {plugin_name} - {error_msg}")
-            return False
+            return False, 1
 
         except Exception as e:
             # 其他错误
@@ -156,7 +157,7 @@ class PluginManager:
             self.failed_plugins[plugin_name] = error_msg
             logger.error(f"❌ 插件加载失败: {plugin_name} - {error_msg}")
             logger.debug("详细错误信息: ", exc_info=True)
-            return False
+            return False, 1
 
     def unload_registered_plugin_module(self, plugin_name: str) -> None:
         """
@@ -489,14 +490,16 @@ class PluginManager:
                     info_parts = [part for part in [version_info, author_info, license_info] if part]
                     extra_info = f" ({', '.join(info_parts)})" if info_parts else ""
 
-                    logger.info(f"  📦 {plugin_name}{extra_info}")
+                    logger.info(f"  📦 {plugin_info.display_name}{extra_info}")
 
                     # Manifest信息
                     if plugin_info.manifest_data:
+                        """
                         if plugin_info.keywords:
                             logger.info(f"    🏷️ 关键词: {', '.join(plugin_info.keywords)}")
                         if plugin_info.categories:
                             logger.info(f"    📁 分类: {', '.join(plugin_info.categories)}")
+                        """
                         if plugin_info.homepage_url:
                             logger.info(f"    🌐 主页: {plugin_info.homepage_url}")
 
@@ -533,9 +536,9 @@ class PluginManager:
                             plugins_in_dir.append(plugin_name)
 
                     if plugins_in_dir:
-                        logger.info(f"  📁 {directory}: {len(plugins_in_dir)}个插件 ({', '.join(plugins_in_dir)})")
+                        logger.info(f" 📁 {directory}: {len(plugins_in_dir)}个插件 ({', '.join(plugins_in_dir)})")
                     else:
-                        logger.info(f"  📁 {directory}: 0个插件")
+                        logger.info(f" 📁 {directory}: 0个插件")
 
             # 失败信息
             if total_failed_registration > 0:

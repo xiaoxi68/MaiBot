@@ -2,16 +2,16 @@ import random
 import asyncio
 import hashlib
 import time
-from typing import List, Optional, Any, Dict
+from typing import List, Any, Dict
 
 from src.common.logger import get_logger
 from src.config.config import global_config
 from src.llm_models.utils_model import LLMRequest
 from src.chat.focus_chat.focus_loop_info import FocusLoopInfo
-from src.chat.message_receive.chat_stream import get_chat_manager
+from src.chat.message_receive.chat_stream import get_chat_manager, ChatMessageContext
 from src.chat.planner_actions.action_manager import ActionManager
 from src.chat.utils.chat_message_builder import get_raw_msg_before_timestamp_with_chat, build_readable_messages
-from src.plugin_system.base.component_types import ChatMode
+from src.plugin_system.base.component_types import ChatMode, ActionInfo
 
 logger = get_logger("action_manager")
 
@@ -48,7 +48,7 @@ class ActionModifier:
         loop_info=None,
         mode: ChatMode = ChatMode.FOCUS,
         message_content: str = "",
-    ):
+    ):  # sourcery skip: use-named-expression
         """
         动作修改流程，整合传统观察处理和新的激活类型判定
 
@@ -129,15 +129,14 @@ class ActionModifier:
             f"{self.log_prefix}{mode}模式动作修改流程结束，最终可用动作: {list(self.action_manager.get_using_actions_for_mode(mode).keys())}||移除记录: {removals_summary}"
         )
 
-    def _check_action_associated_types(self, all_actions, chat_context):
+    def _check_action_associated_types(self, all_actions: Dict[str, ActionInfo], chat_context: ChatMessageContext):
         type_mismatched_actions = []
         for action_name, data in all_actions.items():
-            if data.get("associated_types"):
-                if not chat_context.check_types(data["associated_types"]):
-                    associated_types_str = ", ".join(data["associated_types"])
-                    reason = f"适配器不支持（需要: {associated_types_str}）"
-                    type_mismatched_actions.append((action_name, reason))
-                    logger.debug(f"{self.log_prefix}决定移除动作: {action_name}，原因: {reason}")
+            if data["associated_types"] and not chat_context.check_types(data["associated_types"]):
+                associated_types_str = ", ".join(data["associated_types"])
+                reason = f"适配器不支持（需要: {associated_types_str}）"
+                type_mismatched_actions.append((action_name, reason))
+                logger.debug(f"{self.log_prefix}决定移除动作: {action_name}，原因: {reason}")
         return type_mismatched_actions
 
     async def _get_deactivated_actions_by_type(
@@ -204,35 +203,6 @@ class ActionModifier:
                     logger.debug(f"{self.log_prefix}未激活动作: {action_name}，原因: {reason}")
 
         return deactivated_actions
-
-    async def process_actions_for_planner(
-        self, observed_messages_str: str = "", chat_context: Optional[str] = None, extra_context: Optional[str] = None
-    ) -> Dict[str, Any]:
-        """
-        [已废弃] 此方法现在已被整合到 modify_actions() 中
-
-        为了保持向后兼容性而保留，但建议直接使用 ActionManager.get_using_actions()
-        规划器应该直接从 ActionManager 获取最终的可用动作集，而不是调用此方法
-
-        新的架构：
-        1. 主循环调用 modify_actions() 处理完整的动作管理流程
-        2. 规划器直接使用 ActionManager.get_using_actions() 获取最终动作集
-        """
-        logger.warning(
-            f"{self.log_prefix}process_actions_for_planner() 已废弃，建议规划器直接使用 ActionManager.get_using_actions()"
-        )
-
-        # 为了向后兼容，仍然返回当前使用的动作集
-        current_using_actions = self.action_manager.get_using_actions()
-        all_registered_actions = self.action_manager.get_registered_actions()
-
-        # 构建完整的动作信息
-        result = {}
-        for action_name in current_using_actions.keys():
-            if action_name in all_registered_actions:
-                result[action_name] = all_registered_actions[action_name]
-
-        return result
 
     def _generate_context_hash(self, chat_content: str) -> str:
         """生成上下文的哈希值用于缓存"""

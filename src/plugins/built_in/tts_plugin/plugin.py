@@ -109,6 +109,8 @@ class TTSPlugin(BasePlugin):
     # 插件基本信息
     plugin_name = "tts_plugin"  # 内部标识符
     enable_plugin = True
+    dependencies = []  # 插件依赖列表
+    python_dependencies = []  # Python包依赖列表
     config_file_name = "config.toml"
 
     # 配置节描述

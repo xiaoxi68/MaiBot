@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Type, Any
+from typing import Dict, List, Optional, Type
 from src.plugin_system.base.base_action import BaseAction
 from src.chat.message_receive.chat_stream import ChatStream
 from src.common.logger import get_logger
@@ -6,6 +6,7 @@ from src.plugin_system.core.component_registry import component_registry
 from src.plugin_system.base.component_types import ComponentType, ActionActivationType, ChatMode, ActionInfo
 
 logger = get_logger("action_manager")
+
 
 class ActionManager:
     """
@@ -73,7 +74,7 @@ class ActionManager:
                     "activation_keywords": action_info.activation_keywords,
                     "keyword_case_sensitive": action_info.keyword_case_sensitive,
                     # 模式和并行设置
-                    "mode_enable": action_info.mode_enable.value,
+                    "mode_enable": action_info.mode_enable,
                     "parallel_action": action_info.parallel_action,
                     # 插件信息
                     "_plugin_name": getattr(action_info, "plugin_name", ""),
@@ -187,7 +188,7 @@ class ActionManager:
         enabled_actions = {}
 
         for action_name, action_info in self._using_actions.items():
-            action_mode = action_info.mode_enable
+            action_mode = action_info["mode_enable"]
 
             # 检查动作是否在当前模式下启用
             if action_mode in [ChatMode.ALL, mode]:

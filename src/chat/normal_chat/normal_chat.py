@@ -561,7 +561,9 @@ class NormalChat:
         available_actions = None
         if self.enable_planner:
             try:
-                await self.action_modifier.modify_actions(mode=ChatMode.NORMAL, message_content=message.processed_plain_text)
+                await self.action_modifier.modify_actions(
+                    mode=ChatMode.NORMAL, message_content=message.processed_plain_text
+                )
                 available_actions = self.action_manager.get_using_actions_for_mode(ChatMode.NORMAL)
             except Exception as e:
                 logger.warning(f"[{self.stream_name}] 获取available_actions失败: {e}")

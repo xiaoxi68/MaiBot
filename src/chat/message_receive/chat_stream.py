@@ -39,6 +39,7 @@ class ChatMessageContext:
         return self.message
 
     def check_types(self, types: list) -> bool:
+        # sourcery skip: invert-any-all, use-any, use-next
         """检查消息类型"""
         if not self.message.message_info.format_info.accept_format:
             return False
