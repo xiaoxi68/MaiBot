@@ -84,7 +84,9 @@ async def get_random(count: int = 1) -> Optional[List[Tuple[str, str, str]]]:
             return None
 
         if len(valid_emojis) < count:
-            logger.warning(f"[EmojiAPI] 有效表情包数量 ({len(valid_emojis)}) 少于请求的数量 ({count})，将返回所有有效表情包")
+            logger.warning(
+                f"[EmojiAPI] 有效表情包数量 ({len(valid_emojis)}) 少于请求的数量 ({count})，将返回所有有效表情包"
+            )
             count = len(valid_emojis)
 
         # 随机选择
