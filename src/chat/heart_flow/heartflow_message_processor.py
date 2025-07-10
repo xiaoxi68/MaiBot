@@ -51,13 +51,12 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool]:
     is_mentioned, _ = is_mentioned_bot_in_message(message)
     interested_rate = 0.0
 
-    if global_config.memory.enable_memory:
-        with Timer("记忆激活"):
-            interested_rate = await hippocampus_manager.get_activate_from_text(
-                message.processed_plain_text,
-                fast_retrieval=True,
-            )
-            logger.debug(f"记忆激活率: {interested_rate:.2f}")
+    with Timer("记忆激活"):
+        interested_rate = await hippocampus_manager.get_activate_from_text(
+            message.processed_plain_text,
+            fast_retrieval=True,
+        )
+        logger.debug(f"记忆激活率: {interested_rate:.2f}")
 
     text_len = len(message.processed_plain_text)
     # 根据文本长度调整兴趣度，长度越大兴趣度越高，但增长率递减，最低0.01，最高0.05
