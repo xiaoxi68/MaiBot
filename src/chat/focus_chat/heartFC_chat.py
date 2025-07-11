@@ -2,9 +2,8 @@ import asyncio
 import time
 import traceback
 from collections import deque
-from typing import Optional, Deque, Callable, Awaitable
+from typing import Optional, Deque
 
-from sqlalchemy import False_
 from src.chat.message_receive.chat_stream import get_chat_manager
 from rich.traceback import install
 from src.chat.utils.prompt_builder import global_prompt_manager
@@ -21,8 +20,6 @@ from random import random
 from src.chat.focus_chat.hfc_utils import create_thinking_message_from_dict, add_messages_to_manager,get_recent_message_stats,cleanup_thinking_message_by_id
 from src.person_info.person_info import get_person_info_manager
 from src.plugin_system.apis import generator_api
-from ..message_receive.message import MessageThinking
-from src.chat.message_receive.normal_message_sender import message_manager
 from src.chat.willing.willing_manager import get_willing_manager
 from .priority_manager import PriorityManager
 from src.chat.utils.chat_message_builder import get_raw_msg_by_timestamp_with_chat_inclusive

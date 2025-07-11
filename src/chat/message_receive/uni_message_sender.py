@@ -1,5 +1,4 @@
 import asyncio
-from typing import Dict  # 重新导入类型
 from src.chat.message_receive.message import MessageSending
 from src.common.message.api import get_global_api
 from src.chat.message_receive.storage import MessageStorage

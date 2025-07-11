@@ -1,9 +1,8 @@
 import asyncio
 import time
-from typing import Optional, List, Tuple
+from typing import Optional
 import traceback
 from src.common.logger import get_logger
-from src.chat.message_receive.message import MessageRecv
 from src.chat.message_receive.chat_stream import get_chat_manager
 from src.chat.focus_chat.heartFC_chat import HeartFChatting
 from src.chat.utils.utils import get_chat_type_and_target_info

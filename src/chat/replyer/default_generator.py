@@ -1,10 +1,9 @@
 import traceback
 from typing import List, Optional, Dict, Any, Tuple
 
-from src.chat.message_receive.message import MessageRecv, MessageThinking, MessageSending
+from src.chat.message_receive.message import MessageRecv, MessageSending
 from src.chat.message_receive.message import Seg  # Local import needed after move
 from src.chat.message_receive.message import UserInfo
-from src.chat.message_receive.chat_stream import get_chat_manager
 from src.common.logger import get_logger
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
@@ -12,7 +11,6 @@ from src.chat.utils.timer_calculator import Timer  # <--- Import Timer
 from src.chat.message_receive.uni_message_sender import HeartFCSender
 from src.chat.utils.utils import get_chat_type_and_target_info
 from src.chat.message_receive.chat_stream import ChatStream
-from src.chat.focus_chat.hfc_utils import parse_thinking_id_to_timestamp
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_before_timestamp_with_chat
 import time
