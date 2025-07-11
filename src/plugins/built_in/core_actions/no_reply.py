@@ -100,7 +100,12 @@ class NoReplyAction(BaseAction):
 
                 # 3. 检查累计兴趣值
                 if new_message_count > 0:
-                    accumulated_interest = await self._calculate_accumulated_interest(recent_messages_dict)
+                    accumulated_interest = 0.0
+                    for msg_dict in recent_messages_dict:
+                        text = msg_dict.get("processed_plain_text", "")
+                        interest_value = msg_dict.get("interest_value", 0.0)
+                        if text:
+                            accumulated_interest += interest_value
                     logger.info(f"{self.log_prefix} 当前累计兴趣值: {accumulated_interest:.2f}")
                     if accumulated_interest >= self._interest_exit_threshold:
                         logger.info(
@@ -139,51 +144,6 @@ class NoReplyAction(BaseAction):
             )
             return False, f"不回复动作执行失败: {e}"
 
-    async def _calculate_accumulated_interest(self, messages_dicts: list[dict]) -> float:
-        """将所有新消息文本合并，然后一次性计算兴趣值"""
-        if not messages_dicts:
-            return 0.0
-
-        combined_text_parts = []
-        is_any_mentioned = False
-
-        for msg_dict in messages_dicts:
-            try:
-                text = msg_dict.get("processed_plain_text", "")
-                if text:
-                    combined_text_parts.append(text)
-            except Exception as e:
-                logger.error(f"{self.log_prefix} 处理单条消息以计算兴趣值时出错: {e}")
-
-        full_text = " ".join(combined_text_parts).strip()
-        if not full_text:
-            return 0.0
-
-        # --- 使用合并后的文本计算兴趣值 ---
-
-        if global_config.bot.nickname in full_text:
-            is_any_mentioned = True
-
-        interested_rate = 0.0
-        if global_config.memory.enable_memory:
-            try:
-                interested_rate = await hippocampus_manager.get_activate_from_text(
-                    full_text,
-                    fast_retrieval=False,
-                )
-            except Exception as e:
-                logger.error(f"{self.log_prefix} 记忆激活计算失败: {e}")
-
-        text_len = len(full_text)
-        # 根据文本长度调整兴趣度
-        base_interest = 0.01 + (0.05 - 0.01) * (math.log10(text_len + 1) / math.log10(1000 + 1))
-        base_interest = min(max(base_interest, 0.01), 0.05)
-        interested_rate += base_interest
-
-        if is_any_mentioned:
-            interested_rate += 1
-
-        return interested_rate
 
     @classmethod
     def reset_consecutive_count(cls):

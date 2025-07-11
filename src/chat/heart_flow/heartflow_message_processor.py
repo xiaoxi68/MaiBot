@@ -54,7 +54,7 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool]:
     with Timer("记忆激活"):
         interested_rate = await hippocampus_manager.get_activate_from_text(
             message.processed_plain_text,
-            fast_retrieval=True,
+            fast_retrieval=False,
         )
         logger.debug(f"记忆激活率: {interested_rate:.2f}")
 
@@ -106,20 +106,19 @@ class HeartFCMessageReceiver:
                 group_info=groupinfo,
             )
 
+            interested_rate, is_mentioned = await _calculate_interest(message)
+            message.interest_value = interested_rate
+            
             await self.storage.store_message(message, chat)
 
             subheartflow = await heartflow.get_or_create_subheartflow(chat.stream_id)
             message.update_chat_stream(chat)
-
-            # 6. 兴趣度计算与更新
-            interested_rate, is_mentioned = await _calculate_interest(message)
+            
             subheartflow.add_message_to_normal_chat_cache(message, interested_rate, is_mentioned)
 
             chat_mood = mood_manager.get_mood_by_chat_id(subheartflow.chat_id)
             asyncio.create_task(chat_mood.update_mood_by_message(message, interested_rate))
 
-            with open("interested_rates.txt", "a", encoding="utf-8") as f:
-                f.write(f"{interested_rate}\n")
 
             # 7. 日志记录
             mes_name = chat.group_info.group_name if chat.group_info else "私聊"
