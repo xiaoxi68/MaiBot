@@ -11,8 +11,6 @@ from src.common.logger import get_logger
 # 导入API模块 - 标准Python包方式
 from src.plugin_system.apis import message_api
 from src.config.config import global_config
-from src.chat.memory_system.Hippocampus import hippocampus_manager
-import math
 
 
 logger = get_logger("core_actions")
@@ -143,7 +141,6 @@ class NoReplyAction(BaseAction):
                 action_done=True,
             )
             return False, f"不回复动作执行失败: {e}"
-
 
     @classmethod
     def reset_consecutive_count(cls):

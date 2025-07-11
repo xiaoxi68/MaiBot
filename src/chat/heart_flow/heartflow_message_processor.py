@@ -108,17 +108,16 @@ class HeartFCMessageReceiver:
 
             interested_rate, is_mentioned = await _calculate_interest(message)
             message.interest_value = interested_rate
-            
+
             await self.storage.store_message(message, chat)
 
             subheartflow = await heartflow.get_or_create_subheartflow(chat.stream_id)
             message.update_chat_stream(chat)
-            
+
             subheartflow.add_message_to_normal_chat_cache(message, interested_rate, is_mentioned)
 
             chat_mood = mood_manager.get_mood_by_chat_id(subheartflow.chat_id)
             asyncio.create_task(chat_mood.update_mood_by_message(message, interested_rate))
-
 
             # 7. 日志记录
             mes_name = chat.group_info.group_name if chat.group_info else "私聊"
