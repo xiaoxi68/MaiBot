@@ -162,7 +162,6 @@ class CoreActionsPlugin(BasePlugin):
     config_section_descriptions = {
         "plugin": "插件启用配置",
         "components": "核心组件启用配置",
-        "no_reply": "不回复动作配置（智能等待机制）",
     }
 
     # 配置Schema定义
@@ -175,16 +174,6 @@ class CoreActionsPlugin(BasePlugin):
             "enable_reply": ConfigField(type=bool, default=True, description="是否启用回复动作"),
             "enable_no_reply": ConfigField(type=bool, default=True, description="是否启用不回复动作"),
             "enable_emoji": ConfigField(type=bool, default=True, description="是否启用发送表情/图片动作"),
-        },
-        "no_reply": {
-            "interest_exit_threshold": ConfigField(
-                type=float, default=3.0, description="累计兴趣值达到此阈值时自动结束等待"
-            ),
-            "min_exit_message_count": ConfigField(type=int, default=6, description="自动结束等待的最小消息数"),
-            "max_exit_message_count": ConfigField(type=int, default=9, description="自动结束等待的最大消息数"),
-            "random_probability": ConfigField(
-                type=float, default=0.8, description="Focus模式下，随机选择不回复的概率（0.0到1.0）", example=0.8
-            ),
         },
     }
 
@@ -201,18 +190,6 @@ class CoreActionsPlugin(BasePlugin):
             EmojiAction.random_activation_probability = 0.0
             EmojiAction.focus_activation_type = ActionActivationType.LLM_JUDGE
             EmojiAction.normal_activation_type = ActionActivationType.LLM_JUDGE
-
-        no_reply_probability = self.get_config("no_reply.random_probability", 0.8)
-        NoReplyAction.random_activation_probability = no_reply_probability
-
-        interest_exit_threshold = self.get_config("no_reply.interest_exit_threshold", 10.0)
-        NoReplyAction._interest_exit_threshold = interest_exit_threshold
-
-        min_exit_count = self.get_config("no_reply.min_exit_message_count", 5)
-        NoReplyAction._min_exit_message_count = min_exit_count
-
-        max_exit_count = self.get_config("no_reply.max_exit_message_count", 10)
-        NoReplyAction._max_exit_message_count = max_exit_count
 
         # --- 根据配置注册组件 ---
         components = []
