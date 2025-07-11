@@ -1,20 +1,20 @@
-from src.chat.memory_system.Hippocampus import hippocampus_manager
-from src.config.config import global_config
 import asyncio
+import re
+import math
+import traceback
+
+from typing import Tuple
+
+from src.config.config import global_config
+from src.chat.memory_system.Hippocampus import hippocampus_manager
 from src.chat.message_receive.message import MessageRecv
 from src.chat.message_receive.storage import MessageStorage
 from src.chat.heart_flow.heartflow import heartflow
 from src.chat.utils.utils import is_mentioned_bot_in_message
 from src.chat.utils.timer_calculator import Timer
 from src.common.logger import get_logger
-import re
-import math
-import traceback
-from typing import Tuple
-
 from src.person_info.relationship_manager import get_relationship_manager
 from src.mood.mood_manager import mood_manager
-
 
 logger = get_logger("chat")
 
@@ -26,16 +26,16 @@ async def _process_relationship(message: MessageRecv) -> None:
         message: 消息对象，包含用户信息
     """
     platform = message.message_info.platform
-    user_id = message.message_info.user_info.user_id
-    nickname = message.message_info.user_info.user_nickname
-    cardname = message.message_info.user_info.user_cardname or nickname
+    user_id = message.message_info.user_info.user_id  # type: ignore
+    nickname = message.message_info.user_info.user_nickname  # type: ignore
+    cardname = message.message_info.user_info.user_cardname or nickname  # type: ignore
 
     relationship_manager = get_relationship_manager()
     is_known = await relationship_manager.is_known_some_one(platform, user_id)
 
     if not is_known:
         logger.info(f"首次认识用户: {nickname}")
-        await relationship_manager.first_knowing_some_one(platform, user_id, nickname, cardname)
+        await relationship_manager.first_knowing_some_one(platform, user_id, nickname, cardname)  # type: ignore
 
 
 async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool]:
@@ -105,9 +105,9 @@ class HeartFCMessageReceiver:
 
             # 2. 兴趣度计算与更新
             interested_rate, is_mentioned = await _calculate_interest(message)
-            subheartflow.add_message_to_normal_chat_cache(message, interested_rate, is_mentioned)
+            subheartflow.add_message_to_normal_chat_cache(message, interested_rate, is_mentioned)  # type: ignore
 
-            chat_mood = mood_manager.get_mood_by_chat_id(subheartflow.chat_id)
+            chat_mood = mood_manager.get_mood_by_chat_id(subheartflow.chat_id)  # type: ignore
             asyncio.create_task(chat_mood.update_mood_by_message(message, interested_rate))
 
             # 3. 日志记录
@@ -119,7 +119,7 @@ class HeartFCMessageReceiver:
             picid_pattern = r"\[picid:([^\]]+)\]"
             processed_plain_text = re.sub(picid_pattern, "[图片]", message.processed_plain_text)
 
-            logger.info(f"[{mes_name}]{userinfo.user_nickname}:{processed_plain_text}")
+            logger.info(f"[{mes_name}]{userinfo.user_nickname}:{processed_plain_text}")  # type: ignore
 
             logger.debug(f"[{mes_name}][当前时段回复频率: {current_talk_frequency}]")
 

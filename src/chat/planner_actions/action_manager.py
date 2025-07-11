@@ -27,14 +27,11 @@ class ActionManager:
         # 当前正在使用的动作集合，默认加载默认动作
         self._using_actions: Dict[str, ActionInfo] = {}
 
-        # 默认动作集，仅作为快照，用于恢复默认
-        self._default_actions: Dict[str, ActionInfo] = {}
-
         # 加载插件动作
         self._load_plugin_actions()
 
         # 初始化时将默认动作加载到使用中的动作
-        self._using_actions = self._default_actions.copy()
+        self._using_actions = component_registry.get_default_actions()
 
     def _load_plugin_actions(self) -> None:
         """
@@ -52,7 +49,7 @@ class ActionManager:
         """从插件系统的component_registry加载Action组件"""
         try:
             # 获取所有Action组件
-            action_components: Dict[str, ActionInfo] = component_registry.get_components_by_type(ComponentType.ACTION)
+            action_components: Dict[str, ActionInfo] = component_registry.get_components_by_type(ComponentType.ACTION)  # type: ignore
 
             for action_name, action_info in action_components.items():
                 if action_name in self._registered_actions:
@@ -60,10 +57,6 @@ class ActionManager:
                     continue
 
                 self._registered_actions[action_name] = action_info
-
-                # 如果启用，也添加到默认动作集
-                if action_info.enabled:
-                    self._default_actions[action_name] = action_info
 
                 logger.debug(
                     f"从插件系统加载Action组件: {action_name} (插件: {getattr(action_info, 'plugin_name', 'unknown')})"
@@ -106,7 +99,9 @@ class ActionManager:
         """
         try:
             # 获取组件类 - 明确指定查询Action类型
-            component_class = component_registry.get_component_class(action_name, ComponentType.ACTION)
+            component_class: Type[BaseAction] = component_registry.get_component_class(
+                action_name, ComponentType.ACTION
+            )  # type: ignore
             if not component_class:
                 logger.warning(f"{log_prefix} 未找到Action组件: {action_name}")
                 return None
@@ -145,10 +140,6 @@ class ActionManager:
     def get_registered_actions(self) -> Dict[str, ActionInfo]:
         """获取所有已注册的动作集"""
         return self._registered_actions.copy()
-
-    def get_default_actions(self) -> Dict[str, ActionInfo]:
-        """获取默认动作集"""
-        return self._default_actions.copy()
 
     def get_using_actions(self) -> Dict[str, ActionInfo]:
         """获取当前正在使用的动作集合"""
@@ -217,31 +208,31 @@ class ActionManager:
         logger.debug(f"已从使用集中移除动作 {action_name}")
         return True
 
-    def add_action(self, action_name: str, description: str, parameters: Dict = None, require: List = None) -> bool:
-        """
-        添加新的动作到注册集
+    # def add_action(self, action_name: str, description: str, parameters: Dict = None, require: List = None) -> bool:
+    #     """
+    #     添加新的动作到注册集
 
-        Args:
-            action_name: 动作名称
-            description: 动作描述
-            parameters: 动作参数定义，默认为空字典
-            require: 动作依赖项，默认为空列表
+    #     Args:
+    #         action_name: 动作名称
+    #         description: 动作描述
+    #         parameters: 动作参数定义，默认为空字典
+    #         require: 动作依赖项，默认为空列表
 
-        Returns:
-            bool: 添加是否成功
-        """
-        if action_name in self._registered_actions:
-            return False
+    #     Returns:
+    #         bool: 添加是否成功
+    #     """
+    #     if action_name in self._registered_actions:
+    #         return False
 
-        if parameters is None:
-            parameters = {}
-        if require is None:
-            require = []
+    #     if parameters is None:
+    #         parameters = {}
+    #     if require is None:
+    #         require = []
 
-        action_info = {"description": description, "parameters": parameters, "require": require}
+    #     action_info = {"description": description, "parameters": parameters, "require": require}
 
-        self._registered_actions[action_name] = action_info
-        return True
+    #     self._registered_actions[action_name] = action_info
+    #     return True
 
     def remove_action(self, action_name: str) -> bool:
         """从注册集移除指定动作"""
@@ -260,10 +251,9 @@ class ActionManager:
 
     def restore_actions(self) -> None:
         """恢复到默认动作集"""
-        logger.debug(
-            f"恢复动作集: 从 {list(self._using_actions.keys())} 恢复到默认动作集 {list(self._default_actions.keys())}"
-        )
-        self._using_actions = self._default_actions.copy()
+        actions_to_restore = list(self._using_actions.keys())
+        self._using_actions = component_registry.get_default_actions()
+        logger.debug(f"恢复动作集: 从 {actions_to_restore} 恢复到默认动作集 {list(self._using_actions.keys())}")
 
     def add_system_action_if_needed(self, action_name: str) -> bool:
         """
@@ -293,4 +283,4 @@ class ActionManager:
         """
         from src.plugin_system.core.component_registry import component_registry
 
-        return component_registry.get_component_class(action_name)
+        return component_registry.get_component_class(action_name)  # type: ignore

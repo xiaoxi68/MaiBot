@@ -1,11 +1,10 @@
 import re
 from typing import Union
 
-# from ...common.database.database import db  # db is now Peewee's SqliteDatabase instance
-from .message import MessageSending, MessageRecv
-from .chat_stream import ChatStream
-from ...common.database.database_model import Messages, RecalledMessages, Images  # Import Peewee models
+from src.common.database.database_model import Messages, RecalledMessages, Images
 from src.common.logger import get_logger
+from .chat_stream import ChatStream
+from .message import MessageSending, MessageRecv
 
 logger = get_logger("message_storage")
 
@@ -44,7 +43,7 @@ class MessageStorage:
                 reply_to = ""
 
             chat_info_dict = chat_stream.to_dict()
-            user_info_dict = message.message_info.user_info.to_dict()
+            user_info_dict = message.message_info.user_info.to_dict()  # type: ignore
 
             # message_id 现在是 TextField，直接使用字符串值
             msg_id = message.message_info.message_id
@@ -56,7 +55,7 @@ class MessageStorage:
 
             Messages.create(
                 message_id=msg_id,
-                time=float(message.message_info.time),
+                time=float(message.message_info.time),  # type: ignore
                 chat_id=chat_stream.stream_id,
                 # Flattened chat_info
                 reply_to=reply_to,
@@ -103,7 +102,7 @@ class MessageStorage:
         try:
             # Assuming input 'time' is a string timestamp that can be converted to float
             current_time_float = float(time)
-            RecalledMessages.delete().where(RecalledMessages.time < (current_time_float - 300)).execute()
+            RecalledMessages.delete().where(RecalledMessages.time < (current_time_float - 300)).execute()  # type: ignore
         except Exception:
             logger.exception("删除撤回消息失败")
 
@@ -115,22 +114,19 @@ class MessageStorage:
         """更新最新一条匹配消息的message_id"""
         try:
             if message.message_segment.type == "notify":
-                mmc_message_id = message.message_segment.data.get("echo")
-                qq_message_id = message.message_segment.data.get("actual_id")
+                mmc_message_id = message.message_segment.data.get("echo")  # type: ignore
+                qq_message_id = message.message_segment.data.get("actual_id")  # type: ignore
             else:
                 logger.info(f"更新消息ID错误，seg类型为{message.message_segment.type}")
                 return
             if not qq_message_id:
                 logger.info("消息不存在message_id，无法更新")
                 return
-            # 查询最新一条匹配消息
-            matched_message = (
+            if matched_message := (
                 Messages.select().where((Messages.message_id == mmc_message_id)).order_by(Messages.time.desc()).first()
-            )
-
-            if matched_message:
+            ):
                 # 更新找到的消息记录
-                Messages.update(message_id=qq_message_id).where(Messages.id == matched_message.id).execute()
+                Messages.update(message_id=qq_message_id).where(Messages.id == matched_message.id).execute()  # type: ignore
                 logger.debug(f"更新消息ID成功: {matched_message.message_id} -> {qq_message_id}")
             else:
                 logger.debug("未找到匹配的消息")
@@ -155,10 +151,7 @@ class MessageStorage:
                 image_record = (
                     Images.select().where(Images.description == description).order_by(Images.timestamp.desc()).first()
                 )
-                if image_record:
-                    return f"[picid:{image_record.image_id}]"
-                else:
-                    return match.group(0)  # 保持原样
+                return f"[picid:{image_record.image_id}]" if image_record else match.group(0)
             except Exception:
                 return match.group(0)
 

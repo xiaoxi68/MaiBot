@@ -1,16 +1,18 @@
 import asyncio
 import time
-from typing import Optional, List, Dict, Tuple
 import traceback
+
+from typing import Optional, List, Dict, Tuple
+from rich.traceback import install
+
 from src.common.logger import get_logger
+from src.config.config import global_config
 from src.chat.message_receive.message import MessageRecv
 from src.chat.message_receive.chat_stream import get_chat_manager
 from src.chat.focus_chat.heartFC_chat import HeartFChatting
 from src.chat.normal_chat.normal_chat import NormalChat
 from src.chat.heart_flow.chat_state_info import ChatState, ChatStateInfo
 from src.chat.utils.utils import get_chat_type_and_target_info
-from src.config.config import global_config
-from rich.traceback import install
 
 logger = get_logger("sub_heartflow")
 
@@ -40,7 +42,7 @@ class SubHeartflow:
         self.is_group_chat, self.chat_target_info = get_chat_type_and_target_info(self.chat_id)
         self.log_prefix = get_chat_manager().get_stream_name(self.subheartflow_id) or self.subheartflow_id
         # 兴趣消息集合
-        self.interest_dict: Dict[str, tuple[MessageRecv, float, bool]] = {}
+        self.interest_dict: Dict[str, Tuple[MessageRecv, float, bool]] = {}
 
         # focus模式退出冷却时间管理
         self.last_focus_exit_time: float = 0  # 上次退出focus模式的时间
@@ -297,7 +299,7 @@ class SubHeartflow:
             )
 
     def add_message_to_normal_chat_cache(self, message: MessageRecv, interest_value: float, is_mentioned: bool):
-        self.interest_dict[message.message_info.message_id] = (message, interest_value, is_mentioned)
+        self.interest_dict[message.message_info.message_id] = (message, interest_value, is_mentioned)  # type: ignore
         # 如果字典长度超过10，删除最旧的消息
         if len(self.interest_dict) > 30:
             oldest_key = next(iter(self.interest_dict))

@@ -35,9 +35,7 @@ class ClassicalWillingManager(BaseWillingManager):
 
         self.chat_reply_willing[chat_id] = min(current_willing, 3.0)
 
-        reply_probability = min(max((current_willing - 0.5), 0.01) * 2, 1)
-
-        return reply_probability
+        return min(max((current_willing - 0.5), 0.01) * 2, 1)
 
     async def before_generate_reply_handle(self, message_id):
         chat_id = self.ongoing_messages[message_id].chat_id

@@ -1,14 +1,15 @@
-from src.config.config import global_config
-from typing import List, Dict, Any, Tuple  # 确保类型提示被导入
 import time  # 导入 time 模块以获取当前时间
 import random
 import re
-from src.common.message_repository import find_messages, count_messages
-from src.person_info.person_info import PersonInfoManager, get_person_info_manager
-from src.chat.utils.utils import translate_timestamp_to_human_readable
+from typing import List, Dict, Any, Tuple, Optional
 from rich.traceback import install
+
+from src.config.config import global_config
+from src.common.message_repository import find_messages, count_messages
 from src.common.database.database_model import ActionRecords
 from src.common.database.database_model import Images
+from src.person_info.person_info import PersonInfoManager, get_person_info_manager
+from src.chat.utils.utils import translate_timestamp_to_human_readable
 
 install(extra_lines=3)
 
@@ -135,7 +136,7 @@ def get_raw_msg_before_timestamp_with_users(timestamp: float, person_ids: list, 
     return find_messages(message_filter=filter_query, sort=sort_order, limit=limit)
 
 
-def num_new_messages_since(chat_id: str, timestamp_start: float = 0.0, timestamp_end: float = None) -> int:
+def num_new_messages_since(chat_id: str, timestamp_start: float = 0.0, timestamp_end: Optional[float] = None) -> int:
     """
     检查特定聊天从 timestamp_start (不含) 到 timestamp_end (不含) 之间有多少新消息。
     如果 timestamp_end 为 None，则检查从 timestamp_start (不含) 到当前时间的消息。
@@ -172,7 +173,7 @@ def _build_readable_messages_internal(
     merge_messages: bool = False,
     timestamp_mode: str = "relative",
     truncate: bool = False,
-    pic_id_mapping: Dict[str, str] = None,
+    pic_id_mapping: Optional[Dict[str, str]] = None,
     pic_counter: int = 1,
     show_pic: bool = True,
 ) -> Tuple[str, List[Tuple[float, str, str]], Dict[str, str], int]:
@@ -194,7 +195,7 @@ def _build_readable_messages_internal(
     if not messages:
         return "", [], pic_id_mapping or {}, pic_counter
 
-    message_details_raw: List[Tuple[float, str, str]] = []
+    message_details_raw: List[Tuple[float, str, str, bool]] = []
 
     # 使用传入的映射字典，如果没有则创建新的
     if pic_id_mapping is None:
@@ -225,7 +226,7 @@ def _build_readable_messages_internal(
         # 检查是否是动作记录
         if msg.get("is_action_record", False):
             is_action = True
-            timestamp = msg.get("time")
+            timestamp: float = msg.get("time")  # type: ignore
             content = msg.get("display_message", "")
             # 对于动作记录，也处理图片ID
             content = process_pic_ids(content)
@@ -249,9 +250,10 @@ def _build_readable_messages_internal(
         user_nickname = user_info.get("user_nickname")
         user_cardname = user_info.get("user_cardname")
 
-        timestamp = msg.get("time")
+        timestamp: float = msg.get("time")  # type: ignore
+        content: str
         if msg.get("display_message"):
-            content = msg.get("display_message")
+            content = msg.get("display_message", "")
         else:
             content = msg.get("processed_plain_text", "")  # 默认空字符串
 
@@ -271,6 +273,7 @@ def _build_readable_messages_internal(
         person_id = PersonInfoManager.get_person_id(platform, user_id)
         person_info_manager = get_person_info_manager()
         # 根据 replace_bot_name 参数决定是否替换机器人名称
+        person_name: str
         if replace_bot_name and user_id == global_config.bot.qq_account:
             person_name = f"{global_config.bot.nickname}(你)"
         else:
@@ -289,12 +292,10 @@ def _build_readable_messages_internal(
         reply_pattern = r"回复<([^:<>]+):([^:<>]+)>"
         match = re.search(reply_pattern, content)
         if match:
-            aaa = match.group(1)
-            bbb = match.group(2)
+            aaa: str = match[1]
+            bbb: str = match[2]
             reply_person_id = PersonInfoManager.get_person_id(platform, bbb)
-            reply_person_name = person_info_manager.get_value_sync(reply_person_id, "person_name")
-            if not reply_person_name:
-                reply_person_name = aaa
+            reply_person_name = person_info_manager.get_value_sync(reply_person_id, "person_name") or aaa
             # 在内容前加上回复信息
             content = re.sub(reply_pattern, lambda m, name=reply_person_name: f"回复 {name}", content, count=1)
 
@@ -309,18 +310,15 @@ def _build_readable_messages_internal(
                 aaa = m.group(1)
                 bbb = m.group(2)
                 at_person_id = PersonInfoManager.get_person_id(platform, bbb)
-                at_person_name = person_info_manager.get_value_sync(at_person_id, "person_name")
-                if not at_person_name:
-                    at_person_name = aaa
+                at_person_name = person_info_manager.get_value_sync(at_person_id, "person_name") or aaa
                 new_content += f"@{at_person_name}"
                 last_end = m.end()
             new_content += content[last_end:]
             content = new_content
 
         target_str = "这是QQ的一个功能，用于提及某人，但没那么明显"
-        if target_str in content:
-            if random.random() < 0.6:
-                content = content.replace(target_str, "")
+        if target_str in content and random.random() < 0.6:
+            content = content.replace(target_str, "")
 
         if content != "":
             message_details_raw.append((timestamp, person_name, content, False))
@@ -470,6 +468,7 @@ def _build_readable_messages_internal(
 
 
 def build_pic_mapping_info(pic_id_mapping: Dict[str, str]) -> str:
+    # sourcery skip: use-contextlib-suppress
     """
     构建图片映射信息字符串，显示图片的具体描述内容
 
@@ -518,9 +517,7 @@ async def build_readable_messages_with_list(
         messages, replace_bot_name, merge_messages, timestamp_mode, truncate
     )
 
-    # 生成图片映射信息并添加到最前面
-    pic_mapping_info = build_pic_mapping_info(pic_id_mapping)
-    if pic_mapping_info:
+    if pic_mapping_info := build_pic_mapping_info(pic_id_mapping):
         formatted_string = f"{pic_mapping_info}\n\n{formatted_string}"
 
     return formatted_string, details_list
@@ -535,7 +532,7 @@ def build_readable_messages(
     truncate: bool = False,
     show_actions: bool = False,
     show_pic: bool = True,
-) -> str:
+) -> str:  # sourcery skip: extract-method
     """
     将消息列表转换为可读的文本格式。
     如果提供了 read_mark，则在相应位置插入已读标记。
@@ -658,9 +655,7 @@ def build_readable_messages(
         # 组合结果
         result_parts = []
         if pic_mapping_info:
-            result_parts.append(pic_mapping_info)
-            result_parts.append("\n")
-
+            result_parts.extend((pic_mapping_info, "\n"))
         if formatted_before and formatted_after:
             result_parts.extend([formatted_before, read_mark_line, formatted_after])
         elif formatted_before:
@@ -733,8 +728,9 @@ async def build_anonymous_messages(messages: List[Dict[str, Any]]) -> str:
             platform = msg.get("chat_info_platform")
             user_id = msg.get("user_id")
             _timestamp = msg.get("time")
+            content: str = ""
             if msg.get("display_message"):
-                content = msg.get("display_message")
+                content = msg.get("display_message", "")
             else:
                 content = msg.get("processed_plain_text", "")
 
@@ -829,10 +825,7 @@ async def get_person_id_list(messages: List[Dict[str, Any]]) -> List[str]:
         if not all([platform, user_id]) or user_id == global_config.bot.qq_account:
             continue
 
-        person_id = PersonInfoManager.get_person_id(platform, user_id)
-
-        # 只有当获取到有效 person_id 时才添加
-        if person_id:
+        if person_id := PersonInfoManager.get_person_id(platform, user_id):
             person_ids_set.add(person_id)
 
     return list(person_ids_set)  # 将集合转换为列表返回

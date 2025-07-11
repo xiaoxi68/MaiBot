@@ -81,7 +81,9 @@ class ComponentInfo:
 class ActionInfo(ComponentInfo):
     """动作组件信息"""
 
-    action_parameters: Dict[str, str] = field(default_factory=dict)  # 动作参数与描述，例如 {"param1": "描述1", "param2": "描述2"}
+    action_parameters: Dict[str, str] = field(
+        default_factory=dict
+    )  # 动作参数与描述，例如 {"param1": "描述1", "param2": "描述2"}
     action_require: List[str] = field(default_factory=list)  # 动作需求说明
     associated_types: List[str] = field(default_factory=list)  # 关联的消息类型
     # 激活类型相关

@@ -1,16 +1,17 @@
 import asyncio
-from typing import Dict, Optional  # 重新导入类型
-from src.chat.message_receive.message import MessageSending, MessageThinking
-from src.common.message.api import get_global_api
-from src.chat.message_receive.storage import MessageStorage
-from src.chat.utils.utils import truncate_message
-from src.common.logger import get_logger
-from src.chat.utils.utils import calculate_typing_time
-from rich.traceback import install
 import traceback
 
-install(extra_lines=3)
+from typing import Dict, Optional
+from rich.traceback import install
 
+from src.common.message.api import get_global_api
+from src.common.logger import get_logger
+from src.chat.message_receive.message import MessageSending, MessageThinking
+from src.chat.message_receive.storage import MessageStorage
+from src.chat.utils.utils import truncate_message
+from src.chat.utils.utils import calculate_typing_time
+
+install(extra_lines=3)
 
 logger = get_logger("sender")
 
@@ -86,10 +87,10 @@ class HeartFCSender:
         """
         if not message.chat_stream:
             logger.error("消息缺少 chat_stream，无法发送")
-            raise Exception("消息缺少 chat_stream，无法发送")
+            raise ValueError("消息缺少 chat_stream，无法发送")
         if not message.message_info or not message.message_info.message_id:
             logger.error("消息缺少 message_info 或 message_id，无法发送")
-            raise Exception("消息缺少 message_info 或 message_id，无法发送")
+            raise ValueError("消息缺少 message_info 或 message_id，无法发送")
 
         chat_id = message.chat_stream.stream_id
         message_id = message.message_info.message_id

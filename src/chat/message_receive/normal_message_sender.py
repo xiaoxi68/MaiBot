@@ -1,21 +1,16 @@
-# src/plugins/chat/message_sender.py
 import asyncio
 import time
 from asyncio import Task
 from typing import Union
-from src.common.message.api import get_global_api
-
-# from ...common.database import db # 数据库依赖似乎不需要了，注释掉
-from .message import MessageSending, MessageThinking, MessageSet
-
-from src.chat.message_receive.storage import MessageStorage
-from ..utils.utils import truncate_message, calculate_typing_time, count_messages_between
-
-from src.common.logger import get_logger
 from rich.traceback import install
 
-install(extra_lines=3)
+from src.common.logger import get_logger
+from src.common.message.api import get_global_api
+from src.chat.message_receive.storage import MessageStorage
+from src.chat.utils.utils import truncate_message, calculate_typing_time, count_messages_between
+from .message import MessageSending, MessageThinking, MessageSet
 
+install(extra_lines=3)
 
 logger = get_logger("sender")
 
@@ -79,9 +74,10 @@ class MessageContainer:
 
     def count_thinking_messages(self) -> int:
         """计算当前容器中思考消息的数量"""
-        return sum(1 for msg in self.messages if isinstance(msg, MessageThinking))
+        return sum(isinstance(msg, MessageThinking) for msg in self.messages)
 
     def get_timeout_sending_messages(self) -> list[MessageSending]:
+        # sourcery skip: merge-nested-ifs
         """获取所有超时的MessageSending对象（思考时间超过20秒），按thinking_start_time排序 - 从旧 sender 合并"""
         current_time = time.time()
         timeout_messages = []
@@ -230,9 +226,7 @@ class MessageManager:
                 f"[{message.chat_stream.stream_id}] 处理发送消息 {getattr(message.message_info, 'message_id', 'N/A')} 时出错: {e}"
             )
             logger.exception("详细错误信息:")
-            # 考虑是否移除出错的消息，防止无限循环
-            removed = container.remove_message(message)
-            if removed:
+            if container.remove_message(message):
                 logger.warning(f"[{message.chat_stream.stream_id}] 已移除处理出错的消息。")
 
     async def _process_chat_messages(self, chat_id: str):
@@ -261,10 +255,7 @@ class MessageManager:
                 # --- 处理发送消息 ---
                 await self._handle_sending_message(container, message_earliest)
 
-            # --- 处理超时发送消息 (来自旧 sender) ---
-            # 在处理完最早的消息后，检查是否有超时的发送消息
-            timeout_sending_messages = container.get_timeout_sending_messages()
-            if timeout_sending_messages:
+            if timeout_sending_messages := container.get_timeout_sending_messages():
                 logger.debug(f"[{chat_id}] 发现 {len(timeout_sending_messages)} 条超时的发送消息")
                 for msg in timeout_sending_messages:
                     # 确保不是刚刚处理过的最早消息 (虽然理论上应该已被移除，但以防万一)
@@ -274,6 +265,7 @@ class MessageManager:
                     await self._handle_sending_message(container, msg)  # 复用处理逻辑
 
     async def _start_processor_loop(self):
+        # sourcery skip: list-comprehension, move-assign-in-block, use-named-expression
         """消息处理器主循环"""
         while self._running:
             tasks = []
@@ -282,10 +274,7 @@ class MessageManager:
                 # 创建 keys 的快照以安全迭代
                 chat_ids = list(self.containers.keys())
 
-            for chat_id in chat_ids:
-                # 为每个 chat_id 创建一个处理任务
-                tasks.append(asyncio.create_task(self._process_chat_messages(chat_id)))
-
+            tasks.extend(asyncio.create_task(self._process_chat_messages(chat_id)) for chat_id in chat_ids)
             if tasks:
                 try:
                     # 等待当前批次的所有任务完成

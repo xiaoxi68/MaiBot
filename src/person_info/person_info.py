@@ -3,7 +3,7 @@ from src.common.database.database import db
 from src.common.database.database_model import PersonInfo  # 新增导入
 import copy
 import hashlib
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Union
 import datetime
 import asyncio
 from src.llm_models.utils_model import LLMRequest
@@ -84,7 +84,7 @@ class PersonInfoManager:
             logger.error(f"从 Peewee 加载 person_name_list 失败: {e}")
 
     @staticmethod
-    def get_person_id(platform: str, user_id: int):
+    def get_person_id(platform: str, user_id: Union[int, str]) -> str:
         """获取唯一id"""
         if "-" in platform:
             platform = platform.split("-")[1]

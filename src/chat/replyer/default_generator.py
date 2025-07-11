@@ -130,9 +130,7 @@ class DefaultReplyer:
         # 提取权重，如果模型配置中没有'weight'键，则默认为1.0
         weights = [config.get("weight", 1.0) for config in configs]
 
-        # random.choices 返回一个列表，我们取第一个元素
-        selected_config = random.choices(population=configs, weights=weights, k=1)[0]
-        return selected_config
+        return random.choices(population=configs, weights=weights, k=1)[0]
 
     async def _create_thinking_message(self, anchor_message: Optional[MessageRecv], thinking_id: str):
         """创建思考消息 (尝试锚定到 anchor_message)"""
@@ -314,8 +312,7 @@ class DefaultReplyer:
             logger.warning(f"{self.log_prefix} 未找到用户 {sender} 的ID，跳过信息提取")
             return f"你完全不认识{sender}，不理解ta的相关信息。"
 
-        relation_info = await relationship_fetcher.build_relation_info(person_id, text, chat_history)
-        return relation_info
+        return await relationship_fetcher.build_relation_info(person_id, text, chat_history)
 
     async def build_expression_habits(self, chat_history, target):
         if not global_config.expression.enable_expression:
@@ -363,15 +360,13 @@ class DefaultReplyer:
             target_message=target, chat_history_prompt=chat_history
         )
 
-        if running_memories:
-            memory_str = "以下是当前在聊天中，你回忆起的记忆：\n"
-            for running_memory in running_memories:
-                memory_str += f"- {running_memory['content']}\n"
-            memory_block = memory_str
-        else:
-            memory_block = ""
+        if not running_memories:
+            return ""
 
-        return memory_block
+        memory_str = "以下是当前在聊天中，你回忆起的记忆：\n"
+        for running_memory in running_memories:
+            memory_str += f"- {running_memory['content']}\n"
+        return memory_str
 
     async def build_tool_info(self, reply_data=None, chat_history=None, enable_tool: bool = True):
         """构建工具信息块
@@ -453,7 +448,7 @@ class DefaultReplyer:
                             for name, content in result.groupdict().items():
                                 reaction = reaction.replace(f"[{name}]", content)
                             logger.info(f"匹配到正则表达式：{pattern_str}，触发反应：{reaction}")
-                            keywords_reaction_prompt += reaction + "，"
+                            keywords_reaction_prompt += f"{reaction}，"
                             break
                     except re.error as e:
                         logger.error(f"正则表达式编译错误: {pattern_str}, 错误信息: {str(e)}")
@@ -477,7 +472,7 @@ class DefaultReplyer:
         available_actions: Optional[Dict[str, ActionInfo]] = None,
         enable_timeout: bool = False,
         enable_tool: bool = True,
-    ) -> str:
+    ) -> str:  # sourcery skip: merge-else-if-into-elif, remove-redundant-if
         """
         构建回复器上下文
 
@@ -612,7 +607,7 @@ class DefaultReplyer:
             short_impression = ["友好活泼", "人类"]
         personality = short_impression[0]
         identity = short_impression[1]
-        prompt_personality = personality + "，" + identity
+        prompt_personality = f"{personality}，{identity}"
         identity_block = f"你的名字是{bot_name}{bot_nickname}，你{prompt_personality}："
 
         moderation_prompt_block = (
@@ -660,7 +655,7 @@ class DefaultReplyer:
                 "chat_target_private2", sender_name=chat_target_name
             )
 
-        prompt = await global_prompt_manager.format_prompt(
+        return await global_prompt_manager.format_prompt(
             template_name,
             expression_habits_block=expression_habits_block,
             chat_target=chat_target_1,
@@ -682,8 +677,6 @@ class DefaultReplyer:
             chat_target_2=chat_target_2,
             mood_state=mood_prompt,
         )
-
-        return prompt
 
     async def build_prompt_rewrite_context(
         self,
@@ -745,7 +738,7 @@ class DefaultReplyer:
             short_impression = ["友好活泼", "人类"]
         personality = short_impression[0]
         identity = short_impression[1]
-        prompt_personality = personality + "，" + identity
+        prompt_personality = f"{personality}，{identity}"
         identity_block = f"你的名字是{bot_name}{bot_nickname}，你{prompt_personality}："
 
         moderation_prompt_block = (
@@ -790,7 +783,7 @@ class DefaultReplyer:
 
         template_name = "default_expressor_prompt"
 
-        prompt = await global_prompt_manager.format_prompt(
+        return await global_prompt_manager.format_prompt(
             template_name,
             expression_habits_block=expression_habits_block,
             relation_info_block=relation_info,
@@ -807,8 +800,6 @@ class DefaultReplyer:
             moderation_prompt=moderation_prompt_block,
         )
 
-        return prompt
-
     async def send_response_messages(
         self,
         anchor_message: Optional[MessageRecv],
@@ -816,6 +807,7 @@ class DefaultReplyer:
         thinking_id: str = "",
         display_message: str = "",
     ) -> Optional[MessageSending]:
+        # sourcery skip: assign-if-exp, boolean-if-exp-identity, remove-unnecessary-cast
         """发送回复消息 (尝试锚定到 anchor_message)，使用 HeartFCSender"""
         chat = self.chat_stream
         chat_id = self.chat_stream.stream_id
@@ -849,16 +841,16 @@ class DefaultReplyer:
 
         for i, msg_text in enumerate(response_set):
             # 为每个消息片段生成唯一ID
-            type = msg_text[0]
+            msg_type = msg_text[0]
             data = msg_text[1]
 
-            if global_config.debug.debug_show_chat_mode and type == "text":
+            if global_config.debug.debug_show_chat_mode and msg_type == "text":
                 data += "ᶠ"
 
             part_message_id = f"{thinking_id}_{i}"
-            message_segment = Seg(type=type, data=data)
+            message_segment = Seg(type=msg_type, data=data)
 
-            if type == "emoji":
+            if msg_type == "emoji":
                 is_emoji = True
             else:
                 is_emoji = False
@@ -871,7 +863,6 @@ class DefaultReplyer:
                 display_message=display_message,
                 reply_to=reply_to,
                 is_emoji=is_emoji,
-                thinking_id=thinking_id,
                 thinking_start_time=thinking_start_time,
             )
 
@@ -895,7 +886,7 @@ class DefaultReplyer:
 
                 reply_message_ids.append(part_message_id)  # 记录我们生成的ID
 
-                sent_msg_list.append((type, sent_msg))
+                sent_msg_list.append((msg_type, sent_msg))
 
             except Exception as e:
                 logger.error(f"{self.log_prefix}发送回复片段 {i} ({part_message_id}) 时失败: {e}")
@@ -930,12 +921,9 @@ class DefaultReplyer:
         )
 
         # await anchor_message.process()
-        if anchor_message:
-            sender_info = anchor_message.message_info.user_info
-        else:
-            sender_info = None
+        sender_info = anchor_message.message_info.user_info if anchor_message else None
 
-        bot_message = MessageSending(
+        return MessageSending(
             message_id=message_id,  # 使用片段的唯一ID
             chat_stream=self.chat_stream,
             bot_user_info=bot_user_info,
@@ -947,8 +935,6 @@ class DefaultReplyer:
             thinking_start_time=thinking_start_time,  # 传递原始思考开始时间
             display_message=display_message,
         )
-
-        return bot_message
 
 
 def weighted_sample_no_replacement(items, weights, k) -> list:

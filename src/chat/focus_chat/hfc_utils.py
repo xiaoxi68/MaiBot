@@ -1,11 +1,12 @@
 import time
-from typing import Optional
+import json
+
+from typing import Optional, Dict, Any
+
 from src.chat.message_receive.message import MessageRecv, BaseMessageInfo
 from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.message_receive.message import UserInfo
 from src.common.logger import get_logger
-import json
-from typing import Dict, Any
 
 logger = get_logger(__name__)
 
@@ -117,7 +118,7 @@ async def create_empty_anchor_message(
     placeholder_msg_info = BaseMessageInfo(
         message_id=placeholder_id,
         platform=platform,
-        group_info=group_info,
+        group_info=group_info,  # type: ignore
         user_info=placeholder_user,
         time=time.time(),
     )

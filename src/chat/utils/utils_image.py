@@ -103,7 +103,7 @@ class ImageManager:
                 image_base64 = image_base64.encode("ascii", errors="ignore").decode("ascii")
             image_bytes = base64.b64decode(image_base64)
             image_hash = hashlib.md5(image_bytes).hexdigest()
-            image_format = Image.open(io.BytesIO(image_bytes)).format.lower()
+            image_format = Image.open(io.BytesIO(image_bytes)).format.lower()  # type: ignore
 
             # 查询缓存的描述
             cached_description = self._get_description_from_db(image_hash, "emoji")
@@ -154,7 +154,7 @@ class ImageManager:
                     img_obj.description = description
                     img_obj.timestamp = current_timestamp
                     img_obj.save()
-                except Images.DoesNotExist:
+                except Images.DoesNotExist:  # type: ignore
                     Images.create(
                         emoji_hash=image_hash,
                         path=file_path,
@@ -204,7 +204,7 @@ class ImageManager:
                 return f"[图片：{cached_description}]"
 
             # 调用AI获取描述
-            image_format = Image.open(io.BytesIO(image_bytes)).format.lower()
+            image_format = Image.open(io.BytesIO(image_bytes)).format.lower()  # type: ignore
             prompt = "请用中文描述这张图片的内容。如果有文字，请把文字都描述出来，请留意其主题，直观感受，输出为一段平文本，最多50字"
             description, _ = await self._llm.generate_response_for_image(prompt, image_base64, image_format)
 
@@ -491,7 +491,7 @@ class ImageManager:
                 return
 
             # 获取图片格式
-            image_format = Image.open(io.BytesIO(image_bytes)).format.lower()
+            image_format = Image.open(io.BytesIO(image_bytes)).format.lower()  # type: ignore
 
             # 构建prompt
             prompt = """请用中文描述这张图片的内容。如果有文字，请把文字描述概括出来，请留意其主题，直观感受，输出为一段平文本，最多30字，请注意不要分点，就输出一段文本"""

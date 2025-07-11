@@ -53,7 +53,7 @@ class PriorityManager:
         """
         添加新消息到合适的队列中。
         """
-        user_id = message.message_info.user_info.user_id
+        user_id = message.message_info.user_info.user_id  # type: ignore
         is_vip = message.priority_info.get("message_type") == "vip" if message.priority_info else False
         message_priority = message.priority_info.get("message_priority", 0.0) if message.priority_info else 0.0
 

@@ -3,18 +3,17 @@ import hashlib
 import time
 import copy
 from typing import Dict, Optional, TYPE_CHECKING
-
-
-from ...common.database.database import db
-from ...common.database.database_model import ChatStreams  # 新增导入
+from rich.traceback import install
 from maim_message import GroupInfo, UserInfo
+
+from src.common.logger import get_logger
+from src.common.database.database import db
+from src.common.database.database_model import ChatStreams  # 新增导入
 
 # 避免循环导入，使用TYPE_CHECKING进行类型提示
 if TYPE_CHECKING:
     from .message import MessageRecv
 
-from src.common.logger import get_logger
-from rich.traceback import install
 
 install(extra_lines=3)
 
@@ -28,7 +27,7 @@ class ChatMessageContext:
     def __init__(self, message: "MessageRecv"):
         self.message = message
 
-    def get_template_name(self) -> str:
+    def get_template_name(self) -> Optional[str]:
         """获取模板名称"""
         if self.message.message_info.template_info and not self.message.message_info.template_info.template_default:
             return self.message.message_info.template_info.template_name
@@ -41,10 +40,10 @@ class ChatMessageContext:
     def check_types(self, types: list) -> bool:
         # sourcery skip: invert-any-all, use-any, use-next
         """检查消息类型"""
-        if not self.message.message_info.format_info.accept_format:
+        if not self.message.message_info.format_info.accept_format:  # type: ignore
             return False
         for t in types:
-            if t not in self.message.message_info.format_info.accept_format:
+            if t not in self.message.message_info.format_info.accept_format:  # type: ignore
                 return False
         return True
 
@@ -68,7 +67,7 @@ class ChatStream:
         platform: str,
         user_info: UserInfo,
         group_info: Optional[GroupInfo] = None,
-        data: dict = None,
+        data: Optional[dict] = None,
     ):
         self.stream_id = stream_id
         self.platform = platform
@@ -77,7 +76,7 @@ class ChatStream:
         self.create_time = data.get("create_time", time.time()) if data else time.time()
         self.last_active_time = data.get("last_active_time", self.create_time) if data else self.create_time
         self.saved = False
-        self.context: ChatMessageContext = None  # 用于存储该聊天的上下文信息
+        self.context: ChatMessageContext = None  # type: ignore # 用于存储该聊天的上下文信息
 
     def to_dict(self) -> dict:
         """转换为字典格式"""
@@ -99,7 +98,7 @@ class ChatStream:
         return cls(
             stream_id=data["stream_id"],
             platform=data["platform"],
-            user_info=user_info,
+            user_info=user_info,  # type: ignore
             group_info=group_info,
             data=data,
         )
@@ -163,8 +162,8 @@ class ChatManager:
     def register_message(self, message: "MessageRecv"):
         """注册消息到聊天流"""
         stream_id = self._generate_stream_id(
-            message.message_info.platform,
-            message.message_info.user_info,
+            message.message_info.platform,  # type: ignore
+            message.message_info.user_info,  # type: ignore
             message.message_info.group_info,
         )
         self.last_messages[stream_id] = message
@@ -185,10 +184,7 @@ class ChatManager:
 
     def get_stream_id(self, platform: str, id: str, is_group: bool = True) -> str:
         """获取聊天流ID"""
-        if is_group:
-            components = [platform, str(id)]
-        else:
-            components = [platform, str(id), "private"]
+        components = [platform, id] if is_group else [platform, id, "private"]
         key = "_".join(components)
         return hashlib.md5(key.encode()).hexdigest()
 

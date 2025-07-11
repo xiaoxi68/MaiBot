@@ -2,7 +2,7 @@ import random
 import asyncio
 import hashlib
 import time
-from typing import List, Any, Dict
+from typing import List, Any, Dict, TYPE_CHECKING
 
 from src.common.logger import get_logger
 from src.config.config import global_config
@@ -12,6 +12,9 @@ from src.chat.message_receive.chat_stream import get_chat_manager, ChatMessageCo
 from src.chat.planner_actions.action_manager import ActionManager
 from src.chat.utils.chat_message_builder import get_raw_msg_before_timestamp_with_chat, build_readable_messages
 from src.plugin_system.base.component_types import ChatMode, ActionInfo, ActionActivationType
+
+if TYPE_CHECKING:
+    from src.chat.message_receive.chat_stream import ChatStream
 
 logger = get_logger("action_manager")
 
@@ -27,7 +30,7 @@ class ActionModifier:
     def __init__(self, action_manager: ActionManager, chat_id: str):
         """初始化动作处理器"""
         self.chat_id = chat_id
-        self.chat_stream = get_chat_manager().get_stream(self.chat_id)
+        self.chat_stream: ChatStream = get_chat_manager().get_stream(self.chat_id)  # type: ignore
         self.log_prefix = f"[{get_chat_manager().get_stream_name(self.chat_id) or self.chat_id}]"
 
         self.action_manager = action_manager
@@ -142,7 +145,7 @@ class ActionModifier:
     async def _get_deactivated_actions_by_type(
         self,
         actions_with_info: Dict[str, ActionInfo],
-        mode: str = "focus",
+        mode: ChatMode = ChatMode.FOCUS,
         chat_content: str = "",
     ) -> List[tuple[str, str]]:
         """
@@ -270,7 +273,7 @@ class ActionModifier:
                 task_results = await asyncio.gather(*tasks, return_exceptions=True)
 
                 # 处理结果并更新缓存
-                for _, (action_name, result) in enumerate(zip(task_names, task_results)):
+                for action_name, result in zip(task_names, task_results):
                     if isinstance(result, Exception):
                         logger.error(f"{self.log_prefix}LLM判定action {action_name} 时出错: {result}")
                         results[action_name] = False
@@ -286,7 +289,7 @@ class ActionModifier:
             except Exception as e:
                 logger.error(f"{self.log_prefix}并行LLM判定失败: {e}")
                 # 如果并行执行失败，为所有任务返回False
-                for action_name in tasks_to_run.keys():
+                for action_name in tasks_to_run:
                     results[action_name] = False
 
         # 清理过期缓存
@@ -297,10 +300,11 @@ class ActionModifier:
     def _cleanup_expired_cache(self, current_time: float):
         """清理过期的缓存条目"""
         expired_keys = []
-        for cache_key, cache_data in self._llm_judge_cache.items():
-            if current_time - cache_data["timestamp"] > self._cache_expiry_time:
-                expired_keys.append(cache_key)
-
+        expired_keys.extend(
+            cache_key
+            for cache_key, cache_data in self._llm_judge_cache.items()
+            if current_time - cache_data["timestamp"] > self._cache_expiry_time
+        )
         for key in expired_keys:
             del self._llm_judge_cache[key]
 
@@ -379,7 +383,7 @@ class ActionModifier:
     def _check_keyword_activation(
         self,
         action_name: str,
-        action_info: Dict[str, Any],
+        action_info: ActionInfo,
         chat_content: str = "",
     ) -> bool:
         """
@@ -396,8 +400,8 @@ class ActionModifier:
             bool: 是否应该激活此action
         """
 
-        activation_keywords = action_info.get("activation_keywords", [])
-        case_sensitive = action_info.get("keyword_case_sensitive", False)
+        activation_keywords = action_info.activation_keywords
+        case_sensitive = action_info.keyword_case_sensitive
 
         if not activation_keywords:
             logger.warning(f"{self.log_prefix}动作 {action_name} 设置为关键词触发但未配置关键词")

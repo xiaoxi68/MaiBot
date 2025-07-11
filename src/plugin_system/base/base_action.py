@@ -32,10 +32,10 @@ class BaseAction(ABC):
         reasoning: str,
         cycle_timers: dict,
         thinking_id: str,
-        chat_stream: ChatStream = None,
+        chat_stream: ChatStream,
         log_prefix: str = "",
         shutting_down: bool = False,
-        plugin_config: dict = None,
+        plugin_config: Optional[dict] = None,
         **kwargs,
     ):
         """初始化Action组件

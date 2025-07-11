@@ -1,6 +1,7 @@
 import asyncio
 import time
 import traceback
+
 from random import random
 from typing import List, Optional, Dict
 from maim_message import UserInfo, Seg
@@ -40,7 +41,7 @@ class NormalChat:
     def __init__(
         self,
         chat_stream: ChatStream,
-        interest_dict: dict = None,
+        interest_dict: Optional[Dict] = None,
         on_switch_to_focus_callback=None,
         get_cooldown_progress_callback=None,
     ):
@@ -147,10 +148,7 @@ class NormalChat:
         while not self._disabled:
             try:
                 if not self.priority_manager.is_empty():
-                    # 获取最高优先级的消息
-                    message = self.priority_manager.get_highest_priority_message()
-
-                    if message:
+                    if message := self.priority_manager.get_highest_priority_message():
                         logger.info(
                             f"[{self.stream_name}] 从队列中取出消息进行处理: User {message.message_info.user_info.user_id}, Time: {time.strftime('%H:%M:%S', time.localtime(message.message_info.time))}"
                         )

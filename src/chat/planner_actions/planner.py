@@ -70,7 +70,7 @@ class ActionPlanner:
 
         self.last_obs_time_mark = 0.0
 
-    async def plan(self) -> Dict[str, Any]:
+    async def plan(self) -> Dict[str, Any]:  # sourcery skip: dict-comprehension
         """
         规划器 (Planner): 使用LLM根据上下文决定做出什么动作。
         """
@@ -162,7 +162,6 @@ class ActionPlanner:
                     reasoning = parsed_json.get("reasoning", "未提供原因")
 
                     # 将所有其他属性添加到action_data
-                    action_data = {}
                     for key, value in parsed_json.items():
                         if key not in ["action", "reasoning"]:
                             action_data[key] = value
@@ -285,7 +284,7 @@ class ActionPlanner:
             identity_block = f"你的名字是{bot_name}{bot_nickname}，你{bot_core_personality}："
 
             planner_prompt_template = await global_prompt_manager.get_prompt_async("planner_prompt")
-            prompt = planner_prompt_template.format(
+            return planner_prompt_template.format(
                 time_block=time_block,
                 by_what=by_what,
                 chat_context_description=chat_context_description,
@@ -295,8 +294,6 @@ class ActionPlanner:
                 moderation_prompt=moderation_prompt_block,
                 identity_block=identity_block,
             )
-            return prompt
-
         except Exception as e:
             logger.error(f"构建 Planner 提示词时出错: {e}")
             logger.error(traceback.format_exc())

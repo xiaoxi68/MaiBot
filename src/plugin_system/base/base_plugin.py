@@ -66,7 +66,7 @@ class BasePlugin(ABC):
 
     config_section_descriptions: Dict[str, str] = {}
 
-    def __init__(self, plugin_dir: str = None):
+    def __init__(self, plugin_dir: str):
         """初始化插件
 
         Args:
@@ -526,7 +526,7 @@ class BasePlugin(ABC):
 
             # 从配置中更新 enable_plugin
             if "plugin" in self.config and "enabled" in self.config["plugin"]:
-                self.enable_plugin = self.config["plugin"]["enabled"]
+                self.enable_plugin = self.config["plugin"]["enabled"]  # type: ignore
                 logger.debug(f"{self.log_prefix} 从配置更新插件启用状态: {self.enable_plugin}")
         else:
             logger.warning(f"{self.log_prefix} 不支持的配置文件格式: {file_ext}，仅支持 .toml")

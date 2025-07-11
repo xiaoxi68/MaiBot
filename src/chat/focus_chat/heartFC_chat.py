@@ -8,7 +8,7 @@ from rich.traceback import install
 
 from src.config.config import global_config
 from src.common.logger import get_logger
-from src.chat.message_receive.chat_stream import get_chat_manager
+from src.chat.message_receive.chat_stream import ChatStream, get_chat_manager
 from src.chat.utils.prompt_builder import global_prompt_manager
 from src.chat.utils.timer_calculator import Timer
 from src.chat.planner_actions.planner import ActionPlanner
@@ -49,7 +49,9 @@ class HeartFChatting:
         """
         # 基础属性
         self.stream_id: str = chat_id  # 聊天流ID
-        self.chat_stream = get_chat_manager().get_stream(self.stream_id)
+        self.chat_stream: ChatStream = get_chat_manager().get_stream(self.stream_id)  # type: ignore
+        if not self.chat_stream:
+            raise ValueError(f"无法找到聊天流: {self.stream_id}")
         self.log_prefix = f"[{get_chat_manager().get_stream_name(self.stream_id) or self.stream_id}]"
 
         self.relationship_builder = relationship_builder_manager.get_or_create_builder(self.stream_id)
@@ -171,7 +173,7 @@ class HeartFChatting:
                 # 执行规划和处理阶段
                 try:
                     async with self._get_cycle_context():
-                        thinking_id = "tid" + str(round(time.time(), 2))
+                        thinking_id = f"tid{str(round(time.time(), 2))}"
                         self._current_cycle_detail.set_thinking_id(thinking_id)
 
                         # 使用异步上下文管理器处理消息
@@ -245,7 +247,7 @@ class HeartFChatting:
 
                     logger.info(
                         f"{self.log_prefix} 第{self._current_cycle_detail.cycle_id}次思考,"
-                        f"耗时: {self._current_cycle_detail.end_time - self._current_cycle_detail.start_time:.1f}秒, "
+                        f"耗时: {self._current_cycle_detail.end_time - self._current_cycle_detail.start_time:.1f}秒, "  # type: ignore
                         f"选择动作: {self._current_cycle_detail.loop_plan_info.get('action_result', {}).get('action_type', '未知动作')}"
                         + (f"\n详情: {'; '.join(timer_strings)}" if timer_strings else "")
                     )
@@ -256,7 +258,7 @@ class HeartFChatting:
                         cycle_performance_data = {
                             "cycle_id": self._current_cycle_detail.cycle_id,
                             "action_type": action_result.get("action_type", "unknown"),
-                            "total_time": self._current_cycle_detail.end_time - self._current_cycle_detail.start_time,
+                            "total_time": self._current_cycle_detail.end_time - self._current_cycle_detail.start_time,  # type: ignore
                             "step_times": cycle_timers.copy(),
                             "reasoning": action_result.get("reasoning", ""),
                             "success": self._current_cycle_detail.loop_action_info.get("action_taken", False),
@@ -447,11 +449,8 @@ class HeartFChatting:
 
             # 处理动作并获取结果
             result = await action_handler.handle_action()
-            if len(result) == 3:
-                success, reply_text, command = result
-            else:
-                success, reply_text = result
-                command = ""
+            success, reply_text = result
+            command = ""
 
             # 检查action_data中是否有系统命令，优先使用系统命令
             if "_system_command" in action_data:
@@ -478,15 +477,14 @@ class HeartFChatting:
                     )
                     # 设置系统命令，在下次循环检查时触发退出
                     command = "stop_focus_chat"
-            else:
-                if reply_text == "timeout":
-                    self.reply_timeout_count += 1
-                    if self.reply_timeout_count > 5:
-                        logger.warning(
-                            f"[{self.log_prefix} ] 连续回复超时次数过多，{global_config.chat.thinking_timeout}秒 内大模型没有返回有效内容，请检查你的api是否速度过慢或配置错误。建议不要使用推理模型，推理模型生成速度过慢。或者尝试拉高thinking_timeout参数，这可能导致回复时间过长。"
-                        )
-                    logger.warning(f"{self.log_prefix} 回复生成超时{global_config.chat.thinking_timeout}s，已跳过")
-                    return False, "", ""
+            elif reply_text == "timeout":
+                self.reply_timeout_count += 1
+                if self.reply_timeout_count > 5:
+                    logger.warning(
+                        f"[{self.log_prefix} ] 连续回复超时次数过多，{global_config.chat.thinking_timeout}秒 内大模型没有返回有效内容，请检查你的api是否速度过慢或配置错误。建议不要使用推理模型，推理模型生成速度过慢。或者尝试拉高thinking_timeout参数，这可能导致回复时间过长。"
+                    )
+                logger.warning(f"{self.log_prefix} 回复生成超时{global_config.chat.thinking_timeout}s，已跳过")
+                return False, "", ""
 
             return success, reply_text, command
 
