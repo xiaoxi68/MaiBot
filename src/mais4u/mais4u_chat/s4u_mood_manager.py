@@ -38,7 +38,7 @@ def init_prompt():
 现在，发送了消息，引起了你的注意，你对其进行了阅读和思考，请你输出一句话描述你新的情绪状态，不要输出任何其他内容
 请只输出情绪状态，不要输出其他内容：
 """,
-        "change_mood_prompt",
+        "change_mood_prompt_vtb",
     )
     Prompt(
         """
@@ -51,7 +51,7 @@ def init_prompt():
 距离你上次关注直播间消息已经过去了一段时间，你冷静了下来，请你输出一句话描述你现在的情绪状态
 请只输出情绪状态，不要输出其他内容：
 """,
-        "regress_mood_prompt",
+        "regress_mood_prompt_vtb",
     )
     Prompt(
         """
@@ -183,7 +183,7 @@ class ChatMood:
 
         async def _update_text_mood():
             prompt = await global_prompt_manager.format_prompt(
-                "change_mood_prompt",
+                "change_mood_prompt_vtb",
                 chat_talking_prompt=chat_talking_prompt,
                 indentify_block=indentify_block,
                 mood_state=self.mood_state,
@@ -257,7 +257,7 @@ class ChatMood:
 
         async def _regress_text_mood():
             prompt = await global_prompt_manager.format_prompt(
-                "regress_mood_prompt",
+                "regress_mood_prompt_vtb",
                 chat_talking_prompt=chat_talking_prompt,
                 indentify_block=indentify_block,
                 mood_state=self.mood_state,

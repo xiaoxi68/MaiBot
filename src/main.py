@@ -23,9 +23,6 @@ from rich.traceback import install
 # 导入新的插件管理器
 from src.plugin_system.core.plugin_manager import plugin_manager
 
-# 导入HFC性能记录器用于日志清理
-from src.chat.focus_chat.hfc_performance_logger import HFCPerformanceLogger
-
 # 导入消息API和traceback模块
 from src.common.message import get_global_api
 
@@ -68,11 +65,6 @@ class MainSystem:
     async def _init_components(self):
         """初始化其他组件"""
         init_start_time = time.time()
-
-        # 清理HFC旧日志文件（保持目录大小在50MB以内）
-        logger.info("开始清理HFC旧日志文件...")
-        HFCPerformanceLogger.cleanup_old_logs(max_size_mb=50.0)
-        logger.info("HFC日志清理完成")
 
         # 添加在线时间统计任务
         await async_task_manager.add_task(OnlineTimeRecordTask())

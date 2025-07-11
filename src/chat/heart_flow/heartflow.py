@@ -1,3 +1,4 @@
+import traceback
 from src.chat.heart_flow.sub_heartflow import SubHeartflow, ChatState
 from src.common.logger import get_logger
 from typing import Any, Optional
@@ -30,11 +31,12 @@ class Heartflow:
             # 注册子心流
             self.subheartflows[subheartflow_id] = new_subflow
             heartflow_name = get_chat_manager().get_stream_name(subheartflow_id) or subheartflow_id
-            logger.debug(f"[{heartflow_name}] 开始接收消息")
+            logger.info(f"[{heartflow_name}] 开始接收消息")
 
             return new_subflow
         except Exception as e:
             logger.error(f"创建子心流 {subheartflow_id} 失败: {e}", exc_info=True)
+            traceback.print_exc()
             return None
 
     async def force_change_subheartflow_status(self, subheartflow_id: str, status: ChatState) -> None:
