@@ -142,7 +142,6 @@ class NoReplyAction(BaseAction):
             )
             return False, f"不回复动作执行失败: {e}"
 
-
     @classmethod
     def reset_consecutive_count(cls):
         """重置连续计数器"""
