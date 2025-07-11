@@ -205,7 +205,7 @@ class Hippocampus:
         # 从数据库加载记忆图
         self.entorhinal_cortex.sync_memory_from_db()
         # TODO: API-Adapter修改标记
-        self.model_summary = LLMRequest(global_config.model.memory_summary, request_type="memory")
+        self.model_summary = LLMRequest(global_config.model.memory, request_type="memory")
 
     def get_all_node_names(self) -> list:
         """获取记忆图中所有节点的名字列表"""
@@ -819,7 +819,7 @@ class EntorhinalCortex:
         timestamps = sample_scheduler.get_timestamp_array()
         # 使用 translate_timestamp_to_human_readable 并指定 mode="normal"
         readable_timestamps = [translate_timestamp_to_human_readable(ts, mode="normal") for ts in timestamps]
-        for _, readable_timestamp in zip(timestamps, readable_timestamps):
+        for _, readable_timestamp in zip(timestamps, readable_timestamps, strict=False):
             logger.debug(f"回忆往事: {readable_timestamp}")
         chat_samples = []
         for timestamp in timestamps:

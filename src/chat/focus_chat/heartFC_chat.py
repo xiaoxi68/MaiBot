@@ -459,7 +459,7 @@ class HeartFChatting:
                 logger.debug(f"{self.log_prefix} 从action_data中获取系统命令: {command}")
 
             # 新增：消息计数和疲惫检查
-            if action == "reply" and success:
+            if action == "reply" and success and self.chat_stream.context.message.message_info.group_info:
                 self._message_count += 1
                 current_threshold = self._get_current_fatigue_threshold()
                 logger.info(
@@ -501,7 +501,7 @@ class HeartFChatting:
         Returns:
             int: 当前的疲惫阈值
         """
-        return max(10, int(30 / global_config.chat.exit_focus_threshold))
+        return max(10, int(30 * global_config.chat.exit_focus_threshold))
 
     def get_message_count_info(self) -> dict:
         """获取消息计数信息

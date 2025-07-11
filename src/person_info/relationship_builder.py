@@ -2,6 +2,7 @@ import time
 import traceback
 import os
 import pickle
+import random
 from typing import List, Dict
 from src.config.config import global_config
 from src.common.logger import get_logger
@@ -20,10 +21,12 @@ logger = get_logger("relationship_builder")
 # 消息段清理配置
 SEGMENT_CLEANUP_CONFIG = {
     "enable_cleanup": True,  # 是否启用清理
-    "max_segment_age_days": 7,  # 消息段最大保存天数
+    "max_segment_age_days": 3,  # 消息段最大保存天数
     "max_segments_per_user": 10,  # 每用户最大消息段数
-    "cleanup_interval_hours": 1,  # 清理间隔（小时）
+    "cleanup_interval_hours": 0.5,  # 清理间隔（小时）
 }
+
+MAX_MESSAGE_COUNT = 80 / global_config.relationship.relation_frequency
 
 
 class RelationshipBuilder:
@@ -330,7 +333,7 @@ class RelationshipBuilder:
         for person_id, segments in self.person_engaged_cache.items():
             total_count = self._get_total_message_count(person_id)
             status_lines.append(f"用户 {person_id}:")
-            status_lines.append(f"  总消息数：{total_count} ({total_count}/45)")
+            status_lines.append(f"  总消息数：{total_count} ({total_count}/60)")
             status_lines.append(f"  消息段数：{len(segments)}")
 
             for i, segment in enumerate(segments):
@@ -384,7 +387,7 @@ class RelationshipBuilder:
         users_to_build_relationship = []
         for person_id, segments in self.person_engaged_cache.items():
             total_message_count = self._get_total_message_count(person_id)
-            if total_message_count >= 45:
+            if total_message_count >= MAX_MESSAGE_COUNT:
                 users_to_build_relationship.append(person_id)
                 logger.debug(
                     f"{self.log_prefix} 用户 {person_id} 满足关系构建条件，总消息数：{total_message_count}，消息段数：{len(segments)}"
@@ -392,7 +395,7 @@ class RelationshipBuilder:
             elif total_message_count > 0:
                 # 记录进度信息
                 logger.debug(
-                    f"{self.log_prefix} 用户 {person_id} 进度：{total_message_count}/45 条消息，{len(segments)} 个消息段"
+                    f"{self.log_prefix} 用户 {person_id} 进度：{total_message_count}60 条消息，{len(segments)} 个消息段"
                 )
 
         # 2. 为满足条件的用户构建关系
@@ -413,11 +416,28 @@ class RelationshipBuilder:
 
     async def update_impression_on_segments(self, person_id: str, chat_id: str, segments: List[Dict[str, any]]):
         """基于消息段更新用户印象"""
-        logger.debug(f"开始为 {person_id} 基于 {len(segments)} 个消息段更新印象")
+        original_segment_count = len(segments)
+        logger.debug(f"开始为 {person_id} 基于 {original_segment_count} 个消息段更新印象")
         try:
+            # 筛选要处理的消息段，每个消息段有10%的概率被丢弃
+            segments_to_process = [s for s in segments if random.random() >= 0.1]
+
+            # 如果所有消息段都被丢弃，但原来有消息段，则至少保留一个（最新的）
+            if not segments_to_process and segments:
+                segments.sort(key=lambda x: x["end_time"], reverse=True)
+                segments_to_process.append(segments[0])
+                logger.debug("随机丢弃了所有消息段，强制保留最新的一个以进行处理。")
+
+            dropped_count = original_segment_count - len(segments_to_process)
+            if dropped_count > 0:
+                logger.info(f"为 {person_id} 随机丢弃了 {dropped_count} / {original_segment_count} 个消息段")
+
             processed_messages = []
 
-            for i, segment in enumerate(segments):
+            # 对筛选后的消息段进行排序，确保时间顺序
+            segments_to_process.sort(key=lambda x: x["start_time"])
+
+            for segment in segments_to_process:
                 start_time = segment["start_time"]
                 end_time = segment["end_time"]
                 start_date = time.strftime("%Y-%m-%d %H:%M", time.localtime(start_time))
@@ -425,12 +445,12 @@ class RelationshipBuilder:
                 # 获取该段的消息（包含边界）
                 segment_messages = get_raw_msg_by_timestamp_with_chat_inclusive(self.chat_id, start_time, end_time)
                 logger.debug(
-                    f"消息段 {i + 1}: {start_date} - {time.strftime('%Y-%m-%d %H:%M', time.localtime(end_time))}, 消息数: {len(segment_messages)}"
+                    f"消息段: {start_date} - {time.strftime('%Y-%m-%d %H:%M', time.localtime(end_time))}, 消息数: {len(segment_messages)}"
                 )
 
                 if segment_messages:
-                    # 如果不是第一个消息段，在消息列表前添加间隔标识
-                    if i > 0:
+                    # 如果 processed_messages 不为空，说明这不是第一个被处理的消息段，在消息列表前添加间隔标识
+                    if processed_messages:
                         # 创建一个特殊的间隔消息
                         gap_message = {
                             "time": start_time - 0.1,  # 稍微早于段开始时间

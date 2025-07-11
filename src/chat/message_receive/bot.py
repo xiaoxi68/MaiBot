@@ -3,7 +3,7 @@ import os
 from typing import Dict, Any
 
 from src.common.logger import get_logger
-from src.manager.mood_manager import mood_manager  # 导入情绪管理器
+from src.mood.mood_manager import mood_manager  # 导入情绪管理器
 from src.chat.message_receive.chat_stream import get_chat_manager
 from src.chat.message_receive.message import MessageRecv
 from src.experimental.only_message_process import MessageProcessor

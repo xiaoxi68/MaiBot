@@ -17,11 +17,6 @@ logger = get_logger("prompt")
 
 
 def init_prompt():
-    Prompt("你正在qq群里聊天，下面是群里在聊的内容：", "chat_target_group1")
-    Prompt("你正在和{sender_name}聊天，这是你们之前聊的内容：", "chat_target_private1")
-    Prompt("在群里聊天", "chat_target_group2")
-    Prompt("和{sender_name}私聊", "chat_target_private2")
-
     Prompt("\n你有以下这些**知识**：\n{prompt_info}\n请你**记住上面的知识**，之后可能会用到。\n", "knowledge_prompt")
     Prompt("\n关于你们的关系，你需要知道：\n{relation_info}\n", "relation_prompt")
     Prompt("你回想起了一些事情：\n{memory_info}\n", "memory_prompt")
@@ -252,7 +247,7 @@ def weighted_sample_no_replacement(items, weights, k) -> list:
         2. 不会重复选中同一个元素
     """
     selected = []
-    pool = list(zip(items, weights))
+    pool = list(zip(items, weights, strict=False))
     for _ in range(min(k, len(pool))):
         total = sum(w for _, w in pool)
         r = random.uniform(0, total)

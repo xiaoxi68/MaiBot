@@ -59,6 +59,11 @@ class TTSAction(BaseAction):
             # 发送TTS消息
             await self.send_custom(message_type="tts_text", content=processed_text)
 
+            # 记录动作信息
+            await self.store_action_info(
+                action_build_into_prompt=True, action_prompt_display="已经发送了语音消息。", action_done=True
+            )
+
             logger.info(f"{self.log_prefix} TTS动作执行成功，文本长度: {len(processed_text)}")
             return True, "TTS动作执行成功"
 

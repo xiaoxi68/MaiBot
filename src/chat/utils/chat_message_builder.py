@@ -77,6 +77,60 @@ def get_raw_msg_by_timestamp_with_chat_users(
     return find_messages(message_filter=filter_query, sort=sort_order, limit=limit, limit_mode=limit_mode)
 
 
+def get_actions_by_timestamp_with_chat(
+    chat_id: str,
+    timestamp_start: float = 0,
+    timestamp_end: float = time.time(),
+    limit: int = 0,
+    limit_mode: str = "latest",
+) -> List[Dict[str, Any]]:
+    """获取在特定聊天从指定时间戳到指定时间戳的动作记录，按时间升序排序，返回动作记录列表"""
+    query = ActionRecords.select().where(
+        (ActionRecords.chat_id == chat_id)
+        & (ActionRecords.time > timestamp_start)
+        & (ActionRecords.time < timestamp_end)
+    )
+
+    if limit > 0:
+        if limit_mode == "latest":
+            query = query.order_by(ActionRecords.time.desc()).limit(limit)
+            # 获取后需要反转列表，以保持最终输出为时间升序
+            actions = list(query)
+            return [action.__data__ for action in reversed(actions)]
+        else:  # earliest
+            query = query.order_by(ActionRecords.time.asc()).limit(limit)
+    else:
+        query = query.order_by(ActionRecords.time.asc())
+
+    actions = list(query)
+    return [action.__data__ for action in actions]
+
+
+def get_actions_by_timestamp_with_chat_inclusive(
+    chat_id: str, timestamp_start: float, timestamp_end: float, limit: int = 0, limit_mode: str = "latest"
+) -> List[Dict[str, Any]]:
+    """获取在特定聊天从指定时间戳到指定时间戳的动作记录（包含边界），按时间升序排序，返回动作记录列表"""
+    query = ActionRecords.select().where(
+        (ActionRecords.chat_id == chat_id)
+        & (ActionRecords.time >= timestamp_start)
+        & (ActionRecords.time <= timestamp_end)
+    )
+
+    if limit > 0:
+        if limit_mode == "latest":
+            query = query.order_by(ActionRecords.time.desc()).limit(limit)
+            # 获取后需要反转列表，以保持最终输出为时间升序
+            actions = list(query)
+            return [action.__data__ for action in reversed(actions)]
+        else:  # earliest
+            query = query.order_by(ActionRecords.time.asc()).limit(limit)
+    else:
+        query = query.order_by(ActionRecords.time.asc())
+
+    actions = list(query)
+    return [action.__data__ for action in actions]
+
+
 def get_raw_msg_by_timestamp_random(
     timestamp_start: float, timestamp_end: float, limit: int = 0, limit_mode: str = "latest"
 ) -> List[Dict[str, Any]]:
@@ -501,6 +555,45 @@ def build_pic_mapping_info(pic_id_mapping: Dict[str, str]) -> str:
         mapping_lines.append(f"[{display_name}] 的内容：{description}")
 
     return "\n".join(mapping_lines)
+
+
+def build_readable_actions(actions: List[Dict[str, Any]]) -> str:
+    """
+    将动作列表转换为可读的文本格式。
+    格式: 在（）分钟前，你使用了(action_name)，具体内容是：（action_prompt_display）
+
+    Args:
+        actions: 动作记录字典列表。
+
+    Returns:
+        格式化的动作字符串。
+    """
+    if not actions:
+        return ""
+
+    output_lines = []
+    current_time = time.time()
+
+    # The get functions return actions sorted ascending by time. Let's reverse it to show newest first.
+    # sorted_actions = sorted(actions, key=lambda x: x.get("time", 0), reverse=True)
+
+    for action in actions:
+        action_time = action.get("time", current_time)
+        action_name = action.get("action_name", "未知动作")
+        action_prompt_display = action.get("action_prompt_display", "无具体内容")
+
+        time_diff_seconds = current_time - action_time
+
+        if time_diff_seconds < 60:
+            time_ago_str = f"在{int(time_diff_seconds)}秒前"
+        else:
+            time_diff_minutes = round(time_diff_seconds / 60)
+            time_ago_str = f"在{int(time_diff_minutes)}分钟前"
+
+        line = f"{time_ago_str}，你使用了“{action_name}”，具体内容是：“{action_prompt_display}”"
+        output_lines.append(line)
+
+    return "\n".join(output_lines)
 
 
 async def build_readable_messages_with_list(

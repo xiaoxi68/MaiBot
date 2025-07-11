@@ -22,7 +22,7 @@ from src.chat.planner_actions.planner import ActionPlanner
 from src.chat.planner_actions.action_modifier import ActionModifier
 
 from src.chat.utils.utils import get_chat_type_and_target_info
-from src.manager.mood_manager import mood_manager
+from src.mood.mood_manager import mood_manager
 
 willing_manager = get_willing_manager()
 
@@ -304,7 +304,9 @@ class NormalChat:
 
                             semaphore = asyncio.Semaphore(5)
 
-                            async def process_and_acquire(msg_id, message, interest_value, is_mentioned):
+                            async def process_and_acquire(
+                                msg_id, message, interest_value, is_mentioned, semaphore=semaphore
+                            ):
                                 """处理单个兴趣消息并管理信号量"""
                                 async with semaphore:
                                     try:

@@ -8,7 +8,7 @@
     count = emoji_api.get_count()
 """
 
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 from src.common.logger import get_logger
 from src.chat.emoji_system.emoji_manager import get_emoji_manager
 from src.chat.utils.utils_image import image_path_to_base64
@@ -55,14 +55,20 @@ async def get_by_description(description: str) -> Optional[Tuple[str, str, str]]
         return None
 
 
-async def get_random() -> Optional[Tuple[str, str, str]]:
-    """随机获取表情包
+async def get_random(count: int = 1) -> Optional[List[Tuple[str, str, str]]]:
+    """随机获取指定数量的表情包
+
+    Args:
+        count: 要获取的表情包数量，默认为1
 
     Returns:
-        Optional[Tuple[str, str, str]]: (base64编码, 表情包描述, 随机情感标签) 或 None
+        Optional[List[Tuple[str, str, str]]]: 包含(base64编码, 表情包描述, 随机情感标签)的元组列表，如果失败则为None
     """
+    if count <= 0:
+        return []
+
     try:
-        logger.info("[EmojiAPI] 随机获取表情包")
+        logger.info(f"[EmojiAPI] 随机获取 {count} 个表情包")
 
         emoji_manager = get_emoji_manager()
         all_emojis = emoji_manager.emoji_objects
@@ -77,23 +83,37 @@ async def get_random() -> Optional[Tuple[str, str, str]]:
             logger.warning("[EmojiAPI] 没有有效的表情包")
             return None
 
+        if len(valid_emojis) < count:
+            logger.warning(
+                f"[EmojiAPI] 有效表情包数量 ({len(valid_emojis)}) 少于请求的数量 ({count})，将返回所有有效表情包"
+            )
+            count = len(valid_emojis)
+
         # 随机选择
         import random
 
-        selected_emoji = random.choice(valid_emojis)
-        emoji_base64 = image_path_to_base64(selected_emoji.full_path)
+        selected_emojis = random.sample(valid_emojis, count)
 
-        if not emoji_base64:
-            logger.error(f"[EmojiAPI] 无法转换表情包为base64: {selected_emoji.full_path}")
+        results = []
+        for selected_emoji in selected_emojis:
+            emoji_base64 = image_path_to_base64(selected_emoji.full_path)
+
+            if not emoji_base64:
+                logger.error(f"[EmojiAPI] 无法转换表情包为base64: {selected_emoji.full_path}")
+                continue
+
+            matched_emotion = random.choice(selected_emoji.emotion) if selected_emoji.emotion else "随机表情"
+
+            # 记录使用次数
+            emoji_manager.record_usage(selected_emoji.hash)
+            results.append((emoji_base64, selected_emoji.description, matched_emotion))
+
+        if not results and count > 0:
+            logger.warning("[EmojiAPI] 随机获取表情包失败，没有一个可以成功处理")
             return None
 
-        matched_emotion = random.choice(selected_emoji.emotion) if selected_emoji.emotion else "随机表情"
-
-        # 记录使用次数
-        emoji_manager.record_usage(selected_emoji.hash)
-
-        logger.info(f"[EmojiAPI] 成功获取随机表情包: {selected_emoji.description}")
-        return emoji_base64, selected_emoji.description, matched_emotion
+        logger.info(f"[EmojiAPI] 成功获取 {len(results)} 个随机表情包")
+        return results
 
     except Exception as e:
         logger.error(f"[EmojiAPI] 获取随机表情包失败: {e}")
