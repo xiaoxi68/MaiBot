@@ -1,11 +1,19 @@
 import time
 from typing import Optional
-from src.chat.message_receive.message import MessageRecv, BaseMessageInfo
 from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.message_receive.message import UserInfo
 from src.common.logger import get_logger
-import json
 from typing import Dict, Any
+from src.config.config import global_config
+from src.chat.message_receive.message import MessageThinking
+from src.chat.message_receive.normal_message_sender import message_manager
+from typing import List
+from maim_message import Seg
+from src.common.message_repository import count_messages
+from ..message_receive.message import MessageSending, MessageSet, message_from_db_dict
+from src.chat.message_receive.chat_stream import get_chat_manager
+
+
 
 logger = get_logger(__name__)
 
@@ -113,3 +121,129 @@ def parse_thinking_id_to_timestamp(thinking_id: str) -> float:
     ts_str = thinking_id[3:]
     return float(ts_str)
 
+
+async def create_thinking_message_from_dict(message_data: dict, chat_stream: ChatStream, thinking_id: str) -> str:
+    """创建思考消息"""
+    bot_user_info = UserInfo(
+        user_id=global_config.bot.qq_account,
+        user_nickname=global_config.bot.nickname,
+        platform=message_data.get("chat_info_platform"),
+    )
+
+    thinking_message = MessageThinking(
+        message_id=thinking_id,
+        chat_stream=chat_stream,
+        bot_user_info=bot_user_info,
+        reply=None,
+        thinking_start_time=time.time(),
+        timestamp=time.time(),
+    )
+
+    await message_manager.add_message(thinking_message)
+    return thinking_id
+
+async def cleanup_thinking_message_by_id(chat_id: str, thinking_id: str, log_prefix: str):
+    """根据ID清理思考消息"""
+    try:
+        container = await message_manager.get_container(chat_id)
+        if container:
+            for msg in container.messages[:]:
+                if isinstance(msg, MessageThinking) and msg.message_info.message_id == thinking_id:
+                    container.messages.remove(msg)
+                    logger.info(f"{log_prefix}已清理思考消息 {thinking_id}")
+                    break
+    except Exception as e:
+        logger.error(f"{log_prefix} 清理思考消息 {thinking_id} 时出错: {e}")
+
+
+
+async def add_messages_to_manager(
+        message_data: dict, response_set: List[str], thinking_id, chat_id
+    ) -> Optional[MessageSending]:
+        """发送回复消息"""
+        
+        chat_stream = get_chat_manager().get_stream(chat_id)
+        
+        container = await message_manager.get_container(chat_id)  # 使用 self.stream_id
+        thinking_message = None
+
+        for msg in container.messages[:]:
+            # print(msg)
+            if isinstance(msg, MessageThinking) and msg.message_info.message_id == thinking_id:
+                thinking_message = msg
+                container.messages.remove(msg)
+                break
+
+        if not thinking_message:
+            logger.warning(f"[{chat_id}] 未找到对应的思考消息 {thinking_id}，可能已超时被移除")
+            return None
+
+        thinking_start_time = thinking_message.thinking_start_time
+        message_set = MessageSet(chat_stream, thinking_id)  # 使用 self.chat_stream
+
+        sender_info = UserInfo(
+            user_id=message_data.get("user_id"),
+            user_nickname=message_data.get("user_nickname"),
+            platform=message_data.get("chat_info_platform"),
+        )
+        
+        reply = message_from_db_dict(message_data)
+        
+
+        mark_head = False
+        first_bot_msg = None
+        for msg in response_set:
+            if global_config.debug.debug_show_chat_mode:
+                msg += "ⁿ"
+            message_segment = Seg(type="text", data=msg)
+            bot_message = MessageSending(
+                message_id=thinking_id,
+                chat_stream=chat_stream,  # 使用 self.chat_stream
+                bot_user_info=UserInfo(
+                    user_id=global_config.bot.qq_account,
+                    user_nickname=global_config.bot.nickname,
+                    platform=message_data.get("chat_info_platform"),
+                ),
+                sender_info=sender_info,
+                message_segment=message_segment,
+                reply=reply,
+                is_head=not mark_head,
+                is_emoji=False,
+                thinking_start_time=thinking_start_time,
+                apply_set_reply_logic=True,
+            )
+            if not mark_head:
+                mark_head = True
+                first_bot_msg = bot_message
+            message_set.add_message(bot_message)
+
+        await message_manager.add_message(message_set)
+
+        return first_bot_msg
+    
+    
+def get_recent_message_stats(minutes: int = 30, chat_id: str = None) -> dict:
+    """
+    Args:
+        minutes (int): 检索的分钟数，默认30分钟
+        chat_id (str, optional): 指定的chat_id，仅统计该chat下的消息。为None时统计全部。
+    Returns:
+        dict: {"bot_reply_count": int, "total_message_count": int}
+    """
+
+    now = time.time()
+    start_time = now - minutes * 60
+    bot_id = global_config.bot.qq_account
+
+    filter_base = {"time": {"$gte": start_time}}
+    if chat_id is not None:
+        filter_base["chat_id"] = chat_id
+
+    # 总消息数
+    total_message_count = count_messages(filter_base)
+    # bot自身回复数
+    bot_filter = filter_base.copy()
+    bot_filter["user_id"] = bot_id
+    bot_reply_count = count_messages(bot_filter)
+
+    return {"bot_reply_count": bot_reply_count, "total_message_count": total_message_count}

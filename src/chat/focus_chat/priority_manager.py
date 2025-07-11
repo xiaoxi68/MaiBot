@@ -2,7 +2,7 @@ import time
 import heapq
 import math
 import json
-from typing import List, Dict, Optional
+from typing import List, Optional
 
 from src.common.logger import get_logger
 

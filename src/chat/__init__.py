@@ -5,11 +5,9 @@ MaiBot模块系统
 
 from src.chat.message_receive.chat_stream import get_chat_manager
 from src.chat.emoji_system.emoji_manager import get_emoji_manager
-from src.chat.normal_chat.willing.willing_manager import get_willing_manager
 
 # 导出主要组件供外部使用
 __all__ = [
     "get_chat_manager",
     "get_emoji_manager",
-    "get_willing_manager",
 ]

@@ -7,7 +7,7 @@ from src.common.remote import TelemetryHeartBeatTask
 from src.manager.async_task_manager import async_task_manager
 from src.chat.utils.statistic import OnlineTimeRecordTask, StatisticOutputTask
 from src.chat.emoji_system.emoji_manager import get_emoji_manager
-from src.chat.normal_chat.willing.willing_manager import get_willing_manager
+from src.chat.willing.willing_manager import get_willing_manager
 from src.chat.message_receive.chat_stream import get_chat_manager
 from src.chat.message_receive.normal_message_sender import message_manager
 from src.chat.message_receive.storage import MessageStorage

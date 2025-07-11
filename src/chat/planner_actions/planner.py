@@ -64,20 +64,19 @@ def init_prompt():
 
 
 class ActionPlanner:
-    def __init__(self, chat_id: str, action_manager: ActionManager, mode: str = "focus"):
+    def __init__(self, chat_id: str, action_manager: ActionManager):
         self.chat_id = chat_id
         self.log_prefix = f"[{get_chat_manager().get_stream_name(chat_id) or chat_id}]"
-        self.mode = mode
         self.action_manager = action_manager
         # LLM规划器配置
         self.planner_llm = LLMRequest(
             model=global_config.model.planner,
-            request_type=f"{self.mode}.planner",  # 用于动作规划
+            request_type="planner",  # 用于动作规划
         )
 
         self.last_obs_time_mark = 0.0
 
-    async def plan(self) -> Dict[str, Any]:
+    async def plan(self,mode: str = "focus") -> Dict[str, Any]:
         """
         规划器 (Planner): 使用LLM根据上下文决定做出什么动作。
         """
@@ -92,7 +91,7 @@ class ActionPlanner:
             is_group_chat, chat_target_info = get_chat_type_and_target_info(self.chat_id)
             logger.debug(f"{self.log_prefix}获取到聊天信息 - 群聊: {is_group_chat}, 目标信息: {chat_target_info}")
 
-            current_available_actions_dict = self.action_manager.get_using_actions_for_mode(self.mode)
+            current_available_actions_dict = self.action_manager.get_using_actions_for_mode(mode)
 
             # 获取完整的动作信息
             all_registered_actions = self.action_manager.get_registered_actions()
@@ -122,6 +121,7 @@ class ActionPlanner:
                 is_group_chat=is_group_chat,  # <-- Pass HFC state
                 chat_target_info=chat_target_info,  # <-- 传递获取到的聊天目标信息
                 current_available_actions=current_available_actions,  # <-- Pass determined actions
+                mode=mode,
             )
 
             # --- 调用 LLM (普通文本生成) ---
@@ -215,6 +215,7 @@ class ActionPlanner:
         is_group_chat: bool,  # Now passed as argument
         chat_target_info: Optional[dict],  # Now passed as argument
         current_available_actions,
+        mode: str = "focus",
     ) -> str:
         """构建 Planner LLM 的提示词 (获取模板并填充数据)"""
         try:
@@ -244,7 +245,7 @@ class ActionPlanner:
 
             self.last_obs_time_mark = time.time()
 
-            if self.mode == "focus":
+            if mode == "focus":
                 by_what = "聊天内容"
                 no_action_block = ""
             else:

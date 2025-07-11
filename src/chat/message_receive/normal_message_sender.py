@@ -13,6 +13,7 @@ from ..utils.utils import truncate_message, calculate_typing_time, count_message
 
 from src.common.logger import get_logger
 from rich.traceback import install
+import traceback
 
 install(extra_lines=3)
 
@@ -292,6 +293,7 @@ class MessageManager:
                     await asyncio.gather(*tasks)
                 except Exception as e:
                     logger.error(f"消息处理循环 gather 出错: {e}")
+                    print(traceback.format_exc())
 
             # 等待一小段时间，避免CPU空转
             try:
