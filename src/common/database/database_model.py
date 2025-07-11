@@ -130,6 +130,7 @@ class Messages(BaseModel):
     reply_to = TextField(null=True)
 
     interest_value = DoubleField(null=True)
+    is_mentioned = BooleanField(null=True)
 
     # 从 chat_info 扁平化而来的字段
     chat_info_stream_id = TextField()
@@ -154,6 +155,13 @@ class Messages(BaseModel):
     display_message = TextField(null=True)  # 显示的消息
     detailed_plain_text = TextField(null=True)  # 详细的纯文本消息
     memorized_times = IntegerField(default=0)  # 被记忆的次数
+
+    priority_mode = TextField(null=True)
+    priority_info = TextField(null=True)
+
+    additional_config = TextField(null=True)
+    is_emoji = BooleanField(default=False)
+    is_picid = BooleanField(default=False)
 
     class Meta:
         # database = db # 继承自 BaseModel

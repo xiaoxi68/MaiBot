@@ -38,11 +38,21 @@ class MessageStorage:
                 else:
                     filtered_display_message = ""
                 interest_value = 0
+                is_mentioned = False
                 reply_to = message.reply_to
+                priority_mode = ""
+                priority_info = {}
+                is_emoji = False
+                is_picid = False
             else:
                 filtered_display_message = ""
                 interest_value = message.interest_value
+                is_mentioned = message.is_mentioned
                 reply_to = ""
+                priority_mode = message.priority_mode
+                priority_info = message.priority_info
+                is_emoji = message.is_emoji
+                is_picid = message.is_picid
 
             chat_info_dict = chat_stream.to_dict()
             user_info_dict = message.message_info.user_info.to_dict()
@@ -61,6 +71,7 @@ class MessageStorage:
                 chat_id=chat_stream.stream_id,
                 # Flattened chat_info
                 reply_to=reply_to,
+                is_mentioned=is_mentioned,
                 chat_info_stream_id=chat_info_dict.get("stream_id"),
                 chat_info_platform=chat_info_dict.get("platform"),
                 chat_info_user_platform=user_info_from_chat.get("platform"),
@@ -82,6 +93,10 @@ class MessageStorage:
                 display_message=filtered_display_message,
                 memorized_times=message.memorized_times,
                 interest_value=interest_value,
+                priority_mode=priority_mode,
+                priority_info=priority_info,
+                is_emoji=is_emoji,
+                is_picid=is_picid,
             )
         except Exception:
             logger.exception("存储消息失败")

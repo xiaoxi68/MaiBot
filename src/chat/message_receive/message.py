@@ -441,3 +441,55 @@ class MessageSet:
 
     def __len__(self) -> int:
         return len(self.messages)
+
+
+def message_recv_from_dict(message_dict: dict) -> MessageRecv:
+    return MessageRecv(
+        
+        message_dict
+        
+        )
+
+def message_from_db_dict(db_dict: dict) -> MessageRecv:
+    """从数据库字典创建MessageRecv实例"""
+    # 转换扁平的数据库字典为嵌套结构
+    message_info_dict = {
+        "platform": db_dict.get("chat_info_platform"),
+        "message_id": db_dict.get("message_id"),
+        "time": db_dict.get("time"),
+        "group_info": {
+            "platform": db_dict.get("chat_info_group_platform"),
+            "group_id": db_dict.get("chat_info_group_id"),
+            "group_name": db_dict.get("chat_info_group_name"),
+        },
+        "user_info": {
+            "platform": db_dict.get("user_platform"),
+            "user_id": db_dict.get("user_id"),
+            "user_nickname": db_dict.get("user_nickname"),
+            "user_cardname": db_dict.get("user_cardname"),
+        },
+    }
+
+    processed_text = db_dict.get("processed_plain_text", "")
+
+    # 构建 MessageRecv 需要的字典
+    recv_dict = {
+        "message_info": message_info_dict,
+        "message_segment": {"type": "text", "data": processed_text},  # 从纯文本重建消息段
+        "raw_message": None,  # 数据库中未存储原始消息
+        "processed_plain_text": processed_text,
+        "detailed_plain_text": db_dict.get("detailed_plain_text", ""),
+    }
+
+    # 创建 MessageRecv 实例
+    msg = MessageRecv(recv_dict)
+
+    # 从数据库字典中填充其他可选字段
+    msg.interest_value = db_dict.get("interest_value")
+    msg.is_mentioned = db_dict.get("is_mentioned")
+    msg.priority_mode = db_dict.get("priority_mode", "interest")
+    msg.priority_info = db_dict.get("priority_info")
+    msg.is_emoji = db_dict.get("is_emoji", False)
+    msg.is_picid = db_dict.get("is_picid", False)
+
+    return msg
