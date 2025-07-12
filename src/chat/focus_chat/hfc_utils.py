@@ -5,8 +5,6 @@ from src.chat.message_receive.message import UserInfo
 from src.common.logger import get_logger
 from typing import Dict, Any
 from src.config.config import global_config
-from src.chat.message_receive.message import MessageThinking
-from src.chat.message_receive.normal_message_sender import message_manager
 from src.common.message_repository import count_messages
 
 
@@ -86,40 +84,6 @@ class CycleDetail:
         self.loop_action_info = loop_info["loop_action_info"]
 
 
-async def create_thinking_message_from_dict(message_data: dict, chat_stream: ChatStream, thinking_id: str) -> str:
-    """创建思考消息"""
-    bot_user_info = UserInfo(
-        user_id=global_config.bot.qq_account,
-        user_nickname=global_config.bot.nickname,
-        platform=message_data.get("chat_info_platform"),
-    )
-
-    thinking_message = MessageThinking(
-        message_id=thinking_id,
-        chat_stream=chat_stream,
-        bot_user_info=bot_user_info,
-        reply=None,
-        thinking_start_time=time.time(),
-        timestamp=time.time(),
-    )
-
-    await message_manager.add_message(thinking_message)
-    return thinking_id
-
-async def cleanup_thinking_message_by_id(chat_id: str, thinking_id: str, log_prefix: str):
-    """根据ID清理思考消息"""
-    try:
-        container = await message_manager.get_container(chat_id)
-        if container:
-            for msg in container.messages[:]:
-                if isinstance(msg, MessageThinking) and msg.message_info.message_id == thinking_id:
-                    container.messages.remove(msg)
-                    logger.info(f"{log_prefix}已清理思考消息 {thinking_id}")
-                    break
-    except Exception as e:
-        logger.error(f"{log_prefix} 清理思考消息 {thinking_id} 时出错: {e}")
-
-    
     
 def get_recent_message_stats(minutes: int = 30, chat_id: str = None) -> dict:
     """
