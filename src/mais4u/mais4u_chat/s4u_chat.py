@@ -10,6 +10,7 @@ from src.chat.message_receive.message import MessageSending, MessageRecv
 from src.config.config import global_config
 from src.common.message.api import get_global_api
 from src.chat.message_receive.storage import MessageStorage
+import json
 
 
 logger = get_logger("S4U_chat")
@@ -168,27 +169,40 @@ class S4UChat:
         self.normal_queue_max_size = 50  # 普通队列最大容量
         logger.info(f"[{self.stream_name}] S4UChat with two-queue system initialized.")
 
-    def _is_vip(self, message: MessageRecv) -> bool:
+    def _get_priority_info(self, message: MessageRecv) -> dict:
+        """安全地从消息中提取和解析 priority_info"""
+        priority_info_raw = message.raw.get("priority_info")
+        priority_info = {}
+        if isinstance(priority_info_raw, str):
+            try:
+                priority_info = json.loads(priority_info_raw)
+            except json.JSONDecodeError:
+                logger.warning(f"Failed to parse priority_info JSON: {priority_info_raw}")
+        elif isinstance(priority_info_raw, dict):
+            priority_info = priority_info_raw
+        return priority_info
+
+    def _is_vip(self, priority_info: dict) -> bool:
         """检查消息是否来自VIP用户。"""
-        # 您需要修改此处或在配置文件中定义VIP用户
-        vip_user_ids = ["1026294844"]
-        vip_user_ids = [""]
-        return message.message_info.user_info.user_id in vip_user_ids
+        return priority_info.get("message_type") == "vip"
 
     def _get_interest_score(self, user_id: str) -> float:
         """获取用户的兴趣分，默认为1.0"""
         return self.interest_dict.get(user_id, 1.0)
 
-    def _calculate_base_priority_score(self, message: MessageRecv) -> float:
+    def _calculate_base_priority_score(self, message: MessageRecv, priority_info: dict) -> float:
         """
         为消息计算基础优先级分数。分数越高，优先级越高。
         """
         score = 0.0
         # 如果消息 @ 了机器人，则增加一个很大的分数
-        if f"@{global_config.bot.nickname}" in message.processed_plain_text or any(
-            f"@{alias}" in message.processed_plain_text for alias in global_config.bot.alias_names
-        ):
-            score += self.at_bot_priority_bonus
+        # if f"@{global_config.bot.nickname}" in message.processed_plain_text or any(
+            # f"@{alias}" in message.processed_plain_text for alias in global_config.bot.alias_names
+        # ):
+            # score += self.at_bot_priority_bonus
+        
+        # 加上消息自带的优先级
+        score += priority_info.get("message_priority", 0.0)
 
         # 加上用户的固有兴趣分
         score += self._get_interest_score(message.message_info.user_info.user_id)
@@ -196,8 +210,9 @@ class S4UChat:
 
     async def add_message(self, message: MessageRecv) -> None:
         """根据VIP状态和中断逻辑将消息放入相应队列。"""
-        is_vip = self._is_vip(message)
-        new_priority_score = self._calculate_base_priority_score(message)
+        priority_info = self._get_priority_info(message)
+        is_vip = self._is_vip(priority_info)
+        new_priority_score = self._calculate_base_priority_score(message, priority_info)
 
         should_interrupt = False
         if self._current_generation_task and not self._current_generation_task.done():
