@@ -9,6 +9,7 @@
 """
 
 from typing import List, Dict, Any, Tuple, Optional
+from src.config.config import global_config
 import time
 from src.chat.utils.chat_message_builder import (
     get_raw_msg_by_timestamp,
@@ -34,7 +35,7 @@ from src.chat.utils.chat_message_builder import (
 
 
 def get_messages_by_time(
-    start_time: float, end_time: float, limit: int = 0, limit_mode: str = "latest"
+    start_time: float, end_time: float, limit: int = 0, limit_mode: str = "latest", filter_mai: bool = False
 ) -> List[Dict[str, Any]]:
     """
     获取指定时间范围内的消息
@@ -44,15 +45,18 @@ def get_messages_by_time(
         end_time: 结束时间戳
         limit: 限制返回的消息数量，0为不限制
         limit_mode: 当limit>0时生效，'earliest'表示获取最早的记录，'latest'表示获取最新的记录
+        filter_mai: 是否过滤麦麦自身的消息，默认为False
 
     Returns:
         消息列表
     """
+    if filter_mai:
+        return filter_mai_messages(get_raw_msg_by_timestamp(start_time, end_time, limit, limit_mode))
     return get_raw_msg_by_timestamp(start_time, end_time, limit, limit_mode)
 
 
 def get_messages_by_time_in_chat(
-    chat_id: str, start_time: float, end_time: float, limit: int = 0, limit_mode: str = "latest"
+    chat_id: str, start_time: float, end_time: float, limit: int = 0, limit_mode: str = "latest", filter_mai: bool = False
 ) -> List[Dict[str, Any]]:
     """
     获取指定聊天中指定时间范围内的消息
@@ -63,15 +67,18 @@ def get_messages_by_time_in_chat(
         end_time: 结束时间戳
         limit: 限制返回的消息数量，0为不限制
         limit_mode: 当limit>0时生效，'earliest'表示获取最早的记录，'latest'表示获取最新的记录
+        filter_mai: 是否过滤麦麦自身的消息，默认为False
 
     Returns:
         消息列表
     """
+    if filter_mai:
+        return filter_mai_messages(get_raw_msg_by_timestamp_with_chat(chat_id, start_time, end_time, limit, limit_mode))
     return get_raw_msg_by_timestamp_with_chat(chat_id, start_time, end_time, limit, limit_mode)
 
 
 def get_messages_by_time_in_chat_inclusive(
-    chat_id: str, start_time: float, end_time: float, limit: int = 0, limit_mode: str = "latest"
+    chat_id: str, start_time: float, end_time: float, limit: int = 0, limit_mode: str = "latest", filter_mai: bool = False
 ) -> List[Dict[str, Any]]:
     """
     获取指定聊天中指定时间范围内的消息（包含边界）
@@ -82,10 +89,13 @@ def get_messages_by_time_in_chat_inclusive(
         end_time: 结束时间戳（包含）
         limit: 限制返回的消息数量，0为不限制
         limit_mode: 当limit>0时生效，'earliest'表示获取最早的记录，'latest'表示获取最新的记录
+        filter_mai: 是否过滤麦麦自身的消息，默认为False
 
     Returns:
         消息列表
     """
+    if filter_mai:
+        return filter_mai_messages(get_raw_msg_by_timestamp_with_chat_inclusive(chat_id, start_time, end_time, limit, limit_mode))
     return get_raw_msg_by_timestamp_with_chat_inclusive(chat_id, start_time, end_time, limit, limit_mode)
 
 
@@ -115,7 +125,7 @@ def get_messages_by_time_in_chat_for_users(
 
 
 def get_random_chat_messages(
-    start_time: float, end_time: float, limit: int = 0, limit_mode: str = "latest"
+    start_time: float, end_time: float, limit: int = 0, limit_mode: str = "latest", filter_mai: bool = False
 ) -> List[Dict[str, Any]]:
     """
     随机选择一个聊天，返回该聊天在指定时间范围内的消息
@@ -125,10 +135,13 @@ def get_random_chat_messages(
         end_time: 结束时间戳
         limit: 限制返回的消息数量，0为不限制
         limit_mode: 当limit>0时生效，'earliest'表示获取最早的记录，'latest'表示获取最新的记录
+        filter_mai: 是否过滤麦麦自身的消息，默认为False
 
     Returns:
         消息列表
     """
+    if filter_mai:
+        return filter_mai_messages(get_raw_msg_by_timestamp_random(start_time, end_time, limit, limit_mode))
     return get_raw_msg_by_timestamp_random(start_time, end_time, limit, limit_mode)
 
 
@@ -151,21 +164,24 @@ def get_messages_by_time_for_users(
     return get_raw_msg_by_timestamp_with_users(start_time, end_time, person_ids, limit, limit_mode)
 
 
-def get_messages_before_time(timestamp: float, limit: int = 0) -> List[Dict[str, Any]]:
+def get_messages_before_time(timestamp: float, limit: int = 0, filter_mai: bool = False) -> List[Dict[str, Any]]:
     """
     获取指定时间戳之前的消息
 
     Args:
         timestamp: 时间戳
         limit: 限制返回的消息数量，0为不限制
+        filter_mai: 是否过滤麦麦自身的消息，默认为False
 
     Returns:
         消息列表
     """
+    if filter_mai:
+        return filter_mai_messages(get_raw_msg_before_timestamp(timestamp, limit))
     return get_raw_msg_before_timestamp(timestamp, limit)
 
 
-def get_messages_before_time_in_chat(chat_id: str, timestamp: float, limit: int = 0) -> List[Dict[str, Any]]:
+def get_messages_before_time_in_chat(chat_id: str, timestamp: float, limit: int = 0, filter_mai: bool = False) -> List[Dict[str, Any]]:
     """
     获取指定聊天中指定时间戳之前的消息
 
@@ -173,10 +189,13 @@ def get_messages_before_time_in_chat(chat_id: str, timestamp: float, limit: int 
         chat_id: 聊天ID
         timestamp: 时间戳
         limit: 限制返回的消息数量，0为不限制
+        filter_mai: 是否过滤麦麦自身的消息，默认为False
 
     Returns:
         消息列表
     """
+    if filter_mai:
+        return filter_mai_messages(get_raw_msg_before_timestamp_with_chat(chat_id, timestamp, limit))
     return get_raw_msg_before_timestamp_with_chat(chat_id, timestamp, limit)
 
 
@@ -196,7 +215,7 @@ def get_messages_before_time_for_users(timestamp: float, person_ids: list, limit
 
 
 def get_recent_messages(
-    chat_id: str, hours: float = 24.0, limit: int = 100, limit_mode: str = "latest"
+    chat_id: str, hours: float = 24.0, limit: int = 100, limit_mode: str = "latest", filter_mai: bool = False
 ) -> List[Dict[str, Any]]:
     """
     获取指定聊天中最近一段时间的消息
@@ -206,12 +225,15 @@ def get_recent_messages(
         hours: 最近多少小时，默认24小时
         limit: 限制返回的消息数量，默认100条
         limit_mode: 当limit>0时生效，'earliest'表示获取最早的记录，'latest'表示获取最新的记录
+        filter_mai: 是否过滤麦麦自身的消息，默认为False
 
     Returns:
         消息列表
     """
     now = time.time()
     start_time = now - hours * 3600
+    if filter_mai:
+        return filter_mai_messages(get_raw_msg_by_timestamp_with_chat(chat_id, start_time, now, limit, limit_mode))
     return get_raw_msg_by_timestamp_with_chat(chat_id, start_time, now, limit, limit_mode)
 
 
@@ -319,3 +341,17 @@ async def get_person_ids_from_messages(messages: List[Dict[str, Any]]) -> List[s
         用户ID列表
     """
     return await get_person_id_list(messages)
+
+# =============================================================================
+# 消息过滤函数
+# =============================================================================
+
+def filter_mai_messages(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    从消息列表中移除麦麦的消息
+    Args:
+        messages: 消息列表，每个元素是消息字典
+    Returns:
+        过滤后的消息列表
+    """
+    return [msg for msg in messages if msg.get("user_id") != str(global_config.bot.qq_account)]
