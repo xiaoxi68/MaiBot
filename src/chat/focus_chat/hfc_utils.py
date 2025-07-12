@@ -23,7 +23,6 @@ class CycleDetail:
 
     def __init__(self, cycle_id: int):
         self.cycle_id = cycle_id
-        self.prefix = ""
         self.thinking_id = ""
         self.start_time = time.time()
         self.end_time: Optional[float] = None
@@ -85,41 +84,10 @@ class CycleDetail:
             "loop_action_info": convert_to_serializable(self.loop_action_info),
         }
 
-    def complete_cycle(self):
-        """完成循环，记录结束时间"""
-        self.end_time = time.time()
-
-        # 处理 prefix，只保留中英文字符和基本标点
-        if not self.prefix:
-            self.prefix = "group"
-        else:
-            # 只保留中文、英文字母、数字和基本标点
-            allowed_chars = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_")
-            self.prefix = (
-                "".join(char for char in self.prefix if "\u4e00" <= char <= "\u9fff" or char in allowed_chars)
-                or "group"
-            )
-
-    def set_thinking_id(self, thinking_id: str):
-        """设置思考消息ID"""
-        self.thinking_id = thinking_id
-
     def set_loop_info(self, loop_info: Dict[str, Any]):
         """设置循环信息"""
         self.loop_plan_info = loop_info["loop_plan_info"]
         self.loop_action_info = loop_info["loop_action_info"]
-
-
-
-def parse_thinking_id_to_timestamp(thinking_id: str) -> float:
-    """
-    将形如 'tid<timestamp>' 的 thinking_id 解析回 float 时间戳
-    例如: 'tid1718251234.56' -> 1718251234.56
-    """
-    if not thinking_id.startswith("tid"):
-        raise ValueError("thinking_id 格式不正确")
-    ts_str = thinking_id[3:]
-    return float(ts_str)
 
 
 async def create_thinking_message_from_dict(message_data: dict, chat_stream: ChatStream, thinking_id: str) -> str:

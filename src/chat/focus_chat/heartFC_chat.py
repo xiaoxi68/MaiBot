@@ -2,14 +2,13 @@ import asyncio
 import time
 import traceback
 from collections import deque
-from typing import Optional, Deque
+from typing import Optional, Deque, List
 
 from src.chat.message_receive.chat_stream import get_chat_manager
 from rich.traceback import install
 from src.chat.utils.prompt_builder import global_prompt_manager
 from src.common.logger import get_logger
 from src.chat.utils.timer_calculator import Timer
-from src.chat.focus_chat.focus_loop_info import FocusLoopInfo
 from src.chat.planner_actions.planner import ActionPlanner
 from src.chat.planner_actions.action_modifier import ActionModifier
 from src.chat.planner_actions.action_manager import ActionManager
@@ -22,7 +21,7 @@ from src.person_info.person_info import get_person_info_manager
 from src.plugin_system.apis import generator_api
 from src.chat.willing.willing_manager import get_willing_manager
 from .priority_manager import PriorityManager
-from src.chat.utils.chat_message_builder import get_raw_msg_by_timestamp_with_chat_inclusive
+from src.chat.utils.chat_message_builder import get_raw_msg_by_timestamp_with_chat
 
 
 
@@ -88,8 +87,6 @@ class HeartFChatting:
 
         self.loop_mode = "normal"
         
-        self.recent_replies = []
-        
         # 新增：消息计数器和疲惫阈值
         self._message_count = 0  # 发送的消息计数
         # 基于exit_focus_threshold动态计算疲惫阈值
@@ -97,7 +94,6 @@ class HeartFChatting:
         self._message_threshold = max(10, int(30 * global_config.chat.exit_focus_threshold))
         self._fatigue_triggered = False  # 是否已触发疲惫退出
 
-        self.loop_info: FocusLoopInfo = FocusLoopInfo(observe_id=self.stream_id)
 
         self.action_manager = ActionManager()
         self.action_planner = ActionPlanner(chat_id=self.stream_id, action_manager=self.action_manager)
@@ -108,8 +104,8 @@ class HeartFChatting:
         self._loop_task: Optional[asyncio.Task] = None  # 主循环任务
 
         # 添加循环信息管理相关的属性
+        self.history_loop: List[CycleDetail] = []
         self._cycle_counter = 0
-        self._cycle_history: Deque[CycleDetail] = deque(maxlen=10)  # 保留最近10个循环的信息
         self._current_cycle_detail: Optional[CycleDetail] = None
 
         self.reply_timeout_count = 0
@@ -118,30 +114,26 @@ class HeartFChatting:
         self.last_read_time = time.time()-1
         
         
-        
         self.willing_amplifier = 1
-
-        self.action_type: Optional[str] = None  # 当前动作类型
-        self.is_parallel_action: bool = False  # 是否是可并行动作
+        self.willing_manager = get_willing_manager()
         
-        self._chat_task: Optional[asyncio.Task] = None
-        self._priority_chat_task: Optional[asyncio.Task] = None # for priority mode consumer
         
         self.reply_mode = self.chat_stream.context.get_priority_mode()
         if self.reply_mode == "priority":
             self.priority_manager = PriorityManager(
                 normal_queue_max_size=5,
             )
+            self.loop_mode = "priority"
         else:
             self.priority_manager = None
             
-        self.willing_manager = get_willing_manager()
-        
-        
 
         logger.info(
             f"{self.log_prefix} HeartFChatting 初始化完成，消息疲惫阈值: {self._message_threshold}条（基于exit_focus_threshold={global_config.chat.exit_focus_threshold}计算，仅在auto模式下生效）"
         )
+        
+        
+        self.energy_value = 100
 
     async def start(self):
         """检查是否需要启动主循环，如果未激活则启动。"""
@@ -152,8 +144,6 @@ class HeartFChatting:
             return
 
         try:
-            # 重置消息计数器，开始新的focus会话
-            self.reset_message_count()
             # 标记为活动状态，防止重复启动
             self.running = True
 
@@ -178,26 +168,20 @@ class HeartFChatting:
             else:
                 logger.info(f"{self.log_prefix} HeartFChatting: 脱离了聊天 (外部停止)")
         except asyncio.CancelledError:
-            logger.info(f"{self.log_prefix} HeartFChatting: 脱离了聊天(任务取消)")
-        finally:
-            self.running = False
-            self._loop_task = None
+            logger.info(f"{self.log_prefix} HeartFChatting: 结束了聊天")
             
     def start_cycle(self):
         self._cycle_counter += 1
         self._current_cycle_detail = CycleDetail(self._cycle_counter)
-        self._current_cycle_detail.prefix = self.log_prefix
-        thinking_id = "tid" + str(round(time.time(), 2))
-        self._current_cycle_detail.set_thinking_id(thinking_id)
+        self._current_cycle_detail.thinking_id = "tid" + str(round(time.time(), 2))
         cycle_timers = {}
-        return cycle_timers, thinking_id
+        return cycle_timers, self._current_cycle_detail.thinking_id
     
     def end_cycle(self,loop_info,cycle_timers):
         self._current_cycle_detail.set_loop_info(loop_info)
-        self.loop_info.add_loop_info(self._current_cycle_detail)
+        self.history_loop.append(self._current_cycle_detail)
         self._current_cycle_detail.timers = cycle_timers
-        self._current_cycle_detail.complete_cycle()
-        self._cycle_history.append(self._current_cycle_detail)
+        self._current_cycle_detail.end_time = time.time()
         
     def print_cycle_info(self,cycle_timers):
             # 记录循环信息和计时器结果
@@ -217,28 +201,24 @@ class HeartFChatting:
     
     async def _loopbody(self):
         if self.loop_mode == "focus":
-            logger.info(f"{self.log_prefix} 开始第{self._cycle_counter}次观察")
             return await self._observe()
         elif self.loop_mode == "normal":
-            now = time.time()
-            new_messages_data = get_raw_msg_by_timestamp_with_chat_inclusive(
-                chat_id=self.stream_id, timestamp_start=self.last_read_time, timestamp_end=now, limit_mode="earliest"
+            new_messages_data = get_raw_msg_by_timestamp_with_chat(
+                chat_id=self.stream_id, timestamp_start=self.last_read_time, timestamp_end=time.time(),limit=10,limit_mode="earliest",fliter_bot=True
             )
             
-            if new_messages_data:
-                self.last_read_time = now
+            if len(new_messages_data) > 5:
+                self.loop_mode = "focus"
+                return True
             
-                for msg_data in new_messages_data:
-                    try:
-                        self.adjust_reply_frequency()
-                        logger.info(f"{self.log_prefix} 开始第{self._cycle_counter}次循环")
-                        await self.normal_response(msg_data)
-                        # TODO: 这个地方可能导致阻塞，需要优化
-                        return True
-                    except Exception as e:
-                        logger.error(f"[{self.log_prefix}] 处理消息时出错: {e} {traceback.format_exc()}")
-            else:
-                await asyncio.sleep(0.1)
+            if new_messages_data:
+                earliest_messages_data = new_messages_data[0]
+                self.last_read_time = earliest_messages_data.get("time")
+                
+                await self.normal_response(earliest_messages_data)
+                return True
+
+            await asyncio.sleep(1)
             
             return True
             
@@ -248,14 +228,17 @@ class HeartFChatting:
         # 创建新的循环信息
         cycle_timers, thinking_id = self.start_cycle()
         
-        await create_thinking_message_from_dict(message_data,self.chat_stream,thinking_id)
+        logger.info(f"{self.log_prefix} 开始第{self._cycle_counter}次思考")
+        
+        if message_data:
+            await create_thinking_message_from_dict(message_data,self.chat_stream,thinking_id)
 
         async with global_prompt_manager.async_message_scope(
             self.chat_stream.context.get_template_name()
         ):
 
             loop_start_time = time.time()
-            await self.loop_info.observe()
+            # await self.loop_info.observe()
             await self.relationship_builder.build_relation()
             
             # 第一步：动作修改
@@ -263,7 +246,7 @@ class HeartFChatting:
                 try:
                     if self.loop_mode == "focus":
                         await self.action_modifier.modify_actions(
-                            loop_info=self.loop_info,
+                            history_loop=self.history_loop,
                             mode="focus",
                         )
                     elif self.loop_mode == "normal":
@@ -317,12 +300,11 @@ class HeartFChatting:
             
             if action_type == "no_action":
                 gather_timeout = global_config.chat.thinking_timeout
-                results = await asyncio.wait_for(
-                    asyncio.gather(gen_task, return_exceptions=True),
-                    timeout=gather_timeout,
-                )
-                response_set = results[0]
-                
+                try:
+                    response_set = await asyncio.wait_for(gen_task, timeout=gather_timeout)
+                except asyncio.TimeoutError:
+                    response_set = None
+
                 if response_set:
                     content = " ".join([item[1] for item in response_set if item[0] == "text"])
 
@@ -334,7 +316,7 @@ class HeartFChatting:
                         logger.warning(f"[{self.log_prefix}] 模型未生成回复内容")
                     elif action_type not in ["no_action"] and not is_parallel:
                         logger.info(
-                            f"[{self.log_prefix}] {global_config.bot.nickname} 原本想要回复：{content}，但选择执行{self.action_type}，不发表回复"
+                            f"[{self.log_prefix}] {global_config.bot.nickname} 原本想要回复：{content}，但选择执行{action_type}，不发表回复"
                         )
                     # 如果模型未生成回复，移除思考消息
                     await cleanup_thinking_message_by_id(self.chat_stream.stream_id,thinking_id,self.log_prefix)
@@ -350,27 +332,8 @@ class HeartFChatting:
                     return False
 
                 # 发送回复 (不再需要传入 chat)
-                first_bot_msg = await add_messages_to_manager(message_data, reply_texts, thinking_id,self.chat_stream.stream_id)
+                await add_messages_to_manager(message_data, reply_texts, thinking_id,self.chat_stream.stream_id)
 
-                # 检查 first_bot_msg 是否为 None (例如思考消息已被移除的情况)
-                if first_bot_msg:
-                    # 消息段已在接收消息时更新，这里不需要额外处理
-
-                    # 记录回复信息到最近回复列表中
-                    reply_info = {
-                        "time": time.time(),
-                        "user_message": message_data.get("processed_plain_text"),
-                        "user_info": {
-                            "user_id": message_data.get("user_id"),
-                            "user_nickname": message_data.get("user_nickname"),
-                        },
-                        "response": response_set,
-                        "is_reference_reply": message_data.get("reply") is not None,  # 判断是否为引用回复
-                    }
-                    self.recent_replies.append(reply_info)
-                    # 保持最近回复历史在限定数量内
-                    if len(self.recent_replies) > 10:
-                        self.recent_replies = self.recent_replies[-10 :]
                 return response_set if response_set else False
                 
                 
@@ -416,6 +379,7 @@ class HeartFChatting:
         try:
             while self.running:  # 主循环
                 success = await self._loopbody()
+                await asyncio.sleep(0.1)
                 if not success:
                     break
                 
@@ -530,12 +494,6 @@ class HeartFChatting:
         """
         return max(10, int(30 / global_config.chat.exit_focus_threshold))
 
-
-    def reset_message_count(self):
-        """重置消息计数器（用于重新启动focus模式时）"""
-        self._message_count = 0
-        self._fatigue_triggered = False
-        logger.info(f"{self.log_prefix} 消息计数器已重置")
 
     async def shutdown(self):
         """优雅关闭HeartFChatting实例，取消活动循环任务"""
@@ -675,16 +633,6 @@ class HeartFChatting:
         if message_data.get("is_emoji") or message_data.get("is_picid"):
             reply_probability = 0
 
-        # 应用疲劳期回复频率调整
-        fatigue_multiplier = self._get_fatigue_reply_multiplier()
-        original_probability = reply_probability
-        reply_probability *= fatigue_multiplier
-
-        # 如果应用了疲劳调整，记录日志
-        if fatigue_multiplier < 1.0:
-            logger.info(
-                f"[{self.log_prefix}] 疲劳期回复频率调整: {original_probability * 100:.1f}% -> {reply_probability * 100:.1f}% (系数: {fatigue_multiplier:.2f})"
-            )
 
         # 打印消息信息
         mes_name = self.chat_stream.group_info.group_name if self.chat_stream.group_info else "私聊"
@@ -734,63 +682,3 @@ class HeartFChatting:
         except Exception as e:
             logger.error(f"[{self.log_prefix}] 回复生成出现错误：{str(e)} {traceback.format_exc()}")
             return None
-    
-
-    def _get_fatigue_reply_multiplier(self) -> float:
-        """获取疲劳期回复频率调整系数
-
-        Returns:
-            float: 回复频率调整系数，范围0.5-1.0
-        """
-        if not self.get_cooldown_progress_callback:
-            return 1.0  # 没有冷却进度回调，返回正常系数
-
-        try:
-            cooldown_progress = self.get_cooldown_progress_callback()
-
-            if cooldown_progress >= 1.0:
-                return 1.0  # 冷却完成，正常回复频率
-
-            # 疲劳期间：从0.5逐渐恢复到1.0
-            # progress=0时系数为0.5，progress=1时系数为1.0
-            multiplier = 0.2 + (0.8 * cooldown_progress)
-
-            return multiplier
-        except Exception as e:
-            logger.warning(f"[{self.log_prefix}] 获取疲劳调整系数时出错: {e}")
-            return 1.0  # 出错时返回正常系数
-        
-    # async def _check_should_switch_to_focus(self) -> bool:
-    #     """
-    #     检查是否满足切换到focus模式的条件
-
-    #     Returns:
-    #         bool: 是否应该切换到focus模式
-    #     """
-    #     # 检查思考消息堆积情况
-    #     container = await message_manager.get_container(self.stream_id)
-    #     if container:
-    #         thinking_count = sum(1 for msg in container.messages if isinstance(msg, MessageThinking))
-    #         if thinking_count >= 4 * global_config.chat.auto_focus_threshold:  # 如果堆积超过阈值条思考消息
-    #             logger.debug(f"[{self.stream_name}] 检测到思考消息堆积({thinking_count}条)，切换到focus模式")
-    #             return True
-
-    #     if not self.recent_replies:
-    #         return False
-
-    #     current_time = time.time()
-    #     time_threshold = 120 / global_config.chat.auto_focus_threshold
-    #     reply_threshold = 6 * global_config.chat.auto_focus_threshold
-
-    #     one_minute_ago = current_time - time_threshold
-
-    #     # 统计指定时间内的回复数量
-    #     recent_reply_count = sum(1 for reply in self.recent_replies if reply["time"] > one_minute_ago)
-
-    #     should_switch = recent_reply_count > reply_threshold
-    #     if should_switch:
-    #         logger.debug(
-    #             f"[{self.stream_name}] 检测到{time_threshold:.0f}秒内回复数量({recent_reply_count})大于{reply_threshold}，满足切换到focus模式条件"
-    #         )
-
-    #     return should_switch
