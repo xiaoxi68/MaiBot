@@ -160,8 +160,9 @@ class ActionModifier:
         random.shuffle(actions_to_check)
 
         for action_name, action_info in actions_to_check:
-            activation_type = "focus_activation_type"
-            activation_type = action_info.get(activation_type, "always")
+            activation_type = action_info.get("activation_type", "")
+            if not activation_type:
+                activation_type = action_info.get("focus_activation_type", "")
 
             if activation_type == "always":
                 continue  # 总是激活，无需处理
