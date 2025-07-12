@@ -280,16 +280,11 @@ class NormalChatConfig(ConfigBase):
     at_bot_inevitable_reply: bool = False
     """@bot 必然回复"""
 
-    enable_planner: bool = False
-    """是否启用动作规划器"""
 
 
 @dataclass
 class FocusChatConfig(ConfigBase):
     """专注聊天配置类"""
-
-    think_interval: float = 1
-    """思考间隔（秒）"""
 
     consecutive_replies: float = 1
     """连续回复能力，值越高，麦麦连续回复的概率越高"""

@@ -1,8 +1,7 @@
 import asyncio
 import time
 import traceback
-from collections import deque
-from typing import Optional, Deque, List
+from typing import Optional, List
 
 from src.chat.message_receive.chat_stream import get_chat_manager
 from rich.traceback import install
@@ -16,9 +15,9 @@ from src.config.config import global_config
 from src.person_info.relationship_builder_manager import relationship_builder_manager
 from src.chat.focus_chat.hfc_utils import CycleDetail
 from random import random
-from src.chat.focus_chat.hfc_utils import create_thinking_message_from_dict, add_messages_to_manager,get_recent_message_stats,cleanup_thinking_message_by_id
+from src.chat.focus_chat.hfc_utils import get_recent_message_stats
 from src.person_info.person_info import get_person_info_manager
-from src.plugin_system.apis import generator_api
+from src.plugin_system.apis import generator_api,send_api,message_api
 from src.chat.willing.willing_manager import get_willing_manager
 from .priority_manager import PriorityManager
 from src.chat.utils.chat_message_builder import get_raw_msg_by_timestamp_with_chat
@@ -201,14 +200,22 @@ class HeartFChatting:
     
     async def _loopbody(self):
         if self.loop_mode == "focus":
+            
+            self.energy_value -= 5 * (1/global_config.chat.exit_focus_threshold)
+            if self.energy_value <= 0:
+                self.loop_mode = "normal"
+                return True
+            
+            
             return await self._observe()
         elif self.loop_mode == "normal":
             new_messages_data = get_raw_msg_by_timestamp_with_chat(
                 chat_id=self.stream_id, timestamp_start=self.last_read_time, timestamp_end=time.time(),limit=10,limit_mode="earliest",fliter_bot=True
             )
             
-            if len(new_messages_data) > 5:
+            if len(new_messages_data) > 4 * global_config.chat.auto_focus_threshold:
                 self.loop_mode = "focus"
+                self.energy_value = 100
                 return True
             
             if new_messages_data:
@@ -228,10 +235,8 @@ class HeartFChatting:
         # 创建新的循环信息
         cycle_timers, thinking_id = self.start_cycle()
         
-        logger.info(f"{self.log_prefix} 开始第{self._cycle_counter}次思考")
+        logger.info(f"{self.log_prefix} 开始第{self._cycle_counter}次思考[模式：{self.loop_mode}]")
         
-        if message_data:
-            await create_thinking_message_from_dict(message_data,self.chat_stream,thinking_id)
 
         async with global_prompt_manager.async_message_scope(
             self.chat_stream.context.get_template_name()
@@ -257,7 +262,14 @@ class HeartFChatting:
                     
             #如果normal，开始一个回复生成进程，先准备好回复（其实是和planer同时进行的）
             if self.loop_mode == "normal":
-                gen_task = asyncio.create_task(self._generate_normal_response(message_data, available_actions))
+                person_info_manager = get_person_info_manager()
+                person_id = person_info_manager.get_person_id(
+                    message_data.get("chat_info_platform"), message_data.get("user_id")
+                )
+                person_name = await person_info_manager.get_value(person_id, "person_name")
+                reply_to_str = f"{person_name}:{message_data.get('processed_plain_text')}"
+                
+                gen_task = asyncio.create_task(self._generate_response(message_data, available_actions,reply_to_str))
             
 
             with Timer("规划器", cycle_timers):
@@ -299,6 +311,7 @@ class HeartFChatting:
             
             
             if action_type == "no_action":
+                # 等待回复生成完毕
                 gather_timeout = global_config.chat.thinking_timeout
                 try:
                     response_set = await asyncio.wait_for(gen_task, timeout=gather_timeout)
@@ -308,7 +321,7 @@ class HeartFChatting:
                 if response_set:
                     content = " ".join([item[1] for item in response_set if item[0] == "text"])
 
-                
+                # 模型炸了，没有回复内容生成
                 if not response_set or (
                     action_type not in ["no_action"] and not is_parallel
                 ):
@@ -318,25 +331,15 @@ class HeartFChatting:
                         logger.info(
                             f"[{self.log_prefix}] {global_config.bot.nickname} 原本想要回复：{content}，但选择执行{action_type}，不发表回复"
                         )
-                    # 如果模型未生成回复，移除思考消息
-                    await cleanup_thinking_message_by_id(self.chat_stream.stream_id,thinking_id,self.log_prefix)
                     return False
 
                 logger.info(f"[{self.log_prefix}] {global_config.bot.nickname} 决定的回复内容: {content}")
 
-                # 提取回复文本
-                reply_texts = [item[1] for item in response_set if item[0] == "text"]
-                if not reply_texts:
-                    logger.info(f"[{self.log_prefix}] 回复内容中没有文本，不发送消息")
-                    await cleanup_thinking_message_by_id(self.chat_stream.stream_id,thinking_id,self.log_prefix)
-                    return False
 
                 # 发送回复 (不再需要传入 chat)
-                await add_messages_to_manager(message_data, reply_texts, thinking_id,self.chat_stream.stream_id)
+                await self._send_response(response_set, reply_to_str, loop_start_time)
 
-                return response_set if response_set else False
-                
-                
+                return True
                 
                 
                 
@@ -465,7 +468,7 @@ class HeartFChatting:
         # 新增：消息计数和疲惫检查
         if action == "reply" and success:
             self._message_count += 1
-            current_threshold = self._get_current_fatigue_threshold()
+            current_threshold = max(10, int(30 / global_config.chat.exit_focus_threshold))
             logger.info(
                 f"{self.log_prefix} 已发送第 {self._message_count} 条消息（动态阈值: {current_threshold}, exit_focus_threshold: {global_config.chat.exit_focus_threshold}）"
             )
@@ -485,14 +488,6 @@ class HeartFChatting:
                 
                 return command
         return ""
-
-    def _get_current_fatigue_threshold(self) -> int:
-        """动态获取当前的疲惫阈值，基于exit_focus_threshold配置
-
-        Returns:
-            int: 当前的疲惫阈值
-        """
-        return max(10, int(30 / global_config.chat.exit_focus_threshold))
 
 
     async def shutdown(self):
@@ -653,21 +648,14 @@ class HeartFChatting:
         return True
         
         
-    async def _generate_normal_response(
-        self, message_data: dict, available_actions: Optional[list]
+    async def _generate_response(
+        self, message_data: dict, available_actions: Optional[list],reply_to:str
     ) -> Optional[list]:
         """生成普通回复"""
         try:
-            person_info_manager = get_person_info_manager()
-            person_id = person_info_manager.get_person_id(
-                message_data.get("chat_info_platform"), message_data.get("user_id")
-            )
-            person_name = await person_info_manager.get_value(person_id, "person_name")
-            reply_to_str = f"{person_name}:{message_data.get('processed_plain_text')}"
-
             success, reply_set = await generator_api.generate_reply(
                 chat_stream=self.chat_stream,
-                reply_to=reply_to_str,
+                reply_to=reply_to,
                 available_actions=available_actions,
                 enable_tool=global_config.tool.enable_in_normal_chat,
                 request_type="normal.replyer",
@@ -682,3 +670,37 @@ class HeartFChatting:
         except Exception as e:
             logger.error(f"[{self.log_prefix}] 回复生成出现错误：{str(e)} {traceback.format_exc()}")
             return None
+        
+        
+    async def _send_response(
+        self, reply_set, reply_to, thinking_start_time
+    ):
+        current_time = time.time()
+        new_message_count = message_api.count_new_messages(
+            chat_id=self.chat_stream.stream_id, start_time=thinking_start_time, end_time=current_time
+        )
+        
+        need_reply = new_message_count >= random.randint(2, 4)
+        
+        logger.info(
+            f"{self.log_prefix} 从思考到回复，共有{new_message_count}条新消息，{'使用' if need_reply else '不使用'}引用回复"
+        )
+        
+        reply_text = ""
+        first_replyed = False
+        for reply_seg in reply_set:
+            data = reply_seg[1]
+            if not first_replyed:
+                if need_reply:
+                    await send_api.text_to_stream(text=data, stream_id=self.chat_stream.stream_id, reply_to=reply_to, typing=False)
+                    first_replyed = True
+                else:
+                    await send_api.text_to_stream(text=data, stream_id=self.chat_stream.stream_id, typing=False)
+                    first_replyed = True
+            else:
+                await send_api.text_to_stream(text=data, stream_id=self.chat_stream.stream_id, typing=True)
+            reply_text += data
+            
+        return reply_text
+            
+            

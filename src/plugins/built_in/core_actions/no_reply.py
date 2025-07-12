@@ -61,8 +61,8 @@ class NoReplyAction(BaseAction):
             count = NoReplyAction._consecutive_count
 
             reason = self.action_data.get("reason", "")
-            start_time = time.time()
-            check_interval = 1.0  # 每秒检查一次
+            start_time = self.action_data.get("loop_start_time", time.time())
+            check_interval = 0.6  # 每秒检查一次
 
             # 随机生成本次等待需要的新消息数量阈值
             exit_message_count_threshold = random.randint(self._min_exit_message_count, self._max_exit_message_count)

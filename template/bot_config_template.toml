@@ -119,10 +119,8 @@ willing_mode = "classical" # 回复意愿模式 —— 经典模式：classical�
 response_interested_rate_amplifier = 1 # 麦麦回复兴趣度放大系数
 mentioned_bot_inevitable_reply = true # 提及 bot 必然回复
 at_bot_inevitable_reply = true # @bot 必然回复（包含提及）
-enable_planner = true # 是否启用动作规划器（与focus_chat共享actions）
 
 [focus_chat] #专注聊天
-think_interval = 3 # 思考间隔 单位秒，可以有效减少消耗
 consecutive_replies = 1 # 连续回复能力，值越高，麦麦连续回复的概率越高
 
 [tool]
