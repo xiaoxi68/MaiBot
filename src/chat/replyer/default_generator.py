@@ -506,7 +506,6 @@ class DefaultReplyer:
             show_actions=True,
         )
 
-
         message_list_before_short = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_id,
             timestamp=time.time(),

@@ -444,11 +444,8 @@ class MessageSet:
 
 
 def message_recv_from_dict(message_dict: dict) -> MessageRecv:
-    return MessageRecv(
-        
-        message_dict
-        
-        )
+    return MessageRecv(message_dict)
+
 
 def message_from_db_dict(db_dict: dict) -> MessageRecv:
     """从数据库字典创建MessageRecv实例"""

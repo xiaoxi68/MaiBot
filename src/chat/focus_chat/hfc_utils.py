@@ -6,7 +6,6 @@ from src.config.config import global_config
 from src.common.message_repository import count_messages
 
 
-
 logger = get_logger(__name__)
 
 
@@ -82,7 +81,6 @@ class CycleDetail:
         self.loop_action_info = loop_info["loop_action_info"]
 
 
-    
 def get_recent_message_stats(minutes: int = 30, chat_id: str = None) -> dict:
     """
     Args:

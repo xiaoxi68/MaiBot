@@ -20,7 +20,7 @@ def find_messages(
     sort: Optional[List[tuple[str, int]]] = None,
     limit: int = 0,
     limit_mode: str = "latest",
-    fliter_bot = False
+    fliter_bot=False,
 ) -> List[dict[str, Any]]:
     """
     根据提供的过滤器、排序和限制条件查找消息。
@@ -69,10 +69,10 @@ def find_messages(
                     logger.warning(f"过滤器键 '{key}' 在 Messages 模型中未找到。将跳过此条件。")
             if conditions:
                 query = query.where(*conditions)
-                
+
         if fliter_bot:
             query = query.where(Messages.user_id != global_config.bot.qq_account)
-            
+
         if limit > 0:
             if limit_mode == "earliest":
                 # 获取时间最早的 limit 条记录，已经是正序

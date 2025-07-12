@@ -28,7 +28,12 @@ def get_raw_msg_by_timestamp(
 
 
 def get_raw_msg_by_timestamp_with_chat(
-    chat_id: str, timestamp_start: float, timestamp_end: float, limit: int = 0, limit_mode: str = "latest", fliter_bot = False
+    chat_id: str,
+    timestamp_start: float,
+    timestamp_end: float,
+    limit: int = 0,
+    limit_mode: str = "latest",
+    fliter_bot=False,
 ) -> List[Dict[str, Any]]:
     """获取在特定聊天从指定时间戳到指定时间戳的消息，按时间升序排序，返回消息列表
     limit: 限制返回的消息数量，0为不限制
@@ -38,11 +43,18 @@ def get_raw_msg_by_timestamp_with_chat(
     # 只有当 limit 为 0 时才应用外部 sort
     sort_order = [("time", 1)] if limit == 0 else None
     # 直接将 limit_mode 传递给 find_messages
-    return find_messages(message_filter=filter_query, sort=sort_order, limit=limit, limit_mode=limit_mode, fliter_bot=fliter_bot)
+    return find_messages(
+        message_filter=filter_query, sort=sort_order, limit=limit, limit_mode=limit_mode, fliter_bot=fliter_bot
+    )
 
 
 def get_raw_msg_by_timestamp_with_chat_inclusive(
-    chat_id: str, timestamp_start: float, timestamp_end: float, limit: int = 0, limit_mode: str = "latest", fliter_bot = False
+    chat_id: str,
+    timestamp_start: float,
+    timestamp_end: float,
+    limit: int = 0,
+    limit_mode: str = "latest",
+    fliter_bot=False,
 ) -> List[Dict[str, Any]]:
     """获取在特定聊天从指定时间戳到指定时间戳的消息（包含边界），按时间升序排序，返回消息列表
     limit: 限制返回的消息数量，0为不限制
@@ -52,8 +64,10 @@ def get_raw_msg_by_timestamp_with_chat_inclusive(
     # 只有当 limit 为 0 时才应用外部 sort
     sort_order = [("time", 1)] if limit == 0 else None
     # 直接将 limit_mode 传递给 find_messages
-    
-    return find_messages(message_filter=filter_query, sort=sort_order, limit=limit, limit_mode=limit_mode, fliter_bot=fliter_bot)
+
+    return find_messages(
+        message_filter=filter_query, sort=sort_order, limit=limit, limit_mode=limit_mode, fliter_bot=fliter_bot
+    )
 
 
 def get_raw_msg_by_timestamp_with_chat_users(
@@ -583,8 +597,7 @@ def build_readable_actions(actions: List[Dict[str, Any]]) -> str:
         action_name = action.get("action_name", "未知动作")
         if action_name == "no_action" or action_name == "no_reply":
             continue
-        
-        
+
         action_prompt_display = action.get("action_prompt_display", "无具体内容")
 
         time_diff_seconds = current_time - action_time

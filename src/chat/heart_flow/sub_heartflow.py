@@ -28,25 +28,21 @@ class SubHeartflow:
         self.subheartflow_id = subheartflow_id
         self.chat_id = subheartflow_id
 
-
         self.is_group_chat, self.chat_target_info = get_chat_type_and_target_info(self.chat_id)
         self.log_prefix = get_chat_manager().get_stream_name(self.subheartflow_id) or self.subheartflow_id
-        
+
         # focus模式退出冷却时间管理
         self.last_focus_exit_time: float = 0  # 上次退出focus模式的时间
 
         # 随便水群 normal_chat 和 认真水群 focus_chat 实例
         # CHAT模式激活 随便水群  FOCUS模式激活 认真水群
         self.heart_fc_instance: Optional[HeartFChatting] = HeartFChatting(
-                    chat_id=self.subheartflow_id,
-                )     # 该sub_heartflow的HeartFChatting实例
+            chat_id=self.subheartflow_id,
+        )  # 该sub_heartflow的HeartFChatting实例
 
     async def initialize(self):
         """异步初始化方法，创建兴趣流并确定聊天类型"""
         await self.heart_fc_instance.start()
-
-
-
 
     async def _stop_heart_fc_chat(self):
         """停止并清理 HeartFChatting 实例"""
@@ -85,7 +81,6 @@ class SubHeartflow:
             logger.error(f"{self.log_prefix} _start_heart_fc_chat 执行时出错: {e}")
             logger.error(traceback.format_exc())
             return False
-        
 
     def is_in_focus_cooldown(self) -> bool:
         """检查是否在focus模式的冷却期内

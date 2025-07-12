@@ -49,7 +49,7 @@ class PriorityManager:
         添加新消息到合适的队列中。
         """
         user_id = message_data.get("user_id")
-        
+
         priority_info_raw = message_data.get("priority_info")
         priority_info = {}
         if isinstance(priority_info_raw, str):

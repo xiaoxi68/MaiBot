@@ -125,7 +125,6 @@ class MainSystem:
         logger.info("个体特征初始化成功")
 
         try:
-
             init_time = int(1000 * (time.time() - init_start_time))
             logger.info(f"初始化完成，神经元放电{init_time}次")
         except Exception as e:

@@ -77,7 +77,7 @@ class ChatMood:
 
         if random.random() > update_probability:
             return
-        
+
         logger.info(f"更新情绪状态，感兴趣度: {interested_rate}, 更新概率: {update_probability}")
 
         message_time = message.message_info.time

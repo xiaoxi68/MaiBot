@@ -84,4 +84,3 @@ class HeartFCSender:
         except Exception as e:
             logger.error(f"[{chat_id}] 处理或存储消息 {message_id} 时出错: {e}")
             raise e
-

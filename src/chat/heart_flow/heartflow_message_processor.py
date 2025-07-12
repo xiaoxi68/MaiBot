@@ -109,12 +109,12 @@ class HeartFCMessageReceiver:
             interested_rate, is_mentioned = await _calculate_interest(message)
             message.interest_value = interested_rate
             message.is_mentioned = is_mentioned
-            
+
             await self.storage.store_message(message, chat)
 
             subheartflow = await heartflow.get_or_create_subheartflow(chat.stream_id)
             message.update_chat_stream(chat)
-            
+
             # subheartflow.add_message_to_normal_chat_cache(message, interested_rate, is_mentioned)
 
             chat_mood = mood_manager.get_mood_by_chat_id(subheartflow.chat_id)

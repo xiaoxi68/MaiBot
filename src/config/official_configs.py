@@ -278,7 +278,6 @@ class NormalChatConfig(ConfigBase):
     """@bot 必然回复"""
 
 
-
 @dataclass
 class FocusChatConfig(ConfigBase):
     """专注聊天配置类"""

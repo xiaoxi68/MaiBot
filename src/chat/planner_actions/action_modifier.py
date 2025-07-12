@@ -82,9 +82,9 @@ class ActionModifier:
 
         # === 第一阶段：传统观察处理 ===
         # if history_loop:
-            # removals_from_loop = await self.analyze_loop_actions(history_loop)
-            # if removals_from_loop:
-                # removals_s1.extend(removals_from_loop)
+        # removals_from_loop = await self.analyze_loop_actions(history_loop)
+        # if removals_from_loop:
+        # removals_s1.extend(removals_from_loop)
 
         # 检查动作的关联类型
         chat_context = self.chat_stream.context
@@ -188,7 +188,7 @@ class ActionModifier:
                 reason = "激活类型为never"
                 deactivated_actions.append((action_name, reason))
                 logger.debug(f"{self.log_prefix}未激活动作: {action_name}，原因: 激活类型为never")
-            
+
             else:
                 logger.warning(f"{self.log_prefix}未知的激活类型: {activation_type}，跳过处理")
 
@@ -500,13 +500,13 @@ class ActionModifier:
 
         return removals
 
-    def get_available_actions_count(self,mode:str = "focus") -> int:
+    def get_available_actions_count(self, mode: str = "focus") -> int:
         """获取当前可用动作数量（排除默认的no_action）"""
         current_actions = self.action_manager.get_using_actions_for_mode(mode)
         # 排除no_action（如果存在）
         filtered_actions = {k: v for k, v in current_actions.items() if k != "no_action"}
         return len(filtered_actions)
-    
+
     def should_skip_planning_for_no_reply(self) -> bool:
         """判断是否应该跳过规划过程"""
         current_actions = self.action_manager.get_using_actions_for_mode("focus")

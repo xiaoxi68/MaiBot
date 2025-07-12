@@ -76,7 +76,7 @@ class ActionPlanner:
 
         self.last_obs_time_mark = 0.0
 
-    async def plan(self,mode:str = "focus") -> Dict[str, Any]:
+    async def plan(self, mode: str = "focus") -> Dict[str, Any]:
         """
         规划器 (Planner): 使用LLM根据上下文决定做出什么动作。
         """
