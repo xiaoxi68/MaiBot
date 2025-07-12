@@ -3,7 +3,7 @@ import re
 import math
 import traceback
 
-from typing import Tuple
+from typing import Tuple, TYPE_CHECKING
 
 from src.config.config import global_config
 from src.chat.memory_system.Hippocampus import hippocampus_manager
@@ -15,6 +15,9 @@ from src.chat.utils.timer_calculator import Timer
 from src.common.logger import get_logger
 from src.person_info.relationship_manager import get_relationship_manager
 from src.mood.mood_manager import mood_manager
+
+if TYPE_CHECKING:
+    from src.chat.heart_flow.sub_heartflow import SubHeartflow
 
 logger = get_logger("chat")
 
@@ -104,7 +107,7 @@ class HeartFCMessageReceiver:
 
             await self.storage.store_message(message, chat)
 
-            subheartflow = await heartflow.get_or_create_subheartflow(chat.stream_id)
+            subheartflow: SubHeartflow = await heartflow.get_or_create_subheartflow(chat.stream_id)  # type: ignore
 
             subheartflow.add_message_to_normal_chat_cache(message, interested_rate, is_mentioned)
 

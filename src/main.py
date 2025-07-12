@@ -2,7 +2,7 @@ import asyncio
 import time
 from maim_message import MessageServer
 
-from src.chat.express.exprssion_learner import get_expression_learner
+from src.chat.express.expression_learner import get_expression_learner
 from src.common.remote import TelemetryHeartBeatTask
 from src.manager.async_task_manager import async_task_manager
 from src.chat.utils.statistic import OnlineTimeRecordTask, StatisticOutputTask

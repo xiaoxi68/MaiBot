@@ -10,7 +10,7 @@ from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.common.logger import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
-from .exprssion_learner import get_expression_learner
+from .expression_learner import get_expression_learner
 
 logger = get_logger("expression_selector")
 
@@ -84,6 +84,7 @@ class ExpressionSelector:
     def get_random_expressions(
         self, chat_id: str, total_num: int, style_percentage: float, grammar_percentage: float
     ) -> Tuple[List[Dict[str, str]], List[Dict[str, str]]]:
+        # sourcery skip: extract-duplicate-method, move-assign
         (
             learnt_style_expressions,
             learnt_grammar_expressions,
@@ -174,6 +175,7 @@ class ExpressionSelector:
         min_num: int = 5,
         target_message: Optional[str] = None,
     ) -> List[Dict[str, str]]:
+        # sourcery skip: inline-variable, list-comprehension
         """使用LLM选择适合的表达方式"""
 
         # 1. 获取35个随机表达方式（现在按权重抽取）

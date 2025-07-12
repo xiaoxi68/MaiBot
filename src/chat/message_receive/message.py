@@ -112,7 +112,7 @@ class MessageRecv(Message):
         self.is_mentioned = None
         self.priority_mode = "interest"
         self.priority_info = None
-        self.interest_value = None
+        self.interest_value: float = None  # type: ignore
 
     def update_chat_stream(self, chat_stream: "ChatStream"):
         self.chat_stream = chat_stream
