@@ -1,4 +1,4 @@
-from .exprssion_learner import get_expression_learner
+from .expression_learner import get_expression_learner
 import random
 from typing import List, Dict, Tuple
 from json_repair import repair_json
