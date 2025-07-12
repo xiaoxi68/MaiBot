@@ -1,13 +1,60 @@
+import asyncio
+import math
+from typing import Tuple
+
+from src.chat.memory_system.Hippocampus import hippocampus_manager
 from src.chat.message_receive.message import MessageRecv
 from src.chat.message_receive.storage import MessageStorage
 from src.chat.message_receive.chat_stream import get_chat_manager
+from src.chat.utils.timer_calculator import Timer
+from src.chat.utils.utils import is_mentioned_bot_in_message
 from src.common.logger import get_logger
+from src.config.config import global_config
+from src.mais4u.mais4u_chat.body_emotion_action_manager import action_manager
+from src.mais4u.mais4u_chat.s4u_mood_manager import mood_manager
+
 from .s4u_chat import get_s4u_chat_manager
 
 
 # from ..message_receive.message_buffer import message_buffer
 
 logger = get_logger("chat")
+
+
+async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool]:
+    """计算消息的兴趣度
+
+    Args:
+        message: 待处理的消息对象
+
+    Returns:
+        Tuple[float, bool]: (兴趣度, 是否被提及)
+    """
+    is_mentioned, _ = is_mentioned_bot_in_message(message)
+    interested_rate = 0.0
+
+    if global_config.memory.enable_memory:
+        with Timer("记忆激活"):
+            interested_rate = await hippocampus_manager.get_activate_from_text(
+                message.processed_plain_text,
+                fast_retrieval=True,
+            )
+            logger.debug(f"记忆激活率: {interested_rate:.2f}")
+
+    text_len = len(message.processed_plain_text)
+    # 根据文本长度调整兴趣度，长度越大兴趣度越高，但增长率递减，最低0.01，最高0.05
+    # 采用对数函数实现递减增长
+
+    base_interest = 0.01 + (0.05 - 0.01) * (math.log10(text_len + 1) / math.log10(1000 + 1))
+    base_interest = min(max(base_interest, 0.01), 0.05)
+
+    interested_rate += base_interest
+
+    if is_mentioned:
+        interest_increase_on_mention = 1
+        interested_rate += interest_increase_on_mention
+
+    return interested_rate, is_mentioned
 
 
 class S4UMessageProcessor:
@@ -52,6 +99,14 @@ class S4UMessageProcessor:
             await s4u_chat.add_message(message)
         else:
             await s4u_chat.add_message(message)
+
+        interested_rate, _ = await _calculate_interest(message)
+
+        chat_mood = mood_manager.get_mood_by_chat_id(chat.stream_id)
+        asyncio.create_task(chat_mood.update_mood_by_message(message))
+        chat_action = action_manager.get_action_state_by_chat_id(chat.stream_id)
+        asyncio.create_task(chat_action.update_action_by_message(message))
+        # asyncio.create_task(chat_action.update_facial_expression_by_message(message, interested_rate))
 
         # 7. 日志记录
         logger.info(f"[S4U]{userinfo.user_nickname}:{message.processed_plain_text}")

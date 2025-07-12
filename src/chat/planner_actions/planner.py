@@ -10,7 +10,12 @@ from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.common.logger import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
-from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_before_timestamp_with_chat
+from src.chat.utils.chat_message_builder import (
+    build_readable_actions,
+    get_actions_by_timestamp_with_chat,
+    build_readable_messages,
+    get_raw_msg_before_timestamp_with_chat,
+)
 from src.chat.utils.utils import get_chat_type_and_target_info
 from src.chat.planner_actions.action_manager import ActionManager
 from src.chat.message_receive.chat_stream import get_chat_manager
@@ -30,9 +35,14 @@ def init_prompt():
 你现在需要根据聊天内容，选择的合适的action来参与聊天。
 {chat_context_description}，以下是具体的聊天内容：
 {chat_content_block}
+
+
 {moderation_prompt}
 
 现在请你根据{by_what}选择合适的action:
+你刚刚选择并执行过的action是：
+{actions_before_now_block}
+
 {no_action_block}
 {action_options_text}
 
@@ -226,6 +236,16 @@ class ActionPlanner:
                 show_actions=True,
             )
 
+            actions_before_now = get_actions_by_timestamp_with_chat(
+                chat_id=self.chat_id,
+                timestamp_end=time.time(),
+                limit=5,
+            )
+
+            actions_before_now_block = build_readable_actions(
+                actions=actions_before_now,
+            )
+
             self.last_obs_time_mark = time.time()
 
             if self.mode == ChatMode.FOCUS:
@@ -289,6 +309,7 @@ class ActionPlanner:
                 by_what=by_what,
                 chat_context_description=chat_context_description,
                 chat_content_block=chat_content_block,
+                actions_before_now_block=actions_before_now_block,
                 no_action_block=no_action_block,
                 action_options_text=action_options_block,
                 moderation_prompt=moderation_prompt_block,

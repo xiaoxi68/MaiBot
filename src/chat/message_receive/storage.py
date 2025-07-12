@@ -1,4 +1,5 @@
 import re
+import traceback
 from typing import Union
 
 from src.common.database.database_model import Messages, RecalledMessages, Images
@@ -35,11 +36,11 @@ class MessageStorage:
                     filtered_display_message = re.sub(pattern, "", display_message, flags=re.DOTALL)
                 else:
                     filtered_display_message = ""
-
+                interest_value = 0
                 reply_to = message.reply_to
             else:
                 filtered_display_message = ""
-
+                interest_value = message.interest_value
                 reply_to = ""
 
             chat_info_dict = chat_stream.to_dict()
@@ -79,9 +80,11 @@ class MessageStorage:
                 processed_plain_text=filtered_processed_plain_text,
                 display_message=filtered_display_message,
                 memorized_times=message.memorized_times,
+                interest_value=interest_value,
             )
         except Exception:
             logger.exception("存储消息失败")
+            traceback.print_exc()
 
     @staticmethod
     async def store_recalled_message(message_id: str, time: str, chat_stream: ChatStream) -> None:

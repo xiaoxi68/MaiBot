@@ -112,6 +112,7 @@ class MessageRecv(Message):
         self.is_mentioned = None
         self.priority_mode = "interest"
         self.priority_info = None
+        self.interest_value = None
 
     def update_chat_stream(self, chat_stream: "ChatStream"):
         self.chat_stream = chat_stream
@@ -335,6 +336,8 @@ class MessageSending(MessageProcessBase):
 
         # 用于显示发送内容与显示不一致的情况
         self.display_message = display_message
+
+        self.interest_value = 0.0
 
     def build_reply(self):
         """设置回复消息"""

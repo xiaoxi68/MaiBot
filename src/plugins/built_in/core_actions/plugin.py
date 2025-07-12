@@ -9,6 +9,7 @@ import random
 import time
 from typing import List, Tuple, Type
 import asyncio
+import re
 
 # 导入新插件系统
 from src.plugin_system import BasePlugin, register_plugin, BaseAction, ComponentInfo, ActionActivationType, ChatMode
@@ -54,11 +55,25 @@ class ReplyAction(BaseAction):
     # 关联类型
     associated_types = ["text"]
 
+    def _parse_reply_target(self, target_message: str) -> tuple:
+        sender = ""
+        target = ""
+        if ":" in target_message or "：" in target_message:
+            # 使用正则表达式匹配中文或英文冒号
+            parts = re.split(pattern=r"[:：]", string=target_message, maxsplit=1)
+            if len(parts) == 2:
+                sender = parts[0].strip()
+                target = parts[1].strip()
+        return sender, target
+
     async def execute(self) -> Tuple[bool, str]:
         """执行回复动作"""
         logger.info(f"{self.log_prefix} 决定进行回复")
 
         start_time = self.action_data.get("loop_start_time", time.time())
+
+        reply_to = self.action_data.get("reply_to", "")
+        sender, target = self._parse_reply_target(reply_to)
 
         try:
             try:
@@ -105,6 +120,11 @@ class ReplyAction(BaseAction):
                 reply_text += data
 
             # 存储动作记录
+            if sender and target:
+                reply_text = f"你对{sender}说的{target}，进行了回复：{reply_text}"
+            else:
+                reply_text = f"你进行发言：{reply_text}"
+
             await self.store_action_info(
                 action_build_into_prompt=False,
                 action_prompt_display=reply_text,
@@ -144,37 +164,18 @@ class CoreActionsPlugin(BasePlugin):
     config_section_descriptions = {
         "plugin": "插件启用配置",
         "components": "核心组件启用配置",
-        "no_reply": "不回复动作配置（智能等待机制）",
     }
 
     # 配置Schema定义
     config_schema = {
         "plugin": {
-            "enabled": ConfigField(type=bool, default=True, description="是否启用插件"),
-            "config_version": ConfigField(type=str, default="0.3.1", description="配置文件版本"),
+            "enabled": ConfigField(type=bool, default=False, description="是否启用插件"),
+            "config_version": ConfigField(type=str, default="0.4.0", description="配置文件版本"),
         },
         "components": {
-            "enable_reply": ConfigField(type=bool, default=True, description="是否启用'回复'动作"),
-            "enable_no_reply": ConfigField(type=bool, default=True, description="是否启用'不回复'动作"),
-            "enable_emoji": ConfigField(type=bool, default=True, description="是否启用'表情'动作"),
-        },
-        "no_reply": {
-            "max_timeout": ConfigField(type=int, default=1200, description="最大等待超时时间（秒）"),
-            "min_judge_interval": ConfigField(
-                type=float, default=1.0, description="LLM判断的最小间隔时间（秒），防止过于频繁"
-            ),
-            "auto_exit_message_count": ConfigField(
-                type=int, default=20, description="累计消息数量达到此阈值时自动结束等待"
-            ),
-            "random_probability": ConfigField(
-                type=float, default=0.8, description="Focus模式下，随机选择不回复的概率（0.0到1.0）", example=0.8
-            ),
-            "skip_judge_when_tired": ConfigField(
-                type=bool, default=True, description="当发言过多时是否启用跳过LLM判断机制"
-            ),
-            "frequency_check_window": ConfigField(
-                type=int, default=600, description="回复频率检查窗口时间（秒）", example=600
-            ),
+            "enable_reply": ConfigField(type=bool, default=True, description="是否启用回复动作"),
+            "enable_no_reply": ConfigField(type=bool, default=True, description="是否启用不回复动作"),
+            "enable_emoji": ConfigField(type=bool, default=True, description="是否启用发送表情/图片动作"),
         },
     }
 
@@ -191,25 +192,6 @@ class CoreActionsPlugin(BasePlugin):
             EmojiAction.random_activation_probability = 0.0
             EmojiAction.focus_activation_type = ActionActivationType.LLM_JUDGE
             EmojiAction.normal_activation_type = ActionActivationType.LLM_JUDGE
-
-        no_reply_probability = self.get_config("no_reply.random_probability", 0.8)
-        NoReplyAction.random_activation_probability = no_reply_probability
-
-        min_judge_interval = self.get_config("no_reply.min_judge_interval", 1.0)
-        NoReplyAction._min_judge_interval = min_judge_interval
-
-        auto_exit_message_count = self.get_config("no_reply.auto_exit_message_count", 20)
-        NoReplyAction._auto_exit_message_count = auto_exit_message_count
-
-        max_timeout = self.get_config("no_reply.max_timeout", 600)
-        NoReplyAction._max_timeout = max_timeout
-
-        skip_judge_when_tired = self.get_config("no_reply.skip_judge_when_tired", True)
-        NoReplyAction._skip_judge_when_tired = skip_judge_when_tired
-
-        # 新增：频率检测相关配置
-        frequency_check_window = self.get_config("no_reply.frequency_check_window", 600)
-        NoReplyAction._frequency_check_window = frequency_check_window
 
         # --- 根据配置注册组件 ---
         components = []

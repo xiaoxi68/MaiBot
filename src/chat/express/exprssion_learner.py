@@ -122,7 +122,7 @@ class ExpressionLearner:
         min_len = min(len(s1), len(s2))
         if min_len < 5:
             return False
-        same = sum(a == b for a, b in zip(s1, s2))
+        same = sum(a == b for a, b in zip(s1, s2, strict=False))
         return same / min_len > 0.8
 
     async def learn_and_store_expression(self) -> Tuple[List[Tuple[str, str, str]], List[Tuple[str, str, str]]]:

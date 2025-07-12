@@ -129,6 +129,8 @@ class Messages(BaseModel):
 
     reply_to = TextField(null=True)
 
+    interest_value = DoubleField(null=True)
+
     # 从 chat_info 扁平化而来的字段
     chat_info_stream_id = TextField()
     chat_info_platform = TextField()

@@ -50,13 +50,12 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool]:
     is_mentioned, _ = is_mentioned_bot_in_message(message)
     interested_rate = 0.0
 
-    if global_config.memory.enable_memory:
-        with Timer("记忆激活"):
-            interested_rate = await hippocampus_manager.get_activate_from_text(
-                message.processed_plain_text,
-                fast_retrieval=True,
-            )
-            logger.debug(f"记忆激活率: {interested_rate:.2f}")
+    with Timer("记忆激活"):
+        interested_rate = await hippocampus_manager.get_activate_from_text(
+            message.processed_plain_text,
+            fast_retrieval=False,
+        )
+        logger.debug(f"记忆激活率: {interested_rate:.2f}")
 
     text_len = len(message.processed_plain_text)
     # 根据文本长度调整兴趣度，长度越大兴趣度越高，但增长率递减，最低0.01，最高0.05
@@ -99,13 +98,15 @@ class HeartFCMessageReceiver:
             userinfo = message.message_info.user_info
             chat = message.chat_stream
 
+            # 2. 兴趣度计算与更新
+            interested_rate, is_mentioned = await _calculate_interest(message)
+            message.interest_value = interested_rate
+
             await self.storage.store_message(message, chat)
 
             subheartflow = await heartflow.get_or_create_subheartflow(chat.stream_id)
 
-            # 2. 兴趣度计算与更新
-            interested_rate, is_mentioned = await _calculate_interest(message)
-            subheartflow.add_message_to_normal_chat_cache(message, interested_rate, is_mentioned)  # type: ignore
+            subheartflow.add_message_to_normal_chat_cache(message, interested_rate, is_mentioned)
 
             chat_mood = mood_manager.get_mood_by_chat_id(subheartflow.chat_id)  # type: ignore
             asyncio.create_task(chat_mood.update_mood_by_message(message, interested_rate))

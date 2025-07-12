@@ -68,7 +68,7 @@ class RelationshipManager:
         short_impression = await person_info_manager.get_value(person_id, "short_impression")
 
         current_points = await person_info_manager.get_value(person_id, "points") or []
-        print(f"current_points: {current_points}")
+        # print(f"current_points: {current_points}")
         if isinstance(current_points, str):
             try:
                 current_points = json.loads(current_points)
@@ -89,7 +89,7 @@ class RelationshipManager:
             points = current_points
 
         # 构建points文本
-        points_text = "\n".join([f"{point[2]}：{point[0]}\n" for point in points])
+        points_text = "\n".join([f"{point[2]}：{point[0]}" for point in points])
 
         nickname_str = await person_info_manager.get_value(person_id, "nickname")
         platform = await person_info_manager.get_value(person_id, "platform")
@@ -360,19 +360,19 @@ class RelationshipManager:
         # 根据熟悉度，调整印象和简短印象的最大长度
         if know_times > 300:
             max_impression_length = 2000
-            max_short_impression_length = 800
+            max_short_impression_length = 400
         elif know_times > 100:
             max_impression_length = 1000
-            max_short_impression_length = 500
+            max_short_impression_length = 250
         elif know_times > 50:
             max_impression_length = 500
-            max_short_impression_length = 300
+            max_short_impression_length = 150
         elif know_times > 10:
             max_impression_length = 200
-            max_short_impression_length = 100
+            max_short_impression_length = 60
         else:
             max_impression_length = 100
-            max_short_impression_length = 50
+            max_short_impression_length = 30
 
         # 根据好感度，调整印象和简短印象的最大长度
         attitude_multiplier = (abs(100 - attitude) / 100) + 1
