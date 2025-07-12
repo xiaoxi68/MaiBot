@@ -65,9 +65,9 @@ def get_replyer(
 
 
 async def generate_reply(
-    chat_stream=None,
-    chat_id: str = None,
-    action_data: Dict[str, Any] = None,
+    chat_stream: Optional[ChatStream] = None,
+    chat_id: Optional[str] = None,
+    action_data: Optional[Dict[str, Any]] = None,
     reply_to: str = "",
     extra_info: str = "",
     available_actions: Optional[Dict[str, ActionInfo]] = None,
@@ -78,25 +78,25 @@ async def generate_reply(
     model_configs: Optional[List[Dict[str, Any]]] = None,
     request_type: str = "",
     enable_timeout: bool = False,
-) -> Tuple[bool, List[Tuple[str, Any]]]:
+) -> Tuple[bool, List[Tuple[str, Any]], Optional[str]]:
     """生成回复
 
     Args:
         chat_stream: 聊天流对象（优先）
-        action_data: 动作数据
         chat_id: 聊天ID（备用）
+        action_data: 动作数据
         enable_splitter: 是否启用消息分割器
         enable_chinese_typo: 是否启用错字生成器
         return_prompt: 是否返回提示词
     Returns:
-        Tuple[bool, List[Tuple[str, Any]]]: (是否成功, 回复集合)
+        Tuple[bool, List[Tuple[str, Any]], Optional[str]]: (是否成功, 回复集合, 提示词)
     """
     try:
         # 获取回复器
         replyer = get_replyer(chat_stream, chat_id, model_configs=model_configs, request_type=request_type)
         if not replyer:
             logger.error("[GeneratorAPI] 无法获取回复器")
-            return False, []
+            return False, [], None
 
         logger.debug("[GeneratorAPI] 开始生成回复")
 
@@ -109,8 +109,9 @@ async def generate_reply(
             enable_timeout=enable_timeout,
             enable_tool=enable_tool,
         )
-
-        reply_set = await process_human_text(content, enable_splitter, enable_chinese_typo)
+        reply_set = []
+        if content:
+            reply_set = await process_human_text(content, enable_splitter, enable_chinese_typo)
 
         if success:
             logger.debug(f"[GeneratorAPI] 回复生成成功，生成了 {len(reply_set)} 个回复项")
@@ -118,19 +119,19 @@ async def generate_reply(
             logger.warning("[GeneratorAPI] 回复生成失败")
 
         if return_prompt:
-            return success, reply_set or [], prompt
+            return success, reply_set, prompt
         else:
-            return success, reply_set or []
+            return success, reply_set, None
 
     except Exception as e:
         logger.error(f"[GeneratorAPI] 生成回复时出错: {e}")
-        return False, []
+        return False, [], None
 
 
 async def rewrite_reply(
-    chat_stream=None,
-    reply_data: Dict[str, Any] = None,
-    chat_id: str = None,
+    chat_stream: Optional[ChatStream] = None,
+    reply_data: Optional[Dict[str, Any]] = None,
+    chat_id: Optional[str] = None,
     enable_splitter: bool = True,
     enable_chinese_typo: bool = True,
     model_configs: Optional[List[Dict[str, Any]]] = None,
@@ -158,15 +159,16 @@ async def rewrite_reply(
 
         # 调用回复器重写回复
         success, content = await replyer.rewrite_reply_with_context(reply_data=reply_data or {})
-
-        reply_set = await process_human_text(content, enable_splitter, enable_chinese_typo)
+        reply_set = []
+        if content:
+            reply_set = await process_human_text(content, enable_splitter, enable_chinese_typo)
 
         if success:
             logger.info(f"[GeneratorAPI] 重写回复成功，生成了 {len(reply_set)} 个回复项")
         else:
             logger.warning("[GeneratorAPI] 重写回复失败")
 
-        return success, reply_set or []
+        return success, reply_set
 
     except Exception as e:
         logger.error(f"[GeneratorAPI] 重写回复时出错: {e}")

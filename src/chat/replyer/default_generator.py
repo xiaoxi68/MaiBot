@@ -4,6 +4,7 @@ import asyncio
 import random
 import ast
 import re
+
 from typing import List, Optional, Dict, Any, Tuple
 from datetime import datetime
 
@@ -161,13 +162,13 @@ class DefaultReplyer:
 
     async def generate_reply_with_context(
         self,
-        reply_data: Dict[str, Any] = None,
+        reply_data: Optional[Dict[str, Any]] = None,
         reply_to: str = "",
         extra_info: str = "",
         available_actions: Optional[Dict[str, ActionInfo]] = None,
         enable_tool: bool = True,
         enable_timeout: bool = False,
-    ) -> Tuple[bool, Optional[str]]:
+    ) -> Tuple[bool, Optional[str], Optional[str]]:
         """
         回复器 (Replier): 核心逻辑，负责生成回复文本。
         (已整合原 HeartFCGenerator 的功能)
@@ -225,14 +226,14 @@ class DefaultReplyer:
             except Exception as llm_e:
                 # 精简报错信息
                 logger.error(f"{self.log_prefix}LLM 生成失败: {llm_e}")
-                return False, None  # LLM 调用失败则无法生成回复
+                return False, None, prompt  # LLM 调用失败则无法生成回复
 
             return True, content, prompt
 
         except Exception as e:
             logger.error(f"{self.log_prefix}回复生成意外失败: {e}")
             traceback.print_exc()
-            return False, None
+            return False, None, prompt
 
     async def rewrite_reply_with_context(
         self,
@@ -368,7 +369,7 @@ class DefaultReplyer:
             memory_str += f"- {running_memory['content']}\n"
         return memory_str
 
-    async def build_tool_info(self, reply_data=None, chat_history=None, enable_tool: bool = True):
+    async def build_tool_info(self, chat_history, reply_data: Optional[Dict], enable_tool: bool = True):
         """构建工具信息块
 
         Args:
@@ -393,7 +394,7 @@ class DefaultReplyer:
 
         try:
             # 使用工具执行器获取信息
-            tool_results = await self.tool_executor.execute_from_chat_message(
+            tool_results, _, _ = await self.tool_executor.execute_from_chat_message(
                 sender=sender, target_message=text, chat_history=chat_history, return_details=False
             )
 
@@ -468,7 +469,7 @@ class DefaultReplyer:
 
     async def build_prompt_reply_context(
         self,
-        reply_data=None,
+        reply_data: Dict[str, Any],
         available_actions: Optional[Dict[str, ActionInfo]] = None,
         enable_timeout: bool = False,
         enable_tool: bool = True,
@@ -549,7 +550,7 @@ class DefaultReplyer:
             ),
             self._time_and_run_task(self.build_memory_block(chat_talking_prompt_half, target), "build_memory_block"),
             self._time_and_run_task(
-                self.build_tool_info(reply_data, chat_talking_prompt_half, enable_tool=enable_tool), "build_tool_info"
+                self.build_tool_info(chat_talking_prompt_half, reply_data, enable_tool=enable_tool), "build_tool_info"
             ),
         )
 
@@ -806,7 +807,7 @@ class DefaultReplyer:
         response_set: List[Tuple[str, str]],
         thinking_id: str = "",
         display_message: str = "",
-    ) -> Optional[MessageSending]:
+    ) -> Optional[List[Tuple[str, bool]]]:
         # sourcery skip: assign-if-exp, boolean-if-exp-identity, remove-unnecessary-cast
         """发送回复消息 (尝试锚定到 anchor_message)，使用 HeartFCSender"""
         chat = self.chat_stream
@@ -869,7 +870,7 @@ class DefaultReplyer:
             try:
                 if (
                     bot_message.is_private_message()
-                    or bot_message.reply.processed_plain_text != "[System Trigger Context]"
+                    or bot_message.reply.processed_plain_text != "[System Trigger Context]"  # type: ignore
                     or mark_head
                 ):
                     set_reply = False
@@ -910,7 +911,7 @@ class DefaultReplyer:
         is_emoji: bool,
         thinking_start_time: float,
         display_message: str,
-        anchor_message: MessageRecv = None,
+        anchor_message: Optional[MessageRecv] = None,
     ) -> MessageSending:
         """构建单个发送消息"""
 

@@ -1,6 +1,7 @@
-from dataclasses import dataclass, field
-from typing import Any, Literal
 import re
+
+from dataclasses import dataclass, field
+from typing import Any, Literal, Optional
 
 from src.config.config_base import ConfigBase
 
@@ -113,7 +114,7 @@ class ChatConfig(ConfigBase):
     exit_focus_threshold: float = 1.0
     """自动退出专注聊天的阈值，越低越容易退出专注聊天"""
 
-    def get_current_talk_frequency(self, chat_stream_id: str = None) -> float:
+    def get_current_talk_frequency(self, chat_stream_id: Optional[str] = None) -> float:
         """
         根据当前时间和聊天流获取对应的 talk_frequency
 
@@ -138,7 +139,7 @@ class ChatConfig(ConfigBase):
         # 如果都没有匹配，返回默认值
         return self.talk_frequency
 
-    def _get_time_based_frequency(self, time_freq_list: list[str]) -> float:
+    def _get_time_based_frequency(self, time_freq_list: list[str]) -> Optional[float]:
         """
         根据时间配置列表获取当前时段的频率
 
@@ -186,7 +187,7 @@ class ChatConfig(ConfigBase):
 
         return current_frequency
 
-    def _get_stream_specific_frequency(self, chat_stream_id: str) -> float:
+    def _get_stream_specific_frequency(self, chat_stream_id: str):
         """
         获取特定聊天流在当前时间的频率
 
@@ -217,7 +218,7 @@ class ChatConfig(ConfigBase):
 
         return None
 
-    def _parse_stream_config_to_chat_id(self, stream_config_str: str) -> str:
+    def _parse_stream_config_to_chat_id(self, stream_config_str: str) -> Optional[str]:
         """
         解析流配置字符串并生成对应的 chat_id
 

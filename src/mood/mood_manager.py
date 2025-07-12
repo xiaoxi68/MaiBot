@@ -2,12 +2,12 @@ import math
 import random
 import time
 
-from src.chat.message_receive.message import MessageRecv
-from src.llm_models.utils_model import LLMRequest
-from ..common.logger import get_logger
-from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_by_timestamp_with_chat_inclusive
+from src.common.logger import get_logger
 from src.config.config import global_config
+from src.chat.message_receive.message import MessageRecv
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
+from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_by_timestamp_with_chat_inclusive
+from src.llm_models.utils_model import LLMRequest
 from src.manager.async_task_manager import AsyncTask, async_task_manager
 
 logger = get_logger("mood")
@@ -55,12 +55,12 @@ class ChatMood:
             request_type="mood",
         )
 
-        self.last_change_time = 0
+        self.last_change_time: float = 0
 
     async def update_mood_by_message(self, message: MessageRecv, interested_rate: float):
         self.regression_count = 0
 
-        during_last_time = message.message_info.time - self.last_change_time
+        during_last_time = message.message_info.time - self.last_change_time  # type: ignore
 
         base_probability = 0.05
         time_multiplier = 4 * (1 - math.exp(-0.01 * during_last_time))
@@ -78,7 +78,7 @@ class ChatMood:
         if random.random() > update_probability:
             return
 
-        message_time = message.message_info.time
+        message_time: float = message.message_info.time  # type: ignore
         message_list_before_now = get_raw_msg_by_timestamp_with_chat_inclusive(
             chat_id=self.chat_id,
             timestamp_start=self.last_change_time,
@@ -119,7 +119,7 @@ class ChatMood:
 
         self.mood_state = response
 
-        self.last_change_time = message_time
+        self.last_change_time = message_time  # type: ignore
 
     async def regress_mood(self):
         message_time = time.time()

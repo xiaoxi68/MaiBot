@@ -1,7 +1,8 @@
+import ast
 import json
 import logging
-from typing import Any, Dict, TypeVar, List, Union, Tuple
-import ast
+
+from typing import Any, Dict, TypeVar, List, Union, Tuple, Optional
 
 # 定义类型变量用于泛型类型提示
 T = TypeVar("T")
@@ -30,18 +31,14 @@ def safe_json_loads(json_str: str, default_value: T = None) -> Union[Any, T]:
         # 尝试标准的 JSON 解析
         return json.loads(json_str)
     except json.JSONDecodeError:
-        # 如果标准解析失败，尝试将单引号替换为双引号再解析
-        # （注意：这种替换可能不安全，如果字符串内容本身包含引号）
-        # 更安全的方式是用 ast.literal_eval
+        # 如果标准解析失败，尝试用 ast.literal_eval 解析
         try:
             # logger.debug(f"标准JSON解析失败，尝试用 ast.literal_eval 解析: {json_str[:100]}...")
             result = ast.literal_eval(json_str)
-            # 确保结果是字典（因为我们通常期望参数是字典）
             if isinstance(result, dict):
                 return result
-            else:
-                logger.warning(f"ast.literal_eval 解析成功但结果不是字典: {type(result)}, 内容: {result}")
-                return default_value
+            logger.warning(f"ast.literal_eval 解析成功但结果不是字典: {type(result)}, 内容: {result}")
+            return default_value
         except (ValueError, SyntaxError, MemoryError, RecursionError) as ast_e:
             logger.error(f"使用 ast.literal_eval 解析失败: {ast_e}, 字符串: {json_str[:100]}...")
             return default_value
@@ -53,7 +50,9 @@ def safe_json_loads(json_str: str, default_value: T = None) -> Union[Any, T]:
         return default_value
 
 
-def extract_tool_call_arguments(tool_call: Dict[str, Any], default_value: Dict[str, Any] = None) -> Dict[str, Any]:
+def extract_tool_call_arguments(
+    tool_call: Dict[str, Any], default_value: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
     """
     从LLM工具调用对象中提取参数
 
@@ -77,13 +76,11 @@ def extract_tool_call_arguments(tool_call: Dict[str, Any], default_value: Dict[s
             logger.error(f"工具调用缺少function字段或格式不正确: {tool_call}")
             return default_result
 
-        # 提取arguments
-        arguments_str = function_data.get("arguments", "{}")
-        if not arguments_str:
+        if arguments_str := function_data.get("arguments", "{}"):
+            # 解析JSON
+            return safe_json_loads(arguments_str, default_result)
+        else:
             return default_result
-
-        # 解析JSON
-        return safe_json_loads(arguments_str, default_result)
 
     except Exception as e:
         logger.error(f"提取工具调用参数时出错: {e}")

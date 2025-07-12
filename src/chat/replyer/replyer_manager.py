@@ -1,8 +1,8 @@
 from typing import Dict, Any, Optional, List
 
+from src.common.logger import get_logger
 from src.chat.message_receive.chat_stream import ChatStream, get_chat_manager
 from src.chat.replyer.default_generator import DefaultReplyer
-from src.common.logger import get_logger
 
 logger = get_logger("ReplyerManager")
 

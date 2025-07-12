@@ -3,20 +3,19 @@ import os
 import time
 import hashlib
 import uuid
+import io
+import asyncio
+import numpy as np
+
 from typing import Optional, Tuple
 from PIL import Image
-import io
-import numpy as np
-import asyncio
+from rich.traceback import install
 
-
+from src.common.logger import get_logger
 from src.common.database.database import db
 from src.common.database.database_model import Images, ImageDescriptions
 from src.config.config import global_config
 from src.llm_models.utils_model import LLMRequest
-
-from src.common.logger import get_logger
-from rich.traceback import install
 
 install(extra_lines=3)
 
@@ -111,7 +110,7 @@ class ImageManager:
                 return f"[表情包，含义看起来是：{cached_description}]"
 
             # 调用AI获取描述
-            if image_format == "gif" or image_format == "GIF":
+            if image_format in ["gif", "GIF"]:
                 image_base64_processed = self.transform_gif(image_base64)
                 if image_base64_processed is None:
                     logger.warning("GIF转换失败，无法获取描述")
@@ -258,6 +257,7 @@ class ImageManager:
 
     @staticmethod
     def transform_gif(gif_base64: str, similarity_threshold: float = 1000.0, max_frames: int = 15) -> Optional[str]:
+        # sourcery skip: use-contextlib-suppress
         """将GIF转换为水平拼接的静态图像, 跳过相似的帧
 
         Args:
@@ -351,7 +351,7 @@ class ImageManager:
             # 创建拼接图像
             total_width = target_width * len(resized_frames)
             # 防止总宽度为0
-            if total_width == 0 and len(resized_frames) > 0:
+            if total_width == 0 and resized_frames:
                 logger.warning("计算出的总宽度为0，但有选中帧，可能目标宽度太小")
                 # 至少给点宽度吧
                 total_width = len(resized_frames)
@@ -368,10 +368,7 @@ class ImageManager:
             # 转换为base64
             buffer = io.BytesIO()
             combined_image.save(buffer, format="JPEG", quality=85)  # 保存为JPEG
-            result_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
-
-            return result_base64
-
+            return base64.b64encode(buffer.getvalue()).decode("utf-8")
         except MemoryError:
             logger.error("GIF转换失败: 内存不足，可能是GIF太大或帧数太多")
             return None  # 内存不够啦
@@ -380,6 +377,7 @@ class ImageManager:
             return None  # 其他错误也返回None
 
     async def process_image(self, image_base64: str) -> Tuple[str, str]:
+        # sourcery skip: hoist-if-from-if
         """处理图片并返回图片ID和描述
 
         Args:
@@ -418,17 +416,9 @@ class ImageManager:
                     if existing_image.vlm_processed is None:
                         existing_image.vlm_processed = False
 
-                    existing_image.count += 1
-                    existing_image.save()
-                    return existing_image.image_id, f"[picid:{existing_image.image_id}]"
-                else:
-                    # print(f"图片已存在: {existing_image.image_id}")
-                    # print(f"图片描述: {existing_image.description}")
-                    # print(f"图片计数: {existing_image.count}")
-                    # 更新计数
-                    existing_image.count += 1
-                    existing_image.save()
-                    return existing_image.image_id, f"[picid:{existing_image.image_id}]"
+                existing_image.count += 1
+                existing_image.save()
+                return existing_image.image_id, f"[picid:{existing_image.image_id}]"
             else:
                 # print(f"图片不存在: {image_hash}")
                 image_id = str(uuid.uuid4())

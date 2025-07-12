@@ -406,9 +406,7 @@ def initialize_database():
                 existing_columns = {row[1] for row in cursor.fetchall()}
                 model_fields = set(model._meta.fields.keys())
 
-                # 检查并添加缺失字段（原有逻辑）
-                missing_fields = model_fields - existing_columns
-                if missing_fields:
+                if missing_fields := model_fields - existing_columns:
                     logger.warning(f"表 '{table_name}' 缺失字段: {missing_fields}")
 
                 for field_name, field_obj in model._meta.fields.items():
@@ -424,10 +422,7 @@ def initialize_database():
                             "DateTimeField": "DATETIME",
                         }.get(field_type, "TEXT")
                         alter_sql = f"ALTER TABLE {table_name} ADD COLUMN {field_name} {sql_type}"
-                        if field_obj.null:
-                            alter_sql += " NULL"
-                        else:
-                            alter_sql += " NOT NULL"
+                        alter_sql += " NULL" if field_obj.null else " NOT NULL"
                         if hasattr(field_obj, "default") and field_obj.default is not None:
                             # 正确处理不同类型的默认值
                             default_value = field_obj.default

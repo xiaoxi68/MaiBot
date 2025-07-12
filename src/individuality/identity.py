@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
 
 @dataclass
@@ -8,7 +8,7 @@ class Identity:
 
     identity_detail: List[str]  # 身份细节描述
 
-    def __init__(self, identity_detail: List[str] = None):
+    def __init__(self, identity_detail: Optional[List[str]] = None):
         """初始化身份特征
 
         Args:

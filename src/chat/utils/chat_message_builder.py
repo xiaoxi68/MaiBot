@@ -1,6 +1,7 @@
 import time  # 导入 time 模块以获取当前时间
 import random
 import re
+
 from typing import List, Dict, Any, Tuple, Optional
 from rich.traceback import install
 
@@ -88,8 +89,8 @@ def get_actions_by_timestamp_with_chat(
     """获取在特定聊天从指定时间戳到指定时间戳的动作记录，按时间升序排序，返回动作记录列表"""
     query = ActionRecords.select().where(
         (ActionRecords.chat_id == chat_id)
-        & (ActionRecords.time > timestamp_start)
-        & (ActionRecords.time < timestamp_end)
+        & (ActionRecords.time > timestamp_start)  # type: ignore
+        & (ActionRecords.time < timestamp_end)  # type: ignore
     )
 
     if limit > 0:
@@ -113,8 +114,8 @@ def get_actions_by_timestamp_with_chat_inclusive(
     """获取在特定聊天从指定时间戳到指定时间戳的动作记录（包含边界），按时间升序排序，返回动作记录列表"""
     query = ActionRecords.select().where(
         (ActionRecords.chat_id == chat_id)
-        & (ActionRecords.time >= timestamp_start)
-        & (ActionRecords.time <= timestamp_end)
+        & (ActionRecords.time >= timestamp_start)  # type: ignore
+        & (ActionRecords.time <= timestamp_end)  # type: ignore
     )
 
     if limit > 0:
@@ -331,7 +332,7 @@ def _build_readable_messages_internal(
         if replace_bot_name and user_id == global_config.bot.qq_account:
             person_name = f"{global_config.bot.nickname}(你)"
         else:
-            person_name = person_info_manager.get_value_sync(person_id, "person_name")
+            person_name = person_info_manager.get_value_sync(person_id, "person_name")  # type: ignore
 
         # 如果 person_name 未设置，则使用消息中的 nickname 或默认名称
         if not person_name:
@@ -911,8 +912,8 @@ async def get_person_id_list(messages: List[Dict[str, Any]]) -> List[str]:
     person_ids_set = set()  # 使用集合来自动去重
 
     for msg in messages:
-        platform = msg.get("user_platform")
-        user_id = msg.get("user_id")
+        platform: str = msg.get("user_platform")  # type: ignore
+        user_id: str = msg.get("user_id")  # type: ignore
 
         # 检查必要信息是否存在 且 不是机器人自己
         if not all([platform, user_id]) or user_id == global_config.bot.qq_account:
