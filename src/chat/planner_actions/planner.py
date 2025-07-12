@@ -103,15 +103,13 @@ class ActionPlanner:
                     logger.warning(f"{self.log_prefix}使用中的动作 {action_name} 未在已注册动作中找到")
 
             # 如果没有可用动作或只有no_reply动作，直接返回no_reply
-            if not current_available_actions or (
-                len(current_available_actions) == 1 and "no_reply" in current_available_actions
-            ):
-                action = "no_reply"
-                reasoning = "没有可用的动作" if not current_available_actions else "只有no_reply动作可用，跳过规划"
+            if not current_available_actions:
+                if mode == "focus":
+                    action = "no_reply"
+                else:
+                    action = "no_action"
+                reasoning = "没有可用的动作"
                 logger.info(f"{self.log_prefix}{reasoning}")
-                logger.debug(
-                    f"{self.log_prefix}[focus]沉默后恢复到默认动作集, 当前可用: {list(self.action_manager.get_using_actions().keys())}"
-                )
                 return {
                     "action_result": {"action_type": action, "action_data": action_data, "reasoning": reasoning},
                 }

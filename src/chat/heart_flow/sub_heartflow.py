@@ -45,9 +45,6 @@ class SubHeartflow:
         """异步初始化方法，创建兴趣流并确定聊天类型"""
         await self.heart_fc_instance.start()
 
-
-
-
     async def _stop_heart_fc_chat(self):
         """停止并清理 HeartFChatting 实例"""
         if self.heart_fc_instance.running:

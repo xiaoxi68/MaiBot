@@ -19,7 +19,7 @@ from src.chat.focus_chat.hfc_utils import get_recent_message_stats
 from src.person_info.person_info import get_person_info_manager
 from src.plugin_system.apis import generator_api,send_api,message_api
 from src.chat.willing.willing_manager import get_willing_manager
-from .priority_manager import PriorityManager
+from ...mais4u.mais4u_chat.priority_manager import PriorityManager
 from src.chat.utils.chat_message_builder import get_raw_msg_by_timestamp_with_chat
 
 
@@ -448,18 +448,10 @@ class HeartFChatting:
             return False, "", ""
         
 
-
     async def shutdown(self):
         """优雅关闭HeartFChatting实例，取消活动循环任务"""
         logger.info(f"{self.log_prefix} 正在关闭HeartFChatting...")
         self.running = False  # <-- 在开始关闭时设置标志位
-
-        # 记录最终的消息统计
-        if self._message_count > 0:
-            logger.info(f"{self.log_prefix} 本次focus会话共发送了 {self._message_count} 条消息")
-            if self._fatigue_triggered:
-                logger.info(f"{self.log_prefix} 因疲惫而退出focus模式")
-
         # 取消循环任务
         if self._loop_task and not self._loop_task.done():
             logger.info(f"{self.log_prefix} 正在取消HeartFChatting循环任务")
@@ -477,10 +469,7 @@ class HeartFChatting:
         # 清理状态
         self.running = False
         self._loop_task = None
-
-        # 重置消息计数器，为下次启动做准备
-        self.reset_message_count()
-
+        
         logger.info(f"{self.log_prefix} HeartFChatting关闭完成")
 
 
