@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Tuple, Optional
 from src.common.logger import get_logger
+from src.chat.message_receive.chat_stream import ChatStream
 from src.plugin_system.base.component_types import ActionActivationType, ChatMode, ActionInfo, ComponentType
 from src.plugin_system.apis import send_api, database_api, message_api
 import time
@@ -31,9 +32,9 @@ class BaseAction(ABC):
         reasoning: str,
         cycle_timers: dict,
         thinking_id: str,
-        chat_stream=None,
+        chat_stream: ChatStream,
         log_prefix: str = "",
-        plugin_config: dict = None,
+        plugin_config: Optional[dict] = None,
         **kwargs,
     ):
         """初始化Action组件

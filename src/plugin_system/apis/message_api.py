@@ -56,7 +56,12 @@ def get_messages_by_time(
 
 
 def get_messages_by_time_in_chat(
-    chat_id: str, start_time: float, end_time: float, limit: int = 0, limit_mode: str = "latest", filter_mai: bool = False
+    chat_id: str,
+    start_time: float,
+    end_time: float,
+    limit: int = 0,
+    limit_mode: str = "latest",
+    filter_mai: bool = False,
 ) -> List[Dict[str, Any]]:
     """
     获取指定聊天中指定时间范围内的消息
@@ -78,7 +83,12 @@ def get_messages_by_time_in_chat(
 
 
 def get_messages_by_time_in_chat_inclusive(
-    chat_id: str, start_time: float, end_time: float, limit: int = 0, limit_mode: str = "latest", filter_mai: bool = False
+    chat_id: str,
+    start_time: float,
+    end_time: float,
+    limit: int = 0,
+    limit_mode: str = "latest",
+    filter_mai: bool = False,
 ) -> List[Dict[str, Any]]:
     """
     获取指定聊天中指定时间范围内的消息（包含边界）
@@ -95,7 +105,9 @@ def get_messages_by_time_in_chat_inclusive(
         消息列表
     """
     if filter_mai:
-        return filter_mai_messages(get_raw_msg_by_timestamp_with_chat_inclusive(chat_id, start_time, end_time, limit, limit_mode))
+        return filter_mai_messages(
+            get_raw_msg_by_timestamp_with_chat_inclusive(chat_id, start_time, end_time, limit, limit_mode)
+        )
     return get_raw_msg_by_timestamp_with_chat_inclusive(chat_id, start_time, end_time, limit, limit_mode)
 
 
@@ -181,7 +193,9 @@ def get_messages_before_time(timestamp: float, limit: int = 0, filter_mai: bool 
     return get_raw_msg_before_timestamp(timestamp, limit)
 
 
-def get_messages_before_time_in_chat(chat_id: str, timestamp: float, limit: int = 0, filter_mai: bool = False) -> List[Dict[str, Any]]:
+def get_messages_before_time_in_chat(
+    chat_id: str, timestamp: float, limit: int = 0, filter_mai: bool = False
+) -> List[Dict[str, Any]]:
     """
     获取指定聊天中指定时间戳之前的消息
 
@@ -342,9 +356,11 @@ async def get_person_ids_from_messages(messages: List[Dict[str, Any]]) -> List[s
     """
     return await get_person_id_list(messages)
 
+
 # =============================================================================
 # 消息过滤函数
 # =============================================================================
+
 
 def filter_mai_messages(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """

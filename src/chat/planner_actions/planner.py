@@ -1,23 +1,26 @@
-import json  # <--- 确保导入 json
+import json
+import time
 import traceback
 from typing import Dict, Any, Optional
 from rich.traceback import install
+from datetime import datetime
+from json_repair import repair_json
+
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.common.logger import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
-from src.chat.planner_actions.action_manager import ActionManager
-from json_repair import repair_json
-from src.chat.utils.utils import get_chat_type_and_target_info
-from datetime import datetime
-from src.chat.message_receive.chat_stream import get_chat_manager
 from src.chat.utils.chat_message_builder import (
     build_readable_actions,
-    build_readable_messages,
     get_actions_by_timestamp_with_chat,
+    build_readable_messages,
     get_raw_msg_before_timestamp_with_chat,
 )
-import time
+from src.chat.utils.utils import get_chat_type_and_target_info
+from src.chat.planner_actions.action_manager import ActionManager
+from src.chat.message_receive.chat_stream import get_chat_manager
+from src.plugin_system.base.component_types import ChatMode, ActionInfo
+
 
 logger = get_logger("planner")
 
@@ -28,7 +31,7 @@ def init_prompt():
     Prompt(
         """
 {time_block}
-{indentify_block}
+{identity_block}
 你现在需要根据聊天内容，选择的合适的action来参与聊天。
 {chat_context_description}，以下是具体的聊天内容：
 {chat_content_block}
@@ -76,7 +79,7 @@ class ActionPlanner:
 
         self.last_obs_time_mark = 0.0
 
-    async def plan(self,mode:str = "focus") -> Dict[str, Any]:
+    async def plan(self, mode: str = "focus") -> Dict[str, Any]:  # sourcery skip: dict-comprehension
         """
         规划器 (Planner): 使用LLM根据上下文决定做出什么动作。
         """
@@ -84,6 +87,7 @@ class ActionPlanner:
         action = "no_reply"  # 默认动作
         reasoning = "规划器初始化默认"
         action_data = {}
+        current_available_actions: Dict[str, ActionInfo] = {}
 
         try:
             is_group_chat = True
@@ -95,7 +99,7 @@ class ActionPlanner:
 
             # 获取完整的动作信息
             all_registered_actions = self.action_manager.get_registered_actions()
-            current_available_actions = {}
+
             for action_name in current_available_actions_dict.keys():
                 if action_name in all_registered_actions:
                     current_available_actions[action_name] = all_registered_actions[action_name]
@@ -107,13 +111,17 @@ class ActionPlanner:
                 len(current_available_actions) == 1 and "no_reply" in current_available_actions
             ):
                 action = "no_reply"
-                reasoning = "没有可用的动作" if not current_available_actions else "只有no_reply动作可用，跳过规划"
+                reasoning = "只有no_reply动作可用，跳过规划" if current_available_actions else "没有可用的动作"
                 logger.info(f"{self.log_prefix}{reasoning}")
                 logger.debug(
                     f"{self.log_prefix}[focus]沉默后恢复到默认动作集, 当前可用: {list(self.action_manager.get_using_actions().keys())}"
                 )
                 return {
-                    "action_result": {"action_type": action, "action_data": action_data, "reasoning": reasoning},
+                    "action_result": {
+                        "action_type": action,
+                        "action_data": action_data,
+                        "reasoning": reasoning,
+                    },
                 }
 
             # --- 构建提示词 (调用修改后的 PromptBuilder 方法) ---
@@ -142,7 +150,7 @@ class ActionPlanner:
 
             except Exception as req_e:
                 logger.error(f"{self.log_prefix}LLM 请求执行失败: {req_e}")
-                reasoning = f"LLM 请求失败，你的模型出现问题: {req_e}"
+                reasoning = f"LLM 请求失败，模型出现问题: {req_e}"
                 action = "no_reply"
 
             if llm_content:
@@ -164,7 +172,6 @@ class ActionPlanner:
                     reasoning = parsed_json.get("reasoning", "未提供原因")
 
                     # 将所有其他属性添加到action_data
-                    action_data = {}
                     for key, value in parsed_json.items():
                         if key not in ["action", "reasoning"]:
                             action_data[key] = value
@@ -175,8 +182,8 @@ class ActionPlanner:
                         logger.warning(
                             f"{self.log_prefix}LLM 返回了当前不可用或无效的动作: '{action}' (可用: {list(current_available_actions.keys())})，将强制使用 'no_reply'"
                         )
-                        action = "no_reply"
                         reasoning = f"LLM 返回了当前不可用的动作 '{action}' (可用: {list(current_available_actions.keys())})。原始理由: {reasoning}"
+                        action = "no_reply"
 
                 except Exception as json_e:
                     logger.warning(f"{self.log_prefix}解析LLM响应JSON失败 {json_e}. LLM原始输出: '{llm_content}'")
@@ -192,8 +199,7 @@ class ActionPlanner:
 
         is_parallel = False
         if action in current_available_actions:
-            action_info = current_available_actions[action]
-            is_parallel = action_info.get("parallel_action", False)
+            is_parallel = current_available_actions[action].parallel_action
 
         action_result = {
             "action_type": action,
@@ -203,20 +209,18 @@ class ActionPlanner:
             "is_parallel": is_parallel,
         }
 
-        plan_result = {
+        return {
             "action_result": action_result,
             "action_prompt": prompt,
         }
-
-        return plan_result
 
     async def build_planner_prompt(
         self,
         is_group_chat: bool,  # Now passed as argument
         chat_target_info: Optional[dict],  # Now passed as argument
-        current_available_actions,
+        current_available_actions: Dict[str, ActionInfo],
         mode: str = "focus",
-    ) -> str:
+    ) -> str:  # sourcery skip: use-join
         """构建 Planner LLM 的提示词 (获取模板并填充数据)"""
         try:
             message_list_before_now = get_raw_msg_before_timestamp_with_chat(
@@ -281,23 +285,23 @@ class ActionPlanner:
             action_options_block = ""
 
             for using_actions_name, using_actions_info in current_available_actions.items():
-                if using_actions_info["parameters"]:
+                if using_actions_info.action_parameters:
                     param_text = "\n"
-                    for param_name, param_description in using_actions_info["parameters"].items():
+                    for param_name, param_description in using_actions_info.action_parameters.items():
                         param_text += f'    "{param_name}":"{param_description}"\n'
                     param_text = param_text.rstrip("\n")
                 else:
                     param_text = ""
 
                 require_text = ""
-                for require_item in using_actions_info["require"]:
+                for require_item in using_actions_info.action_require:
                     require_text += f"- {require_item}\n"
                 require_text = require_text.rstrip("\n")
 
                 using_action_prompt = await global_prompt_manager.get_prompt_async("action_prompt")
                 using_action_prompt = using_action_prompt.format(
                     action_name=using_actions_name,
-                    action_description=using_actions_info["description"],
+                    action_description=using_actions_info.description,
                     action_parameters=param_text,
                     action_require=require_text,
                 )
@@ -314,10 +318,10 @@ class ActionPlanner:
             else:
                 bot_nickname = ""
             bot_core_personality = global_config.personality.personality_core
-            indentify_block = f"你的名字是{bot_name}{bot_nickname}，你{bot_core_personality}："
+            identity_block = f"你的名字是{bot_name}{bot_nickname}，你{bot_core_personality}："
 
             planner_prompt_template = await global_prompt_manager.get_prompt_async("planner_prompt")
-            prompt = planner_prompt_template.format(
+            return planner_prompt_template.format(
                 time_block=time_block,
                 by_what=by_what,
                 chat_context_description=chat_context_description,
@@ -326,10 +330,8 @@ class ActionPlanner:
                 no_action_block=no_action_block,
                 action_options_text=action_options_block,
                 moderation_prompt=moderation_prompt_block,
-                indentify_block=indentify_block,
+                identity_block=identity_block,
             )
-            return prompt
-
         except Exception as e:
             logger.error(f"构建 Planner 提示词时出错: {e}")
             logger.error(traceback.format_exc())

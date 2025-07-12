@@ -37,16 +37,14 @@ class DependencyManager:
         missing_optional = []
 
         for dep in dependencies:
-            if not self._is_package_available(dep.package_name):
-                if dep.optional:
-                    missing_optional.append(dep)
-                    logger.warning(f"可选依赖包缺失: {dep.package_name} - {dep.description}")
-                else:
-                    missing_required.append(dep)
-                    logger.error(f"必需依赖包缺失: {dep.package_name} - {dep.description}")
-            else:
+            if self._is_package_available(dep.package_name):
                 logger.debug(f"依赖包已存在: {dep.package_name}")
-
+            elif dep.optional:
+                missing_optional.append(dep)
+                logger.warning(f"可选依赖包缺失: {dep.package_name} - {dep.description}")
+            else:
+                missing_required.append(dep)
+                logger.error(f"必需依赖包缺失: {dep.package_name} - {dep.description}")
         return missing_required, missing_optional
 
     def _is_package_available(self, package_name: str) -> bool:

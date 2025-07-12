@@ -29,7 +29,7 @@ class BaseCommand(ABC):
     command_examples: List[str] = []
     intercept_message: bool = True  # 默认拦截消息，不继续处理
 
-    def __init__(self, message: MessageRecv, plugin_config: dict = None):
+    def __init__(self, message: MessageRecv, plugin_config: Optional[dict] = None):
         """初始化Command组件
 
         Args:

@@ -1,5 +1,5 @@
 from src.common.logger import get_logger
-from src.person_info.person_info import PersonInfoManager, get_person_info_manager
+from .person_info import PersonInfoManager, get_person_info_manager
 import time
 import random
 from src.llm_models.utils_model import LLMRequest
@@ -12,7 +12,7 @@ from difflib import SequenceMatcher
 import jieba
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-
+from typing import List, Dict, Any
 
 logger = get_logger("relation")
 
@@ -28,8 +28,7 @@ class RelationshipManager:
     async def is_known_some_one(platform, user_id):
         """判断是否认识某人"""
         person_info_manager = get_person_info_manager()
-        is_known = await person_info_manager.is_person_known(platform, user_id)
-        return is_known
+        return await person_info_manager.is_person_known(platform, user_id)
 
     @staticmethod
     async def first_knowing_some_one(platform: str, user_id: str, user_nickname: str, user_cardname: str):
@@ -110,7 +109,7 @@ class RelationshipManager:
 
         return relation_prompt
 
-    async def update_person_impression(self, person_id, timestamp, bot_engaged_messages=None):
+    async def update_person_impression(self, person_id, timestamp, bot_engaged_messages: List[Dict[str, Any]]):
         """更新用户印象
 
         Args:
@@ -123,7 +122,7 @@ class RelationshipManager:
         person_info_manager = get_person_info_manager()
         person_name = await person_info_manager.get_value(person_id, "person_name")
         nickname = await person_info_manager.get_value(person_id, "nickname")
-        know_times = await person_info_manager.get_value(person_id, "know_times") or 0
+        know_times: float = await person_info_manager.get_value(person_id, "know_times") or 0  # type: ignore
 
         alias_str = ", ".join(global_config.bot.alias_names)
         # personality_block =get_individuality().get_personality_prompt(x_person=2, level=2)
@@ -142,13 +141,13 @@ class RelationshipManager:
         # 遍历消息，构建映射
         for msg in user_messages:
             await person_info_manager.get_or_create_person(
-                platform=msg.get("chat_info_platform"),
-                user_id=msg.get("user_id"),
-                nickname=msg.get("user_nickname"),
-                user_cardname=msg.get("user_cardname"),
+                platform=msg.get("chat_info_platform"),  # type: ignore
+                user_id=msg.get("user_id"),  # type: ignore
+                nickname=msg.get("user_nickname"),  # type: ignore
+                user_cardname=msg.get("user_cardname"),  # type: ignore
             )
-            replace_user_id = msg.get("user_id")
-            replace_platform = msg.get("chat_info_platform")
+            replace_user_id: str = msg.get("user_id")  # type: ignore
+            replace_platform: str = msg.get("chat_info_platform")  # type: ignore
             replace_person_id = PersonInfoManager.get_person_id(replace_platform, replace_user_id)
             replace_person_name = await person_info_manager.get_value(replace_person_id, "person_name")
 
@@ -354,8 +353,8 @@ class RelationshipManager:
 
         person_name = await person_info_manager.get_value(person_id, "person_name")
         nickname = await person_info_manager.get_value(person_id, "nickname")
-        know_times = await person_info_manager.get_value(person_id, "know_times") or 0
-        attitude = await person_info_manager.get_value(person_id, "attitude") or 50
+        know_times: float = await person_info_manager.get_value(person_id, "know_times") or 0  # type: ignore
+        attitude: float = await person_info_manager.get_value(person_id, "attitude") or 50  # type: ignore
 
         # 根据熟悉度，调整印象和简短印象的最大长度
         if know_times > 300:
@@ -414,16 +413,14 @@ class RelationshipManager:
             if len(remaining_points) < 10:
                 # 如果还没达到30条，直接保留
                 remaining_points.append(point)
+            elif random.random() < keep_probability:
+                # 保留这个点，随机移除一个已保留的点
+                idx_to_remove = random.randrange(len(remaining_points))
+                points_to_move.append(remaining_points[idx_to_remove])
+                remaining_points[idx_to_remove] = point
             else:
-                # 随机决定是否保留
-                if random.random() < keep_probability:
-                    # 保留这个点，随机移除一个已保留的点
-                    idx_to_remove = random.randrange(len(remaining_points))
-                    points_to_move.append(remaining_points[idx_to_remove])
-                    remaining_points[idx_to_remove] = point
-                else:
-                    # 不保留这个点
-                    points_to_move.append(point)
+                # 不保留这个点
+                points_to_move.append(point)
 
         # 更新points和forgotten_points
         current_points = remaining_points
@@ -520,7 +517,7 @@ class RelationshipManager:
                 new_attitude = int(relation_value_json.get("attitude", 50))
 
                 # 获取当前的关系值
-                old_attitude = await person_info_manager.get_value(person_id, "attitude") or 50
+                old_attitude: float = await person_info_manager.get_value(person_id, "attitude") or 50  # type: ignore
 
                 # 更新熟悉度
                 if new_attitude > 25:

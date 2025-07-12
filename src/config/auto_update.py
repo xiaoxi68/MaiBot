@@ -1,5 +1,6 @@
 import shutil
 import tomlkit
+from tomlkit.items import Table
 from pathlib import Path
 from datetime import datetime
 
@@ -45,8 +46,8 @@ def update_config():
 
     # 检查version是否相同
     if old_config and "inner" in old_config and "inner" in new_config:
-        old_version = old_config["inner"].get("version")
-        new_version = new_config["inner"].get("version")
+        old_version = old_config["inner"].get("version")  # type: ignore
+        new_version = new_config["inner"].get("version")  # type: ignore
         if old_version and new_version and old_version == new_version:
             print(f"检测到版本号相同 (v{old_version})，跳过更新")
             # 如果version相同，恢复旧配置文件并返回
@@ -62,7 +63,7 @@ def update_config():
             if key == "version":
                 continue
             if key in target:
-                if isinstance(value, dict) and isinstance(target[key], (dict, tomlkit.items.Table)):
+                if isinstance(value, dict) and isinstance(target[key], (dict, Table)):
                     update_dict(target[key], value)
                 else:
                     try:
@@ -85,10 +86,7 @@ def update_config():
                                     if value and isinstance(value[0], dict) and "regex" in value[0]:
                                         contains_regex = True
 
-                                    if contains_regex:
-                                        target[key] = value
-                                    else:
-                                        target[key] = tomlkit.array(value)
+                                    target[key] = value if contains_regex else tomlkit.array(str(value))
                         else:
                             # 其他类型使用item方法创建新值
                             target[key] = tomlkit.item(value)

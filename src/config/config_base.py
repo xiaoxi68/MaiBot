@@ -43,7 +43,7 @@ class ConfigBase:
             field_type = f.type
 
             try:
-                init_args[field_name] = cls._convert_field(value, field_type)
+                init_args[field_name] = cls._convert_field(value, field_type)  # type: ignore
             except TypeError as e:
                 raise TypeError(f"Field '{field_name}' has a type error: {e}") from e
             except Exception as e:

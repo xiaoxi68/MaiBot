@@ -1,50 +1,8 @@
 import numpy as np
-from scipy import stats
 from datetime import datetime, timedelta
 from rich.traceback import install
 
 install(extra_lines=3)
-
-
-class DistributionVisualizer:
-    def __init__(self, mean=0, std=1, skewness=0, sample_size=10):
-        """
-        初始化分布可视化器
-
-        参数:
-            mean (float): 期望均值
-            std (float): 标准差
-            skewness (float): 偏度
-            sample_size (int): 样本大小
-        """
-        self.mean = mean
-        self.std = std
-        self.skewness = skewness
-        self.sample_size = sample_size
-        self.samples = None
-
-    def generate_samples(self):
-        """生成具有指定参数的样本"""
-        if self.skewness == 0:
-            # 对于无偏度的情况，直接使用正态分布
-            self.samples = np.random.normal(loc=self.mean, scale=self.std, size=self.sample_size)
-        else:
-            # 使用 scipy.stats 生成具有偏度的分布
-            self.samples = stats.skewnorm.rvs(a=self.skewness, loc=self.mean, scale=self.std, size=self.sample_size)
-
-    def get_weighted_samples(self):
-        """获取加权后的样本数列"""
-        if self.samples is None:
-            self.generate_samples()
-        # 将样本值乘以样本大小
-        return self.samples * self.sample_size
-
-    def get_statistics(self):
-        """获取分布的统计信息"""
-        if self.samples is None:
-            self.generate_samples()
-
-        return {"均值": np.mean(self.samples), "标准差": np.std(self.samples), "实际偏度": stats.skew(self.samples)}
 
 
 class MemoryBuildScheduler:

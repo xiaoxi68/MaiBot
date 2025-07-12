@@ -1,8 +1,8 @@
 import traceback
-from src.chat.heart_flow.sub_heartflow import SubHeartflow
+from typing import Any, Optional, Dict
+
 from src.common.logger import get_logger
-from typing import Any, Optional
-from typing import Dict
+from src.chat.heart_flow.sub_heartflow import SubHeartflow
 from src.chat.message_receive.chat_stream import get_chat_manager
 
 logger = get_logger("heartflow")
@@ -17,14 +17,11 @@ class Heartflow:
     async def get_or_create_subheartflow(self, subheartflow_id: Any) -> Optional["SubHeartflow"]:
         """获取或创建一个新的SubHeartflow实例"""
         if subheartflow_id in self.subheartflows:
-            subflow = self.subheartflows.get(subheartflow_id)
-            if subflow:
+            if subflow := self.subheartflows.get(subheartflow_id):
                 return subflow
 
         try:
-            new_subflow = SubHeartflow(
-                subheartflow_id,
-            )
+            new_subflow = SubHeartflow(subheartflow_id)
 
             await new_subflow.initialize()
 

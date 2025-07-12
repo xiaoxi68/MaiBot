@@ -3,7 +3,6 @@ import heapq
 import math
 import json
 from typing import List, Optional
-
 from src.common.logger import get_logger
 
 logger = get_logger("normal_chat")
@@ -49,7 +48,7 @@ class PriorityManager:
         添加新消息到合适的队列中。
         """
         user_id = message_data.get("user_id")
-        
+
         priority_info_raw = message_data.get("priority_info")
         priority_info = {}
         if isinstance(priority_info_raw, str):

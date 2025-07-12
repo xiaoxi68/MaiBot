@@ -1,17 +1,18 @@
-from typing import Optional
 import ast
-
-from src.llm_models.utils_model import LLMRequest
-from .personality import Personality
-from .identity import Identity
 import random
 import json
 import os
 import hashlib
+
+from typing import Optional
 from rich.traceback import install
+
 from src.common.logger import get_logger
-from src.person_info.person_info import get_person_info_manager
 from src.config.config import global_config
+from src.llm_models.utils_model import LLMRequest
+from src.person_info.person_info import get_person_info_manager
+from .personality import Personality
+from .identity import Identity
 
 install(extra_lines=3)
 
@@ -23,7 +24,7 @@ class Individuality:
 
     def __init__(self):
         # 正常初始化实例属性
-        self.personality: Optional[Personality] = None
+        self.personality: Personality = None  # type: ignore
         self.identity: Optional[Identity] = None
 
         self.name = ""
@@ -109,7 +110,7 @@ class Individuality:
             existing_short_impression = await person_info_manager.get_value(self.bot_person_id, "short_impression")
             if existing_short_impression:
                 try:
-                    existing_data = ast.literal_eval(existing_short_impression)
+                    existing_data = ast.literal_eval(existing_short_impression)  # type: ignore
                     if isinstance(existing_data, list) and len(existing_data) >= 1:
                         personality_result = existing_data[0]
                 except (json.JSONDecodeError, TypeError, IndexError):
@@ -128,7 +129,7 @@ class Individuality:
             existing_short_impression = await person_info_manager.get_value(self.bot_person_id, "short_impression")
             if existing_short_impression:
                 try:
-                    existing_data = ast.literal_eval(existing_short_impression)
+                    existing_data = ast.literal_eval(existing_short_impression)  # type: ignore
                     if isinstance(existing_data, list) and len(existing_data) >= 2:
                         identity_result = existing_data[1]
                 except (json.JSONDecodeError, TypeError, IndexError):
@@ -204,6 +205,7 @@ class Individuality:
         return prompt_personality
 
     def get_identity_prompt(self, level: int, x_person: int = 2) -> str:
+        # sourcery skip: assign-if-exp, merge-else-if-into-elif
         """
         获取身份特征的prompt
 
@@ -240,13 +242,13 @@ class Individuality:
 
         if identity_parts:
             details_str = "，".join(identity_parts)
-            if x_person in [1, 2]:
+            if x_person in {1, 2}:
                 return f"{i_pronoun}，{details_str}。"
             else:  # x_person == 0
                 # 无人称时，直接返回细节，不加代词和开头的逗号
                 return f"{details_str}。"
         else:
-            if x_person in [1, 2]:
+            if x_person in {1, 2}:
                 return f"{i_pronoun}的身份信息不完整。"
             else:  # x_person == 0
                 return "身份信息不完整。"
@@ -441,14 +443,15 @@ class Individuality:
         if info_list_json:
             try:
                 info_list = json.loads(info_list_json) if isinstance(info_list_json, str) else info_list_json
-                for item in info_list:
-                    if isinstance(item, dict) and "info_type" in item:
-                        keywords.append(item["info_type"])
+                keywords.extend(
+                    item["info_type"] for item in info_list if isinstance(item, dict) and "info_type" in item
+                )
             except (json.JSONDecodeError, TypeError):
                 logger.error(f"解析info_list失败: {info_list_json}")
         return keywords
 
     async def _create_personality(self, personality_core: str, personality_sides: list) -> str:
+        # sourcery skip: merge-list-append, move-assign
         """使用LLM创建压缩版本的impression
 
         Args:

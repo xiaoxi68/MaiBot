@@ -1,14 +1,16 @@
-from .expression_learner import get_expression_learner
-import random
-from typing import List, Dict, Tuple
-from json_repair import repair_json
 import json
 import os
 import time
+import random
+
+from typing import List, Dict, Tuple, Optional
+from json_repair import repair_json
+
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.common.logger import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
+from .expression_learner import get_expression_learner
 
 logger = get_logger("expression_selector")
 
@@ -82,6 +84,7 @@ class ExpressionSelector:
     def get_random_expressions(
         self, chat_id: str, total_num: int, style_percentage: float, grammar_percentage: float
     ) -> Tuple[List[Dict[str, str]], List[Dict[str, str]]]:
+        # sourcery skip: extract-duplicate-method, move-assign
         (
             learnt_style_expressions,
             learnt_grammar_expressions,
@@ -165,8 +168,14 @@ class ExpressionSelector:
                 logger.error(f"批量更新表达方式count失败 for {file_path}: {e}")
 
     async def select_suitable_expressions_llm(
-        self, chat_id: str, chat_info: str, max_num: int = 10, min_num: int = 5, target_message: str = None
+        self,
+        chat_id: str,
+        chat_info: str,
+        max_num: int = 10,
+        min_num: int = 5,
+        target_message: Optional[str] = None,
     ) -> List[Dict[str, str]]:
+        # sourcery skip: inline-variable, list-comprehension
         """使用LLM选择适合的表达方式"""
 
         # 1. 获取35个随机表达方式（现在按权重抽取）

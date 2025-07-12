@@ -13,7 +13,7 @@ from json_repair import repair_json
 logger = get_logger("memory_activator")
 
 
-def get_keywords_from_json(json_str):
+def get_keywords_from_json(json_str) -> List:
     """
     从JSON字符串中提取关键词列表
 
@@ -28,15 +28,8 @@ def get_keywords_from_json(json_str):
         fixed_json = repair_json(json_str)
 
         # 如果repair_json返回的是字符串，需要解析为Python对象
-        if isinstance(fixed_json, str):
-            result = json.loads(fixed_json)
-        else:
-            # 如果repair_json直接返回了字典对象，直接使用
-            result = fixed_json
-
-        # 提取关键词
-        keywords = result.get("keywords", [])
-        return keywords
+        result = json.loads(fixed_json) if isinstance(fixed_json, str) else fixed_json
+        return result.get("keywords", [])
     except Exception as e:
         logger.error(f"解析关键词JSON失败: {e}")
         return []

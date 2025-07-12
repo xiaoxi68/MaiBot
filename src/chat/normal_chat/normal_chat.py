@@ -1,27 +1,29 @@
 import asyncio
 import time
+import traceback
+
 from typing import Optional
+
 from src.config.config import global_config
 from src.common.logger import get_logger
+from src.plugin_system.base.component_types import ChatMode
 from src.chat.message_receive.chat_stream import ChatStream, get_chat_manager
-from ..message_receive.message import MessageThinking
-from src.chat.message_receive.normal_message_sender import message_manager
-from src.chat.normal_chat.willing.willing_manager import get_willing_manager
+from src.chat.message_receive.message import MessageThinking
 from src.chat.planner_actions.action_manager import ActionManager
 from src.person_info.relationship_builder_manager import relationship_builder_manager
-from ..focus_chat.priority_manager import PriorityManager
-import traceback
+from src.chat.focus_chat.priority_manager import PriorityManager
 from src.chat.planner_actions.planner import ActionPlanner
 from src.chat.planner_actions.action_modifier import ActionModifier
 from src.chat.utils.chat_message_builder import get_raw_msg_by_timestamp_with_chat_inclusive
-
 from src.chat.utils.utils import get_chat_type_and_target_info
+
 
 willing_manager = get_willing_manager()
 
 logger = get_logger("normal_chat")
 
 LOOP_INTERVAL = 0.3
+
 
 class NormalChat:
     """
@@ -43,7 +45,7 @@ class NormalChat:
         """
         self.chat_stream = chat_stream
         self.stream_id = chat_stream.stream_id
-        self.last_read_time = time.time()-1
+        self.last_read_time = time.time() - 1
 
         self.stream_name = get_chat_manager().get_stream_name(self.stream_id) or self.stream_id
 
@@ -56,14 +58,14 @@ class NormalChat:
 
         # self.mood_manager = mood_manager
         self.start_time = time.time()
-        
+
         self.running = False
 
         self._initialized = False  # Track initialization status
 
         # Planner相关初始化
         self.action_manager = ActionManager()
-        self.planner = ActionPlanner(self.stream_id, self.action_manager, mode="normal")
+        self.planner = ActionPlanner(self.stream_id, self.action_manager, mode=ChatMode.NORMAL)
         self.action_modifier = ActionModifier(self.action_manager, self.stream_id)
         self.enable_planner = global_config.normal_chat.enable_planner  # 从配置中读取是否启用planner
 
@@ -86,7 +88,7 @@ class NormalChat:
 
         # 任务管理
         self._chat_task: Optional[asyncio.Task] = None
-        self._priority_chat_task: Optional[asyncio.Task] = None # for priority mode consumer
+        self._priority_chat_task: Optional[asyncio.Task] = None  # for priority mode consumer
         self._disabled = False  # 停用标志
 
         # 新增：回复模式和优先级管理器
@@ -106,11 +108,11 @@ class NormalChat:
         if self.reply_mode == "priority" and self._priority_chat_task and not self._priority_chat_task.done():
             self._priority_chat_task.cancel()
         logger.info(f"[{self.stream_name}] NormalChat 已停用。")
-        
+
     # async def _interest_mode_loopbody(self):
     #     try:
     #         await asyncio.sleep(LOOP_INTERVAL)
-            
+
     #         if self._disabled:
     #             return False
 
@@ -118,10 +120,10 @@ class NormalChat:
     #         new_messages_data = get_raw_msg_by_timestamp_with_chat_inclusive(
     #             chat_id=self.stream_id, timestamp_start=self.last_read_time, timestamp_end=now, limit_mode="earliest"
     #         )
-            
+
     #         if new_messages_data:
     #             self.last_read_time = now
-            
+
     #             for msg_data in new_messages_data:
     #                 try:
     #                     self.adjust_reply_frequency()
@@ -134,44 +136,42 @@ class NormalChat:
     #                 except Exception as e:
     #                     logger.error(f"[{self.stream_name}] 处理消息时出错: {e} {traceback.format_exc()}")
 
-
     #     except asyncio.CancelledError:
     #         logger.info(f"[{self.stream_name}] 兴趣模式轮询任务被取消")
     #         return False
     #     except Exception:
     #         logger.error(f"[{self.stream_name}] 兴趣模式轮询循环出现错误: {traceback.format_exc()}", exc_info=True)
     #         await asyncio.sleep(10)
-            
+
     async def _priority_mode_loopbody(self):
-            try:
-                await asyncio.sleep(LOOP_INTERVAL)
+        try:
+            await asyncio.sleep(LOOP_INTERVAL)
 
-                if self._disabled:
-                    return False
-
-                now = time.time()
-                new_messages_data = get_raw_msg_by_timestamp_with_chat_inclusive(
-                    chat_id=self.stream_id, timestamp_start=self.last_read_time, timestamp_end=now, limit_mode="earliest"
-                )
-
-                if new_messages_data:
-                    self.last_read_time = now
-
-                    for msg_data in new_messages_data:
-                        try:
-                            if self.priority_manager:
-                                self.priority_manager.add_message(msg_data, msg_data.get("interest_rate", 0.0))
-                                return True
-                        except Exception as e:
-                            logger.error(f"[{self.stream_name}] 添加消息到优先级队列时出错: {e} {traceback.format_exc()}")
-
-
-            except asyncio.CancelledError:
-                logger.info(f"[{self.stream_name}] 优先级消息生产者任务被取消")
+            if self._disabled:
                 return False
-            except Exception:
-                logger.error(f"[{self.stream_name}] 优先级消息生产者循环出现错误: {traceback.format_exc()}", exc_info=True)
-                await asyncio.sleep(10)
+
+            now = time.time()
+            new_messages_data = get_raw_msg_by_timestamp_with_chat_inclusive(
+                chat_id=self.stream_id, timestamp_start=self.last_read_time, timestamp_end=now, limit_mode="earliest"
+            )
+
+            if new_messages_data:
+                self.last_read_time = now
+
+                for msg_data in new_messages_data:
+                    try:
+                        if self.priority_manager:
+                            self.priority_manager.add_message(msg_data, msg_data.get("interest_rate", 0.0))
+                            return True
+                    except Exception as e:
+                        logger.error(f"[{self.stream_name}] 添加消息到优先级队列时出错: {e} {traceback.format_exc()}")
+
+        except asyncio.CancelledError:
+            logger.info(f"[{self.stream_name}] 优先级消息生产者任务被取消")
+            return False
+        except Exception:
+            logger.error(f"[{self.stream_name}] 优先级消息生产者循环出现错误: {traceback.format_exc()}", exc_info=True)
+            await asyncio.sleep(10)
 
     # async def _interest_message_polling_loop(self):
     #     """
@@ -181,15 +181,12 @@ class NormalChat:
     #     try:
     #         while not self._disabled:
     #             success = await self._interest_mode_loopbody()
-                
+
     #             if not success:
     #                 break
 
     #     except asyncio.CancelledError:
     #         logger.info(f"[{self.stream_name}] 兴趣模式消息轮询任务被优雅地取消了")
-
-
-
 
     async def _priority_chat_loop(self):
         """
@@ -272,9 +269,8 @@ class NormalChat:
     #         user_nickname=message_data.get("user_nickname"),
     #         platform=message_data.get("chat_info_platform"),
     #     )
-        
+
     #     reply = message_from_db_dict(message_data)
-        
 
     #     mark_head = False
     #     first_bot_msg = None
@@ -652,7 +648,9 @@ class NormalChat:
                 # Start consumer loop
                 consumer_task = asyncio.create_task(self._priority_chat_loop())
                 self._priority_chat_task = consumer_task
-                self._priority_chat_task.add_done_callback(lambda t: self._handle_task_completion(t, "priority_consumer"))
+                self._priority_chat_task.add_done_callback(
+                    lambda t: self._handle_task_completion(t, "priority_consumer")
+                )
             else:  # Interest mode
                 polling_task = asyncio.create_task(self._interest_message_polling_loop())
                 self._chat_task = polling_task
@@ -711,7 +709,6 @@ class NormalChat:
 
         self._chat_task = None
         self._priority_chat_task = None
-
 
     # def adjust_reply_frequency(self):
     #     """
