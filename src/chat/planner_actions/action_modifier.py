@@ -1,4 +1,4 @@
-from typing import List, Optional, Any, Dict
+from typing import List, Any, Dict
 from src.common.logger import get_logger
 from src.chat.focus_chat.hfc_utils import CycleDetail
 from src.chat.message_receive.chat_stream import get_chat_manager
@@ -185,7 +185,7 @@ class ActionModifier:
                 llm_judge_actions[action_name] = action_info
 
             elif activation_type == "never":
-                reason = f"激活类型为never"
+                reason = "激活类型为never"
                 deactivated_actions.append((action_name, reason))
                 logger.debug(f"{self.log_prefix}未激活动作: {action_name}，原因: 激活类型为never")
             
