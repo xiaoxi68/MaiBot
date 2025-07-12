@@ -84,7 +84,6 @@ class ChatBot:
 
         # 创建初始化PFC管理器的任务，会在_ensure_started时执行
         self.only_process_chat = MessageProcessor()
-        self.pfc_manager = PFCManager.get_instance()
         self.s4u_message_processor = S4UMessageProcessor()
 
     async def _ensure_started(self):

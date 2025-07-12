@@ -7,9 +7,8 @@ from src.common.remote import TelemetryHeartBeatTask
 from src.manager.async_task_manager import async_task_manager
 from src.chat.utils.statistic import OnlineTimeRecordTask, StatisticOutputTask
 from src.chat.emoji_system.emoji_manager import get_emoji_manager
-from src.chat.normal_chat.willing.willing_manager import get_willing_manager
+from src.chat.willing.willing_manager import get_willing_manager
 from src.chat.message_receive.chat_stream import get_chat_manager
-from src.chat.message_receive.normal_message_sender import message_manager
 from src.chat.message_receive.storage import MessageStorage
 from src.config.config import global_config
 from src.chat.message_receive.bot import chat_bot
@@ -22,9 +21,6 @@ from rich.traceback import install
 
 # 导入新的插件管理器
 from src.plugin_system.core.plugin_manager import plugin_manager
-
-# 导入HFC性能记录器用于日志清理
-from src.chat.focus_chat.hfc_performance_logger import HFCPerformanceLogger
 
 # 导入消息API和traceback模块
 from src.common.message import get_global_api
@@ -68,11 +64,6 @@ class MainSystem:
     async def _init_components(self):
         """初始化其他组件"""
         init_start_time = time.time()
-
-        # 清理HFC旧日志文件（保持目录大小在50MB以内）
-        logger.info("开始清理HFC旧日志文件...")
-        HFCPerformanceLogger.cleanup_old_logs(max_size_mb=50.0)
-        logger.info("HFC日志清理完成")
 
         # 添加在线时间统计任务
         await async_task_manager.add_task(OnlineTimeRecordTask())
@@ -134,10 +125,6 @@ class MainSystem:
         logger.info("个体特征初始化成功")
 
         try:
-            # 启动全局消息管理器 (负责消息发送/排队)
-            await message_manager.start()
-            logger.info("全局消息管理器启动成功")
-
             init_time = int(1000 * (time.time() - init_start_time))
             logger.info(f"初始化完成，神经元放电{init_time}次")
         except Exception as e:

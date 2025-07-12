@@ -93,7 +93,7 @@ class BaseWillingManager(ABC):
         self.lock = asyncio.Lock()
         self.logger = logger
 
-    def setup(self, message: MessageRecv, chat: ChatStream, is_mentioned_bot: bool, interested_rate: float):
+    def setup(self, message: dict, chat: ChatStream):
         person_id = PersonInfoManager.get_person_id(chat.platform, chat.user_info.user_id)  # type: ignore
         self.ongoing_messages[message.message_info.message_id] = WillingInfo(  # type: ignore
             message=message,
@@ -102,10 +102,10 @@ class BaseWillingManager(ABC):
             chat_id=chat.stream_id,
             person_id=person_id,
             group_info=chat.group_info,
-            is_mentioned_bot=is_mentioned_bot,
-            is_emoji=message.is_emoji,
-            is_picid=message.is_picid,
-            interested_rate=interested_rate,
+            is_mentioned_bot=message.get("is_mentioned_bot", False),
+            is_emoji=message.get("is_emoji", False),
+            is_picid=message.get("is_picid", False),
+            interested_rate=message.get("interested_rate", 0),
         )
 
     def delete(self, message_id: str):

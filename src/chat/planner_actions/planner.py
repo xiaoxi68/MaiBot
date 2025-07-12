@@ -67,20 +67,19 @@ def init_prompt():
 
 
 class ActionPlanner:
-    def __init__(self, chat_id: str, action_manager: ActionManager, mode: ChatMode = ChatMode.FOCUS):
+    def __init__(self, chat_id: str, action_manager: ActionManager):
         self.chat_id = chat_id
         self.log_prefix = f"[{get_chat_manager().get_stream_name(chat_id) or chat_id}]"
-        self.mode = mode
         self.action_manager = action_manager
         # LLM规划器配置
         self.planner_llm = LLMRequest(
             model=global_config.model.planner,
-            request_type=f"{self.mode.value}.planner",  # 用于动作规划
+            request_type="planner",  # 用于动作规划
         )
 
         self.last_obs_time_mark = 0.0
 
-    async def plan(self) -> Dict[str, Any]:  # sourcery skip: dict-comprehension
+    async def plan(self, mode: str = "focus") -> Dict[str, Any]:  # sourcery skip: dict-comprehension
         """
         规划器 (Planner): 使用LLM根据上下文决定做出什么动作。
         """
@@ -96,7 +95,7 @@ class ActionPlanner:
             is_group_chat, chat_target_info = get_chat_type_and_target_info(self.chat_id)
             logger.debug(f"{self.log_prefix}获取到聊天信息 - 群聊: {is_group_chat}, 目标信息: {chat_target_info}")
 
-            current_available_actions_dict = self.action_manager.get_using_actions_for_mode(self.mode)
+            current_available_actions_dict = self.action_manager.get_using_actions()
 
             # 获取完整的动作信息
             all_registered_actions = self.action_manager.get_registered_actions()
@@ -130,6 +129,7 @@ class ActionPlanner:
                 is_group_chat=is_group_chat,  # <-- Pass HFC state
                 chat_target_info=chat_target_info,  # <-- 传递获取到的聊天目标信息
                 current_available_actions=current_available_actions,  # <-- Pass determined actions
+                mode=mode,
             )
 
             # --- 调用 LLM (普通文本生成) ---
@@ -178,7 +178,7 @@ class ActionPlanner:
 
                     if action == "no_action":
                         reasoning = "normal决定不使用额外动作"
-                    elif action not in current_available_actions:
+                    elif action != "no_reply" and action != "reply" and action not in current_available_actions:
                         logger.warning(
                             f"{self.log_prefix}LLM 返回了当前不可用或无效的动作: '{action}' (可用: {list(current_available_actions.keys())})，将强制使用 'no_reply'"
                         )
@@ -219,6 +219,7 @@ class ActionPlanner:
         is_group_chat: bool,  # Now passed as argument
         chat_target_info: Optional[dict],  # Now passed as argument
         current_available_actions: Dict[str, ActionInfo],
+        mode: str = "focus",
     ) -> str:  # sourcery skip: use-join
         """构建 Planner LLM 的提示词 (获取模板并填充数据)"""
         try:
@@ -248,9 +249,25 @@ class ActionPlanner:
 
             self.last_obs_time_mark = time.time()
 
-            if self.mode == ChatMode.FOCUS:
+            if mode == "focus":
                 by_what = "聊天内容"
-                no_action_block = ""
+                no_action_block = """重要说明1：
+- 'no_reply' 表示只进行不进行回复，等待合适的回复时机
+- 当你刚刚发送了消息，没有人回复时，选择no_reply
+- 当你一次发送了太多消息，为了避免打扰聊天节奏，选择no_reply
+
+动作：reply
+动作描述：参与聊天回复，发送文本进行表达
+- 你想要闲聊或者随便附和
+- 有人提到你
+- 如果你刚刚进行了回复，不要对同一个话题重复回应
+{
+    "action": "reply",
+    "reply_to":"你要回复的对方的发言内容，格式：（用户名:发言内容），可以为none"
+    "reason":"回复的原因"
+}
+
+"""
             else:
                 by_what = "聊天内容和用户的最新消息"
                 no_action_block = """重要说明：

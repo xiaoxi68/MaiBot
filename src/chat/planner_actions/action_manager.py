@@ -145,29 +145,6 @@ class ActionManager:
         """获取当前正在使用的动作集合"""
         return self._using_actions.copy()
 
-    def get_using_actions_for_mode(self, mode: ChatMode) -> Dict[str, ActionInfo]:
-        """
-        根据聊天模式获取可用的动作集合
-
-        Args:
-            mode: 聊天模式 (ChatMode.FOCUS, ChatMode.NORMAL, ChatMode.ALL)
-
-        Returns:
-            Dict[str, ActionInfo]: 在指定模式下可用的动作集合
-        """
-        enabled_actions = {}
-
-        for action_name, action_info in self._using_actions.items():
-            action_mode = action_info.mode_enable
-
-            # 检查动作是否在当前模式下启用
-            if action_mode in [ChatMode.ALL, mode]:
-                enabled_actions[action_name] = action_info
-                logger.debug(f"动作 {action_name} 在模式 {mode} 下可用 (mode_enable: {action_mode})")
-
-        logger.debug(f"模式 {mode} 下可用动作: {list(enabled_actions.keys())}")
-        return enabled_actions
-
     def add_action_to_using(self, action_name: str) -> bool:
         """
         添加已注册的动作到当前使用的动作集

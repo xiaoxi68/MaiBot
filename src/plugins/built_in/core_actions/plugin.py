@@ -34,7 +34,7 @@ class ReplyAction(BaseAction):
     """回复动作 - 参与聊天回复"""
 
     # 激活设置
-    focus_activation_type = ActionActivationType.ALWAYS
+    focus_activation_type = ActionActivationType.NEVER
     normal_activation_type = ActionActivationType.NEVER
     mode_enable = ChatMode.FOCUS
     parallel_action = False
@@ -98,7 +98,7 @@ class ReplyAction(BaseAction):
             )
 
             # 根据新消息数量决定是否使用reply_to
-            need_reply = new_message_count >= random.randint(2, 5)
+            need_reply = new_message_count >= random.randint(2, 4)
             logger.info(
                 f"{self.log_prefix} 从思考到回复，共有{new_message_count}条新消息，{'使用' if need_reply else '不使用'}引用回复"
             )

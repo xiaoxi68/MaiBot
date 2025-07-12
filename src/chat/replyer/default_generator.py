@@ -18,7 +18,6 @@ from src.chat.utils.timer_calculator import Timer  # <--- Import Timer
 from src.chat.utils.utils import get_chat_type_and_target_info
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_before_timestamp_with_chat
-from src.chat.focus_chat.hfc_utils import parse_thinking_id_to_timestamp
 from src.chat.express.expression_selector import expression_selector
 from src.chat.knowledge.knowledge_lib import qa_manager
 from src.chat.memory_system.memory_activator import MemoryActivator
@@ -29,6 +28,8 @@ from src.tools.tool_executor import ToolExecutor
 from src.plugin_system.base.component_types import ActionInfo
 
 logger = get_logger("replyer")
+
+ENABLE_S2S_MODE = True
 
 
 def init_prompt():
@@ -132,33 +133,6 @@ class DefaultReplyer:
         weights = [config.get("weight", 1.0) for config in configs]
 
         return random.choices(population=configs, weights=weights, k=1)[0]
-
-    async def _create_thinking_message(self, anchor_message: Optional[MessageRecv], thinking_id: str):
-        """创建思考消息 (尝试锚定到 anchor_message)"""
-        if not anchor_message or not anchor_message.chat_stream:
-            logger.error(f"{self.log_prefix} 无法创建思考消息，缺少有效的锚点消息或聊天流。")
-            return None
-
-        chat = anchor_message.chat_stream
-        message_info = anchor_message.message_info
-        thinking_time_point = parse_thinking_id_to_timestamp(thinking_id)
-        bot_user_info = UserInfo(
-            user_id=global_config.bot.qq_account,
-            user_nickname=global_config.bot.nickname,
-            platform=message_info.platform,
-        )
-
-        thinking_message = MessageThinking(
-            message_id=thinking_id,
-            chat_stream=chat,
-            bot_user_info=bot_user_info,
-            reply=anchor_message,  # 回复的是锚点消息
-            thinking_start_time=thinking_time_point,
-        )
-        # logger.debug(f"创建思考消息thinking_message：{thinking_message}")
-
-        await self.heart_fc_sender.register_thinking(thinking_message)
-        return None
 
     async def generate_reply_with_context(
         self,
@@ -526,13 +500,13 @@ class DefaultReplyer:
             show_actions=True,
         )
 
-        message_list_before_now_half = get_raw_msg_before_timestamp_with_chat(
+        message_list_before_short = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_id,
             timestamp=time.time(),
-            limit=int(global_config.chat.max_context_size * 0.5),
+            limit=int(global_config.chat.max_context_size * 0.33),
         )
-        chat_talking_prompt_half = build_readable_messages(
-            message_list_before_now_half,
+        chat_talking_prompt_short = build_readable_messages(
+            message_list_before_short,
             replace_bot_name=True,
             merge_messages=False,
             timestamp_mode="relative",
@@ -543,14 +517,14 @@ class DefaultReplyer:
         # 并行执行四个构建任务
         task_results = await asyncio.gather(
             self._time_and_run_task(
-                self.build_expression_habits(chat_talking_prompt_half, target), "build_expression_habits"
+                self.build_expression_habits(chat_talking_prompt_short, target), "build_expression_habits"
             ),
             self._time_and_run_task(
-                self.build_relation_info(reply_data, chat_talking_prompt_half), "build_relation_info"
+                self.build_relation_info(reply_data, chat_talking_prompt_short), "build_relation_info"
             ),
-            self._time_and_run_task(self.build_memory_block(chat_talking_prompt_half, target), "build_memory_block"),
+            self._time_and_run_task(self.build_memory_block(chat_talking_prompt_short, target), "build_memory_block"),
             self._time_and_run_task(
-                self.build_tool_info(chat_talking_prompt_half, reply_data, enable_tool=enable_tool), "build_tool_info"
+                self.build_tool_info(chat_talking_prompt_short, reply_data, enable_tool=enable_tool), "build_tool_info"
             ),
         )
 
@@ -800,108 +774,6 @@ class DefaultReplyer:
             keywords_reaction_prompt=keywords_reaction_prompt,
             moderation_prompt=moderation_prompt_block,
         )
-
-    async def send_response_messages(
-        self,
-        anchor_message: Optional[MessageRecv],
-        response_set: List[Tuple[str, str]],
-        thinking_id: str = "",
-        display_message: str = "",
-    ) -> Optional[List[Tuple[str, bool]]]:
-        # sourcery skip: assign-if-exp, boolean-if-exp-identity, remove-unnecessary-cast
-        """发送回复消息 (尝试锚定到 anchor_message)，使用 HeartFCSender"""
-        chat = self.chat_stream
-        chat_id = self.chat_stream.stream_id
-        if chat is None:
-            logger.error(f"{self.log_prefix} 无法发送回复，chat_stream 为空。")
-            return None
-        if not anchor_message:
-            logger.error(f"{self.log_prefix} 无法发送回复，anchor_message 为空。")
-            return None
-
-        stream_name = get_chat_manager().get_stream_name(chat_id) or chat_id  # 获取流名称用于日志
-
-        # 检查思考过程是否仍在进行，并获取开始时间
-        if thinking_id:
-            # print(f"thinking_id: {thinking_id}")
-            thinking_start_time = await self.heart_fc_sender.get_thinking_start_time(chat_id, thinking_id)
-        else:
-            print("thinking_id is None")
-            # thinking_id = "ds" + str(round(time.time(), 2))
-            thinking_start_time = time.time()
-
-        if thinking_start_time is None:
-            logger.error(f"[{stream_name}]replyer思考过程未找到或已结束，无法发送回复。")
-            return None
-
-        mark_head = False
-        # first_bot_msg: Optional[MessageSending] = None
-        reply_message_ids = []  # 记录实际发送的消息ID
-
-        sent_msg_list = []
-
-        for i, msg_text in enumerate(response_set):
-            # 为每个消息片段生成唯一ID
-            msg_type = msg_text[0]
-            data = msg_text[1]
-
-            if global_config.debug.debug_show_chat_mode and msg_type == "text":
-                data += "ᶠ"
-
-            part_message_id = f"{thinking_id}_{i}"
-            message_segment = Seg(type=msg_type, data=data)
-
-            if msg_type == "emoji":
-                is_emoji = True
-            else:
-                is_emoji = False
-            reply_to = not mark_head
-
-            bot_message: MessageSending = await self._build_single_sending_message(
-                anchor_message=anchor_message,
-                message_id=part_message_id,
-                message_segment=message_segment,
-                display_message=display_message,
-                reply_to=reply_to,
-                is_emoji=is_emoji,
-                thinking_start_time=thinking_start_time,
-            )
-
-            try:
-                if (
-                    bot_message.is_private_message()
-                    or bot_message.reply.processed_plain_text != "[System Trigger Context]"  # type: ignore
-                    or mark_head
-                ):
-                    set_reply = False
-                else:
-                    set_reply = True
-
-                if not mark_head:
-                    mark_head = True
-                    typing = False
-                else:
-                    typing = True
-
-                sent_msg = await self.heart_fc_sender.send_message(bot_message, typing=typing, set_reply=set_reply)
-
-                reply_message_ids.append(part_message_id)  # 记录我们生成的ID
-
-                sent_msg_list.append((msg_type, sent_msg))
-
-            except Exception as e:
-                logger.error(f"{self.log_prefix}发送回复片段 {i} ({part_message_id}) 时失败: {e}")
-                traceback.print_exc()
-                # 这里可以选择是继续发送下一个片段还是中止
-
-        # 在尝试发送完所有片段后，完成原始的 thinking_id 状态
-        try:
-            await self.heart_fc_sender.complete_thinking(chat_id, thinking_id)
-
-        except Exception as e:
-            logger.error(f"{self.log_prefix}完成思考状态 {thinking_id} 时出错: {e}")
-
-        return sent_msg_list
 
     async def _build_single_sending_message(
         self,

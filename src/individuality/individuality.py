@@ -337,7 +337,7 @@ class Individuality:
         # 身份配置哈希
         identity_config = {
             "identity_detail": sorted(identity_detail),
-            "compress_identity": global_config.identity.compress_indentity,
+            "compress_identity": global_config.identity.compress_identity,
         }
         identity_str = json.dumps(identity_config, sort_keys=True)
         identity_hash = hashlib.md5(identity_str.encode("utf-8")).hexdigest()
@@ -507,7 +507,7 @@ class Individuality:
         """使用LLM创建压缩版本的impression"""
         logger.info("正在构建身份.........")
 
-        if global_config.identity.compress_indentity:
+        if global_config.identity.compress_identity:
             identity_to_compress = []
             if identity_detail:
                 identity_to_compress.append(f"身份背景: {'、'.join(identity_detail)}")

@@ -49,7 +49,7 @@ class IdentityConfig(ConfigBase):
     identity_detail: list[str] = field(default_factory=lambda: [])
     """身份特征"""
 
-    compress_indentity: bool = True
+    compress_identity: bool = True
     """是否压缩身份，压缩后会精简身份信息，节省token消耗并提高回复性能，但是会丢失一些信息，如果不长，可以关闭"""
 
 
@@ -67,9 +67,6 @@ class RelationshipConfig(ConfigBase):
 @dataclass
 class ChatConfig(ConfigBase):
     """聊天配置类"""
-
-    chat_mode: str = "normal"
-    """聊天模式"""
 
     max_context_size: int = 18
     """上下文长度"""
@@ -281,16 +278,10 @@ class NormalChatConfig(ConfigBase):
     at_bot_inevitable_reply: bool = False
     """@bot 必然回复"""
 
-    enable_planner: bool = False
-    """是否启用动作规划器"""
-
 
 @dataclass
 class FocusChatConfig(ConfigBase):
     """专注聊天配置类"""
-
-    think_interval: float = 1
-    """思考间隔（秒）"""
 
     consecutive_replies: float = 1
     """连续回复能力，值越高，麦麦连续回复的概率越高"""
@@ -529,9 +520,6 @@ class TelemetryConfig(ConfigBase):
 @dataclass
 class DebugConfig(ConfigBase):
     """调试配置类"""
-
-    debug_show_chat_mode: bool = False
-    """是否在回复后显示当前聊天模式"""
 
     show_prompt: bool = False
     """是否显示prompt"""

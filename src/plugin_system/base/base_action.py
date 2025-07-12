@@ -34,7 +34,6 @@ class BaseAction(ABC):
         thinking_id: str,
         chat_stream: ChatStream,
         log_prefix: str = "",
-        shutting_down: bool = False,
         plugin_config: Optional[dict] = None,
         **kwargs,
     ):
@@ -60,7 +59,6 @@ class BaseAction(ABC):
         self.cycle_timers = cycle_timers
         self.thinking_id = thinking_id
         self.log_prefix = log_prefix
-        self.shutting_down = shutting_down
 
         # 保存插件配置
         self.plugin_config = plugin_config or {}

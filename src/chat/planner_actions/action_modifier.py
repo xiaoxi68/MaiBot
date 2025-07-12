@@ -7,7 +7,7 @@ from typing import List, Any, Dict, TYPE_CHECKING
 from src.common.logger import get_logger
 from src.config.config import global_config
 from src.llm_models.utils_model import LLMRequest
-from src.chat.focus_chat.focus_loop_info import FocusLoopInfo
+from src.chat.focus_chat.hfc_utils import CycleDetail
 from src.chat.message_receive.chat_stream import get_chat_manager, ChatMessageContext
 from src.chat.planner_actions.action_manager import ActionManager
 from src.chat.utils.chat_message_builder import get_raw_msg_before_timestamp_with_chat, build_readable_messages
@@ -48,8 +48,7 @@ class ActionModifier:
 
     async def modify_actions(
         self,
-        loop_info=None,
-        mode: ChatMode = ChatMode.FOCUS,
+        history_loop=None,
         message_content: str = "",
     ):  # sourcery skip: use-named-expression
         """
@@ -67,7 +66,7 @@ class ActionModifier:
         removals_s2 = []
 
         self.action_manager.restore_actions()
-        all_actions = self.action_manager.get_using_actions_for_mode(mode)
+        all_actions = self.action_manager.get_using_actions()
 
         message_list_before_now_half = get_raw_msg_before_timestamp_with_chat(
             chat_id=self.chat_stream.stream_id,
@@ -87,10 +86,10 @@ class ActionModifier:
             chat_content = chat_content + "\n" + f"现在，最新的消息是：{message_content}"
 
         # === 第一阶段：传统观察处理 ===
-        if loop_info:
-            removals_from_loop = await self.analyze_loop_actions(loop_info)
-            if removals_from_loop:
-                removals_s1.extend(removals_from_loop)
+        # if history_loop:
+        # removals_from_loop = await self.analyze_loop_actions(history_loop)
+        # if removals_from_loop:
+        # removals_s1.extend(removals_from_loop)
 
         # 检查动作的关联类型
         chat_context = self.chat_stream.context
@@ -109,12 +108,11 @@ class ActionModifier:
             logger.debug(f"{self.log_prefix}开始激活类型判定阶段")
 
             # 获取当前使用的动作集（经过第一阶段处理）
-            current_using_actions = self.action_manager.get_using_actions_for_mode(mode)
+            current_using_actions = self.action_manager.get_using_actions()
 
             # 获取因激活类型判定而需要移除的动作
             removals_s2 = await self._get_deactivated_actions_by_type(
                 current_using_actions,
-                mode,
                 chat_content,
             )
 
@@ -129,7 +127,7 @@ class ActionModifier:
             removals_summary = " | ".join([f"{name}({reason})" for name, reason in all_removals])
 
         logger.info(
-            f"{self.log_prefix}{mode}模式动作修改流程结束，最终可用动作: {list(self.action_manager.get_using_actions_for_mode(mode).keys())}||移除记录: {removals_summary}"
+            f"{self.log_prefix} 动作修改流程结束，最终可用动作: {list(self.action_manager.get_using_actions().keys())}||移除记录: {removals_summary}"
         )
 
     def _check_action_associated_types(self, all_actions: Dict[str, ActionInfo], chat_context: ChatMessageContext):
@@ -144,8 +142,7 @@ class ActionModifier:
 
     async def _get_deactivated_actions_by_type(
         self,
-        actions_with_info: Dict[str, ActionInfo],
-        mode: ChatMode = ChatMode.FOCUS,
+        actions_with_info: Dict[str, Any],
         chat_content: str = "",
     ) -> List[tuple[str, str]]:
         """
@@ -167,9 +164,11 @@ class ActionModifier:
         random.shuffle(actions_to_check)
 
         for action_name, action_info in actions_to_check:
-            mode_activation_type = f"{mode}_activation_type"
-            activation_type = getattr(action_info, mode_activation_type, ActionActivationType.ALWAYS)
-            if activation_type == ActionActivationType.ALWAYS:
+            activation_type = action_info.get("activation_type", "")
+            if not activation_type:
+                activation_type = action_info.get("focus_activation_type", "")
+
+            if activation_type == "always":
                 continue  # 总是激活，无需处理
 
             elif activation_type == ActionActivationType.RANDOM:
@@ -188,6 +187,11 @@ class ActionModifier:
 
             elif activation_type == ActionActivationType.LLM_JUDGE:
                 llm_judge_actions[action_name] = action_info
+
+            elif activation_type == "never":
+                reason = "激活类型为never"
+                deactivated_actions.append((action_name, reason))
+                logger.debug(f"{self.log_prefix}未激活动作: {action_name}，原因: 激活类型为never")
 
             else:
                 logger.warning(f"{self.log_prefix}未知的激活类型: {activation_type}，跳过处理")
@@ -434,7 +438,7 @@ class ActionModifier:
             logger.debug(f"{self.log_prefix}动作 {action_name} 未匹配到任何关键词: {activation_keywords}")
             return False
 
-    async def analyze_loop_actions(self, obs: FocusLoopInfo) -> List[tuple[str, str]]:
+    async def analyze_loop_actions(self, history_loop: List[CycleDetail]) -> List[tuple[str, str]]:
         """分析最近的循环内容并决定动作的移除
 
         Returns:
@@ -444,7 +448,7 @@ class ActionModifier:
         removals = []
 
         # 获取最近10次循环
-        recent_cycles = obs.history_loop[-10:] if len(obs.history_loop) > 10 else obs.history_loop
+        recent_cycles = history_loop[-10:] if len(history_loop) > 10 else history_loop
         if not recent_cycles:
             return removals
 
@@ -501,16 +505,24 @@ class ActionModifier:
 
         return removals
 
-    def get_available_actions_count(self) -> int:
+    def get_available_actions_count(self, mode: str = "focus") -> int:
         """获取当前可用动作数量（排除默认的no_action）"""
-        current_actions = self.action_manager.get_using_actions_for_mode(ChatMode.NORMAL)
+        current_actions = self.action_manager.get_using_actions_for_mode(mode)
         # 排除no_action（如果存在）
         filtered_actions = {k: v for k, v in current_actions.items() if k != "no_action"}
         return len(filtered_actions)
 
-    def should_skip_planning(self) -> bool:
+    def should_skip_planning_for_no_reply(self) -> bool:
         """判断是否应该跳过规划过程"""
-        available_count = self.get_available_actions_count()
+        current_actions = self.action_manager.get_using_actions_for_mode("focus")
+        # 排除no_action（如果存在）
+        if len(current_actions) == 1 and "no_reply" in current_actions:
+            return True
+        return False
+
+    def should_skip_planning_for_no_action(self) -> bool:
+        """判断是否应该跳过规划过程"""
+        available_count = self.action_manager.get_using_actions_for_mode("normal")
         if available_count == 0:
             logger.debug(f"{self.log_prefix} 没有可用动作，跳过规划")
             return True
