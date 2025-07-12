@@ -76,7 +76,7 @@ class ActionPlanner:
 
         self.last_obs_time_mark = 0.0
 
-    async def plan(self,mode: str = "focus") -> Dict[str, Any]:
+    async def plan(self,mode:str = "focus") -> Dict[str, Any]:
         """
         规划器 (Planner): 使用LLM根据上下文决定做出什么动作。
         """
@@ -91,7 +91,7 @@ class ActionPlanner:
             is_group_chat, chat_target_info = get_chat_type_and_target_info(self.chat_id)
             logger.debug(f"{self.log_prefix}获取到聊天信息 - 群聊: {is_group_chat}, 目标信息: {chat_target_info}")
 
-            current_available_actions_dict = self.action_manager.get_using_actions_for_mode(mode)
+            current_available_actions_dict = self.action_manager.get_using_actions()
 
             # 获取完整的动作信息
             all_registered_actions = self.action_manager.get_registered_actions()
@@ -247,7 +247,23 @@ class ActionPlanner:
 
             if mode == "focus":
                 by_what = "聊天内容"
-                no_action_block = ""
+                no_action_block = """重要说明1：
+- 'no_reply' 表示只进行不进行回复，等待合适的回复时机
+- 当你刚刚发送了消息，没有人回复时，选择no_reply
+- 当你一次发送了太多消息，为了避免打扰聊天节奏，选择no_reply
+
+动作：reply
+动作描述：参与聊天回复，发送文本进行表达
+- 你想要闲聊或者随便附和
+- 有人提到你
+- 如果你刚刚进行了回复，不要对同一个话题重复回应
+{
+    "action": "reply",
+    "reply_to":"你要回复的对方的发言内容，格式：（用户名:发言内容），可以为none"
+    "reason":"回复的原因"
+}
+
+"""
             else:
                 by_what = "聊天内容和用户的最新消息"
                 no_action_block = """重要说明：

@@ -70,13 +70,15 @@ class ChatMood:
         else:
             interest_multiplier = 3 * math.pow(interested_rate, 0.25)
 
-        logger.info(
+        logger.debug(
             f"base_probability: {base_probability}, time_multiplier: {time_multiplier}, interest_multiplier: {interest_multiplier}"
         )
         update_probability = min(1.0, base_probability * time_multiplier * interest_multiplier)
 
         if random.random() > update_probability:
             return
+        
+        logger.info(f"更新情绪状态，感兴趣度: {interested_rate}, 更新概率: {update_probability}")
 
         message_time = message.message_info.time
         message_list_before_now = get_raw_msg_by_timestamp_with_chat_inclusive(

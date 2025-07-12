@@ -14,7 +14,7 @@ from src.chat.planner_actions.action_manager import ActionManager
 from src.config.config import global_config
 from src.person_info.relationship_builder_manager import relationship_builder_manager
 from src.chat.focus_chat.hfc_utils import CycleDetail
-from random import random
+import random
 from src.chat.focus_chat.hfc_utils import get_recent_message_stats
 from src.person_info.person_info import get_person_info_manager
 from src.plugin_system.apis import generator_api,send_api,message_api
@@ -228,7 +228,15 @@ class HeartFChatting:
             await asyncio.sleep(1)
             
             return True
-            
+    
+    async def build_reply_to_str(self,message_data:dict):
+        person_info_manager = get_person_info_manager()
+        person_id = person_info_manager.get_person_id(
+            message_data.get("chat_info_platform"), message_data.get("user_id")
+        )
+        person_name = await person_info_manager.get_value(person_id, "person_name")
+        reply_to_str = f"{person_name}:{message_data.get('processed_plain_text')}"
+        return reply_to_str
 
 
     async def _observe(self,message_data:dict = None):
@@ -249,42 +257,19 @@ class HeartFChatting:
             # 第一步：动作修改
             with Timer("动作修改", cycle_timers):
                 try:
-                    if self.loop_mode == "focus":
-                        await self.action_modifier.modify_actions(
-                            history_loop=self.history_loop,
-                            mode="focus",
-                        )
-                    elif self.loop_mode == "normal":
-                        await self.action_modifier.modify_actions(mode="normal")
-                        available_actions = self.action_manager.get_using_actions_for_mode("normal")
+                    await self.action_modifier.modify_actions()
+                    available_actions = self.action_manager.get_using_actions()
                 except Exception as e:
                     logger.error(f"{self.log_prefix} 动作修改失败: {e}")
                     
             #如果normal，开始一个回复生成进程，先准备好回复（其实是和planer同时进行的）
             if self.loop_mode == "normal":
-                person_info_manager = get_person_info_manager()
-                person_id = person_info_manager.get_person_id(
-                    message_data.get("chat_info_platform"), message_data.get("user_id")
-                )
-                person_name = await person_info_manager.get_value(person_id, "person_name")
-                reply_to_str = f"{person_name}:{message_data.get('processed_plain_text')}"
-                
+                reply_to_str = await self.build_reply_to_str(message_data)
                 gen_task = asyncio.create_task(self._generate_response(message_data, available_actions,reply_to_str))
             
 
             with Timer("规划器", cycle_timers):
-                if self.loop_mode == "focus":
-                    if self.action_modifier.should_skip_planning_for_no_reply():
-                        logger.info(f"[{self.log_prefix}] 没有可用动作，跳过规划")
-                        action_type = "no_reply"
-                    else:
-                        plan_result = await self.action_planner.plan(mode="focus")
-                elif self.loop_mode == "normal":
-                    if self.action_modifier.should_skip_planning_for_no_action():
-                        logger.info(f"[{self.log_prefix}] 没有可用动作，跳过规划")
-                        action_type = "no_action"
-                    else:
-                        plan_result = await self.action_planner.plan(mode="normal")
+                plan_result = await self.action_planner.plan(mode=self.loop_mode)
 
 
 
@@ -445,9 +430,7 @@ class HeartFChatting:
             else:
                 success, reply_text = result
                 command = ""
-
-            command = self._count_reply_and_exit_focus_chat(action,success)
-            
+    
             if reply_text == "timeout":
                 self.reply_timeout_count += 1
                 if self.reply_timeout_count > 5:
@@ -464,30 +447,6 @@ class HeartFChatting:
             traceback.print_exc()
             return False, "", ""
         
-    def _count_reply_and_exit_focus_chat(self,action,success):
-        # 新增：消息计数和疲惫检查
-        if action == "reply" and success:
-            self._message_count += 1
-            current_threshold = max(10, int(30 / global_config.chat.exit_focus_threshold))
-            logger.info(
-                f"{self.log_prefix} 已发送第 {self._message_count} 条消息（动态阈值: {current_threshold}, exit_focus_threshold: {global_config.chat.exit_focus_threshold}）"
-            )
-
-            # 检查是否达到疲惫阈值（只有在auto模式下才会自动退出）
-            if (
-                global_config.chat.chat_mode == "auto"
-                and self._message_count >= current_threshold
-                and not self._fatigue_triggered
-            ):
-                self._fatigue_triggered = True
-                logger.info(
-                    f"{self.log_prefix} [auto模式] 已发送 {self._message_count} 条消息，达到疲惫阈值 {current_threshold}，麦麦感到疲惫了，准备退出专注聊天模式"
-                )
-                # 设置系统命令，在下次循环检查时触发退出
-                command = "stop_focus_chat"
-                
-                return command
-        return ""
 
 
     async def shutdown(self):
@@ -638,7 +597,7 @@ class HeartFChatting:
                 f"{message_data.get('processed_plain_text')}[兴趣:{interested_rate:.2f}][回复概率:{reply_probability * 100:.1f}%]"
             )
 
-        if random() < reply_probability:
+        if random.random() < reply_probability:
             await self.willing_manager.before_generate_reply_handle(message_data.get("message_id"))
             await self._observe(message_data = message_data)
 

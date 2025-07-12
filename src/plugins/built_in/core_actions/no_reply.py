@@ -24,7 +24,7 @@ class NoReplyAction(BaseAction):
     2. 累计新消息数量达到随机阈值 (默认5-10条) 则结束等待
     """
 
-    focus_activation_type = ActionActivationType.ALWAYS
+    focus_activation_type = ActionActivationType.NEVER
     normal_activation_type = ActionActivationType.NEVER
     mode_enable = ChatMode.FOCUS
     parallel_action = False

@@ -44,7 +44,6 @@ class ActionModifier:
     async def modify_actions(
         self,
         history_loop=None,
-        mode: str = "focus",
         message_content: str = "",
     ):
         """
@@ -62,7 +61,7 @@ class ActionModifier:
         removals_s2 = []
 
         self.action_manager.restore_actions()
-        all_actions = self.action_manager.get_using_actions_for_mode(mode)
+        all_actions = self.action_manager.get_using_actions()
 
         message_list_before_now_half = get_raw_msg_before_timestamp_with_chat(
             chat_id=self.chat_stream.stream_id,
@@ -82,10 +81,10 @@ class ActionModifier:
             chat_content = chat_content + "\n" + f"现在，最新的消息是：{message_content}"
 
         # === 第一阶段：传统观察处理 ===
-        if history_loop:
-            removals_from_loop = await self.analyze_loop_actions(history_loop)
-            if removals_from_loop:
-                removals_s1.extend(removals_from_loop)
+        # if history_loop:
+            # removals_from_loop = await self.analyze_loop_actions(history_loop)
+            # if removals_from_loop:
+                # removals_s1.extend(removals_from_loop)
 
         # 检查动作的关联类型
         chat_context = self.chat_stream.context
@@ -104,12 +103,11 @@ class ActionModifier:
             logger.debug(f"{self.log_prefix}开始激活类型判定阶段")
 
             # 获取当前使用的动作集（经过第一阶段处理）
-            current_using_actions = self.action_manager.get_using_actions_for_mode(mode)
+            current_using_actions = self.action_manager.get_using_actions()
 
             # 获取因激活类型判定而需要移除的动作
             removals_s2 = await self._get_deactivated_actions_by_type(
                 current_using_actions,
-                mode,
                 chat_content,
             )
 
@@ -124,7 +122,7 @@ class ActionModifier:
             removals_summary = " | ".join([f"{name}({reason})" for name, reason in all_removals])
 
         logger.info(
-            f"{self.log_prefix}{mode}模式动作修改流程结束，最终可用动作: {list(self.action_manager.get_using_actions_for_mode(mode).keys())}||移除记录: {removals_summary}"
+            f"{self.log_prefix} 动作修改流程结束，最终可用动作: {list(self.action_manager.get_using_actions().keys())}||移除记录: {removals_summary}"
         )
 
     def _check_action_associated_types(self, all_actions, chat_context):
@@ -141,7 +139,6 @@ class ActionModifier:
     async def _get_deactivated_actions_by_type(
         self,
         actions_with_info: Dict[str, Any],
-        mode: str = "focus",
         chat_content: str = "",
     ) -> List[tuple[str, str]]:
         """
@@ -163,7 +160,7 @@ class ActionModifier:
         random.shuffle(actions_to_check)
 
         for action_name, action_info in actions_to_check:
-            activation_type = f"{mode}_activation_type"
+            activation_type = "focus_activation_type"
             activation_type = action_info.get(activation_type, "always")
 
             if activation_type == "always":
@@ -186,6 +183,11 @@ class ActionModifier:
             elif activation_type == "llm_judge":
                 llm_judge_actions[action_name] = action_info
 
+            elif activation_type == "never":
+                reason = f"激活类型为never"
+                deactivated_actions.append((action_name, reason))
+                logger.debug(f"{self.log_prefix}未激活动作: {action_name}，原因: 激活类型为never")
+            
             else:
                 logger.warning(f"{self.log_prefix}未知的激活类型: {activation_type}，跳过处理")
 
@@ -202,35 +204,6 @@ class ActionModifier:
                     logger.debug(f"{self.log_prefix}未激活动作: {action_name}，原因: {reason}")
 
         return deactivated_actions
-
-    async def process_actions_for_planner(
-        self, observed_messages_str: str = "", chat_context: Optional[str] = None, extra_context: Optional[str] = None
-    ) -> Dict[str, Any]:
-        """
-        [已废弃] 此方法现在已被整合到 modify_actions() 中
-
-        为了保持向后兼容性而保留，但建议直接使用 ActionManager.get_using_actions()
-        规划器应该直接从 ActionManager 获取最终的可用动作集，而不是调用此方法
-
-        新的架构：
-        1. 主循环调用 modify_actions() 处理完整的动作管理流程
-        2. 规划器直接使用 ActionManager.get_using_actions() 获取最终动作集
-        """
-        logger.warning(
-            f"{self.log_prefix}process_actions_for_planner() 已废弃，建议规划器直接使用 ActionManager.get_using_actions()"
-        )
-
-        # 为了向后兼容，仍然返回当前使用的动作集
-        current_using_actions = self.action_manager.get_using_actions()
-        all_registered_actions = self.action_manager.get_registered_actions()
-
-        # 构建完整的动作信息
-        result = {}
-        for action_name in current_using_actions.keys():
-            if action_name in all_registered_actions:
-                result[action_name] = all_registered_actions[action_name]
-
-        return result
 
     def _generate_context_hash(self, chat_content: str) -> str:
         """生成上下文的哈希值用于缓存"""

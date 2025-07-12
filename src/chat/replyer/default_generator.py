@@ -29,6 +29,8 @@ from src.tools.tool_executor import ToolExecutor
 
 logger = get_logger("replyer")
 
+ENABLE_S2S_MODE = True
+
 
 def init_prompt():
     Prompt("你正在qq群里聊天，下面是群里在聊的内容：", "chat_target_group1")
@@ -504,13 +506,14 @@ class DefaultReplyer:
             show_actions=True,
         )
 
-        message_list_before_now_half = get_raw_msg_before_timestamp_with_chat(
+
+        message_list_before_short = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_id,
             timestamp=time.time(),
-            limit=int(global_config.chat.max_context_size * 0.5),
+            limit=int(global_config.chat.max_context_size * 0.33),
         )
-        chat_talking_prompt_half = build_readable_messages(
-            message_list_before_now_half,
+        chat_talking_prompt_short = build_readable_messages(
+            message_list_before_short,
             replace_bot_name=True,
             merge_messages=False,
             timestamp_mode="relative",
@@ -521,14 +524,14 @@ class DefaultReplyer:
         # 并行执行四个构建任务
         task_results = await asyncio.gather(
             self._time_and_run_task(
-                self.build_expression_habits(chat_talking_prompt_half, target), "build_expression_habits"
+                self.build_expression_habits(chat_talking_prompt_short, target), "build_expression_habits"
             ),
             self._time_and_run_task(
-                self.build_relation_info(reply_data, chat_talking_prompt_half), "build_relation_info"
+                self.build_relation_info(reply_data, chat_talking_prompt_short), "build_relation_info"
             ),
-            self._time_and_run_task(self.build_memory_block(chat_talking_prompt_half, target), "build_memory_block"),
+            self._time_and_run_task(self.build_memory_block(chat_talking_prompt_short, target), "build_memory_block"),
             self._time_and_run_task(
-                self.build_tool_info(reply_data, chat_talking_prompt_half, enable_tool=enable_tool), "build_tool_info"
+                self.build_tool_info(reply_data, chat_talking_prompt_short, enable_tool=enable_tool), "build_tool_info"
             ),
         )
 

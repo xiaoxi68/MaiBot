@@ -8,7 +8,6 @@ from src.chat.message_receive.chat_stream import get_chat_manager
 from src.chat.message_receive.message import MessageRecv
 from src.experimental.only_message_process import MessageProcessor
 from src.chat.message_receive.storage import MessageStorage
-from src.experimental.PFC.pfc_manager import PFCManager
 from src.chat.heart_flow.heartflow_message_processor import HeartFCMessageReceiver
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.config.config import global_config
@@ -82,7 +81,6 @@ class ChatBot:
 
         # 创建初始化PFC管理器的任务，会在_ensure_started时执行
         self.only_process_chat = MessageProcessor()
-        self.pfc_manager = PFCManager.get_instance()
         self.s4u_message_processor = S4UMessageProcessor()
 
     async def _ensure_started(self):

@@ -67,9 +67,6 @@ class RelationshipConfig(ConfigBase):
 class ChatConfig(ConfigBase):
     """聊天配置类"""
 
-    chat_mode: str = "normal"
-    """聊天模式"""
-
     max_context_size: int = 18
     """上下文长度"""
 
@@ -523,9 +520,6 @@ class TelemetryConfig(ConfigBase):
 @dataclass
 class DebugConfig(ConfigBase):
     """调试配置类"""
-
-    debug_show_chat_mode: bool = False
-    """是否在回复后显示当前聊天模式"""
 
     show_prompt: bool = False
     """是否显示prompt"""
