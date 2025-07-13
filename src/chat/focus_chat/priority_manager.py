@@ -25,8 +25,7 @@ class PrioritizedMessage:
         """
         age = time.time() - self.arrival_time
         decay_factor = math.exp(-decay_rate * age)
-        priority = sum(self.interest_scores) + decay_factor
-        return priority
+        return sum(self.interest_scores) + decay_factor
 
     def __lt__(self, other: "PrioritizedMessage") -> bool:
         """用于堆排序的比较函数，我们想要一个最大堆，所以用 >"""
@@ -43,7 +42,7 @@ class PriorityManager:
         self.normal_queue: List[PrioritizedMessage] = []  # 普通消息队列 (最大堆)
         self.normal_queue_max_size = normal_queue_max_size
 
-    def add_message(self, message_data: dict, interest_score: Optional[float] = None):
+    def add_message(self, message_data: dict, interest_score: float = 0):
         """
         添加新消息到合适的队列中。
         """

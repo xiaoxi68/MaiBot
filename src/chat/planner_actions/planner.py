@@ -79,7 +79,7 @@ class ActionPlanner:
 
         self.last_obs_time_mark = 0.0
 
-    async def plan(self, mode: str = "focus") -> Dict[str, Any]:  # sourcery skip: dict-comprehension
+    async def plan(self, mode: str = "focus") -> Dict[str, Dict[str, Any]]:  # sourcery skip: dict-comprehension
         """
         规划器 (Planner): 使用LLM根据上下文决定做出什么动作。
         """

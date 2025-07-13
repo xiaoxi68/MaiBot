@@ -1,14 +1,10 @@
 import time
-import json
 
 from typing import Optional, Dict, Any
 
 from src.config.config import global_config
 from src.common.message_repository import count_messages
 from src.common.logger import get_logger
-from src.chat.message_receive.message import MessageRecv, BaseMessageInfo
-from src.chat.message_receive.chat_stream import ChatStream
-from src.chat.message_receive.message import UserInfo
 
 logger = get_logger(__name__)
 
@@ -85,10 +81,10 @@ class CycleDetail:
         self.loop_action_info = loop_info["loop_action_info"]
 
 
-def get_recent_message_stats(minutes: int = 30, chat_id: str = None) -> dict:
+def get_recent_message_stats(minutes: float = 30, chat_id: Optional[str] = None) -> dict:
     """
     Args:
-        minutes (int): 检索的分钟数，默认30分钟
+        minutes (float): 检索的分钟数，默认30分钟
         chat_id (str, optional): 指定的chat_id，仅统计该chat下的消息。为None时统计全部。
     Returns:
         dict: {"bot_reply_count": int, "total_message_count": int}
@@ -98,7 +94,7 @@ def get_recent_message_stats(minutes: int = 30, chat_id: str = None) -> dict:
     start_time = now - minutes * 60
     bot_id = global_config.bot.qq_account
 
-    filter_base = {"time": {"$gte": start_time}}
+    filter_base: Dict[str, Any] = {"time": {"$gte": start_time}}
     if chat_id is not None:
         filter_base["chat_id"] = chat_id
 
