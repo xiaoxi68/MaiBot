@@ -171,7 +171,7 @@ class S4UChat:
 
     def _get_priority_info(self, message: MessageRecv) -> dict:
         """安全地从消息中提取和解析 priority_info"""
-        priority_info_raw = message.raw.get("priority_info")
+        priority_info_raw = message.priority_info
         priority_info = {}
         if isinstance(priority_info_raw, str):
             try:
