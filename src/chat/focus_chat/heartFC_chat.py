@@ -585,7 +585,7 @@ class HeartFChatting:
                 reply_to=reply_to,
                 available_actions=available_actions,
                 enable_tool=global_config.tool.enable_in_normal_chat,
-                request_type="normal.replyer",
+                request_type="chat.replyer.normal",
             )
 
             if not success or not reply_set:

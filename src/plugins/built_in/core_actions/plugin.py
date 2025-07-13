@@ -75,34 +75,38 @@ class ReplyAction(BaseAction):
 
         reply_to = self.action_data.get("reply_to", "")
         sender, target = self._parse_reply_target(reply_to)
-
+        
         try:
-            try:
-                success, reply_set, _ = await asyncio.wait_for(
-                    generator_api.generate_reply(
-                        action_data=self.action_data,
-                        chat_id=self.chat_id,
-                        request_type="focus.replyer",
-                        enable_tool=global_config.tool.enable_in_focus_chat,
-                    ),
-                    timeout=global_config.chat.thinking_timeout,
+            prepared_reply = self.action_data.get("prepared_reply", "")
+            if not prepared_reply:
+                try:
+                    success, reply_set, _ = await asyncio.wait_for(
+                        generator_api.generate_reply(
+                            action_data=self.action_data,
+                            chat_id=self.chat_id,
+                            request_type="chat.replyer.focus",
+                            enable_tool=global_config.tool.enable_in_focus_chat,
+                        ),
+                        timeout=global_config.chat.thinking_timeout,
+                    )
+                except asyncio.TimeoutError:
+                    logger.warning(f"{self.log_prefix} 回复生成超时 ({global_config.chat.thinking_timeout}s)")
+                    return False, "timeout"
+
+                # 检查从start_time以来的新消息数量
+                # 获取动作触发时间或使用默认值
+                current_time = time.time()
+                new_message_count = message_api.count_new_messages(
+                    chat_id=self.chat_id, start_time=start_time, end_time=current_time
                 )
-            except asyncio.TimeoutError:
-                logger.warning(f"{self.log_prefix} 回复生成超时 ({global_config.chat.thinking_timeout}s)")
-                return False, "timeout"
 
-            # 检查从start_time以来的新消息数量
-            # 获取动作触发时间或使用默认值
-            current_time = time.time()
-            new_message_count = message_api.count_new_messages(
-                chat_id=self.chat_id, start_time=start_time, end_time=current_time
-            )
-
-            # 根据新消息数量决定是否使用reply_to
-            need_reply = new_message_count >= random.randint(2, 4)
-            logger.info(
-                f"{self.log_prefix} 从思考到回复，共有{new_message_count}条新消息，{'使用' if need_reply else '不使用'}引用回复"
-            )
+                # 根据新消息数量决定是否使用reply_to
+                need_reply = new_message_count >= random.randint(2, 4)
+                logger.info(
+                    f"{self.log_prefix} 从思考到回复，共有{new_message_count}条新消息，{'使用' if need_reply else '不使用'}引用回复"
+                )
+            else:
+                reply_text = prepared_reply
 
             # 构建回复文本
             reply_text = ""

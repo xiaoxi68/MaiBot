@@ -280,7 +280,7 @@ class DefaultReplyer:
                     # 加权随机选择一个模型配置
                     selected_model_config = self._select_weighted_model_config()
                     logger.info(
-                        f"{self.log_prefix} 使用模型配置进行重写: {selected_model_config.get('model_name', 'N/A')} (权重: {selected_model_config.get('weight', 1.0)})"
+                        f"{self.log_prefix} 使用模型配置进行重写: {selected_model_config.get('name', 'N/A')} (权重: {selected_model_config.get('weight', 1.0)})"
                     )
 
                     express_model = LLMRequest(
@@ -797,7 +797,7 @@ class DefaultReplyer:
         message_list_before_now_half = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_id,
             timestamp=time.time(),
-            limit=int(global_config.chat.max_context_size * 0.5),
+            limit=min(int(global_config.chat.max_context_size * 0.33), 15),
         )
         chat_talking_prompt_half = build_readable_messages(
             message_list_before_now_half,

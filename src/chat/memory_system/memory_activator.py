@@ -66,7 +66,7 @@ class MemoryActivator:
         self.key_words_model = LLMRequest(
             model=global_config.model.utils_small,
             temperature=0.5,
-            request_type="memory_activator",
+            request_type="memory.activator",
         )
 
         self.running_memory = []

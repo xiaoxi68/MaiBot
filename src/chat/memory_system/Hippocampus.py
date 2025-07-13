@@ -199,7 +199,7 @@ class Hippocampus:
         # 从数据库加载记忆图
         self.entorhinal_cortex.sync_memory_from_db()
         # TODO: API-Adapter修改标记
-        self.model_summary = LLMRequest(global_config.model.memory, request_type="memory")
+        self.model_summary = LLMRequest(global_config.model.memory, request_type="memory.builder")
 
     def get_all_node_names(self) -> list:
         """获取记忆图中所有节点的名字列表"""

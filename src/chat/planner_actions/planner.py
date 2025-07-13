@@ -224,7 +224,7 @@ class ActionPlanner:
             message_list_before_now = get_raw_msg_before_timestamp_with_chat(
                 chat_id=self.chat_id,
                 timestamp=time.time(),
-                limit=global_config.chat.max_context_size,
+                limit=int(global_config.chat.max_context_size * 0.6),
             )
 
             chat_content_block = build_readable_messages(
