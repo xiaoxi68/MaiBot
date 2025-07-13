@@ -22,7 +22,7 @@ def find_messages(
     sort: Optional[List[tuple[str, int]]] = None,
     limit: int = 0,
     limit_mode: str = "latest",
-    fliter_bot=False,
+    filter_bot=False,
 ) -> List[dict[str, Any]]:
     """
     根据提供的过滤器、排序和限制条件查找消息。
@@ -72,7 +72,7 @@ def find_messages(
             if conditions:
                 query = query.where(*conditions)
 
-        if fliter_bot:
+        if filter_bot:
             query = query.where(Messages.user_id != global_config.bot.qq_account)
 
         if limit > 0:

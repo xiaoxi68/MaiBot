@@ -832,10 +832,9 @@ class EntorhinalCortex:
     def random_get_msg_snippet(target_timestamp: float, chat_size: int, max_memorized_time_per_msg: int) -> list | None:
         # sourcery skip: invert-any-all, use-any, use-named-expression, use-next
         """从数据库中随机获取指定时间戳附近的消息片段 (使用 chat_message_builder)"""
-        try_count = 0
         time_window_seconds = random.randint(300, 1800)  # 随机时间窗口，5到30分钟
 
-        while try_count < 3:
+        for _ in range(3):
             # 定义时间范围：从目标时间戳开始，向后推移 time_window_seconds
             timestamp_start = target_timestamp
             timestamp_end = target_timestamp + time_window_seconds
@@ -874,8 +873,6 @@ class EntorhinalCortex:
                             ).execute()
                         return messages  # 直接返回原始的消息列表
 
-            # 如果获取失败或消息无效，增加尝试次数
-            try_count += 1
             target_timestamp -= 120  # 如果第一次尝试失败，稍微向前调整时间戳再试
 
         # 三次尝试都失败，返回 None
@@ -1067,19 +1064,17 @@ class EntorhinalCortex:
 
             try:
                 memory_items = [str(item) for item in memory_items]
-                memory_items_json = json.dumps(memory_items, ensure_ascii=False)
-                if not memory_items_json:
-                    continue
+                if memory_items_json := json.dumps(memory_items, ensure_ascii=False):
+                    nodes_data.append(
+                        {
+                            "concept": concept,
+                            "memory_items": memory_items_json,
+                            "hash": self.hippocampus.calculate_node_hash(concept, memory_items),
+                            "created_time": data.get("created_time", current_time),
+                            "last_modified": data.get("last_modified", current_time),
+                        }
+                    )
 
-                nodes_data.append(
-                    {
-                        "concept": concept,
-                        "memory_items": memory_items_json,
-                        "hash": self.hippocampus.calculate_node_hash(concept, memory_items),
-                        "created_time": data.get("created_time", current_time),
-                        "last_modified": data.get("last_modified", current_time),
-                    }
-                )
             except Exception as e:
                 logger.error(f"准备节点 {concept} 数据时发生错误: {e}")
                 continue
@@ -1271,7 +1266,7 @@ class ParahippocampalGyrus:
 
         # 3. 过滤掉包含禁用关键词的topic
         filtered_topics = [
-            topic for topic in topics if not any(keyword in topic for keyword in global_config.memory.memory_ban_words)
+            topic for topic in topics if all(keyword not in topic for keyword in global_config.memory.memory_ban_words)
         ]
 
         logger.debug(f"过滤后话题: {filtered_topics}")

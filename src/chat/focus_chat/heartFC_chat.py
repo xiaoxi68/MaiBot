@@ -207,7 +207,7 @@ class HeartFChatting:
                 timestamp_end=time.time(),
                 limit=10,
                 limit_mode="earliest",
-                fliter_bot=True,
+                filter_bot=True,
             )
 
             if len(new_messages_data) > 4 * global_config.chat.auto_focus_threshold:
@@ -296,13 +296,13 @@ class HeartFChatting:
                     content = " ".join([item[1] for item in response_set if item[0] == "text"])
 
                 # 模型炸了，没有回复内容生成
-                if not response_set or (action_type not in ["no_action"] and not is_parallel):
-                    if not response_set:
-                        logger.warning(f"[{self.log_prefix}] 模型未生成回复内容")
-                    elif action_type not in ["no_action"] and not is_parallel:
-                        logger.info(
-                            f"[{self.log_prefix}] {global_config.bot.nickname} 原本想要回复：{content}，但选择执行{action_type}，不发表回复"
-                        )
+                if not response_set:
+                    logger.warning(f"[{self.log_prefix}] 模型未生成回复内容")
+                    return False
+                elif action_type not in ["no_action"] and not is_parallel:
+                    logger.info(
+                        f"[{self.log_prefix}] {global_config.bot.nickname} 原本想要回复：{content}，但选择执行{action_type}，不发表回复"
+                    )
                     return False
 
                 logger.info(f"[{self.log_prefix}] {global_config.bot.nickname} 决定的回复内容: {content}")
