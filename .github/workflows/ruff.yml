@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   ruff:
-    runs-on: self-hosted
+    runs-on: [self-hosted, Windows, X64]
     # 关键修改：添加条件判断
     # 确保只有在 event_name 是 'push' 且不是由 Pull Request 引起的 push 时才运行
     if: github.event_name == 'push' && !startsWith(github.ref, 'refs/pull/')
