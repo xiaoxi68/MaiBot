@@ -244,7 +244,6 @@ class HeartFChatting:
 
         async with global_prompt_manager.async_message_scope(self.chat_stream.context.get_template_name()):
             loop_start_time = time.time()
-            # await self.loop_info.observe()
             await self.relationship_builder.build_relation()
 
             # 第一步：动作修改

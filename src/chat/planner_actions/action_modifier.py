@@ -316,7 +316,7 @@ class ActionModifier:
     async def _llm_judge_action(
         self,
         action_name: str,
-        action_info: Dict[str, Any],
+        action_info: ActionInfo,
         chat_content: str = "",
     ) -> bool:
         """
@@ -335,9 +335,9 @@ class ActionModifier:
 
         try:
             # 构建判定提示词
-            action_description = action_info.get("description", "")
-            action_require = action_info.get("require", [])
-            custom_prompt = action_info.get("llm_judge_prompt", "")
+            action_description = action_info.description
+            action_require = action_info.action_require
+            custom_prompt = action_info.llm_judge_prompt
 
             # 构建基础判定提示词
             base_prompt = f"""
