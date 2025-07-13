@@ -367,12 +367,25 @@ class BaseAction(ABC):
                 return getattr(ChatMode, default.upper(), ChatMode.ALL)
             return attr
 
+        # 获取focus_activation_type和normal_activation_type
+        focus_activation_type = get_enum_value("focus_activation_type", "always")
+        normal_activation_type = get_enum_value("normal_activation_type", "always")
+        
+        # 处理activation_type：如果插件中声明了就用插件的值，否则默认使用focus_activation_type
+        activation_type = getattr(cls, "activation_type", None)
+        if activation_type is None:
+            activation_type = focus_activation_type
+        elif not hasattr(activation_type, "value"):
+            # 如果是字符串，转换为对应的枚举
+            activation_type = getattr(ActionActivationType, activation_type.upper(), focus_activation_type)
+
         return ActionInfo(
             name=name,
             component_type=ComponentType.ACTION,
             description=description,
-            focus_activation_type=get_enum_value("focus_activation_type", "always"),
-            normal_activation_type=get_enum_value("normal_activation_type", "always"),
+            focus_activation_type=focus_activation_type,
+            normal_activation_type=normal_activation_type,
+            activation_type=activation_type,
             activation_keywords=getattr(cls, "activation_keywords", []).copy(),
             keyword_case_sensitive=getattr(cls, "keyword_case_sensitive", False),
             mode_enable=get_mode_value("mode_enable", "all"),

@@ -142,7 +142,7 @@ class ActionModifier:
 
     async def _get_deactivated_actions_by_type(
         self,
-        actions_with_info: Dict[str, Any],
+        actions_with_info: Dict[str, ActionInfo],
         chat_content: str = "",
     ) -> List[tuple[str, str]]:
         """
@@ -164,7 +164,7 @@ class ActionModifier:
         random.shuffle(actions_to_check)
 
         for action_name, action_info in actions_to_check:
-            activation_type = action_info.get("activation_type", "")
+            activation_type = action_info.activation_type
             if not activation_type:
                 activation_type = action_info.get("focus_activation_type", "")
 

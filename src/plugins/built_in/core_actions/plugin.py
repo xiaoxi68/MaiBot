@@ -10,6 +10,7 @@ import time
 from typing import List, Tuple, Type
 import asyncio
 import re
+import traceback
 
 # 导入新插件系统
 from src.plugin_system import BasePlugin, register_plugin, BaseAction, ComponentInfo, ActionActivationType, ChatMode
@@ -77,7 +78,7 @@ class ReplyAction(BaseAction):
 
         try:
             try:
-                success, reply_set = await asyncio.wait_for(
+                success, reply_set, _ = await asyncio.wait_for(
                     generator_api.generate_reply(
                         action_data=self.action_data,
                         chat_id=self.chat_id,
@@ -138,6 +139,7 @@ class ReplyAction(BaseAction):
 
         except Exception as e:
             logger.error(f"{self.log_prefix} 回复动作执行失败: {e}")
+            traceback.print_exc()
             return False, f"回复失败: {str(e)}"
 
 

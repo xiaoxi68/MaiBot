@@ -95,7 +95,7 @@ class BaseWillingManager(ABC):
 
     def setup(self, message: dict, chat: ChatStream):
         person_id = PersonInfoManager.get_person_id(chat.platform, chat.user_info.user_id)  # type: ignore
-        self.ongoing_messages[message.message_info.message_id] = WillingInfo(  # type: ignore
+        self.ongoing_messages[message.get("message_id", "")] = WillingInfo(  # type: ignore
             message=message,
             chat=chat,
             person_info_manager=get_person_info_manager(),
