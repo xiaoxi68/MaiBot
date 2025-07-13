@@ -1,5 +1,5 @@
 [inner]
-version = "4.0.2"
+version = "4.1.1"
 
 #----以下是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 #如果你想要修改配置文件，请在修改后将version的值进行变更
@@ -21,25 +21,12 @@ alias_names = ["麦叠", "牢麦"] # 麦麦的别名
 # 建议50字以内，描述人格的核心特质
 personality_core = "是一个积极向上的女大学生" 
 # 人格的细节，可以描述人格的一些侧面，条数任意，不能为0，不宜太多
-personality_sides = [
-    "用一句话或几句话描述人格的一些侧面",
-    "用一句话或几句话描述人格的一些侧面",
-    "用一句话或几句话描述人格的一些侧面",
-]
-
-compress_personality = false # 是否压缩人格，压缩后会精简人格信息，节省token消耗并提高回复性能，但是会丢失一些信息，如果人设不长，可以关闭
-
-
-[identity]
+personality_side = "用一句话或几句话描述人格的侧面特质"
 #アイデンティティがない 生まれないらららら
 # 可以描述外貌，性别，身高，职业，属性等等描述,条数任意，不能为0
-identity_detail = [
-    "年龄为19岁",
-    "是女孩子",
-    "身高为160cm",
-    "有橙色的短发",
-]
+identity = "年龄为19岁,是女孩子,身高为160cm,有黑色的短发"
 
+compress_personality = false # 是否压缩人格，压缩后会精简人格信息，节省token消耗并提高回复性能，但是会丢失一些信息，如果人设不长，可以关闭
 compress_identity = true # 是否压缩身份，压缩后会精简身份信息，节省token消耗并提高回复性能，但是会丢失一些信息，如果不长，可以关闭
 
 [expression]
@@ -62,18 +49,18 @@ enable_relationship = true # 是否启用关系系统
 relation_frequency = 1 # 关系频率，麦麦构建关系的频率
 
 [chat] #麦麦的聊天通用设置
-auto_focus_threshold = 1 # 自动切换到专注聊天的阈值，越低越容易进入专注聊天
-exit_focus_threshold = 1 # 自动退出专注聊天的阈值，越低越容易退出专注聊天
-# 普通模式下，麦麦会针对感兴趣的消息进行回复，token消耗量较低
-# 专注模式下，麦麦会进行主动的观察，并给出回复，token消耗量略高，但是回复时机更准确
-# 自动模式下，麦麦会根据消息内容自动切换到专注模式或普通模式
+focus_value = 1 
+# 麦麦的专注思考能力，越低越容易专注，消耗token也越多
+# 专注时能更好把握发言时机，能够进行持久的连续对话
 
 max_context_size = 25 # 上下文长度
 thinking_timeout = 20 # 麦麦一次回复最长思考规划时间，超过这个时间的思考会放弃（往往是api反应太慢）
 replyer_random_probability = 0.5 # 首要replyer模型被选择的概率
 
+use_s4u_prompt_mode = false # 是否使用 s4u 对话构建模式，该模式会更好的把握当前对话对象的对话内容，但是对群聊整理理解能力较差（测试功能！！可能有未知问题！！)
+
+
 talk_frequency = 1 # 麦麦回复频率，越高，麦麦回复越频繁
-use_s4u_prompt_mode = false # 是否使用 s4u 对话构建模式，该模式会更好的把握当前对话对象的对话内容，但是对群聊整理理解能力较差
 
 time_based_talk_frequency = ["8:00,1", "12:00,1.5", "18:00,2", "01:00,0.5"]
 # 基于时段的回复频率配置（可选）
@@ -87,7 +74,6 @@ talk_frequency_adjust = [
     ["qq:114514:group", "12:20,1", "16:10,2", "20:10,1", "00:10,0.3"],
     ["qq:1919810:private", "8:20,1", "12:10,2", "20:10,1.5", "00:10,0.2"]
 ]
-
 # 基于聊天流的个性化时段频率配置（可选）
 # 格式：talk_frequency_adjust = [["platform:id:type", "HH:MM,frequency", ...], ...]
 # 说明：
@@ -119,9 +105,6 @@ willing_mode = "classical" # 回复意愿模式 —— 经典模式：classical�
 response_interested_rate_amplifier = 1 # 麦麦回复兴趣度放大系数
 mentioned_bot_inevitable_reply = true # 提及 bot 必然回复
 at_bot_inevitable_reply = true # @bot 必然回复（包含提及）
-
-[focus_chat] #专注聊天
-consecutive_replies = 1 # 连续回复能力，值越高，麦麦连续回复的概率越高
 
 [tool]
 enable_in_normal_chat = false # 是否在普通聊天中启用工具

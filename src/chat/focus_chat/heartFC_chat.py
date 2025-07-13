@@ -91,9 +91,7 @@ class HeartFChatting:
 
         # 新增：消息计数器和疲惫阈值
         self._message_count = 0  # 发送的消息计数
-        # 基于exit_focus_threshold动态计算疲惫阈值
-        # 基础值30条，通过exit_focus_threshold调节：threshold越小，越容易疲惫
-        self._message_threshold = max(10, int(30 * global_config.chat.exit_focus_threshold))
+        self._message_threshold = max(10, int(30 * global_config.chat.focus_value))
         self._fatigue_triggered = False  # 是否已触发疲惫退出
 
         self.action_manager = ActionManager()
@@ -127,7 +125,7 @@ class HeartFChatting:
             self.priority_manager = None
 
         logger.info(
-            f"{self.log_prefix} HeartFChatting 初始化完成，消息疲惫阈值: {self._message_threshold}条（基于exit_focus_threshold={global_config.chat.exit_focus_threshold}计算，仅在auto模式下生效）"
+            f"{self.log_prefix} HeartFChatting 初始化完成"
         )
 
         self.energy_value = 100
@@ -195,7 +193,7 @@ class HeartFChatting:
 
     async def _loopbody(self):
         if self.loop_mode == "focus":
-            self.energy_value -= 5 * (1 / global_config.chat.exit_focus_threshold)
+            self.energy_value -= 5 * global_config.chat.focus_value
             if self.energy_value <= 0:
                 self.loop_mode = "normal"
                 return True
@@ -211,7 +209,7 @@ class HeartFChatting:
                 filter_bot=True,
             )
 
-            if len(new_messages_data) > 4 * global_config.chat.auto_focus_threshold:
+            if len(new_messages_data) > 4 * global_config.chat.focus_value:
                 self.loop_mode = "focus"
                 self.energy_value = 100
                 return True

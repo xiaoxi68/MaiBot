@@ -13,11 +13,9 @@ from src.config.config_base import ConfigBase
 from src.config.official_configs import (
     BotConfig,
     PersonalityConfig,
-    IdentityConfig,
     ExpressionConfig,
     ChatConfig,
     NormalChatConfig,
-    FocusChatConfig,
     EmojiConfig,
     MemoryConfig,
     MoodConfig,
@@ -145,12 +143,10 @@ class Config(ConfigBase):
 
     bot: BotConfig
     personality: PersonalityConfig
-    identity: IdentityConfig
     relationship: RelationshipConfig
     chat: ChatConfig
     message_receive: MessageReceiveConfig
     normal_chat: NormalChatConfig
-    focus_chat: FocusChatConfig
     emoji: EmojiConfig
     expression: ExpressionConfig
     memory: MemoryConfig

@@ -106,9 +106,9 @@ class TakePictureAction(BaseAction):
             bot_nickname = self.api.get_global_config("bot.nickname", "麦麦")
             bot_personality = self.api.get_global_config("personality.personality_core", "")
 
-            personality_sides = self.api.get_global_config("personality.personality_sides", [])
-            if personality_sides:
-                bot_personality += random.choice(personality_sides)
+            personality_side = self.api.get_global_config("personality.personality_side", [])
+            if personality_side:
+                bot_personality += random.choice(personality_side)
 
             # 准备模板变量
             template_vars = {"name": bot_nickname, "personality": bot_personality}

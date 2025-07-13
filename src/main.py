@@ -116,12 +116,7 @@ class MainSystem:
         self.app.register_message_handler(chat_bot.message_process)
 
         # 初始化个体特征
-        await self.individuality.initialize(
-            bot_nickname=global_config.bot.nickname,
-            personality_core=global_config.personality.personality_core,
-            personality_sides=global_config.personality.personality_sides,
-            identity_detail=global_config.identity.identity_detail,
-        )
+        await self.individuality.initialize()
         logger.info("个体特征初始化成功")
 
         try:

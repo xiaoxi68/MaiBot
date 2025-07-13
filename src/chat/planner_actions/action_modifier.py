@@ -436,72 +436,72 @@ class ActionModifier:
             logger.debug(f"{self.log_prefix}动作 {action_name} 未匹配到任何关键词: {activation_keywords}")
             return False
 
-    async def analyze_loop_actions(self, history_loop: List[CycleDetail]) -> List[tuple[str, str]]:
-        """分析最近的循环内容并决定动作的移除
+    # async def analyze_loop_actions(self, history_loop: List[CycleDetail]) -> List[tuple[str, str]]:
+    #     """分析最近的循环内容并决定动作的移除
 
-        Returns:
-            List[Tuple[str, str]]: 包含要删除的动作及原因的元组列表
-                [("action3", "some reason")]
-        """
-        removals = []
+    #     Returns:
+    #         List[Tuple[str, str]]: 包含要删除的动作及原因的元组列表
+    #             [("action3", "some reason")]
+    #     """
+    #     removals = []
 
-        # 获取最近10次循环
-        recent_cycles = history_loop[-10:] if len(history_loop) > 10 else history_loop
-        if not recent_cycles:
-            return removals
+    #     # 获取最近10次循环
+    #     recent_cycles = history_loop[-10:] if len(history_loop) > 10 else history_loop
+    #     if not recent_cycles:
+    #         return removals
 
-        reply_sequence = []  # 记录最近的动作序列
+    #     reply_sequence = []  # 记录最近的动作序列
 
-        for cycle in recent_cycles:
-            action_result = cycle.loop_plan_info.get("action_result", {})
-            action_type = action_result.get("action_type", "unknown")
-            reply_sequence.append(action_type == "reply")
+    #     for cycle in recent_cycles:
+    #         action_result = cycle.loop_plan_info.get("action_result", {})
+    #         action_type = action_result.get("action_type", "unknown")
+    #         reply_sequence.append(action_type == "reply")
 
-        # 计算连续回复的相关阈值
+    #     # 计算连续回复的相关阈值
 
-        max_reply_num = int(global_config.focus_chat.consecutive_replies * 3.2)
-        sec_thres_reply_num = int(global_config.focus_chat.consecutive_replies * 2)
-        one_thres_reply_num = int(global_config.focus_chat.consecutive_replies * 1.5)
+    #     max_reply_num = int(global_config.focus_chat.consecutive_replies * 3.2)
+    #     sec_thres_reply_num = int(global_config.focus_chat.consecutive_replies * 2)
+    #     one_thres_reply_num = int(global_config.focus_chat.consecutive_replies * 1.5)
 
-        # 获取最近max_reply_num次的reply状态
-        if len(reply_sequence) >= max_reply_num:
-            last_max_reply_num = reply_sequence[-max_reply_num:]
-        else:
-            last_max_reply_num = reply_sequence[:]
+    #     # 获取最近max_reply_num次的reply状态
+    #     if len(reply_sequence) >= max_reply_num:
+    #         last_max_reply_num = reply_sequence[-max_reply_num:]
+    #     else:
+    #         last_max_reply_num = reply_sequence[:]
 
-        # 详细打印阈值和序列信息，便于调试
-        logger.info(
-            f"连续回复阈值: max={max_reply_num}, sec={sec_thres_reply_num}, one={one_thres_reply_num}，"
-            f"最近reply序列: {last_max_reply_num}"
-        )
-        # print(f"consecutive_replies: {consecutive_replies}")
+    #     # 详细打印阈值和序列信息，便于调试
+    #     logger.info(
+    #         f"连续回复阈值: max={max_reply_num}, sec={sec_thres_reply_num}, one={one_thres_reply_num}，"
+    #         f"最近reply序列: {last_max_reply_num}"
+    #     )
+    #     # print(f"consecutive_replies: {consecutive_replies}")
 
-        # 根据最近的reply情况决定是否移除reply动作
-        if len(last_max_reply_num) >= max_reply_num and all(last_max_reply_num):
-            # 如果最近max_reply_num次都是reply，直接移除
-            reason = f"连续回复过多（最近{len(last_max_reply_num)}次全是reply，超过阈值{max_reply_num}）"
-            removals.append(("reply", reason))
-            # reply_count = len(last_max_reply_num) - no_reply_count
-        elif len(last_max_reply_num) >= sec_thres_reply_num and all(last_max_reply_num[-sec_thres_reply_num:]):
-            # 如果最近sec_thres_reply_num次都是reply，40%概率移除
-            removal_probability = 0.4 / global_config.focus_chat.consecutive_replies
-            if random.random() < removal_probability:
-                reason = (
-                    f"连续回复较多（最近{sec_thres_reply_num}次全是reply，{removal_probability:.2f}概率移除，触发移除）"
-                )
-                removals.append(("reply", reason))
-        elif len(last_max_reply_num) >= one_thres_reply_num and all(last_max_reply_num[-one_thres_reply_num:]):
-            # 如果最近one_thres_reply_num次都是reply，20%概率移除
-            removal_probability = 0.2 / global_config.focus_chat.consecutive_replies
-            if random.random() < removal_probability:
-                reason = (
-                    f"连续回复检测（最近{one_thres_reply_num}次全是reply，{removal_probability:.2f}概率移除，触发移除）"
-                )
-                removals.append(("reply", reason))
-        else:
-            logger.debug(f"{self.log_prefix}连续回复检测：无需移除reply动作，最近回复模式正常")
+    #     # 根据最近的reply情况决定是否移除reply动作
+    #     if len(last_max_reply_num) >= max_reply_num and all(last_max_reply_num):
+    #         # 如果最近max_reply_num次都是reply，直接移除
+    #         reason = f"连续回复过多（最近{len(last_max_reply_num)}次全是reply，超过阈值{max_reply_num}）"
+    #         removals.append(("reply", reason))
+    #         # reply_count = len(last_max_reply_num) - no_reply_count
+    #     elif len(last_max_reply_num) >= sec_thres_reply_num and all(last_max_reply_num[-sec_thres_reply_num:]):
+    #         # 如果最近sec_thres_reply_num次都是reply，40%概率移除
+    #         removal_probability = 0.4 / global_config.focus_chat.consecutive_replies
+    #         if random.random() < removal_probability:
+    #             reason = (
+    #                 f"连续回复较多（最近{sec_thres_reply_num}次全是reply，{removal_probability:.2f}概率移除，触发移除）"
+    #             )
+    #             removals.append(("reply", reason))
+    #     elif len(last_max_reply_num) >= one_thres_reply_num and all(last_max_reply_num[-one_thres_reply_num:]):
+    #         # 如果最近one_thres_reply_num次都是reply，20%概率移除
+    #         removal_probability = 0.2 / global_config.focus_chat.consecutive_replies
+    #         if random.random() < removal_probability:
+    #             reason = (
+    #                 f"连续回复检测（最近{one_thres_reply_num}次全是reply，{removal_probability:.2f}概率移除，触发移除）"
+    #             )
+    #             removals.append(("reply", reason))
+    #     else:
+    #         logger.debug(f"{self.log_prefix}连续回复检测：无需移除reply动作，最近回复模式正常")
 
-        return removals
+    #     return removals
 
     # def get_available_actions_count(self, mode: str = "focus") -> int:
     #     """获取当前可用动作数量（排除默认的no_action）"""
