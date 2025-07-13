@@ -2,12 +2,12 @@ import math
 import random
 import time
 
-from src.chat.message_receive.message import MessageRecv
-from src.llm_models.utils_model import LLMRequest
-from ..common.logger import get_logger
-from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_by_timestamp_with_chat_inclusive
+from src.common.logger import get_logger
 from src.config.config import global_config
+from src.chat.message_receive.message import MessageRecv
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
+from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_by_timestamp_with_chat_inclusive
+from src.llm_models.utils_model import LLMRequest
 from src.manager.async_task_manager import AsyncTask, async_task_manager
 
 logger = get_logger("mood")
@@ -19,7 +19,7 @@ def init_prompt():
 {chat_talking_prompt}
 以上是群里正在进行的聊天记录
 
-{indentify_block}
+{identity_block}
 你刚刚的情绪状态是：{mood_state}
 
 现在，发送了消息，引起了你的注意，你对其进行了阅读和思考，请你输出一句话描述你新的情绪状态
@@ -32,7 +32,7 @@ def init_prompt():
 {chat_talking_prompt}
 以上是群里最近的聊天记录
 
-{indentify_block}
+{identity_block}
 你之前的情绪状态是：{mood_state}
 
 距离你上次关注群里消息已经过去了一段时间，你冷静了下来，请你输出一句话描述你现在的情绪状态
@@ -55,12 +55,12 @@ class ChatMood:
             request_type="mood",
         )
 
-        self.last_change_time = 0
+        self.last_change_time: float = 0
 
     async def update_mood_by_message(self, message: MessageRecv, interested_rate: float):
         self.regression_count = 0
 
-        during_last_time = message.message_info.time - self.last_change_time
+        during_last_time = message.message_info.time - self.last_change_time  # type: ignore
 
         base_probability = 0.05
         time_multiplier = 4 * (1 - math.exp(-0.01 * during_last_time))
@@ -77,10 +77,10 @@ class ChatMood:
 
         if random.random() > update_probability:
             return
-        
+
         logger.info(f"更新情绪状态，感兴趣度: {interested_rate}, 更新概率: {update_probability}")
 
-        message_time = message.message_info.time
+        message_time: float = message.message_info.time  # type: ignore
         message_list_before_now = get_raw_msg_by_timestamp_with_chat_inclusive(
             chat_id=self.chat_id,
             timestamp_start=self.last_change_time,
@@ -105,12 +105,12 @@ class ChatMood:
             bot_nickname = ""
 
         prompt_personality = global_config.personality.personality_core
-        indentify_block = f"你的名字是{bot_name}{bot_nickname}，你{prompt_personality}："
+        identity_block = f"你的名字是{bot_name}{bot_nickname}，你{prompt_personality}："
 
         prompt = await global_prompt_manager.format_prompt(
             "change_mood_prompt",
             chat_talking_prompt=chat_talking_prompt,
-            indentify_block=indentify_block,
+            identity_block=identity_block,
             mood_state=self.mood_state,
         )
 
@@ -121,7 +121,7 @@ class ChatMood:
 
         self.mood_state = response
 
-        self.last_change_time = message_time
+        self.last_change_time = message_time  # type: ignore
 
     async def regress_mood(self):
         message_time = time.time()
@@ -149,12 +149,12 @@ class ChatMood:
             bot_nickname = ""
 
         prompt_personality = global_config.personality.personality_core
-        indentify_block = f"你的名字是{bot_name}{bot_nickname}，你{prompt_personality}："
+        identity_block = f"你的名字是{bot_name}{bot_nickname}，你{prompt_personality}："
 
         prompt = await global_prompt_manager.format_prompt(
             "regress_mood_prompt",
             chat_talking_prompt=chat_talking_prompt,
-            indentify_block=indentify_block,
+            identity_block=identity_block,
             mood_state=self.mood_state,
         )
 

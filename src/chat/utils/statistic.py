@@ -1,18 +1,17 @@
-from collections import defaultdict
-from datetime import datetime, timedelta
-from typing import Any, Dict, Tuple, List
 import asyncio
 import concurrent.futures
 import json
 import os
 import glob
 
+from collections import defaultdict
+from datetime import datetime, timedelta
+from typing import Any, Dict, Tuple, List
 
 from src.common.logger import get_logger
+from src.common.database.database import db
+from src.common.database.database_model import OnlineTime, LLMUsage, Messages
 from src.manager.async_task_manager import AsyncTask
-
-from ...common.database.database import db  # This db is the Peewee database instance
-from ...common.database.database_model import OnlineTime, LLMUsage, Messages  # Import the Peewee model
 from src.manager.local_store_manager import local_storage
 
 logger = get_logger("maibot_statistic")
@@ -76,14 +75,14 @@ class OnlineTimeRecordTask(AsyncTask):
         with db.atomic():  # Use atomic operations for schema changes
             OnlineTime.create_table(safe=True)  # Creates table if it doesn't exist, Peewee handles indexes from model
 
-    async def run(self):
+    async def run(self):  # sourcery skip: use-named-expression
         try:
             current_time = datetime.now()
             extended_end_time = current_time + timedelta(minutes=1)
 
             if self.record_id:
                 # 如果有记录，则更新结束时间
-                query = OnlineTime.update(end_timestamp=extended_end_time).where(OnlineTime.id == self.record_id)
+                query = OnlineTime.update(end_timestamp=extended_end_time).where(OnlineTime.id == self.record_id)  # type: ignore
                 updated_rows = query.execute()
                 if updated_rows == 0:
                     # Record might have been deleted or ID is stale, try to find/create
@@ -94,7 +93,7 @@ class OnlineTimeRecordTask(AsyncTask):
                 # Look for a record whose end_timestamp is recent enough to be considered ongoing
                 recent_record = (
                     OnlineTime.select()
-                    .where(OnlineTime.end_timestamp >= (current_time - timedelta(minutes=1)))
+                    .where(OnlineTime.end_timestamp >= (current_time - timedelta(minutes=1)))  # type: ignore
                     .order_by(OnlineTime.end_timestamp.desc())
                     .first()
                 )
@@ -123,15 +122,15 @@ def _format_online_time(online_seconds: int) -> str:
     :param online_seconds: 在线时间（秒）
     :return: 格式化后的在线时间字符串
     """
-    total_oneline_time = timedelta(seconds=online_seconds)
+    total_online_time = timedelta(seconds=online_seconds)
 
-    days = total_oneline_time.days
-    hours = total_oneline_time.seconds // 3600
-    minutes = (total_oneline_time.seconds // 60) % 60
-    seconds = total_oneline_time.seconds % 60
+    days = total_online_time.days
+    hours = total_online_time.seconds // 3600
+    minutes = (total_online_time.seconds // 60) % 60
+    seconds = total_online_time.seconds % 60
     if days > 0:
         # 如果在线时间超过1天，则格式化为"X天X小时X分钟"
-        return f"{total_oneline_time.days}天{hours}小时{minutes}分钟{seconds}秒"
+        return f"{total_online_time.days}天{hours}小时{minutes}分钟{seconds}秒"
     elif hours > 0:
         # 如果在线时间超过1小时，则格式化为"X小时X分钟X秒"
         return f"{hours}小时{minutes}分钟{seconds}秒"
@@ -163,7 +162,7 @@ class StatisticOutputTask(AsyncTask):
         now = datetime.now()
         if "deploy_time" in local_storage:
             # 如果存在部署时间，则使用该时间作为全量统计的起始时间
-            deploy_time = datetime.fromtimestamp(local_storage["deploy_time"])
+            deploy_time = datetime.fromtimestamp(local_storage["deploy_time"])  # type: ignore
         else:
             # 否则，使用最大时间范围，并记录部署时间为当前时间
             deploy_time = datetime(2000, 1, 1)
@@ -252,7 +251,7 @@ class StatisticOutputTask(AsyncTask):
 
                     # 创建后台任务，不等待完成
                     collect_task = asyncio.create_task(
-                        loop.run_in_executor(executor, self._collect_all_statistics, now)
+                        loop.run_in_executor(executor, self._collect_all_statistics, now)  # type: ignore
                     )
 
                     stats = await collect_task
@@ -260,8 +259,8 @@ class StatisticOutputTask(AsyncTask):
 
                     # 创建并发的输出任务
                     output_tasks = [
-                        asyncio.create_task(loop.run_in_executor(executor, self._statistic_console_output, stats, now)),
-                        asyncio.create_task(loop.run_in_executor(executor, self._generate_html_report, stats, now)),
+                        asyncio.create_task(loop.run_in_executor(executor, self._statistic_console_output, stats, now)),  # type: ignore
+                        asyncio.create_task(loop.run_in_executor(executor, self._generate_html_report, stats, now)),  # type: ignore
                     ]
 
                     # 等待所有输出任务完成
@@ -320,7 +319,7 @@ class StatisticOutputTask(AsyncTask):
         # 以最早的时间戳为起始时间获取记录
         # Assuming LLMUsage.timestamp is a DateTimeField
         query_start_time = collect_period[-1][1]
-        for record in LLMUsage.select().where(LLMUsage.timestamp >= query_start_time):
+        for record in LLMUsage.select().where(LLMUsage.timestamp >= query_start_time):  # type: ignore
             record_timestamp = record.timestamp  # This is already a datetime object
             for idx, (_, period_start) in enumerate(collect_period):
                 if record_timestamp >= period_start:
@@ -388,7 +387,7 @@ class StatisticOutputTask(AsyncTask):
 
         query_start_time = collect_period[-1][1]
         # Assuming OnlineTime.end_timestamp is a DateTimeField
-        for record in OnlineTime.select().where(OnlineTime.end_timestamp >= query_start_time):
+        for record in OnlineTime.select().where(OnlineTime.end_timestamp >= query_start_time):  # type: ignore
             # record.end_timestamp and record.start_timestamp are datetime objects
             record_end_timestamp = record.end_timestamp
             record_start_timestamp = record.start_timestamp
@@ -428,7 +427,7 @@ class StatisticOutputTask(AsyncTask):
         }
 
         query_start_timestamp = collect_period[-1][1].timestamp()  # Messages.time is a DoubleField (timestamp)
-        for message in Messages.select().where(Messages.time >= query_start_timestamp):
+        for message in Messages.select().where(Messages.time >= query_start_timestamp):  # type: ignore
             message_time_ts = message.time  # This is a float timestamp
 
             chat_id = None
@@ -661,7 +660,7 @@ class StatisticOutputTask(AsyncTask):
 
         if "last_full_statistics" in local_storage:
             # 如果存在上次完整统计数据，则使用该数据进行增量统计
-            last_stat = local_storage["last_full_statistics"]  # 上次完整统计数据
+            last_stat: Dict[str, Any] = local_storage["last_full_statistics"]  # 上次完整统计数据 # type: ignore
 
             self.name_mapping = last_stat["name_mapping"]  # 上次完整统计数据的名称映射
             last_all_time_stat = last_stat["stat_data"]  # 上次完整统计的统计数据
@@ -727,6 +726,7 @@ class StatisticOutputTask(AsyncTask):
         return stat
 
     def _convert_defaultdict_to_dict(self, data):
+        # sourcery skip: dict-comprehension, extract-duplicate-method, inline-immediately-returned-variable, merge-duplicate-blocks
         """递归转换defaultdict为普通dict"""
         if isinstance(data, defaultdict):
             # 转换defaultdict为普通dict
@@ -812,8 +812,7 @@ class StatisticOutputTask(AsyncTask):
         # 全局阶段平均时间
         if stats[FOCUS_AVG_TIMES_BY_STAGE]:
             output.append("全局阶段平均时间:")
-            for stage, avg_time in stats[FOCUS_AVG_TIMES_BY_STAGE].items():
-                output.append(f"  {stage}: {avg_time:.3f}秒")
+            output.extend(f"  {stage}: {avg_time:.3f}秒" for stage, avg_time in stats[FOCUS_AVG_TIMES_BY_STAGE].items())
             output.append("")
 
         # Action类型比例
@@ -1050,7 +1049,7 @@ class StatisticOutputTask(AsyncTask):
         ]
 
         tab_content_list.append(
-            _format_stat_data(stat["all_time"], "all_time", datetime.fromtimestamp(local_storage["deploy_time"]))
+            _format_stat_data(stat["all_time"], "all_time", datetime.fromtimestamp(local_storage["deploy_time"]))  # type: ignore
         )
 
         # 添加Focus统计内容
@@ -1212,6 +1211,7 @@ class StatisticOutputTask(AsyncTask):
             f.write(html_template)
 
     def _generate_focus_tab(self, stat: dict[str, Any]) -> str:
+        # sourcery skip: for-append-to-extend, list-comprehension, use-any
         """生成Focus统计独立分页的HTML内容"""
 
         # 为每个时间段准备Focus数据
@@ -1313,12 +1313,11 @@ class StatisticOutputTask(AsyncTask):
             # 聊天流Action选择比例对比表（横向表格）
             focus_chat_action_ratios_rows = ""
             if stat_data.get("focus_action_ratios_by_chat"):
-                # 获取所有action类型（按全局频率排序）
-                all_action_types_for_ratio = sorted(
-                    stat_data[FOCUS_ACTION_RATIOS].keys(), key=lambda x: stat_data[FOCUS_ACTION_RATIOS][x], reverse=True
-                )
-
-                if all_action_types_for_ratio:
+                if all_action_types_for_ratio := sorted(
+                    stat_data[FOCUS_ACTION_RATIOS].keys(),
+                    key=lambda x: stat_data[FOCUS_ACTION_RATIOS][x],
+                    reverse=True,
+                ):
                     # 为每个聊天流生成数据行（按循环数排序）
                     chat_ratio_rows = []
                     for chat_id in sorted(
@@ -1379,16 +1378,11 @@ class StatisticOutputTask(AsyncTask):
             if period_name == "all_time":
                 from src.manager.local_store_manager import local_storage
 
-                start_time = datetime.fromtimestamp(local_storage["deploy_time"])
-                time_range = (
-                    f"{start_time.strftime('%Y-%m-%d %H:%M:%S')} ~ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-                )
+                start_time = datetime.fromtimestamp(local_storage["deploy_time"])  # type: ignore
             else:
                 start_time = datetime.now() - period_delta
-                time_range = (
-                    f"{start_time.strftime('%Y-%m-%d %H:%M:%S')} ~ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-                )
 
+            time_range = f"{start_time.strftime('%Y-%m-%d %H:%M:%S')} ~ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
             # 生成该时间段的Focus统计HTML
             section_html = f"""
             <div class="focus-period-section">
@@ -1681,16 +1675,10 @@ class StatisticOutputTask(AsyncTask):
             if period_name == "all_time":
                 from src.manager.local_store_manager import local_storage
 
-                start_time = datetime.fromtimestamp(local_storage["deploy_time"])
-                time_range = (
-                    f"{start_time.strftime('%Y-%m-%d %H:%M:%S')} ~ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-                )
+                start_time = datetime.fromtimestamp(local_storage["deploy_time"])  # type: ignore
             else:
                 start_time = datetime.now() - period_delta
-                time_range = (
-                    f"{start_time.strftime('%Y-%m-%d %H:%M:%S')} ~ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-                )
-
+            time_range = f"{start_time.strftime('%Y-%m-%d %H:%M:%S')} ~ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
             # 生成该时间段的版本对比HTML
             section_html = f"""
             <div class="version-period-section">
@@ -1865,7 +1853,7 @@ class StatisticOutputTask(AsyncTask):
 
         # 查询LLM使用记录
         query_start_time = start_time
-        for record in LLMUsage.select().where(LLMUsage.timestamp >= query_start_time):
+        for record in LLMUsage.select().where(LLMUsage.timestamp >= query_start_time):  # type: ignore
             record_time = record.timestamp
 
             # 找到对应的时间间隔索引
@@ -1875,7 +1863,7 @@ class StatisticOutputTask(AsyncTask):
             if 0 <= interval_index < len(time_points):
                 # 累加总花费数据
                 cost = record.cost or 0.0
-                total_cost_data[interval_index] += cost
+                total_cost_data[interval_index] += cost  # type: ignore
 
                 # 累加按模型分类的花费
                 model_name = record.model_name or "unknown"
@@ -1892,7 +1880,7 @@ class StatisticOutputTask(AsyncTask):
 
         # 查询消息记录
         query_start_timestamp = start_time.timestamp()
-        for message in Messages.select().where(Messages.time >= query_start_timestamp):
+        for message in Messages.select().where(Messages.time >= query_start_timestamp):  # type: ignore
             message_time_ts = message.time
 
             # 找到对应的时间间隔索引
@@ -1982,6 +1970,7 @@ class StatisticOutputTask(AsyncTask):
         }
 
     def _generate_chart_tab(self, chart_data: dict) -> str:
+        # sourcery skip: extract-duplicate-method, move-assign-in-block
         """生成图表选项卡HTML内容"""
 
         # 生成不同颜色的调色板
@@ -2293,7 +2282,7 @@ class AsyncStatisticOutputTask(AsyncTask):
 
                     # 数据收集任务
                     collect_task = asyncio.create_task(
-                        loop.run_in_executor(executor, self._collect_all_statistics, now)
+                        loop.run_in_executor(executor, self._collect_all_statistics, now)  # type: ignore
                     )
 
                     stats = await collect_task
@@ -2301,8 +2290,8 @@ class AsyncStatisticOutputTask(AsyncTask):
 
                     # 创建并发的输出任务
                     output_tasks = [
-                        asyncio.create_task(loop.run_in_executor(executor, self._statistic_console_output, stats, now)),
-                        asyncio.create_task(loop.run_in_executor(executor, self._generate_html_report, stats, now)),
+                        asyncio.create_task(loop.run_in_executor(executor, self._statistic_console_output, stats, now)),  # type: ignore
+                        asyncio.create_task(loop.run_in_executor(executor, self._generate_html_report, stats, now)),  # type: ignore
                     ]
 
                     # 等待所有输出任务完成

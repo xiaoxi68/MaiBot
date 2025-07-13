@@ -1,22 +1,25 @@
 import traceback
 import os
+import re
+
 from typing import Dict, Any
+from maim_message import UserInfo
 
 from src.common.logger import get_logger
+from src.config.config import global_config
 from src.mood.mood_manager import mood_manager  # 导入情绪管理器
-from src.chat.message_receive.chat_stream import get_chat_manager
+from src.chat.message_receive.chat_stream import get_chat_manager, ChatStream
 from src.chat.message_receive.message import MessageRecv
-from src.experimental.only_message_process import MessageProcessor
 from src.chat.message_receive.storage import MessageStorage
 from src.chat.heart_flow.heartflow_message_processor import HeartFCMessageReceiver
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
-from src.config.config import global_config
+from src.experimental.only_message_process import MessageProcessor
+from src.experimental.PFC.pfc_manager import PFCManager
 from src.plugin_system.core.component_registry import component_registry  # 导入新插件系统
 from src.plugin_system.base.base_command import BaseCommand
 from src.mais4u.mais4u_chat.s4u_msg_processor import S4UMessageProcessor
-from maim_message import UserInfo
-from src.chat.message_receive.chat_stream import ChatStream
-import re
+
+
 # 定义日志配置
 
 # 获取项目根目录（假设本文件在src/chat/message_receive/下，根目录为上上上级目录）
@@ -182,8 +185,8 @@ class ChatBot:
             get_chat_manager().register_message(message)
 
             chat = await get_chat_manager().get_or_create_stream(
-                platform=message.message_info.platform,
-                user_info=user_info,
+                platform=message.message_info.platform,  # type: ignore
+                user_info=user_info,  # type: ignore
                 group_info=group_info,
             )
 
@@ -193,8 +196,10 @@ class ChatBot:
             await message.process()
 
             # 过滤检查
-            if _check_ban_words(message.processed_plain_text, chat, user_info) or _check_ban_regex(
-                message.raw_message, chat, user_info
+            if _check_ban_words(message.processed_plain_text, chat, user_info) or _check_ban_regex(  # type: ignore
+                message.raw_message,  # type: ignore
+                chat,
+                user_info,  # type: ignore
             ):
                 return
 

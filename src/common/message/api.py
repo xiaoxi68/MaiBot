@@ -8,7 +8,7 @@ from src.config.config import global_config
 global_api = None
 
 
-def get_global_api() -> MessageServer:
+def get_global_api() -> MessageServer:  # sourcery skip: extract-method
     """获取全局MessageServer实例"""
     global global_api
     if global_api is None:
@@ -36,9 +36,8 @@ def get_global_api() -> MessageServer:
             kwargs["custom_logger"] = maim_message_logger
 
             # 添加token认证
-            if maim_message_config.auth_token:
-                if len(maim_message_config.auth_token) > 0:
-                    kwargs["enable_token"] = True
+            if maim_message_config.auth_token and len(maim_message_config.auth_token) > 0:
+                kwargs["enable_token"] = True
 
             if maim_message_config.use_custom:
                 # 添加WSS模式支持

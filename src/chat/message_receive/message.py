@@ -1,17 +1,15 @@
 import time
-from abc import abstractmethod
-from dataclasses import dataclass
-from typing import Optional, Any, TYPE_CHECKING
-
 import urllib3
 
-from src.common.logger import get_logger
-
-if TYPE_CHECKING:
-    from .chat_stream import ChatStream
-from ..utils.utils_image import get_image_manager
-from maim_message import Seg, UserInfo, BaseMessageInfo, MessageBase
+from abc import abstractmethod
+from dataclasses import dataclass
 from rich.traceback import install
+from typing import Optional, Any
+from maim_message import Seg, UserInfo, BaseMessageInfo, MessageBase
+
+from src.common.logger import get_logger
+from src.chat.utils.utils_image import get_image_manager
+from .chat_stream import ChatStream
 
 install(extra_lines=3)
 
@@ -27,7 +25,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 @dataclass
 class Message(MessageBase):
-    chat_stream: "ChatStream" = None
+    chat_stream: "ChatStream" = None  # type: ignore
     reply: Optional["Message"] = None
     processed_plain_text: str = ""
     memorized_times: int = 0
@@ -55,7 +53,7 @@ class Message(MessageBase):
         )
 
         # 调用父类初始化
-        super().__init__(message_info=message_info, message_segment=message_segment, raw_message=None)
+        super().__init__(message_info=message_info, message_segment=message_segment, raw_message=None)  # type: ignore
 
         self.chat_stream = chat_stream
         # 文本处理相关属性
@@ -66,6 +64,7 @@ class Message(MessageBase):
         self.reply = reply
 
     async def _process_message_segments(self, segment: Seg) -> str:
+        # sourcery skip: remove-unnecessary-else, swap-if-else-branches
         """递归处理消息段，转换为文字描述
 
         Args:
@@ -78,13 +77,13 @@ class Message(MessageBase):
             # 处理消息段列表
             segments_text = []
             for seg in segment.data:
-                processed = await self._process_message_segments(seg)
+                processed = await self._process_message_segments(seg)  # type: ignore
                 if processed:
                     segments_text.append(processed)
             return " ".join(segments_text)
         else:
             # 处理单个消息段
-            return await self._process_single_segment(segment)
+            return await self._process_single_segment(segment)  # type: ignore
 
     @abstractmethod
     async def _process_single_segment(self, segment):
@@ -113,7 +112,7 @@ class MessageRecv(Message):
         self.is_mentioned = None
         self.priority_mode = "interest"
         self.priority_info = None
-        self.interest_value = None
+        self.interest_value: float = None  # type: ignore
 
     def update_chat_stream(self, chat_stream: "ChatStream"):
         self.chat_stream = chat_stream
@@ -139,7 +138,7 @@ class MessageRecv(Message):
             if segment.type == "text":
                 self.is_picid = False
                 self.is_emoji = False
-                return segment.data
+                return segment.data  # type: ignore
             elif segment.type == "image":
                 # 如果是base64图片数据
                 if isinstance(segment.data, str):
@@ -161,7 +160,7 @@ class MessageRecv(Message):
             elif segment.type == "mention_bot":
                 self.is_picid = False
                 self.is_emoji = False
-                self.is_mentioned = float(segment.data)
+                self.is_mentioned = float(segment.data)  # type: ignore
                 return ""
             elif segment.type == "priority_info":
                 self.is_picid = False
@@ -187,7 +186,7 @@ class MessageRecv(Message):
         """生成详细文本，包含时间和用户信息"""
         timestamp = self.message_info.time
         user_info = self.message_info.user_info
-        name = f"<{self.message_info.platform}:{user_info.user_id}:{user_info.user_nickname}:{user_info.user_cardname}>"
+        name = f"<{self.message_info.platform}:{user_info.user_id}:{user_info.user_nickname}:{user_info.user_cardname}>"  # type: ignore
         return f"[{timestamp}] {name}: {self.processed_plain_text}\n"
 
 
@@ -235,7 +234,7 @@ class MessageProcessBase(Message):
         """
         try:
             if seg.type == "text":
-                return seg.data
+                return seg.data  # type: ignore
             elif seg.type == "image":
                 # 如果是base64图片数据
                 if isinstance(seg.data, str):
@@ -251,7 +250,7 @@ class MessageProcessBase(Message):
                 if self.reply and hasattr(self.reply, "processed_plain_text"):
                     # print(f"self.reply.processed_plain_text: {self.reply.processed_plain_text}")
                     # print(f"reply: {self.reply}")
-                    return f"[回复<{self.reply.message_info.user_info.user_nickname}:{self.reply.message_info.user_info.user_id}> 的消息：{self.reply.processed_plain_text}]"
+                    return f"[回复<{self.reply.message_info.user_info.user_nickname}:{self.reply.message_info.user_info.user_id}> 的消息：{self.reply.processed_plain_text}]"  # type: ignore
                 return None
             else:
                 return f"[{seg.type}:{str(seg.data)}]"
@@ -265,7 +264,7 @@ class MessageProcessBase(Message):
         timestamp = self.message_info.time
         user_info = self.message_info.user_info
 
-        name = f"<{self.message_info.platform}:{user_info.user_id}:{user_info.user_nickname}:{user_info.user_cardname}>"
+        name = f"<{self.message_info.platform}:{user_info.user_id}:{user_info.user_nickname}:{user_info.user_cardname}>"  # type: ignore
         return f"[{timestamp}]，{name} 说：{self.processed_plain_text}\n"
 
 
@@ -314,7 +313,7 @@ class MessageSending(MessageProcessBase):
         is_emoji: bool = False,
         thinking_start_time: float = 0,
         apply_set_reply_logic: bool = False,
-        reply_to: str = None,
+        reply_to: str = None,  # type: ignore
     ):
         # 调用父类初始化
         super().__init__(
@@ -347,7 +346,7 @@ class MessageSending(MessageProcessBase):
             self.message_segment = Seg(
                 type="seglist",
                 data=[
-                    Seg(type="reply", data=self.reply.message_info.message_id),
+                    Seg(type="reply", data=self.reply.message_info.message_id),  # type: ignore
                     self.message_segment,
                 ],
             )
@@ -367,10 +366,10 @@ class MessageSending(MessageProcessBase):
     ) -> "MessageSending":
         """从思考状态消息创建发送状态消息"""
         return cls(
-            message_id=thinking.message_info.message_id,
+            message_id=thinking.message_info.message_id,  # type: ignore
             chat_stream=thinking.chat_stream,
             message_segment=message_segment,
-            bot_user_info=thinking.message_info.user_info,
+            bot_user_info=thinking.message_info.user_info,  # type: ignore
             reply=thinking.reply,
             is_head=is_head,
             is_emoji=is_emoji,
@@ -402,13 +401,11 @@ class MessageSet:
         if not isinstance(message, MessageSending):
             raise TypeError("MessageSet只能添加MessageSending类型的消息")
         self.messages.append(message)
-        self.messages.sort(key=lambda x: x.message_info.time)
+        self.messages.sort(key=lambda x: x.message_info.time)  # type: ignore
 
     def get_message_by_index(self, index: int) -> Optional[MessageSending]:
         """通过索引获取消息"""
-        if 0 <= index < len(self.messages):
-            return self.messages[index]
-        return None
+        return self.messages[index] if 0 <= index < len(self.messages) else None
 
     def get_message_by_time(self, target_time: float) -> Optional[MessageSending]:
         """获取最接近指定时间的消息"""
@@ -418,7 +415,7 @@ class MessageSet:
         left, right = 0, len(self.messages) - 1
         while left < right:
             mid = (left + right) // 2
-            if self.messages[mid].message_info.time < target_time:
+            if self.messages[mid].message_info.time < target_time:  # type: ignore
                 left = mid + 1
             else:
                 right = mid
@@ -444,11 +441,8 @@ class MessageSet:
 
 
 def message_recv_from_dict(message_dict: dict) -> MessageRecv:
-    return MessageRecv(
-        
-        message_dict
-        
-        )
+    return MessageRecv(message_dict)
+
 
 def message_from_db_dict(db_dict: dict) -> MessageRecv:
     """从数据库字典创建MessageRecv实例"""

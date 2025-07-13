@@ -1,21 +1,23 @@
-from src.chat.memory_system.Hippocampus import hippocampus_manager
-from src.config.config import global_config
 import asyncio
-from src.chat.message_receive.message import MessageRecv
-from src.chat.message_receive.storage import MessageStorage
-from src.chat.heart_flow.heartflow import heartflow
-from src.chat.message_receive.chat_stream import get_chat_manager
-from src.chat.utils.utils import is_mentioned_bot_in_message
-from src.chat.utils.timer_calculator import Timer
-from src.common.logger import get_logger
 import re
 import math
 import traceback
-from typing import Tuple
 
+from typing import Tuple, TYPE_CHECKING
+
+from src.config.config import global_config
+from src.chat.memory_system.Hippocampus import hippocampus_manager
+from src.chat.message_receive.message import MessageRecv
+from src.chat.message_receive.storage import MessageStorage
+from src.chat.heart_flow.heartflow import heartflow
+from src.chat.utils.utils import is_mentioned_bot_in_message
+from src.chat.utils.timer_calculator import Timer
+from src.common.logger import get_logger
 from src.person_info.relationship_manager import get_relationship_manager
 from src.mood.mood_manager import mood_manager
 
+if TYPE_CHECKING:
+    from src.chat.heart_flow.sub_heartflow import SubHeartflow
 
 logger = get_logger("chat")
 
@@ -27,16 +29,16 @@ async def _process_relationship(message: MessageRecv) -> None:
         message: 消息对象，包含用户信息
     """
     platform = message.message_info.platform
-    user_id = message.message_info.user_info.user_id
-    nickname = message.message_info.user_info.user_nickname
-    cardname = message.message_info.user_info.user_cardname or nickname
+    user_id = message.message_info.user_info.user_id  # type: ignore
+    nickname = message.message_info.user_info.user_nickname  # type: ignore
+    cardname = message.message_info.user_info.user_cardname or nickname  # type: ignore
 
     relationship_manager = get_relationship_manager()
     is_known = await relationship_manager.is_known_some_one(platform, user_id)
 
     if not is_known:
         logger.info(f"首次认识用户: {nickname}")
-        await relationship_manager.first_knowing_some_one(platform, user_id, nickname, cardname)
+        await relationship_manager.first_knowing_some_one(platform, user_id, nickname, cardname)  # type: ignore
 
 
 async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool]:
@@ -96,31 +98,24 @@ class HeartFCMessageReceiver:
         """
         try:
             # 1. 消息解析与初始化
-            groupinfo = message.message_info.group_info
             userinfo = message.message_info.user_info
-            messageinfo = message.message_info
+            chat = message.chat_stream
 
-            chat = await get_chat_manager().get_or_create_stream(
-                platform=messageinfo.platform,
-                user_info=userinfo,
-                group_info=groupinfo,
-            )
-
+            # 2. 兴趣度计算与更新
             interested_rate, is_mentioned = await _calculate_interest(message)
             message.interest_value = interested_rate
             message.is_mentioned = is_mentioned
-            
+
             await self.storage.store_message(message, chat)
 
-            subheartflow = await heartflow.get_or_create_subheartflow(chat.stream_id)
-            message.update_chat_stream(chat)
-            
+            subheartflow: SubHeartflow = await heartflow.get_or_create_subheartflow(chat.stream_id)  # type: ignore
+
             # subheartflow.add_message_to_normal_chat_cache(message, interested_rate, is_mentioned)
 
-            chat_mood = mood_manager.get_mood_by_chat_id(subheartflow.chat_id)
+            chat_mood = mood_manager.get_mood_by_chat_id(subheartflow.chat_id)  # type: ignore
             asyncio.create_task(chat_mood.update_mood_by_message(message, interested_rate))
 
-            # 7. 日志记录
+            # 3. 日志记录
             mes_name = chat.group_info.group_name if chat.group_info else "私聊"
             # current_time = time.strftime("%H:%M:%S", time.localtime(message.message_info.time))
             current_talk_frequency = global_config.chat.get_current_talk_frequency(chat.stream_id)
@@ -129,11 +124,11 @@ class HeartFCMessageReceiver:
             picid_pattern = r"\[picid:([^\]]+)\]"
             processed_plain_text = re.sub(picid_pattern, "[图片]", message.processed_plain_text)
 
-            logger.info(f"[{mes_name}]{userinfo.user_nickname}:{processed_plain_text}")
+            logger.info(f"[{mes_name}]{userinfo.user_nickname}:{processed_plain_text}")  # type: ignore
 
             logger.debug(f"[{mes_name}][当前时段回复频率: {current_talk_frequency}]")
 
-            # 8. 关系处理
+            # 4. 关系处理
             if global_config.relationship.enable_relationship:
                 await _process_relationship(message)
 

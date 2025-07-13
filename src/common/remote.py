@@ -23,7 +23,7 @@ class TelemetryHeartBeatTask(AsyncTask):
         self.server_url = TELEMETRY_SERVER_URL
         """遥测服务地址"""
 
-        self.client_uuid = local_storage["mmc_uuid"] if "mmc_uuid" in local_storage else None
+        self.client_uuid: str | None = local_storage["mmc_uuid"] if "mmc_uuid" in local_storage else None  # type: ignore
         """客户端UUID"""
 
         self.info_dict = self._get_sys_info()
@@ -72,7 +72,7 @@ class TelemetryHeartBeatTask(AsyncTask):
                         timeout=aiohttp.ClientTimeout(total=5),  # 设置超时时间为5秒
                     ) as response:
                         logger.debug(f"{TELEMETRY_SERVER_URL}/stat/reg_client")
-                        logger.debug(local_storage["deploy_time"])
+                        logger.debug(local_storage["deploy_time"])  # type: ignore
                         logger.debug(f"Response status: {response.status}")
 
                         if response.status == 200:
@@ -93,7 +93,7 @@ class TelemetryHeartBeatTask(AsyncTask):
             except Exception as e:
                 import traceback
 
-                error_msg = str(e) if str(e) else "未知错误"
+                error_msg = str(e) or "未知错误"
                 logger.warning(
                     f"请求UUID出错，不过你还是可以正常使用麦麦: {type(e).__name__}: {error_msg}"
                 )  # 可能是网络问题
@@ -114,11 +114,11 @@ class TelemetryHeartBeatTask(AsyncTask):
         """向服务器发送心跳"""
         headers = {
             "Client-UUID": self.client_uuid,
-            "User-Agent": f"HeartbeatClient/{self.client_uuid[:8]}",
+            "User-Agent": f"HeartbeatClient/{self.client_uuid[:8]}",  # type: ignore
         }
 
         logger.debug(f"正在发送心跳到服务器: {self.server_url}")
-        logger.debug(headers)
+        logger.debug(str(headers))
 
         try:
             async with aiohttp.ClientSession(connector=await get_tcp_connector()) as session:
@@ -151,7 +151,7 @@ class TelemetryHeartBeatTask(AsyncTask):
         except Exception as e:
             import traceback
 
-            error_msg = str(e) if str(e) else "未知错误"
+            error_msg = str(e) or "未知错误"
             logger.warning(f"（此消息不会影响正常使用）状态未发生: {type(e).__name__}: {error_msg}")
             logger.debug(f"完整错误信息: {traceback.format_exc()}")
 

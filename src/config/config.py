@@ -1,16 +1,14 @@
 import os
-from dataclasses import field, dataclass
-
 import tomlkit
 import shutil
-from datetime import datetime
 
+from datetime import datetime
 from tomlkit import TOMLDocument
 from tomlkit.items import Table
-
-from src.common.logger import get_logger
+from dataclasses import field, dataclass
 from rich.traceback import install
 
+from src.common.logger import get_logger
 from src.config.config_base import ConfigBase
 from src.config.official_configs import (
     BotConfig,
@@ -80,8 +78,8 @@ def update_config():
 
     # 检查version是否相同
     if old_config and "inner" in old_config and "inner" in new_config:
-        old_version = old_config["inner"].get("version")
-        new_version = new_config["inner"].get("version")
+        old_version = old_config["inner"].get("version")  # type: ignore
+        new_version = new_config["inner"].get("version")  # type: ignore
         if old_version and new_version and old_version == new_version:
             logger.info(f"检测到配置文件版本号相同 (v{old_version})，跳过更新")
             return
@@ -103,7 +101,7 @@ def update_config():
     shutil.copy2(template_path, new_config_path)
     logger.info(f"已创建新配置文件: {new_config_path}")
 
-    def update_dict(target: TOMLDocument | dict, source: TOMLDocument | dict):
+    def update_dict(target: TOMLDocument | dict | Table, source: TOMLDocument | dict):
         """
         将source字典的值更新到target字典中（如果target中存在相同的键）
         """
@@ -112,8 +110,9 @@ def update_config():
             if key == "version":
                 continue
             if key in target:
-                if isinstance(value, dict) and isinstance(target[key], (dict, Table)):
-                    update_dict(target[key], value)
+                target_value = target[key]
+                if isinstance(value, dict) and isinstance(target_value, (dict, Table)):
+                    update_dict(target_value, value)
                 else:
                     try:
                         # 对数组类型进行特殊处理

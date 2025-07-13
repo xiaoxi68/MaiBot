@@ -1,14 +1,16 @@
-from src.common.logger import get_logger
+import importlib
+import asyncio
+
+from abc import ABC, abstractmethod
+from typing import Dict, Optional
+from rich.traceback import install
 from dataclasses import dataclass
+
+from src.common.logger import get_logger
 from src.config.config import global_config
 from src.chat.message_receive.chat_stream import ChatStream, GroupInfo
 from src.chat.message_receive.message import MessageRecv
 from src.person_info.person_info import PersonInfoManager, get_person_info_manager
-from abc import ABC, abstractmethod
-import importlib
-from typing import Dict, Optional
-import asyncio
-from rich.traceback import install
 
 install(extra_lines=3)
 
@@ -92,8 +94,8 @@ class BaseWillingManager(ABC):
         self.logger = logger
 
     def setup(self, message: dict, chat: ChatStream):
-        person_id = PersonInfoManager.get_person_id(chat.platform, chat.user_info.user_id)
-        self.ongoing_messages[message.get("message_id")] = WillingInfo(
+        person_id = PersonInfoManager.get_person_id(chat.platform, chat.user_info.user_id)  # type: ignore
+        self.ongoing_messages[message.message_info.message_id] = WillingInfo(  # type: ignore
             message=message,
             chat=chat,
             person_info_manager=get_person_info_manager(),

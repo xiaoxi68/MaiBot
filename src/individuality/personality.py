@@ -1,6 +1,7 @@
-from dataclasses import dataclass
-from typing import Dict, List
 import json
+
+from dataclasses import dataclass
+from typing import Dict, List, Optional
 from pathlib import Path
 
 
@@ -24,7 +25,7 @@ class Personality:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __init__(self, personality_core: str = "", personality_sides: List[str] = None):
+    def __init__(self, personality_core: str = "", personality_sides: Optional[List[str]] = None):
         if personality_sides is None:
             personality_sides = []
         self.personality_core = personality_core
@@ -41,7 +42,7 @@ class Personality:
             cls._instance = cls()
         return cls._instance
 
-    def _init_big_five_personality(self):
+    def _init_big_five_personality(self):  # sourcery skip: extract-method
         """初始化大五人格特质"""
         # 构建文件路径
         personality_file = Path("data/personality") / f"{self.bot_nickname}_personality.per"
@@ -63,7 +64,6 @@ class Personality:
             else:
                 self.extraversion = 0.3
                 self.neuroticism = 0.5
-
             if "认真" in self.personality_core or "负责" in self.personality_sides:
                 self.conscientiousness = 0.9
             else:
