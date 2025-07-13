@@ -219,7 +219,7 @@ class FacialExpression:
         
         # 获取最强情绪
         dominant_emotion = max(emotions, key=emotions.get)
-        dominant_value = emotions[dominant_emotion]
+        _dominant_value = emotions[dominant_emotion]
         
         # 根据情绪强度和类型选择表情
         if dominant_emotion == "joy":
@@ -408,7 +408,7 @@ class ChatMood:
             self.mood_state = text_mood_response
 
         if numerical_mood_response:
-            old_mood_values = self.mood_values.copy()
+            _old_mood_values = self.mood_values.copy()
             self.mood_values = numerical_mood_response
             
             # 发送面部表情
@@ -488,7 +488,7 @@ class ChatMood:
             self.mood_state = text_mood_response
 
         if numerical_mood_response:
-            old_mood_values = self.mood_values.copy()
+            _old_mood_values = self.mood_values.copy()
             self.mood_values = numerical_mood_response
             
             # 发送面部表情

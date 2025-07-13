@@ -9,7 +9,7 @@ from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_by_timestamp_with_chat_inclusive
 from src.llm_models.utils_model import LLMRequest
 from src.manager.async_task_manager import AsyncTask, async_task_manager
-from src.chat.message_receive.chat_stream import ChatStream, get_chat_manager
+from src.chat.message_receive.chat_stream import get_chat_manager
 
 logger = get_logger("mood")
 

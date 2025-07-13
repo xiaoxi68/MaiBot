@@ -11,7 +11,7 @@ from src.chat.focus_chat.hfc_utils import CycleDetail
 from src.chat.message_receive.chat_stream import get_chat_manager, ChatMessageContext
 from src.chat.planner_actions.action_manager import ActionManager
 from src.chat.utils.chat_message_builder import get_raw_msg_before_timestamp_with_chat, build_readable_messages
-from src.plugin_system.base.component_types import ChatMode, ActionInfo, ActionActivationType
+from src.plugin_system.base.component_types import ActionInfo, ActionActivationType
 
 if TYPE_CHECKING:
     from src.chat.message_receive.chat_stream import ChatStream

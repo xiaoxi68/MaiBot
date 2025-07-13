@@ -19,7 +19,7 @@ from src.chat.utils.chat_message_builder import (
 from src.chat.utils.utils import get_chat_type_and_target_info
 from src.chat.planner_actions.action_manager import ActionManager
 from src.chat.message_receive.chat_stream import get_chat_manager
-from src.plugin_system.base.component_types import ChatMode, ActionInfo
+from src.plugin_system.base.component_types import ActionInfo
 
 
 logger = get_logger("planner")

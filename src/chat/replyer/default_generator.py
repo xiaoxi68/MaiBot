@@ -11,8 +11,8 @@ from datetime import datetime
 from src.common.logger import get_logger
 from src.config.config import global_config
 from src.llm_models.utils_model import LLMRequest
-from src.chat.message_receive.message import UserInfo, Seg, MessageRecv, MessageThinking, MessageSending
-from src.chat.message_receive.chat_stream import get_chat_manager, ChatStream
+from src.chat.message_receive.message import UserInfo, Seg, MessageRecv, MessageSending
+from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.message_receive.uni_message_sender import HeartFCSender
 from src.chat.utils.timer_calculator import Timer  # <--- Import Timer
 from src.chat.utils.utils import get_chat_type_and_target_info

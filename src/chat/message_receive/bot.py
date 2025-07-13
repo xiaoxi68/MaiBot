@@ -14,7 +14,6 @@ from src.chat.message_receive.storage import MessageStorage
 from src.chat.heart_flow.heartflow_message_processor import HeartFCMessageReceiver
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.experimental.only_message_process import MessageProcessor
-from src.experimental.PFC.pfc_manager import PFCManager
 from src.plugin_system.core.component_registry import component_registry  # 导入新插件系统
 from src.plugin_system.base.base_command import BaseCommand
 from src.mais4u.mais4u_chat.s4u_msg_processor import S4UMessageProcessor
