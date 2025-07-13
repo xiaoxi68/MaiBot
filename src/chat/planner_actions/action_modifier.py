@@ -11,7 +11,7 @@ from src.chat.focus_chat.hfc_utils import CycleDetail
 from src.chat.message_receive.chat_stream import get_chat_manager, ChatMessageContext
 from src.chat.planner_actions.action_manager import ActionManager
 from src.chat.utils.chat_message_builder import get_raw_msg_before_timestamp_with_chat, build_readable_messages
-from src.plugin_system.base.component_types import ChatMode, ActionInfo, ActionActivationType
+from src.plugin_system.base.component_types import ActionInfo, ActionActivationType
 
 if TYPE_CHECKING:
     from src.chat.message_receive.chat_stream import ChatStream
@@ -164,11 +164,9 @@ class ActionModifier:
         random.shuffle(actions_to_check)
 
         for action_name, action_info in actions_to_check:
-            activation_type = action_info.activation_type
-            if not activation_type:
-                activation_type = action_info.get("focus_activation_type", "")
+            activation_type = action_info.activation_type or action_info.focus_activation_type
 
-            if activation_type == "always":
+            if activation_type == ActionActivationType.ALWAYS:
                 continue  # 总是激活，无需处理
 
             elif activation_type == ActionActivationType.RANDOM:
@@ -188,7 +186,7 @@ class ActionModifier:
             elif activation_type == ActionActivationType.LLM_JUDGE:
                 llm_judge_actions[action_name] = action_info
 
-            elif activation_type == "never":
+            elif activation_type == ActionActivationType.NEVER:
                 reason = "激活类型为never"
                 deactivated_actions.append((action_name, reason))
                 logger.debug(f"{self.log_prefix}未激活动作: {action_name}，原因: 激活类型为never")
@@ -505,25 +503,25 @@ class ActionModifier:
 
         return removals
 
-    def get_available_actions_count(self, mode: str = "focus") -> int:
-        """获取当前可用动作数量（排除默认的no_action）"""
-        current_actions = self.action_manager.get_using_actions_for_mode(mode)
-        # 排除no_action（如果存在）
-        filtered_actions = {k: v for k, v in current_actions.items() if k != "no_action"}
-        return len(filtered_actions)
+    # def get_available_actions_count(self, mode: str = "focus") -> int:
+    #     """获取当前可用动作数量（排除默认的no_action）"""
+    #     current_actions = self.action_manager.get_using_actions_for_mode(mode)
+    #     # 排除no_action（如果存在）
+    #     filtered_actions = {k: v for k, v in current_actions.items() if k != "no_action"}
+    #     return len(filtered_actions)
 
-    def should_skip_planning_for_no_reply(self) -> bool:
-        """判断是否应该跳过规划过程"""
-        current_actions = self.action_manager.get_using_actions_for_mode("focus")
-        # 排除no_action（如果存在）
-        if len(current_actions) == 1 and "no_reply" in current_actions:
-            return True
-        return False
+    # def should_skip_planning_for_no_reply(self) -> bool:
+    #     """判断是否应该跳过规划过程"""
+    #     current_actions = self.action_manager.get_using_actions_for_mode("focus")
+    #     # 排除no_action（如果存在）
+    #     if len(current_actions) == 1 and "no_reply" in current_actions:
+    #         return True
+    #     return False
 
-    def should_skip_planning_for_no_action(self) -> bool:
-        """判断是否应该跳过规划过程"""
-        available_count = self.action_manager.get_using_actions_for_mode("normal")
-        if available_count == 0:
-            logger.debug(f"{self.log_prefix} 没有可用动作，跳过规划")
-            return True
-        return False
+    # def should_skip_planning_for_no_action(self) -> bool:
+    #     """判断是否应该跳过规划过程"""
+    #     available_count = self.action_manager.get_using_actions_for_mode("normal")
+    #     if available_count == 0:
+    #         logger.debug(f"{self.log_prefix} 没有可用动作，跳过规划")
+    #         return True
+    #     return False
