@@ -13,7 +13,6 @@ from src.chat.message_receive.message import MessageRecv
 from src.chat.message_receive.storage import MessageStorage
 from src.chat.heart_flow.heartflow_message_processor import HeartFCMessageReceiver
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
-from src.experimental.only_message_process import MessageProcessor
 from src.plugin_system.core.component_registry import component_registry  # 导入新插件系统
 from src.plugin_system.base.base_command import BaseCommand
 from src.mais4u.mais4u_chat.s4u_msg_processor import S4UMessageProcessor
@@ -81,8 +80,6 @@ class ChatBot:
         self.mood_manager = mood_manager  # 获取情绪管理器单例
         self.heartflow_message_receiver = HeartFCMessageReceiver()  # 新增
 
-        # 创建初始化PFC管理器的任务，会在_ensure_started时执行
-        self.only_process_chat = MessageProcessor()
         self.s4u_message_processor = S4UMessageProcessor()
 
     async def _ensure_started(self):
