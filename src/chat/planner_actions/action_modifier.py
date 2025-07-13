@@ -188,7 +188,7 @@ class ActionModifier:
             elif activation_type == ActionActivationType.LLM_JUDGE:
                 llm_judge_actions[action_name] = action_info
 
-            elif activation_type == "never":
+            elif activation_type == ActionActivationType.NEVER:
                 reason = "激活类型为never"
                 deactivated_actions.append((action_name, reason))
                 logger.debug(f"{self.log_prefix}未激活动作: {action_name}，原因: 激活类型为never")

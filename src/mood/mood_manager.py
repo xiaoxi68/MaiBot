@@ -9,6 +9,7 @@ from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_by_timestamp_with_chat_inclusive
 from src.llm_models.utils_model import LLMRequest
 from src.manager.async_task_manager import AsyncTask, async_task_manager
+from src.chat.message_receive.chat_stream import ChatStream, get_chat_manager
 
 logger = get_logger("mood")
 
@@ -45,6 +46,12 @@ def init_prompt():
 class ChatMood:
     def __init__(self, chat_id: str):
         self.chat_id: str = chat_id
+        
+        chat_manager = get_chat_manager()
+        self.chat_stream = chat_manager.get_stream(self.chat_id)
+        
+        self.log_prefix = f"[{self.chat_stream.group_info.group_name if self.chat_stream.group_info else self.chat_stream.user_info.user_nickname}]"
+
         self.mood_state: str = "感觉很平静"
 
         self.regression_count: int = 0
@@ -78,14 +85,14 @@ class ChatMood:
         if random.random() > update_probability:
             return
 
-        logger.info(f"更新情绪状态，感兴趣度: {interested_rate}, 更新概率: {update_probability}")
+        logger.info(f"{self.log_prefix} 更新情绪状态，感兴趣度: {interested_rate}, 更新概率: {update_probability}")
 
         message_time: float = message.message_info.time  # type: ignore
         message_list_before_now = get_raw_msg_by_timestamp_with_chat_inclusive(
             chat_id=self.chat_id,
             timestamp_start=self.last_change_time,
             timestamp_end=message_time,
-            limit=15,
+            limit=int(global_config.chat.max_context_size/3),
             limit_mode="last",
         )
         chat_talking_prompt = build_readable_messages(
@@ -114,10 +121,15 @@ class ChatMood:
             mood_state=self.mood_state,
         )
 
-        logger.info(f"prompt: {prompt}")
+
+
         response, (reasoning_content, model_name) = await self.mood_model.generate_response_async(prompt=prompt)
-        logger.info(f"response: {response}")
-        logger.info(f"reasoning_content: {reasoning_content}")
+        if global_config.debug.show_prompt:
+            logger.info(f"{self.log_prefix} prompt: {prompt}")
+            logger.info(f"{self.log_prefix} response: {response}")
+            logger.info(f"{self.log_prefix} reasoning_content: {reasoning_content}")
+            
+        logger.info(f"{self.log_prefix} 情绪状态更新为: {response}")
 
         self.mood_state = response
 
@@ -158,10 +170,15 @@ class ChatMood:
             mood_state=self.mood_state,
         )
 
-        logger.info(f"prompt: {prompt}")
+        
         response, (reasoning_content, model_name) = await self.mood_model.generate_response_async(prompt=prompt)
-        logger.info(f"response: {response}")
-        logger.info(f"reasoning_content: {reasoning_content}")
+        
+        if global_config.debug.show_prompt:
+            logger.info(f"{self.log_prefix} prompt: {prompt}")
+            logger.info(f"{self.log_prefix} response: {response}")
+            logger.info(f"{self.log_prefix} reasoning_content: {reasoning_content}")
+            
+        logger.info(f"{self.log_prefix} 情绪状态回归为: {response}")    
 
         self.mood_state = response
 

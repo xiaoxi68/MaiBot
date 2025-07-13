@@ -83,6 +83,9 @@ class ChatConfig(ConfigBase):
     talk_frequency: float = 1
     """回复频率阈值"""
 
+    use_s4u_prompt_mode: bool = False
+    """是否使用 s4u 对话构建模式，该模式会分开处理当前对话对象和其他所有对话的内容进行 prompt 构建"""
+
     # 修改：基于时段的回复频率配置，改为数组格式
     time_based_talk_frequency: list[str] = field(default_factory=lambda: [])
     """
