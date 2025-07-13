@@ -12,6 +12,7 @@ from typing import Optional, Tuple, List, Any
 from PIL import Image
 from rich.traceback import install
 
+
 from src.common.database.database_model import Emoji
 from src.common.database.database import db as peewee_db
 from src.common.logger import get_logger
