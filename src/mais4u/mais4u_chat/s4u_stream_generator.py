@@ -107,7 +107,6 @@ class S4UStreamGenerator:
         model_name: str,
         **kwargs,
     ) -> AsyncGenerator[str, None]:
-        print(prompt)
 
         buffer = ""
         delimiters = "，。！？,.!?\n\r"  # For final trimming

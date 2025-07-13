@@ -12,6 +12,7 @@ from src.common.logger import get_logger
 from src.config.config import global_config
 from src.mais4u.mais4u_chat.body_emotion_action_manager import action_manager
 from src.mais4u.mais4u_chat.s4u_mood_manager import mood_manager
+from src.mais4u.mais4u_chat.s4u_watching_manager import watching_manager
 
 from .s4u_chat import get_s4u_chat_manager
 
@@ -101,12 +102,18 @@ class S4UMessageProcessor:
             await s4u_chat.add_message(message)
 
         interested_rate, _ = await _calculate_interest(message)
+        
+        await mood_manager.start()
 
         chat_mood = mood_manager.get_mood_by_chat_id(chat.stream_id)
         asyncio.create_task(chat_mood.update_mood_by_message(message))
         chat_action = action_manager.get_action_state_by_chat_id(chat.stream_id)
         asyncio.create_task(chat_action.update_action_by_message(message))
         # asyncio.create_task(chat_action.update_facial_expression_by_message(message, interested_rate))
+        
+        # 视线管理：收到消息时切换视线状态
+        chat_watching = watching_manager.get_watching_by_chat_id(chat.stream_id)
+        asyncio.create_task(chat_watching.on_message_received())
 
         # 7. 日志记录
         logger.info(f"[S4U]{userinfo.user_nickname}:{message.processed_plain_text}")

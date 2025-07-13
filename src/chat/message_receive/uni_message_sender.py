@@ -15,14 +15,15 @@ install(extra_lines=3)
 logger = get_logger("sender")
 
 
-async def send_message(message: MessageSending) -> bool:
+async def send_message(message: MessageSending, show_log=True) -> bool:
     """合并后的消息发送函数，包含WS发送和日志记录"""
-    message_preview = truncate_message(message.processed_plain_text, max_length=40)
+    message_preview = truncate_message(message.processed_plain_text, max_length=120)
 
     try:
         # 直接调用API发送消息
         await get_global_api().send_message(message)
-        logger.info(f"已将消息  '{message_preview}'  发往平台'{message.message_info.platform}'")
+        if show_log:
+            logger.info(f"已将消息  '{message_preview}'  发往平台'{message.message_info.platform}'")
         return True
 
     except Exception as e:
@@ -37,7 +38,7 @@ class HeartFCSender:
     def __init__(self):
         self.storage = MessageStorage()
 
-    async def send_message(self, message: MessageSending, typing=False, set_reply=False, storage_message=True):
+    async def send_message(self, message: MessageSending, typing=False, set_reply=False, storage_message=True, show_log=True):
         """
         处理、发送并存储一条消息。
 
@@ -73,7 +74,7 @@ class HeartFCSender:
                 )
                 await asyncio.sleep(typing_time)
 
-            sent_msg = await send_message(message)
+            sent_msg = await send_message(message, show_log=show_log)
             if not sent_msg:
                 return False
 

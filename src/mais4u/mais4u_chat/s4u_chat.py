@@ -10,6 +10,7 @@ from src.chat.message_receive.message import MessageSending, MessageRecv
 from src.config.config import global_config
 from src.common.message.api import get_global_api
 from src.chat.message_receive.storage import MessageStorage
+from .s4u_watching_manager import watching_manager
 import json
 
 
@@ -336,6 +337,11 @@ class S4UChat:
     async def _generate_and_send(self, message: MessageRecv):
         """为单个消息生成文本和音频回复。整个过程可以被中断。"""
         self._is_replying = True
+        
+        # 视线管理：开始生成回复时切换视线状态
+        chat_watching = watching_manager.get_watching_by_chat_id(self.stream_id)
+        await chat_watching.on_reply_start()
+        
         sender_container = MessageSenderContainer(self.chat_stream, message)
         sender_container.start()
 
@@ -368,6 +374,11 @@ class S4UChat:
             logger.error(f"[{self.stream_name}] 回复生成过程中出现错误: {e}", exc_info=True)
         finally:
             self._is_replying = False
+            
+            # 视线管理：回复结束时切换视线状态
+            chat_watching = watching_manager.get_watching_by_chat_id(self.stream_id)
+            await chat_watching.on_reply_finished()
+            
             # 确保发送器被妥善关闭（即使已关闭，再次调用也是安全的）
             sender_container.resume()
             if not sender_container._task.done():
