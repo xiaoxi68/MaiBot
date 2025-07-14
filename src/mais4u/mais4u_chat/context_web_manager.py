@@ -147,49 +147,30 @@ class ContextWebManager:
             border-left: 4px solid #00ff88;
             backdrop-filter: blur(5px);
             animation: slideIn 0.3s ease-out;
+            transform: translateY(0);
+            transition: transform 0.5s ease, opacity 0.5s ease;
         }
         .message:hover {
             background: rgba(0, 0, 0, 0.5);
             transform: translateX(5px);
             transition: all 0.3s ease;
         }
-        .user-info {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-        .username {
-            font-weight: bold;
-            color: #00ff88;
-            font-size: 18px;
-        }
-        .timestamp {
-            color: #888;
-            font-size: 14px;
-        }
-        .group-name {
-            color: #60a5fa;
-            font-size: 14px;
-            font-style: italic;
-        }
-        .content {
-            font-size: 20px;
+        .message-line {
             line-height: 1.4;
             word-wrap: break-word;
+            font-size: 24px;
         }
-        .status {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            color: #888;
-            font-size: 12px;
-            padding: 8px 12px;
-            border-radius: 20px;
-            backdrop-filter: blur(10px);
-            z-index: 1000;
+        .username {
+            color: #00ff88;
         }
+        .content {
+            color: #ffffff;
+        }
+
+        .new-message {
+            animation: slideInNew 0.6s ease-out;
+        }
+
         .debug-btn {
             position: fixed;
             bottom: 20px;
@@ -217,6 +198,16 @@ class ContextWebManager:
                 transform: translateY(0);
             }
         }
+        @keyframes slideInNew {
+            from {
+                opacity: 0;
+                transform: translateY(50px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
         .no-messages {
             text-align: center;
             color: #666;
@@ -227,7 +218,6 @@ class ContextWebManager:
 </head>
 <body>
     <div class="container">
-        <div class="status" id="status">正在连接...</div>
         <a href="/debug" class="debug-btn">🔧 调试</a>
         <div id="messages">
             <div class="no-messages">暂无消息</div>
@@ -237,6 +227,7 @@ class ContextWebManager:
     <script>
         let ws;
         let reconnectInterval;
+        let currentMessages = []; // 存储当前显示的消息
         
                  function connectWebSocket() {
              console.log('正在连接WebSocket...');
@@ -244,8 +235,6 @@ class ContextWebManager:
              
              ws.onopen = function() {
                  console.log('WebSocket连接已建立');
-                 document.getElementById('status').textContent = '✅ 已连接';
-                 document.getElementById('status').style.color = '#00ff88';
                  if (reconnectInterval) {
                      clearInterval(reconnectInterval);
                      reconnectInterval = null;
@@ -264,8 +253,6 @@ class ContextWebManager:
              
              ws.onclose = function(event) {
                  console.log('WebSocket连接关闭:', event.code, event.reason);
-                 document.getElementById('status').textContent = '❌ 连接断开，正在重连...';
-                 document.getElementById('status').style.color = '#ff6b6b';
                  
                  if (!reconnectInterval) {
                      reconnectInterval = setInterval(connectWebSocket, 3000);
@@ -274,8 +261,6 @@ class ContextWebManager:
              
              ws.onerror = function(error) {
                  console.error('WebSocket错误:', error);
-                 document.getElementById('status').textContent = '❌ 连接错误';
-                 document.getElementById('status').style.color = '#ff6b6b';
              };
          }
         
@@ -284,30 +269,117 @@ class ContextWebManager:
              
              if (!contexts || contexts.length === 0) {
                  messagesDiv.innerHTML = '<div class="no-messages">暂无消息</div>';
+                 currentMessages = [];
                  return;
              }
              
-             console.log('收到新消息，数量:', contexts.length);
-             messagesDiv.innerHTML = '';
+             // 如果是第一次加载或者消息完全不同，进行完全重新渲染
+             if (currentMessages.length === 0) {
+                 console.log('首次加载消息，数量:', contexts.length);
+                 messagesDiv.innerHTML = '';
+                 
+                 contexts.forEach(function(msg) {
+                     const messageDiv = createMessageElement(msg);
+                     messagesDiv.appendChild(messageDiv);
+                 });
+                 
+                 currentMessages = [...contexts];
+                 window.scrollTo(0, document.body.scrollHeight);
+                 return;
+             }
              
-             contexts.forEach(function(msg) {
-                 const messageDiv = document.createElement('div');
-                 messageDiv.className = 'message';
-                 messageDiv.innerHTML = `
-                     <div class="user-info">
-                         <div>
-                             <span class="username">${escapeHtml(msg.user_name)}</span>
-                             <span class="group-name">[${escapeHtml(msg.group_name)}]</span>
-                         </div>
-                         <span class="timestamp">${msg.timestamp}</span>
-                     </div>
-                     <div class="content">${escapeHtml(msg.content)}</div>
-                 `;
-                 messagesDiv.appendChild(messageDiv);
-             });
+             // 检测新消息 - 使用更可靠的方法
+             const newMessages = findNewMessages(contexts, currentMessages);
              
-             // 滚动到最底部显示最新消息
-             window.scrollTo(0, document.body.scrollHeight);
+             if (newMessages.length > 0) {
+                 console.log('添加新消息，数量:', newMessages.length);
+                 
+                 // 先检查是否需要移除老消息（保持DOM清洁）
+                 const maxDisplayMessages = 15; // 比服务器端稍多一些，确保流畅性
+                 const currentMessageElements = messagesDiv.querySelectorAll('.message');
+                 const willExceedLimit = currentMessageElements.length + newMessages.length > maxDisplayMessages;
+                 
+                 if (willExceedLimit) {
+                     const removeCount = (currentMessageElements.length + newMessages.length) - maxDisplayMessages;
+                     console.log('需要移除老消息数量:', removeCount);
+                     
+                     for (let i = 0; i < removeCount && i < currentMessageElements.length; i++) {
+                         const oldMessage = currentMessageElements[i];
+                         oldMessage.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                         oldMessage.style.opacity = '0';
+                         oldMessage.style.transform = 'translateY(-20px)';
+                         
+                         setTimeout(() => {
+                             if (oldMessage.parentNode) {
+                                 oldMessage.parentNode.removeChild(oldMessage);
+                             }
+                         }, 300);
+                     }
+                 }
+                 
+                 // 添加新消息
+                 newMessages.forEach(function(msg) {
+                     const messageDiv = createMessageElement(msg, true); // true表示是新消息
+                     messagesDiv.appendChild(messageDiv);
+                     
+                     // 移除动画类，避免重复动画
+                     setTimeout(() => {
+                         messageDiv.classList.remove('new-message');
+                     }, 600);
+                 });
+                 
+                 // 更新当前消息列表
+                 currentMessages = [...contexts];
+                 
+                 // 平滑滚动到底部
+                 setTimeout(() => {
+                     window.scrollTo({
+                         top: document.body.scrollHeight,
+                         behavior: 'smooth'
+                     });
+                 }, 100);
+             }
+         }
+         
+         function findNewMessages(contexts, currentMessages) {
+             // 如果当前消息为空，所有消息都是新的
+             if (currentMessages.length === 0) {
+                 return contexts;
+             }
+             
+             // 找到最后一条当前消息在新消息列表中的位置
+             const lastCurrentMsg = currentMessages[currentMessages.length - 1];
+             let lastIndex = -1;
+             
+             // 从后往前找，因为新消息通常在末尾
+             for (let i = contexts.length - 1; i >= 0; i--) {
+                 const msg = contexts[i];
+                 if (msg.user_id === lastCurrentMsg.user_id && 
+                     msg.content === lastCurrentMsg.content && 
+                     msg.timestamp === lastCurrentMsg.timestamp) {
+                     lastIndex = i;
+                     break;
+                 }
+             }
+             
+             // 如果找到了，返回之后的消息；否则返回所有消息（可能是完全刷新）
+             if (lastIndex >= 0) {
+                 return contexts.slice(lastIndex + 1);
+             } else {
+                 console.log('未找到匹配的最后消息，可能需要完全刷新');
+                 return contexts.slice(Math.max(0, contexts.length - (currentMessages.length + 1)));
+             }
+         }
+         
+         function createMessageElement(msg, isNew = false) {
+             const messageDiv = document.createElement('div');
+             messageDiv.className = 'message' + (isNew ? ' new-message' : '');
+             messageDiv.innerHTML = `
+                 <div class="message-line">
+                     <span class="username">${escapeHtml(msg.user_name)}：</span><span class="content">${escapeHtml(msg.content)}</span>
+                 </div>
+             `;
+             return messageDiv;
          }
          
          function escapeHtml(text) {
@@ -542,3 +614,4 @@ async def init_context_web_manager():
     manager = get_context_web_manager()
     await manager.start_server()
     return manager 
+
