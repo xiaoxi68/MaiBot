@@ -2,7 +2,7 @@ import traceback
 import os
 import re
 
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from maim_message import UserInfo
 
 from src.common.logger import get_logger
@@ -210,7 +210,7 @@ class ChatBot:
 
             # 确认从接口发来的message是否有自定义的prompt模板信息
             if message.message_info.template_info and not message.message_info.template_info.template_default:
-                template_group_name = message.message_info.template_info.template_name
+                template_group_name: Optional[str] = message.message_info.template_info.template_name  # type: ignore
                 template_items = message.message_info.template_info.template_items
                 async with global_prompt_manager.async_message_scope(template_group_name):
                     if isinstance(template_items, dict):

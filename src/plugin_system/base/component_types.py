@@ -33,6 +33,7 @@ class ChatMode(Enum):
 
     FOCUS = "focus"  # Focus聊天模式
     NORMAL = "normal"  # Normal聊天模式
+    PRIORITY = "priority"  # 优先级聊天模式
     ALL = "all"  # 所有聊天模式
 
     def __str__(self):

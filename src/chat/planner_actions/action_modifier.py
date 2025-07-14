@@ -7,7 +7,6 @@ from typing import List, Any, Dict, TYPE_CHECKING
 from src.common.logger import get_logger
 from src.config.config import global_config
 from src.llm_models.utils_model import LLMRequest
-from src.chat.focus_chat.hfc_utils import CycleDetail
 from src.chat.message_receive.chat_stream import get_chat_manager, ChatMessageContext
 from src.chat.planner_actions.action_manager import ActionManager
 from src.chat.utils.chat_message_builder import get_raw_msg_before_timestamp_with_chat, build_readable_messages

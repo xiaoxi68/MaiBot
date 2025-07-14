@@ -19,7 +19,7 @@ from src.chat.utils.chat_message_builder import (
 from src.chat.utils.utils import get_chat_type_and_target_info
 from src.chat.planner_actions.action_manager import ActionManager
 from src.chat.message_receive.chat_stream import get_chat_manager
-from src.plugin_system.base.component_types import ActionInfo
+from src.plugin_system.base.component_types import ActionInfo, ChatMode
 
 
 logger = get_logger("planner")
@@ -79,7 +79,7 @@ class ActionPlanner:
 
         self.last_obs_time_mark = 0.0
 
-    async def plan(self, mode: str = "focus") -> Dict[str, Dict[str, Any]]:  # sourcery skip: dict-comprehension
+    async def plan(self, mode: ChatMode = ChatMode.FOCUS) -> Dict[str, Dict[str, Any] | str]:  # sourcery skip: dict-comprehension
         """
         规划器 (Planner): 使用LLM根据上下文决定做出什么动作。
         """
@@ -108,7 +108,7 @@ class ActionPlanner:
 
             # 如果没有可用动作或只有no_reply动作，直接返回no_reply
             if not current_available_actions:
-                if mode == "focus":
+                if mode == ChatMode.FOCUS:
                     action = "no_reply"
                 else:
                     action = "no_action"
@@ -217,7 +217,7 @@ class ActionPlanner:
         is_group_chat: bool,  # Now passed as argument
         chat_target_info: Optional[dict],  # Now passed as argument
         current_available_actions: Dict[str, ActionInfo],
-        mode: str = "focus",
+        mode: ChatMode = ChatMode.FOCUS,
     ) -> str:  # sourcery skip: use-join
         """构建 Planner LLM 的提示词 (获取模板并填充数据)"""
         try:
@@ -247,7 +247,7 @@ class ActionPlanner:
 
             self.last_obs_time_mark = time.time()
 
-            if mode == "focus":
+            if mode == ChatMode.FOCUS:
                 by_what = "聊天内容"
                 no_action_block = """重要说明1：
 - 'no_reply' 表示只进行不进行回复，等待合适的回复时机
