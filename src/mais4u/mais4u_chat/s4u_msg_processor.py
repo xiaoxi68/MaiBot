@@ -13,6 +13,7 @@ from src.config.config import global_config
 from src.mais4u.mais4u_chat.body_emotion_action_manager import action_manager
 from src.mais4u.mais4u_chat.s4u_mood_manager import mood_manager
 from src.mais4u.mais4u_chat.s4u_watching_manager import watching_manager
+from src.mais4u.mais4u_chat.context_web_manager import get_context_web_manager
 
 from .s4u_chat import get_s4u_chat_manager
 
@@ -115,5 +116,33 @@ class S4UMessageProcessor:
         chat_watching = watching_manager.get_watching_by_chat_id(chat.stream_id)
         asyncio.create_task(chat_watching.on_message_received())
 
+        # 上下文网页管理：启动独立task处理消息上下文
+        asyncio.create_task(self._handle_context_web_update(chat.stream_id, message))
+
         # 7. 日志记录
         logger.info(f"[S4U]{userinfo.user_nickname}:{message.processed_plain_text}")
+
+    async def _handle_context_web_update(self, chat_id: str, message: MessageRecv):
+        """处理上下文网页更新的独立task
+        
+        Args:
+            chat_id: 聊天ID
+            message: 消息对象
+        """
+        try:
+            logger.debug(f"🔄 开始处理上下文网页更新: {message.message_info.user_info.user_nickname}")
+            
+            context_manager = get_context_web_manager()
+            
+            # 只在服务器未启动时启动（避免重复启动）
+            if context_manager.site is None:
+                logger.info("🚀 首次启动上下文网页服务器...")
+                await context_manager.start_server()
+            
+            # 添加消息到上下文并更新网页
+            await context_manager.add_message(chat_id, message)
+            
+            logger.debug(f"✅ 上下文网页更新完成: {message.message_info.user_info.user_nickname}")
+            
+        except Exception as e:
+            logger.error(f"❌ 处理上下文网页更新失败: {e}", exc_info=True)

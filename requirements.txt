@@ -1,6 +1,7 @@
 APScheduler
 Pillow
 aiohttp
+aiohttp-cors
 colorama
 customtkinter
 dotenv

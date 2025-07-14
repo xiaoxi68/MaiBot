@@ -142,7 +142,7 @@ def get_s4u_chat_manager() -> S4UChatManager:
 
 
 class S4UChat:
-    _MESSAGE_TIMEOUT_SECONDS = 60  # 普通消息存活时间（秒）
+    _MESSAGE_TIMEOUT_SECONDS = 30  # 普通消息存活时间（秒）
 
     def __init__(self, chat_stream: ChatStream):
         """初始化 S4UChat 实例。"""
@@ -167,7 +167,7 @@ class S4UChat:
         self.gpt = S4UStreamGenerator()
         self.interest_dict: Dict[str, float] = {}  # 用户兴趣分
         self.at_bot_priority_bonus = 100.0  # @机器人的优先级加成
-        self.normal_queue_max_size = 50  # 普通队列最大容量
+        self.normal_queue_max_size = 5  # 普通队列最大容量
         logger.info(f"[{self.stream_name}] S4UChat with two-queue system initialized.")
 
     def _get_priority_info(self, message: MessageRecv) -> dict:
