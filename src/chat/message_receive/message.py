@@ -479,7 +479,7 @@ def message_from_db_dict(db_dict: dict) -> MessageRecv:
     msg = MessageRecv(recv_dict)
 
     # 从数据库字典中填充其他可选字段
-    msg.interest_value = db_dict.get("interest_value")
+    msg.interest_value = db_dict.get("interest_value", 0.0)
     msg.is_mentioned = db_dict.get("is_mentioned")
     msg.priority_mode = db_dict.get("priority_mode", "interest")
     msg.priority_info = db_dict.get("priority_info")
