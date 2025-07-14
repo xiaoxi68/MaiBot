@@ -102,7 +102,7 @@ class PluginManager:
         """
         加载已经注册的插件类
         """
-        plugin_class: Type[BasePlugin] = self.plugin_classes.get(plugin_name)
+        plugin_class = self.plugin_classes.get(plugin_name)
         if not plugin_class:
             logger.error(f"插件 {plugin_name} 的插件类未注册或不存在")
             return False, 1
@@ -115,7 +115,10 @@ class PluginManager:
                 plugin_dir = self._find_plugin_directory(plugin_class)
                 if plugin_dir:
                     self.plugin_paths[plugin_name] = plugin_dir  # 更新路径
-            plugin_instance = plugin_class(plugin_dir=plugin_dir)  # 实例化插件（可能因为缺少manifest而失败）
+                    plugin_instance = plugin_class(plugin_dir=plugin_dir)  # 实例化插件（可能因为缺少manifest而失败）
+                    if not plugin_instance:
+                        logger.error(f"插件 {plugin_name} 实例化失败")
+                        return False, 1
             # 检查插件是否启用
             if not plugin_instance.enable_plugin:
                 logger.info(f"插件 {plugin_name} 已禁用，跳过加载")
@@ -248,7 +251,7 @@ class PluginManager:
             "failed_plugin_details": self.failed_plugins.copy(),
         }
 
-    def check_all_dependencies(self, auto_install: bool = False) -> Dict[str, any]:
+    def check_all_dependencies(self, auto_install: bool = False) -> Dict[str, Any]:
         """检查所有插件的Python依赖包
 
         Args:
@@ -381,7 +384,7 @@ class PluginManager:
 
         return loaded_count, failed_count
 
-    def _find_plugin_directory(self, plugin_class: str) -> Optional[str]:
+    def _find_plugin_directory(self, plugin_class: Type[BasePlugin]) -> Optional[str]:
         """查找插件类对应的目录路径"""
         try:
             module = getmodule(plugin_class)
