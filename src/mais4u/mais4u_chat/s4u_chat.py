@@ -250,7 +250,7 @@ class S4UChat:
                 await super_chat_manager.add_superchat(message)
             else:
                 await self.relationship_builder.build_relation(20)
-        except Exception as e:
+        except Exception:
             traceback.print_exc()
             
         logger.info(f"[{self.stream_name}] 消息处理完毕，消息内容：{message.processed_plain_text}")

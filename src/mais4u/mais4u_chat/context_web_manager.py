@@ -5,8 +5,6 @@ from datetime import datetime
 from typing import Dict, List, Optional
 from aiohttp import web, WSMsgType
 import aiohttp_cors
-from threading import Thread
-import weakref
 
 from src.chat.message_receive.message import MessageRecv
 from src.common.logger import get_logger
@@ -599,7 +597,7 @@ class ContextWebManager:
         logger.info(f"✅ 添加消息到上下文 [总数: {total_messages}]: [{context_msg.group_name}] {context_msg.user_name}: {context_msg.content}")
         
         # 调试：打印当前所有消息
-        logger.info(f"📝 当前上下文中的所有消息：")
+        logger.info("📝 当前上下文中的所有消息：")
         for cid, contexts in self.contexts.items():
             logger.info(f"  聊天 {cid}: {len(contexts)} 条消息")
             for i, msg in enumerate(contexts):

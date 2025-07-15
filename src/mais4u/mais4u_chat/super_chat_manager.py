@@ -3,8 +3,7 @@ import time
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 from src.common.logger import get_logger
-from src.chat.message_receive.message import MessageRecvS4U, MessageRecv
-from src.mais4u.s4u_config import s4u_config
+from src.chat.message_receive.message import MessageRecvS4U
 
 logger = get_logger("super_chat_manager")
 
