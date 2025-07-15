@@ -9,10 +9,7 @@ import os
 from time import sleep
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from src.chat.knowledge.lpmmconfig import global_config
 from src.chat.knowledge.embedding_store import EmbeddingManager
-from src.chat.knowledge.llm_client import LLMClient
 from src.chat.knowledge.open_ie import OpenIE
 from src.chat.knowledge.kg_manager import KGManager
 from src.common.logger import get_logger
@@ -22,7 +19,7 @@ from src.manager.local_store_manager import local_storage
 
 # 添加项目根目录到 sys.path
 ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-OPENIE_DIR = global_config["persistence"]["openie_data_path"] or os.path.join(ROOT_PATH, "data", "openie")
+OPENIE_DIR = os.path.join(ROOT_PATH, "data", "openie")
 
 logger = get_logger("OpenIE导入")
 
@@ -194,15 +191,9 @@ def main():  # sourcery skip: dict-comprehension
     logger.info("----开始导入openie数据----\n")
 
     logger.info("创建LLM客户端")
-    llm_client_list = {}
-    for key in global_config["llm_providers"]:
-        llm_client_list[key] = LLMClient(
-            global_config["llm_providers"][key]["base_url"],
-            global_config["llm_providers"][key]["api_key"],
-        )
 
     # 初始化Embedding库
-    embed_manager = EmbeddingManager(llm_client_list[global_config["embedding"]["provider"]])
+    embed_manager = EmbeddingManager()
     logger.info("正在从文件加载Embedding库")
     try:
         embed_manager.load_from_file()
