@@ -589,6 +589,9 @@ class LPMMKnowledgeConfig(ConfigBase):
     qa_res_top_k: int = 10
     """QA最终结果的Top K数量"""
 
+    embedding_dimension: int = 1024
+    """嵌入向量维度，应该与模型的输出维度一致"""
+
 
 @dataclass
 class ModelConfig(ConfigBase):

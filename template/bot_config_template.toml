@@ -1,5 +1,5 @@
 [inner]
-version = "4.1.1"
+version = "4.2.0"
 
 #----以下是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 #如果你想要修改配置文件，请在修改后将version的值进行变更
@@ -158,6 +158,7 @@ qa_paragraph_node_weight = 0.05 # 段落节点权重（在图搜索&PPR计算中
 qa_ent_filter_top_k = 10 # 实体过滤TopK
 qa_ppr_damping = 0.8 # PPR阻尼系数
 qa_res_top_k = 3 # 最终提供的文段TopK
+embedding_dimension = 1024 # 嵌入向量维度,应该与模型的输出维度一致
 
 # keyword_rules 用于设置关键词触发的额外回复知识
 # 添加新规则方法：在 keyword_rules 数组中增加一项，格式如下：
