@@ -103,7 +103,7 @@ class S4UMessageProcessor:
             await s4u_chat.add_message(message)
 
         interested_rate, _ = await _calculate_interest(message)
-        
+
         await mood_manager.start()
 
         chat_mood = mood_manager.get_mood_by_chat_id(chat.stream_id)
@@ -111,7 +111,7 @@ class S4UMessageProcessor:
         chat_action = action_manager.get_action_state_by_chat_id(chat.stream_id)
         asyncio.create_task(chat_action.update_action_by_message(message))
         # asyncio.create_task(chat_action.update_facial_expression_by_message(message, interested_rate))
-        
+
         # 视线管理：收到消息时切换视线状态
         chat_watching = watching_manager.get_watching_by_chat_id(chat.stream_id)
         asyncio.create_task(chat_watching.on_message_received())
@@ -124,25 +124,25 @@ class S4UMessageProcessor:
 
     async def _handle_context_web_update(self, chat_id: str, message: MessageRecv):
         """处理上下文网页更新的独立task
-        
+
         Args:
             chat_id: 聊天ID
             message: 消息对象
         """
         try:
             logger.debug(f"🔄 开始处理上下文网页更新: {message.message_info.user_info.user_nickname}")
-            
+
             context_manager = get_context_web_manager()
-            
+
             # 只在服务器未启动时启动（避免重复启动）
             if context_manager.site is None:
                 logger.info("🚀 首次启动上下文网页服务器...")
                 await context_manager.start_server()
-            
+
             # 添加消息到上下文并更新网页
             await context_manager.add_message(chat_id, message)
-            
+
             logger.debug(f"✅ 上下文网页更新完成: {message.message_info.user_info.user_nickname}")
-            
+
         except Exception as e:
             logger.error(f"❌ 处理上下文网页更新失败: {e}", exc_info=True)

@@ -8,6 +8,8 @@
     count = emoji_api.get_count()
 """
 
+import random
+
 from typing import Optional, Tuple, List
 from src.common.logger import get_logger
 from src.chat.emoji_system.emoji_manager import get_emoji_manager
@@ -29,7 +31,15 @@ async def get_by_description(description: str) -> Optional[Tuple[str, str, str]]
 
     Returns:
         Optional[Tuple[str, str, str]]: (base64编码, 表情包描述, 匹配的情感标签) 或 None
+
+    Raises:
+        ValueError: 如果描述为空字符串
+        TypeError: 如果描述不是字符串类型
     """
+    if not description:
+        raise ValueError("描述不能为空")
+    if not isinstance(description, str):
+        raise TypeError("描述必须是字符串类型")
     try:
         logger.debug(f"[EmojiAPI] 根据描述获取表情包: {description}")
 
@@ -55,7 +65,7 @@ async def get_by_description(description: str) -> Optional[Tuple[str, str, str]]
         return None
 
 
-async def get_random(count: int = 1) -> Optional[List[Tuple[str, str, str]]]:
+async def get_random(count: Optional[int] = 1) -> Optional[List[Tuple[str, str, str]]]:
     """随机获取指定数量的表情包
 
     Args:
@@ -63,8 +73,17 @@ async def get_random(count: int = 1) -> Optional[List[Tuple[str, str, str]]]:
 
     Returns:
         Optional[List[Tuple[str, str, str]]]: 包含(base64编码, 表情包描述, 随机情感标签)的元组列表，如果失败则为None
+
+    Raises:
+        TypeError: 如果count不是整数类型
+        ValueError: 如果count为负数
     """
-    if count <= 0:
+    if not isinstance(count, int):
+        raise TypeError("count 必须是整数类型")
+    if count < 0:
+        raise ValueError("count 不能为负数")
+    if count == 0:
+        logger.warning("[EmojiAPI] count 为0，返回空列表")
         return []
 
     try:
@@ -90,8 +109,6 @@ async def get_random(count: int = 1) -> Optional[List[Tuple[str, str, str]]]:
             count = len(valid_emojis)
 
         # 随机选择
-        import random
-
         selected_emojis = random.sample(valid_emojis, count)
 
         results = []
@@ -128,7 +145,15 @@ async def get_by_emotion(emotion: str) -> Optional[Tuple[str, str, str]]:
 
     Returns:
         Optional[Tuple[str, str, str]]: (base64编码, 表情包描述, 匹配的情感标签) 或 None
+
+    Raises:
+        ValueError: 如果情感标签为空字符串
+        TypeError: 如果情感标签不是字符串类型
     """
+    if not emotion:
+        raise ValueError("情感标签不能为空")
+    if not isinstance(emotion, str):
+        raise TypeError("情感标签必须是字符串类型")
     try:
         logger.info(f"[EmojiAPI] 根据情感获取表情包: {emotion}")
 
@@ -146,8 +171,6 @@ async def get_by_emotion(emotion: str) -> Optional[Tuple[str, str, str]]:
             return None
 
         # 随机选择匹配的表情包
-        import random
-
         selected_emoji = random.choice(matching_emojis)
         emoji_base64 = image_path_to_base64(selected_emoji.full_path)
 
@@ -185,11 +208,11 @@ def get_count() -> int:
         return 0
 
 
-def get_info() -> dict:
+def get_info():
     """获取表情包系统信息
 
     Returns:
-        dict: 包含表情包数量、最大数量等信息
+        dict: 包含表情包数量、最大数量、可用数量信息
     """
     try:
         emoji_manager = get_emoji_manager()
@@ -203,7 +226,7 @@ def get_info() -> dict:
         return {"current_count": 0, "max_count": 0, "available_emojis": 0}
 
 
-def get_emotions() -> list:
+def get_emotions() -> List[str]:
     """获取所有可用的情感标签
 
     Returns:
@@ -223,7 +246,7 @@ def get_emotions() -> list:
         return []
 
 
-def get_descriptions() -> list:
+def get_descriptions() -> List[str]:
     """获取所有表情包描述
 
     Returns:

@@ -243,6 +243,8 @@ class HeartFChatting:
             loop_start_time = time.time()
             await self.relationship_builder.build_relation()
 
+            available_actions = {}
+
             # 第一步：动作修改
             with Timer("动作修改", cycle_timers):
                 try:

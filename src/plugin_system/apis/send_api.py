@@ -114,7 +114,11 @@ async def _send_to_target(
 
         # 发送消息
         sent_msg = await heart_fc_sender.send_message(
-            bot_message, typing=typing, set_reply=(anchor_message is not None), storage_message=storage_message, show_log=show_log
+            bot_message,
+            typing=typing,
+            set_reply=(anchor_message is not None),
+            storage_message=storage_message,
+            show_log=show_log,
         )
 
         if sent_msg:
@@ -363,7 +367,9 @@ async def custom_to_stream(
     Returns:
         bool: 是否发送成功
     """
-    return await _send_to_target(message_type, content, stream_id, display_message, typing, reply_to, storage_message, show_log)
+    return await _send_to_target(
+        message_type, content, stream_id, display_message, typing, reply_to, storage_message, show_log
+    )
 
 
 async def text_to_group(
