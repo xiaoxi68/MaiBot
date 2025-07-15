@@ -23,6 +23,7 @@ def find_messages(
     limit: int = 0,
     limit_mode: str = "latest",
     filter_bot=False,
+    filter_command=False,
 ) -> List[dict[str, Any]]:
     """
     根据提供的过滤器、排序和限制条件查找消息。
@@ -74,6 +75,9 @@ def find_messages(
 
         if filter_bot:
             query = query.where(Messages.user_id != global_config.bot.qq_account)
+
+        if filter_command:
+            query = query.where(Messages.is_command == False)
 
         if limit > 0:
             if limit_mode == "earliest":

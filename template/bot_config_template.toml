@@ -48,6 +48,7 @@ expression_groups = [
 enable_relationship = true # 是否启用关系系统
 relation_frequency = 1 # 关系频率，麦麦构建关系的频率
 
+
 [chat] #麦麦的聊天通用设置
 focus_value = 1 
 # 麦麦的专注思考能力，越低越容易专注，消耗token也越多

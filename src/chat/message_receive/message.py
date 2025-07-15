@@ -107,6 +107,9 @@ class MessageRecv(Message):
         self.is_picid = False
         self.has_picid = False
         self.is_mentioned = None
+        
+        self.is_command = False
+        
         self.priority_mode = "interest"
         self.priority_info = None
         self.interest_value: float = None  # type: ignore

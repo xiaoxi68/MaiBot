@@ -69,6 +69,7 @@ def get_messages_by_time_in_chat(
     limit: int = 0,
     limit_mode: str = "latest",
     filter_mai: bool = False,
+    filter_command: bool = False,
 ) -> List[Dict[str, Any]]:
     """
     获取指定聊天中指定时间范围内的消息
@@ -80,7 +81,7 @@ def get_messages_by_time_in_chat(
         limit: 限制返回的消息数量，0为不限制
         limit_mode: 当limit>0时生效，'earliest'表示获取最早的记录，'latest'表示获取最新的记录
         filter_mai: 是否过滤麦麦自身的消息，默认为False
-
+        filter_command: 是否过滤命令消息，默认为False
     Returns:
         List[Dict[str, Any]]: 消息列表
 
@@ -96,8 +97,8 @@ def get_messages_by_time_in_chat(
     if not isinstance(chat_id, str):
         raise ValueError("chat_id 必须是字符串类型")
     if filter_mai:
-        return filter_mai_messages(get_raw_msg_by_timestamp_with_chat(chat_id, start_time, end_time, limit, limit_mode))
-    return get_raw_msg_by_timestamp_with_chat(chat_id, start_time, end_time, limit, limit_mode)
+        return filter_mai_messages(get_raw_msg_by_timestamp_with_chat(chat_id, start_time, end_time, limit, limit_mode, filter_command))
+    return get_raw_msg_by_timestamp_with_chat(chat_id, start_time, end_time, limit, limit_mode, filter_command)
 
 
 def get_messages_by_time_in_chat_inclusive(
@@ -107,6 +108,7 @@ def get_messages_by_time_in_chat_inclusive(
     limit: int = 0,
     limit_mode: str = "latest",
     filter_mai: bool = False,
+    filter_command: bool = False,
 ) -> List[Dict[str, Any]]:
     """
     获取指定聊天中指定时间范围内的消息（包含边界）
@@ -135,9 +137,9 @@ def get_messages_by_time_in_chat_inclusive(
         raise ValueError("chat_id 必须是字符串类型")
     if filter_mai:
         return filter_mai_messages(
-            get_raw_msg_by_timestamp_with_chat_inclusive(chat_id, start_time, end_time, limit, limit_mode)
+            get_raw_msg_by_timestamp_with_chat_inclusive(chat_id, start_time, end_time, limit, limit_mode, filter_command)
         )
-    return get_raw_msg_by_timestamp_with_chat_inclusive(chat_id, start_time, end_time, limit, limit_mode)
+    return get_raw_msg_by_timestamp_with_chat_inclusive(chat_id, start_time, end_time, limit, limit_mode, filter_command)
 
 
 def get_messages_by_time_in_chat_for_users(

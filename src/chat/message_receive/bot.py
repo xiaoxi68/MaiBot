@@ -98,6 +98,7 @@ class ChatBot:
             # 使用新的组件注册中心查找命令
             command_result = component_registry.find_command_by_text(text)
             if command_result:
+                message.is_command = True
                 command_class, matched_groups, intercept_message, plugin_name = command_result
 
                 # 获取插件配置

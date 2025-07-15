@@ -79,7 +79,11 @@ class NoReplyAction(BaseAction):
 
                 # 1. 检查新消息
                 recent_messages_dict = message_api.get_messages_by_time_in_chat(
-                    chat_id=self.chat_id, start_time=start_time, end_time=current_time
+                    chat_id=self.chat_id,
+                    start_time=start_time,
+                    end_time=current_time,
+                    filter_mai=True,
+                    filter_command=True,
                 )
                 new_message_count = len(recent_messages_dict)
 

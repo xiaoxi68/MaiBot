@@ -161,7 +161,7 @@ class Messages(BaseModel):
     additional_config = TextField(null=True)
     is_emoji = BooleanField(default=False)
     is_picid = BooleanField(default=False)
-
+    is_command = BooleanField(default=False)
     class Meta:
         # database = db # 继承自 BaseModel
         table_name = "messages"
