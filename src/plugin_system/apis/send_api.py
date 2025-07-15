@@ -51,6 +51,7 @@ async def _send_to_target(
     typing: bool = False,
     reply_to: str = "",
     storage_message: bool = True,
+    show_log: bool = True,
 ) -> bool:
     """向指定目标发送消息的内部实现
 
@@ -66,7 +67,8 @@ async def _send_to_target(
         bool: 是否发送成功
     """
     try:
-        logger.debug(f"[SendAPI] 发送{message_type}消息到 {stream_id}")
+        if show_log:
+            logger.debug(f"[SendAPI] 发送{message_type}消息到 {stream_id}")
 
         # 查找目标聊天流
         target_stream = get_chat_manager().get_stream(stream_id)
@@ -112,7 +114,7 @@ async def _send_to_target(
 
         # 发送消息
         sent_msg = await heart_fc_sender.send_message(
-            bot_message, typing=typing, set_reply=(anchor_message is not None), storage_message=storage_message
+            bot_message, typing=typing, set_reply=(anchor_message is not None), storage_message=storage_message, show_log=show_log
         )
 
         if sent_msg:
@@ -345,6 +347,7 @@ async def custom_to_stream(
     typing: bool = False,
     reply_to: str = "",
     storage_message: bool = True,
+    show_log: bool = True,
 ) -> bool:
     """向指定流发送自定义类型消息
 
@@ -356,11 +359,11 @@ async def custom_to_stream(
         typing: 是否显示正在输入
         reply_to: 回复消息，格式为"发送者:消息内容"
         storage_message: 是否存储消息到数据库
-
+        show_log: 是否显示日志
     Returns:
         bool: 是否发送成功
     """
-    return await _send_to_target(message_type, content, stream_id, display_message, typing, reply_to, storage_message)
+    return await _send_to_target(message_type, content, stream_id, display_message, typing, reply_to, storage_message, show_log)
 
 
 async def text_to_group(

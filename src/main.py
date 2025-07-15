@@ -2,29 +2,25 @@ import asyncio
 import time
 from maim_message import MessageServer
 
-from src.chat.express.exprssion_learner import get_expression_learner
+from src.chat.express.expression_learner import get_expression_learner
 from src.common.remote import TelemetryHeartBeatTask
 from src.manager.async_task_manager import async_task_manager
 from src.chat.utils.statistic import OnlineTimeRecordTask, StatisticOutputTask
-from src.manager.mood_manager import MoodPrintTask, MoodUpdateTask
 from src.chat.emoji_system.emoji_manager import get_emoji_manager
-from src.chat.normal_chat.willing.willing_manager import get_willing_manager
+from src.chat.willing.willing_manager import get_willing_manager
 from src.chat.message_receive.chat_stream import get_chat_manager
-from src.chat.message_receive.normal_message_sender import message_manager
 from src.chat.message_receive.storage import MessageStorage
 from src.config.config import global_config
 from src.chat.message_receive.bot import chat_bot
 from src.common.logger import get_logger
 from src.individuality.individuality import get_individuality, Individuality
 from src.common.server import get_global_server, Server
+from src.mood.mood_manager import mood_manager
 from rich.traceback import install
 # from src.api.main import start_api_server
 
 # 导入新的插件管理器
 from src.plugin_system.core.plugin_manager import plugin_manager
-
-# 导入HFC性能记录器用于日志清理
-from src.chat.focus_chat.hfc_performance_logger import HFCPerformanceLogger
 
 # 导入消息API和traceback模块
 from src.common.message import get_global_api
@@ -69,11 +65,6 @@ class MainSystem:
         """初始化其他组件"""
         init_start_time = time.time()
 
-        # 清理HFC旧日志文件（保持目录大小在50MB以内）
-        logger.info("开始清理HFC旧日志文件...")
-        HFCPerformanceLogger.cleanup_old_logs(max_size_mb=50.0)
-        logger.info("HFC日志清理完成")
-
         # 添加在线时间统计任务
         await async_task_manager.add_task(OnlineTimeRecordTask())
 
@@ -95,17 +86,14 @@ class MainSystem:
         get_emoji_manager().initialize()
         logger.info("表情包管理器初始化成功")
 
-        # 添加情绪衰减任务
-        await async_task_manager.add_task(MoodUpdateTask())
-        # 添加情绪打印任务
-        await async_task_manager.add_task(MoodPrintTask())
-
-        logger.info("情绪管理器初始化成功")
-
         # 启动愿望管理器
         await willing_manager.async_task_starter()
 
         logger.info("willing管理器初始化成功")
+
+        # 启动情绪管理器
+        await mood_manager.start()
+        logger.info("情绪管理器初始化成功")
 
         # 初始化聊天管理器
 
@@ -128,19 +116,10 @@ class MainSystem:
         self.app.register_message_handler(chat_bot.message_process)
 
         # 初始化个体特征
-        await self.individuality.initialize(
-            bot_nickname=global_config.bot.nickname,
-            personality_core=global_config.personality.personality_core,
-            personality_sides=global_config.personality.personality_sides,
-            identity_detail=global_config.identity.identity_detail,
-        )
+        await self.individuality.initialize()
         logger.info("个体特征初始化成功")
 
         try:
-            # 启动全局消息管理器 (负责消息发送/排队)
-            await message_manager.start()
-            logger.info("全局消息管理器启动成功")
-
             init_time = int(1000 * (time.time() - init_start_time))
             logger.info(f"初始化完成，神经元放电{init_time}次")
         except Exception as e:

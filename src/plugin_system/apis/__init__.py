@@ -16,6 +16,7 @@ from src.plugin_system.apis import (
     person_api,
     send_api,
     utils_api,
+    plugin_register_api,
 )
 
 # 导出所有API模块，使它们可以通过 apis.xxx 方式访问
@@ -30,4 +31,5 @@ __all__ = [
     "person_api",
     "send_api",
     "utils_api",
+    "plugin_register_api",
 ]

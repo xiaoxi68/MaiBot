@@ -1,8 +1,8 @@
 import time
 import heapq
 import math
-from typing import List, Dict, Optional
-from ..message_receive.message import MessageRecv
+import json
+from typing import List, Optional
 from src.common.logger import get_logger
 
 logger = get_logger("normal_chat")
@@ -11,8 +11,8 @@ logger = get_logger("normal_chat")
 class PrioritizedMessage:
     """带有优先级的消息对象"""
 
-    def __init__(self, message: MessageRecv, interest_scores: List[float], is_vip: bool = False):
-        self.message = message
+    def __init__(self, message_data: dict, interest_scores: List[float], is_vip: bool = False):
+        self.message_data = message_data
         self.arrival_time = time.time()
         self.interest_scores = interest_scores
         self.is_vip = is_vip
@@ -25,8 +25,7 @@ class PrioritizedMessage:
         """
         age = time.time() - self.arrival_time
         decay_factor = math.exp(-decay_rate * age)
-        priority = sum(self.interest_scores) + decay_factor
-        return priority
+        return sum(self.interest_scores) + decay_factor
 
     def __lt__(self, other: "PrioritizedMessage") -> bool:
         """用于堆排序的比较函数，我们想要一个最大堆，所以用 >"""
@@ -38,25 +37,28 @@ class PriorityManager:
     管理消息队列，根据优先级选择消息进行处理。
     """
 
-    def __init__(self, interest_dict: Dict[str, float], normal_queue_max_size: int = 5):
+    def __init__(self, normal_queue_max_size: int = 5):
         self.vip_queue: List[PrioritizedMessage] = []  # VIP 消息队列 (最大堆)
         self.normal_queue: List[PrioritizedMessage] = []  # 普通消息队列 (最大堆)
-        self.interest_dict = interest_dict if interest_dict is not None else {}
         self.normal_queue_max_size = normal_queue_max_size
 
-    def _get_interest_score(self, user_id: str) -> float:
-        """获取用户的兴趣分，默认为1.0"""
-        return self.interest_dict.get("interests", {}).get(user_id, 1.0)
-
-    def add_message(self, message: MessageRecv, interest_score: Optional[float] = None):
+    def add_message(self, message_data: dict, interest_score: float = 0):
         """
         添加新消息到合适的队列中。
         """
-        user_id = message.message_info.user_info.user_id
-        is_vip = message.priority_info.get("message_type") == "vip" if message.priority_info else False
-        message_priority = message.priority_info.get("message_priority", 0.0) if message.priority_info else 0.0
+        user_id = message_data.get("user_id")
 
-        p_message = PrioritizedMessage(message, [interest_score, message_priority], is_vip)
+        priority_info_raw = message_data.get("priority_info")
+        priority_info = {}
+        if isinstance(priority_info_raw, str):
+            priority_info = json.loads(priority_info_raw)
+        elif isinstance(priority_info_raw, dict):
+            priority_info = priority_info_raw
+
+        is_vip = priority_info.get("message_type") == "vip"
+        message_priority = priority_info.get("message_priority", 0.0)
+
+        p_message = PrioritizedMessage(message_data, [interest_score, message_priority], is_vip)
 
         if is_vip:
             heapq.heappush(self.vip_queue, p_message)
@@ -75,7 +77,7 @@ class PriorityManager:
                     f"消息来自普通用户 {user_id}, 已添加到普通队列. 当前普通队列长度: {len(self.normal_queue)}"
                 )
 
-    def get_highest_priority_message(self) -> Optional[MessageRecv]:
+    def get_highest_priority_message(self) -> Optional[dict]:
         """
         从VIP和普通队列中获取当前最高优先级的消息。
         """
@@ -93,9 +95,9 @@ class PriorityManager:
         normal_msg = self.normal_queue[0] if self.normal_queue else None
 
         if vip_msg:
-            return heapq.heappop(self.vip_queue).message
+            return heapq.heappop(self.vip_queue).message_data
         elif normal_msg:
-            return heapq.heappop(self.normal_queue).message
+            return heapq.heappop(self.normal_queue).message_data
         else:
             return None
 

@@ -2,12 +2,13 @@ import time
 import traceback
 import os
 import pickle
-from typing import List, Dict
+import random
+from typing import List, Dict, Any
 from src.config.config import global_config
 from src.common.logger import get_logger
-from src.chat.message_receive.chat_stream import get_chat_manager
 from src.person_info.relationship_manager import get_relationship_manager
 from src.person_info.person_info import get_person_info_manager, PersonInfoManager
+from src.chat.message_receive.chat_stream import get_chat_manager
 from src.chat.utils.chat_message_builder import (
     get_raw_msg_by_timestamp_with_chat,
     get_raw_msg_by_timestamp_with_chat_inclusive,
@@ -20,10 +21,12 @@ logger = get_logger("relationship_builder")
 # 消息段清理配置
 SEGMENT_CLEANUP_CONFIG = {
     "enable_cleanup": True,  # 是否启用清理
-    "max_segment_age_days": 7,  # 消息段最大保存天数
+    "max_segment_age_days": 3,  # 消息段最大保存天数
     "max_segments_per_user": 10,  # 每用户最大消息段数
-    "cleanup_interval_hours": 1,  # 清理间隔（小时）
+    "cleanup_interval_hours": 0.5,  # 清理间隔（小时）
 }
+
+MAX_MESSAGE_COUNT = 80 / global_config.relationship.relation_frequency
 
 
 class RelationshipBuilder:
@@ -42,7 +45,7 @@ class RelationshipBuilder:
         self.chat_id = chat_id
         # 新的消息段缓存结构：
         # {person_id: [{"start_time": float, "end_time": float, "last_msg_time": float, "message_count": int}, ...]}
-        self.person_engaged_cache: Dict[str, List[Dict[str, any]]] = {}
+        self.person_engaged_cache: Dict[str, List[Dict[str, Any]]] = {}
 
         # 持久化存储文件路径
         self.cache_file_path = os.path.join("data", "relationship", f"relationship_cache_{self.chat_id}.pkl")
@@ -207,11 +210,7 @@ class RelationshipBuilder:
         if person_id not in self.person_engaged_cache:
             return 0
 
-        total_count = 0
-        for segment in self.person_engaged_cache[person_id]:
-            total_count += segment["message_count"]
-
-        return total_count
+        return sum(segment["message_count"] for segment in self.person_engaged_cache[person_id])
 
     def _cleanup_old_segments(self) -> bool:
         """清理老旧的消息段"""
@@ -286,7 +285,7 @@ class RelationshipBuilder:
         self.last_cleanup_time = current_time
 
         # 保存缓存
-        if cleanup_stats["segments_removed"] > 0 or len(users_to_remove) > 0:
+        if cleanup_stats["segments_removed"] > 0 or users_to_remove:
             self._save_cache()
             logger.info(
                 f"{self.log_prefix} 清理完成 - 影响用户: {cleanup_stats['users_cleaned']}, 移除消息段: {cleanup_stats['segments_removed']}, 移除用户: {len(users_to_remove)}"
@@ -310,6 +309,7 @@ class RelationshipBuilder:
         return False
 
     def get_cache_status(self) -> str:
+        # sourcery skip: merge-list-append, merge-list-appends-into-extend
         """获取缓存状态信息，用于调试和监控"""
         if not self.person_engaged_cache:
             return f"{self.log_prefix} 关系缓存为空"
@@ -330,7 +330,7 @@ class RelationshipBuilder:
         for person_id, segments in self.person_engaged_cache.items():
             total_count = self._get_total_message_count(person_id)
             status_lines.append(f"用户 {person_id}:")
-            status_lines.append(f"  总消息数：{total_count} ({total_count}/45)")
+            status_lines.append(f"  总消息数：{total_count} ({total_count}/60)")
             status_lines.append(f"  消息段数：{len(segments)}")
 
             for i, segment in enumerate(segments):
@@ -354,13 +354,12 @@ class RelationshipBuilder:
         self._cleanup_old_segments()
         current_time = time.time()
 
-        latest_messages = get_raw_msg_by_timestamp_with_chat(
+        if latest_messages := get_raw_msg_by_timestamp_with_chat(
             self.chat_id,
             self.last_processed_message_time,
             current_time,
             limit=50,  # 获取自上次处理后的消息
-        )
-        if latest_messages:
+        ):
             # 处理所有新的非bot消息
             for latest_msg in latest_messages:
                 user_id = latest_msg.get("user_id")
@@ -384,7 +383,7 @@ class RelationshipBuilder:
         users_to_build_relationship = []
         for person_id, segments in self.person_engaged_cache.items():
             total_message_count = self._get_total_message_count(person_id)
-            if total_message_count >= 45:
+            if total_message_count >= MAX_MESSAGE_COUNT:
                 users_to_build_relationship.append(person_id)
                 logger.debug(
                     f"{self.log_prefix} 用户 {person_id} 满足关系构建条件，总消息数：{total_message_count}，消息段数：{len(segments)}"
@@ -392,7 +391,7 @@ class RelationshipBuilder:
             elif total_message_count > 0:
                 # 记录进度信息
                 logger.debug(
-                    f"{self.log_prefix} 用户 {person_id} 进度：{total_message_count}/45 条消息，{len(segments)} 个消息段"
+                    f"{self.log_prefix} 用户 {person_id} 进度：{total_message_count}60 条消息，{len(segments)} 个消息段"
                 )
 
         # 2. 为满足条件的用户构建关系
@@ -411,13 +410,30 @@ class RelationshipBuilder:
     # 负责触发关系构建、整合消息段、更新用户印象
     # ================================
 
-    async def update_impression_on_segments(self, person_id: str, chat_id: str, segments: List[Dict[str, any]]):
+    async def update_impression_on_segments(self, person_id: str, chat_id: str, segments: List[Dict[str, Any]]):
         """基于消息段更新用户印象"""
-        logger.debug(f"开始为 {person_id} 基于 {len(segments)} 个消息段更新印象")
+        original_segment_count = len(segments)
+        logger.debug(f"开始为 {person_id} 基于 {original_segment_count} 个消息段更新印象")
         try:
+            # 筛选要处理的消息段，每个消息段有10%的概率被丢弃
+            segments_to_process = [s for s in segments if random.random() >= 0.1]
+
+            # 如果所有消息段都被丢弃，但原来有消息段，则至少保留一个（最新的）
+            if not segments_to_process and segments:
+                segments.sort(key=lambda x: x["end_time"], reverse=True)
+                segments_to_process.append(segments[0])
+                logger.debug("随机丢弃了所有消息段，强制保留最新的一个以进行处理。")
+
+            dropped_count = original_segment_count - len(segments_to_process)
+            if dropped_count > 0:
+                logger.info(f"为 {person_id} 随机丢弃了 {dropped_count} / {original_segment_count} 个消息段")
+
             processed_messages = []
 
-            for i, segment in enumerate(segments):
+            # 对筛选后的消息段进行排序，确保时间顺序
+            segments_to_process.sort(key=lambda x: x["start_time"])
+
+            for segment in segments_to_process:
                 start_time = segment["start_time"]
                 end_time = segment["end_time"]
                 start_date = time.strftime("%Y-%m-%d %H:%M", time.localtime(start_time))
@@ -425,12 +441,12 @@ class RelationshipBuilder:
                 # 获取该段的消息（包含边界）
                 segment_messages = get_raw_msg_by_timestamp_with_chat_inclusive(self.chat_id, start_time, end_time)
                 logger.debug(
-                    f"消息段 {i + 1}: {start_date} - {time.strftime('%Y-%m-%d %H:%M', time.localtime(end_time))}, 消息数: {len(segment_messages)}"
+                    f"消息段: {start_date} - {time.strftime('%Y-%m-%d %H:%M', time.localtime(end_time))}, 消息数: {len(segment_messages)}"
                 )
 
                 if segment_messages:
-                    # 如果不是第一个消息段，在消息列表前添加间隔标识
-                    if i > 0:
+                    # 如果 processed_messages 不为空，说明这不是第一个被处理的消息段，在消息列表前添加间隔标识
+                    if processed_messages:
                         # 创建一个特殊的间隔消息
                         gap_message = {
                             "time": start_time - 0.1,  # 稍微早于段开始时间

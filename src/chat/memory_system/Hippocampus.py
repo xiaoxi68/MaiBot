@@ -42,7 +42,7 @@ def calculate_information_content(text):
     return entropy
 
 
-def cosine_similarity(v1, v2):
+def cosine_similarity(v1, v2):  # sourcery skip: assign-if-exp, reintroduce-else
     """计算余弦相似度"""
     dot_product = np.dot(v1, v2)
     norm1 = np.linalg.norm(v1)
@@ -89,14 +89,13 @@ class MemoryGraph:
                 if not isinstance(self.G.nodes[concept]["memory_items"], list):
                     self.G.nodes[concept]["memory_items"] = [self.G.nodes[concept]["memory_items"]]
                 self.G.nodes[concept]["memory_items"].append(memory)
-                # 更新最后修改时间
-                self.G.nodes[concept]["last_modified"] = current_time
             else:
                 self.G.nodes[concept]["memory_items"] = [memory]
                 # 如果节点存在但没有memory_items,说明是第一次添加memory,设置created_time
                 if "created_time" not in self.G.nodes[concept]:
                     self.G.nodes[concept]["created_time"] = current_time
-                self.G.nodes[concept]["last_modified"] = current_time
+            # 更新最后修改时间
+            self.G.nodes[concept]["last_modified"] = current_time
         else:
             # 如果是新节点,创建新的记忆列表
             self.G.add_node(
@@ -108,11 +107,7 @@ class MemoryGraph:
 
     def get_dot(self, concept):
         # 检查节点是否存在于图中
-        if concept in self.G:
-            # 从图中获取节点数据
-            node_data = self.G.nodes[concept]
-            return concept, node_data
-        return None
+        return (concept, self.G.nodes[concept]) if concept in self.G else None
 
     def get_related_item(self, topic, depth=1):
         if topic not in self.G:
@@ -139,8 +134,7 @@ class MemoryGraph:
         if depth >= 2:
             # 获取相邻节点的记忆项
             for neighbor in neighbors:
-                node_data = self.get_dot(neighbor)
-                if node_data:
+                if node_data := self.get_dot(neighbor):
                     concept, data = node_data
                     if "memory_items" in data:
                         memory_items = data["memory_items"]
@@ -194,9 +188,9 @@ class MemoryGraph:
 class Hippocampus:
     def __init__(self):
         self.memory_graph = MemoryGraph()
-        self.model_summary = None
-        self.entorhinal_cortex = None
-        self.parahippocampal_gyrus = None
+        self.model_summary: LLMRequest = None  # type: ignore
+        self.entorhinal_cortex: EntorhinalCortex = None  # type: ignore
+        self.parahippocampal_gyrus: ParahippocampalGyrus = None  # type: ignore
 
     def initialize(self):
         # 初始化子组件
@@ -205,7 +199,7 @@ class Hippocampus:
         # 从数据库加载记忆图
         self.entorhinal_cortex.sync_memory_from_db()
         # TODO: API-Adapter修改标记
-        self.model_summary = LLMRequest(global_config.model.memory_summary, request_type="memory")
+        self.model_summary = LLMRequest(global_config.model.memory, request_type="memory.builder")
 
     def get_all_node_names(self) -> list:
         """获取记忆图中所有节点的名字列表"""
@@ -218,7 +212,7 @@ class Hippocampus:
             memory_items = [memory_items] if memory_items else []
 
         # 使用集合来去重，避免排序
-        unique_items = set(str(item) for item in memory_items)
+        unique_items = {str(item) for item in memory_items}
         # 使用frozenset来保证顺序一致性
         content = f"{concept}:{frozenset(unique_items)}"
         return hash(content)
@@ -231,6 +225,7 @@ class Hippocampus:
 
     @staticmethod
     def find_topic_llm(text, topic_num):
+        # sourcery skip: inline-immediately-returned-variable
         prompt = (
             f"这是一段文字：\n{text}\n\n请你从这段话中总结出最多{topic_num}个关键的概念，可以是名词，动词，或者特定人物，帮我列出来，"
             f"将主题用逗号隔开，并加上<>,例如<主题1>,<主题2>......尽可能精简。只需要列举最多{topic_num}个话题就好，不要有序号，不要告诉我其他内容。"
@@ -240,6 +235,7 @@ class Hippocampus:
 
     @staticmethod
     def topic_what(text, topic):
+        # sourcery skip: inline-immediately-returned-variable
         # 不再需要 time_info 参数
         prompt = (
             f'这是一段文字：\n{text}\n\n我想让你基于这段文字来概括"{topic}"这个概念，帮我总结成一句自然的话，'
@@ -480,9 +476,7 @@ class Hippocampus:
                 top_memories = memory_similarities[:max_memory_length]
 
                 # 添加到结果中
-                for memory, similarity in top_memories:
-                    all_memories.append((node, [memory], similarity))
-                    # logger.info(f"选中记忆: {memory} (相似度: {similarity:.2f})")
+                all_memories.extend((node, [memory], similarity) for memory, similarity in top_memories)
             else:
                 logger.info("节点没有记忆")
 
@@ -646,9 +640,7 @@ class Hippocampus:
                 top_memories = memory_similarities[:max_memory_length]
 
                 # 添加到结果中
-                for memory, similarity in top_memories:
-                    all_memories.append((node, [memory], similarity))
-                    # logger.info(f"选中记忆: {memory} (相似度: {similarity:.2f})")
+                all_memories.extend((node, [memory], similarity) for memory, similarity in top_memories)
             else:
                 logger.info("节点没有记忆")
 
@@ -819,15 +811,15 @@ class EntorhinalCortex:
         timestamps = sample_scheduler.get_timestamp_array()
         # 使用 translate_timestamp_to_human_readable 并指定 mode="normal"
         readable_timestamps = [translate_timestamp_to_human_readable(ts, mode="normal") for ts in timestamps]
-        for _, readable_timestamp in zip(timestamps, readable_timestamps):
+        for _, readable_timestamp in zip(timestamps, readable_timestamps, strict=False):
             logger.debug(f"回忆往事: {readable_timestamp}")
         chat_samples = []
         for timestamp in timestamps:
-            # 调用修改后的 random_get_msg_snippet
-            messages = self.random_get_msg_snippet(
-                timestamp, global_config.memory.memory_build_sample_length, max_memorized_time_per_msg
-            )
-            if messages:
+            if messages := self.random_get_msg_snippet(
+                timestamp,
+                global_config.memory.memory_build_sample_length,
+                max_memorized_time_per_msg,
+            ):
                 time_diff = (datetime.datetime.now().timestamp() - timestamp) / 3600
                 logger.info(f"成功抽取 {time_diff:.1f} 小时前的消息样本，共{len(messages)}条")
                 chat_samples.append(messages)
@@ -838,31 +830,30 @@ class EntorhinalCortex:
 
     @staticmethod
     def random_get_msg_snippet(target_timestamp: float, chat_size: int, max_memorized_time_per_msg: int) -> list | None:
+        # sourcery skip: invert-any-all, use-any, use-named-expression, use-next
         """从数据库中随机获取指定时间戳附近的消息片段 (使用 chat_message_builder)"""
-        try_count = 0
         time_window_seconds = random.randint(300, 1800)  # 随机时间窗口，5到30分钟
 
-        while try_count < 3:
+        for _ in range(3):
             # 定义时间范围：从目标时间戳开始，向后推移 time_window_seconds
             timestamp_start = target_timestamp
             timestamp_end = target_timestamp + time_window_seconds
 
-            chosen_message = get_raw_msg_by_timestamp(
-                timestamp_start=timestamp_start, timestamp_end=timestamp_end, limit=1, limit_mode="earliest"
-            )
+            if chosen_message := get_raw_msg_by_timestamp(
+                timestamp_start=timestamp_start,
+                timestamp_end=timestamp_end,
+                limit=1,
+                limit_mode="earliest",
+            ):
+                chat_id: str = chosen_message[0].get("chat_id")  # type: ignore
 
-            if chosen_message:
-                chat_id = chosen_message[0].get("chat_id")
-
-                messages = get_raw_msg_by_timestamp_with_chat(
+                if messages := get_raw_msg_by_timestamp_with_chat(
                     timestamp_start=timestamp_start,
                     timestamp_end=timestamp_end,
                     limit=chat_size,
                     limit_mode="earliest",
                     chat_id=chat_id,
-                )
-
-                if messages:
+                ):
                     # 检查获取到的所有消息是否都未达到最大记忆次数
                     all_valid = True
                     for message in messages:
@@ -882,8 +873,6 @@ class EntorhinalCortex:
                             ).execute()
                         return messages  # 直接返回原始的消息列表
 
-            # 如果获取失败或消息无效，增加尝试次数
-            try_count += 1
             target_timestamp -= 120  # 如果第一次尝试失败，稍微向前调整时间戳再试
 
         # 三次尝试都失败，返回 None
@@ -975,7 +964,7 @@ class EntorhinalCortex:
                     ).execute()
 
         if nodes_to_delete:
-            GraphNodes.delete().where(GraphNodes.concept.in_(nodes_to_delete)).execute()
+            GraphNodes.delete().where(GraphNodes.concept.in_(nodes_to_delete)).execute()  # type: ignore
 
         # 处理边的信息
         db_edges = list(GraphEdges.select())
@@ -1075,19 +1064,17 @@ class EntorhinalCortex:
 
             try:
                 memory_items = [str(item) for item in memory_items]
-                memory_items_json = json.dumps(memory_items, ensure_ascii=False)
-                if not memory_items_json:
-                    continue
+                if memory_items_json := json.dumps(memory_items, ensure_ascii=False):
+                    nodes_data.append(
+                        {
+                            "concept": concept,
+                            "memory_items": memory_items_json,
+                            "hash": self.hippocampus.calculate_node_hash(concept, memory_items),
+                            "created_time": data.get("created_time", current_time),
+                            "last_modified": data.get("last_modified", current_time),
+                        }
+                    )
 
-                nodes_data.append(
-                    {
-                        "concept": concept,
-                        "memory_items": memory_items_json,
-                        "hash": self.hippocampus.calculate_node_hash(concept, memory_items),
-                        "created_time": data.get("created_time", current_time),
-                        "last_modified": data.get("last_modified", current_time),
-                    }
-                )
             except Exception as e:
                 logger.error(f"准备节点 {concept} 数据时发生错误: {e}")
                 continue
@@ -1114,7 +1101,7 @@ class EntorhinalCortex:
         node_start = time.time()
         if nodes_data:
             batch_size = 500  # 增加批量大小
-            with GraphNodes._meta.database.atomic():
+            with GraphNodes._meta.database.atomic():  # type: ignore
                 for i in range(0, len(nodes_data), batch_size):
                     batch = nodes_data[i : i + batch_size]
                     GraphNodes.insert_many(batch).execute()
@@ -1125,7 +1112,7 @@ class EntorhinalCortex:
         edge_start = time.time()
         if edges_data:
             batch_size = 500  # 增加批量大小
-            with GraphEdges._meta.database.atomic():
+            with GraphEdges._meta.database.atomic():  # type: ignore
                 for i in range(0, len(edges_data), batch_size):
                     batch = edges_data[i : i + batch_size]
                     GraphEdges.insert_many(batch).execute()
@@ -1279,7 +1266,7 @@ class ParahippocampalGyrus:
 
         # 3. 过滤掉包含禁用关键词的topic
         filtered_topics = [
-            topic for topic in topics if not any(keyword in topic for keyword in global_config.memory.memory_ban_words)
+            topic for topic in topics if all(keyword not in topic for keyword in global_config.memory.memory_ban_words)
         ]
 
         logger.debug(f"过滤后话题: {filtered_topics}")
@@ -1489,32 +1476,30 @@ class ParahippocampalGyrus:
             # --- 如果节点不为空，则执行原来的不活跃检查和随机移除逻辑 ---
             last_modified = node_data.get("last_modified", current_time)
             # 条件1：检查是否长时间未修改 (超过24小时)
-            if current_time - last_modified > 3600 * 24:
-                # 条件2：再次确认节点包含记忆项（理论上已确认，但作为保险）
-                if memory_items:
-                    current_count = len(memory_items)
-                    # 如果列表非空，才进行随机选择
-                    if current_count > 0:
-                        removed_item = random.choice(memory_items)
-                        try:
-                            memory_items.remove(removed_item)
+            if current_time - last_modified > 3600 * 24 and memory_items:
+                current_count = len(memory_items)
+                # 如果列表非空，才进行随机选择
+                if current_count > 0:
+                    removed_item = random.choice(memory_items)
+                    try:
+                        memory_items.remove(removed_item)
 
-                            # 条件3：检查移除后 memory_items 是否变空
-                            if memory_items:  # 如果移除后列表不为空
-                                # self.memory_graph.G.nodes[node]["memory_items"] = memory_items # 直接修改列表即可
-                                self.memory_graph.G.nodes[node]["last_modified"] = current_time  # 更新修改时间
-                                node_changes["reduced"].append(f"{node} (数量: {current_count} -> {len(memory_items)})")
-                            else:  # 如果移除后列表为空
-                                # 尝试移除节点，处理可能的错误
-                                try:
-                                    self.memory_graph.G.remove_node(node)
-                                    node_changes["removed"].append(f"{node}(遗忘清空)")  # 标记为遗忘清空
-                                    logger.debug(f"[遗忘] 节点 {node} 因移除最后一项而被清空。")
-                                except nx.NetworkXError as e:
-                                    logger.warning(f"[遗忘] 尝试移除节点 {node} 时发生错误（可能已被移除）：{e}")
-                        except ValueError:
-                            # 这个错误理论上不应发生，因为 removed_item 来自 memory_items
-                            logger.warning(f"[遗忘] 尝试从节点 '{node}' 移除不存在的项目 '{removed_item[:30]}...'")
+                        # 条件3：检查移除后 memory_items 是否变空
+                        if memory_items:  # 如果移除后列表不为空
+                            # self.memory_graph.G.nodes[node]["memory_items"] = memory_items # 直接修改列表即可
+                            self.memory_graph.G.nodes[node]["last_modified"] = current_time  # 更新修改时间
+                            node_changes["reduced"].append(f"{node} (数量: {current_count} -> {len(memory_items)})")
+                        else:  # 如果移除后列表为空
+                            # 尝试移除节点，处理可能的错误
+                            try:
+                                self.memory_graph.G.remove_node(node)
+                                node_changes["removed"].append(f"{node}(遗忘清空)")  # 标记为遗忘清空
+                                logger.debug(f"[遗忘] 节点 {node} 因移除最后一项而被清空。")
+                            except nx.NetworkXError as e:
+                                logger.warning(f"[遗忘] 尝试移除节点 {node} 时发生错误（可能已被移除）：{e}")
+                    except ValueError:
+                        # 这个错误理论上不应发生，因为 removed_item 来自 memory_items
+                        logger.warning(f"[遗忘] 尝试从节点 '{node}' 移除不存在的项目 '{removed_item[:30]}...'")
         node_check_end = time.time()
         logger.info(f"[遗忘] 节点检查耗时: {node_check_end - node_check_start:.2f}秒")
 
@@ -1669,7 +1654,7 @@ class ParahippocampalGyrus:
 
 class HippocampusManager:
     def __init__(self):
-        self._hippocampus = None
+        self._hippocampus: Hippocampus = None  # type: ignore
         self._initialized = False
 
     def initialize(self):

@@ -129,6 +129,9 @@ class Messages(BaseModel):
 
     reply_to = TextField(null=True)
 
+    interest_value = DoubleField(null=True)
+    is_mentioned = BooleanField(null=True)
+
     # 从 chat_info 扁平化而来的字段
     chat_info_stream_id = TextField()
     chat_info_platform = TextField()
@@ -152,6 +155,13 @@ class Messages(BaseModel):
     display_message = TextField(null=True)  # 显示的消息
     detailed_plain_text = TextField(null=True)  # 详细的纯文本消息
     memorized_times = IntegerField(default=0)  # 被记忆的次数
+
+    priority_mode = TextField(null=True)
+    priority_info = TextField(null=True)
+
+    additional_config = TextField(null=True)
+    is_emoji = BooleanField(default=False)
+    is_picid = BooleanField(default=False)
 
     class Meta:
         # database = db # 继承自 BaseModel
@@ -252,8 +262,7 @@ class PersonInfo(BaseModel):
     know_times = FloatField(null=True)  # 认识时间 (时间戳)
     know_since = FloatField(null=True)  # 首次印象总结时间
     last_know = FloatField(null=True)  # 最后一次印象总结时间
-    familiarity_value = IntegerField(null=True, default=0)  # 熟悉度，0-100，从完全陌生到非常熟悉
-    liking_value = IntegerField(null=True, default=50)  # 好感度，0-100，从非常厌恶到十分喜欢
+    attitude = IntegerField(null=True, default=50)  # 态度，0-100，从非常厌恶到十分喜欢
 
     class Meta:
         # database = db # 继承自 BaseModel
@@ -405,9 +414,7 @@ def initialize_database():
                 existing_columns = {row[1] for row in cursor.fetchall()}
                 model_fields = set(model._meta.fields.keys())
 
-                # 检查并添加缺失字段（原有逻辑）
-                missing_fields = model_fields - existing_columns
-                if missing_fields:
+                if missing_fields := model_fields - existing_columns:
                     logger.warning(f"表 '{table_name}' 缺失字段: {missing_fields}")
 
                 for field_name, field_obj in model._meta.fields.items():
@@ -423,10 +430,7 @@ def initialize_database():
                             "DateTimeField": "DATETIME",
                         }.get(field_type, "TEXT")
                         alter_sql = f"ALTER TABLE {table_name} ADD COLUMN {field_name} {sql_type}"
-                        if field_obj.null:
-                            alter_sql += " NULL"
-                        else:
-                            alter_sql += " NOT NULL"
+                        alter_sql += " NULL" if field_obj.null else " NOT NULL"
                         if hasattr(field_obj, "default") and field_obj.default is not None:
                             # 正确处理不同类型的默认值
                             default_value = field_obj.default

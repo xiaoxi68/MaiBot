@@ -1,15 +1,15 @@
-import logging
-
 # 使用基于时间戳的文件处理器，简单的轮转份数限制
-from pathlib import Path
-from typing import Callable, Optional
+
+import logging
 import json
 import threading
 import time
-from datetime import datetime, timedelta
-
 import structlog
 import toml
+
+from pathlib import Path
+from typing import Callable, Optional
+from datetime import datetime, timedelta
 
 # 创建logs目录
 LOG_DIR = Path("logs")
@@ -160,7 +160,7 @@ def close_handlers():
         _console_handler = None
 
 
-def remove_duplicate_handlers():
+def remove_duplicate_handlers():  # sourcery skip: for-append-to-extend, list-comprehension
     """移除重复的handler，特别是文件handler"""
     root_logger = logging.getLogger()
 
@@ -184,7 +184,7 @@ def remove_duplicate_handlers():
 
 
 # 读取日志配置
-def load_log_config():
+def load_log_config():  # sourcery skip: use-contextlib-suppress
     """从配置文件加载日志设置"""
     config_path = Path("config/bot_config.toml")
     default_config = {
@@ -321,14 +321,13 @@ MODULE_COLORS = {
     # 核心模块
     "main": "\033[1;97m",  # 亮白色+粗体 (主程序)
     "api": "\033[92m",  # 亮绿色
-    "emoji": "\033[92m",  # 亮绿色
+    "emoji": "\033[33m",  # 亮绿色
     "chat": "\033[92m",  # 亮蓝色
     "config": "\033[93m",  # 亮黄色
     "common": "\033[95m",  # 亮紫色
     "tools": "\033[96m",  # 亮青色
     "lpmm": "\033[96m",
     "plugin_system": "\033[91m",  # 亮红色
-    "experimental": "\033[97m",  # 亮白色
     "person_info": "\033[32m",  # 绿色
     "individuality": "\033[34m",  # 蓝色
     "manager": "\033[35m",  # 紫色
@@ -339,8 +338,7 @@ MODULE_COLORS = {
     "planner": "\033[36m",
     "memory": "\033[34m",
     "hfc": "\033[96m",
-    "base_action": "\033[96m",
-    "action_manager": "\033[32m",
+    "action_manager": "\033[38;5;166m",
     # 关系系统
     "relation": "\033[38;5;201m",  # 深粉色
     # 聊天相关模块
@@ -356,11 +354,9 @@ MODULE_COLORS = {
     "message_storage": "\033[38;5;33m",  # 深蓝色
     # 专注聊天模块
     "replyer": "\033[38;5;166m",  # 橙色
-    "expressor": "\033[38;5;172m",  # 黄橙色
-    "processor": "\033[38;5;184m",  # 黄绿色
     "base_processor": "\033[38;5;190m",  # 绿黄色
     "working_memory": "\033[38;5;22m",  # 深绿色
-    "memory_activator": "\033[38;5;28m",  # 绿色
+    "memory_activator": "\033[34m",  # 绿色
     # 插件系统
     "plugin_manager": "\033[38;5;208m",  # 红色
     "base_plugin": "\033[38;5;202m",  # 橙红色
@@ -369,7 +365,7 @@ MODULE_COLORS = {
     "component_registry": "\033[38;5;214m",  # 橙黄色
     "stream_api": "\033[38;5;220m",  # 黄色
     "config_api": "\033[38;5;226m",  # 亮黄色
-    "hearflow_api": "\033[38;5;154m",  # 黄绿色
+    "heartflow_api": "\033[38;5;154m",  # 黄绿色
     "action_apis": "\033[38;5;118m",  # 绿色
     "independent_apis": "\033[38;5;82m",  # 绿色
     "llm_api": "\033[38;5;46m",  # 亮绿色
@@ -386,11 +382,9 @@ MODULE_COLORS = {
     "tool_executor": "\033[38;5;64m",  # 深绿色
     "base_tool": "\033[38;5;70m",  # 绿色
     # 工具和实用模块
-    "prompt": "\033[38;5;99m",  # 紫色
     "prompt_build": "\033[38;5;105m",  # 紫色
     "chat_utils": "\033[38;5;111m",  # 蓝色
     "chat_image": "\033[38;5;117m",  # 浅蓝色
-    "typo_gen": "\033[38;5;123m",  # 青绿色
     "maibot_statistic": "\033[38;5;129m",  # 紫色
     # 特殊功能插件
     "mute_plugin": "\033[38;5;240m",  # 灰色
@@ -402,16 +396,13 @@ MODULE_COLORS = {
     # 数据库和消息
     "database_model": "\033[38;5;94m",  # 橙褐色
     "maim_message": "\033[38;5;100m",  # 绿褐色
-    # 实验性模块
-    "pfc": "\033[38;5;252m",  # 浅灰色
     # 日志系统
     "logger": "\033[38;5;8m",  # 深灰色
-    "demo": "\033[38;5;15m",  # 白色
     "confirm": "\033[1;93m",  # 黄色+粗体
     # 模型相关
     "model_utils": "\033[38;5;164m",  # 紫红色
     "relationship_fetcher": "\033[38;5;170m",  # 浅紫色
-    "relationship_builder": "\033[38;5;117m",  # 浅蓝色
+    "relationship_builder": "\033[38;5;93m",  # 浅蓝色
 }
 
 RESET_COLOR = "\033[0m"
@@ -421,6 +412,7 @@ class ModuleColoredConsoleRenderer:
     """自定义控制台渲染器，为不同模块提供不同颜色"""
 
     def __init__(self, colors=True):
+        # sourcery skip: merge-duplicate-blocks, remove-redundant-if
         self._colors = colors
         self._config = LOG_CONFIG
 
@@ -452,6 +444,7 @@ class ModuleColoredConsoleRenderer:
             self._enable_full_content_colors = False
 
     def __call__(self, logger, method_name, event_dict):
+        # sourcery skip: merge-duplicate-blocks
         """渲染日志消息"""
         # 获取基本信息
         timestamp = event_dict.get("timestamp", "")
@@ -671,7 +664,7 @@ def get_logger(name: Optional[str]) -> structlog.stdlib.BoundLogger:
     """获取logger实例，支持按名称绑定"""
     if name is None:
         return raw_logger
-    logger = binds.get(name)
+    logger = binds.get(name)  # type: ignore
     if logger is None:
         logger: structlog.stdlib.BoundLogger = structlog.get_logger(name).bind(logger_name=name)
         binds[name] = logger
@@ -680,8 +673,8 @@ def get_logger(name: Optional[str]) -> structlog.stdlib.BoundLogger:
 
 def configure_logging(
     level: str = "INFO",
-    console_level: str = None,
-    file_level: str = None,
+    console_level: Optional[str] = None,
+    file_level: Optional[str] = None,
     max_bytes: int = 5 * 1024 * 1024,
     backup_count: int = 30,
     log_dir: str = "logs",
@@ -738,14 +731,11 @@ def reload_log_config():
     global LOG_CONFIG
     LOG_CONFIG = load_log_config()
 
-    # 重新设置handler的日志级别
-    file_handler = get_file_handler()
-    if file_handler:
+    if file_handler := get_file_handler():
         file_level = LOG_CONFIG.get("file_log_level", LOG_CONFIG.get("log_level", "INFO"))
         file_handler.setLevel(getattr(logging, file_level.upper(), logging.INFO))
 
-    console_handler = get_console_handler()
-    if console_handler:
+    if console_handler := get_console_handler():
         console_level = LOG_CONFIG.get("console_log_level", LOG_CONFIG.get("log_level", "INFO"))
         console_handler.setLevel(getattr(logging, console_level.upper(), logging.INFO))
 
@@ -789,8 +779,7 @@ def set_console_log_level(level: str):
     global LOG_CONFIG
     LOG_CONFIG["console_log_level"] = level.upper()
 
-    console_handler = get_console_handler()
-    if console_handler:
+    if console_handler := get_console_handler():
         console_handler.setLevel(getattr(logging, level.upper(), logging.INFO))
 
     # 重新设置root logger级别
@@ -809,8 +798,7 @@ def set_file_log_level(level: str):
     global LOG_CONFIG
     LOG_CONFIG["file_log_level"] = level.upper()
 
-    file_handler = get_file_handler()
-    if file_handler:
+    if file_handler := get_file_handler():
         file_handler.setLevel(getattr(logging, level.upper(), logging.INFO))
 
     # 重新设置root logger级别
@@ -942,13 +930,12 @@ def format_json_for_logging(data, indent=2, ensure_ascii=False):
     Returns:
         str: 格式化后的JSON字符串
     """
-    if isinstance(data, str):
-        # 如果是JSON字符串，先解析再格式化
-        parsed_data = json.loads(data)
-        return json.dumps(parsed_data, indent=indent, ensure_ascii=ensure_ascii)
-    else:
+    if not isinstance(data, str):
         # 如果是对象，直接格式化
         return json.dumps(data, indent=indent, ensure_ascii=ensure_ascii)
+    # 如果是JSON字符串，先解析再格式化
+    parsed_data = json.loads(data)
+    return json.dumps(parsed_data, indent=indent, ensure_ascii=ensure_ascii)
 
 
 def cleanup_old_logs():

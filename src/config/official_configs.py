@@ -1,6 +1,7 @@
-from dataclasses import dataclass, field
-from typing import Any, Literal
 import re
+
+from dataclasses import dataclass, field
+from typing import Any, Literal, Optional
 
 from src.config.config_base import ConfigBase
 
@@ -34,21 +35,16 @@ class PersonalityConfig(ConfigBase):
     personality_core: str
     """核心人格"""
 
-    personality_sides: list[str] = field(default_factory=lambda: [])
+    personality_side: str
     """人格侧写"""
+        
+    identity: str = ""
+    """身份特征"""
 
     compress_personality: bool = True
     """是否压缩人格，压缩后会精简人格信息，节省token消耗并提高回复性能，但是会丢失一些信息，如果人设不长，可以关闭"""
 
-
-@dataclass
-class IdentityConfig(ConfigBase):
-    """个体特征配置类"""
-
-    identity_detail: list[str] = field(default_factory=lambda: [])
-    """身份特征"""
-
-    compress_indentity: bool = True
+    compress_identity: bool = True
     """是否压缩身份，压缩后会精简身份信息，节省token消耗并提高回复性能，但是会丢失一些信息，如果不长，可以关闭"""
 
 
@@ -57,23 +53,15 @@ class RelationshipConfig(ConfigBase):
     """关系配置类"""
 
     enable_relationship: bool = True
-
-    give_name: bool = False
-    """是否给其他人取名"""
-
-    build_relationship_interval: int = 600
-    """构建关系间隔 单位秒，如果为0则不构建关系"""
+    """是否启用关系系统"""
 
     relation_frequency: int = 1
-    """关系频率，麦麦构建关系的速度，仅在normal_chat模式下有效"""
+    """关系频率，麦麦构建关系的速度"""
 
 
 @dataclass
 class ChatConfig(ConfigBase):
     """聊天配置类"""
-
-    chat_mode: str = "normal"
-    """聊天模式"""
 
     max_context_size: int = 18
     """上下文长度"""
@@ -89,6 +77,9 @@ class ChatConfig(ConfigBase):
 
     talk_frequency: float = 1
     """回复频率阈值"""
+
+    use_s4u_prompt_mode: bool = False
+    """是否使用 s4u 对话构建模式，该模式会分开处理当前对话对象和其他所有对话的内容进行 prompt 构建"""
 
     # 修改：基于时段的回复频率配置，改为数组格式
     time_based_talk_frequency: list[str] = field(default_factory=lambda: [])
@@ -112,13 +103,11 @@ class ChatConfig(ConfigBase):
     表示从该时间开始使用该频率，直到下一个时间点
     """
 
-    auto_focus_threshold: float = 1.0
-    """自动切换到专注聊天的阈值，越低越容易进入专注聊天"""
+    focus_value: float = 1.0
+    """麦麦的专注思考能力，越低越容易专注，消耗token也越多"""
 
-    exit_focus_threshold: float = 1.0
-    """自动退出专注聊天的阈值，越低越容易退出专注聊天"""
 
-    def get_current_talk_frequency(self, chat_stream_id: str = None) -> float:
+    def get_current_talk_frequency(self, chat_stream_id: Optional[str] = None) -> float:
         """
         根据当前时间和聊天流获取对应的 talk_frequency
 
@@ -143,7 +132,7 @@ class ChatConfig(ConfigBase):
         # 如果都没有匹配，返回默认值
         return self.talk_frequency
 
-    def _get_time_based_frequency(self, time_freq_list: list[str]) -> float:
+    def _get_time_based_frequency(self, time_freq_list: list[str]) -> Optional[float]:
         """
         根据时间配置列表获取当前时段的频率
 
@@ -191,7 +180,7 @@ class ChatConfig(ConfigBase):
 
         return current_frequency
 
-    def _get_stream_specific_frequency(self, chat_stream_id: str) -> float:
+    def _get_stream_specific_frequency(self, chat_stream_id: str):
         """
         获取特定聊天流在当前时间的频率
 
@@ -222,7 +211,7 @@ class ChatConfig(ConfigBase):
 
         return None
 
-    def _parse_stream_config_to_chat_id(self, stream_config_str: str) -> str:
+    def _parse_stream_config_to_chat_id(self, stream_config_str: str) -> Optional[str]:
         """
         解析流配置字符串并生成对应的 chat_id
 
@@ -257,7 +246,6 @@ class ChatConfig(ConfigBase):
         except (ValueError, IndexError):
             return None
 
-
 @dataclass
 class MessageReceiveConfig(ConfigBase):
     """消息接收配置类"""
@@ -285,19 +273,7 @@ class NormalChatConfig(ConfigBase):
     at_bot_inevitable_reply: bool = False
     """@bot 必然回复"""
 
-    enable_planner: bool = False
-    """是否启用动作规划器"""
 
-
-@dataclass
-class FocusChatConfig(ConfigBase):
-    """专注聊天配置类"""
-
-    think_interval: float = 1
-    """思考间隔（秒）"""
-
-    consecutive_replies: float = 1
-    """连续回复能力，值越高，麦麦连续回复的概率越高"""
 
 
 @dataclass
@@ -534,9 +510,6 @@ class TelemetryConfig(ConfigBase):
 class DebugConfig(ConfigBase):
     """调试配置类"""
 
-    debug_show_chat_mode: bool = False
-    """是否在回复后显示当前聊天模式"""
-
     show_prompt: bool = False
     """是否显示prompt"""
 
@@ -637,14 +610,14 @@ class ModelConfig(ConfigBase):
     replyer_2: dict[str, Any] = field(default_factory=lambda: {})
     """normal_chat次要回复模型配置"""
 
-    memory_summary: dict[str, Any] = field(default_factory=lambda: {})
-    """记忆的概括模型配置"""
+    memory: dict[str, Any] = field(default_factory=lambda: {})
+    """记忆模型配置"""
+
+    emotion: dict[str, Any] = field(default_factory=lambda: {})
+    """情绪模型配置"""
 
     vlm: dict[str, Any] = field(default_factory=lambda: {})
     """视觉语言模型配置"""
-
-    focus_working_memory: dict[str, Any] = field(default_factory=lambda: {})
-    """专注工作记忆模型配置"""
 
     tool_use: dict[str, Any] = field(default_factory=lambda: {})
     """专注工具使用模型配置"""
@@ -652,17 +625,5 @@ class ModelConfig(ConfigBase):
     planner: dict[str, Any] = field(default_factory=lambda: {})
     """规划模型配置"""
 
-    relation: dict[str, Any] = field(default_factory=lambda: {})
-    """关系模型配置"""
-
     embedding: dict[str, Any] = field(default_factory=lambda: {})
     """嵌入模型配置"""
-
-    pfc_action_planner: dict[str, Any] = field(default_factory=lambda: {})
-    """PFC动作规划模型配置"""
-
-    pfc_chat: dict[str, Any] = field(default_factory=lambda: {})
-    """PFC聊天模型配置"""
-
-    pfc_reply_checker: dict[str, Any] = field(default_factory=lambda: {})
-    """PFC回复检查模型配置"""

@@ -7,10 +7,10 @@ import math
 import os
 import random
 import time
+import jieba
+
 from collections import defaultdict
 from pathlib import Path
-
-import jieba
 from pypinyin import Style, pinyin
 
 from src.common.logger import get_logger
@@ -104,7 +104,7 @@ class ChineseTypoGenerator:
         try:
             return "\u4e00" <= char <= "\u9fff"
         except Exception as e:
-            logger.debug(e)
+            logger.debug(str(e))
             return False
 
     def _get_pinyin(self, sentence):
@@ -138,7 +138,7 @@ class ChineseTypoGenerator:
         # 如果最后一个字符不是数字，说明可能是轻声或其他特殊情况
         if not py[-1].isdigit():
             # 为非数字结尾的拼音添加数字声调1
-            return py + "1"
+            return f"{py}1"
 
         base = py[:-1]  # 去掉声调
         tone = int(py[-1])  # 获取声调
@@ -363,7 +363,7 @@ class ChineseTypoGenerator:
             else:
                 # 处理多字词的单字替换
                 word_result = []
-                for _, (char, py) in enumerate(zip(word, word_pinyin)):
+                for _, (char, py) in enumerate(zip(word, word_pinyin, strict=False)):
                     # 词中的字替换概率降低
                     word_error_rate = self.error_rate * (0.7 ** (len(word) - 1))
 

@@ -1,14 +1,16 @@
 import time
 import random
+import json
+import os
+
 from typing import List, Dict, Optional, Any, Tuple
+
 from src.common.logger import get_logger
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.chat.utils.chat_message_builder import get_raw_msg_by_timestamp_random, build_anonymous_messages
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
-import os
 from src.chat.message_receive.chat_stream import get_chat_manager
-import json
 
 
 MAX_EXPRESSION_COUNT = 300
@@ -74,7 +76,8 @@ class ExpressionLearner:
         )
         self.llm_model = None
 
-    def get_expression_by_chat_id(self, chat_id: str) -> Tuple[List[Dict[str, str]], List[Dict[str, str]]]:
+    def get_expression_by_chat_id(self, chat_id: str) -> Tuple[List[Dict[str, float]], List[Dict[str, float]]]:
+        # sourcery skip: extract-duplicate-method, remove-unnecessary-cast
         """
         获取指定chat_id的style和grammar表达方式
         返回的每个表达方式字典中都包含了source_id, 用于后续的更新操作
@@ -119,10 +122,10 @@ class ExpressionLearner:
         min_len = min(len(s1), len(s2))
         if min_len < 5:
             return False
-        same = sum(1 for a, b in zip(s1, s2) if a == b)
+        same = sum(a == b for a, b in zip(s1, s2, strict=False))
         return same / min_len > 0.8
 
-    async def learn_and_store_expression(self) -> List[Tuple[str, str, str]]:
+    async def learn_and_store_expression(self) -> Tuple[List[Tuple[str, str, str]], List[Tuple[str, str, str]]]:
         """
         学习并存储表达方式，分别学习语言风格和句法特点
         同时对所有已存储的表达方式进行全局衰减
@@ -158,12 +161,12 @@ class ExpressionLearner:
         for _ in range(3):
             learnt_style: Optional[List[Tuple[str, str, str]]] = await self.learn_and_store(type="style", num=25)
             if not learnt_style:
-                return []
+                return [], []
 
         for _ in range(1):
             learnt_grammar: Optional[List[Tuple[str, str, str]]] = await self.learn_and_store(type="grammar", num=10)
             if not learnt_grammar:
-                return []
+                return [], []
 
         return learnt_style, learnt_grammar
 
@@ -214,6 +217,7 @@ class ExpressionLearner:
         return result
 
     async def learn_and_store(self, type: str, num: int = 10) -> List[Tuple[str, str, str]]:
+        # sourcery skip: use-join
         """
         选择从当前到最近1小时内的随机num条消息，然后学习这些消息的表达方式
         type: "style" or "grammar"
@@ -249,7 +253,7 @@ class ExpressionLearner:
             return []
 
         # 按chat_id分组
-        chat_dict: Dict[str, List[Dict[str, str]]] = {}
+        chat_dict: Dict[str, List[Dict[str, Any]]] = {}
         for chat_id, situation, style in learnt_expressions:
             if chat_id not in chat_dict:
                 chat_dict[chat_id] = []

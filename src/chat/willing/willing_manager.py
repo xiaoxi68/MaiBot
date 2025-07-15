@@ -1,14 +1,16 @@
-from src.common.logger import get_logger
+import importlib
+import asyncio
+
+from abc import ABC, abstractmethod
+from typing import Dict, Optional
+from rich.traceback import install
 from dataclasses import dataclass
+
+from src.common.logger import get_logger
 from src.config.config import global_config
 from src.chat.message_receive.chat_stream import ChatStream, GroupInfo
 from src.chat.message_receive.message import MessageRecv
 from src.person_info.person_info import PersonInfoManager, get_person_info_manager
-from abc import ABC, abstractmethod
-import importlib
-from typing import Dict, Optional
-import asyncio
-from rich.traceback import install
 
 install(extra_lines=3)
 
@@ -91,19 +93,19 @@ class BaseWillingManager(ABC):
         self.lock = asyncio.Lock()
         self.logger = logger
 
-    def setup(self, message: MessageRecv, chat: ChatStream, is_mentioned_bot: bool, interested_rate: float):
-        person_id = PersonInfoManager.get_person_id(chat.platform, chat.user_info.user_id)
-        self.ongoing_messages[message.message_info.message_id] = WillingInfo(
+    def setup(self, message: dict, chat: ChatStream):
+        person_id = PersonInfoManager.get_person_id(chat.platform, chat.user_info.user_id)  # type: ignore
+        self.ongoing_messages[message.get("message_id", "")] = WillingInfo(  # type: ignore
             message=message,
             chat=chat,
             person_info_manager=get_person_info_manager(),
             chat_id=chat.stream_id,
             person_id=person_id,
             group_info=chat.group_info,
-            is_mentioned_bot=is_mentioned_bot,
-            is_emoji=message.is_emoji,
-            is_picid=message.is_picid,
-            interested_rate=interested_rate,
+            is_mentioned_bot=message.get("is_mentioned_bot", False),
+            is_emoji=message.get("is_emoji", False),
+            is_picid=message.get("is_picid", False),
+            interested_rate=message.get("interested_rate", 0),
         )
 
     def delete(self, message_id: str):
