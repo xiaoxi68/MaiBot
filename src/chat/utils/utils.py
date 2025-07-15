@@ -1,12 +1,13 @@
 import random
 import re
+import string
 import time
 import jieba
 import numpy as np
 
 from collections import Counter
 from maim_message import UserInfo
-from typing import Optional, Tuple, Dict
+from typing import Optional, Tuple, Dict, List, Any
 
 from src.common.logger import get_logger
 from src.common.message_repository import find_messages, count_messages
@@ -666,3 +667,107 @@ def get_chat_type_and_target_info(chat_id: str) -> Tuple[bool, Optional[Dict]]:
         # Keep defaults on error
 
     return is_group_chat, chat_target_info
+
+
+def assign_message_ids(messages: List[Any]) -> List[Dict[str, Any]]:
+    """
+    为消息列表中的每个消息分配唯一的简短随机ID
+    
+    Args:
+        messages: 消息列表
+    
+    Returns:
+        包含 {'id': str, 'message': any} 格式的字典列表
+    """
+    result = []
+    used_ids = set()
+    len_i = len(messages)
+    if len_i > 100:
+        a = 10
+        b = 99
+    else:
+        a = 1
+        b = 9
+    
+    for i, message in enumerate(messages):
+        # 生成唯一的简短ID
+        while True:
+            # 使用索引+随机数生成简短ID
+            random_suffix = random.randint(a, b)
+            message_id = f"m{i+1}{random_suffix}"
+            
+            if message_id not in used_ids:
+                used_ids.add(message_id)
+                break
+        
+        result.append({
+            'id': message_id,
+            'message': message
+        })
+    
+    return result
+
+
+def assign_message_ids_flexible(
+    messages: list, 
+    prefix: str = "msg", 
+    id_length: int = 6,
+    use_timestamp: bool = False
+) -> list:
+    """
+    为消息列表中的每个消息分配唯一的简短随机ID（增强版）
+    
+    Args:
+        messages: 消息列表
+        prefix: ID前缀，默认为"msg"
+        id_length: ID的总长度（不包括前缀），默认为6
+        use_timestamp: 是否在ID中包含时间戳，默认为False
+    
+    Returns:
+        包含 {'id': str, 'message': any} 格式的字典列表
+    """
+    result = []
+    used_ids = set()
+    
+    for i, message in enumerate(messages):
+        # 生成唯一的ID
+        while True:
+            if use_timestamp:
+                # 使用时间戳的后几位 + 随机字符
+                timestamp_suffix = str(int(time.time() * 1000))[-3:]
+                remaining_length = id_length - 3
+                random_chars = ''.join(random.choices(string.ascii_lowercase + string.digits, k=remaining_length))
+                message_id = f"{prefix}{timestamp_suffix}{random_chars}"
+            else:
+                # 使用索引 + 随机字符
+                index_str = str(i + 1)
+                remaining_length = max(1, id_length - len(index_str))
+                random_chars = ''.join(random.choices(string.ascii_lowercase + string.digits, k=remaining_length))
+                message_id = f"{prefix}{index_str}{random_chars}"
+            
+            if message_id not in used_ids:
+                used_ids.add(message_id)
+                break
+        
+        result.append({
+            'id': message_id,
+            'message': message
+        })
+    
+    return result
+
+
+# 使用示例:
+# messages = ["Hello", "World", "Test message"]
+# 
+# # 基础版本
+# result1 = assign_message_ids(messages)
+# # 结果: [{'id': 'm1123', 'message': 'Hello'}, {'id': 'm2456', 'message': 'World'}, {'id': 'm3789', 'message': 'Test message'}]
+# 
+# # 增强版本 - 自定义前缀和长度
+# result2 = assign_message_ids_flexible(messages, prefix="chat", id_length=8)
+# # 结果: [{'id': 'chat1abc2', 'message': 'Hello'}, {'id': 'chat2def3', 'message': 'World'}, {'id': 'chat3ghi4', 'message': 'Test message'}]
+# 
+# # 增强版本 - 使用时间戳
+# result3 = assign_message_ids_flexible(messages, prefix="ts", use_timestamp=True)
+# # 结果: [{'id': 'ts123a1b', 'message': 'Hello'}, {'id': 'ts123c2d', 'message': 'World'}, {'id': 'ts123e3f', 'message': 'Test message'}]

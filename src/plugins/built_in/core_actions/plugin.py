@@ -24,6 +24,7 @@ from src.common.logger import get_logger
 from src.plugin_system.apis import generator_api, message_api
 from src.plugins.built_in.core_actions.no_reply import NoReplyAction
 from src.plugins.built_in.core_actions.emoji import EmojiAction
+from src.person_info.person_info import person_info_manager
 
 logger = get_logger("core_actions")
 
@@ -45,10 +46,7 @@ class ReplyAction(BaseAction):
     action_description = "参与聊天回复，发送文本进行表达"
 
     # 动作参数定义
-    action_parameters = {
-        "reply_to": "你要回复的对方的发言内容，格式：（用户名:发言内容），可以为none",
-        "reason": "回复的原因",
-    }
+    action_parameters = {}
 
     # 动作使用场景
     action_require = ["你想要闲聊或者随便附和", "有人提到你", "如果你刚刚进行了回复，不要对同一个话题重复回应"]
@@ -70,11 +68,14 @@ class ReplyAction(BaseAction):
     async def execute(self) -> Tuple[bool, str]:
         """执行回复动作"""
         logger.info(f"{self.log_prefix} 决定进行回复")
-
         start_time = self.action_data.get("loop_start_time", time.time())
 
-        reply_to = self.action_data.get("reply_to", "")
-        sender, target = self._parse_reply_target(reply_to)
+        user_id = self.user_id
+        platform = self.platform
+        person_id = person_info_manager.get_person_id(user_id, platform)
+        
+        person_name = person_info_manager.get_value(person_id, "person_name")
+        reply_to = f"{person_name}:{self.action_message.get('processed_plain_text', '')}"
 
         try:
             prepared_reply = self.action_data.get("prepared_reply", "")
@@ -83,6 +84,7 @@ class ReplyAction(BaseAction):
                     success, reply_set, _ = await asyncio.wait_for(
                         generator_api.generate_reply(
                             action_data=self.action_data,
+                            reply_to=reply_to,
                             chat_id=self.chat_id,
                             request_type="chat.replyer.focus",
                             enable_tool=global_config.tool.enable_in_focus_chat,
@@ -115,7 +117,7 @@ class ReplyAction(BaseAction):
                 data = reply_seg[1]
                 if not first_replied:
                     if need_reply:
-                        await self.send_text(content=data, reply_to=self.action_data.get("reply_to", ""), typing=False)
+                        await self.send_text(content=data, reply_to=reply_to, typing=False)
                         first_replied = True
                     else:
                         await self.send_text(content=data, typing=False)
@@ -125,10 +127,7 @@ class ReplyAction(BaseAction):
                 reply_text += data
 
             # 存储动作记录
-            if sender and target:
-                reply_text = f"你对{sender}说的{target}，进行了回复：{reply_text}"
-            else:
-                reply_text = f"你进行发言：{reply_text}"
+            reply_text = f"你对{person_name}进行了回复：{reply_text}"
 
             await self.store_action_info(
                 action_build_into_prompt=False,

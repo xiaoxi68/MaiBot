@@ -80,6 +80,7 @@ class ActionManager:
         chat_stream: ChatStream,
         log_prefix: str,
         shutting_down: bool = False,
+        action_message: dict = None,
     ) -> Optional[BaseAction]:
         """
         创建动作处理器实例
@@ -125,6 +126,7 @@ class ActionManager:
                 log_prefix=log_prefix,
                 shutting_down=shutting_down,
                 plugin_config=plugin_config,
+                action_message=action_message,
             )
 
             logger.debug(f"创建Action实例成功: {action_name}")

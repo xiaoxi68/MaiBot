@@ -957,7 +957,7 @@ async def get_prompt_info(message: str, threshold: float):
             logger.debug("LPMM知识库已禁用，跳过知识获取")
             return ""
 
-        found_knowledge_from_lpmm = qa_manager.get_knowledge(message)
+        found_knowledge_from_lpmm = await qa_manager.get_knowledge(message)
 
         end_time = time.time()
         if found_knowledge_from_lpmm is not None:

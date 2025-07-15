@@ -377,7 +377,7 @@ class RelationshipBuilder:
                 ):
                     person_id = PersonInfoManager.get_person_id(platform, user_id)
                     self._update_message_segments(person_id, msg_time)
-                    logger.info(
+                    logger.debug(
                         f"{self.log_prefix} 更新用户 {person_id} 的消息段，消息时间：{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(msg_time))}"
                     )
                     self.last_processed_message_time = max(self.last_processed_message_time, msg_time)
@@ -395,7 +395,7 @@ class RelationshipBuilder:
                 )
             elif total_message_count > 0:
                 # 记录进度信息
-                logger.info(
+                logger.debug(
                     f"{self.log_prefix} 用户 {person_name} 进度：{total_message_count}/60 条消息，{len(segments)} 个消息段"
                 )
 

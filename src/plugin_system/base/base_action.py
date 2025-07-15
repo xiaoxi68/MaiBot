@@ -38,6 +38,7 @@ class BaseAction(ABC):
         chat_stream: ChatStream,
         log_prefix: str = "",
         plugin_config: Optional[dict] = None,
+        action_message: dict = None,
         **kwargs,
     ):
         """初始化Action组件
@@ -62,7 +63,7 @@ class BaseAction(ABC):
         self.cycle_timers = cycle_timers
         self.thinking_id = thinking_id
         self.log_prefix = log_prefix
-
+        
         # 保存插件配置
         self.plugin_config = plugin_config or {}
 
@@ -89,38 +90,48 @@ class BaseAction(ABC):
 
         # 获取聊天流对象
         self.chat_stream = chat_stream or kwargs.get("chat_stream")
-
         self.chat_id = self.chat_stream.stream_id
+        self.platform = getattr(self.chat_stream, "platform", None)
+        
         # 初始化基础信息（带类型注解）
-        self.is_group: bool = False
-        self.platform: Optional[str] = None
-        self.group_id: Optional[str] = None
-        self.user_id: Optional[str] = None
-        self.target_id: Optional[str] = None
-        self.group_name: Optional[str] = None
-        self.user_nickname: Optional[str] = None
-
-        # 如果有聊天流，提取所有信息
-        if self.chat_stream:
-            self.platform = getattr(self.chat_stream, "platform", None)
-
-            # 获取群聊信息
-            # print(self.chat_stream)
-            # print(self.chat_stream.group_info)
-            if self.chat_stream.group_info:
+        self.action_message = action_message
+        
+        self.group_id = None
+        self.group_name = None
+        self.user_id = None
+        self.user_nickname = None
+        self.is_group = False
+        self.target_id = None
+    
+        
+        if self.action_name != "no_reply":
+            self.group_id = str(self.action_message.get("chat_info_group_id", None))
+            self.group_name = self.action_message.get("chat_info_group_name", None)
+                
+            self.user_id = str(self.action_message.get("user_id", None))
+            self.user_nickname = self.action_message.get("user_nickname", None)
+            if self.group_id:
                 self.is_group = True
-                self.group_id = str(self.chat_stream.group_info.group_id)
-                self.group_name = getattr(self.chat_stream.group_info, "group_name", None)
+                self.target_id = self.group_id
             else:
                 self.is_group = False
-                self.user_id = str(self.chat_stream.user_info.user_id)
-                self.user_nickname = getattr(self.chat_stream.user_info, "user_nickname", None)
+                self.target_id = self.user_id
+        else:
+            if self.chat_stream.group_info:
+                self.group_id = self.chat_stream.group_info.group_id
+                self.group_name = self.chat_stream.group_info.group_name
+                self.is_group = True
+                self.target_id = self.group_id
+            else:
+                self.user_id = self.chat_stream.user_info.user_id
+                self.user_nickname = self.chat_stream.user_info.user_nickname
+                self.is_group = False
+                self.target_id = self.user_id
 
-            # 设置目标ID（群聊用群ID，私聊用户ID）
-            self.target_id = self.group_id if self.is_group else self.user_id
+
 
         logger.debug(f"{self.log_prefix} Action组件初始化完成")
-        logger.debug(
+        logger.info(
             f"{self.log_prefix} 聊天信息: 类型={'群聊' if self.is_group else '私聊'}, 平台={self.platform}, 目标={self.target_id}"
         )
 

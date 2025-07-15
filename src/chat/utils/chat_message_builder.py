@@ -10,7 +10,7 @@ from src.common.message_repository import find_messages, count_messages
 from src.common.database.database_model import ActionRecords
 from src.common.database.database_model import Images
 from src.person_info.person_info import PersonInfoManager, get_person_info_manager
-from src.chat.utils.utils import translate_timestamp_to_human_readable
+from src.chat.utils.utils import translate_timestamp_to_human_readable,assign_message_ids
 
 install(extra_lines=3)
 
@@ -252,6 +252,7 @@ def _build_readable_messages_internal(
     pic_id_mapping: Optional[Dict[str, str]] = None,
     pic_counter: int = 1,
     show_pic: bool = True,
+    message_id_list: List[Dict[str, Any]] = [],
 ) -> Tuple[str, List[Tuple[float, str, str]], Dict[str, str], int]:
     """
     内部辅助函数，构建可读消息字符串和原始消息详情列表。
@@ -277,6 +278,15 @@ def _build_readable_messages_internal(
     if pic_id_mapping is None:
         pic_id_mapping = {}
     current_pic_counter = pic_counter
+
+    # 创建时间戳到消息ID的映射，用于在消息前添加[id]标识符
+    timestamp_to_id = {}
+    if message_id_list:
+        for item in message_id_list:
+            message = item.get("message", {})
+            timestamp = message.get("time")
+            if timestamp is not None:
+                timestamp_to_id[timestamp] = item.get("id", "")
 
     def process_pic_ids(content: str) -> str:
         """处理内容中的图片ID，将其替换为[图片x]格式"""
@@ -510,12 +520,16 @@ def _build_readable_messages_internal(
         # 使用指定的 timestamp_mode 格式化时间
         readable_time = translate_timestamp_to_human_readable(merged["start_time"], mode=timestamp_mode)
 
+        # 查找对应的消息ID
+        message_id = timestamp_to_id.get(merged["start_time"], "")
+        id_prefix = f"[{message_id}] " if message_id else ""
+
         # 检查是否是动作记录
         if merged["is_action"]:
             # 对于动作记录，使用特殊格式
-            output_lines.append(f"{readable_time}, {merged['content'][0]}")
+            output_lines.append(f"{id_prefix}{readable_time}, {merged['content'][0]}")
         else:
-            header = f"{readable_time}, {merged['name']} :"
+            header = f"{id_prefix}{readable_time}, {merged['name']} :"
             output_lines.append(header)
             # 将内容合并，并添加缩进
             for line in merged["content"]:
@@ -640,6 +654,39 @@ async def build_readable_messages_with_list(
 
     return formatted_string, details_list
 
+def build_readable_messages_with_id(
+    messages: List[Dict[str, Any]],
+    replace_bot_name: bool = True,
+    merge_messages: bool = False,
+    timestamp_mode: str = "relative",
+    read_mark: float = 0.0,
+    truncate: bool = False,
+    show_actions: bool = False,
+    show_pic: bool = True,
+) -> Tuple[str, List[Dict[str, Any]]]:
+    """
+    将消息列表转换为可读的文本格式，并返回原始(时间戳, 昵称, 内容)列表。
+    允许通过参数控制格式化行为。
+    """
+    message_id_list = assign_message_ids(messages)
+    
+    formatted_string = build_readable_messages(
+        messages = messages,
+        replace_bot_name=replace_bot_name,
+        merge_messages=merge_messages,
+        timestamp_mode=timestamp_mode,
+        truncate=truncate,
+        show_actions=show_actions,
+        show_pic=show_pic,
+        read_mark=read_mark,
+        message_id_list=message_id_list,
+    )
+
+    
+    
+    
+    return formatted_string , message_id_list
+
 
 def build_readable_messages(
     messages: List[Dict[str, Any]],
@@ -650,6 +697,7 @@ def build_readable_messages(
     truncate: bool = False,
     show_actions: bool = False,
     show_pic: bool = True,
+    message_id_list: List[Dict[str, Any]] = [],
 ) -> str:  # sourcery skip: extract-method
     """
     将消息列表转换为可读的文本格式。
@@ -722,7 +770,7 @@ def build_readable_messages(
     if read_mark <= 0:
         # 没有有效的 read_mark，直接格式化所有消息
         formatted_string, _, pic_id_mapping, _ = _build_readable_messages_internal(
-            copy_messages, replace_bot_name, merge_messages, timestamp_mode, truncate, show_pic=show_pic
+            copy_messages, replace_bot_name, merge_messages, timestamp_mode, truncate, show_pic=show_pic, message_id_list=message_id_list
         )
 
         # 生成图片映射信息并添加到最前面
@@ -750,6 +798,7 @@ def build_readable_messages(
             pic_id_mapping,
             pic_counter,
             show_pic=show_pic,
+            message_id_list=message_id_list,
         )
         formatted_after, _, pic_id_mapping, _ = _build_readable_messages_internal(
             messages_after_mark,
@@ -760,6 +809,7 @@ def build_readable_messages(
             pic_id_mapping,
             pic_counter,
             show_pic=show_pic,
+            message_id_list=message_id_list,
         )
 
         read_mark_line = "\n--- 以上消息是你已经看过，请关注以下未读的新消息---\n"

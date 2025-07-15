@@ -259,7 +259,7 @@ class HeartFChatting:
                 gen_task = asyncio.create_task(self._generate_response(message_data, available_actions, reply_to_str))
 
             with Timer("规划器", cycle_timers):
-                plan_result = await self.action_planner.plan(mode=self.loop_mode)
+                plan_result, target_message = await self.action_planner.plan(mode=self.loop_mode)
 
             action_result: dict = plan_result.get("action_result", {})  # type: ignore
             action_type, action_data, reasoning, is_parallel = (
@@ -310,10 +310,17 @@ class HeartFChatting:
                 return True
 
             else:
+                
+                if message_data:
+                    action_message = message_data
+                else:
+                    action_message = target_message
                 # 动作执行计时
+                
+                
                 with Timer("动作执行", cycle_timers):
                     success, reply_text, command = await self._handle_action(
-                        action_type, reasoning, action_data, cycle_timers, thinking_id
+                        action_type, reasoning, action_data, cycle_timers, thinking_id, action_message
                     )
 
                 loop_info = {
@@ -367,6 +374,7 @@ class HeartFChatting:
         action_data: dict,
         cycle_timers: dict,
         thinking_id: str,
+        action_message: dict,
     ) -> tuple[bool, str, str]:
         """
         处理规划动作，使用动作工厂创建相应的动作处理器
@@ -392,6 +400,7 @@ class HeartFChatting:
                     thinking_id=thinking_id,
                     chat_stream=self.chat_stream,
                     log_prefix=self.log_prefix,
+                    action_message=action_message,
                 )
             except Exception as e:
                 logger.error(f"{self.log_prefix} 创建动作处理器时出错: {e}")

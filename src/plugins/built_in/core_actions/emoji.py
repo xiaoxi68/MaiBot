@@ -40,7 +40,7 @@ class EmojiAction(BaseAction):
     """
 
     # 动作参数定义
-    action_parameters = {"reason": "文字描述你想要发送的表情包原因"}
+    action_parameters = {}
 
     # 动作使用场景
     action_require = [

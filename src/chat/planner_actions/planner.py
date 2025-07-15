@@ -14,6 +14,7 @@ from src.chat.utils.chat_message_builder import (
     build_readable_actions,
     get_actions_by_timestamp_with_chat,
     build_readable_messages,
+    build_readable_messages_with_id,
     get_raw_msg_before_timestamp_with_chat,
 )
 from src.chat.utils.utils import get_chat_type_and_target_info
@@ -39,14 +40,14 @@ def init_prompt():
 
 {moderation_prompt}
 
-现在请你根据{by_what}选择合适的action:
+现在请你根据{by_what}选择合适的action和触发action的消息:
 你刚刚选择并执行过的action是：
 {actions_before_now_block}
 
 {no_action_block}
 {action_options_text}
 
-你必须从上面列出的可用action中选择一个，并说明原因。
+你必须从上面列出的可用action中选择一个，并说明触发action的消息id和原因。
 
 请根据动作示例，以严格的 JSON 格式输出，且仅包含 JSON 内容：
 """,
@@ -59,7 +60,8 @@ def init_prompt():
 动作描述：{action_description}
 {action_require}
 {{
-    "action": "{action_name}",{action_parameters}
+    "action": "{action_name}",{action_parameters}{target_prompt}
+    "reason":"触发action的原因"
 }}
 """,
         "action_prompt",
@@ -78,6 +80,22 @@ class ActionPlanner:
         )
 
         self.last_obs_time_mark = 0.0
+
+    def find_message_by_id(self, message_id: str, message_id_list: list) -> Optional[Dict[str, Any]]:
+        """
+        根据message_id从message_id_list中查找对应的原始消息
+        
+        Args:
+            message_id: 要查找的消息ID
+            message_id_list: 消息ID列表，格式为[{'id': str, 'message': dict}, ...]
+            
+        Returns:
+            找到的原始消息字典，如果未找到则返回None
+        """
+        for item in message_id_list:
+            if item.get("id") == message_id:
+                return item.get("message")
+        return None
 
     async def plan(
         self, mode: ChatMode = ChatMode.FOCUS
@@ -125,7 +143,7 @@ class ActionPlanner:
                 }
 
             # --- 构建提示词 (调用修改后的 PromptBuilder 方法) ---
-            prompt = await self.build_planner_prompt(
+            prompt, message_id_list = await self.build_planner_prompt(
                 is_group_chat=is_group_chat,  # <-- Pass HFC state
                 chat_target_info=chat_target_info,  # <-- 传递获取到的聊天目标信息
                 current_available_actions=current_available_actions,  # <-- Pass determined actions
@@ -176,6 +194,17 @@ class ActionPlanner:
                         if key not in ["action", "reasoning"]:
                             action_data[key] = value
 
+                    # 在FOCUS模式下，非no_reply动作需要target_message_id
+                    if mode == ChatMode.FOCUS and action != "no_reply":
+                        target_message_id = parsed_json.get("target_message_id")
+                        if target_message_id:
+                            # 根据target_message_id查找原始消息
+                            target_message = self.find_message_by_id(target_message_id, message_id_list)
+                        else:
+                            logger.warning(f"{self.log_prefix}FOCUS模式下动作'{action}'缺少target_message_id")
+                    else:
+                        target_message = None
+
                     if action == "no_action":
                         reasoning = "normal决定不使用额外动作"
                     elif action != "no_reply" and action != "reply" and action not in current_available_actions:
@@ -212,7 +241,7 @@ class ActionPlanner:
         return {
             "action_result": action_result,
             "action_prompt": prompt,
-        }
+        }, target_message
 
     async def build_planner_prompt(
         self,
@@ -220,7 +249,7 @@ class ActionPlanner:
         chat_target_info: Optional[dict],  # Now passed as argument
         current_available_actions: Dict[str, ActionInfo],
         mode: ChatMode = ChatMode.FOCUS,
-    ) -> str:  # sourcery skip: use-join
+    ) -> tuple[str, list]:  # sourcery skip: use-join
         """构建 Planner LLM 的提示词 (获取模板并填充数据)"""
         try:
             message_list_before_now = get_raw_msg_before_timestamp_with_chat(
@@ -229,7 +258,7 @@ class ActionPlanner:
                 limit=int(global_config.chat.max_context_size * 0.6),
             )
 
-            chat_content_block = build_readable_messages(
+            chat_content_block, message_id_list = build_readable_messages_with_id(
                 messages=message_list_before_now,
                 timestamp_mode="normal_no_YMD",
                 read_mark=self.last_obs_time_mark,
@@ -251,6 +280,7 @@ class ActionPlanner:
 
             if mode == ChatMode.FOCUS:
                 by_what = "聊天内容"
+                target_prompt = "\n    \"target_message_id\":\"触发action的消息id\""
                 no_action_block = """重要说明1：
 - 'no_reply' 表示只进行不进行回复，等待合适的回复时机
 - 当你刚刚发送了消息，没有人回复时，选择no_reply
@@ -263,13 +293,13 @@ class ActionPlanner:
 - 如果你刚刚进行了回复，不要对同一个话题重复回应
 {
     "action": "reply",
-    "reply_to":"你要回复的对方的发言内容，格式：（用户名:发言内容），可以为none"
     "reason":"回复的原因"
 }
 
 """
             else:
                 by_what = "聊天内容和用户的最新消息"
+                target_prompt = ""
                 no_action_block = """重要说明：
 - 'no_action' 表示只进行普通聊天回复，不执行任何额外动作
 - 其他action表示在普通回复的基础上，执行相应的额外动作"""
@@ -304,6 +334,7 @@ class ActionPlanner:
                     action_description=using_actions_info.description,
                     action_parameters=param_text,
                     action_require=require_text,
+                    target_prompt=target_prompt,
                 )
 
                 action_options_block += using_action_prompt
@@ -321,7 +352,7 @@ class ActionPlanner:
             identity_block = f"你的名字是{bot_name}{bot_nickname}，你{bot_core_personality}："
 
             planner_prompt_template = await global_prompt_manager.get_prompt_async("planner_prompt")
-            return planner_prompt_template.format(
+            prompt = planner_prompt_template.format(
                 time_block=time_block,
                 by_what=by_what,
                 chat_context_description=chat_context_description,
@@ -332,10 +363,11 @@ class ActionPlanner:
                 moderation_prompt=moderation_prompt_block,
                 identity_block=identity_block,
             )
+            return prompt, message_id_list
         except Exception as e:
             logger.error(f"构建 Planner 提示词时出错: {e}")
             logger.error(traceback.format_exc())
-            return "构建 Planner Prompt 时出错"
+            return "构建 Planner Prompt 时出错", []
 
 
 init_prompt()
