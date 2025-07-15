@@ -44,8 +44,8 @@ class RelationshipManager:
             "konw_time": int(time.time()),
             "person_name": unique_nickname,  # 使用唯一的 person_name
         }
-        # 先创建用户基本信息
-        await person_info_manager.create_person_info(person_id=person_id, data=data)
+        # 先创建用户基本信息，使用安全创建方法避免竞态条件
+        await person_info_manager._safe_create_person_info(person_id=person_id, data=data)
         # 更新昵称
         await person_info_manager.update_one_field(
             person_id=person_id, field_name="nickname", value=user_nickname, data=data

@@ -60,9 +60,9 @@ class RelationshipBuilder:
         # 获取聊天名称用于日志
         try:
             chat_name = get_chat_manager().get_stream_name(self.chat_id)
-            self.log_prefix = f"[{chat_name}] 关系构建"
+            self.log_prefix = f"[{chat_name}]"
         except Exception:
-            self.log_prefix = f"[{self.chat_id}] 关系构建"
+            self.log_prefix = f"[{self.chat_id}]"
 
         # 加载持久化的缓存
         self._load_cache()
@@ -349,10 +349,13 @@ class RelationshipBuilder:
     # 统筹各模块协作、对外提供服务接口
     # ================================
 
-    async def build_relation(self):
-        """构建关系"""
+    async def build_relation(self,immediate_build: str = "",max_build_threshold: int = MAX_MESSAGE_COUNT):
+        """构建关系
+        immediate_build: 立即构建关系，可选值为"all"或person_id
+        """
         self._cleanup_old_segments()
         current_time = time.time()
+            
 
         if latest_messages := get_raw_msg_by_timestamp_with_chat(
             self.chat_id,
@@ -374,7 +377,7 @@ class RelationshipBuilder:
                 ):
                     person_id = PersonInfoManager.get_person_id(platform, user_id)
                     self._update_message_segments(person_id, msg_time)
-                    logger.debug(
+                    logger.info(
                         f"{self.log_prefix} 更新用户 {person_id} 的消息段，消息时间：{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(msg_time))}"
                     )
                     self.last_processed_message_time = max(self.last_processed_message_time, msg_time)
@@ -383,15 +386,17 @@ class RelationshipBuilder:
         users_to_build_relationship = []
         for person_id, segments in self.person_engaged_cache.items():
             total_message_count = self._get_total_message_count(person_id)
-            if total_message_count >= MAX_MESSAGE_COUNT:
+            person_name = get_person_info_manager().get_value_sync(person_id, "person_name") or person_id
+            
+            if total_message_count >= max_build_threshold or (total_message_count >= 5 and (immediate_build == person_id or immediate_build == "all")):
                 users_to_build_relationship.append(person_id)
-                logger.debug(
-                    f"{self.log_prefix} 用户 {person_id} 满足关系构建条件，总消息数：{total_message_count}，消息段数：{len(segments)}"
+                logger.info(
+                    f"{self.log_prefix} 用户 {person_name} 满足关系构建条件，总消息数：{total_message_count}，消息段数：{len(segments)}"
                 )
             elif total_message_count > 0:
                 # 记录进度信息
-                logger.debug(
-                    f"{self.log_prefix} 用户 {person_id} 进度：{total_message_count}60 条消息，{len(segments)} 个消息段"
+                logger.info(
+                    f"{self.log_prefix} 用户 {person_name} 进度：{total_message_count}/60 条消息，{len(segments)} 个消息段"
                 )
 
         # 2. 为满足条件的用户构建关系
@@ -404,6 +409,7 @@ class RelationshipBuilder:
             # 移除已处理的用户缓存
             del self.person_engaged_cache[person_id]
             self._save_cache()
+            
 
     # ================================
     # 关系构建模块
@@ -413,7 +419,7 @@ class RelationshipBuilder:
     async def update_impression_on_segments(self, person_id: str, chat_id: str, segments: List[Dict[str, Any]]):
         """基于消息段更新用户印象"""
         original_segment_count = len(segments)
-        logger.debug(f"开始为 {person_id} 基于 {original_segment_count} 个消息段更新印象")
+        logger.info(f"开始为 {person_id} 基于 {original_segment_count} 个消息段更新印象")
         try:
             # 筛选要处理的消息段，每个消息段有10%的概率被丢弃
             segments_to_process = [s for s in segments if random.random() >= 0.1]

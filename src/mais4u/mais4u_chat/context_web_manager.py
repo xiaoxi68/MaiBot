@@ -24,13 +24,32 @@ class ContextMessage:
         self.timestamp = datetime.now()
         self.group_name = message.message_info.group_info.group_name if message.message_info.group_info else "私聊"
         
+        # 识别消息类型
+        self.is_gift = getattr(message, 'is_gift', False)
+        self.is_superchat = getattr(message, 'is_superchat', False)
+        
+        # 添加礼物和SC相关信息
+        if self.is_gift:
+            self.gift_name = getattr(message, 'gift_name', '')
+            self.gift_count = getattr(message, 'gift_count', '1')
+            self.content = f"送出了 {self.gift_name} x{self.gift_count}"
+        elif self.is_superchat:
+            self.superchat_price = getattr(message, 'superchat_price', '0')
+            self.superchat_message = getattr(message, 'superchat_message_text', '')
+            if self.superchat_message:
+                self.content = f"[¥{self.superchat_price}] {self.superchat_message}"
+            else:
+                self.content = f"[¥{self.superchat_price}] {self.content}"
+        
     def to_dict(self):
         return {
             "user_name": self.user_name,
             "user_id": self.user_id,
             "content": self.content,
             "timestamp": self.timestamp.strftime("%m-%d %H:%M:%S"),
-            "group_name": self.group_name
+            "group_name": self.group_name,
+            "is_gift": self.is_gift,
+            "is_superchat": self.is_superchat
         }
 
 
@@ -154,6 +173,44 @@ class ContextWebManager:
             background: rgba(0, 0, 0, 0.5);
             transform: translateX(5px);
             transition: all 0.3s ease;
+        }
+        .message.gift {
+            border-left: 4px solid #ff8800;
+            background: rgba(255, 136, 0, 0.2);
+        }
+        .message.gift:hover {
+            background: rgba(255, 136, 0, 0.3);
+        }
+        .message.gift .username {
+            color: #ff8800;
+        }
+        .message.superchat {
+            border-left: 4px solid #ff6b6b;
+            background: linear-gradient(135deg, rgba(255, 107, 107, 0.2), rgba(107, 255, 107, 0.2), rgba(107, 107, 255, 0.2));
+            background-size: 200% 200%;
+            animation: rainbow 3s ease infinite;
+        }
+        .message.superchat:hover {
+            background: linear-gradient(135deg, rgba(255, 107, 107, 0.4), rgba(107, 255, 107, 0.4), rgba(107, 107, 255, 0.4));
+            background-size: 200% 200%;
+        }
+        .message.superchat .username {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #feca57);
+            background-size: 300% 300%;
+            animation: rainbow-text 2s ease infinite;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        @keyframes rainbow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        @keyframes rainbow-text {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
         .message-line {
             line-height: 1.4;
@@ -373,7 +430,20 @@ class ContextWebManager:
          
          function createMessageElement(msg, isNew = false) {
              const messageDiv = document.createElement('div');
-             messageDiv.className = 'message' + (isNew ? ' new-message' : '');
+             let className = 'message';
+             
+             // 根据消息类型添加对应的CSS类
+             if (msg.is_gift) {
+                 className += ' gift';
+             } else if (msg.is_superchat) {
+                 className += ' superchat';
+             }
+             
+             if (isNew) {
+                 className += ' new-message';
+             }
+             
+             messageDiv.className = className;
              messageDiv.innerHTML = `
                  <div class="message-line">
                      <span class="username">${escapeHtml(msg.user_name)}：</span><span class="content">${escapeHtml(msg.content)}</span>

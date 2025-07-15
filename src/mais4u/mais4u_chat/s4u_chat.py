@@ -1,4 +1,5 @@
 import asyncio
+import traceback
 import time
 import random
 from typing import Optional, Dict, Tuple  # 导入类型提示
@@ -6,7 +7,7 @@ from maim_message import UserInfo, Seg
 from src.common.logger import get_logger
 from src.chat.message_receive.chat_stream import ChatStream, get_chat_manager
 from .s4u_stream_generator import S4UStreamGenerator
-from src.chat.message_receive.message import MessageSending, MessageRecv
+from src.chat.message_receive.message import MessageSending, MessageRecv, MessageRecvS4U
 from src.config.config import global_config
 from src.common.message.api import get_global_api
 from src.chat.message_receive.storage import MessageStorage
@@ -14,6 +15,9 @@ from .s4u_watching_manager import watching_manager
 import json
 from src.person_info.relationship_builder_manager import relationship_builder_manager
 from .loading import send_loading, send_unloading
+from src.mais4u.s4u_config import s4u_config
+from src.person_info.person_info import PersonInfoManager
+from .super_chat_manager import get_super_chat_manager
 
 logger = get_logger("S4U_chat")
 
@@ -49,9 +53,9 @@ class MessageSenderContainer:
 
     def _calculate_typing_delay(self, text: str) -> float:
         """根据文本长度计算模拟打字延迟。"""
-        chars_per_second = 15.0
-        min_delay = 0.2
-        max_delay = 2.0
+        chars_per_second = s4u_config.chars_per_second
+        min_delay = s4u_config.min_typing_delay
+        max_delay = s4u_config.max_typing_delay
 
         delay = len(text) / chars_per_second
         return max(min_delay, min(delay, max_delay))
@@ -73,8 +77,11 @@ class MessageSenderContainer:
                 # Check for pause signal *after* getting an item.
                 await self._paused_event.wait()
 
-                # delay = self._calculate_typing_delay(chunk)
-                delay = 0.1
+                # 根据配置选择延迟模式
+                if s4u_config.enable_dynamic_typing_delay:
+                    delay = self._calculate_typing_delay(chunk)
+                else:
+                    delay = s4u_config.typing_delay
                 await asyncio.sleep(delay)
 
                 current_time = time.time()
@@ -144,8 +151,6 @@ def get_s4u_chat_manager() -> S4UChatManager:
 
 
 class S4UChat:
-    _MESSAGE_TIMEOUT_SECONDS = 120  # 普通消息存活时间（秒）
-
     def __init__(self, chat_stream: ChatStream):
         """初始化 S4UChat 实例。"""
 
@@ -169,8 +174,7 @@ class S4UChat:
         self._is_replying = False
         self.gpt = S4UStreamGenerator()
         self.interest_dict: Dict[str, float] = {}  # 用户兴趣分
-        self.at_bot_priority_bonus = 100.0  # @机器人的优先级加成
-        self.recent_message_keep_count = 6  # 保留最近N条消息，超出范围的普通消息将被移除
+        
         logger.info(f"[{self.stream_name}] S4UChat with two-queue system initialized.")
 
     def _get_priority_info(self, message: MessageRecv) -> dict:
@@ -194,16 +198,13 @@ class S4UChat:
         """获取用户的兴趣分，默认为1.0"""
         return self.interest_dict.get(user_id, 1.0)
 
+
+
     def _calculate_base_priority_score(self, message: MessageRecv, priority_info: dict) -> float:
         """
         为消息计算基础优先级分数。分数越高，优先级越高。
         """
         score = 0.0
-        # 如果消息 @ 了机器人，则增加一个很大的分数
-        # if f"@{global_config.bot.nickname}" in message.processed_plain_text or any(
-            # f"@{alias}" in message.processed_plain_text for alias in global_config.bot.alias_names
-        # ):
-            # score += self.at_bot_priority_bonus
         
         # 加上消息自带的优先级
         score += priority_info.get("message_priority", 0.0)
@@ -211,18 +212,56 @@ class S4UChat:
         # 加上用户的固有兴趣分
         score += self._get_interest_score(message.message_info.user_info.user_id)
         return score
+    
+    def decay_interest_score(self,message: MessageRecvS4U|MessageRecv):
+        for person_id, score in self.interest_dict.items():
+            if score > 0:
+                self.interest_dict[person_id] = score * 0.95
+            else:
+                self.interest_dict[person_id] = 0
 
-    async def add_message(self, message: MessageRecv) -> None:
-        """根据VIP状态和中断逻辑将消息放入相应队列。"""
+    async def add_message(self, message: MessageRecvS4U|MessageRecv) -> None:
         
-        await self.relationship_builder.build_relation()
+        self.decay_interest_score(message)
+        
+        """根据VIP状态和中断逻辑将消息放入相应队列。"""
+        user_id = message.message_info.user_info.user_id
+        platform = message.message_info.platform
+        person_id = PersonInfoManager.get_person_id(platform, user_id)
+        
+        try:
+            is_gift = message.is_gift
+            is_superchat = message.is_superchat
+            print(is_gift)
+            print(is_superchat)
+            if is_gift:
+                await self.relationship_builder.build_relation(immediate_build=person_id)
+                # 安全地增加兴趣分，如果person_id不存在则先初始化为1.0
+                current_score = self.interest_dict.get(person_id, 1.0)
+                self.interest_dict[person_id] = current_score + 0.1 * message.gift_count
+            elif is_superchat:
+                await self.relationship_builder.build_relation(immediate_build=person_id)
+                # 安全地增加兴趣分，如果person_id不存在则先初始化为1.0
+                current_score = self.interest_dict.get(person_id, 1.0)
+                self.interest_dict[person_id] = current_score + 0.1 * float(message.superchat_price)
+                
+                # 添加SuperChat到管理器
+                super_chat_manager = get_super_chat_manager()
+                await super_chat_manager.add_superchat(message)
+            else:
+                await self.relationship_builder.build_relation(20)
+        except Exception as e:
+            traceback.print_exc()
+            
+        logger.info(f"[{self.stream_name}] 消息处理完毕，消息内容：{message.processed_plain_text}")
         
         priority_info = self._get_priority_info(message)
         is_vip = self._is_vip(priority_info)
         new_priority_score = self._calculate_base_priority_score(message, priority_info)
 
         should_interrupt = False
-        if self._current_generation_task and not self._current_generation_task.done():
+        if (s4u_config.enable_message_interruption and 
+            self._current_generation_task and not self._current_generation_task.done()):
             if self._current_message_being_replied:
                 current_queue, current_priority, _, current_msg = self._current_message_being_replied
 
@@ -260,7 +299,7 @@ class S4UChat:
         # 这样，原始分数越高的消息，在队列中的优先级数字越小，越靠前
         item = (-new_priority_score, self._entry_counter, time.time(), message)
 
-        if is_vip:
+        if is_vip and s4u_config.vip_queue_priority:
             await self._vip_queue.put(item)
             logger.info(f"[{self.stream_name}] VIP message added to queue.")
         else:
@@ -271,11 +310,11 @@ class S4UChat:
 
     def _cleanup_old_normal_messages(self):
         """清理普通队列中不在最近N条消息范围内的消息"""
-        if self._normal_queue.empty():
+        if not s4u_config.enable_old_message_cleanup or self._normal_queue.empty():
             return
         
         # 计算阈值：保留最近 recent_message_keep_count 条消息
-        cutoff_counter = max(0, self._entry_counter - self.recent_message_keep_count)
+        cutoff_counter = max(0, self._entry_counter - s4u_config.recent_message_keep_count)
         
         # 临时存储需要保留的消息
         temp_messages = []
@@ -302,7 +341,7 @@ class S4UChat:
             self._normal_queue.put_nowait(item)
         
         if removed_count > 0:
-            logger.info(f"[{self.stream_name}] Cleaned up {removed_count} old normal messages outside recent {self.recent_message_keep_count} range.")
+            logger.info(f"[{self.stream_name}] Cleaned up {removed_count} old normal messages outside recent {s4u_config.recent_message_keep_count} range.")
 
     async def _message_processor(self):
         """调度器：优先处理VIP队列，然后处理普通队列。"""
@@ -325,7 +364,7 @@ class S4UChat:
                     neg_priority, entry_count, timestamp, message = self._normal_queue.get_nowait()
                     priority = -neg_priority
                     # 检查普通消息是否超时
-                    if time.time() - timestamp > self._MESSAGE_TIMEOUT_SECONDS:
+                    if time.time() - timestamp > s4u_config.message_timeout_seconds:
                         logger.info(
                             f"[{self.stream_name}] Discarding stale normal message: {message.processed_plain_text[:20]}..."
                         )
@@ -368,19 +407,25 @@ class S4UChat:
             except Exception as e:
                 logger.error(f"[{self.stream_name}] Message processor main loop error: {e}", exc_info=True)
                 await asyncio.sleep(1)
+                
+    async def delay_change_watching_state(self):
+        random_delay = random.randint(1, 3)
+        await asyncio.sleep(random_delay)
+        chat_watching = watching_manager.get_watching_by_chat_id(self.stream_id)
+        await chat_watching.on_message_received()
 
     async def _generate_and_send(self, message: MessageRecv):
         """为单个消息生成文本回复。整个过程可以被中断。"""
         self._is_replying = True
+        total_chars_sent = 0  # 跟踪发送的总字符数
         
-        await send_loading(self.stream_id, "......")
+        if s4u_config.enable_loading_indicator:
+            await send_loading(self.stream_id, "......")
         
         # 视线管理：开始生成回复时切换视线状态
         chat_watching = watching_manager.get_watching_by_chat_id(self.stream_id)
-        await chat_watching.on_reply_start()
-        
-        # 回复生成实时展示：开始生成
-        user_name = message.message_info.user_info.user_nickname
+        asyncio.create_task(self.delay_change_watching_state())
+
         
         sender_container = MessageSenderContainer(self.chat_stream, message)
         sender_container.start()
@@ -395,12 +440,18 @@ class S4UChat:
 
                 # a. 发送文本块
                 await sender_container.add_message(chunk)
+                total_chars_sent += len(chunk)  # 累计字符数
                 
 
             # 等待所有文本消息发送完成
             await sender_container.close()
             await sender_container.join()
             
+            # 回复完成后延迟，每个字延迟0.4秒
+            if total_chars_sent > 0:
+                delay_time = total_chars_sent * 0.4
+                logger.info(f"[{self.stream_name}] 回复完成，共发送 {total_chars_sent} 个字符，等待 {delay_time:.1f} 秒后继续处理下一个消息。")
+                await asyncio.sleep(delay_time)
             
             logger.info(f"[{self.stream_name}] 所有文本块处理完毕。")
 
@@ -408,12 +459,14 @@ class S4UChat:
             logger.info(f"[{self.stream_name}] 回复流程（文本）被中断。")
             raise  # 将取消异常向上传播
         except Exception as e:
+            traceback.print_exc()
             logger.error(f"[{self.stream_name}] 回复生成过程中出现错误: {e}", exc_info=True)
             # 回复生成实时展示：清空内容（出错时）
         finally:
             self._is_replying = False
             
-            await send_unloading(self.stream_id)
+            if s4u_config.enable_loading_indicator:
+                await send_unloading(self.stream_id)
             
             # 视线管理：回复结束时切换视线状态
             chat_watching = watching_manager.get_watching_by_chat_id(self.stream_id)
@@ -442,3 +495,8 @@ class S4UChat:
             await self._processing_task
         except asyncio.CancelledError:
             logger.info(f"处理任务已成功取消: {self.stream_name}")
+        
+        # 注意：SuperChat管理器是全局的，不需要在单个S4UChat关闭时关闭
+        # 如果需要关闭SuperChat管理器，应该在应用程序关闭时调用
+        # super_chat_manager = get_super_chat_manager()
+        # await super_chat_manager.shutdown()

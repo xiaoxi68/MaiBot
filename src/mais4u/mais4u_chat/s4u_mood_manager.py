@@ -214,7 +214,7 @@ class ChatMood:
                 sorrow=self.mood_values["sorrow"],
                 fear=self.mood_values["fear"],
             )
-            logger.info(f"numerical mood prompt: {prompt}")
+            logger.debug(f"numerical mood prompt: {prompt}")
             response, (reasoning_content, model_name) = await self.mood_model_numerical.generate_response_async(
                 prompt=prompt
             )

@@ -9,7 +9,7 @@ from src.common.logger import get_logger
 from src.config.config import global_config
 from src.mood.mood_manager import mood_manager  # 导入情绪管理器
 from src.chat.message_receive.chat_stream import get_chat_manager, ChatStream
-from src.chat.message_receive.message import MessageRecv
+from src.chat.message_receive.message import MessageRecv, MessageRecvS4U
 from src.chat.message_receive.storage import MessageStorage
 from src.chat.heart_flow.heartflow_message_processor import HeartFCMessageReceiver
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
@@ -141,6 +141,29 @@ class ChatBot:
             logger.error(f"处理命令时出错: {e}")
             return False, None, True  # 出错时继续处理消息
 
+    async def do_s4u(self, message_data: Dict[str, Any]):
+        message = MessageRecvS4U(message_data)
+        group_info = message.message_info.group_info
+        user_info = message.message_info.user_info
+        
+        
+        get_chat_manager().register_message(message)
+        chat = await get_chat_manager().get_or_create_stream(
+            platform=message.message_info.platform,  # type: ignore
+            user_info=user_info,  # type: ignore
+            group_info=group_info,
+        )
+        
+        message.update_chat_stream(chat)
+
+        # 处理消息内容
+        await message.process()
+        
+        await self.s4u_message_processor.process_message(message)
+        
+        return
+
+
     async def message_process(self, message_data: Dict[str, Any]) -> None:
         """处理转化后的统一格式消息
         这个函数本质是预处理一些数据，根据配置信息和消息内容，预处理消息，并分发到合适的消息处理器中
@@ -158,6 +181,10 @@ class ChatBot:
         try:
             # 确保所有任务已启动
             await self._ensure_started()
+            
+            if ENABLE_S4U_CHAT:
+                await self.do_s4u(message_data)
+                return
 
             if message_data["message_info"].get("group_info") is not None:
                 message_data["message_info"]["group_info"]["group_id"] = str(
@@ -221,11 +248,6 @@ class ChatBot:
                 template_group_name = None
 
             async def preprocess():
-                if ENABLE_S4U_CHAT:
-                    logger.info("进入S4U流程")
-                    await self.s4u_message_processor.process_message(message)
-                    return
-
                 await self.heartflow_message_receiver.process_message(message)
 
             if template_group_name:

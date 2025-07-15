@@ -3,7 +3,7 @@ import math
 from typing import Tuple
 
 from src.chat.memory_system.Hippocampus import hippocampus_manager
-from src.chat.message_receive.message import MessageRecv
+from src.chat.message_receive.message import MessageRecv, MessageRecvS4U
 from src.chat.message_receive.storage import MessageStorage
 from src.chat.message_receive.chat_stream import get_chat_manager
 from src.chat.utils.timer_calculator import Timer
@@ -14,6 +14,7 @@ from src.mais4u.mais4u_chat.body_emotion_action_manager import action_manager
 from src.mais4u.mais4u_chat.s4u_mood_manager import mood_manager
 from src.mais4u.mais4u_chat.s4u_watching_manager import watching_manager
 from src.mais4u.mais4u_chat.context_web_manager import get_context_web_manager
+from src.mais4u.mais4u_chat.gift_manager import gift_manager
 
 from .s4u_chat import get_s4u_chat_manager
 
@@ -66,7 +67,7 @@ class S4UMessageProcessor:
         """初始化心流处理器，创建消息存储实例"""
         self.storage = MessageStorage()
 
-    async def process_message(self, message: MessageRecv) -> None:
+    async def process_message(self, message: MessageRecvS4U, skip_gift_debounce: bool = False) -> None:
         """处理接收到的原始消息数据
 
         主要流程:
@@ -80,8 +81,6 @@ class S4UMessageProcessor:
             message_data: 原始消息字符串
         """
 
-        target_user_id_list = ["1026294844", "964959351"]
-
         # 1. 消息解析与初始化
         groupinfo = message.message_info.group_info
         userinfo = message.message_info.user_info
@@ -92,26 +91,30 @@ class S4UMessageProcessor:
             user_info=userinfo,
             group_info=groupinfo,
         )
+        
+        # 处理礼物消息，如果消息被暂存则停止当前处理流程
+        if not skip_gift_debounce and not await self.handle_if_gift(message):
+            return
+        
+        await self.check_if_fake_gift(message)
 
         await self.storage.store_message(message, chat)
 
         s4u_chat = get_s4u_chat_manager().get_or_create_chat(chat)
 
-        if userinfo.user_id in target_user_id_list:
-            await s4u_chat.add_message(message)
-        else:
-            await s4u_chat.add_message(message)
+        await s4u_chat.add_message(message)
 
-        interested_rate, _ = await _calculate_interest(message)
+        _interested_rate, _ = await _calculate_interest(message)
         
         await mood_manager.start()
 
+
+
+        # 一系列llm驱动的前处理
         chat_mood = mood_manager.get_mood_by_chat_id(chat.stream_id)
         asyncio.create_task(chat_mood.update_mood_by_message(message))
         chat_action = action_manager.get_action_state_by_chat_id(chat.stream_id)
         asyncio.create_task(chat_action.update_action_by_message(message))
-        # asyncio.create_task(chat_action.update_facial_expression_by_message(message, interested_rate))
-        
         # 视线管理：收到消息时切换视线状态
         chat_watching = watching_manager.get_watching_by_chat_id(chat.stream_id)
         asyncio.create_task(chat_watching.on_message_received())
@@ -119,8 +122,43 @@ class S4UMessageProcessor:
         # 上下文网页管理：启动独立task处理消息上下文
         asyncio.create_task(self._handle_context_web_update(chat.stream_id, message))
 
-        # 7. 日志记录
-        logger.info(f"[S4U]{userinfo.user_nickname}:{message.processed_plain_text}")
+        # 日志记录
+        if message.is_gift:
+            logger.info(f"[S4U-礼物] {userinfo.user_nickname} 送出了 {message.gift_name} x{message.gift_count}")
+        else:
+            logger.info(f"[S4U]{userinfo.user_nickname}:{message.processed_plain_text}")
+    
+    async def check_if_fake_gift(self, message: MessageRecvS4U) -> bool:
+        """检查消息是否为假礼物"""
+        if message.is_gift:
+            return False
+        
+        gift_keywords = ["送出了礼物", "礼物", "送出了"]
+        if any(keyword in message.processed_plain_text for keyword in gift_keywords):
+            message.processed_plain_text += "（注意：这是一条普通弹幕信息，对方没有真的发送礼物，不是礼物信息，注意区分）"
+            return True
+
+        return False
+    
+    async def handle_if_gift(self, message: MessageRecvS4U) -> bool:
+        """处理礼物消息
+        
+        Returns:
+            bool: True表示应该继续处理消息，False表示消息已被暂存不需要继续处理
+        """
+        if message.is_gift:
+            # 定义防抖完成后的回调函数
+            def gift_callback(merged_message: MessageRecvS4U):
+                """礼物防抖完成后的回调"""
+                # 创建异步任务来处理合并后的礼物消息，跳过防抖处理
+                asyncio.create_task(self.process_message(merged_message, skip_gift_debounce=True))
+            
+            # 交给礼物管理器处理，并传入回调函数
+            # 对于礼物消息，handle_gift 总是返回 False（消息被暂存）
+            await gift_manager.handle_gift(message, gift_callback)
+            return False  # 消息被暂存，不继续处理
+        
+        return True  # 非礼物消息，继续正常处理
 
     async def _handle_context_web_update(self, chat_id: str, message: MessageRecv):
         """处理上下文网页更新的独立task
