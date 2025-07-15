@@ -4,9 +4,7 @@ from typing import List, Union
 
 from .global_logger import logger
 from . import prompt_template
-from .lpmmconfig import global_config, INVALID_ENTITY
-from .llm_client import LLMClient
-from src.chat.knowledge.utils.json_fix import new_fix_broken_generated_json
+from .knowledge_lib import INVALID_ENTITY
 from src.llm_models.utils_model import LLMRequest
 from json_repair import repair_json
 def _extract_json_from_text(text: str) -> dict:

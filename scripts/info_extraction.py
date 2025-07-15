@@ -4,7 +4,6 @@ import signal
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock, Event
 import sys
-import glob
 import datetime
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -14,8 +13,7 @@ from rich.progress import Progress  # 替换为 rich 进度条
 
 from src.common.logger import get_logger
 # from src.chat.knowledge.lpmmconfig import global_config
-from src.chat.knowledge.ie_process import _entity_extract, info_extract_from_str
-from src.chat.knowledge.llm_client import LLMClient
+from src.chat.knowledge.ie_process import info_extract_from_str
 from src.chat.knowledge.open_ie import OpenIE
 from rich.progress import (
     BarColumn,
