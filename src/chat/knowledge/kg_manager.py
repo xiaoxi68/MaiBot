@@ -26,12 +26,31 @@ from src.manager.local_store_manager import local_storage
 from .global_logger import logger
 
 
-KG_DIR = (
-    os.path.join(local_storage['root_path'], "data/rag")
-    if global_config["persistence"]["rag_data_dir"] is None
-    else os.path.join(local_storage['root_path'], global_config["persistence"]["rag_data_dir"])
-)
-KG_DIR_STR = str(KG_DIR).replace("\\", "/")
+def _get_kg_dir():
+    """
+    安全地获取KG数据目录路径
+    """
+    root_path = local_storage['root_path']
+    if root_path is None:
+        # 如果 local_storage 中没有 root_path，使用当前文件的相对路径作为备用
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        root_path = os.path.abspath(os.path.join(current_dir, "..", "..", ".."))
+        logger.warning(f"local_storage 中未找到 root_path，使用备用路径: {root_path}")
+    
+    # 获取RAG数据目录
+    rag_data_dir = global_config["persistence"]["rag_data_dir"]
+    if rag_data_dir is None:
+        kg_dir = os.path.join(root_path, "data/rag")
+    else:
+        kg_dir = os.path.join(root_path, rag_data_dir)
+    
+    return str(kg_dir).replace("\\", "/")
+
+
+# 延迟初始化，避免在模块加载时就访问可能未初始化的 local_storage
+def get_kg_dir_str():
+    """获取KG目录字符串"""
+    return _get_kg_dir()
 
 
 class KGManager:
@@ -44,8 +63,8 @@ class KGManager:
         # KG
         self.graph = di_graph.DiGraph()
 
-        # 持久化相关
-        self.dir_path = KG_DIR_STR
+        # 持久化相关 - 使用延迟初始化的路径
+        self.dir_path = get_kg_dir_str()
         self.graph_data_path = self.dir_path + "/" + local_storage['rag_graph_namespace'] + ".graphml"
         self.ent_cnt_data_path = self.dir_path + "/" + local_storage['rag_ent_cnt_namespace'] + ".parquet"
         self.pg_hash_file_path = self.dir_path + "/" + local_storage['rag_pg_hash_namespace'] + ".json"

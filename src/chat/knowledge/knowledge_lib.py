@@ -65,8 +65,8 @@ def _initialize_knowledge_local_storage():
     # 批量设置配置项
     initialized_count = 0
     for key, default_value in default_configs.items():
-        if local_storage.get(key) is None:
-            local_storage.set(key, default_value)
+        if local_storage[key] is None:
+            local_storage[key] = default_value
             
             # 根据重要性选择日志级别
             if key in important_configs:
