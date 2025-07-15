@@ -26,7 +26,7 @@ from rich.progress import (
     TextColumn,
 )
 from src.manager.local_store_manager import local_storage
-from src.llm_models.utils_model import LLMRequest
+from src.chat.utils.utils import get_embedding
 
 
 install(extra_lines=3)
@@ -89,9 +89,8 @@ class EmbeddingStoreItem:
 
 
 class EmbeddingStore:
-    def __init__(self, llm_client: LLMClient, namespace: str, dir_path: str):
+    def __init__(self, namespace: str, dir_path: str):
         self.namespace = namespace
-        self.llm_client = llm_client
         self.dir = dir_path
         self.embedding_file_path = f"{dir_path}/{namespace}.parquet"
         self.index_file_path = f"{dir_path}/{namespace}.index"
@@ -103,7 +102,7 @@ class EmbeddingStore:
         self.idx2hash = None
 
     def _get_embedding(self, s: str) -> List[float]:
-        return self.llm_client.send_embedding_request(global_config["embedding"]["model"], s)
+        return get_embedding(s)
 
     def get_test_file_path(self):
         return EMBEDDING_TEST_FILE
@@ -298,17 +297,14 @@ class EmbeddingStore:
 class EmbeddingManager:
     def __init__(self, llm_client: LLMClient):
         self.paragraphs_embedding_store = EmbeddingStore(
-            llm_client,
             local_storage['pg_namespace'],
             EMBEDDING_DATA_DIR_STR,
         )
         self.entities_embedding_store = EmbeddingStore(
-            llm_client,
             local_storage['pg_namespace'],
             EMBEDDING_DATA_DIR_STR,
         )
         self.relation_embedding_store = EmbeddingStore(
-            llm_client,
             local_storage['pg_namespace'],
             EMBEDDING_DATA_DIR_STR,
         )
