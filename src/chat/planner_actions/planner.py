@@ -13,7 +13,6 @@ from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.utils.chat_message_builder import (
     build_readable_actions,
     get_actions_by_timestamp_with_chat,
-    build_readable_messages,
     build_readable_messages_with_id,
     get_raw_msg_before_timestamp_with_chat,
 )
@@ -108,6 +107,7 @@ class ActionPlanner:
         reasoning = "规划器初始化默认"
         action_data = {}
         current_available_actions: Dict[str, ActionInfo] = {}
+        target_message = None  # 初始化target_message变量
 
         try:
             is_group_chat = True
@@ -202,8 +202,6 @@ class ActionPlanner:
                             target_message = self.find_message_by_id(target_message_id, message_id_list)
                         else:
                             logger.warning(f"{self.log_prefix}FOCUS模式下动作'{action}'缺少target_message_id")
-                    else:
-                        target_message = None
 
                     if action == "no_action":
                         reasoning = "normal决定不使用额外动作"
@@ -293,6 +291,7 @@ class ActionPlanner:
 - 如果你刚刚进行了回复，不要对同一个话题重复回应
 {
     "action": "reply",
+    "target_message_id":"触发action的消息id",
     "reason":"回复的原因"
 }
 

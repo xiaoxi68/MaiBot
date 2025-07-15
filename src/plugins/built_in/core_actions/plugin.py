@@ -24,7 +24,7 @@ from src.common.logger import get_logger
 from src.plugin_system.apis import generator_api, message_api
 from src.plugins.built_in.core_actions.no_reply import NoReplyAction
 from src.plugins.built_in.core_actions.emoji import EmojiAction
-from src.person_info.person_info import person_info_manager
+from src.person_info.person_info import get_person_info_manager
 
 logger = get_logger("core_actions")
 
@@ -72,10 +72,12 @@ class ReplyAction(BaseAction):
 
         user_id = self.user_id
         platform = self.platform
-        person_id = person_info_manager.get_person_id(user_id, platform)
-        
-        person_name = person_info_manager.get_value(person_id, "person_name")
+        # logger.info(f"{self.log_prefix} 用户ID: {user_id}, 平台: {platform}")
+        person_id = get_person_info_manager().get_person_id(platform, user_id)
+        # logger.info(f"{self.log_prefix} 人物ID: {person_id}")
+        person_name = get_person_info_manager().get_value_sync(person_id, "person_name")
         reply_to = f"{person_name}:{self.action_message.get('processed_plain_text', '')}"
+        logger.info(f"{self.log_prefix} 回复目标: {reply_to}")
 
         try:
             prepared_reply = self.action_data.get("prepared_reply", "")
@@ -83,7 +85,7 @@ class ReplyAction(BaseAction):
                 try:
                     success, reply_set, _ = await asyncio.wait_for(
                         generator_api.generate_reply(
-                            action_data=self.action_data,
+                            extra_info="",
                             reply_to=reply_to,
                             chat_id=self.chat_id,
                             request_type="chat.replyer.focus",

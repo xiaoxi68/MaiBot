@@ -185,8 +185,6 @@ class DefaultReplyer:
         prompt = None
         if available_actions is None:
             available_actions = {}
-        if reply_data is None:
-            reply_data = {}
         try:
             if not reply_data:
                 reply_data = {
