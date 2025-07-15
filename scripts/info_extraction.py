@@ -24,7 +24,7 @@ from rich.progress import (
     SpinnerColumn,
     TextColumn,
 )
-from raw_data_preprocessor import process_multi_files, load_raw_data
+from raw_data_preprocessor import RAW_DATA_PATH, process_multi_files, load_raw_data
 from src.config.config import global_config
 from src.llm_models.utils_model import LLMRequest
 
@@ -35,6 +35,18 @@ ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 TEMP_DIR = os.path.join(ROOT_PATH, "temp")
 # IMPORTED_DATA_PATH = os.path.join(ROOT_PATH, "data", "imported_lpmm_data")
 OPENIE_OUTPUT_DIR = os.path.join(ROOT_PATH, "data", "openie")
+
+def ensure_dirs():
+    """确保临时目录和输出目录存在"""
+    if not os.path.exists(TEMP_DIR):
+        os.makedirs(TEMP_DIR)
+        logger.info(f"已创建临时目录: {TEMP_DIR}")
+    if not os.path.exists(OPENIE_OUTPUT_DIR):
+        os.makedirs(OPENIE_OUTPUT_DIR)
+        logger.info(f"已创建输出目录: {OPENIE_OUTPUT_DIR}")
+    if not os.path.exists(RAW_DATA_PATH):
+        os.makedirs(RAW_DATA_PATH)
+        logger.info(f"已创建原始数据目录: {RAW_DATA_PATH}")
 
 # 创建一个线程安全的锁，用于保护文件操作和共享数据
 file_lock = Lock()
@@ -51,17 +63,6 @@ lpmm_rdf_build_llm = LLMRequest(
     model=global_config.model.lpmm_rdf_build,
     request_type="lpmm.rdf_build"
 )
-
-def ensure_dirs():
-    """确保临时目录和输出目录存在"""
-    if not os.path.exists(TEMP_DIR):
-        os.makedirs(TEMP_DIR)
-        logger.info(f"已创建临时目录: {TEMP_DIR}")
-    if not os.path.exists(OPENIE_OUTPUT_DIR):
-        os.makedirs(OPENIE_OUTPUT_DIR)
-        logger.info(f"已创建输出目录: {OPENIE_OUTPUT_DIR}")
-
-
 def process_single_text(pg_hash, raw_data):
     """处理单个文本的函数，用于线程池"""
     temp_file_path = f"{TEMP_DIR}/{pg_hash}.json"
@@ -116,7 +117,7 @@ def signal_handler(_signum, _frame):
 def main():  # sourcery skip: comprehension-to-generator, extract-method
     # 设置信号处理器
     signal.signal(signal.SIGINT, signal_handler)
-
+    ensure_dirs()  # 确保目录存在
     # 新增用户确认提示
     print("=== 重要操作确认，请认真阅读以下内容哦 ===")
     print("实体提取操作将会花费较多api余额和时间，建议在空闲时段执行。")
