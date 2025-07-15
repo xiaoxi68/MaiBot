@@ -115,10 +115,13 @@ class PluginManager:
                 plugin_dir = self._find_plugin_directory(plugin_class)
                 if plugin_dir:
                     self.plugin_paths[plugin_name] = plugin_dir  # 更新路径
-                    plugin_instance = plugin_class(plugin_dir=plugin_dir)  # 实例化插件（可能因为缺少manifest而失败）
-                    if not plugin_instance:
-                        logger.error(f"插件 {plugin_name} 实例化失败")
-                        return False, 1
+                else:
+                    return False, 1
+
+            plugin_instance = plugin_class(plugin_dir=plugin_dir)  # 实例化插件（可能因为缺少manifest而失败）
+            if not plugin_instance:
+                logger.error(f"插件 {plugin_name} 实例化失败")
+                return False, 1
             # 检查插件是否启用
             if not plugin_instance.enable_plugin:
                 logger.info(f"插件 {plugin_name} 已禁用，跳过加载")

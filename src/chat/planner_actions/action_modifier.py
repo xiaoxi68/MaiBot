@@ -122,6 +122,7 @@ class ActionModifier:
 
         # === 统一日志记录 ===
         all_removals = removals_s1 + removals_s2
+        removals_summary: str = ""
         if all_removals:
             removals_summary = " | ".join([f"{name}({reason})" for name, reason in all_removals])
 
