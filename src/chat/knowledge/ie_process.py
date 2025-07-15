@@ -4,28 +4,35 @@ from typing import List, Union
 
 from .global_logger import logger
 from . import prompt_template
-from .lpmmconfig import global_config, INVALID_ENTITY
-from .llm_client import LLMClient
-from src.chat.knowledge.utils.json_fix import new_fix_broken_generated_json
+from .knowledge_lib import INVALID_ENTITY
+from src.llm_models.utils_model import LLMRequest
+from json_repair import repair_json
+def _extract_json_from_text(text: str) -> dict:
+    """从文本中提取JSON数据的高容错方法"""
+    try:
+        fixed_json = repair_json(text)
+        if isinstance(fixed_json, str):
+            parsed_json = json.loads(fixed_json)
+        else:
+            parsed_json = fixed_json
 
+        if isinstance(parsed_json, list) and parsed_json:
+            parsed_json = parsed_json[0]
 
-def _entity_extract(llm_client: LLMClient, paragraph: str) -> List[str]:
+        if isinstance(parsed_json, dict):
+            return parsed_json
+
+    except Exception as e:
+        logger.error(f"JSON提取失败: {e}, 原始文本: {text[:100]}...")
+
+def _entity_extract(llm_req: LLMRequest, paragraph: str) -> List[str]:
     """对段落进行实体提取，返回提取出的实体列表（JSON格式）"""
     entity_extract_context = prompt_template.build_entity_extract_context(paragraph)
-    _, request_result = llm_client.send_chat_request(
-        global_config["entity_extract"]["llm"]["model"], entity_extract_context
-    )
+    response, (reasoning_content, model_name) = llm_req.generate_response_async(entity_extract_context)
 
-    # 去除‘{’前的内容（结果中可能有多个‘{’）
-    if "[" in request_result:
-        request_result = request_result[request_result.index("[") :]
-
-    # 去除最后一个‘}’后的内容（结果中可能有多个‘}’）
-    if "]" in request_result:
-        request_result = request_result[: request_result.rindex("]") + 1]
-
-    entity_extract_result = json.loads(new_fix_broken_generated_json(request_result))
-
+    entity_extract_result = _extract_json_from_text(response)
+    # 尝试load JSON数据
+    json.loads(entity_extract_result)
     entity_extract_result = [
         entity
         for entity in entity_extract_result
@@ -38,23 +45,16 @@ def _entity_extract(llm_client: LLMClient, paragraph: str) -> List[str]:
     return entity_extract_result
 
 
-def _rdf_triple_extract(llm_client: LLMClient, paragraph: str, entities: list) -> List[List[str]]:
+def _rdf_triple_extract(llm_req: LLMRequest, paragraph: str, entities: list) -> List[List[str]]:
     """对段落进行实体提取，返回提取出的实体列表（JSON格式）"""
-    entity_extract_context = prompt_template.build_rdf_triple_extract_context(
+    rdf_extract_context = prompt_template.build_rdf_triple_extract_context(
         paragraph, entities=json.dumps(entities, ensure_ascii=False)
     )
-    _, request_result = llm_client.send_chat_request(global_config["rdf_build"]["llm"]["model"], entity_extract_context)
+    response, (reasoning_content, model_name) = llm_req.generate_response_async(rdf_extract_context)
 
-    # 去除‘{’前的内容（结果中可能有多个‘{’）
-    if "[" in request_result:
-        request_result = request_result[request_result.index("[") :]
-
-    # 去除最后一个‘}’后的内容（结果中可能有多个‘}’）
-    if "]" in request_result:
-        request_result = request_result[: request_result.rindex("]") + 1]
-
-    entity_extract_result = json.loads(new_fix_broken_generated_json(request_result))
-
+    entity_extract_result = _extract_json_from_text(response)
+    # 尝试load JSON数据
+    json.loads(entity_extract_result)
     for triple in entity_extract_result:
         if len(triple) != 3 or (triple[0] is None or triple[1] is None or triple[2] is None) or "" in triple:
             raise Exception("RDF提取结果格式错误")
@@ -63,7 +63,7 @@ def _rdf_triple_extract(llm_client: LLMClient, paragraph: str, entities: list) -
 
 
 def info_extract_from_str(
-    llm_client_for_ner: LLMClient, llm_client_for_rdf: LLMClient, paragraph: str
+    llm_client_for_ner: LLMRequest, llm_client_for_rdf: LLMRequest, paragraph: str
 ) -> Union[tuple[None, None], tuple[list[str], list[list[str]]]]:
     try_count = 0
     while True:

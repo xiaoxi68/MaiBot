@@ -625,3 +625,12 @@ class ModelConfig(ConfigBase):
 
     embedding: dict[str, Any] = field(default_factory=lambda: {})
     """嵌入模型配置"""
+
+    lpmm_entity_extract: dict[str, Any] = field(default_factory=lambda: {})
+    """LPMM实体提取模型配置"""
+
+    lpmm_rdf_build: dict[str, Any] = field(default_factory=lambda: {})
+    """LPMM RDF构建模型配置"""
+
+    lpmm_qa: dict[str, Any] = field(default_factory=lambda: {})
+    """LPMM问答模型配置"""

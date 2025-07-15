@@ -10,8 +10,8 @@ import pandas as pd
 # import tqdm
 import faiss
 
-from .llm_client import LLMClient
-from .lpmmconfig import ENT_NAMESPACE, PG_NAMESPACE, REL_NAMESPACE, global_config
+# from .llm_client import LLMClient
+from .lpmmconfig import global_config
 from .utils.hash import get_sha256
 from .global_logger import logger
 from rich.traceback import install
@@ -25,6 +25,9 @@ from rich.progress import (
     SpinnerColumn,
     TextColumn,
 )
+from src.manager.local_store_manager import local_storage
+from src.chat.utils.utils import get_embedding
+
 
 install(extra_lines=3)
 ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
@@ -86,21 +89,20 @@ class EmbeddingStoreItem:
 
 
 class EmbeddingStore:
-    def __init__(self, llm_client: LLMClient, namespace: str, dir_path: str):
+    def __init__(self, namespace: str, dir_path: str):
         self.namespace = namespace
-        self.llm_client = llm_client
         self.dir = dir_path
-        self.embedding_file_path = dir_path + "/" + namespace + ".parquet"
-        self.index_file_path = dir_path + "/" + namespace + ".index"
+        self.embedding_file_path = f"{dir_path}/{namespace}.parquet"
+        self.index_file_path = f"{dir_path}/{namespace}.index"
         self.idx2hash_file_path = dir_path + "/" + namespace + "_i2h.json"
 
-        self.store = dict()
+        self.store = {}
 
         self.faiss_index = None
         self.idx2hash = None
 
     def _get_embedding(self, s: str) -> List[float]:
-        return self.llm_client.send_embedding_request(global_config["embedding"]["model"], s)
+        return get_embedding(s)
 
     def get_test_file_path(self):
         return EMBEDDING_TEST_FILE
@@ -293,20 +295,17 @@ class EmbeddingStore:
 
 
 class EmbeddingManager:
-    def __init__(self, llm_client: LLMClient):
+    def __init__(self):
         self.paragraphs_embedding_store = EmbeddingStore(
-            llm_client,
-            PG_NAMESPACE,
+            local_storage['pg_namespace'],
             EMBEDDING_DATA_DIR_STR,
         )
         self.entities_embedding_store = EmbeddingStore(
-            llm_client,
-            ENT_NAMESPACE,
+            local_storage['pg_namespace'],
             EMBEDDING_DATA_DIR_STR,
         )
         self.relation_embedding_store = EmbeddingStore(
-            llm_client,
-            REL_NAMESPACE,
+            local_storage['pg_namespace'],
             EMBEDDING_DATA_DIR_STR,
         )
         self.stored_pg_hashes = set()
