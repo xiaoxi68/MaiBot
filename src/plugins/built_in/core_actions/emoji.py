@@ -108,8 +108,8 @@ class EmojiAction(BaseAction):
                 models = llm_api.get_available_models()
                 chat_model_config = getattr(models, "utils_small", None)  # 默认使用chat模型
                 if not chat_model_config:
-                    logger.error(f"{self.log_prefix} 未找到'chat'模型配置，无法调用LLM")
-                    return False, "未找到'chat'模型配置"
+                    logger.error(f"{self.log_prefix} 未找到'utils_small'模型配置，无法调用LLM")
+                    return False, "未找到'utils_small'模型配置"
 
                 success, chosen_emotion, _, _ = await llm_api.generate_with_model(
                     prompt, model_config=chat_model_config, request_type="emoji"

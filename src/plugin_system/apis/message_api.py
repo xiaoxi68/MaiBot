@@ -48,8 +48,15 @@ def get_messages_by_time(
         filter_mai: 是否过滤麦麦自身的消息，默认为False
 
     Returns:
-        消息列表
+        List[Dict[str, Any]]: 消息列表
+
+    Raises:
+        ValueError: 如果参数不合法
     """
+    if not isinstance(start_time, (int, float)) or not isinstance(end_time, (int, float)):
+        raise ValueError("start_time 和 end_time 必须是数字类型")
+    if limit < 0:
+        raise ValueError("limit 不能为负数")
     if filter_mai:
         return filter_mai_messages(get_raw_msg_by_timestamp(start_time, end_time, limit, limit_mode))
     return get_raw_msg_by_timestamp(start_time, end_time, limit, limit_mode)
@@ -75,8 +82,19 @@ def get_messages_by_time_in_chat(
         filter_mai: 是否过滤麦麦自身的消息，默认为False
 
     Returns:
-        消息列表
+        List[Dict[str, Any]]: 消息列表
+
+    Raises:
+        ValueError: 如果参数不合法
     """
+    if not isinstance(start_time, (int, float)) or not isinstance(end_time, (int, float)):
+        raise ValueError("start_time 和 end_time 必须是数字类型")
+    if limit < 0:
+        raise ValueError("limit 不能为负数")
+    if not chat_id:
+        raise ValueError("chat_id 不能为空")
+    if not isinstance(chat_id, str):
+        raise ValueError("chat_id 必须是字符串类型")
     if filter_mai:
         return filter_mai_messages(get_raw_msg_by_timestamp_with_chat(chat_id, start_time, end_time, limit, limit_mode))
     return get_raw_msg_by_timestamp_with_chat(chat_id, start_time, end_time, limit, limit_mode)
@@ -102,8 +120,19 @@ def get_messages_by_time_in_chat_inclusive(
         filter_mai: 是否过滤麦麦自身的消息，默认为False
 
     Returns:
-        消息列表
+        List[Dict[str, Any]]: 消息列表
+
+    Raises:
+        ValueError: 如果参数不合法
     """
+    if not isinstance(start_time, (int, float)) or not isinstance(end_time, (int, float)):
+        raise ValueError("start_time 和 end_time 必须是数字类型")
+    if limit < 0:
+        raise ValueError("limit 不能为负数")
+    if not chat_id:
+        raise ValueError("chat_id 不能为空")
+    if not isinstance(chat_id, str):
+        raise ValueError("chat_id 必须是字符串类型")
     if filter_mai:
         return filter_mai_messages(
             get_raw_msg_by_timestamp_with_chat_inclusive(chat_id, start_time, end_time, limit, limit_mode)
@@ -115,7 +144,7 @@ def get_messages_by_time_in_chat_for_users(
     chat_id: str,
     start_time: float,
     end_time: float,
-    person_ids: list,
+    person_ids: List[str],
     limit: int = 0,
     limit_mode: str = "latest",
 ) -> List[Dict[str, Any]]:
@@ -131,8 +160,19 @@ def get_messages_by_time_in_chat_for_users(
         limit_mode: 当limit>0时生效，'earliest'表示获取最早的记录，'latest'表示获取最新的记录
 
     Returns:
-        消息列表
+        List[Dict[str, Any]]: 消息列表
+
+    Raises:
+        ValueError: 如果参数不合法
     """
+    if not isinstance(start_time, (int, float)) or not isinstance(end_time, (int, float)):
+        raise ValueError("start_time 和 end_time 必须是数字类型")
+    if limit < 0:
+        raise ValueError("limit 不能为负数")
+    if not chat_id:
+        raise ValueError("chat_id 不能为空")
+    if not isinstance(chat_id, str):
+        raise ValueError("chat_id 必须是字符串类型")
     return get_raw_msg_by_timestamp_with_chat_users(chat_id, start_time, end_time, person_ids, limit, limit_mode)
 
 
@@ -150,8 +190,15 @@ def get_random_chat_messages(
         filter_mai: 是否过滤麦麦自身的消息，默认为False
 
     Returns:
-        消息列表
+        List[Dict[str, Any]]: 消息列表
+
+    Raises:
+        ValueError: 如果参数不合法
     """
+    if not isinstance(start_time, (int, float)) or not isinstance(end_time, (int, float)):
+        raise ValueError("start_time 和 end_time 必须是数字类型")
+    if limit < 0:
+        raise ValueError("limit 不能为负数")
     if filter_mai:
         return filter_mai_messages(get_raw_msg_by_timestamp_random(start_time, end_time, limit, limit_mode))
     return get_raw_msg_by_timestamp_random(start_time, end_time, limit, limit_mode)
@@ -171,8 +218,15 @@ def get_messages_by_time_for_users(
         limit_mode: 当limit>0时生效，'earliest'表示获取最早的记录，'latest'表示获取最新的记录
 
     Returns:
-        消息列表
+        List[Dict[str, Any]]: 消息列表
+
+    Raises:
+        ValueError: 如果参数不合法
     """
+    if not isinstance(start_time, (int, float)) or not isinstance(end_time, (int, float)):
+        raise ValueError("start_time 和 end_time 必须是数字类型")
+    if limit < 0:
+        raise ValueError("limit 不能为负数")
     return get_raw_msg_by_timestamp_with_users(start_time, end_time, person_ids, limit, limit_mode)
 
 
@@ -186,8 +240,15 @@ def get_messages_before_time(timestamp: float, limit: int = 0, filter_mai: bool 
         filter_mai: 是否过滤麦麦自身的消息，默认为False
 
     Returns:
-        消息列表
+        List[Dict[str, Any]]: 消息列表
+
+    Raises:
+        ValueError: 如果参数不合法
     """
+    if not isinstance(timestamp, (int, float)):
+        raise ValueError("timestamp 必须是数字类型")
+    if limit < 0:
+        raise ValueError("limit 不能为负数")
     if filter_mai:
         return filter_mai_messages(get_raw_msg_before_timestamp(timestamp, limit))
     return get_raw_msg_before_timestamp(timestamp, limit)
@@ -206,8 +267,19 @@ def get_messages_before_time_in_chat(
         filter_mai: 是否过滤麦麦自身的消息，默认为False
 
     Returns:
-        消息列表
+        List[Dict[str, Any]]: 消息列表
+
+    Raises:
+        ValueError: 如果参数不合法
     """
+    if not isinstance(timestamp, (int, float)):
+        raise ValueError("timestamp 必须是数字类型")
+    if limit < 0:
+        raise ValueError("limit 不能为负数")
+    if not chat_id:
+        raise ValueError("chat_id 不能为空")
+    if not isinstance(chat_id, str):
+        raise ValueError("chat_id 必须是字符串类型")
     if filter_mai:
         return filter_mai_messages(get_raw_msg_before_timestamp_with_chat(chat_id, timestamp, limit))
     return get_raw_msg_before_timestamp_with_chat(chat_id, timestamp, limit)
@@ -223,8 +295,15 @@ def get_messages_before_time_for_users(timestamp: float, person_ids: list, limit
         limit: 限制返回的消息数量，0为不限制
 
     Returns:
-        消息列表
+        List[Dict[str, Any]]: 消息列表
+
+    Raises:
+        ValueError: 如果参数不合法
     """
+    if not isinstance(timestamp, (int, float)):
+        raise ValueError("timestamp 必须是数字类型")
+    if limit < 0:
+        raise ValueError("limit 不能为负数")
     return get_raw_msg_before_timestamp_with_users(timestamp, person_ids, limit)
 
 
@@ -242,8 +321,19 @@ def get_recent_messages(
         filter_mai: 是否过滤麦麦自身的消息，默认为False
 
     Returns:
-        消息列表
+        List[Dict[str, Any]]: 消息列表
+
+    Raises:
+        ValueError: 如果参数不合法s
     """
+    if not isinstance(hours, (int, float)) or hours < 0:
+        raise ValueError("hours 不能是负数")
+    if not isinstance(limit, int) or limit < 0:
+        raise ValueError("limit 必须是非负整数")
+    if not chat_id:
+        raise ValueError("chat_id 不能为空")
+    if not isinstance(chat_id, str):
+        raise ValueError("chat_id 必须是字符串类型")
     now = time.time()
     start_time = now - hours * 3600
     if filter_mai:
@@ -266,8 +356,17 @@ def count_new_messages(chat_id: str, start_time: float = 0.0, end_time: Optional
         end_time: 结束时间戳，如果为None则使用当前时间
 
     Returns:
-        新消息数量
+        int: 新消息数量
+
+    Raises:
+        ValueError: 如果参数不合法
     """
+    if not isinstance(start_time, (int, float)):
+        raise ValueError("start_time 必须是数字类型")
+    if not chat_id:
+        raise ValueError("chat_id 不能为空")
+    if not isinstance(chat_id, str):
+        raise ValueError("chat_id 必须是字符串类型")
     return num_new_messages_since(chat_id, start_time, end_time)
 
 
@@ -282,8 +381,17 @@ def count_new_messages_for_users(chat_id: str, start_time: float, end_time: floa
         person_ids: 用户ID列表
 
     Returns:
-        新消息数量
+        int: 新消息数量
+
+    Raises:
+        ValueError: 如果参数不合法
     """
+    if not isinstance(start_time, (int, float)) or not isinstance(end_time, (int, float)):
+        raise ValueError("start_time 和 end_time 必须是数字类型")
+    if not chat_id:
+        raise ValueError("chat_id 不能为空")
+    if not isinstance(chat_id, str):
+        raise ValueError("chat_id 必须是字符串类型")
     return num_new_messages_since_with_users(chat_id, start_time, end_time, person_ids)
 
 

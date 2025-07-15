@@ -83,7 +83,7 @@ _initialize_knowledge_local_storage()
 
 # 检查LPMM知识库是否启用
 if bot_global_config.lpmm_knowledge.enable:
-    logger.info("正在初始化Mai-LPMM\n")
+    logger.info("正在初始化Mai-LPMM")
     logger.info("创建LLM客户端")
     llm_client_list = dict()
     for key in global_config["llm_providers"]:

@@ -131,6 +131,9 @@ async def generate_reply(
         else:
             return success, reply_set, None
 
+    except ValueError as ve:
+        raise ve
+
     except Exception as e:
         logger.error(f"[GeneratorAPI] 生成回复时出错: {e}")
         return False, [], None
@@ -178,6 +181,9 @@ async def rewrite_reply(
 
         return success, reply_set
 
+    except ValueError as ve:
+        raise ve
+
     except Exception as e:
         logger.error(f"[GeneratorAPI] 重写回复时出错: {e}")
         return False, []
@@ -191,12 +197,14 @@ async def process_human_text(content: str, enable_splitter: bool, enable_chinese
         enable_splitter: 是否启用消息分割器
         enable_chinese_typo: 是否启用错字生成器
     """
+    if not isinstance(content, str):
+        raise ValueError("content 必须是字符串类型")
     try:
         processed_response = process_llm_response(content, enable_splitter, enable_chinese_typo)
 
         reply_set = []
-        for str in processed_response:
-            reply_seg = ("text", str)
+        for text in processed_response:
+            reply_seg = ("text", text)
             reply_set.append(reply_seg)
 
         return reply_set

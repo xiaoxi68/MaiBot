@@ -1671,7 +1671,8 @@ class HippocampusManager:
         node_count = len(memory_graph.nodes())
         edge_count = len(memory_graph.edges())
 
-        logger.info(f"""--------------------------------
+        logger.info(f"""
+                    --------------------------------
                     记忆系统参数配置:
                     构建间隔: {global_config.memory.memory_build_interval}秒|样本数: {global_config.memory.memory_build_sample_num},长度: {global_config.memory.memory_build_sample_length}|压缩率: {global_config.memory.memory_compress_rate}
                     记忆构建分布: {global_config.memory.memory_build_distribution}

@@ -7,7 +7,7 @@
     value = await person_api.get_person_value(person_id, "nickname")
 """
 
-from typing import Any
+from typing import Any, Optional
 from src.common.logger import get_logger
 from src.person_info.person_info import get_person_info_manager, PersonInfoManager
 
@@ -63,7 +63,7 @@ async def get_person_value(person_id: str, field_name: str, default: Any = None)
         return default
 
 
-async def get_person_values(person_id: str, field_names: list, default_dict: dict = None) -> dict:
+async def get_person_values(person_id: str, field_names: list, default_dict: Optional[dict] = None) -> dict:
     """批量获取用户信息字段值
 
     Args:
