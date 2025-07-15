@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Callable, Tuple, Type, Any
+from typing import Dict, List, Optional, Tuple, Type, Any
 import os
 from importlib.util import spec_from_file_location, module_from_spec
 from inspect import getmodule
@@ -6,7 +6,6 @@ from pathlib import Path
 import traceback
 
 from src.common.logger import get_logger
-from src.plugin_system.events.events import EventType
 from src.plugin_system.core.component_registry import component_registry
 from src.plugin_system.core.dependency_manager import dependency_manager
 from src.plugin_system.base.base_plugin import BasePlugin
@@ -30,8 +29,6 @@ class PluginManager:
 
         self.loaded_plugins: Dict[str, BasePlugin] = {}  # 已加载的插件类实例注册表，插件名 -> 插件类实例
         self.failed_plugins: Dict[str, str] = {}  # 记录加载失败的插件类及其错误信息，插件名 -> 错误信息
-
-        self.events_subscriptions: Dict[EventType, List[Callable]] = {}
 
         # 确保插件目录存在
         self._ensure_plugin_directories()
