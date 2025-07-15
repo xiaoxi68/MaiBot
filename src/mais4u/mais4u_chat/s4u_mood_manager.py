@@ -125,7 +125,7 @@ class ChatMood:
         )
 
         self.last_change_time = 0
-        
+
         # 发送初始情绪状态到ws端
         asyncio.create_task(self.send_emotion_update(self.mood_values))
 
@@ -231,10 +231,10 @@ class ChatMood:
         if numerical_mood_response:
             _old_mood_values = self.mood_values.copy()
             self.mood_values = numerical_mood_response
-            
+
             # 发送情绪更新到ws端
             await self.send_emotion_update(self.mood_values)
-            
+
             logger.info(f"[{self.chat_id}] 情绪变化: {_old_mood_values} -> {self.mood_values}")
 
         self.last_change_time = message_time
@@ -308,10 +308,10 @@ class ChatMood:
         if numerical_mood_response:
             _old_mood_values = self.mood_values.copy()
             self.mood_values = numerical_mood_response
-            
+
             # 发送情绪更新到ws端
             await self.send_emotion_update(self.mood_values)
-            
+
             logger.info(f"[{self.chat_id}] 情绪回归: {_old_mood_values} -> {self.mood_values}")
 
         self.regression_count += 1
@@ -322,9 +322,9 @@ class ChatMood:
             "joy": mood_values.get("joy", 5),
             "anger": mood_values.get("anger", 1),
             "sorrow": mood_values.get("sorrow", 1),
-            "fear": mood_values.get("fear", 1)
+            "fear": mood_values.get("fear", 1),
         }
-        
+
         await send_api.custom_to_stream(
             message_type="emotion",
             content=emotion_data,
@@ -332,7 +332,7 @@ class ChatMood:
             storage_message=False,
             show_log=True,
         )
-        
+
         logger.info(f"[{self.chat_id}] 发送情绪更新: {emotion_data}")
 
 
@@ -345,27 +345,27 @@ class MoodRegressionTask(AsyncTask):
     async def run(self):
         self.run_count += 1
         logger.info(f"[回归任务] 第{self.run_count}次检查，当前管理{len(self.mood_manager.mood_list)}个聊天的情绪状态")
-        
+
         now = time.time()
         regression_executed = 0
-        
+
         for mood in self.mood_manager.mood_list:
             chat_info = f"chat {mood.chat_id}"
-            
+
             if mood.last_change_time == 0:
                 logger.debug(f"[回归任务] {chat_info} 尚未有情绪变化，跳过回归")
                 continue
 
             time_since_last_change = now - mood.last_change_time
-            
+
             # 检查是否有极端情绪需要快速回归
             high_emotions = {k: v for k, v in mood.mood_values.items() if v >= 8}
             has_extreme_emotion = len(high_emotions) > 0
-            
+
             # 回归条件：1. 正常时间间隔(120s) 或 2. 有极端情绪且距上次变化>=30s
             should_regress = False
             regress_reason = ""
-            
+
             if time_since_last_change > 120:
                 should_regress = True
                 regress_reason = f"常规回归(距上次变化{int(time_since_last_change)}秒)"
@@ -373,24 +373,28 @@ class MoodRegressionTask(AsyncTask):
                 should_regress = True
                 high_emotion_str = ", ".join([f"{k}={v}" for k, v in high_emotions.items()])
                 regress_reason = f"极端情绪快速回归({high_emotion_str}, 距上次变化{int(time_since_last_change)}秒)"
-            
+
             if should_regress:
                 if mood.regression_count >= 3:
                     logger.debug(f"[回归任务] {chat_info} 已达到最大回归次数(3次)，停止回归")
                     continue
 
-                logger.info(f"[回归任务] {chat_info} 开始情绪回归 ({regress_reason}，第{mood.regression_count + 1}次回归)")
+                logger.info(
+                    f"[回归任务] {chat_info} 开始情绪回归 ({regress_reason}，第{mood.regression_count + 1}次回归)"
+                )
                 await mood.regress_mood()
                 regression_executed += 1
             else:
                 if has_extreme_emotion:
                     remaining_time = 5 - time_since_last_change
                     high_emotion_str = ", ".join([f"{k}={v}" for k, v in high_emotions.items()])
-                    logger.debug(f"[回归任务] {chat_info} 存在极端情绪({high_emotion_str})，距离快速回归还需等待{int(remaining_time)}秒")
+                    logger.debug(
+                        f"[回归任务] {chat_info} 存在极端情绪({high_emotion_str})，距离快速回归还需等待{int(remaining_time)}秒"
+                    )
                 else:
                     remaining_time = 120 - time_since_last_change
                     logger.debug(f"[回归任务] {chat_info} 距离回归还需等待{int(remaining_time)}秒")
-        
+
         if regression_executed > 0:
             logger.info(f"[回归任务] 本次执行了{regression_executed}个聊天的情绪回归")
         else:
@@ -409,11 +413,11 @@ class MoodManager:
             return
 
         logger.info("启动情绪管理任务...")
-        
+
         # 启动情绪回归任务
         regression_task = MoodRegressionTask(self)
         await async_task_manager.add_task(regression_task)
-        
+
         self.task_started = True
         logger.info("情绪管理任务已启动（情绪回归）")
 
@@ -435,7 +439,7 @@ class MoodManager:
                 # 发送重置后的情绪状态到ws端
                 asyncio.create_task(mood.send_emotion_update(mood.mood_values))
                 return
-        
+
         # 如果没有找到现有的mood，创建新的
         new_mood = ChatMood(chat_id)
         self.mood_list.append(new_mood)

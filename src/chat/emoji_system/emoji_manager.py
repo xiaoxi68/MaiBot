@@ -47,7 +47,7 @@ class MaiEmoji:
         self.embedding = []
         self.hash = ""  # 初始为空，在创建实例时会计算
         self.description = ""
-        self.emotion = []
+        self.emotion: List[str] = []
         self.usage_count = 0
         self.last_used_time = time.time()
         self.register_time = time.time()

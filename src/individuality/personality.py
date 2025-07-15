@@ -40,7 +40,15 @@ class Personality:
         return cls._instance
 
     @classmethod
-    def initialize(cls, bot_nickname: str, personality_core: str, personality_side: str, identity: List[str] = None, compress_personality: bool = True, compress_identity: bool = True) -> "Personality":
+    def initialize(
+        cls,
+        bot_nickname: str,
+        personality_core: str,
+        personality_side: str,
+        identity: List[str] = None,
+        compress_personality: bool = True,
+        compress_identity: bool = True,
+    ) -> "Personality":
         """初始化人格特质
 
         Args:

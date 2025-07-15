@@ -41,11 +41,11 @@ class Individuality:
             personality_side: 人格侧面描述
             identity: 身份细节描述
         """
-        bot_nickname=global_config.bot.nickname
-        personality_core=global_config.personality.personality_core
-        personality_side=global_config.personality.personality_side
-        identity=global_config.personality.identity
-        
+        bot_nickname = global_config.bot.nickname
+        personality_core = global_config.personality.personality_core
+        personality_side = global_config.personality.personality_side
+        identity = global_config.personality.identity
+
         logger.info("正在初始化个体特征")
         person_info_manager = get_person_info_manager()
         self.bot_person_id = person_info_manager.get_person_id("system", "bot_id")
@@ -146,11 +146,10 @@ class Individuality:
         else:
             logger.error("人设构建失败")
 
-
     async def get_personality_block(self) -> str:
         person_info_manager = get_person_info_manager()
         bot_person_id = person_info_manager.get_person_id("system", "bot_id")
-        
+
         bot_name = global_config.bot.nickname
         if global_config.bot.alias_names:
             bot_nickname = f",也有人叫你{','.join(global_config.bot.alias_names)}"
@@ -175,9 +174,8 @@ class Individuality:
         identity = short_impression[1]
         prompt_personality = f"{personality}，{identity}"
         identity_block = f"你的名字是{bot_name}{bot_nickname}，你{prompt_personality}："
-        
-        return identity_block
 
+        return identity_block
 
     def _get_config_hash(
         self, bot_nickname: str, personality_core: str, personality_side: str, identity: list
@@ -272,7 +270,6 @@ class Individuality:
                 json.dump(meta_info, f, ensure_ascii=False, indent=2)
         except IOError as e:
             logger.error(f"保存meta_info文件失败: {e}")
-
 
     async def _create_personality(self, personality_core: str, personality_side: str) -> str:
         # sourcery skip: merge-list-append, move-assign

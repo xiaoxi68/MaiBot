@@ -43,23 +43,24 @@ logger = get_logger("watching")
 
 class WatchingState(Enum):
     """视线状态枚举"""
+
     WANDERING = "wandering"  # 随意看
-    DANMU = "danmu"         # 看弹幕
-    LENS = "lens"           # 看镜头
+    DANMU = "danmu"  # 看弹幕
+    LENS = "lens"  # 看镜头
 
 
 class ChatWatching:
     def __init__(self, chat_id: str):
         self.chat_id: str = chat_id
         self.current_state: WatchingState = WatchingState.LENS  # 默认看镜头
-        self.last_sent_state: Optional[WatchingState] = None    # 上次发送的状态
-        self.state_needs_update: bool = True                    # 是否需要更新状态
-        
+        self.last_sent_state: Optional[WatchingState] = None  # 上次发送的状态
+        self.state_needs_update: bool = True  # 是否需要更新状态
+
         # 状态切换相关
-        self.is_replying: bool = False                          # 是否正在生成回复
-        self.reply_finished_time: Optional[float] = None        # 回复完成时间
-        self.danmu_viewing_duration: float = 1.0               # 看弹幕持续时间（秒）
-        
+        self.is_replying: bool = False  # 是否正在生成回复
+        self.reply_finished_time: Optional[float] = None  # 回复完成时间
+        self.danmu_viewing_duration: float = 1.0  # 看弹幕持续时间（秒）
+
         logger.info(f"[{self.chat_id}] 视线管理器初始化，默认状态: {self.current_state.value}")
 
     async def _change_state(self, new_state: WatchingState, reason: str = ""):
@@ -69,7 +70,7 @@ class ChatWatching:
             self.current_state = new_state
             self.state_needs_update = True
             logger.info(f"[{self.chat_id}] 视线状态切换: {old_state.value} → {new_state.value} ({reason})")
-            
+
             # 立即发送视线状态更新
             await self._send_watching_update()
         else:
@@ -86,7 +87,7 @@ class ChatWatching:
         """开始生成回复时调用"""
         self.is_replying = True
         self.reply_finished_time = None
-        
+
         if look_at_lens:
             await self._change_state(WatchingState.LENS, "开始生成回复-看镜头")
         else:
@@ -96,35 +97,29 @@ class ChatWatching:
         """生成回复完毕时调用"""
         self.is_replying = False
         self.reply_finished_time = time.time()
-        
+
         # 先看弹幕1秒
         await self._change_state(WatchingState.DANMU, "回复完毕-看弹幕")
         logger.info(f"[{self.chat_id}] 回复完毕，将看弹幕{self.danmu_viewing_duration}秒后转为看镜头")
-        
+
         # 设置定时器，1秒后自动切换到看镜头
         asyncio.create_task(self._auto_switch_to_lens())
 
     async def _auto_switch_to_lens(self):
         """自动切换到看镜头（延迟执行）"""
         await asyncio.sleep(self.danmu_viewing_duration)
-        
+
         # 检查是否仍需要切换（可能状态已经被其他事件改变）
-        if (self.reply_finished_time is not None and 
-            self.current_state == WatchingState.DANMU and
-            not self.is_replying):
-            
+        if self.reply_finished_time is not None and self.current_state == WatchingState.DANMU and not self.is_replying:
             await self._change_state(WatchingState.LENS, "看弹幕时间结束")
             self.reply_finished_time = None  # 重置完成时间
 
     async def _send_watching_update(self):
         """立即发送视线状态更新"""
         await send_api.custom_to_stream(
-            message_type="watching",
-            content=self.current_state.value,
-            stream_id=self.chat_id,
-            storage_message=False
+            message_type="watching", content=self.current_state.value, stream_id=self.chat_id, storage_message=False
         )
-        
+
         logger.info(f"[{self.chat_id}] 发送视线状态更新: {self.current_state.value}")
         self.last_sent_state = self.current_state
         self.state_needs_update = False
@@ -139,9 +134,8 @@ class ChatWatching:
             "current_state": self.current_state.value,
             "is_replying": self.is_replying,
             "reply_finished_time": self.reply_finished_time,
-            "state_needs_update": self.state_needs_update
+            "state_needs_update": self.state_needs_update,
         }
-
 
 
 class WatchingManager:
@@ -156,7 +150,7 @@ class WatchingManager:
             return
 
         logger.info("启动视线管理系统...")
-        
+
         self.task_started = True
         logger.info("视线管理系统已启动（状态变化时立即发送）")
 
@@ -169,10 +163,10 @@ class WatchingManager:
         new_watching = ChatWatching(chat_id)
         self.watching_list.append(new_watching)
         logger.info(f"为chat {chat_id}创建新的视线管理器")
-        
+
         # 发送初始状态
         asyncio.create_task(new_watching._send_watching_update())
-        
+
         return new_watching
 
     def reset_watching_by_chat_id(self, chat_id: str):
@@ -185,27 +179,24 @@ class WatchingManager:
                 watching.is_replying = False
                 watching.reply_finished_time = None
                 logger.info(f"[{chat_id}] 视线状态已重置为默认状态")
-                
+
                 # 发送重置后的状态
                 asyncio.create_task(watching._send_watching_update())
                 return
-        
+
         # 如果没有找到现有的watching，创建新的
         new_watching = ChatWatching(chat_id)
         self.watching_list.append(new_watching)
         logger.info(f"为chat {chat_id}创建并重置视线管理器")
-        
+
         # 发送初始状态
         asyncio.create_task(new_watching._send_watching_update())
 
     def get_all_watching_info(self) -> dict:
         """获取所有聊天的视线状态信息（用于调试）"""
-        return {
-            watching.chat_id: watching.get_state_info() 
-            for watching in self.watching_list
-        }
+        return {watching.chat_id: watching.get_state_info() for watching in self.watching_list}
 
 
 # 全局视线管理器实例
 watching_manager = WatchingManager()
-"""全局视线管理器""" 
+"""全局视线管理器"""

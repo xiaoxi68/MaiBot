@@ -37,7 +37,7 @@ class PersonalityConfig(ConfigBase):
 
     personality_side: str
     """人格侧写"""
-        
+
     identity: str = ""
     """身份特征"""
 
@@ -105,7 +105,6 @@ class ChatConfig(ConfigBase):
 
     focus_value: float = 1.0
     """麦麦的专注思考能力，越低越容易专注，消耗token也越多"""
-
 
     def get_current_talk_frequency(self, chat_stream_id: Optional[str] = None) -> float:
         """
@@ -246,6 +245,7 @@ class ChatConfig(ConfigBase):
         except (ValueError, IndexError):
             return None
 
+
 @dataclass
 class MessageReceiveConfig(ConfigBase):
     """消息接收配置类"""
@@ -272,8 +272,6 @@ class NormalChatConfig(ConfigBase):
 
     at_bot_inevitable_reply: bool = False
     """@bot 必然回复"""
-
-
 
 
 @dataclass
@@ -627,3 +625,12 @@ class ModelConfig(ConfigBase):
 
     embedding: dict[str, Any] = field(default_factory=lambda: {})
     """嵌入模型配置"""
+
+    lpmm_entity_extract: dict[str, Any] = field(default_factory=lambda: {})
+    """LPMM实体提取模型配置"""
+
+    lpmm_rdf_build: dict[str, Any] = field(default_factory=lambda: {})
+    """LPMM RDF构建模型配置"""
+
+    lpmm_qa: dict[str, Any] = field(default_factory=lambda: {})
+    """LPMM问答模型配置"""

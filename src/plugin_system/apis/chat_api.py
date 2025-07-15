@@ -39,7 +39,12 @@ class ChatManager:
 
         Returns:
             List[ChatStream]: 聊天流列表
+
+        Raises:
+            TypeError: 如果 platform 不是字符串或 SpecialTypes 枚举类型
         """
+        if not isinstance(platform, (str, SpecialTypes)):
+            raise TypeError("platform 必须是字符串或是 SpecialTypes 枚举")
         streams = []
         try:
             for _, stream in get_chat_manager().streams.items():
@@ -60,6 +65,8 @@ class ChatManager:
         Returns:
             List[ChatStream]: 群聊聊天流列表
         """
+        if not isinstance(platform, (str, SpecialTypes)):
+            raise TypeError("platform 必须是字符串或是 SpecialTypes 枚举")
         streams = []
         try:
             for _, stream in get_chat_manager().streams.items():
@@ -79,7 +86,12 @@ class ChatManager:
 
         Returns:
             List[ChatStream]: 私聊聊天流列表
+
+        Raises:
+            TypeError: 如果 platform 不是字符串或 SpecialTypes 枚举类型
         """
+        if not isinstance(platform, (str, SpecialTypes)):
+            raise TypeError("platform 必须是字符串或是 SpecialTypes 枚举")
         streams = []
         try:
             for _, stream in get_chat_manager().streams.items():
@@ -102,7 +114,17 @@ class ChatManager:
 
         Returns:
             Optional[ChatStream]: 聊天流对象，如果未找到返回None
+
+        Raises:
+            ValueError: 如果 group_id 为空字符串
+            TypeError: 如果 group_id 不是字符串类型或 platform 不是字符串或 SpecialTypes
         """
+        if not isinstance(group_id, str):
+            raise TypeError("group_id 必须是字符串类型")
+        if not isinstance(platform, (str, SpecialTypes)):
+            raise TypeError("platform 必须是字符串或是 SpecialTypes 枚举")
+        if not group_id:
+            raise ValueError("group_id 不能为空")
         try:
             for _, stream in get_chat_manager().streams.items():
                 if (
@@ -129,7 +151,17 @@ class ChatManager:
 
         Returns:
             Optional[ChatStream]: 聊天流对象，如果未找到返回None
+
+        Raises:
+            ValueError: 如果 user_id 为空字符串
+            TypeError: 如果 user_id 不是字符串类型或 platform 不是字符串或 SpecialTypes
         """
+        if not isinstance(user_id, str):
+            raise TypeError("user_id 必须是字符串类型")
+        if not isinstance(platform, (str, SpecialTypes)):
+            raise TypeError("platform 必须是字符串或是 SpecialTypes 枚举")
+        if not user_id:
+            raise ValueError("user_id 不能为空")
         try:
             for _, stream in get_chat_manager().streams.items():
                 if (
@@ -153,9 +185,15 @@ class ChatManager:
 
         Returns:
             str: 聊天类型 ("group", "private", "unknown")
+
+        Raises:
+            TypeError: 如果 chat_stream 不是 ChatStream 类型
+            ValueError: 如果 chat_stream 为空
         """
+        if not isinstance(chat_stream, ChatStream):
+            raise TypeError("chat_stream 必须是 ChatStream 类型")
         if not chat_stream:
-            raise ValueError("chat_stream cannot be None")
+            raise ValueError("chat_stream 不能为 None")
 
         if hasattr(chat_stream, "group_info"):
             return "group" if chat_stream.group_info else "private"
@@ -170,9 +208,15 @@ class ChatManager:
 
         Returns:
             Dict[str, Any]: 聊天流信息字典
+
+        Raises:
+            TypeError: 如果 chat_stream 不是 ChatStream 类型
+            ValueError: 如果 chat_stream 为空
         """
         if not chat_stream:
-            return {}
+            raise ValueError("chat_stream 不能为 None")
+        if not isinstance(chat_stream, ChatStream):
+            raise TypeError("chat_stream 必须是 ChatStream 类型")
 
         try:
             info: Dict[str, Any] = {

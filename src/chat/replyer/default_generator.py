@@ -479,18 +479,18 @@ class DefaultReplyer:
     def build_s4u_chat_history_prompts(self, message_list_before_now: list, target_user_id: str) -> tuple[str, str]:
         """
         构建 s4u 风格的分离对话 prompt
-        
+
         Args:
             message_list_before_now: 历史消息列表
             target_user_id: 目标用户ID（当前对话对象）
-            
+
         Returns:
             tuple: (核心对话prompt, 背景对话prompt)
         """
         core_dialogue_list = []
         background_dialogue_list = []
         bot_id = str(global_config.bot.qq_account)
-        
+
         # 过滤消息：分离bot和目标用户的对话 vs 其他用户的对话
         for msg_dict in message_list_before_now:
             try:
@@ -503,11 +503,11 @@ class DefaultReplyer:
                     background_dialogue_list.append(msg_dict)
             except Exception as e:
                 logger.error(f"无法处理历史消息记录: {msg_dict}, 错误: {e}")
-        
+
         # 构建背景对话 prompt
         background_dialogue_prompt = ""
         if background_dialogue_list:
-            latest_25_msgs = background_dialogue_list[-int(global_config.chat.max_context_size*0.6):]
+            latest_25_msgs = background_dialogue_list[-int(global_config.chat.max_context_size * 0.6) :]
             background_dialogue_prompt_str = build_readable_messages(
                 latest_25_msgs,
                 replace_bot_name=True,
@@ -516,12 +516,12 @@ class DefaultReplyer:
                 show_pic=False,
             )
             background_dialogue_prompt = f"这是其他用户的发言：\n{background_dialogue_prompt_str}"
-        
+
         # 构建核心对话 prompt
         core_dialogue_prompt = ""
         if core_dialogue_list:
-            core_dialogue_list = core_dialogue_list[-int(global_config.chat.max_context_size*2):]  # 限制消息数量
-            
+            core_dialogue_list = core_dialogue_list[-int(global_config.chat.max_context_size * 2) :]  # 限制消息数量
+
             core_dialogue_prompt_str = build_readable_messages(
                 core_dialogue_list,
                 replace_bot_name=True,
@@ -532,7 +532,7 @@ class DefaultReplyer:
                 show_actions=True,
             )
             core_dialogue_prompt = core_dialogue_prompt_str
-        
+
         return core_dialogue_prompt, background_dialogue_prompt
 
     async def build_prompt_reply_context(
@@ -578,14 +578,13 @@ class DefaultReplyer:
                 action_description = action_info.description
                 action_descriptions += f"- {action_name}: {action_description}\n"
             action_descriptions += "\n"
-            
+
         message_list_before_now_long = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_id,
             timestamp=time.time(),
             limit=global_config.chat.max_context_size * 2,
         )
-            
-            
+
         message_list_before_now = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_id,
             timestamp=time.time(),
@@ -712,8 +711,6 @@ class DefaultReplyer:
             # 根据sender通过person_info_manager反向查找person_id，再获取user_id
             person_id = person_info_manager.get_person_id_by_person_name(sender)
 
-
-
         # 根据配置选择使用哪种 prompt 构建模式
         if global_config.chat.use_s4u_prompt_mode and person_id:
             # 使用 s4u 对话构建模式：分离当前对话对象和其他对话
@@ -724,16 +721,15 @@ class DefaultReplyer:
             except Exception as e:
                 logger.warning(f"无法从person_id {person_id} 获取user_id: {e}")
                 target_user_id = ""
-                    
-            
+
             # 构建分离的对话 prompt
             core_dialogue_prompt, background_dialogue_prompt = self.build_s4u_chat_history_prompts(
                 message_list_before_now_long, target_user_id
             )
-            
+
             # 使用 s4u 风格的模板
             template_name = "s4u_style_prompt"
-            
+
             return await global_prompt_manager.format_prompt(
                 template_name,
                 expression_habits_block=expression_habits_block,
