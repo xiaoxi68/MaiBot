@@ -46,10 +46,10 @@ def init_prompt():
 class ChatMood:
     def __init__(self, chat_id: str):
         self.chat_id: str = chat_id
-        
+
         chat_manager = get_chat_manager()
         self.chat_stream = chat_manager.get_stream(self.chat_id)
-        
+
         self.log_prefix = f"[{self.chat_stream.group_info.group_name if self.chat_stream.group_info else self.chat_stream.user_info.user_nickname}]"
 
         self.mood_state: str = "感觉很平静"
@@ -92,7 +92,7 @@ class ChatMood:
             chat_id=self.chat_id,
             timestamp_start=self.last_change_time,
             timestamp_end=message_time,
-            limit=int(global_config.chat.max_context_size/3),
+            limit=int(global_config.chat.max_context_size / 3),
             limit_mode="last",
         )
         chat_talking_prompt = build_readable_messages(
@@ -121,14 +121,12 @@ class ChatMood:
             mood_state=self.mood_state,
         )
 
-
-
         response, (reasoning_content, model_name) = await self.mood_model.generate_response_async(prompt=prompt)
         if global_config.debug.show_prompt:
             logger.info(f"{self.log_prefix} prompt: {prompt}")
             logger.info(f"{self.log_prefix} response: {response}")
             logger.info(f"{self.log_prefix} reasoning_content: {reasoning_content}")
-            
+
         logger.info(f"{self.log_prefix} 情绪状态更新为: {response}")
 
         self.mood_state = response
@@ -170,15 +168,14 @@ class ChatMood:
             mood_state=self.mood_state,
         )
 
-        
         response, (reasoning_content, model_name) = await self.mood_model.generate_response_async(prompt=prompt)
-        
+
         if global_config.debug.show_prompt:
             logger.info(f"{self.log_prefix} prompt: {prompt}")
             logger.info(f"{self.log_prefix} response: {response}")
             logger.info(f"{self.log_prefix} reasoning_content: {reasoning_content}")
-            
-        logger.info(f"{self.log_prefix} 情绪状态回归为: {response}")    
+
+        logger.info(f"{self.log_prefix} 情绪状态回归为: {response}")
 
         self.mood_state = response
 

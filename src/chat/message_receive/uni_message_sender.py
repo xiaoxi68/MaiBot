@@ -38,7 +38,9 @@ class HeartFCSender:
     def __init__(self):
         self.storage = MessageStorage()
 
-    async def send_message(self, message: MessageSending, typing=False, set_reply=False, storage_message=True, show_log=True):
+    async def send_message(
+        self, message: MessageSending, typing=False, set_reply=False, storage_message=True, show_log=True
+    ):
         """
         处理、发送并存储一条消息。
 

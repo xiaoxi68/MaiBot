@@ -107,7 +107,6 @@ class S4UStreamGenerator:
         model_name: str,
         **kwargs,
     ) -> AsyncGenerator[str, None]:
-
         buffer = ""
         delimiters = "，。！？,.!?\n\r"  # For final trimming
         punctuation_buffer = ""

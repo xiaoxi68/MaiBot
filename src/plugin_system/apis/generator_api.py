@@ -5,17 +5,20 @@
 使用方式：
     from src.plugin_system.apis import generator_api
     replyer = generator_api.get_replyer(chat_stream)
-    success, reply_set = await generator_api.generate_reply(chat_stream, action_data, reasoning)
+    success, reply_set, _ = await generator_api.generate_reply(chat_stream, action_data, reasoning)
 """
 
 import traceback
 from typing import Tuple, Any, Dict, List, Optional
+from rich.traceback import install
 from src.common.logger import get_logger
 from src.chat.replyer.default_generator import DefaultReplyer
 from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.utils.utils import process_llm_response
 from src.chat.replyer.replyer_manager import replyer_manager
 from src.plugin_system.base.component_types import ActionInfo
+
+install(extra_lines=3)
 
 logger = get_logger("generator_api")
 
@@ -44,7 +47,12 @@ def get_replyer(
 
     Returns:
         Optional[DefaultReplyer]: 回复器对象，如果获取失败则返回None
+
+    Raises:
+        ValueError: chat_stream 和 chat_id 均为空
     """
+    if not chat_id and not chat_stream:
+        raise ValueError("chat_stream 和 chat_id 不可均为空")
     try:
         logger.debug(f"[GeneratorAPI] 正在获取回复器，chat_id: {chat_id}, chat_stream: {'有' if chat_stream else '无'}")
         return replyer_manager.get_replyer(

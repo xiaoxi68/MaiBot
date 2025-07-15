@@ -75,7 +75,7 @@ class ReplyAction(BaseAction):
 
         reply_to = self.action_data.get("reply_to", "")
         sender, target = self._parse_reply_target(reply_to)
-        
+
         try:
             prepared_reply = self.action_data.get("prepared_reply", "")
             if not prepared_reply:
