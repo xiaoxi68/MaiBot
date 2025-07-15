@@ -76,7 +76,7 @@ def get_raw_msg_by_timestamp_with_chat_users(
     chat_id: str,
     timestamp_start: float,
     timestamp_end: float,
-    person_ids: list,
+    person_ids: List[str],
     limit: int = 0,
     limit_mode: str = "latest",
 ) -> List[Dict[str, Any]]:

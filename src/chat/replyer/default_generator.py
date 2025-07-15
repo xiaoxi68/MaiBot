@@ -182,6 +182,7 @@ class DefaultReplyer:
         回复器 (Replier): 核心逻辑，负责生成回复文本。
         (已整合原 HeartFCGenerator 的功能)
         """
+        prompt = None
         if available_actions is None:
             available_actions = {}
         if reply_data is None:
@@ -707,6 +708,7 @@ class DefaultReplyer:
             )
 
         target_user_id = ""
+        person_id = ""
         if sender:
             # 根据sender通过person_info_manager反向查找person_id，再获取user_id
             person_id = person_info_manager.get_person_id_by_person_name(sender)

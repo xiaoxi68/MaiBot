@@ -91,7 +91,7 @@ async def _send_to_target(
         )
 
         # 创建消息段
-        message_segment = Seg(type=message_type, data=content)
+        message_segment = Seg(type=message_type, data=content)  # type: ignore
 
         # 处理回复消息
         anchor_message = None
