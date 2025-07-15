@@ -93,7 +93,7 @@ if bot_global_config.lpmm_knowledge.enable:
         )
 
     # 初始化Embedding库
-    embed_manager = EmbeddingManager(llm_client_list[global_config["embedding"]["provider"]])
+    embed_manager = EmbeddingManager()
     logger.info("正在从文件加载Embedding库")
     try:
         embed_manager.load_from_file()
@@ -124,9 +124,6 @@ if bot_global_config.lpmm_knowledge.enable:
     qa_manager = QAManager(
         embed_manager,
         kg_manager,
-        llm_client_list[global_config["embedding"]["provider"]],
-        llm_client_list[global_config["qa"]["llm"]["provider"]],
-        llm_client_list[global_config["qa"]["llm"]["provider"]],
     )
 
     # 记忆激活（用于记忆库）
