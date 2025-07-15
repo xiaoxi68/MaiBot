@@ -10,7 +10,7 @@ import pandas as pd
 # import tqdm
 import faiss
 
-from .llm_client import LLMClient
+# from .llm_client import LLMClient
 from .lpmmconfig import global_config
 from .utils.hash import get_sha256
 from .global_logger import logger
@@ -295,7 +295,7 @@ class EmbeddingStore:
 
 
 class EmbeddingManager:
-    def __init__(self, llm_client: LLMClient):
+    def __init__(self):
         self.paragraphs_embedding_store = EmbeddingStore(
             local_storage['pg_namespace'],
             EMBEDDING_DATA_DIR_STR,

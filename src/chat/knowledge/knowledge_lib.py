@@ -31,6 +31,7 @@ RAG_PG_HASH_NAMESPACE = "rag-pg-hash"
 
 
 ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+DATA_PATH = os.path.join(ROOT_PATH, "data")
 
 def _initialize_knowledge_local_storage():
     """
@@ -42,10 +43,6 @@ def _initialize_knowledge_local_storage():
         # 路径配置
         'root_path': ROOT_PATH,
         'data_path': f"{ROOT_PATH}/data",
-        'lpmm_raw_data_path': f"{ROOT_PATH}/data/raw_data",
-        'lpmm_openie_data_path': f"{ROOT_PATH}/data/openie",
-        'lpmm_embedding_data_dir': f"{ROOT_PATH}/data/embedding",
-        'lpmm_rag_data_dir': f"{ROOT_PATH}/data/rag",
         
         # 实体和命名空间配置
         'lpmm_invalid_entity': INVALID_ENTITY,
