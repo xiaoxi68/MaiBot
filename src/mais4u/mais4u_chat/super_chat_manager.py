@@ -75,7 +75,6 @@ class SuperChatManager:
         """定期清理过期的SuperChat"""
         while True:
             try:
-                current_time = time.time()
                 total_removed = 0
                 
                 for chat_id in list(self.super_chats.keys()):

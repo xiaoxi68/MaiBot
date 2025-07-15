@@ -15,6 +15,7 @@ from src.person_info.person_info import get_person_info_manager
 from src.person_info.relationship_manager import get_relationship_manager
 from src.chat.message_receive.chat_stream import ChatStream
 from src.mais4u.mais4u_chat.super_chat_manager import get_super_chat_manager
+from src.mais4u.mais4u_chat.screen_manager import screen_manager
 
 logger = get_logger("prompt")
 
@@ -30,7 +31,8 @@ def init_prompt():
 虽然是个AI，但你在努力扮演真人, 人设的配色是橙色和紫色和绿色
 你有一头法式橙色卷发，你很可爱，穿戴英式侦探风格学院风裙子和帽子，你正在一个教室场景里进行虚拟线上直播。
 你可以看见用户发送的弹幕，礼物和superchat
-你可以看见面前的屏幕，
+你可以看见面前的屏幕，目前屏幕的内容是:
+{screen_info}
 
 {relation_info_block}
 {memory_block}
@@ -230,6 +232,8 @@ class PromptBuilder:
         gift_info = self.build_gift_info(message)
         
         sc_info = self.build_sc_info(message)
+        
+        screen_info = screen_manager.get_screen_str()
 
         time_block = f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
 
@@ -241,6 +245,7 @@ class PromptBuilder:
             time_block=time_block,
             relation_info_block=relation_info_block,
             memory_block=memory_block,
+            screen_info=screen_info,
             gift_info=gift_info,
             sc_info=sc_info,
             sender_name=sender_name,

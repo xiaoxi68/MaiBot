@@ -499,7 +499,7 @@ class ContextWebManager:
     async def get_contexts_handler(self, request):
         """获取上下文API"""
         all_context_msgs = []
-        for chat_id, contexts in self.contexts.items():
+        for _chat_id, contexts in self.contexts.items():
             all_context_msgs.extend(list(contexts))
         
         # 按时间排序，最新的在最后
@@ -609,7 +609,7 @@ class ContextWebManager:
     async def send_contexts_to_websocket(self, ws: web.WebSocketResponse):
         """向单个WebSocket发送上下文数据"""
         all_context_msgs = []
-        for chat_id, contexts in self.contexts.items():
+        for _chat_id, contexts in self.contexts.items():
             all_context_msgs.extend(list(contexts))
         
         # 按时间排序，最新的在最后
@@ -628,7 +628,7 @@ class ContextWebManager:
             return
             
         all_context_msgs = []
-        for chat_id, contexts in self.contexts.items():
+        for _chat_id, contexts in self.contexts.items():
             all_context_msgs.extend(list(contexts))
         
         # 按时间排序，最新的在最后

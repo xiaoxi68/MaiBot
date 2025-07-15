@@ -190,6 +190,7 @@ class MessageRecvS4U(MessageRecv):
         self.superchat_info = None
         self.superchat_price = None
         self.superchat_message_text = None
+        self.is_screen = False
     
     async def process(self) -> None:
         self.processed_plain_text = await self._process_message_segments(self.message_segment)
@@ -264,6 +265,10 @@ class MessageRecvS4U(MessageRecv):
                 self.processed_plain_text += f"（注意：这是一条超级弹幕信息，价值{self.superchat_price}元，请你认真回复）"
                 
                 return self.processed_plain_text
+            elif segment.type == "screen":
+                self.is_screen = True
+                self.screen_info = segment.data
+                return "屏幕信息"
             else:
                 return ""
         except Exception as e:

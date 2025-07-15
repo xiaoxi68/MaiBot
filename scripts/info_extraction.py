@@ -24,7 +24,7 @@ from rich.progress import (
     SpinnerColumn,
     TextColumn,
 )
-from raw_data_preprocessor import RAW_DATA_PATH, process_multi_files, load_raw_data
+from raw_data_preprocessor import RAW_DATA_PATH, load_raw_data
 from src.config.config import global_config
 from src.llm_models.utils_model import LLMRequest
 

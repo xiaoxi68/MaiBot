@@ -44,6 +44,8 @@ config/lpmm_config.toml.bak
 （临时版）麦麦开始学习.bat
 src/plugins/utils/statistic.py
 CLAUDE.md
+s4u.s4u
+s4u.s4u1
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

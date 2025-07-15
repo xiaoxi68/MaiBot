@@ -15,6 +15,7 @@ from src.mais4u.mais4u_chat.s4u_mood_manager import mood_manager
 from src.mais4u.mais4u_chat.s4u_watching_manager import watching_manager
 from src.mais4u.mais4u_chat.context_web_manager import get_context_web_manager
 from src.mais4u.mais4u_chat.gift_manager import gift_manager
+from src.mais4u.mais4u_chat.screen_manager import screen_manager
 
 from .s4u_chat import get_s4u_chat_manager
 
@@ -95,8 +96,12 @@ class S4UMessageProcessor:
         # 处理礼物消息，如果消息被暂存则停止当前处理流程
         if not skip_gift_debounce and not await self.handle_if_gift(message):
             return
-        
         await self.check_if_fake_gift(message)
+        
+        # 处理屏幕消息
+        if await self.handle_screen_message(message):
+            return
+        
 
         await self.storage.store_message(message, chat)
 
@@ -127,6 +132,12 @@ class S4UMessageProcessor:
             logger.info(f"[S4U-礼物] {userinfo.user_nickname} 送出了 {message.gift_name} x{message.gift_count}")
         else:
             logger.info(f"[S4U]{userinfo.user_nickname}:{message.processed_plain_text}")
+    
+    async def handle_screen_message(self, message: MessageRecvS4U):
+        if message.is_screen:
+            screen_manager.set_screen(message.screen_info)
+            return True
+        return False
     
     async def check_if_fake_gift(self, message: MessageRecvS4U) -> bool:
         """检查消息是否为假礼物"""
