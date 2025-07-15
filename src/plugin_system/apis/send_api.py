@@ -254,7 +254,6 @@ async def _find_reply_message(target_stream, reply_to: str) -> Optional[MessageR
         message_dict = {
             "message_info": message_info,
             "raw_message": find_msg.get("processed_plain_text"),
-            "detailed_plain_text": find_msg.get("processed_plain_text"),
             "processed_plain_text": find_msg.get("processed_plain_text"),
         }
 

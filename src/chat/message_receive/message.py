@@ -38,7 +38,6 @@ class Message(MessageBase):
         message_segment: Optional[Seg] = None,
         timestamp: Optional[float] = None,
         reply: Optional["MessageRecv"] = None,
-        detailed_plain_text: str = "",
         processed_plain_text: str = "",
     ):
         # 使用传入的时间戳或当前时间
@@ -58,7 +57,6 @@ class Message(MessageBase):
         self.chat_stream = chat_stream
         # 文本处理相关属性
         self.processed_plain_text = processed_plain_text
-        self.detailed_plain_text = detailed_plain_text
 
         # 回复消息
         self.reply = reply
@@ -104,7 +102,6 @@ class MessageRecv(Message):
         self.message_segment = Seg.from_dict(message_dict.get("message_segment", {}))
         self.raw_message = message_dict.get("raw_message")
         self.processed_plain_text = message_dict.get("processed_plain_text", "")
-        self.detailed_plain_text = message_dict.get("detailed_plain_text", "")
         self.is_emoji = False
         self.has_emoji = False
         self.is_picid = False
@@ -123,7 +120,6 @@ class MessageRecv(Message):
         这个方法必须在创建实例后显式调用，因为它包含异步操作。
         """
         self.processed_plain_text = await self._process_message_segments(self.message_segment)
-        self.detailed_plain_text = self._generate_detailed_text()
 
     async def _process_single_segment(self, segment: Seg) -> str:
         """处理单个消息段
@@ -182,12 +178,97 @@ class MessageRecv(Message):
             logger.error(f"处理消息段失败: {str(e)}, 类型: {segment.type}, 数据: {segment.data}")
             return f"[处理失败的{segment.type}消息]"
 
-    def _generate_detailed_text(self) -> str:
-        """生成详细文本，包含时间和用户信息"""
-        timestamp = self.message_info.time
-        user_info = self.message_info.user_info
-        name = f"<{self.message_info.platform}:{user_info.user_id}:{user_info.user_nickname}:{user_info.user_cardname}>"  # type: ignore
-        return f"[{timestamp}] {name}: {self.processed_plain_text}\n"
+@dataclass
+class MessageRecvS4U(MessageRecv):
+    def __init__(self, message_dict: dict[str, Any]):
+        super().__init__(message_dict)
+        self.is_gift = False
+        self.is_superchat = False
+        self.gift_info = None
+        self.gift_name = None
+        self.gift_count = None
+        self.superchat_info = None
+        self.superchat_price = None
+        self.superchat_message_text = None
+    
+    async def process(self) -> None:
+        self.processed_plain_text = await self._process_message_segments(self.message_segment)
+        
+    async def _process_single_segment(self, segment: Seg) -> str:
+        """处理单个消息段
+
+        Args:
+            segment: 消息段
+
+        Returns:
+            str: 处理后的文本
+        """
+        try:
+            if segment.type == "text":
+                self.is_picid = False
+                self.is_emoji = False
+                return segment.data  # type: ignore
+            elif segment.type == "image":
+                # 如果是base64图片数据
+                if isinstance(segment.data, str):
+                    self.has_picid = True
+                    self.is_picid = True
+                    self.is_emoji = False
+                    image_manager = get_image_manager()
+                    # print(f"segment.data: {segment.data}")
+                    _, processed_text = await image_manager.process_image(segment.data)
+                    return processed_text
+                return "[发了一张图片，网卡了加载不出来]"
+            elif segment.type == "emoji":
+                self.has_emoji = True
+                self.is_emoji = True
+                self.is_picid = False
+                if isinstance(segment.data, str):
+                    return await get_image_manager().get_emoji_description(segment.data)
+                return "[发了一个表情包，网卡了加载不出来]"
+            elif segment.type == "mention_bot":
+                self.is_picid = False
+                self.is_emoji = False
+                self.is_mentioned = float(segment.data)  # type: ignore
+                return ""
+            elif segment.type == "priority_info":
+                self.is_picid = False
+                self.is_emoji = False
+                if isinstance(segment.data, dict):
+                    # 处理优先级信息
+                    self.priority_mode = "priority"
+                    self.priority_info = segment.data
+                    """
+                    {
+                        'message_type': 'vip', # vip or normal
+                        'message_priority': 1.0, # 优先级，大为优先，float
+                    }
+                    """
+                return ""
+            elif segment.type == "gift":
+                self.is_gift = True
+                # 解析gift_info，格式为"名称:数量"
+                name, count = segment.data.split(":", 1)
+                self.gift_info = segment.data
+                self.gift_name = name.strip()
+                self.gift_count = int(count.strip())
+                return ""
+            elif segment.type == "superchat":
+                self.is_superchat = True
+                self.superchat_info = segment.data
+                price,message_text = segment.data.split(":", 1)
+                self.superchat_price = price.strip()
+                self.superchat_message_text = message_text.strip()
+                
+                self.processed_plain_text = str(self.superchat_message_text)
+                self.processed_plain_text += f"（注意：这是一条超级弹幕信息，价值{self.superchat_price}元，请你认真回复）"
+                
+                return self.processed_plain_text
+            else:
+                return ""
+        except Exception as e:
+            logger.error(f"处理消息段失败: {str(e)}, 类型: {segment.type}, 数据: {segment.data}")
+            return f"[处理失败的{segment.type}消息]"
 
 
 @dataclass
@@ -472,7 +553,6 @@ def message_from_db_dict(db_dict: dict) -> MessageRecv:
         "message_segment": {"type": "text", "data": processed_text},  # 从纯文本重建消息段
         "raw_message": None,  # 数据库中未存储原始消息
         "processed_plain_text": processed_text,
-        "detailed_plain_text": db_dict.get("detailed_plain_text", ""),
     }
 
     # 创建 MessageRecv 实例

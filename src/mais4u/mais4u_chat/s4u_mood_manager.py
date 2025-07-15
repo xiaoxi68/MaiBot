@@ -214,7 +214,7 @@ class ChatMood:
                 sorrow=self.mood_values["sorrow"],
                 fear=self.mood_values["fear"],
             )
-            logger.info(f"numerical mood prompt: {prompt}")
+            logger.debug(f"numerical mood prompt: {prompt}")
             response, (reasoning_content, model_name) = await self.mood_model_numerical.generate_response_async(
                 prompt=prompt
             )
@@ -398,7 +398,7 @@ class MoodRegressionTask(AsyncTask):
         if regression_executed > 0:
             logger.info(f"[回归任务] 本次执行了{regression_executed}个聊天的情绪回归")
         else:
-            logger.debug(f"[回归任务] 本次没有符合回归条件的聊天")
+            logger.debug("[回归任务] 本次没有符合回归条件的聊天")
 
 
 class MoodManager:

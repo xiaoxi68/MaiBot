@@ -11,7 +11,7 @@ import pandas as pd
 import faiss
 
 # from .llm_client import LLMClient
-from .lpmmconfig import global_config
+# from .lpmmconfig import global_config
 from .utils.hash import get_sha256
 from .global_logger import logger
 from rich.traceback import install
@@ -27,15 +27,12 @@ from rich.progress import (
 )
 from src.manager.local_store_manager import local_storage
 from src.chat.utils.utils import get_embedding
+from src.config.config import global_config
 
 
 install(extra_lines=3)
 ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-EMBEDDING_DATA_DIR = (
-    os.path.join(ROOT_PATH, "data", "embedding")
-    if global_config["persistence"]["embedding_data_dir"] is None
-    else os.path.join(ROOT_PATH, global_config["persistence"]["embedding_data_dir"])
-)
+EMBEDDING_DATA_DIR = os.path.join(ROOT_PATH, "data", "embedding")
 EMBEDDING_DATA_DIR_STR = str(EMBEDDING_DATA_DIR).replace("\\", "/")
 TOTAL_EMBEDDING_TIMES = 3  # 统计嵌入次数
 
@@ -260,7 +257,7 @@ class EmbeddingStore:
         # L2归一化
         faiss.normalize_L2(embeddings)
         # 构建索引
-        self.faiss_index = faiss.IndexFlatIP(global_config["embedding"]["dimension"])
+        self.faiss_index = faiss.IndexFlatIP(global_config.lpmm_knowledge.embedding_dimension)
         self.faiss_index.add(embeddings)
 
     def search_top_k(self, query: List[float], k: int) -> List[Tuple[str, float]]:

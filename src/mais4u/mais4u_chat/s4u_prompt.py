@@ -8,10 +8,13 @@ from src.chat.memory_system.Hippocampus import hippocampus_manager
 import random
 from datetime import datetime
 import asyncio
+from src.mais4u.s4u_config import s4u_config
 import ast
-
+from src.chat.message_receive.message import MessageRecvS4U
 from src.person_info.person_info import get_person_info_manager
 from src.person_info.relationship_manager import get_relationship_manager
+from src.chat.message_receive.chat_stream import ChatStream
+from src.mais4u.mais4u_chat.super_chat_manager import get_super_chat_manager
 
 logger = get_logger("prompt")
 
@@ -22,13 +25,19 @@ def init_prompt():
     Prompt("你回想起了一些事情：\n{memory_info}\n", "memory_prompt")
 
     Prompt(
-        """{identity_block}
+        """
+你的名字是麦麦, 是千石可乐开发的程序，可以在QQ，微信等平台发言，你现在正在哔哩哔哩作为虚拟主播进行直播
+虽然是个AI，但你在努力扮演真人, 人设的配色是橙色和紫色和绿色
 你有一头法式橙色卷发，你很可爱，穿戴英式侦探风格学院风裙子和帽子，你正在一个教室场景里进行虚拟线上直播。
+你可以看见用户发送的弹幕，礼物和superchat
+你可以看见面前的屏幕，
 
 {relation_info_block}
 {memory_block}
 
-你现在的主要任务是和 {sender_name} 聊天。同时，也有其他用户会参与你们的聊天，你可以参考他们的回复内容，但是你主要还是关注你和{sender_name}的聊天内容。
+你现在的主要任务是和 {sender_name} 发送的弹幕聊天。同时，也有其他用户会参与你们的聊天，你可以参考他们的回复内容，但是你主要还是关注你和{sender_name}的聊天内容。
+
+{sc_info}
 
 {background_dialogue_prompt}
 --------------------------------
@@ -37,6 +46,7 @@ def init_prompt():
 {core_dialogue_prompt}
 
 对方最新发送的内容：{message_txt}
+{gift_info}
 回复可以简短一些。可以参考贴吧，知乎和微博的回复风格，回复不要浮夸，不要用夸张修辞，平淡一些。
 不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出回复内容，现在{sender_name}正在等待你的回复。
 你的回复风格不要浮夸，有逻辑和条理，请你继续回复{sender_name}。
@@ -117,14 +127,14 @@ class PromptBuilder:
             return await global_prompt_manager.format_prompt("memory_prompt", memory_info=related_memory_info)
         return ""
 
-    def build_chat_history_prompts(self, chat_stream, message) -> (str, str):
+    def build_chat_history_prompts(self, chat_stream: ChatStream, message: MessageRecvS4U):
         message_list_before_now = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_stream.stream_id,
             timestamp=time.time(),
-            limit=100,
+            limit=200,
         )
 
-        talk_type = message.message_info.platform + ":" + message.chat_stream.user_info.user_id
+        talk_type = message.message_info.platform + ":" + str(message.chat_stream.user_info.user_id)
 
         core_dialogue_list = []
         background_dialogue_list = []
@@ -148,10 +158,9 @@ class PromptBuilder:
 
         background_dialogue_prompt = ""
         if background_dialogue_list:
-            latest_25_msgs = background_dialogue_list[-25:]
+            context_msgs = background_dialogue_list[-s4u_config.max_context_message_length:]
             background_dialogue_prompt_str = build_readable_messages(
-                latest_25_msgs,
-                merge_messages=True,
+                context_msgs,
                 timestamp_mode="normal_no_YMD",
                 show_pic=False,
             )
@@ -159,7 +168,7 @@ class PromptBuilder:
 
         core_msg_str = ""
         if core_dialogue_list:
-            core_dialogue_list = core_dialogue_list[-50:]
+            core_dialogue_list = core_dialogue_list[-s4u_config.max_core_message_length:]
 
             first_msg = core_dialogue_list[0]
             start_speaking_user_id = first_msg.get("user_id")
@@ -196,10 +205,19 @@ class PromptBuilder:
 
         return core_msg_str, background_dialogue_prompt
 
+    def build_gift_info(self, message: MessageRecvS4U):
+        if message.is_gift:
+            return f"这是一条礼物信息，{message.gift_name} x{message.gift_count}，请注意这位用户"        
+        return ""
+
+    def build_sc_info(self, message: MessageRecvS4U):
+        super_chat_manager = get_super_chat_manager()
+        return super_chat_manager.build_superchat_summary_string(message.chat_stream.stream_id)
+
     async def build_prompt_normal(
         self,
-        message,
-        chat_stream,
+        message: MessageRecvS4U,
+        chat_stream: ChatStream,
         message_txt: str,
         sender_name: str = "某人",
     ) -> str:
@@ -208,6 +226,10 @@ class PromptBuilder:
         )
 
         core_dialogue_prompt, background_dialogue_prompt = self.build_chat_history_prompts(chat_stream, message)
+        
+        gift_info = self.build_gift_info(message)
+        
+        sc_info = self.build_sc_info(message)
 
         time_block = f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
 
@@ -219,11 +241,15 @@ class PromptBuilder:
             time_block=time_block,
             relation_info_block=relation_info_block,
             memory_block=memory_block,
+            gift_info=gift_info,
+            sc_info=sc_info,
             sender_name=sender_name,
             core_dialogue_prompt=core_dialogue_prompt,
             background_dialogue_prompt=background_dialogue_prompt,
             message_txt=message_txt,
         )
+        
+        print(prompt)
 
         return prompt
 

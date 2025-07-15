@@ -121,27 +121,6 @@ async def get_embedding(text, request_type="embedding"):
     return embedding
 
 
-def get_recent_group_detailed_plain_text(chat_stream_id: str, limit: int = 12, combine=False):
-    filter_query = {"chat_id": chat_stream_id}
-    sort_order = [("time", -1)]
-    recent_messages = find_messages(message_filter=filter_query, sort=sort_order, limit=limit)
-
-    if not recent_messages:
-        return []
-
-    # 反转消息列表，使最新的消息在最后
-    recent_messages.reverse()
-
-    if combine:
-        return "".join(str(msg_db_data["detailed_plain_text"]) for msg_db_data in recent_messages)
-
-    message_detailed_plain_text_list = []
-
-    for msg_db_data in recent_messages:
-        message_detailed_plain_text_list.append(msg_db_data["detailed_plain_text"])
-    return message_detailed_plain_text_list
-
-
 def get_recent_group_speaker(chat_stream_id: str, sender, limit: int = 12) -> list:
     # 获取当前群聊记录内发言的人
     filter_query = {"chat_id": chat_stream_id}
