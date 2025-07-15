@@ -106,7 +106,7 @@ class EmojiAction(BaseAction):
 
                 # 5. 调用LLM
                 models = llm_api.get_available_models()
-                chat_model_config = getattr(models, "utils_small", None)  # 默认使用chat模型
+                chat_model_config = models.get("utils_small")  # 使用字典访问方式
                 if not chat_model_config:
                     logger.error(f"{self.log_prefix} 未找到'utils_small'模型配置，无法调用LLM")
                     return False, "未找到'utils_small'模型配置"
