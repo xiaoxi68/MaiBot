@@ -88,9 +88,10 @@ class NoReplyAction(BaseAction):
                 new_message_count = len(recent_messages_dict)
 
                 # 2. 检查消息数量是否达到阈值
-                if new_message_count >= exit_message_count_threshold:
+                talk_frequency = global_config.chat.get_current_talk_frequency(self.stream_id)
+                if new_message_count >= exit_message_count_threshold / talk_frequency:
                     logger.info(
-                        f"{self.log_prefix} 累计消息数量达到{new_message_count}条(>{exit_message_count_threshold})，结束等待"
+                        f"{self.log_prefix} 累计消息数量达到{new_message_count}条(>{exit_message_count_threshold / talk_frequency})，结束等待"
                     )
                     exit_reason = f"{global_config.bot.nickname}（你）看到了{new_message_count}条新消息，可以考虑一下是否要进行回复"
                     await self.store_action_info(
@@ -108,10 +109,13 @@ class NoReplyAction(BaseAction):
                         interest_value = msg_dict.get("interest_value", 0.0)
                         if text:
                             accumulated_interest += interest_value
-                    logger.info(f"{self.log_prefix} 当前累计兴趣值: {accumulated_interest:.2f}")
-                    if accumulated_interest >= self._interest_exit_threshold:
+                            
+                    talk_frequency = global_config.chat.get_current_talk_frequency(self.stream_id)
+                    logger.info(f"{self.log_prefix} 当前累计兴趣值: {accumulated_interest:.2f}, 当前聊天频率: {talk_frequency:.2f}")
+                    
+                    if accumulated_interest >= self._interest_exit_threshold / talk_frequency:
                         logger.info(
-                            f"{self.log_prefix} 累计兴趣值达到{accumulated_interest:.2f}(>{self._interest_exit_threshold})，结束等待"
+                            f"{self.log_prefix} 累计兴趣值达到{accumulated_interest:.2f}(>{self._interest_exit_threshold / talk_frequency})，结束等待"
                         )
                         exit_reason = f"{global_config.bot.nickname}（你）感觉到了大家浓厚的兴趣（兴趣值{accumulated_interest:.1f}），决定重新加入讨论"
                         await self.store_action_info(
