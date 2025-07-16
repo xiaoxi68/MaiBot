@@ -8,7 +8,7 @@ import traceback
 from src.common.logger import get_logger
 from src.plugin_system.core.component_registry import component_registry
 from src.plugin_system.core.dependency_manager import dependency_manager
-from src.plugin_system.base.base_plugin import BasePlugin
+from src.plugin_system.base.plugin_base import PluginBase
 from src.plugin_system.base.component_types import ComponentType, PluginInfo, PythonDependency
 from src.plugin_system.utils.manifest_utils import VersionComparator
 
@@ -24,10 +24,10 @@ class PluginManager:
 
     def __init__(self):
         self.plugin_directories: List[str] = []  # 插件根目录列表
-        self.plugin_classes: Dict[str, Type[BasePlugin]] = {}  # 全局插件类注册表，插件名 -> 插件类
+        self.plugin_classes: Dict[str, Type[PluginBase]] = {}  # 全局插件类注册表，插件名 -> 插件类
         self.plugin_paths: Dict[str, str] = {}  # 记录插件名到目录路径的映射，插件名 -> 目录路径
 
-        self.loaded_plugins: Dict[str, BasePlugin] = {}  # 已加载的插件类实例注册表，插件名 -> 插件类实例
+        self.loaded_plugins: Dict[str, PluginBase] = {}  # 已加载的插件类实例注册表，插件名 -> 插件类实例
         self.failed_plugins: Dict[str, str] = {}  # 记录加载失败的插件类及其错误信息，插件名 -> 错误信息
 
         # 确保插件目录存在
@@ -221,7 +221,7 @@ class PluginManager:
             return True
         return False
 
-    def get_plugin_instance(self, plugin_name: str) -> Optional["BasePlugin"]:
+    def get_plugin_instance(self, plugin_name: str) -> Optional["PluginBase"]:
         """获取插件实例
 
         Args:
@@ -384,7 +384,7 @@ class PluginManager:
 
         return loaded_count, failed_count
 
-    def _find_plugin_directory(self, plugin_class: Type[BasePlugin]) -> Optional[str]:
+    def _find_plugin_directory(self, plugin_class: Type[PluginBase]) -> Optional[str]:
         """查找插件类对应的目录路径"""
         try:
             module = getmodule(plugin_class)
