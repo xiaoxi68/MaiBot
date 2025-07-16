@@ -110,7 +110,7 @@ class NoReplyAction(BaseAction):
                         if text:
                             accumulated_interest += interest_value
                             
-                    talk_frequency = global_config.chat.get_current_talk_frequency(self.stream_id)
+                    talk_frequency = global_config.chat.get_current_talk_frequency(self.chat_id)
                     logger.info(f"{self.log_prefix} 当前累计兴趣值: {accumulated_interest:.2f}, 当前聊天频率: {talk_frequency:.2f}")
                     
                     if accumulated_interest >= self._interest_exit_threshold / talk_frequency:
