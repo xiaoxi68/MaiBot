@@ -463,7 +463,7 @@ class HeartFChatting:
         """
 
         is_mentioned = message_data.get("is_mentioned", False)
-        interested_rate = message_data.get("interest_rate", 0.0) * self.willing_amplifier
+        interested_rate = message_data.get("interest_value", 0.0) * self.willing_amplifier
 
         reply_probability = (
             1.0 if is_mentioned and global_config.normal_chat.mentioned_bot_inevitable_reply else 0.0
