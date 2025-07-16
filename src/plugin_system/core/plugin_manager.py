@@ -197,29 +197,29 @@ class PluginManager:
         """获取所有启用的插件信息"""
         return list(component_registry.get_enabled_plugins().values())
 
-    def enable_plugin(self, plugin_name: str) -> bool:
-        # -------------------------------- NEED REFACTORING --------------------------------
-        """启用插件"""
-        if plugin_info := component_registry.get_plugin_info(plugin_name):
-            plugin_info.enabled = True
-            # 启用插件的所有组件
-            for component in plugin_info.components:
-                component_registry.enable_component(component.name)
-            logger.debug(f"已启用插件: {plugin_name}")
-            return True
-        return False
+    # def enable_plugin(self, plugin_name: str) -> bool:
+    #     # -------------------------------- NEED REFACTORING --------------------------------
+    #     """启用插件"""
+    #     if plugin_info := component_registry.get_plugin_info(plugin_name):
+    #         plugin_info.enabled = True
+    #         # 启用插件的所有组件
+    #         for component in plugin_info.components:
+    #             component_registry.enable_component(component.name)
+    #         logger.debug(f"已启用插件: {plugin_name}")
+    #         return True
+    #     return False
 
-    def disable_plugin(self, plugin_name: str) -> bool:
-        # -------------------------------- NEED REFACTORING --------------------------------
-        """禁用插件"""
-        if plugin_info := component_registry.get_plugin_info(plugin_name):
-            plugin_info.enabled = False
-            # 禁用插件的所有组件
-            for component in plugin_info.components:
-                component_registry.disable_component(component.name)
-            logger.debug(f"已禁用插件: {plugin_name}")
-            return True
-        return False
+    # def disable_plugin(self, plugin_name: str) -> bool:
+    #     # -------------------------------- NEED REFACTORING --------------------------------
+    #     """禁用插件"""
+    #     if plugin_info := component_registry.get_plugin_info(plugin_name):
+    #         plugin_info.enabled = False
+    #         # 禁用插件的所有组件
+    #         for component in plugin_info.components:
+    #             component_registry.disable_component(component.name)
+    #         logger.debug(f"已禁用插件: {plugin_name}")
+    #         return True
+    #     return False
 
     def get_plugin_instance(self, plugin_name: str) -> Optional["PluginBase"]:
         """获取插件实例

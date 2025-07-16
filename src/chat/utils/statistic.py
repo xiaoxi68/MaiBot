@@ -1211,7 +1211,7 @@ class StatisticOutputTask(AsyncTask):
             f.write(html_template)
 
     def _generate_focus_tab(self, stat: dict[str, Any]) -> str:
-        # sourcery skip: for-append-to-extend, list-comprehension, use-any
+        # sourcery skip: for-append-to-extend, list-comprehension, use-any, use-named-expression, use-next
         """生成Focus统计独立分页的HTML内容"""
 
         # 为每个时间段准备Focus数据
@@ -1559,6 +1559,7 @@ class StatisticOutputTask(AsyncTask):
         """
 
     def _generate_versions_tab(self, stat: dict[str, Any]) -> str:
+        # sourcery skip: use-named-expression, use-next
         """生成版本对比独立分页的HTML内容"""
 
         # 为每个时间段准备版本对比数据
@@ -2306,13 +2307,13 @@ class AsyncStatisticOutputTask(AsyncTask):
 
     # 复用 StatisticOutputTask 的所有方法
     def _collect_all_statistics(self, now: datetime):
-        return StatisticOutputTask._collect_all_statistics(self, now)
+        return StatisticOutputTask._collect_all_statistics(self, now)  # type: ignore
 
     def _statistic_console_output(self, stats: Dict[str, Any], now: datetime):
-        return StatisticOutputTask._statistic_console_output(self, stats, now)
+        return StatisticOutputTask._statistic_console_output(self, stats, now)  # type: ignore
 
     def _generate_html_report(self, stats: dict[str, Any], now: datetime):
-        return StatisticOutputTask._generate_html_report(self, stats, now)
+        return StatisticOutputTask._generate_html_report(self, stats, now)  # type: ignore
 
     # 其他需要的方法也可以类似复用...
     @staticmethod
@@ -2324,10 +2325,10 @@ class AsyncStatisticOutputTask(AsyncTask):
         return StatisticOutputTask._collect_online_time_for_period(collect_period, now)
 
     def _collect_message_count_for_period(self, collect_period: List[Tuple[str, datetime]]) -> Dict[str, Any]:
-        return StatisticOutputTask._collect_message_count_for_period(self, collect_period)
+        return StatisticOutputTask._collect_message_count_for_period(self, collect_period)  # type: ignore
 
     def _collect_focus_statistics_for_period(self, collect_period: List[Tuple[str, datetime]]) -> Dict[str, Any]:
-        return StatisticOutputTask._collect_focus_statistics_for_period(self, collect_period)
+        return StatisticOutputTask._collect_focus_statistics_for_period(self, collect_period)  # type: ignore
 
     def _process_focus_file_data(
         self,
@@ -2336,10 +2337,10 @@ class AsyncStatisticOutputTask(AsyncTask):
         collect_period: List[Tuple[str, datetime]],
         file_time: datetime,
     ):
-        return StatisticOutputTask._process_focus_file_data(self, cycles_data, stats, collect_period, file_time)
+        return StatisticOutputTask._process_focus_file_data(self, cycles_data, stats, collect_period, file_time)  # type: ignore
 
     def _calculate_focus_averages(self, stats: Dict[str, Any]):
-        return StatisticOutputTask._calculate_focus_averages(self, stats)
+        return StatisticOutputTask._calculate_focus_averages(self, stats)  # type: ignore
 
     @staticmethod
     def _format_total_stat(stats: Dict[str, Any]) -> str:
@@ -2347,31 +2348,31 @@ class AsyncStatisticOutputTask(AsyncTask):
 
     @staticmethod
     def _format_model_classified_stat(stats: Dict[str, Any]) -> str:
-        return StatisticOutputTask._format_model_classified_stat(stats)
+        return StatisticOutputTask._format_model_classified_stat(stats)  # type: ignore
 
     def _format_chat_stat(self, stats: Dict[str, Any]) -> str:
-        return StatisticOutputTask._format_chat_stat(self, stats)
+        return StatisticOutputTask._format_chat_stat(self, stats)  # type: ignore
 
     def _format_focus_stat(self, stats: Dict[str, Any]) -> str:
-        return StatisticOutputTask._format_focus_stat(self, stats)
+        return StatisticOutputTask._format_focus_stat(self, stats)  # type: ignore
 
     def _generate_chart_data(self, stat: dict[str, Any]) -> dict:
-        return StatisticOutputTask._generate_chart_data(self, stat)
+        return StatisticOutputTask._generate_chart_data(self, stat)  # type: ignore
 
     def _collect_interval_data(self, now: datetime, hours: int, interval_minutes: int) -> dict:
-        return StatisticOutputTask._collect_interval_data(self, now, hours, interval_minutes)
+        return StatisticOutputTask._collect_interval_data(self, now, hours, interval_minutes)  # type: ignore
 
     def _generate_chart_tab(self, chart_data: dict) -> str:
-        return StatisticOutputTask._generate_chart_tab(self, chart_data)
+        return StatisticOutputTask._generate_chart_tab(self, chart_data)  # type: ignore
 
     def _get_chat_display_name_from_id(self, chat_id: str) -> str:
-        return StatisticOutputTask._get_chat_display_name_from_id(self, chat_id)
+        return StatisticOutputTask._get_chat_display_name_from_id(self, chat_id)  # type: ignore
 
     def _generate_focus_tab(self, stat: dict[str, Any]) -> str:
-        return StatisticOutputTask._generate_focus_tab(self, stat)
+        return StatisticOutputTask._generate_focus_tab(self, stat)  # type: ignore
 
     def _generate_versions_tab(self, stat: dict[str, Any]) -> str:
-        return StatisticOutputTask._generate_versions_tab(self, stat)
+        return StatisticOutputTask._generate_versions_tab(self, stat)  # type: ignore
 
     def _convert_defaultdict_to_dict(self, data):
-        return StatisticOutputTask._convert_defaultdict_to_dict(self, data)
+        return StatisticOutputTask._convert_defaultdict_to_dict(self, data)  # type: ignore

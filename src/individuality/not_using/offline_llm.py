@@ -39,7 +39,7 @@ class LLMRequestOff:
         }
 
         # 发送请求到完整的 chat/completions 端点
-        api_url = f"{self.base_url.rstrip('/')}/chat/completions"
+        api_url = f"{self.base_url.rstrip('/')}/chat/completions"  # type: ignore
         logger.info(f"Request URL: {api_url}")  # 记录请求的 URL
 
         max_retries = 3
@@ -89,7 +89,7 @@ class LLMRequestOff:
         }
 
         # 发送请求到完整的 chat/completions 端点
-        api_url = f"{self.base_url.rstrip('/')}/chat/completions"
+        api_url = f"{self.base_url.rstrip('/')}/chat/completions"  # type: ignore
         logger.info(f"Request URL: {api_url}")  # 记录请求的 URL
 
         max_retries = 3

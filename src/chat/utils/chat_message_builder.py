@@ -252,7 +252,7 @@ def _build_readable_messages_internal(
     pic_id_mapping: Optional[Dict[str, str]] = None,
     pic_counter: int = 1,
     show_pic: bool = True,
-    message_id_list: List[Dict[str, Any]] = None,
+    message_id_list: Optional[List[Dict[str, Any]]] = None,
 ) -> Tuple[str, List[Tuple[float, str, str]], Dict[str, str], int]:
     """
     内部辅助函数，构建可读消息字符串和原始消息详情列表。
@@ -615,7 +615,7 @@ def build_readable_actions(actions: List[Dict[str, Any]]) -> str:
     for action in actions:
         action_time = action.get("time", current_time)
         action_name = action.get("action_name", "未知动作")
-        if action_name == "no_action" or action_name == "no_reply":
+        if action_name in ["no_action", "no_reply"]:
             continue
 
         action_prompt_display = action.get("action_prompt_display", "无具体内容")
@@ -697,7 +697,7 @@ def build_readable_messages(
     truncate: bool = False,
     show_actions: bool = False,
     show_pic: bool = True,
-    message_id_list: List[Dict[str, Any]] = None,
+    message_id_list: Optional[List[Dict[str, Any]]] = None,
 ) -> str:  # sourcery skip: extract-method
     """
     将消息列表转换为可读的文本格式。

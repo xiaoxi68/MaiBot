@@ -7,7 +7,7 @@
 import subprocess
 import sys
 import importlib
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Any
 
 from src.common.logger import get_logger
 from src.plugin_system.base.component_types import PythonDependency
@@ -176,7 +176,7 @@ class DependencyManager:
             logger.error(f"生成requirements文件失败: {str(e)}")
             return False
 
-    def get_install_summary(self) -> Dict[str, any]:
+    def get_install_summary(self) -> Dict[str, Any]:
         """获取安装摘要"""
         return {
             "install_log": self.install_log.copy(),

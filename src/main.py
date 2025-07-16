@@ -153,14 +153,14 @@ class MainSystem:
         while True:
             await asyncio.sleep(global_config.memory.memory_build_interval)
             logger.info("正在进行记忆构建")
-            await self.hippocampus_manager.build_memory()
+            await self.hippocampus_manager.build_memory()  # type: ignore
 
     async def forget_memory_task(self):
         """记忆遗忘任务"""
         while True:
             await asyncio.sleep(global_config.memory.forget_memory_interval)
             logger.info("[记忆遗忘] 开始遗忘记忆...")
-            await self.hippocampus_manager.forget_memory(percentage=global_config.memory.memory_forget_percentage)
+            await self.hippocampus_manager.forget_memory(percentage=global_config.memory.memory_forget_percentage)  # type: ignore
             logger.info("[记忆遗忘] 记忆遗忘完成")
 
     async def consolidate_memory_task(self):
@@ -168,7 +168,7 @@ class MainSystem:
         while True:
             await asyncio.sleep(global_config.memory.consolidate_memory_interval)
             logger.info("[记忆整合] 开始整合记忆...")
-            await self.hippocampus_manager.consolidate_memory()
+            await self.hippocampus_manager.consolidate_memory()  # type: ignore
             logger.info("[记忆整合] 记忆整合完成")
 
     @staticmethod

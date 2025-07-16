@@ -146,7 +146,7 @@ def _calculate_file_hash(file_path: Path, file_type: str) -> str:
     if not file_path.exists():
         logger.error(f"{file_type} 文件不存在")
         raise FileNotFoundError(f"{file_type} 文件不存在")
-    
+
     with open(file_path, "r", encoding="utf-8") as f:
         content = f.read()
     return hashlib.md5(content.encode("utf-8")).hexdigest()
@@ -154,21 +154,21 @@ def _calculate_file_hash(file_path: Path, file_type: str) -> str:
 
 def _check_agreement_status(file_hash: str, confirm_file: Path, env_var: str) -> tuple[bool, bool]:
     """检查协议确认状态
-    
+
     Returns:
         tuple[bool, bool]: (已确认, 未更新)
     """
     # 检查环境变量确认
     if file_hash == os.getenv(env_var):
         return True, False
-    
+
     # 检查确认文件
     if confirm_file.exists():
         with open(confirm_file, "r", encoding="utf-8") as f:
             confirmed_content = f.read()
         if file_hash == confirmed_content:
             return True, False
-    
+
     return False, True
 
 
@@ -178,7 +178,7 @@ def _prompt_user_confirmation(eula_hash: str, privacy_hash: str) -> None:
     confirm_logger.critical(
         f'输入"同意"或"confirmed"或设置环境变量"EULA_AGREE={eula_hash}"和"PRIVACY_AGREE={privacy_hash}"继续运行'
     )
-    
+
     while True:
         user_input = input().strip().lower()
         if user_input in ["同意", "confirmed"]:
@@ -186,13 +186,12 @@ def _prompt_user_confirmation(eula_hash: str, privacy_hash: str) -> None:
         confirm_logger.critical('请输入"同意"或"confirmed"以继续运行')
 
 
-def _save_confirmations(eula_updated: bool, privacy_updated: bool, 
-                       eula_hash: str, privacy_hash: str) -> None:
+def _save_confirmations(eula_updated: bool, privacy_updated: bool, eula_hash: str, privacy_hash: str) -> None:
     """保存用户确认结果"""
     if eula_updated:
         logger.info(f"更新EULA确认文件{eula_hash}")
         Path("eula.confirmed").write_text(eula_hash, encoding="utf-8")
-    
+
     if privacy_updated:
         logger.info(f"更新隐私条款确认文件{privacy_hash}")
         Path("privacy.confirmed").write_text(privacy_hash, encoding="utf-8")
@@ -203,19 +202,17 @@ def check_eula():
     # 计算文件哈希值
     eula_hash = _calculate_file_hash(Path("EULA.md"), "EULA.md")
     privacy_hash = _calculate_file_hash(Path("PRIVACY.md"), "PRIVACY.md")
-    
+
     # 检查确认状态
-    eula_confirmed, eula_updated = _check_agreement_status(
-        eula_hash, Path("eula.confirmed"), "EULA_AGREE"
-    )
+    eula_confirmed, eula_updated = _check_agreement_status(eula_hash, Path("eula.confirmed"), "EULA_AGREE")
     privacy_confirmed, privacy_updated = _check_agreement_status(
         privacy_hash, Path("privacy.confirmed"), "PRIVACY_AGREE"
     )
-    
+
     # 早期返回：如果都已确认且未更新
     if eula_confirmed and privacy_confirmed:
         return
-    
+
     # 如果有更新，需要重新确认
     if eula_updated or privacy_updated:
         _prompt_user_confirmation(eula_hash, privacy_hash)
@@ -225,7 +222,7 @@ def check_eula():
 def raw_main():
     # 利用 TZ 环境变量设定程序工作的时区
     if platform.system().lower() != "windows":
-        time.tzset()
+        time.tzset()  # type: ignore
 
     check_eula()
     logger.info("检查EULA和隐私条款完成")
