@@ -88,7 +88,7 @@ class NoReplyAction(BaseAction):
                 new_message_count = len(recent_messages_dict)
 
                 # 2. 检查消息数量是否达到阈值
-                talk_frequency = global_config.chat.get_current_talk_frequency(self.stream_id)
+                talk_frequency = global_config.chat.get_current_talk_frequency(self.chat_id)
                 if new_message_count >= exit_message_count_threshold / talk_frequency:
                     logger.info(
                         f"{self.log_prefix} 累计消息数量达到{new_message_count}条(>{exit_message_count_threshold / talk_frequency})，结束等待"
