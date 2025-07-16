@@ -1,7 +1,7 @@
 import json
 import time
 import traceback
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 from rich.traceback import install
 from datetime import datetime
 from json_repair import repair_json
@@ -81,13 +81,14 @@ class ActionPlanner:
         self.last_obs_time_mark = 0.0
 
     def find_message_by_id(self, message_id: str, message_id_list: list) -> Optional[Dict[str, Any]]:
+        # sourcery skip: use-next
         """
         根据message_id从message_id_list中查找对应的原始消息
-        
+
         Args:
             message_id: 要查找的消息ID
             message_id_list: 消息ID列表，格式为[{'id': str, 'message': dict}, ...]
-            
+
         Returns:
             找到的原始消息字典，如果未找到则返回None
         """
@@ -98,7 +99,7 @@ class ActionPlanner:
 
     async def plan(
         self, mode: ChatMode = ChatMode.FOCUS
-    ) -> Dict[str, Dict[str, Any] | str]:  # sourcery skip: dict-comprehension
+    ) -> Tuple[Dict[str, Dict[str, Any] | str], Optional[Dict[str, Any]]]:  # sourcery skip: dict-comprehension
         """
         规划器 (Planner): 使用LLM根据上下文决定做出什么动作。
         """
@@ -107,7 +108,8 @@ class ActionPlanner:
         reasoning = "规划器初始化默认"
         action_data = {}
         current_available_actions: Dict[str, ActionInfo] = {}
-        target_message = None  # 初始化target_message变量
+        target_message: Optional[Dict[str, Any]] = None  # 初始化target_message变量
+        prompt: str = ""
 
         try:
             is_group_chat = True
@@ -128,10 +130,7 @@ class ActionPlanner:
 
             # 如果没有可用动作或只有no_reply动作，直接返回no_reply
             if not current_available_actions:
-                if mode == ChatMode.FOCUS:
-                    action = "no_reply"
-                else:
-                    action = "no_action"
+                action = "no_reply" if mode == ChatMode.FOCUS else "no_action"
                 reasoning = "没有可用的动作"
                 logger.info(f"{self.log_prefix}{reasoning}")
                 return {
@@ -140,7 +139,7 @@ class ActionPlanner:
                         "action_data": action_data,
                         "reasoning": reasoning,
                     },
-                }
+                }, None
 
             # --- 构建提示词 (调用修改后的 PromptBuilder 方法) ---
             prompt, message_id_list = await self.build_planner_prompt(
@@ -196,8 +195,7 @@ class ActionPlanner:
 
                     # 在FOCUS模式下，非no_reply动作需要target_message_id
                     if mode == ChatMode.FOCUS and action != "no_reply":
-                        target_message_id = parsed_json.get("target_message_id")
-                        if target_message_id:
+                        if target_message_id := parsed_json.get("target_message_id"):
                             # 根据target_message_id查找原始消息
                             target_message = self.find_message_by_id(target_message_id, message_id_list)
                         else:
@@ -278,7 +276,7 @@ class ActionPlanner:
 
             if mode == ChatMode.FOCUS:
                 by_what = "聊天内容"
-                target_prompt = "\n    \"target_message_id\":\"触发action的消息id\""
+                target_prompt = '\n    "target_message_id":"触发action的消息id"'
                 no_action_block = """重要说明1：
 - 'no_reply' 表示只进行不进行回复，等待合适的回复时机
 - 当你刚刚发送了消息，没有人回复时，选择no_reply

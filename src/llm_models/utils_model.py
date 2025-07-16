@@ -827,6 +827,29 @@ class LLMRequest:
         )
         return embedding
 
+    def get_embedding_sync(self, text: str) -> Union[list, None]:
+        """同步方法：获取文本的embedding向量
+
+        Args:
+            text: 需要获取embedding的文本
+
+        Returns:
+            list: embedding向量，如果失败则返回None
+        """
+        return asyncio.run(self.get_embedding(text))
+
+    def generate_response_sync(self, prompt: str, **kwargs) -> Union[str, Tuple]:
+        """同步方式根据输入的提示生成模型的响应
+
+        Args:
+            prompt: 输入的提示文本
+            **kwargs: 额外的参数
+
+        Returns:
+            Union[str, Tuple]: 模型响应内容，如果有工具调用则返回元组
+        """
+        return asyncio.run(self.generate_response_async(prompt, **kwargs))
+
 
 def compress_base64_image_by_scale(base64_data: str, target_size: int = 0.8 * 1024 * 1024) -> str:
     """压缩base64格式的图片到指定大小

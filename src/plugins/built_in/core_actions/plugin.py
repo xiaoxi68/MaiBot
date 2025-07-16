@@ -36,8 +36,8 @@ class ReplyAction(BaseAction):
     """回复动作 - 参与聊天回复"""
 
     # 激活设置
-    focus_activation_type = ActionActivationType.NEVER
-    normal_activation_type = ActionActivationType.NEVER
+    focus_activation_type = ActionActivationType.ALWAYS
+    normal_activation_type = ActionActivationType.ALWAYS
     mode_enable = ChatMode.FOCUS
     parallel_action = False
 
