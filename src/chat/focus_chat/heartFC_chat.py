@@ -237,7 +237,7 @@ class HeartFChatting:
                 if if_think:
                     self.energy_value *= 1.1 / (global_config.chat.focus_value + 0.2)
                     logger.info(f"{self.log_prefix} 麦麦进行了思考，能量值增加1，当前能量值：{self.energy_value}")
-                return False
+                return True
 
             await asyncio.sleep(1)
 

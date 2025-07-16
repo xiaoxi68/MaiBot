@@ -302,7 +302,7 @@ class DefaultReplyer:
             traceback.print_exc()
             return False, None
 
-    async def build_relation_info(self, reply_data=None, chat_history=None):
+    async def build_relation_info(self, reply_data=None):
         if not global_config.relationship.enable_relationship:
             return ""
 
@@ -321,7 +321,7 @@ class DefaultReplyer:
             logger.warning(f"{self.log_prefix} 未找到用户 {sender} 的ID，跳过信息提取")
             return f"你完全不认识{sender}，不理解ta的相关信息。"
 
-        return await relationship_fetcher.build_relation_info(person_id, text, chat_history)
+        return await relationship_fetcher.build_relation_info(person_id, points_num=5)
 
     async def build_expression_habits(self, chat_history, target):
         if not global_config.expression.enable_expression:
@@ -619,7 +619,7 @@ class DefaultReplyer:
                 self.build_expression_habits(chat_talking_prompt_short, target), "build_expression_habits"
             ),
             self._time_and_run_task(
-                self.build_relation_info(reply_data, chat_talking_prompt_short), "build_relation_info"
+                self.build_relation_info(reply_data), "build_relation_info"
             ),
             self._time_and_run_task(self.build_memory_block(chat_talking_prompt_short, target), "build_memory_block"),
             self._time_and_run_task(
@@ -806,7 +806,7 @@ class DefaultReplyer:
         # 并行执行2个构建任务
         expression_habits_block, relation_info = await asyncio.gather(
             self.build_expression_habits(chat_talking_prompt_half, target),
-            self.build_relation_info(reply_data, chat_talking_prompt_half),
+            self.build_relation_info(reply_data),
         )
 
         keywords_reaction_prompt = await self.build_keywords_reaction_prompt(target)

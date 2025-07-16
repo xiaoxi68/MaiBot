@@ -96,7 +96,7 @@ class RelationshipFetcher:
             if not self.info_fetched_cache[person_id]:
                 del self.info_fetched_cache[person_id]
 
-    async def build_relation_info(self, person_id, target_message, chat_history):
+    async def build_relation_info(self, person_id, points_num = 3):
         # 清理过期的信息缓存
         self._cleanup_expired_cache()
 
@@ -124,13 +124,13 @@ class RelationshipFetcher:
         # 按时间排序forgotten_points
         current_points.sort(key=lambda x: x[2])
         # 按权重加权随机抽取最多3个不重复的points，point[1]的值在1-10之间，权重越高被抽到概率越大
-        if len(current_points) > 3:
+        if len(current_points) > points_num:
             # point[1] 取值范围1-10，直接作为权重
             weights = [max(1, min(10, int(point[1]))) for point in current_points]
             # 使用加权采样不放回，保证不重复
             indices = list(range(len(current_points)))
             points = []
-            for _ in range(3):
+            for _ in range(points_num):
                 if not indices:
                     break
                 sub_weights = [weights[i] for i in indices]
@@ -142,12 +142,6 @@ class RelationshipFetcher:
 
         # 构建points文本
         points_text = "\n".join([f"{point[2]}：{point[0]}" for point in points])
-
-        # info_type = await self._build_fetch_query(person_id, target_message, chat_history)
-        # if info_type:
-        # await self._extract_single_info(person_id, info_type, person_name)
-
-        # relation_info = self._organize_known_info()
 
         nickname_str = ""
         if person_name != nickname_str:
