@@ -25,11 +25,11 @@ class ClassicalWillingManager(BaseWillingManager):
         chat_id = willing_info.chat_id
         current_willing = self.chat_reply_willing.get(chat_id, 0)
         
-        print(f"[{chat_id}] 回复意愿: {current_willing}")
+        # print(f"[{chat_id}] 回复意愿: {current_willing}")
 
         interested_rate = willing_info.interested_rate * global_config.normal_chat.response_interested_rate_amplifier
         
-        print(f"[{chat_id}] 兴趣值: {interested_rate}")
+        # print(f"[{chat_id}] 兴趣值: {interested_rate}")
 
         if interested_rate > 0.2:
             current_willing += interested_rate - 0.2
@@ -41,7 +41,7 @@ class ClassicalWillingManager(BaseWillingManager):
         
         reply_probability = min(max((current_willing - 0.5), 0.01) * 2, 1)
         
-        print(f"[{chat_id}] 回复概率: {reply_probability}")
+        # print(f"[{chat_id}] 回复概率: {reply_probability}")
         
         return reply_probability
 

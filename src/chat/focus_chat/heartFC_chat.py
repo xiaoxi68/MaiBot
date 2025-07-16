@@ -487,7 +487,7 @@ class HeartFChatting:
         # 打印消息信息
         mes_name = self.chat_stream.group_info.group_name if self.chat_stream.group_info else "私聊"
         
-        logger.info(f"[{mes_name}] 当前聊天频率: {talk_frequency:.2f},兴趣值: {interested_rate:.2f},回复概率: {reply_probability * 100:.1f}%")
+        # logger.info(f"[{mes_name}] 当前聊天频率: {talk_frequency:.2f},兴趣值: {interested_rate:.2f},回复概率: {reply_probability * 100:.1f}%")
         
         if reply_probability > 0.05:
             logger.info(
