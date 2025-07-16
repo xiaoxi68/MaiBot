@@ -469,7 +469,7 @@ class HeartFChatting:
     
         reply_probability = await self.willing_manager.get_reply_probability(message_data.get("message_id", ""))
 
-        talk_frequency = "未知"
+        talk_frequency = -1.00
 
         if reply_probability < 1:  # 简化逻辑，如果未提及 (reply_probability 为 0)，则获取意愿概率
             additional_config = message_data.get("additional_config", {})
