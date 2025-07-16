@@ -15,7 +15,6 @@ class ClassicalWillingManager(BaseWillingManager):
             await asyncio.sleep(1)
             for chat_id in self.chat_reply_willing:
                 self.chat_reply_willing[chat_id] = max(0.0, self.chat_reply_willing[chat_id] * 0.9)
-                print(f"[{chat_id}] 回复意愿衰减: {self.chat_reply_willing[chat_id]}")
 
     async def async_task_starter(self):
         if self._decay_task is None:
@@ -29,16 +28,22 @@ class ClassicalWillingManager(BaseWillingManager):
         print(f"[{chat_id}] 回复意愿: {current_willing}")
 
         interested_rate = willing_info.interested_rate * global_config.normal_chat.response_interested_rate_amplifier
+        
+        print(f"[{chat_id}] 兴趣值: {interested_rate}")
 
         if interested_rate > 0.2:
             current_willing += interested_rate - 0.2
 
-        if willing_info.is_mentioned_bot:
+        if willing_info.is_mentioned_bot and global_config.normal_chat.mentioned_bot_inevitable_reply and current_willing < 2:
             current_willing += 1 if current_willing < 1.0 else 0.05
 
-        self.chat_reply_willing[chat_id] = min(current_willing, 3.0)
-
-        return min(max((current_willing - 0.5), 0.01) * 2, 1)
+        self.chat_reply_willing[chat_id] = min(current_willing, 1.0)
+        
+        reply_probability = min(max((current_willing - 0.5), 0.01) * 2, 1)
+        
+        print(f"[{chat_id}] 回复概率: {reply_probability}")
+        
+        return reply_probability
 
     async def before_generate_reply_handle(self, message_id):
         chat_id = self.ongoing_messages[message_id].chat_id

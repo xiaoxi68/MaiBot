@@ -462,28 +462,22 @@ class HeartFChatting:
         在"兴趣"模式下，判断是否回复并生成内容。
         """
 
-        is_mentioned = message_data.get("is_mentioned", False)
         interested_rate = message_data.get("interest_value", 0.0) * self.willing_amplifier
     
         self.willing_manager.setup(message_data, self.chat_stream)
     
     
         reply_probability = await self.willing_manager.get_reply_probability(message_data.get("message_id", ""))
-        reply_probability = (
-            1.0 if is_mentioned and global_config.normal_chat.mentioned_bot_inevitable_reply else 0.0
-        )  # 如果被提及，且开启了提及必回复，则基础概率为1，否则需要意愿判断
 
-        # 意愿管理器：设置当前message信息
-        
 
-        # 获取回复概率
-        # 仅在未被提及或基础概率不为1时查询意愿概率
         if reply_probability < 1:  # 简化逻辑，如果未提及 (reply_probability 为 0)，则获取意愿概率
-            # is_willing = True
             additional_config = message_data.get("additional_config", {})
             if additional_config and "maimcore_reply_probability_gain" in additional_config:
                 reply_probability += additional_config["maimcore_reply_probability_gain"]
                 reply_probability = min(max(reply_probability, 0), 1)  # 确保概率在 0-1 之间
+            
+            talk_frequency = global_config.chat.get_current_talk_frequency(self.stream_id)
+            reply_probability = talk_frequency * reply_probability
 
         # 处理表情包
         if message_data.get("is_emoji") or message_data.get("is_picid"):
@@ -491,9 +485,6 @@ class HeartFChatting:
 
         # 打印消息信息
         mes_name = self.chat_stream.group_info.group_name if self.chat_stream.group_info else "私聊"
-
-        talk_frequency = global_config.chat.get_current_talk_frequency(self.stream_id)
-        reply_probability = talk_frequency * reply_probability
         
         logger.info(f"[{mes_name}] 当前聊天频率: {talk_frequency:.2f},兴趣值: {interested_rate:.2f},回复概率: {reply_probability * 100:.1f}%")
         
