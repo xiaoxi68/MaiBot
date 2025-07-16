@@ -310,14 +310,9 @@ class HeartFChatting:
                 return True
 
             else:
-                
-                if message_data:
-                    action_message = message_data
-                else:
-                    action_message = target_message
+                action_message: Dict[str, Any] = message_data or target_message  # type: ignore
+
                 # 动作执行计时
-                
-                
                 with Timer("动作执行", cycle_timers):
                     success, reply_text, command = await self._handle_action(
                         action_type, reasoning, action_data, cycle_timers, thinking_id, action_message
