@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List, Type, Any, Union
+from typing import Dict, List, Any, Union
 import os
 import inspect
 import toml
@@ -10,7 +10,6 @@ import datetime
 from src.common.logger import get_logger
 from src.plugin_system.base.component_types import (
     PluginInfo,
-    ComponentInfo,
     PythonDependency,
 )
 from src.plugin_system.base.config_types import ConfigField
@@ -20,12 +19,9 @@ logger = get_logger("plugin_base")
 
 
 class PluginBase(ABC):
-    """插件基类
+    """插件总基类
 
-    所有插件都应该继承这个基类，一个插件可以包含多种组件：
-    - Action组件：处理聊天中的动作
-    - Command组件：处理命令请求
-    - 未来可扩展：Scheduler、Listener等
+    所有衍生插件基类都应该继承自此类，这个类定义了插件的基本结构和行为。
     """
 
     # 插件基本信息（子类必须定义）
