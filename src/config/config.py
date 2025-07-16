@@ -53,13 +53,13 @@ MMC_VERSION = "0.9.0-snapshot.2"
 
 def get_key_comment(toml_table, key):
     # 获取key的注释（如果有）
-    if hasattr(toml_table, 'trivia') and hasattr(toml_table.trivia, 'comment'):
+    if hasattr(toml_table, "trivia") and hasattr(toml_table.trivia, "comment"):
         return toml_table.trivia.comment
-    if hasattr(toml_table, 'value') and isinstance(toml_table.value, dict):
+    if hasattr(toml_table, "value") and isinstance(toml_table.value, dict):
         item = toml_table.value.get(key)
-        if item is not None and hasattr(item, 'trivia'):
+        if item is not None and hasattr(item, "trivia"):
             return item.trivia.comment
-    if hasattr(toml_table, 'keys'):
+    if hasattr(toml_table, "keys"):
         for k in toml_table.keys():
             if isinstance(k, KeyType) and k.key == key:
                 return k.trivia.comment
@@ -78,16 +78,16 @@ def compare_dicts(new, old, path=None, logs=None):
             continue
         if key not in old:
             comment = get_key_comment(new, key)
-            logs.append(f"新增: {'.'.join(path+[str(key)])}  注释: {comment if comment else '无'}")
+            logs.append(f"新增: {'.'.join(path + [str(key)])}  注释: {comment if comment else '无'}")
         elif isinstance(new[key], (dict, Table)) and isinstance(old.get(key), (dict, Table)):
-            compare_dicts(new[key], old[key], path+[str(key)], logs)
+            compare_dicts(new[key], old[key], path + [str(key)], logs)
     # 删减项
     for key in old:
         if key == "version":
             continue
         if key not in new:
             comment = get_key_comment(old, key)
-            logs.append(f"删减: {'.'.join(path+[str(key)])}  注释: {comment if comment else '无'}")
+            logs.append(f"删减: {'.'.join(path + [str(key)])}  注释: {comment if comment else '无'}")
     return logs
 
 
@@ -99,12 +99,14 @@ def get_value_by_path(d, path):
             return None
     return d
 
+
 def set_value_by_path(d, path, value):
     for k in path[:-1]:
         if k not in d or not isinstance(d[k], dict):
             d[k] = {}
         d = d[k]
     d[path[-1]] = value
+
 
 def compare_default_values(new, old, path=None, logs=None, changes=None):
     # 递归比较两个dict，找出默认值变化项
@@ -119,12 +121,14 @@ def compare_default_values(new, old, path=None, logs=None, changes=None):
             continue
         if key in old:
             if isinstance(new[key], (dict, Table)) and isinstance(old[key], (dict, Table)):
-                compare_default_values(new[key], old[key], path+[str(key)], logs, changes)
+                compare_default_values(new[key], old[key], path + [str(key)], logs, changes)
             else:
                 # 只要值发生变化就记录
                 if new[key] != old[key]:
-                    logs.append(f"默认值变化: {'.'.join(path+[str(key)])}  旧默认值: {old[key]}  新默认值: {new[key]}")
-                    changes.append((path+[str(key)], old[key], new[key]))
+                    logs.append(
+                        f"默认值变化: {'.'.join(path + [str(key)])}  旧默认值: {old[key]}  新默认值: {new[key]}"
+                    )
+                    changes.append((path + [str(key)], old[key], new[key]))
     return logs, changes
 
 
@@ -148,8 +152,8 @@ def update_config():
             return None
         with open(toml_path, "r", encoding="utf-8") as f:
             doc = tomlkit.load(f)
-        if "inner" in doc and "version" in doc["inner"]:
-            return doc["inner"]["version"]
+        if "inner" in doc and "version" in doc["inner"]:  # type: ignore
+            return doc["inner"]["version"]  # type: ignore
         return None
 
     template_version = get_version_from_toml(template_path)
@@ -186,7 +190,9 @@ def update_config():
                 old_value = get_value_by_path(old_config, path)
                 if old_value == old_default:
                     set_value_by_path(old_config, path, new_default)
-                    logger.info(f"已自动将配置 {'.'.join(path)} 的值从旧默认值 {old_default} 更新为新默认值 {new_default}")
+                    logger.info(
+                        f"已自动将配置 {'.'.join(path)} 的值从旧默认值 {old_default} 更新为新默认值 {new_default}"
+                    )
         else:
             logger.info("未检测到模板默认值变动")
         # 保存旧配置的变更（后续合并逻辑会用到 old_config）
@@ -229,7 +235,9 @@ def update_config():
             logger.info(f"检测到配置文件版本号相同 (v{old_version})，跳过更新")
             return
         else:
-            logger.info(f"\n----------------------------------------\n检测到版本号不同: 旧版本 v{old_version} -> 新版本 v{new_version}\n----------------------------------------")
+            logger.info(
+                f"\n----------------------------------------\n检测到版本号不同: 旧版本 v{old_version} -> 新版本 v{new_version}\n----------------------------------------"
+            )
     else:
         logger.info("已有配置文件未检测到版本号，可能是旧版本。将进行更新")
 
@@ -320,6 +328,7 @@ class Config(ConfigBase):
     tool: ToolConfig
     debug: DebugConfig
     custom_prompt: CustomPromptConfig
+
 
 def load_config(config_path: str) -> Config:
     """

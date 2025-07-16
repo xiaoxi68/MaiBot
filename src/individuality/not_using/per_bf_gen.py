@@ -83,8 +83,8 @@ class PersonalityEvaluatorDirect:
     def __init__(self):
         self.personality_traits = {"开放性": 0, "严谨性": 0, "外向性": 0, "宜人性": 0, "神经质": 0}
         self.scenarios = []
-        self.final_scores = {"开放性": 0, "严谨性": 0, "外向性": 0, "宜人性": 0, "神经质": 0}
-        self.dimension_counts = {trait: 0 for trait in self.final_scores.keys()}
+        self.final_scores: Dict[str, float] = {"开放性": 0, "严谨性": 0, "外向性": 0, "宜人性": 0, "神经质": 0}
+        self.dimension_counts = {trait: 0 for trait in self.final_scores}
 
         # 为每个人格特质获取对应的场景
         for trait in PERSONALITY_SCENES:
@@ -119,8 +119,7 @@ class PersonalityEvaluatorDirect:
         # 构建维度描述
         dimension_descriptions = []
         for dim in dimensions:
-            desc = FACTOR_DESCRIPTIONS.get(dim, "")
-            if desc:
+            if desc := FACTOR_DESCRIPTIONS.get(dim, ""):
                 dimension_descriptions.append(f"- {dim}：{desc}")
 
         dimensions_text = "\n".join(dimension_descriptions)

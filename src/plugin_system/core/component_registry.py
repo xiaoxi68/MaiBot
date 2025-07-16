@@ -346,67 +346,67 @@ class ComponentRegistry:
 
     # === 状态管理方法 ===
 
-    def enable_component(self, component_name: str, component_type: ComponentType = None) -> bool:
-        # -------------------------------- NEED REFACTORING --------------------------------
-        # -------------------------------- LOGIC ERROR -------------------------------------
-        """启用组件，支持命名空间解析"""
-        # 首先尝试找到正确的命名空间化名称
-        component_info = self.get_component_info(component_name, component_type)
-        if not component_info:
-            return False
+    # def enable_component(self, component_name: str, component_type: ComponentType = None) -> bool:
+    #     # -------------------------------- NEED REFACTORING --------------------------------
+    #     # -------------------------------- LOGIC ERROR -------------------------------------
+    #     """启用组件，支持命名空间解析"""
+    #     # 首先尝试找到正确的命名空间化名称
+    #     component_info = self.get_component_info(component_name, component_type)
+    #     if not component_info:
+    #         return False
 
-        # 根据组件类型构造正确的命名空间化名称
-        if component_info.component_type == ComponentType.ACTION:
-            namespaced_name = f"action.{component_name}" if "." not in component_name else component_name
-        elif component_info.component_type == ComponentType.COMMAND:
-            namespaced_name = f"command.{component_name}" if "." not in component_name else component_name
-        else:
-            namespaced_name = (
-                f"{component_info.component_type.value}.{component_name}"
-                if "." not in component_name
-                else component_name
-            )
+    #     # 根据组件类型构造正确的命名空间化名称
+    #     if component_info.component_type == ComponentType.ACTION:
+    #         namespaced_name = f"action.{component_name}" if "." not in component_name else component_name
+    #     elif component_info.component_type == ComponentType.COMMAND:
+    #         namespaced_name = f"command.{component_name}" if "." not in component_name else component_name
+    #     else:
+    #         namespaced_name = (
+    #             f"{component_info.component_type.value}.{component_name}"
+    #             if "." not in component_name
+    #             else component_name
+    #         )
 
-        if namespaced_name in self._components:
-            self._components[namespaced_name].enabled = True
-            # 如果是Action，更新默认动作集
-            # ---- HERE ----
-            # if isinstance(component_info, ActionInfo):
-            #     self._action_descriptions[component_name] = component_info.description
-            logger.debug(f"已启用组件: {component_name} -> {namespaced_name}")
-            return True
-        return False
+    #     if namespaced_name in self._components:
+    #         self._components[namespaced_name].enabled = True
+    #         # 如果是Action，更新默认动作集
+    #         # ---- HERE ----
+    #         # if isinstance(component_info, ActionInfo):
+    #         #     self._action_descriptions[component_name] = component_info.description
+    #         logger.debug(f"已启用组件: {component_name} -> {namespaced_name}")
+    #         return True
+    #     return False
 
-    def disable_component(self, component_name: str, component_type: ComponentType = None) -> bool:
-        # -------------------------------- NEED REFACTORING --------------------------------
-        # -------------------------------- LOGIC ERROR -------------------------------------
-        """禁用组件，支持命名空间解析"""
-        # 首先尝试找到正确的命名空间化名称
-        component_info = self.get_component_info(component_name, component_type)
-        if not component_info:
-            return False
+    # def disable_component(self, component_name: str, component_type: ComponentType = None) -> bool:
+    #     # -------------------------------- NEED REFACTORING --------------------------------
+    #     # -------------------------------- LOGIC ERROR -------------------------------------
+    #     """禁用组件，支持命名空间解析"""
+    #     # 首先尝试找到正确的命名空间化名称
+    #     component_info = self.get_component_info(component_name, component_type)
+    #     if not component_info:
+    #         return False
 
-        # 根据组件类型构造正确的命名空间化名称
-        if component_info.component_type == ComponentType.ACTION:
-            namespaced_name = f"action.{component_name}" if "." not in component_name else component_name
-        elif component_info.component_type == ComponentType.COMMAND:
-            namespaced_name = f"command.{component_name}" if "." not in component_name else component_name
-        else:
-            namespaced_name = (
-                f"{component_info.component_type.value}.{component_name}"
-                if "." not in component_name
-                else component_name
-            )
+    #     # 根据组件类型构造正确的命名空间化名称
+    #     if component_info.component_type == ComponentType.ACTION:
+    #         namespaced_name = f"action.{component_name}" if "." not in component_name else component_name
+    #     elif component_info.component_type == ComponentType.COMMAND:
+    #         namespaced_name = f"command.{component_name}" if "." not in component_name else component_name
+    #     else:
+    #         namespaced_name = (
+    #             f"{component_info.component_type.value}.{component_name}"
+    #             if "." not in component_name
+    #             else component_name
+    #         )
 
-        if namespaced_name in self._components:
-            self._components[namespaced_name].enabled = False
-            # 如果是Action，从默认动作集中移除
-            # ---- HERE ----
-            # if component_name in self._action_descriptions:
-            #     del self._action_descriptions[component_name]
-            logger.debug(f"已禁用组件: {component_name} -> {namespaced_name}")
-            return True
-        return False
+    #     if namespaced_name in self._components:
+    #         self._components[namespaced_name].enabled = False
+    #         # 如果是Action，从默认动作集中移除
+    #         # ---- HERE ----
+    #         # if component_name in self._action_descriptions:
+    #         #     del self._action_descriptions[component_name]
+    #         logger.debug(f"已禁用组件: {component_name} -> {namespaced_name}")
+    #         return True
+    #     return False
 
     def get_registry_stats(self) -> Dict[str, Any]:
         """获取注册中心统计信息"""

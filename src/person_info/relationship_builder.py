@@ -26,7 +26,7 @@ SEGMENT_CLEANUP_CONFIG = {
     "cleanup_interval_hours": 0.5,  # 清理间隔（小时）
 }
 
-MAX_MESSAGE_COUNT = 80 / global_config.relationship.relation_frequency
+MAX_MESSAGE_COUNT = int(80 / global_config.relationship.relation_frequency)
 
 
 class RelationshipBuilder:

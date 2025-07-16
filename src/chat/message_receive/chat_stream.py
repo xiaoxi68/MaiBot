@@ -30,7 +30,7 @@ class ChatMessageContext:
     def get_template_name(self) -> Optional[str]:
         """获取模板名称"""
         if self.message.message_info.template_info and not self.message.message_info.template_info.template_default:
-            return self.message.message_info.template_info.template_name
+            return self.message.message_info.template_info.template_name  # type: ignore
         return None
 
     def get_last_message(self) -> "MessageRecv":

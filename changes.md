@@ -21,3 +21,6 @@
   - `config_api.py`中的`get_global_config`和`get_plugin_config`方法现在支持嵌套访问的配置键名。
   - `database_api.py`中的`db_query`方法调整了参数顺序以增强参数限制的同时，保证了typing正确；`db_get`方法增加了`single_result`参数，与`db_query`保持一致。
 4. 现在增加了参数类型检查，完善了对应注释
+5. 现在插件抽象出了总基类 `PluginBase`
+  - 基于`Action`和`Command`的插件基类现在为`BasePlugin`，它继承自`PluginBase`，由`register_plugin`装饰器注册。
+  - 基于`Event`的插件基类现在为`BaseEventPlugin`，它也继承自`PluginBase`，由`register_event_plugin`装饰器注册。

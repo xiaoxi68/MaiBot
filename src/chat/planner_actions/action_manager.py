@@ -80,7 +80,7 @@ class ActionManager:
         chat_stream: ChatStream,
         log_prefix: str,
         shutting_down: bool = False,
-        action_message: dict = None,
+        action_message: Optional[dict] = None,
     ) -> Optional[BaseAction]:
         """
         创建动作处理器实例

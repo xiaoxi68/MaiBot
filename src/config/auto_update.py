@@ -7,13 +7,13 @@ from datetime import datetime
 
 def get_key_comment(toml_table, key):
     # 获取key的注释（如果有）
-    if hasattr(toml_table, 'trivia') and hasattr(toml_table.trivia, 'comment'):
+    if hasattr(toml_table, "trivia") and hasattr(toml_table.trivia, "comment"):
         return toml_table.trivia.comment
-    if hasattr(toml_table, 'value') and isinstance(toml_table.value, dict):
+    if hasattr(toml_table, "value") and isinstance(toml_table.value, dict):
         item = toml_table.value.get(key)
-        if item is not None and hasattr(item, 'trivia'):
+        if item is not None and hasattr(item, "trivia"):
             return item.trivia.comment
-    if hasattr(toml_table, 'keys'):
+    if hasattr(toml_table, "keys"):
         for k in toml_table.keys():
             if isinstance(k, KeyType) and k.key == key:
                 return k.trivia.comment
@@ -36,16 +36,16 @@ def compare_dicts(new, old, path=None, new_comments=None, old_comments=None, log
             continue
         if key not in old:
             comment = get_key_comment(new, key)
-            logs.append(f"新增: {'.'.join(path+[str(key)])}  注释: {comment if comment else '无'}")
+            logs.append(f"新增: {'.'.join(path + [str(key)])}  注释: {comment if comment else '无'}")
         elif isinstance(new[key], (dict, Table)) and isinstance(old.get(key), (dict, Table)):
-            compare_dicts(new[key], old[key], path+[str(key)], new_comments, old_comments, logs)
+            compare_dicts(new[key], old[key], path + [str(key)], new_comments, old_comments, logs)
     # 删减项
     for key in old:
         if key == "version":
             continue
         if key not in new:
             comment = get_key_comment(old, key)
-            logs.append(f"删减: {'.'.join(path+[str(key)])}  注释: {comment if comment else '无'}")
+            logs.append(f"删减: {'.'.join(path + [str(key)])}  注释: {comment if comment else '无'}")
     return logs
 
 
@@ -95,7 +95,7 @@ def update_config():
         if old_version and new_version and old_version == new_version:
             print(f"检测到版本号相同 (v{old_version})，跳过更新")
             # 如果version相同，恢复旧配置文件并返回
-            shutil.move(old_backup_path, old_config_path)
+            shutil.move(old_backup_path, old_config_path)  # type: ignore
             return
         else:
             print(f"检测到版本号不同: 旧版本 v{old_version} -> 新版本 v{new_version}")

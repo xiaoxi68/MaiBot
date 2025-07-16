@@ -61,7 +61,7 @@ __all__ = [
     "ConfigField",
     # 工具函数
     "ManifestValidator",
-    "ManifestGenerator",
-    "validate_plugin_manifest",
-    "generate_plugin_manifest",
+    # "ManifestGenerator",
+    # "validate_plugin_manifest",
+    # "generate_plugin_manifest",
 ]

@@ -107,9 +107,9 @@ class MessageRecv(Message):
         self.is_picid = False
         self.has_picid = False
         self.is_mentioned = None
-        
+
         self.is_command = False
-        
+
         self.priority_mode = "interest"
         self.priority_info = None
         self.interest_value: float = None  # type: ignore
@@ -181,6 +181,7 @@ class MessageRecv(Message):
             logger.error(f"处理消息段失败: {str(e)}, 类型: {segment.type}, 数据: {segment.data}")
             return f"[处理失败的{segment.type}消息]"
 
+
 @dataclass
 class MessageRecvS4U(MessageRecv):
     def __init__(self, message_dict: dict[str, Any]):
@@ -199,7 +200,7 @@ class MessageRecvS4U(MessageRecv):
     
     async def process(self) -> None:
         self.processed_plain_text = await self._process_message_segments(self.message_segment)
-        
+
     async def _process_single_segment(self, segment: Seg) -> str:
         """处理单个消息段
 
@@ -254,7 +255,7 @@ class MessageRecvS4U(MessageRecv):
             elif segment.type == "gift":
                 self.is_gift = True
                 # 解析gift_info，格式为"名称:数量"
-                name, count = segment.data.split(":", 1)
+                name, count = segment.data.split(":", 1)  # type: ignore
                 self.gift_info = segment.data
                 self.gift_name = name.strip()
                 self.gift_count = int(count.strip())
@@ -267,13 +268,15 @@ class MessageRecvS4U(MessageRecv):
             elif segment.type == "superchat":
                 self.is_superchat = True
                 self.superchat_info = segment.data
-                price,message_text = segment.data.split(":", 1)
+                price, message_text = segment.data.split(":", 1)  # type: ignore
                 self.superchat_price = price.strip()
                 self.superchat_message_text = message_text.strip()
-                
+
                 self.processed_plain_text = str(self.superchat_message_text)
-                self.processed_plain_text += f"（注意：这是一条超级弹幕信息，价值{self.superchat_price}元，请你认真回复）"
-                
+                self.processed_plain_text += (
+                    f"（注意：这是一条超级弹幕信息，价值{self.superchat_price}元，请你认真回复）"
+                )
+
                 return self.processed_plain_text
             elif segment.type == "screen":
                 self.is_screen = True

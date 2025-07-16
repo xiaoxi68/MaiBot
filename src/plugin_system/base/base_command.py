@@ -135,7 +135,7 @@ class BaseCommand(ABC):
         )
 
     async def send_command(
-        self, command_name: str, args: dict = None, display_message: str = "", storage_message: bool = True
+        self, command_name: str, args: Optional[dict] = None, display_message: str = "", storage_message: bool = True
     ) -> bool:
         """发送命令消息
 

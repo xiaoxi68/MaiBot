@@ -34,7 +34,4 @@ def register_event_plugin(cls, *args, **kwargs):
 
     用法:
         @register_event_plugin
-        class MyEventPlugin:
-            event_type = EventType.MESSAGE_RECEIVED
-            ...
     """

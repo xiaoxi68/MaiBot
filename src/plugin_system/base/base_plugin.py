@@ -7,10 +7,19 @@ from src.plugin_system.base.component_types import ComponentInfo
 
 logger = get_logger("base_plugin")
 
+
 class BasePlugin(PluginBase):
+    """基于Action和Command的插件基类
+
+    所有上述类型的插件都应该继承这个基类，一个插件可以包含多种组件：
+    - Action组件：处理聊天中的动作
+    - Command组件：处理命令请求
+    - 未来可扩展：Scheduler、Listener等
+    """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-    
+
     @abstractmethod
     def get_plugin_components(self) -> List[tuple[ComponentInfo, Type]]:
         """获取插件包含的组件列表
@@ -21,7 +30,7 @@ class BasePlugin(PluginBase):
             List[tuple[ComponentInfo, Type]]: [(组件信息, 组件类), ...]
         """
         raise NotImplementedError("Subclasses must implement this method")
-    
+
     def register_plugin(self) -> bool:
         """注册插件及其所有组件"""
         from src.plugin_system.core.component_registry import component_registry

@@ -2,14 +2,13 @@ import importlib
 import asyncio
 
 from abc import ABC, abstractmethod
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 from rich.traceback import install
 from dataclasses import dataclass
 
 from src.common.logger import get_logger
 from src.config.config import global_config
 from src.chat.message_receive.chat_stream import ChatStream, GroupInfo
-from src.chat.message_receive.message import MessageRecv
 from src.person_info.person_info import PersonInfoManager, get_person_info_manager
 
 install(extra_lines=3)
@@ -54,7 +53,7 @@ class WillingInfo:
         interested_rate (float): 兴趣度
     """
 
-    message: MessageRecv
+    message: Dict[str, Any]  # 原始消息数据
     chat: ChatStream
     person_info_manager: PersonInfoManager
     chat_id: str

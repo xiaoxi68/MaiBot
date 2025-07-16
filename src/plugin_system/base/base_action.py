@@ -38,7 +38,7 @@ class BaseAction(ABC):
         chat_stream: ChatStream,
         log_prefix: str = "",
         plugin_config: Optional[dict] = None,
-        action_message: dict = None,
+        action_message: Optional[dict] = None,
         **kwargs,
     ):
         """初始化Action组件
@@ -63,7 +63,7 @@ class BaseAction(ABC):
         self.cycle_timers = cycle_timers
         self.thinking_id = thinking_id
         self.log_prefix = log_prefix
-        
+
         # 保存插件配置
         self.plugin_config = plugin_config or {}
 
@@ -92,10 +92,10 @@ class BaseAction(ABC):
         self.chat_stream = chat_stream or kwargs.get("chat_stream")
         self.chat_id = self.chat_stream.stream_id
         self.platform = getattr(self.chat_stream, "platform", None)
-        
+
         # 初始化基础信息（带类型注解）
         self.action_message = action_message
-        
+
         self.group_id = None
         self.group_name = None
         self.user_id = None
@@ -103,15 +103,17 @@ class BaseAction(ABC):
         self.is_group = False
         self.target_id = None
         self.has_action_message = False
-    
+
         if self.action_message:
             self.has_action_message = True
-        
+        else:
+            self.action_message = {}
+
         if self.has_action_message:
             if self.action_name != "no_reply":
                 self.group_id = str(self.action_message.get("chat_info_group_id", None))
                 self.group_name = self.action_message.get("chat_info_group_name", None)
-                    
+
                 self.user_id = str(self.action_message.get("user_id", None))
                 self.user_nickname = self.action_message.get("user_nickname", None)
                 if self.group_id:
@@ -131,8 +133,6 @@ class BaseAction(ABC):
                     self.user_nickname = self.chat_stream.user_info.user_nickname
                     self.is_group = False
                     self.target_id = self.user_id
-
-
 
         logger.debug(f"{self.log_prefix} Action组件初始化完成")
         logger.info(
@@ -199,7 +199,9 @@ class BaseAction(ABC):
             logger.error(f"{self.log_prefix} 等待新消息时发生错误: {e}")
             return False, f"等待新消息失败: {str(e)}"
 
-    async def send_text(self, content: str, reply_to: str = "", reply_to_platform_id: str = "", typing: bool = False) -> bool:
+    async def send_text(
+        self, content: str, reply_to: str = "", reply_to_platform_id: str = "", typing: bool = False
+    ) -> bool:
         """发送文本消息
 
         Args:
@@ -299,7 +301,7 @@ class BaseAction(ABC):
         )
 
     async def send_command(
-        self, command_name: str, args: dict = None, display_message: str = None, storage_message: bool = True
+        self, command_name: str, args: Optional[dict] = None, display_message: str = "", storage_message: bool = True
     ) -> bool:
         """发送命令消息
 
