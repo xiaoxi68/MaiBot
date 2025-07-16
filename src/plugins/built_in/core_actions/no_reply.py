@@ -43,7 +43,7 @@ class NoReplyAction(BaseAction):
     _max_exit_message_count = 10
 
     # 动作参数定义
-    action_parameters = {"reason": "不回复的原因"}
+    action_parameters = {}
 
     # 动作使用场景
     action_require = ["你发送了消息，目前无人回复"]
