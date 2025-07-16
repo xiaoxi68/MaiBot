@@ -15,13 +15,12 @@ from src.chat.planner_actions.planner import ActionPlanner
 from src.chat.planner_actions.action_modifier import ActionModifier
 from src.chat.planner_actions.action_manager import ActionManager
 from src.chat.focus_chat.hfc_utils import CycleDetail
-from src.chat.focus_chat.hfc_utils import get_recent_message_stats
 from src.person_info.relationship_builder_manager import relationship_builder_manager
 from src.person_info.person_info import get_person_info_manager
 from src.plugin_system.base.component_types import ActionInfo, ChatMode
 from src.plugin_system.apis import generator_api, send_api, message_api
 from src.chat.willing.willing_manager import get_willing_manager
-from ...mais4u.mais4u_chat.priority_manager import PriorityManager
+
 
 
 ERROR_LOOP_INFO = {
@@ -115,18 +114,9 @@ class HeartFChatting:
         self.willing_amplifier = 1
         self.willing_manager = get_willing_manager()
 
-        self.reply_mode = self.chat_stream.context.get_priority_mode()
-        if self.reply_mode == "priority":
-            self.priority_manager = PriorityManager(
-                normal_queue_max_size=5,
-            )
-            self.loop_mode = ChatMode.PRIORITY
-        else:
-            self.priority_manager = None
-
         logger.info(f"{self.log_prefix} HeartFChatting 初始化完成")
 
-        self.energy_value = 100
+        self.energy_value = 0
 
     async def start(self):
         """检查是否需要启动主循环，如果未激活则启动。"""
@@ -219,7 +209,7 @@ class HeartFChatting:
                 self.loop_mode = ChatMode.NORMAL
                 return True
 
-            return False
+            return True
         elif self.loop_mode == ChatMode.NORMAL:
             new_messages_data = get_raw_msg_by_timestamp_with_chat(
                 chat_id=self.stream_id,
