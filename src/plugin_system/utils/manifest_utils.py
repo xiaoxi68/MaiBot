@@ -4,10 +4,8 @@
 提供manifest文件的验证、生成和管理功能
 """
 
-import json
-import os
 import re
-from typing import Dict, Any, Optional, Tuple, TYPE_CHECKING
+from typing import Dict, Any, Tuple
 from src.common.logger import get_logger
 from src.config.config import MMC_VERSION
 

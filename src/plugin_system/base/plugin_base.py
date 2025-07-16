@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List, Type, Any, Union
+from typing import Dict, List, Any, Union
 import os
 import inspect
 import toml
@@ -10,7 +10,6 @@ import datetime
 from src.common.logger import get_logger
 from src.plugin_system.base.component_types import (
     PluginInfo,
-    ComponentInfo,
     PythonDependency,
 )
 from src.plugin_system.base.config_types import ConfigField
