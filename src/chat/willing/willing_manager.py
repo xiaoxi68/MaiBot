@@ -105,7 +105,7 @@ class BaseWillingManager(ABC):
             is_mentioned_bot=message.get("is_mentioned_bot", False),
             is_emoji=message.get("is_emoji", False),
             is_picid=message.get("is_picid", False),
-            interested_rate=message.get("interested_rate", 0),
+            interested_rate=message.get("interested_value", 0),
         )
 
     def delete(self, message_id: str):

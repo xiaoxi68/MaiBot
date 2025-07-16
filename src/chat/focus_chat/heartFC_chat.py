@@ -237,7 +237,7 @@ class HeartFChatting:
                     self.energy_value *= 1.1 / factor
                     logger.info(f"{self.log_prefix} 麦麦进行了思考，能量值按倍数增加，当前能量值：{self.energy_value}")
                 else:
-                    self.energy_value += 10 / global_config.chat.focus_value
+                    self.energy_value += 0.1 / global_config.chat.focus_value
                     logger.info(f"{self.log_prefix} 麦麦没有进行思考，能量值线性增加，当前能量值：{self.energy_value}")
 
                 logger.debug(f"{self.log_prefix} 当前能量值：{self.energy_value}")
@@ -464,20 +464,22 @@ class HeartFChatting:
 
         is_mentioned = message_data.get("is_mentioned", False)
         interested_rate = message_data.get("interest_value", 0.0) * self.willing_amplifier
-
+    
+        self.willing_manager.setup(message_data, self.chat_stream)
+    
+    
+        reply_probability = await self.willing_manager.get_reply_probability(message_data.get("message_id", ""))
         reply_probability = (
             1.0 if is_mentioned and global_config.normal_chat.mentioned_bot_inevitable_reply else 0.0
         )  # 如果被提及，且开启了提及必回复，则基础概率为1，否则需要意愿判断
 
         # 意愿管理器：设置当前message信息
-        self.willing_manager.setup(message_data, self.chat_stream)
+        
 
         # 获取回复概率
         # 仅在未被提及或基础概率不为1时查询意愿概率
         if reply_probability < 1:  # 简化逻辑，如果未提及 (reply_probability 为 0)，则获取意愿概率
             # is_willing = True
-            reply_probability = await self.willing_manager.get_reply_probability(message_data.get("message_id", ""))
-
             additional_config = message_data.get("additional_config", {})
             if additional_config and "maimcore_reply_probability_gain" in additional_config:
                 reply_probability += additional_config["maimcore_reply_probability_gain"]
@@ -493,7 +495,9 @@ class HeartFChatting:
         talk_frequency = global_config.chat.get_current_talk_frequency(self.stream_id)
         reply_probability = talk_frequency * reply_probability
         
-        if reply_probability > 0.1:
+        logger.info(f"[{mes_name}] 当前聊天频率: {talk_frequency:.2f},兴趣值: {interested_rate:.2f},回复概率: {reply_probability * 100:.1f}%")
+        
+        if reply_probability > 0.05:
             logger.info(
                 f"[{mes_name}]"
                 f"{message_data.get('user_nickname')}:"
