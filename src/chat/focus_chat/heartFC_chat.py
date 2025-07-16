@@ -115,7 +115,7 @@ class HeartFChatting:
 
         logger.info(f"{self.log_prefix} HeartFChatting 初始化完成")
 
-        self.energy_value = 0
+        self.energy_value = 1
 
     async def start(self):
         """检查是否需要启动主循环，如果未激活则启动。"""
