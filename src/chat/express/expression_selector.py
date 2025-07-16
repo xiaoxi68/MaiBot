@@ -1,5 +1,4 @@
 import json
-import os
 import time
 import random
 
@@ -139,7 +138,7 @@ class ExpressionSelector:
             key = (source_id, expr_type, situation, style)
             if key not in updates_by_key:
                 updates_by_key[key] = expr
-        for (chat_id, expr_type, situation, style), expr in updates_by_key.items():
+        for (chat_id, expr_type, situation, style), _expr in updates_by_key.items():
             query = Expression.select().where(
                 (Expression.chat_id == chat_id) &
                 (Expression.type == expr_type) &

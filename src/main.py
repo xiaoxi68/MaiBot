@@ -9,7 +9,6 @@ from src.chat.utils.statistic import OnlineTimeRecordTask, StatisticOutputTask
 from src.chat.emoji_system.emoji_manager import get_emoji_manager
 from src.chat.willing.willing_manager import get_willing_manager
 from src.chat.message_receive.chat_stream import get_chat_manager
-from src.chat.message_receive.storage import MessageStorage
 from src.config.config import global_config
 from src.chat.message_receive.bot import chat_bot
 from src.common.logger import get_logger
