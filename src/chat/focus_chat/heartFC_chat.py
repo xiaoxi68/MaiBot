@@ -22,7 +22,6 @@ from src.plugin_system.apis import generator_api, send_api, message_api
 from src.chat.willing.willing_manager import get_willing_manager
 
 
-
 ERROR_LOOP_INFO = {
     "loop_plan_info": {
         "action_result": {
@@ -167,15 +166,14 @@ class HeartFChatting:
         self.history_loop.append(self._current_cycle_detail)
         self._current_cycle_detail.timers = cycle_timers
         self._current_cycle_detail.end_time = time.time()
-        
-        
+
     def _handle_energy_completion(self, task: asyncio.Task):
         if exception := task.exception():
             logger.error(f"{self.log_prefix} HeartFChatting: 能量循环异常: {exception}")
             logger.error(traceback.format_exc())
         else:
             logger.info(f"{self.log_prefix} HeartFChatting: 能量循环完成")
-            
+
     async def _energy_loop(self):
         while self.running:
             await asyncio.sleep(1)
@@ -222,9 +220,9 @@ class HeartFChatting:
 
             if len(new_messages_data) > 3 * global_config.chat.focus_value:
                 self.loop_mode = ChatMode.FOCUS
-                self.energy_value =  10 + (new_messages_data / (3 * global_config.chat.focus_value)) * 10
+                self.energy_value = 10 + (len(new_messages_data) / (3 * global_config.chat.focus_value)) * 10
                 return True
-            
+
             if self.energy_value >= 30 * global_config.chat.focus_value:
                 self.loop_mode = ChatMode.FOCUS
                 return True
@@ -332,20 +330,13 @@ class HeartFChatting:
                 return True
 
             else:
-                
-                if message_data:
-                    action_message = message_data
-                else:
-                    action_message = target_message
+                action_message: Dict[str, Any] = message_data or target_message  # type: ignore
+
                 # 动作执行计时
-                
-                
                 with Timer("动作执行", cycle_timers):
                     success, reply_text, command = await self._handle_action(
                         action_type, reasoning, action_data, cycle_timers, thinking_id, action_message
                     )
-                    
-
 
                 loop_info = {
                     "loop_plan_info": {
@@ -372,7 +363,7 @@ class HeartFChatting:
 
         if action_type != "no_reply" and action_type != "no_action":
             return True
-        
+
         return True
 
     async def _main_chat_loop(self):
@@ -459,7 +450,7 @@ class HeartFChatting:
             traceback.print_exc()
             return False, "", ""
 
-    async def normal_response(self, message_data: dict) -> None:
+    async def normal_response(self, message_data: dict) -> bool:
         """
         处理接收到的消息。
         在"兴趣"模式下，判断是否回复并生成内容。
@@ -498,7 +489,7 @@ class HeartFChatting:
                 f"{message_data.get('user_nickname')}:"
                 f"{message_data.get('processed_plain_text')}[兴趣:{interested_rate:.2f}][回复概率:{reply_probability * 100:.1f}%]"
             )
-            
+
         talk_frequency = global_config.chat.get_current_talk_frequency(self.stream_id)
         reply_probability = talk_frequency * reply_probability
 
@@ -506,11 +497,11 @@ class HeartFChatting:
             await self.willing_manager.before_generate_reply_handle(message_data.get("message_id", ""))
             await self._observe(message_data=message_data)
             return True
-            
 
         # 意愿管理器：注销当前message信息 (无论是否回复，只要处理过就删除)
-        return False
         self.willing_manager.delete(message_data.get("message_id", ""))
+        return False
+        
 
     async def _generate_response(
         self, message_data: dict, available_actions: Optional[Dict[str, ActionInfo]], reply_to: str
