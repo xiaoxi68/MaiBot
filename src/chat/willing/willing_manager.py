@@ -105,8 +105,10 @@ class BaseWillingManager(ABC):
             is_mentioned_bot=message.get("is_mentioned_bot", False),
             is_emoji=message.get("is_emoji", False),
             is_picid=message.get("is_picid", False),
-            interested_rate=message.get("interested_value", 0),
+            interested_rate=message.get("interest_value", 0),
         )
+        print(f"[{chat.stream_id}] 兴趣值: {message.get('interest_value', 0)}")
+        print(self.ongoing_messages)
 
     def delete(self, message_id: str):
         del_message = self.ongoing_messages.pop(message_id, None)
