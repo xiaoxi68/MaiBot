@@ -29,8 +29,6 @@ def register_plugin(cls):
     return cls
 
 def register_event_plugin(cls, *args, **kwargs):
-    from src.plugin_system.core.events_manager import events_manager
-    from src.plugin_system.base.component_types import EventType
 
     """事件插件注册装饰器
 

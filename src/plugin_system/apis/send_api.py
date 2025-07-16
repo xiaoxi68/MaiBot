@@ -50,6 +50,7 @@ async def _send_to_target(
     display_message: str = "",
     typing: bool = False,
     reply_to: str = "",
+    reply_to_platform_id: str = "",
     storage_message: bool = True,
     show_log: bool = True,
 ) -> bool:
@@ -110,6 +111,7 @@ async def _send_to_target(
             is_head=True,
             is_emoji=(message_type == "emoji"),
             thinking_start_time=current_time,
+            reply_to = reply_to_platform_id
         )
 
         # 发送消息
@@ -279,6 +281,7 @@ async def text_to_stream(
     stream_id: str,
     typing: bool = False,
     reply_to: str = "",
+    reply_to_platform_id: str = "",
     storage_message: bool = True,
 ) -> bool:
     """向指定流发送文本消息
@@ -293,7 +296,7 @@ async def text_to_stream(
     Returns:
         bool: 是否发送成功
     """
-    return await _send_to_target("text", text, stream_id, "", typing, reply_to, storage_message)
+    return await _send_to_target("text", text, stream_id, "", typing, reply_to, reply_to_platform_id, storage_message)
 
 
 async def emoji_to_stream(emoji_base64: str, stream_id: str, storage_message: bool = True) -> bool:

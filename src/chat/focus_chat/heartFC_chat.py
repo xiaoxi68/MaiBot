@@ -115,7 +115,7 @@ class HeartFChatting:
 
         logger.info(f"{self.log_prefix} HeartFChatting 初始化完成")
 
-        self.energy_value = 1
+        self.energy_value = 5
 
     async def start(self):
         """检查是否需要启动主循环，如果未激活则启动。"""
@@ -176,11 +176,11 @@ class HeartFChatting:
 
     async def _energy_loop(self):
         while self.running:
-            await asyncio.sleep(1)
+            await asyncio.sleep(10)
             if self.loop_mode == ChatMode.NORMAL:
-                self.energy_value -= 1
-                if self.energy_value <= 0:
-                    self.energy_value = 0
+                self.energy_value -= 0.3
+                if self.energy_value <= 0.3:
+                    self.energy_value = 0.3
 
     def print_cycle_info(self, cycle_timers):
         # 记录循环信息和计时器结果
@@ -202,8 +202,8 @@ class HeartFChatting:
                 self.energy_value -= 1 * global_config.chat.focus_value
             else:
                 self.energy_value -= 3 * global_config.chat.focus_value
-            if self.energy_value <= 0:
-                self.energy_value = 0
+            if self.energy_value <= 1:
+                self.energy_value = 1
                 self.loop_mode = ChatMode.NORMAL
                 return True
 
@@ -233,7 +233,11 @@ class HeartFChatting:
 
                 if_think = await self.normal_response(earliest_messages_data)
                 if if_think:
-                    self.energy_value *= 1.1 / (global_config.chat.focus_value + 0.2)
+                    if global_config.chat.focus_value <0.1:
+                        factor = 0.1
+                    else:
+                        factor = global_config.chat.focus_value
+                    self.energy_value *= 1.1 / factor
                     logger.info(f"{self.log_prefix} 麦麦进行了思考，能量值增加1，当前能量值：{self.energy_value}")
                 return True
 
@@ -325,7 +329,7 @@ class HeartFChatting:
                 logger.info(f"[{self.log_prefix}] {global_config.bot.nickname} 决定的回复内容: {content}")
 
                 # 发送回复 (不再需要传入 chat)
-                await self._send_response(response_set, reply_to_str, loop_start_time)
+                await self._send_response(response_set, reply_to_str, loop_start_time,message_data)
 
                 return True
 
@@ -526,11 +530,14 @@ class HeartFChatting:
             logger.error(f"[{self.log_prefix}] 回复生成出现错误：{str(e)} {traceback.format_exc()}")
             return None
 
-    async def _send_response(self, reply_set, reply_to, thinking_start_time):
+    async def _send_response(self, reply_set, reply_to, thinking_start_time,message_data):
         current_time = time.time()
         new_message_count = message_api.count_new_messages(
             chat_id=self.chat_stream.stream_id, start_time=thinking_start_time, end_time=current_time
         )
+        platform = message_data.get("platform", "")
+        user_id = message_data.get("user_id", "")
+        reply_to_platform_id = f"{platform}:{user_id}"
 
         need_reply = new_message_count >= random.randint(2, 4)
 
@@ -545,13 +552,13 @@ class HeartFChatting:
             if not first_replied:
                 if need_reply:
                     await send_api.text_to_stream(
-                        text=data, stream_id=self.chat_stream.stream_id, reply_to=reply_to, typing=False
+                        text=data, stream_id=self.chat_stream.stream_id, reply_to=reply_to, reply_to_platform_id=reply_to_platform_id, typing=False
                     )
                 else:
-                    await send_api.text_to_stream(text=data, stream_id=self.chat_stream.stream_id, typing=False)
+                    await send_api.text_to_stream(text=data, stream_id=self.chat_stream.stream_id, reply_to_platform_id=reply_to_platform_id, typing=False)
                 first_replied = True
             else:
-                await send_api.text_to_stream(text=data, stream_id=self.chat_stream.stream_id, typing=True)
+                await send_api.text_to_stream(text=data, stream_id=self.chat_stream.stream_id, reply_to_platform_id=reply_to_platform_id, typing=True)
             reply_text += data
 
         return reply_text
