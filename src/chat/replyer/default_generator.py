@@ -367,6 +367,8 @@ class DefaultReplyer:
         if not global_config.memory.enable_memory:
             return ""
 
+        instant_memory = None
+        
         running_memories = await self.memory_activator.activate_memory_with_chat_history(
             target_message=target, chat_history_prompt=chat_history
         )
@@ -384,7 +386,9 @@ class DefaultReplyer:
         for running_memory in running_memories:
             memory_str += f"- {running_memory['content']}\n"
         
-        memory_str += f"- {instant_memory}\n"
+        if instant_memory:
+            memory_str += f"- {instant_memory}\n"
+            
         return memory_str
 
     async def build_tool_info(self, chat_history, reply_data: Optional[Dict], enable_tool: bool = True):

@@ -131,7 +131,6 @@ class MainSystem:
         while True:
             tasks = [
                 get_emoji_manager().start_periodic_check_register(),
-                self.remove_recalled_message_task(),
                 self.app.run(),
                 self.server.run(),
             ]
@@ -183,23 +182,6 @@ class MainSystem:
                 logger.info("[表达方式学习] 开始学习表达方式...")
                 await expression_learner.learn_and_store_expression()
                 logger.info("[表达方式学习] 表达方式学习完成")
-
-    # async def print_mood_task(self):
-    #     """打印情绪状态"""
-    #     while True:
-    #         self.mood_manager.print_mood_status()
-    #         await asyncio.sleep(60)
-
-    @staticmethod
-    async def remove_recalled_message_task():
-        """删除撤回消息任务"""
-        while True:
-            try:
-                storage = MessageStorage()
-                await storage.remove_recalled_message(time.time())
-            except Exception:
-                logger.exception("删除撤回消息失败")
-            await asyncio.sleep(3600)
 
 
 async def main():

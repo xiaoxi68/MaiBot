@@ -291,6 +291,20 @@ class Knowledges(BaseModel):
         # database = db # 继承自 BaseModel
         table_name = "knowledges"
 
+class Expression(BaseModel):
+    """
+    用于存储表达风格的模型。
+    """
+
+    situation = TextField()
+    style = TextField()
+    count = FloatField()
+    last_active_time = FloatField()
+    chat_id = TextField(index=True)
+    type = TextField()
+    
+    class Meta:
+        table_name = "expression"
 
 class ThinkingLog(BaseModel):
     chat_id = TextField(index=True)
@@ -314,19 +328,6 @@ class ThinkingLog(BaseModel):
 
     class Meta:
         table_name = "thinking_logs"
-
-
-class RecalledMessages(BaseModel):
-    """
-    用于存储撤回消息记录的模型。
-    """
-
-    message_id = TextField(index=True)  # 被撤回的消息 ID
-    time = DoubleField()  # 撤回操作发生的时间戳
-    stream_id = TextField()  # 对应的 ChatStreams stream_id
-
-    class Meta:
-        table_name = "recalled_messages"
 
 
 class GraphNodes(BaseModel):
@@ -376,8 +377,8 @@ def create_tables():
                 OnlineTime,
                 PersonInfo,
                 Knowledges,
+                Expression,
                 ThinkingLog,
-                RecalledMessages,  # 添加新模型
                 GraphNodes,  # 添加图节点表
                 GraphEdges,  # 添加图边表
                 Memory,
@@ -402,9 +403,9 @@ def initialize_database():
         OnlineTime,
         PersonInfo,
         Knowledges,
+        Expression,
         Memory,
         ThinkingLog,
-        RecalledMessages,
         GraphNodes,
         GraphEdges,
         ActionRecords,  # 添加 ActionRecords 到初始化列表
