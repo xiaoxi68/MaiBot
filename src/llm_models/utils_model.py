@@ -255,12 +255,11 @@ class LLMRequest:
         if self.temp != 0.7:
             payload["temperature"] = self.temp
 
-        # 添加enable_thinking参数（如果不是默认值False）
-        if not self.enable_thinking:
-            payload["enable_thinking"] = False
-
-        if self.thinking_budget != 4096:
-            payload["thinking_budget"] = self.thinking_budget
+        # 添加enable_thinking参数（仅在启用时添加）
+        if self.enable_thinking:
+            payload["enable_thinking"] = True
+            if self.thinking_budget != 4096:
+                payload["thinking_budget"] = self.thinking_budget
 
         if self.max_tokens:
             payload["max_tokens"] = self.max_tokens
@@ -670,12 +669,11 @@ class LLMRequest:
         if self.temp != 0.7:
             payload["temperature"] = self.temp
 
-        # 添加enable_thinking参数（如果不是默认值False）
-        if not self.enable_thinking:
-            payload["enable_thinking"] = False
-
-        if self.thinking_budget != 4096:
-            payload["thinking_budget"] = self.thinking_budget
+        # 添加enable_thinking参数（仅在启用时添加）
+        if self.enable_thinking:
+            payload["enable_thinking"] = True
+            if self.thinking_budget != 4096:
+                payload["thinking_budget"] = self.thinking_budget
 
         if self.max_tokens:
             payload["max_tokens"] = self.max_tokens

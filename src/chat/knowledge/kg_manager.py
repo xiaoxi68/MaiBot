@@ -184,10 +184,10 @@ class KGManager:
                     progress.update(task, advance=1)
                     continue
                 ent = embedding_manager.entities_embedding_store.store.get(ent_hash)
-                assert isinstance(ent, EmbeddingStoreItem)
                 if ent is None:
                     progress.update(task, advance=1)
                     continue
+                assert isinstance(ent, EmbeddingStoreItem)
                 # 查询相似实体
                 similar_ents = embedding_manager.entities_embedding_store.search_top_k(
                     ent.embedding, global_config["rag"]["params"]["synonym_search_top_k"]
@@ -265,7 +265,10 @@ class KGManager:
                 if node_hash not in existed_nodes:
                     if node_hash.startswith(local_storage['ent_namespace']):
                         # 新增实体节点
-                        node = embedding_manager.entities_embedding_store.store[node_hash]
+                        node = embedding_manager.entities_embedding_store.store.get(node_hash)
+                        if node is None:
+                            logger.warning(f"实体节点 {node_hash} 在嵌入库中不存在，跳过")
+                            continue
                         assert isinstance(node, EmbeddingStoreItem)
                         node_item = self.graph[node_hash]
                         node_item["content"] = node.str
@@ -274,7 +277,10 @@ class KGManager:
                         self.graph.update_node(node_item)
                     elif node_hash.startswith(local_storage['pg_namespace']):
                         # 新增文段节点
-                        node = embedding_manager.paragraphs_embedding_store.store[node_hash]
+                        node = embedding_manager.paragraphs_embedding_store.store.get(node_hash)
+                        if node is None:
+                            logger.warning(f"段落节点 {node_hash} 在嵌入库中不存在，跳过")
+                            continue
                         assert isinstance(node, EmbeddingStoreItem)
                         content = node.str.replace("\n", " ")
                         node_item = self.graph[node_hash]
