@@ -212,10 +212,14 @@ class HeartFChatting:
                 return True
 
             if new_messages_data:
+                self.energy_value += 2 * len(new_messages_data) / global_config.chat.focus_value
                 earliest_messages_data = new_messages_data[0]
                 self.last_read_time = earliest_messages_data.get("time")
 
-                await self.normal_response(earliest_messages_data)
+                if await self.normal_response(earliest_messages_data):
+                    self.energy_value += 8 / global_config.chat.focus_value
+                if self.energy_value >= 100:
+                    self.loop_mode = ChatMode.FOCUS
                 return True
 
             await asyncio.sleep(1)
@@ -531,12 +535,12 @@ class HeartFChatting:
                 f"意愿放大器更新为: {self.willing_amplifier:.2f}"
             )
 
-    async def normal_response(self, message_data: dict) -> None:
+    async def normal_response(self, message_data: dict) -> bool:
         """
         处理接收到的消息。
         在"兴趣"模式下，判断是否回复并生成内容。
         """
-
+        responded = False
         is_mentioned = message_data.get("is_mentioned", False)
         interested_rate = message_data.get("interest_rate", 0.0) * self.willing_amplifier
 
@@ -573,10 +577,11 @@ class HeartFChatting:
 
         if random.random() < reply_probability:
             await self.willing_manager.before_generate_reply_handle(message_data.get("message_id", ""))
-            await self._observe(message_data=message_data)
+            responded = await self._observe(message_data=message_data)
 
         # 意愿管理器：注销当前message信息 (无论是否回复，只要处理过就删除)
         self.willing_manager.delete(message_data.get("message_id", ""))
+        return responded
 
     async def _generate_response(
         self, message_data: dict, available_actions: Optional[Dict[str, ActionInfo]], reply_to: str
