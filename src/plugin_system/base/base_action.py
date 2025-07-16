@@ -102,31 +102,35 @@ class BaseAction(ABC):
         self.user_nickname = None
         self.is_group = False
         self.target_id = None
+        self.has_action_message = False
     
+        if self.action_message:
+            self.has_action_message = True
         
-        if self.action_name != "no_reply":
-            self.group_id = str(self.action_message.get("chat_info_group_id", None))
-            self.group_name = self.action_message.get("chat_info_group_name", None)
-                
-            self.user_id = str(self.action_message.get("user_id", None))
-            self.user_nickname = self.action_message.get("user_nickname", None)
-            if self.group_id:
-                self.is_group = True
-                self.target_id = self.group_id
+        if self.has_action_message:
+            if self.action_name != "no_reply":
+                self.group_id = str(self.action_message.get("chat_info_group_id", None))
+                self.group_name = self.action_message.get("chat_info_group_name", None)
+                    
+                self.user_id = str(self.action_message.get("user_id", None))
+                self.user_nickname = self.action_message.get("user_nickname", None)
+                if self.group_id:
+                    self.is_group = True
+                    self.target_id = self.group_id
+                else:
+                    self.is_group = False
+                    self.target_id = self.user_id
             else:
-                self.is_group = False
-                self.target_id = self.user_id
-        else:
-            if self.chat_stream.group_info:
-                self.group_id = self.chat_stream.group_info.group_id
-                self.group_name = self.chat_stream.group_info.group_name
-                self.is_group = True
-                self.target_id = self.group_id
-            else:
-                self.user_id = self.chat_stream.user_info.user_id
-                self.user_nickname = self.chat_stream.user_info.user_nickname
-                self.is_group = False
-                self.target_id = self.user_id
+                if self.chat_stream.group_info:
+                    self.group_id = self.chat_stream.group_info.group_id
+                    self.group_name = self.chat_stream.group_info.group_name
+                    self.is_group = True
+                    self.target_id = self.group_id
+                else:
+                    self.user_id = self.chat_stream.user_info.user_id
+                    self.user_nickname = self.chat_stream.user_info.user_nickname
+                    self.is_group = False
+                    self.target_id = self.user_id
 
 
 
