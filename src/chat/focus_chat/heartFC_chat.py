@@ -535,7 +535,7 @@ class HeartFChatting:
         new_message_count = message_api.count_new_messages(
             chat_id=self.chat_stream.stream_id, start_time=thinking_start_time, end_time=current_time
         )
-        platform = message_data.get("platform", "")
+        platform = message_data.get("user_platform", "")
         user_id = message_data.get("user_id", "")
         reply_to_platform_id = f"{platform}:{user_id}"
 

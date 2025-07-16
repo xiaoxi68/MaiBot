@@ -1,5 +1,5 @@
 [inner]
-version = "4.2.0"
+version = "4.3.0"
 
 #----以下是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 #如果你想要修改配置文件，请在修改后将version的值进行变更
@@ -138,6 +138,8 @@ consolidate_memory_interval = 1000 # 记忆整合间隔 单位秒   间隔越低
 consolidation_similarity_threshold = 0.7 # 相似度阈值
 consolidation_check_percentage = 0.05 # 检查节点比例
 
+enable_instant_memory = true # 是否启用即时记忆
+
 #不希望记忆的词，已经记忆的不会受到影响，需要手动清理
 memory_ban_words = [ "表情包", "图片", "回复", "聊天记录" ]
 
@@ -177,6 +179,12 @@ keyword_rules = [
 regex_rules = [
     { regex = ["^(?P<n>\\S{1,20})是这样的$"], reaction = "请按照以下模板造句：[n]是这样的，xx只要xx就可以，可是[n]要考虑的事情就很多了，比如什么时候xx，什么时候xx，什么时候xx。（请自由发挥替换xx部分，只需保持句式结构，同时表达一种将[n]过度重视的反讽意味）" }
 ]
+
+# 可以自定义部分提示词
+[custom_prompt]
+image_prompt = "请用中文描述这张图片的内容。如果有文字，请把文字描述概括出来，请留意其主题，直观感受，输出为一段平文本，最多30字，请注意不要分点，就输出一段文本"
+
+
 
 [response_post_process]
 enable_response_post_process = true # 是否启用回复后处理，包括错别字生成器，回复分割器

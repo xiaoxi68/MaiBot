@@ -21,6 +21,7 @@ from src.chat.utils.chat_message_builder import build_readable_messages, get_raw
 from src.chat.express.expression_selector import expression_selector
 from src.chat.knowledge.knowledge_lib import qa_manager
 from src.chat.memory_system.memory_activator import MemoryActivator
+from src.chat.memory_system.instant_memory import InstantMemory
 from src.mood.mood_manager import mood_manager
 from src.person_info.relationship_fetcher import relationship_fetcher_manager
 from src.person_info.person_info import get_person_info_manager
@@ -159,6 +160,7 @@ class DefaultReplyer:
 
         self.heart_fc_sender = HeartFCSender()
         self.memory_activator = MemoryActivator()
+        self.instant_memory = InstantMemory(chat_id=self.chat_stream.stream_id)
         self.tool_executor = ToolExecutor(chat_id=self.chat_stream.stream_id, enable_cache=True, cache_ttl=3)
 
     def _select_weighted_model_config(self) -> Dict[str, Any]:
@@ -368,13 +370,21 @@ class DefaultReplyer:
         running_memories = await self.memory_activator.activate_memory_with_chat_history(
             target_message=target, chat_history_prompt=chat_history
         )
+        
+        if global_config.memory.enable_instant_memory:
+            asyncio.create_task(self.instant_memory.create_and_store_memory(chat_history))
 
+            instant_memory = await self.instant_memory.get_memory(target)
+            logger.info(f"即时记忆：{instant_memory}")
+            
         if not running_memories:
             return ""
 
         memory_str = "以下是当前在聊天中，你回忆起的记忆：\n"
         for running_memory in running_memories:
             memory_str += f"- {running_memory['content']}\n"
+        
+        memory_str += f"- {instant_memory}\n"
         return memory_str
 
     async def build_tool_info(self, chat_history, reply_data: Optional[Dict], enable_tool: bool = True):
@@ -510,9 +520,8 @@ class DefaultReplyer:
             background_dialogue_prompt_str = build_readable_messages(
                 latest_25_msgs,
                 replace_bot_name=True,
-                merge_messages=True,
                 timestamp_mode="normal_no_YMD",
-                show_pic=False,
+                truncate=True,
             )
             background_dialogue_prompt = f"这是其他用户的发言：\n{background_dialogue_prompt_str}"
 
