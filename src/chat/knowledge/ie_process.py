@@ -1,3 +1,4 @@
+import asyncio
 import json
 import time
 from typing import List, Union
@@ -7,8 +8,12 @@ from . import prompt_template
 from .knowledge_lib import INVALID_ENTITY
 from src.llm_models.utils_model import LLMRequest
 from json_repair import repair_json
-def _extract_json_from_text(text: str) -> dict:
+def _extract_json_from_text(text: str):
     """从文本中提取JSON数据的高容错方法"""
+    if text is None:
+        logger.error("输入文本为None")
+        return []
+        
     try:
         fixed_json = repair_json(text)
         if isinstance(fixed_json, str):
@@ -16,23 +21,66 @@ def _extract_json_from_text(text: str) -> dict:
         else:
             parsed_json = fixed_json
 
-        if isinstance(parsed_json, list) and parsed_json:
-            parsed_json = parsed_json[0]
-
-        if isinstance(parsed_json, dict):
+        # 如果是列表，直接返回
+        if isinstance(parsed_json, list):
             return parsed_json
+            
+        # 如果是字典且只有一个项目，可能包装了列表
+        if isinstance(parsed_json, dict):
+            # 如果字典只有一个键，并且值是列表，返回那个列表
+            if len(parsed_json) == 1:
+                value = list(parsed_json.values())[0]
+                if isinstance(value, list):
+                    return value
+            return parsed_json
+        
+        # 其他情况，尝试转换为列表
+        logger.warning(f"解析的JSON不是预期格式: {type(parsed_json)}, 内容: {parsed_json}")
+        return []
 
     except Exception as e:
-        logger.error(f"JSON提取失败: {e}, 原始文本: {text[:100]}...")
+        logger.error(f"JSON提取失败: {e}, 原始文本: {text[:100] if text else 'None'}...")
+        return []
 
 def _entity_extract(llm_req: LLMRequest, paragraph: str) -> List[str]:
     """对段落进行实体提取，返回提取出的实体列表（JSON格式）"""
     entity_extract_context = prompt_template.build_entity_extract_context(paragraph)
-    response, (reasoning_content, model_name) = llm_req.generate_response_async(entity_extract_context)
+    
+    # 使用 asyncio.run 来运行异步方法
+    try:
+        # 如果当前已有事件循环在运行，使用它
+        loop = asyncio.get_running_loop()
+        future = asyncio.run_coroutine_threadsafe(
+            llm_req.generate_response_async(entity_extract_context), loop
+        )
+        response, (reasoning_content, model_name) = future.result()
+    except RuntimeError:
+        # 如果没有运行中的事件循环，直接使用 asyncio.run
+        response, (reasoning_content, model_name) = asyncio.run(
+            llm_req.generate_response_async(entity_extract_context)
+        )
 
+    # 添加调试日志
+    logger.debug(f"LLM返回的原始响应: {response}")
+    
     entity_extract_result = _extract_json_from_text(response)
-    # 尝试load JSON数据
-    json.loads(entity_extract_result)
+    
+    # 检查返回的是否为有效的实体列表
+    if not isinstance(entity_extract_result, list):
+        # 如果不是列表，可能是字典格式，尝试从中提取列表
+        if isinstance(entity_extract_result, dict):
+            # 尝试常见的键名
+            for key in ['entities', 'result', 'data', 'items']:
+                if key in entity_extract_result and isinstance(entity_extract_result[key], list):
+                    entity_extract_result = entity_extract_result[key]
+                    break
+            else:
+                # 如果找不到合适的列表，抛出异常
+                raise Exception(f"实体提取结果格式错误，期望列表但得到: {type(entity_extract_result)}")
+        else:
+            raise Exception(f"实体提取结果格式错误，期望列表但得到: {type(entity_extract_result)}")
+    
+    # 过滤无效实体
     entity_extract_result = [
         entity
         for entity in entity_extract_result
@@ -50,16 +98,47 @@ def _rdf_triple_extract(llm_req: LLMRequest, paragraph: str, entities: list) -> 
     rdf_extract_context = prompt_template.build_rdf_triple_extract_context(
         paragraph, entities=json.dumps(entities, ensure_ascii=False)
     )
-    response, (reasoning_content, model_name) = llm_req.generate_response_async(rdf_extract_context)
+    
+    # 使用 asyncio.run 来运行异步方法
+    try:
+        # 如果当前已有事件循环在运行，使用它
+        loop = asyncio.get_running_loop()
+        future = asyncio.run_coroutine_threadsafe(
+            llm_req.generate_response_async(rdf_extract_context), loop
+        )
+        response, (reasoning_content, model_name) = future.result()
+    except RuntimeError:
+        # 如果没有运行中的事件循环，直接使用 asyncio.run
+        response, (reasoning_content, model_name) = asyncio.run(
+            llm_req.generate_response_async(rdf_extract_context)
+        )
 
-    entity_extract_result = _extract_json_from_text(response)
-    # 尝试load JSON数据
-    json.loads(entity_extract_result)
-    for triple in entity_extract_result:
-        if len(triple) != 3 or (triple[0] is None or triple[1] is None or triple[2] is None) or "" in triple:
+    # 添加调试日志
+    logger.debug(f"RDF LLM返回的原始响应: {response}")
+    
+    rdf_triple_result = _extract_json_from_text(response)
+    
+    # 检查返回的是否为有效的三元组列表
+    if not isinstance(rdf_triple_result, list):
+        # 如果不是列表，可能是字典格式，尝试从中提取列表
+        if isinstance(rdf_triple_result, dict):
+            # 尝试常见的键名
+            for key in ['triples', 'result', 'data', 'items']:
+                if key in rdf_triple_result and isinstance(rdf_triple_result[key], list):
+                    rdf_triple_result = rdf_triple_result[key]
+                    break
+            else:
+                # 如果找不到合适的列表，抛出异常
+                raise Exception(f"RDF三元组提取结果格式错误，期望列表但得到: {type(rdf_triple_result)}")
+        else:
+            raise Exception(f"RDF三元组提取结果格式错误，期望列表但得到: {type(rdf_triple_result)}")
+    
+    # 验证三元组格式
+    for triple in rdf_triple_result:
+        if not isinstance(triple, list) or len(triple) != 3 or (triple[0] is None or triple[1] is None or triple[2] is None) or "" in triple:
             raise Exception("RDF提取结果格式错误")
 
-    return entity_extract_result
+    return rdf_triple_result
 
 
 def info_extract_from_str(
