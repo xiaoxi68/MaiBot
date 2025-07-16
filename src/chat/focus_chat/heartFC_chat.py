@@ -487,15 +487,16 @@ class HeartFChatting:
 
         # 打印消息信息
         mes_name = self.chat_stream.group_info.group_name if self.chat_stream.group_info else "私聊"
+
+        talk_frequency = global_config.chat.get_current_talk_frequency(self.stream_id)
+        reply_probability = talk_frequency * reply_probability
+        
         if reply_probability > 0.1:
             logger.info(
                 f"[{mes_name}]"
                 f"{message_data.get('user_nickname')}:"
                 f"{message_data.get('processed_plain_text')}[兴趣:{interested_rate:.2f}][回复概率:{reply_probability * 100:.1f}%]"
             )
-
-        talk_frequency = global_config.chat.get_current_talk_frequency(self.stream_id)
-        reply_probability = talk_frequency * reply_probability
 
         if random.random() < reply_probability:
             await self.willing_manager.before_generate_reply_handle(message_data.get("message_id", ""))
