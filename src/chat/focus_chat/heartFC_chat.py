@@ -233,12 +233,14 @@ class HeartFChatting:
 
                 if_think = await self.normal_response(earliest_messages_data)
                 if if_think:
-                    if global_config.chat.focus_value <0.1:
-                        factor = 0.1
-                    else:
-                        factor = global_config.chat.focus_value
+                    factor = max(global_config.chat.focus_value, 0.1)
                     self.energy_value *= 1.1 / factor
-                    logger.info(f"{self.log_prefix} 麦麦进行了思考，能量值增加1，当前能量值：{self.energy_value}")
+                    logger.info(f"{self.log_prefix} 麦麦进行了思考，能量值按倍数增加，当前能量值：{self.energy_value}")
+                else:
+                    self.energy_value += 10 / global_config.chat.focus_value
+                    logger.info(f"{self.log_prefix} 麦麦没有进行思考，能量值线性增加，当前能量值：{self.energy_value}")
+
+                logger.debug(f"{self.log_prefix} 当前能量值：{self.energy_value}")
                 return True
 
             await asyncio.sleep(1)
