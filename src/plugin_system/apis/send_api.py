@@ -370,7 +370,14 @@ async def custom_to_stream(
         bool: 是否发送成功
     """
     return await _send_to_target(
-        message_type, content, stream_id, display_message, typing, reply_to, storage_message, show_log
+        message_type=message_type,
+        content=content,
+        stream_id=stream_id,
+        display_message=display_message,
+        typing=typing,
+        reply_to=reply_to,
+        storage_message=storage_message,
+        show_log=show_log,
     )
 
 

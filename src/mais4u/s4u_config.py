@@ -167,6 +167,9 @@ class S4UConfig(S4UConfigBase):
     enable_loading_indicator: bool = True
     """是否显示加载提示"""
     
+    enable_streaming_output: bool = True
+    """是否启用流式输出，false时全部生成后一次性发送"""
+    
     max_context_message_length: int = 20
     """上下文消息最大长度"""
     

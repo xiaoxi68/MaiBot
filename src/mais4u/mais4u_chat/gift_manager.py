@@ -23,7 +23,7 @@ class GiftManager:
     def __init__(self):
         """初始化礼物管理器"""
         self.pending_gifts: Dict[Tuple[str, str], PendingGift] = {}
-        self.debounce_timeout = 3.0  # 3秒防抖时间
+        self.debounce_timeout = 5.0  # 3秒防抖时间
     
     async def handle_gift(self, message: MessageRecvS4U, callback: Optional[Callable[[MessageRecvS4U], None]] = None) -> bool:
         """处理礼物消息，返回是否应该立即处理

@@ -186,6 +186,7 @@ class MessageRecvS4U(MessageRecv):
     def __init__(self, message_dict: dict[str, Any]):
         super().__init__(message_dict)
         self.is_gift = False
+        self.is_fake_gift = False
         self.is_superchat = False
         self.gift_info = None
         self.gift_name = None
@@ -194,6 +195,7 @@ class MessageRecvS4U(MessageRecv):
         self.superchat_price = None
         self.superchat_message_text = None
         self.is_screen = False
+        self.voice_done = None
     
     async def process(self) -> None:
         self.processed_plain_text = await self._process_message_segments(self.message_segment)
@@ -256,6 +258,11 @@ class MessageRecvS4U(MessageRecv):
                 self.gift_info = segment.data
                 self.gift_name = name.strip()
                 self.gift_count = int(count.strip())
+                return ""
+            elif segment.type == "voice_done":
+                msg_id = segment.data
+                logger.info(f"voice_done: {msg_id}")
+                self.voice_done = msg_id
                 return ""
             elif segment.type == "superchat":
                 self.is_superchat = True

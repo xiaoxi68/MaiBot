@@ -34,5 +34,7 @@ max_typing_delay = 2.0  # 最大打字延迟（秒）
 enable_old_message_cleanup = true  # 是否自动清理过旧的普通消息
 enable_loading_indicator = true  # 是否显示加载提示 
 
+enable_streaming_output = true  # 是否启用流式输出，false时全部生成后一次性发送
+
 max_context_message_length = 20
 max_core_message_length = 30

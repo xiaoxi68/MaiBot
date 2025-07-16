@@ -16,6 +16,7 @@ from src.person_info.relationship_manager import get_relationship_manager
 from src.chat.message_receive.chat_stream import ChatStream
 from src.mais4u.mais4u_chat.super_chat_manager import get_super_chat_manager
 from src.mais4u.mais4u_chat.screen_manager import screen_manager
+from src.chat.express.expression_selector import expression_selector
 
 logger = get_logger("prompt")
 
@@ -36,6 +37,7 @@ def init_prompt():
 
 {relation_info_block}
 {memory_block}
+{expression_habits_block}
 
 你现在的主要任务是和 {sender_name} 发送的弹幕聊天。同时，也有其他用户会参与你们的聊天，你可以参考他们的回复内容，但是你主要还是关注你和{sender_name}的聊天内容。
 
@@ -50,6 +52,7 @@ def init_prompt():
 对方最新发送的内容：{message_txt}
 {gift_info}
 回复可以简短一些。可以参考贴吧，知乎和微博的回复风格，回复不要浮夸，不要用夸张修辞，平淡一些。
+表现的有个性，不要随意服从他人要求，积极互动。
 不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出回复内容，现在{sender_name}正在等待你的回复。
 你的回复风格不要浮夸，有逻辑和条理，请你继续回复{sender_name}。
 你的发言：
@@ -63,32 +66,42 @@ class PromptBuilder:
         self.prompt_built = ""
         self.activate_messages = ""
 
-    async def build_identity_block(self) -> str:
-        person_info_manager = get_person_info_manager()
-        bot_person_id = person_info_manager.get_person_id("system", "bot_id")
-        bot_name = global_config.bot.nickname
-        if global_config.bot.alias_names:
-            bot_nickname = f",也有人叫你{','.join(global_config.bot.alias_names)}"
-        else:
-            bot_nickname = ""
-        short_impression = await person_info_manager.get_value(bot_person_id, "short_impression")
-        try:
-            if isinstance(short_impression, str) and short_impression.strip():
-                short_impression = ast.literal_eval(short_impression)
-            elif not short_impression:
-                logger.warning("short_impression为空，使用默认值")
-                short_impression = ["友好活泼", "人类"]
-        except (ValueError, SyntaxError) as e:
-            logger.error(f"解析short_impression失败: {e}, 原始值: {short_impression}")
-            short_impression = ["友好活泼", "人类"]
+    
+    async def build_expression_habits(self, chat_stream: ChatStream, chat_history, target):
 
-        if not isinstance(short_impression, list) or len(short_impression) < 2:
-            logger.warning(f"short_impression格式不正确: {short_impression}, 使用默认值")
-            short_impression = ["友好活泼", "人类"]
-        personality = short_impression[0]
-        identity = short_impression[1]
-        prompt_personality = personality + "，" + identity
-        return f"你的名字是{bot_name}{bot_nickname}，你{prompt_personality}："
+        style_habits = []
+        grammar_habits = []
+
+        # 使用从处理器传来的选中表达方式
+        # LLM模式：调用LLM选择5-10个，然后随机选5个
+        selected_expressions = await expression_selector.select_suitable_expressions_llm(
+            chat_stream.stream_id, chat_history, max_num=12, min_num=5, target_message=target
+        )
+
+        if selected_expressions:
+            logger.debug(f" 使用处理器选中的{len(selected_expressions)}个表达方式")
+            for expr in selected_expressions:
+                if isinstance(expr, dict) and "situation" in expr and "style" in expr:
+                    expr_type = expr.get("type", "style")
+                    if expr_type == "grammar":
+                        grammar_habits.append(f"当{expr['situation']}时，使用 {expr['style']}")
+                    else:
+                        style_habits.append(f"当{expr['situation']}时，使用 {expr['style']}")
+        else:
+            logger.debug("没有从处理器获得表达方式，将使用空的表达方式")
+            # 不再在replyer中进行随机选择，全部交给处理器处理
+
+        style_habits_str = "\n".join(style_habits)
+        grammar_habits_str = "\n".join(grammar_habits)
+
+        # 动态构建expression habits块
+        expression_habits_block = ""
+        if style_habits_str.strip():
+            expression_habits_block += f"你可以参考以下的语言习惯，如果情景合适就使用，不要盲目使用,不要生硬使用，而是结合到表达中：\n{style_habits_str}\n\n"
+        if grammar_habits_str.strip():
+            expression_habits_block += f"请你根据情景使用以下句法：\n{grammar_habits_str}\n"
+
+        return expression_habits_block
 
     async def build_relation_info(self, chat_stream) -> str:
         is_group_chat = bool(chat_stream.group_info)
@@ -149,8 +162,10 @@ class PromptBuilder:
                 if msg_user_id == bot_id:
                     if msg_dict.get("reply_to") and talk_type == msg_dict.get("reply_to"):
                         core_dialogue_list.append(msg_dict)
-                    else:
+                    elif msg_dict.get("reply_to") and talk_type != msg_dict.get("reply_to"):
                         background_dialogue_list.append(msg_dict)
+                    # else:
+                        # background_dialogue_list.append(msg_dict)
                 elif msg_user_id == target_user_id:
                     core_dialogue_list.append(msg_dict)
                 else:
@@ -210,6 +225,10 @@ class PromptBuilder:
     def build_gift_info(self, message: MessageRecvS4U):
         if message.is_gift:
             return f"这是一条礼物信息，{message.gift_name} x{message.gift_count}，请注意这位用户"        
+        else:
+            if message.is_fake_gift:
+                return f"{message.processed_plain_text}（注意：这是一条普通弹幕信息，对方没有真的发送礼物，不是礼物信息，注意区分，如果对方在发假的礼物骗你，请反击）"
+        
         return ""
 
     def build_sc_info(self, message: MessageRecvS4U):
@@ -223,8 +242,8 @@ class PromptBuilder:
         message_txt: str,
         sender_name: str = "某人",
     ) -> str:
-        identity_block, relation_info_block, memory_block = await asyncio.gather(
-            self.build_identity_block(), self.build_relation_info(chat_stream), self.build_memory_block(message_txt)
+        relation_info_block, memory_block, expression_habits_block = await asyncio.gather(
+            self.build_relation_info(chat_stream), self.build_memory_block(message_txt), self.build_expression_habits(chat_stream, message_txt, sender_name)
         )
 
         core_dialogue_prompt, background_dialogue_prompt = self.build_chat_history_prompts(chat_stream, message)
@@ -241,8 +260,8 @@ class PromptBuilder:
 
         prompt = await global_prompt_manager.format_prompt(
             template_name,
-            identity_block=identity_block,
             time_block=time_block,
+            expression_habits_block=expression_habits_block,
             relation_info_block=relation_info_block,
             memory_block=memory_block,
             screen_info=screen_info,

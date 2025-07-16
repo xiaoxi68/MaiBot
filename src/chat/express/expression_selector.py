@@ -81,32 +81,70 @@ class ExpressionSelector:
             request_type="expression.selector",
         )
 
+    @staticmethod
+    def _parse_stream_config_to_chat_id(stream_config_str: str) -> Optional[str]:
+        """解析'platform:id:type'为chat_id（与get_stream_id一致）"""
+        try:
+            parts = stream_config_str.split(":")
+            if len(parts) != 3:
+                return None
+            platform = parts[0]
+            id_str = parts[1]
+            stream_type = parts[2]
+            is_group = stream_type == "group"
+            import hashlib
+            if is_group:
+                components = [platform, str(id_str)]
+            else:
+                components = [platform, str(id_str), "private"]
+            key = "_".join(components)
+            return hashlib.md5(key.encode()).hexdigest()
+        except Exception:
+            return None
+
+    def get_related_chat_ids(self, chat_id: str) -> List[str]:
+        """根据expression_groups配置，获取与当前chat_id相关的所有chat_id（包括自身）"""
+        groups = global_config.expression.expression_groups
+        for group in groups:
+            group_chat_ids = []
+            for stream_config_str in group:
+                chat_id_candidate = self._parse_stream_config_to_chat_id(stream_config_str)
+                if chat_id_candidate:
+                    group_chat_ids.append(chat_id_candidate)
+            if chat_id in group_chat_ids:
+                return group_chat_ids
+        return [chat_id]
+
     def get_random_expressions(
         self, chat_id: str, total_num: int, style_percentage: float, grammar_percentage: float
     ) -> Tuple[List[Dict[str, str]], List[Dict[str, str]]]:
-        # 直接数据库查询
-        style_query = Expression.select().where((Expression.chat_id == chat_id) & (Expression.type == "style"))
-        grammar_query = Expression.select().where((Expression.chat_id == chat_id) & (Expression.type == "grammar"))
-        style_exprs = [
-            {
-                "situation": expr.situation,
-                "style": expr.style,
-                "count": expr.count,
-                "last_active_time": expr.last_active_time,
-                "source_id": chat_id,
-                "type": "style"
-            } for expr in style_query
-        ]
-        grammar_exprs = [
-            {
-                "situation": expr.situation,
-                "style": expr.style,
-                "count": expr.count,
-                "last_active_time": expr.last_active_time,
-                "source_id": chat_id,
-                "type": "grammar"
-            } for expr in grammar_query
-        ]
+        # 支持多chat_id合并抽选
+        related_chat_ids = self.get_related_chat_ids(chat_id)
+        style_exprs = []
+        grammar_exprs = []
+        for cid in related_chat_ids:
+            style_query = Expression.select().where((Expression.chat_id == cid) & (Expression.type == "style"))
+            grammar_query = Expression.select().where((Expression.chat_id == cid) & (Expression.type == "grammar"))
+            style_exprs.extend([
+                {
+                    "situation": expr.situation,
+                    "style": expr.style,
+                    "count": expr.count,
+                    "last_active_time": expr.last_active_time,
+                    "source_id": cid,
+                    "type": "style"
+                } for expr in style_query
+            ])
+            grammar_exprs.extend([
+                {
+                    "situation": expr.situation,
+                    "style": expr.style,
+                    "count": expr.count,
+                    "last_active_time": expr.last_active_time,
+                    "source_id": cid,
+                    "type": "grammar"
+                } for expr in grammar_query
+            ])
         style_num = int(total_num * style_percentage)
         grammar_num = int(total_num * grammar_percentage)
         # 按权重抽样（使用count作为权重）
