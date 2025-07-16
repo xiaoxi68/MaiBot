@@ -232,7 +232,7 @@ class HeartFChatting:
 
             if len(new_messages_data) > 3 * global_config.chat.focus_value:
                 self.loop_mode = ChatMode.FOCUS
-                self.energy_value =  10 + (new_messages_data / 3) * 10
+                self.energy_value =  10 + (new_messages_data / (3 * global_config.chat.focus_value)) * 10
                 return True
             
             if self.energy_value >= 30 * global_config.chat.focus_value:
@@ -245,7 +245,7 @@ class HeartFChatting:
 
                 if_think = await self.normal_response(earliest_messages_data)
                 if if_think:
-                    self.energy_value *= 1.1
+                    self.energy_value *= 1.1 / (global_config.chat.focus_value + 0.2)
                     logger.info(f"{self.log_prefix} 麦麦进行了思考，能量值增加1，当前能量值：{self.energy_value}")
                 return False
 
