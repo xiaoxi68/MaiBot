@@ -28,7 +28,7 @@ def _extract_json_from_text(text: str) -> dict:
 def _entity_extract(llm_req: LLMRequest, paragraph: str) -> List[str]:
     """对段落进行实体提取，返回提取出的实体列表（JSON格式）"""
     entity_extract_context = prompt_template.build_entity_extract_context(paragraph)
-    response, (reasoning_content, model_name) = llm_req.generate_response_async(entity_extract_context)
+    response, (reasoning_content, model_name) = llm_req.generate_response_sync(entity_extract_context)
 
     entity_extract_result = _extract_json_from_text(response)
     # 尝试load JSON数据
@@ -50,7 +50,7 @@ def _rdf_triple_extract(llm_req: LLMRequest, paragraph: str, entities: list) -> 
     rdf_extract_context = prompt_template.build_rdf_triple_extract_context(
         paragraph, entities=json.dumps(entities, ensure_ascii=False)
     )
-    response, (reasoning_content, model_name) = llm_req.generate_response_async(rdf_extract_context)
+    response, (reasoning_content, model_name) = llm_req.generate_response_sync(rdf_extract_context)
 
     entity_extract_result = _extract_json_from_text(response)
     # 尝试load JSON数据
