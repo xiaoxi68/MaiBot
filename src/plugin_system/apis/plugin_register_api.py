@@ -23,7 +23,20 @@ def register_plugin(cls):
     # 只是注册插件类，不立即实例化
     # 插件管理器会负责实例化和注册
     plugin_name = cls.plugin_name or cls.__name__
-    plugin_manager.plugin_classes[plugin_name] = cls
+    plugin_manager.plugin_classes[plugin_name] = cls  # type: ignore
     logger.debug(f"插件类已注册: {plugin_name}")
 
     return cls
+
+def register_event_plugin(cls, *args, **kwargs):
+    from src.plugin_system.core.events_manager import events_manager
+    from src.plugin_system.base.component_types import EventType
+
+    """事件插件注册装饰器
+
+    用法:
+        @register_event_plugin
+        class MyEventPlugin:
+            event_type = EventType.MESSAGE_RECEIVED
+            ...
+    """
