@@ -10,7 +10,7 @@ from .kg_manager import KGManager
 # from .lpmmconfig import global_config
 from .utils.dyn_topk import dyn_select_top_k
 from src.llm_models.utils_model import LLMRequest
-from src.chat.utils.utils import get_embedding_sync
+from src.chat.utils.utils import get_embedding
 from src.config.config import global_config
 
 MAX_KNOWLEDGE_LENGTH = 10000  # 最大知识长度
@@ -36,7 +36,7 @@ class QAManager:
 
         # 生成问题的Embedding
         part_start_time = time.perf_counter()
-        question_embedding = await get_embedding_sync(question)
+        question_embedding = await get_embedding(question)
         if question_embedding is None:
             logger.error("生成问题Embedding失败")
             return None

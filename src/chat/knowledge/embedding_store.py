@@ -26,7 +26,7 @@ from rich.progress import (
     TextColumn,
 )
 from src.manager.local_store_manager import local_storage
-from src.chat.utils.utils import get_embedding_sync
+from src.chat.utils.utils import get_embedding
 from src.config.config import global_config
 
 
@@ -99,7 +99,7 @@ class EmbeddingStore:
         self.idx2hash = None
 
     def _get_embedding(self, s: str) -> List[float]:
-        return get_embedding_sync(s)
+        return get_embedding(s)
 
     def get_test_file_path(self):
         return EMBEDDING_TEST_FILE

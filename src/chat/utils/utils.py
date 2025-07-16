@@ -122,18 +122,6 @@ async def get_embedding(text, request_type="embedding"):
     return embedding
 
 
-def get_embedding_sync(text, request_type="embedding"):
-    """获取文本的embedding向量（同步版本）"""
-    # TODO: API-Adapter修改标记
-    llm = LLMRequest(model=global_config.model.embedding, request_type=request_type)
-    try:
-        embedding = llm.get_embedding_sync(text)
-    except Exception as e:
-        logger.error(f"获取embedding失败: {str(e)}")
-        embedding = None
-    return embedding
-
-
 def get_recent_group_speaker(chat_stream_id: str, sender, limit: int = 12) -> list:
     # 获取当前群聊记录内发言的人
     filter_query = {"chat_id": chat_stream_id}
