@@ -4,12 +4,27 @@ import shutil
 from datetime import datetime
 from tomlkit import TOMLDocument
 from tomlkit.items import Table
-from dataclasses import dataclass, fields, MISSING
+from dataclasses import dataclass, fields, MISSING, field
 from typing import TypeVar, Type, Any, get_origin, get_args, Literal
 
 from src.common.logger import get_logger
 
 logger = get_logger("s4u_config")
+
+# 新增：兼容dict和tomlkit Table
+def is_dict_like(obj):
+    return isinstance(obj, (dict, Table))
+
+# 新增：递归将Table转为dict
+def table_to_dict(obj):
+    if isinstance(obj, Table):
+        return {k: table_to_dict(v) for k, v in obj.items()}
+    elif isinstance(obj, dict):
+        return {k: table_to_dict(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [table_to_dict(i) for i in obj]
+    else:
+        return obj
 
 # 获取mais4u模块目录
 MAIS4U_ROOT = os.path.dirname(__file__)
@@ -18,7 +33,7 @@ TEMPLATE_PATH = os.path.join(CONFIG_DIR, "s4u_config_template.toml")
 CONFIG_PATH = os.path.join(CONFIG_DIR, "s4u_config.toml")
 
 # S4U配置版本
-S4U_VERSION = "1.0.0"
+S4U_VERSION = "1.1.0"
 
 T = TypeVar("T", bound="S4UConfigBase")
 
@@ -30,7 +45,8 @@ class S4UConfigBase:
     @classmethod
     def from_dict(cls: Type[T], data: dict[str, Any]) -> T:
         """从字典加载配置字段"""
-        if not isinstance(data, dict):
+        data = table_to_dict(data)  # 递归转dict，兼容tomlkit Table
+        if not is_dict_like(data):
             raise TypeError(f"Expected a dictionary, got {type(data).__name__}")
 
         init_args: dict[str, Any] = {}
@@ -66,7 +82,7 @@ class S4UConfigBase:
         """转换字段值为指定类型"""
         # 如果是嵌套的 dataclass，递归调用 from_dict 方法
         if isinstance(field_type, type) and issubclass(field_type, S4UConfigBase):
-            if not isinstance(value, dict):
+            if not is_dict_like(value):
                 raise TypeError(f"Expected a dictionary for {field_type.__name__}, got {type(value).__name__}")
             return field_type.from_dict(value)
 
@@ -96,7 +112,7 @@ class S4UConfigBase:
                 return tuple(cls._convert_field(item, arg) for item, arg in zip(value, field_type_args, strict=False))
 
         if field_origin_type is dict:
-            if not isinstance(value, dict):
+            if not is_dict_like(value):
                 raise TypeError(f"Expected a dictionary for {field_type.__name__}, got {type(value).__name__}")
 
             if len(field_type_args) != 2:
@@ -125,6 +141,51 @@ class S4UConfigBase:
             return field_type(value)
         except (ValueError, TypeError) as e:
             raise TypeError(f"Cannot convert {type(value).__name__} to {field_type.__name__}") from e
+
+
+@dataclass
+class S4UModelConfig(S4UConfigBase):
+    """S4U模型配置类"""
+
+    # 主要对话模型配置
+    chat: dict[str, Any] = field(default_factory=lambda: {})
+    """主要对话模型配置"""
+
+    # 规划模型配置（原model_motion）
+    motion: dict[str, Any] = field(default_factory=lambda: {})
+    """规划模型配置"""
+
+    # 情感分析模型配置
+    emotion: dict[str, Any] = field(default_factory=lambda: {})
+    """情感分析模型配置"""
+
+    # 记忆模型配置
+    memory: dict[str, Any] = field(default_factory=lambda: {})
+    """记忆模型配置"""
+
+    # 工具使用模型配置
+    tool_use: dict[str, Any] = field(default_factory=lambda: {})
+    """工具使用模型配置"""
+
+    # 嵌入模型配置
+    embedding: dict[str, Any] = field(default_factory=lambda: {})
+    """嵌入模型配置"""
+
+    # 视觉语言模型配置
+    vlm: dict[str, Any] = field(default_factory=lambda: {})
+    """视觉语言模型配置"""
+
+    # 知识库模型配置
+    knowledge: dict[str, Any] = field(default_factory=lambda: {})
+    """知识库模型配置"""
+
+    # 实体提取模型配置
+    entity_extract: dict[str, Any] = field(default_factory=lambda: {})
+    """实体提取模型配置"""
+
+    # 问答模型配置
+    qa: dict[str, Any] = field(default_factory=lambda: {})
+    """问答模型配置"""
 
 
 @dataclass
@@ -164,9 +225,6 @@ class S4UConfig(S4UConfigBase):
     enable_old_message_cleanup: bool = True
     """是否自动清理过旧的普通消息"""
 
-    enable_loading_indicator: bool = True
-    """是否显示加载提示"""
-    
     enable_streaming_output: bool = True
     """是否启用流式输出，false时全部生成后一次性发送"""
     
@@ -175,6 +233,13 @@ class S4UConfig(S4UConfigBase):
     
     max_core_message_length: int = 30
     """核心消息最大长度"""  
+
+    # 模型配置
+    models: S4UModelConfig = field(default_factory=S4UModelConfig)
+    """S4U模型配置"""
+
+    # 兼容性字段，保持向后兼容
+
 
 
 @dataclass

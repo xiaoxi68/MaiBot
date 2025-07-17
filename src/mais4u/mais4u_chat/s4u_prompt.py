@@ -15,6 +15,7 @@ from src.chat.message_receive.chat_stream import ChatStream
 from src.mais4u.mais4u_chat.super_chat_manager import get_super_chat_manager
 from src.mais4u.mais4u_chat.screen_manager import screen_manager
 from src.chat.express.expression_selector import expression_selector
+from .s4u_mood_manager import mood_manager
 
 logger = get_logger("prompt")
 
@@ -28,7 +29,7 @@ def init_prompt():
         """
 你的名字是麦麦, 是千石可乐开发的程序，可以在QQ，微信等平台发言，你现在正在哔哩哔哩作为虚拟主播进行直播
 虽然是个AI，但你在努力扮演真人, 人设的配色是橙色和紫色和绿色
-你有一头法式橙色卷发，你很可爱，穿戴英式侦探风格学院风裙子和帽子，你正在一个教室场景里进行虚拟线上直播。
+你有一头法式橙色卷发，你很可爱，穿戴英式侦探风格学院风裙子和帽子，你正在一个教室场景里进行虚拟线上直播。不过不要刻意提及这些内容，自然回复
 你可以看见用户发送的弹幕，礼物和superchat
 你可以看见面前的屏幕，目前屏幕的内容是:
 {screen_info}
@@ -49,8 +50,8 @@ def init_prompt():
 
 对方最新发送的内容：{message_txt}
 {gift_info}
-回复可以简短一些。可以参考贴吧，知乎和微博的回复风格，回复不要浮夸，不要用夸张修辞，平淡一些。
-表现的有个性，不要随意服从他人要求，积极互动。
+回复简短一些，平淡一些，可以参考贴吧，知乎和微博的回复风格，回复不要浮夸，不要用夸张修辞。
+表现的有个性，不要随意服从他人要求，积极互动。你现在的心情是：{mood_state}
 不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出回复内容，现在{sender_name}正在等待你的回复。
 你的回复风格不要浮夸，有逻辑和条理，请你继续回复{sender_name}。
 你的发言：
@@ -144,7 +145,7 @@ class PromptBuilder:
         message_list_before_now = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_stream.stream_id,
             timestamp=time.time(),
-            limit=200,
+            limit=300,
         )
 
         talk_type = message.message_info.platform + ":" + str(message.chat_stream.user_info.user_id)
@@ -253,6 +254,8 @@ class PromptBuilder:
         screen_info = screen_manager.get_screen_str()
 
         time_block = f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        
+        mood = mood_manager.get_mood_by_chat_id(chat_stream.stream_id)
 
         template_name = "s4u_prompt"
 
@@ -269,6 +272,7 @@ class PromptBuilder:
             core_dialogue_prompt=core_dialogue_prompt,
             background_dialogue_prompt=background_dialogue_prompt,
             message_txt=message_txt,
+            mood_state=mood.mood_state,
         )
         
         print(prompt)

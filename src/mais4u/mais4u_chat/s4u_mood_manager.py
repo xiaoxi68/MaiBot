@@ -168,7 +168,7 @@ class ChatMood:
             chat_id=self.chat_id,
             timestamp_start=self.last_change_time,
             timestamp_end=message_time,
-            limit=15,
+            limit=10,
             limit_mode="last",
         )
         chat_talking_prompt = build_readable_messages(
@@ -245,7 +245,7 @@ class ChatMood:
             chat_id=self.chat_id,
             timestamp_start=self.last_change_time,
             timestamp_end=message_time,
-            limit=15,
+            limit=5,
             limit_mode="last",
         )
         chat_talking_prompt = build_readable_messages(
