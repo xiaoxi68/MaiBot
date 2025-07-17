@@ -36,6 +36,8 @@ services:
       - ./docker-config/mmc:/MaiMBot/config # 持久化bot配置文件
       - ./data/MaiMBot/maibot_statistics.html:/MaiMBot/maibot_statistics.html #统计数据输出
       - ./data/MaiMBot:/MaiMBot/data # 共享目录
+      - ./data/MaiMBot/plugins:/MaiMBot/plugins # 插件目录
+      - ./data/MaiMBot/logs:/MaiMBot/logs # 日志目录
       - site-packages:/usr/local/lib/python3.13/site-packages # 持久化Python包
     restart: always
     networks:
