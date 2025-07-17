@@ -462,7 +462,7 @@ class HeartFChatting:
         在"兴趣"模式下，判断是否回复并生成内容。
         """
 
-        interested_rate = message_data.get("interest_value", 0.0) * self.willing_amplifier
+        interested_rate = (message_data.get("interest_value") or 0.0) * self.willing_amplifier
     
         self.willing_manager.setup(message_data, self.chat_stream)
     
