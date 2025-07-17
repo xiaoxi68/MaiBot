@@ -17,7 +17,6 @@ from src.llm_models.utils_model import LLMRequest
 
 from src.common.logger import get_logger
 from rich.traceback import install
-import traceback
 install(extra_lines=3)
 
 logger = get_logger("chat_voice")
@@ -25,7 +24,7 @@ logger = get_logger("chat_voice")
 async def get_voice_text(voice_base64: str) -> str:
     """获取音频文件描述"""
     try:
-        # 计算图片哈希
+        # 解码base64音频数据
         # 确保base64字符串只包含ASCII字符
         if isinstance(voice_base64, str):
             voice_base64 = voice_base64.encode("ascii", errors="ignore").decode("ascii")
@@ -40,7 +39,6 @@ async def get_voice_text(voice_base64: str) -> str:
 
         return f"[语音：{text}]"
     except Exception as e:
-        traceback.print_exc()
         logger.error(f"语音转文字失败: {str(e)}")
         return "[语音]"
 

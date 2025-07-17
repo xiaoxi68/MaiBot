@@ -668,15 +668,21 @@ class LLMRequest:
 
     async def _build_formdata_payload(self, file_bytes: str, file_format: str):
         """构建form-data请求体"""
-        # 非常丑陋的方法，先将文件写入本地，然后再读取，应该有更好的办法
-        with open(f"file.{file_format}","wb") as f:
-            f.write(file_bytes)
-        
+        # 目前只适配了音频文件
+        # 如果后续要支持其他类型的文件，可以在这里添加更多的处理逻辑
         data = aiohttp.FormData()
+        content_type_list = {
+            "wav": "audio/wav",
+            "mp3": "audio/mpeg",
+            "ogg": "audio/ogg",
+            "flac": "audio/flac",
+            "aac": "audio/aac",
+        }
+        
         data.add_field(
-            "file",open(f"file.{file_format}","rb"),
+            "file",io.BytesIO(file_bytes),
             filename=f"file.{file_format}",
-            content_type='audio/wav'
+            content_type=f'audio/{content_type_list[file_format]}' # 根据实际文件类型设置
         )
         data.add_field(
             "model", self.model_name

@@ -162,7 +162,7 @@ class MessageRecv(Message):
                 self.has_picid = False
                 self.is_picid = False
                 self.is_emoji = False
-                self.is_voice == True
+                self.is_voice = True
                 if isinstance(segment.data, str):
                     return await get_voice_text(segment.data)
                 return "[发了一段语音，网卡了加载不出来]"
@@ -247,7 +247,7 @@ class MessageRecvS4U(MessageRecv):
                 self.has_picid = False
                 self.is_picid = False
                 self.is_emoji = False
-                self.is_voice == True
+                self.is_voice = True
                 if isinstance(segment.data, str):
                     return await get_voice_text(segment.data)
                 return "[发了一段语音，网卡了加载不出来]"
