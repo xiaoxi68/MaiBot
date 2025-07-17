@@ -664,7 +664,7 @@ class LLMRequest:
                 new_params["max_completion_tokens"] = new_params.pop("max_tokens")
         return new_params
 
-    async def _build_formdata_payload(self, file_bytes: str, file_format: str) -> aiohttp.FormData:
+    async def _build_formdata_payload(self, file_bytes: bytes, file_format: str) -> aiohttp.FormData:
         """构建form-data请求体"""
         # 目前只适配了音频文件
         # 如果后续要支持其他类型的文件，可以在这里添加更多的处理逻辑
