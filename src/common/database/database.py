@@ -54,11 +54,11 @@ class DBWrapper:
         return getattr(get_db(), name)
 
     def __getitem__(self, key):
-        return get_db()[key]
+        return get_db()[key]  # type: ignore
 
 
 # 全局数据库访问点
-memory_db: Database = DBWrapper()
+memory_db: Database = DBWrapper()  # type: ignore
 
 # 定义数据库文件路径
 ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))

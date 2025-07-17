@@ -36,9 +36,9 @@ def get_plugin_path(caller_frame=None) -> str:
     """
     try:
         if caller_frame is None:
-            caller_frame = inspect.currentframe().f_back
+            caller_frame = inspect.currentframe().f_back  # type: ignore
 
-        plugin_module_path = inspect.getfile(caller_frame)
+        plugin_module_path = inspect.getfile(caller_frame)  # type: ignore
         plugin_dir = os.path.dirname(plugin_module_path)
         return plugin_dir
     except Exception as e:
@@ -59,7 +59,7 @@ def read_json_file(file_path: str, default: Any = None) -> Any:
     try:
         # 如果是相对路径，则相对于调用者的插件目录
         if not os.path.isabs(file_path):
-            caller_frame = inspect.currentframe().f_back
+            caller_frame = inspect.currentframe().f_back  # type: ignore
             plugin_dir = get_plugin_path(caller_frame)
             file_path = os.path.join(plugin_dir, file_path)
 
@@ -88,7 +88,7 @@ def write_json_file(file_path: str, data: Any, indent: int = 2) -> bool:
     try:
         # 如果是相对路径，则相对于调用者的插件目录
         if not os.path.isabs(file_path):
-            caller_frame = inspect.currentframe().f_back
+            caller_frame = inspect.currentframe().f_back  # type: ignore
             plugin_dir = get_plugin_path(caller_frame)
             file_path = os.path.join(plugin_dir, file_path)
 
@@ -117,7 +117,7 @@ def get_timestamp() -> int:
     return int(time.time())
 
 
-def format_time(timestamp: Optional[int] = None, format_str: str = "%Y-%m-%d %H:%M:%S") -> str:
+def format_time(timestamp: Optional[int | float] = None, format_str: str = "%Y-%m-%d %H:%M:%S") -> str:
     """格式化时间
 
     Args:

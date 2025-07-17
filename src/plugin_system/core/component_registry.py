@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Any, Pattern, Union
+from typing import Dict, List, Optional, Any, Pattern, Tuple, Union, Type
 import re
 from src.common.logger import get_logger
 from src.plugin_system.base.component_types import (
@@ -9,8 +9,8 @@ from src.plugin_system.base.component_types import (
     ComponentType,
 )
 
-from ..base.base_command import BaseCommand
-from ..base.base_action import BaseAction
+from src.plugin_system.base.base_command import BaseCommand
+from src.plugin_system.base.base_action import BaseAction
 
 logger = get_logger("component_registry")
 
@@ -28,25 +28,25 @@ class ComponentRegistry:
             ComponentType.ACTION: {},
             ComponentType.COMMAND: {},
         }
-        self._component_classes: Dict[str, Union[BaseCommand, BaseAction]] = {}  # 组件名 -> 组件类
+        self._component_classes: Dict[str, Union[Type[BaseCommand], Type[BaseAction]]] = {}  # 组件名 -> 组件类
 
         # 插件注册表
         self._plugins: Dict[str, PluginInfo] = {}  # 插件名 -> 插件信息
 
         # Action特定注册表
-        self._action_registry: Dict[str, BaseAction] = {}  # action名 -> action类
-        self._default_actions: Dict[str, str] = {}  # 启用的action名 -> 描述
+        self._action_registry: Dict[str, Type[BaseAction]] = {}  # action名 -> action类
+        self._default_actions: Dict[str, ActionInfo] = {}  # 默认动作集，即启用的Action集，用于重置ActionManager状态
 
         # Command特定注册表
-        self._command_registry: Dict[str, BaseCommand] = {}  # command名 -> command类
-        self._command_patterns: Dict[Pattern, BaseCommand] = {}  # 编译后的正则 -> command类
+        self._command_registry: Dict[str, Type[BaseCommand]] = {}  # command名 -> command类
+        self._command_patterns: Dict[Pattern, Type[BaseCommand]] = {}  # 编译后的正则 -> command类
 
         logger.info("组件注册中心初始化完成")
 
     # === 通用组件注册方法 ===
 
     def register_component(
-        self, component_info: ComponentInfo, component_class: Union[BaseCommand, BaseAction]
+        self, component_info: ComponentInfo, component_class: Union[Type[BaseCommand], Type[BaseAction]]
     ) -> bool:
         """注册组件
 
@@ -88,9 +88,9 @@ class ComponentRegistry:
 
         # 根据组件类型进行特定注册（使用原始名称）
         if component_type == ComponentType.ACTION:
-            self._register_action_component(component_info, component_class)
+            self._register_action_component(component_info, component_class)  # type: ignore
         elif component_type == ComponentType.COMMAND:
-            self._register_command_component(component_info, component_class)
+            self._register_command_component(component_info, component_class)  # type: ignore
 
         logger.debug(
             f"已注册{component_type.value}组件: '{component_name}' -> '{namespaced_name}' "
@@ -98,16 +98,18 @@ class ComponentRegistry:
         )
         return True
 
-    def _register_action_component(self, action_info: ActionInfo, action_class: BaseAction):
+    def _register_action_component(self, action_info: ActionInfo, action_class: Type[BaseAction]):
+        # -------------------------------- NEED REFACTORING --------------------------------
+        # -------------------------------- LOGIC ERROR -------------------------------------
         """注册Action组件到Action特定注册表"""
         action_name = action_info.name
         self._action_registry[action_name] = action_class
 
         # 如果启用，添加到默认动作集
         if action_info.enabled:
-            self._default_actions[action_name] = action_info.description
+            self._default_actions[action_name] = action_info
 
-    def _register_command_component(self, command_info: CommandInfo, command_class: BaseCommand):
+    def _register_command_component(self, command_info: CommandInfo, command_class: Type[BaseCommand]):
         """注册Command组件到Command特定注册表"""
         command_name = command_info.name
         self._command_registry[command_name] = command_class
@@ -119,7 +121,7 @@ class ComponentRegistry:
 
     # === 组件查询方法 ===
 
-    def get_component_info(self, component_name: str, component_type: ComponentType = None) -> Optional[ComponentInfo]:
+    def get_component_info(self, component_name: str, component_type: ComponentType = None) -> Optional[ComponentInfo]:  # type: ignore
         # sourcery skip: class-extract-method
         """获取组件信息，支持自动命名空间解析
 
@@ -167,8 +169,10 @@ class ComponentRegistry:
         return None
 
     def get_component_class(
-        self, component_name: str, component_type: ComponentType = None
-    ) -> Optional[Union[BaseCommand, BaseAction]]:
+        self,
+        component_name: str,
+        component_type: ComponentType = None,  # type: ignore
+    ) -> Optional[Union[Type[BaseCommand], Type[BaseAction]]]:
         """获取组件类，支持自动命名空间解析
 
         Args:
@@ -227,26 +231,26 @@ class ComponentRegistry:
 
     # === Action特定查询方法 ===
 
-    def get_action_registry(self) -> Dict[str, BaseAction]:
+    def get_action_registry(self) -> Dict[str, Type[BaseAction]]:
         """获取Action注册表（用于兼容现有系统）"""
         return self._action_registry.copy()
-
-    def get_default_actions(self) -> Dict[str, str]:
-        """获取默认启用的Action列表（用于兼容现有系统）"""
-        return self._default_actions.copy()
 
     def get_action_info(self, action_name: str) -> Optional[ActionInfo]:
         """获取Action信息"""
         info = self.get_component_info(action_name, ComponentType.ACTION)
         return info if isinstance(info, ActionInfo) else None
 
+    def get_default_actions(self) -> Dict[str, ActionInfo]:
+        """获取默认动作集"""
+        return self._default_actions.copy()
+
     # === Command特定查询方法 ===
 
-    def get_command_registry(self) -> Dict[str, BaseCommand]:
+    def get_command_registry(self) -> Dict[str, Type[BaseCommand]]:
         """获取Command注册表（用于兼容现有系统）"""
         return self._command_registry.copy()
 
-    def get_command_patterns(self) -> Dict[Pattern, BaseCommand]:
+    def get_command_patterns(self) -> Dict[Pattern, Type[BaseCommand]]:
         """获取Command模式注册表（用于兼容现有系统）"""
         return self._command_patterns.copy()
 
@@ -255,7 +259,7 @@ class ComponentRegistry:
         info = self.get_component_info(command_name, ComponentType.COMMAND)
         return info if isinstance(info, CommandInfo) else None
 
-    def find_command_by_text(self, text: str) -> Optional[tuple[BaseCommand, dict, bool, str]]:
+    def find_command_by_text(self, text: str) -> Optional[Tuple[Type[BaseCommand], dict, bool, str]]:
         # sourcery skip: use-named-expression, use-next
         """根据文本查找匹配的命令
 
@@ -263,7 +267,7 @@ class ComponentRegistry:
             text: 输入文本
 
         Returns:
-            Optional[tuple[BaseCommand, dict, bool, str]]: (命令类, 匹配的命名组, 是否拦截消息, 插件名) 或 None
+            Tuple: (命令类, 匹配的命名组, 是否拦截消息, 插件名) 或 None
         """
 
         for pattern, command_class in self._command_patterns.items():
@@ -342,61 +346,67 @@ class ComponentRegistry:
 
     # === 状态管理方法 ===
 
-    def enable_component(self, component_name: str, component_type: ComponentType = None) -> bool:
-        """启用组件，支持命名空间解析"""
-        # 首先尝试找到正确的命名空间化名称
-        component_info = self.get_component_info(component_name, component_type)
-        if not component_info:
-            return False
+    # def enable_component(self, component_name: str, component_type: ComponentType = None) -> bool:
+    #     # -------------------------------- NEED REFACTORING --------------------------------
+    #     # -------------------------------- LOGIC ERROR -------------------------------------
+    #     """启用组件，支持命名空间解析"""
+    #     # 首先尝试找到正确的命名空间化名称
+    #     component_info = self.get_component_info(component_name, component_type)
+    #     if not component_info:
+    #         return False
 
-        # 根据组件类型构造正确的命名空间化名称
-        if component_info.component_type == ComponentType.ACTION:
-            namespaced_name = f"action.{component_name}" if "." not in component_name else component_name
-        elif component_info.component_type == ComponentType.COMMAND:
-            namespaced_name = f"command.{component_name}" if "." not in component_name else component_name
-        else:
-            namespaced_name = (
-                f"{component_info.component_type.value}.{component_name}"
-                if "." not in component_name
-                else component_name
-            )
+    #     # 根据组件类型构造正确的命名空间化名称
+    #     if component_info.component_type == ComponentType.ACTION:
+    #         namespaced_name = f"action.{component_name}" if "." not in component_name else component_name
+    #     elif component_info.component_type == ComponentType.COMMAND:
+    #         namespaced_name = f"command.{component_name}" if "." not in component_name else component_name
+    #     else:
+    #         namespaced_name = (
+    #             f"{component_info.component_type.value}.{component_name}"
+    #             if "." not in component_name
+    #             else component_name
+    #         )
 
-        if namespaced_name in self._components:
-            self._components[namespaced_name].enabled = True
-            # 如果是Action，更新默认动作集
-            if isinstance(component_info, ActionInfo):
-                self._default_actions[component_name] = component_info.description
-            logger.debug(f"已启用组件: {component_name} -> {namespaced_name}")
-            return True
-        return False
+    #     if namespaced_name in self._components:
+    #         self._components[namespaced_name].enabled = True
+    #         # 如果是Action，更新默认动作集
+    #         # ---- HERE ----
+    #         # if isinstance(component_info, ActionInfo):
+    #         #     self._action_descriptions[component_name] = component_info.description
+    #         logger.debug(f"已启用组件: {component_name} -> {namespaced_name}")
+    #         return True
+    #     return False
 
-    def disable_component(self, component_name: str, component_type: ComponentType = None) -> bool:
-        """禁用组件，支持命名空间解析"""
-        # 首先尝试找到正确的命名空间化名称
-        component_info = self.get_component_info(component_name, component_type)
-        if not component_info:
-            return False
+    # def disable_component(self, component_name: str, component_type: ComponentType = None) -> bool:
+    #     # -------------------------------- NEED REFACTORING --------------------------------
+    #     # -------------------------------- LOGIC ERROR -------------------------------------
+    #     """禁用组件，支持命名空间解析"""
+    #     # 首先尝试找到正确的命名空间化名称
+    #     component_info = self.get_component_info(component_name, component_type)
+    #     if not component_info:
+    #         return False
 
-        # 根据组件类型构造正确的命名空间化名称
-        if component_info.component_type == ComponentType.ACTION:
-            namespaced_name = f"action.{component_name}" if "." not in component_name else component_name
-        elif component_info.component_type == ComponentType.COMMAND:
-            namespaced_name = f"command.{component_name}" if "." not in component_name else component_name
-        else:
-            namespaced_name = (
-                f"{component_info.component_type.value}.{component_name}"
-                if "." not in component_name
-                else component_name
-            )
+    #     # 根据组件类型构造正确的命名空间化名称
+    #     if component_info.component_type == ComponentType.ACTION:
+    #         namespaced_name = f"action.{component_name}" if "." not in component_name else component_name
+    #     elif component_info.component_type == ComponentType.COMMAND:
+    #         namespaced_name = f"command.{component_name}" if "." not in component_name else component_name
+    #     else:
+    #         namespaced_name = (
+    #             f"{component_info.component_type.value}.{component_name}"
+    #             if "." not in component_name
+    #             else component_name
+    #         )
 
-        if namespaced_name in self._components:
-            self._components[namespaced_name].enabled = False
-            # 如果是Action，从默认动作集中移除
-            if component_name in self._default_actions:
-                del self._default_actions[component_name]
-            logger.debug(f"已禁用组件: {component_name} -> {namespaced_name}")
-            return True
-        return False
+    #     if namespaced_name in self._components:
+    #         self._components[namespaced_name].enabled = False
+    #         # 如果是Action，从默认动作集中移除
+    #         # ---- HERE ----
+    #         # if component_name in self._action_descriptions:
+    #         #     del self._action_descriptions[component_name]
+    #         logger.debug(f"已禁用组件: {component_name} -> {namespaced_name}")
+    #         return True
+    #     return False
 
     def get_registry_stats(self) -> Dict[str, Any]:
         """获取注册中心统计信息"""

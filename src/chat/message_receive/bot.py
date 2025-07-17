@@ -1,23 +1,23 @@
 import traceback
 import os
-from typing import Dict, Any
+import re
+
+from typing import Dict, Any, Optional
+from maim_message import UserInfo
 
 from src.common.logger import get_logger
+from src.config.config import global_config
 from src.mood.mood_manager import mood_manager  # 导入情绪管理器
-from src.chat.message_receive.chat_stream import get_chat_manager
-from src.chat.message_receive.message import MessageRecv
-from src.experimental.only_message_process import MessageProcessor
+from src.chat.message_receive.chat_stream import get_chat_manager, ChatStream
+from src.chat.message_receive.message import MessageRecv, MessageRecvS4U
 from src.chat.message_receive.storage import MessageStorage
-from src.experimental.PFC.pfc_manager import PFCManager
 from src.chat.heart_flow.heartflow_message_processor import HeartFCMessageReceiver
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
-from src.config.config import global_config
 from src.plugin_system.core.component_registry import component_registry  # 导入新插件系统
 from src.plugin_system.base.base_command import BaseCommand
 from src.mais4u.mais4u_chat.s4u_msg_processor import S4UMessageProcessor
-from maim_message import UserInfo
-from src.chat.message_receive.chat_stream import ChatStream
-import re
+
+
 # 定义日志配置
 
 # 获取项目根目录（假设本文件在src/chat/message_receive/下，根目录为上上上级目录）
@@ -80,9 +80,6 @@ class ChatBot:
         self.mood_manager = mood_manager  # 获取情绪管理器单例
         self.heartflow_message_receiver = HeartFCMessageReceiver()  # 新增
 
-        # 创建初始化PFC管理器的任务，会在_ensure_started时执行
-        self.only_process_chat = MessageProcessor()
-        self.pfc_manager = PFCManager.get_instance()
         self.s4u_message_processor = S4UMessageProcessor()
 
     async def _ensure_started(self):
@@ -101,6 +98,7 @@ class ChatBot:
             # 使用新的组件注册中心查找命令
             command_result = component_registry.find_command_by_text(text)
             if command_result:
+                message.is_command = True
                 command_class, matched_groups, intercept_message, plugin_name = command_result
 
                 # 获取插件配置
@@ -144,6 +142,29 @@ class ChatBot:
             logger.error(f"处理命令时出错: {e}")
             return False, None, True  # 出错时继续处理消息
 
+    async def do_s4u(self, message_data: Dict[str, Any]):
+        message = MessageRecvS4U(message_data)
+        group_info = message.message_info.group_info
+        user_info = message.message_info.user_info
+        
+        
+        get_chat_manager().register_message(message)
+        chat = await get_chat_manager().get_or_create_stream(
+            platform=message.message_info.platform,  # type: ignore
+            user_info=user_info,  # type: ignore
+            group_info=group_info,
+        )
+        
+        message.update_chat_stream(chat)
+
+        # 处理消息内容
+        await message.process()
+        
+        await self.s4u_message_processor.process_message(message)
+        
+        return
+
+
     async def message_process(self, message_data: Dict[str, Any]) -> None:
         """处理转化后的统一格式消息
         这个函数本质是预处理一些数据，根据配置信息和消息内容，预处理消息，并分发到合适的消息处理器中
@@ -161,6 +182,10 @@ class ChatBot:
         try:
             # 确保所有任务已启动
             await self._ensure_started()
+            
+            if ENABLE_S4U_CHAT:
+                await self.do_s4u(message_data)
+                return
 
             if message_data["message_info"].get("group_info") is not None:
                 message_data["message_info"]["group_info"]["group_id"] = str(
@@ -184,8 +209,8 @@ class ChatBot:
             get_chat_manager().register_message(message)
 
             chat = await get_chat_manager().get_or_create_stream(
-                platform=message.message_info.platform,
-                user_info=user_info,
+                platform=message.message_info.platform,  # type: ignore
+                user_info=user_info,  # type: ignore
                 group_info=group_info,
             )
 
@@ -195,8 +220,10 @@ class ChatBot:
             await message.process()
 
             # 过滤检查
-            if _check_ban_words(message.processed_plain_text, chat, user_info) or _check_ban_regex(
-                message.raw_message, chat, user_info
+            if _check_ban_words(message.processed_plain_text, chat, user_info) or _check_ban_regex(  # type: ignore
+                message.raw_message,  # type: ignore
+                chat,
+                user_info,  # type: ignore
             ):
                 return
 
@@ -211,7 +238,7 @@ class ChatBot:
 
             # 确认从接口发来的message是否有自定义的prompt模板信息
             if message.message_info.template_info and not message.message_info.template_info.template_default:
-                template_group_name = message.message_info.template_info.template_name
+                template_group_name: Optional[str] = message.message_info.template_info.template_name  # type: ignore
                 template_items = message.message_info.template_info.template_items
                 async with global_prompt_manager.async_message_scope(template_group_name):
                     if isinstance(template_items, dict):
@@ -222,11 +249,6 @@ class ChatBot:
                 template_group_name = None
 
             async def preprocess():
-                if ENABLE_S4U_CHAT:
-                    logger.info("进入S4U流程")
-                    await self.s4u_message_processor.process_message(message)
-                    return
-
                 await self.heartflow_message_receiver.process_message(message)
 
             if template_group_name:

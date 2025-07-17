@@ -68,10 +68,10 @@ class RenamePersonTool(BaseTool):
             )
             result = await person_info_manager.qv_person_name(
                 person_id=person_id,
-                user_nickname=user_nickname,
-                user_cardname=user_cardname,
-                user_avatar=user_avatar,
-                request=request_context,
+                user_nickname=user_nickname,  # type: ignore
+                user_cardname=user_cardname,  # type: ignore
+                user_avatar=user_avatar,  # type: ignore
+                request=request_context,  # type: ignore
             )
 
             # 3. 处理结果

@@ -9,22 +9,60 @@ import os
 from time import sleep
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from src.chat.knowledge.lpmmconfig import PG_NAMESPACE, global_config
 from src.chat.knowledge.embedding_store import EmbeddingManager
-from src.chat.knowledge.llm_client import LLMClient
 from src.chat.knowledge.open_ie import OpenIE
 from src.chat.knowledge.kg_manager import KGManager
 from src.common.logger import get_logger
 from src.chat.knowledge.utils.hash import get_sha256
+from src.manager.local_store_manager import local_storage
+from dotenv import load_dotenv
 
 
 # 添加项目根目录到 sys.path
 ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-OPENIE_DIR = global_config["persistence"]["openie_data_path"] or os.path.join(ROOT_PATH, "data", "openie")
+OPENIE_DIR = os.path.join(ROOT_PATH, "data", "openie")
 
 logger = get_logger("OpenIE导入")
 
+ENV_FILE = os.path.join(ROOT_PATH, ".env")
+
+if os.path.exists(".env"):
+    load_dotenv(".env", override=True)
+    print("成功加载环境变量配置")
+else:
+    print("未找到.env文件，请确保程序所需的环境变量被正确设置")
+    raise FileNotFoundError(".env 文件不存在，请创建并配置所需的环境变量")
+
+env_mask = {key: os.getenv(key) for key in os.environ}
+def scan_provider(env_config: dict):
+    provider = {}
+
+    # 利用未初始化 env 时获取的 env_mask 来对新的环境变量集去重
+    # 避免 GPG_KEY 这样的变量干扰检查
+    env_config = dict(filter(lambda item: item[0] not in env_mask, env_config.items()))
+
+    # 遍历 env_config 的所有键
+    for key in env_config:
+        # 检查键是否符合 {provider}_BASE_URL 或 {provider}_KEY 的格式
+        if key.endswith("_BASE_URL") or key.endswith("_KEY"):
+            # 提取 provider 名称
+            provider_name = key.split("_", 1)[0]  # 从左分割一次，取第一部分
+
+            # 初始化 provider 的字典（如果尚未初始化）
+            if provider_name not in provider:
+                provider[provider_name] = {"url": None, "key": None}
+
+            # 根据键的类型填充 url 或 key
+            if key.endswith("_BASE_URL"):
+                provider[provider_name]["url"] = env_config[key]
+            elif key.endswith("_KEY"):
+                provider[provider_name]["key"] = env_config[key]
+
+    # 检查每个 provider 是否同时存在 url 和 key
+    for provider_name, config in provider.items():
+        if config["url"] is None or config["key"] is None:
+            logger.error(f"provider 内容：{config}\nenv_config 内容：{env_config}")
+            raise ValueError(f"请检查 '{provider_name}' 提供商配置是否丢失 BASE_URL 或 KEY 环境变量")
 
 def ensure_openie_dir():
     """确保OpenIE数据目录存在"""
@@ -58,10 +96,12 @@ def hash_deduplicate(
     # 保存去重后的三元组
     new_triple_list_data = {}
 
-    for _, (raw_paragraph, triple_list) in enumerate(zip(raw_paragraphs.values(), triple_list_data.values())):
+    for _, (raw_paragraph, triple_list) in enumerate(
+        zip(raw_paragraphs.values(), triple_list_data.values(), strict=False)
+    ):
         # 段落hash
         paragraph_hash = get_sha256(raw_paragraph)
-        if f"{PG_NAMESPACE}-{paragraph_hash}" in stored_pg_hashes and paragraph_hash in stored_paragraph_hashes:
+        if f"{local_storage['pg_namespace']}-{paragraph_hash}" in stored_pg_hashes and paragraph_hash in stored_paragraph_hashes:
             continue
         new_raw_paragraphs[paragraph_hash] = raw_paragraph
         new_triple_list_data[paragraph_hash] = triple_list
@@ -174,6 +214,8 @@ def handle_import_openie(openie_data: OpenIE, embed_manager: EmbeddingManager, k
 
 def main():  # sourcery skip: dict-comprehension
     # 新增确认提示
+    env_config = {key: os.getenv(key) for key in os.environ}
+    scan_provider(env_config)
     print("=== 重要操作确认 ===")
     print("OpenIE导入时会大量发送请求，可能会撞到请求速度上限，请注意选用的模型")
     print("同之前样例：在本地模型下，在70分钟内我们发送了约8万条请求，在网络允许下，速度会更快")
@@ -191,15 +233,9 @@ def main():  # sourcery skip: dict-comprehension
     logger.info("----开始导入openie数据----\n")
 
     logger.info("创建LLM客户端")
-    llm_client_list = {}
-    for key in global_config["llm_providers"]:
-        llm_client_list[key] = LLMClient(
-            global_config["llm_providers"][key]["base_url"],
-            global_config["llm_providers"][key]["api_key"],
-        )
 
     # 初始化Embedding库
-    embed_manager = EmbeddingManager(llm_client_list[global_config["embedding"]["provider"]])
+    embed_manager = EmbeddingManager()
     logger.info("正在从文件加载Embedding库")
     try:
         embed_manager.load_from_file()
@@ -228,7 +264,7 @@ def main():  # sourcery skip: dict-comprehension
 
     # 数据比对：Embedding库与KG的段落hash集合
     for pg_hash in kg_manager.stored_paragraph_hashes:
-        key = f"{PG_NAMESPACE}-{pg_hash}"
+        key = f"{local_storage['pg_namespace']}-{pg_hash}"
         if key not in embed_manager.stored_pg_hashes:
             logger.warning(f"KG中存在Embedding库中不存在的段落：{key}")
 

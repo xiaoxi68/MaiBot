@@ -5,11 +5,11 @@ MaiBot 插件系统
 """
 
 # 导出主要的公共接口
-from src.plugin_system.base.base_plugin import BasePlugin, register_plugin
-from src.plugin_system.base.base_action import BaseAction
-from src.plugin_system.base.base_command import BaseCommand
-from src.plugin_system.base.config_types import ConfigField
-from src.plugin_system.base.component_types import (
+from .base import (
+    BasePlugin,
+    BaseAction,
+    BaseCommand,
+    ConfigField,
     ComponentType,
     ActionActivationType,
     ChatMode,
@@ -19,17 +19,21 @@ from src.plugin_system.base.component_types import (
     PluginInfo,
     PythonDependency,
 )
-from src.plugin_system.core.plugin_manager import plugin_manager
-from src.plugin_system.core.component_registry import component_registry
-from src.plugin_system.core.dependency_manager import dependency_manager
+from .core.plugin_manager import (
+    plugin_manager,
+    component_registry,
+    dependency_manager,
+)
 
 # 导入工具模块
-from src.plugin_system.utils import (
+from .utils import (
     ManifestValidator,
-    ManifestGenerator,
-    validate_plugin_manifest,
-    generate_plugin_manifest,
+    # ManifestGenerator,
+    # validate_plugin_manifest,
+    # generate_plugin_manifest,
 )
+
+from .apis.plugin_register_api import register_plugin
 
 
 __version__ = "1.0.0"
@@ -57,7 +61,7 @@ __all__ = [
     "ConfigField",
     # 工具函数
     "ManifestValidator",
-    "ManifestGenerator",
-    "validate_plugin_manifest",
-    "generate_plugin_manifest",
+    # "ManifestGenerator",
+    # "validate_plugin_manifest",
+    # "generate_plugin_manifest",
 ]

@@ -4,9 +4,8 @@ import glob
 from typing import Any, Dict, List
 
 
-from .lpmmconfig import INVALID_ENTITY, global_config
-
-ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+from .knowledge_lib import INVALID_ENTITY, ROOT_PATH, DATA_PATH
+# from src.manager.local_store_manager import local_storage
 
 
 def _filter_invalid_entities(entities: List[str]) -> List[str]:
@@ -107,7 +106,7 @@ class OpenIE:
     @staticmethod
     def load() -> "OpenIE":
         """从OPENIE_DIR下所有json文件合并加载OpenIE数据"""
-        openie_dir = os.path.join(ROOT_PATH, global_config["persistence"]["openie_data_path"])
+        openie_dir = os.path.join(DATA_PATH, "openie")
         if not os.path.exists(openie_dir):
             raise Exception(f"OpenIE数据目录不存在: {openie_dir}")
         json_files = sorted(glob.glob(os.path.join(openie_dir, "*.json")))
@@ -121,12 +120,6 @@ class OpenIE:
             raise Exception(f"未在 {openie_dir} 找到任何OpenIE json文件")
         openie_data = OpenIE._from_dict(data_list)
         return openie_data
-
-    @staticmethod
-    def save(openie_data: "OpenIE"):
-        """保存OpenIE数据到文件"""
-        with open(global_config["persistence"]["openie_data_path"], "w", encoding="utf-8") as f:
-            f.write(json.dumps(openie_data._to_dict(), ensure_ascii=False, indent=4))
 
     def extract_entity_dict(self):
         """提取实体列表"""

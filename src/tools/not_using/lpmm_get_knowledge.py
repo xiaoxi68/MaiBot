@@ -43,7 +43,7 @@ class SearchKnowledgeFromLPMMTool(BaseTool):
 
             # 调用知识库搜索
 
-            knowledge_info = qa_manager.get_knowledge(query)
+            knowledge_info = await qa_manager.get_knowledge(query)
 
             logger.debug(f"知识库查询结果: {knowledge_info}")
 

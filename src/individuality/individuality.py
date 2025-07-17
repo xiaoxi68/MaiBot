@@ -1,17 +1,15 @@
-from typing import Optional
 import ast
-
-from src.llm_models.utils_model import LLMRequest
-from .personality import Personality
-from .identity import Identity
-import random
 import json
 import os
 import hashlib
-from rich.traceback import install
+
 from src.common.logger import get_logger
-from src.person_info.person_info import get_person_info_manager
 from src.config.config import global_config
+from src.llm_models.utils_model import LLMRequest
+from src.person_info.person_info import get_person_info_manager
+from rich.traceback import install
+
+from .personality import Personality
 
 install(extra_lines=3)
 
@@ -23,8 +21,7 @@ class Individuality:
 
     def __init__(self):
         # 正常初始化实例属性
-        self.personality: Optional[Personality] = None
-        self.identity: Optional[Identity] = None
+        self.personality: Personality = None  # type: ignore
 
         self.name = ""
         self.bot_person_id = ""
@@ -35,21 +32,20 @@ class Individuality:
             request_type="individuality.compress",
         )
 
-    async def initialize(
-        self,
-        bot_nickname: str,
-        personality_core: str,
-        personality_sides: list,
-        identity_detail: list,
-    ) -> None:
+    async def initialize(self) -> None:
         """初始化个体特征
 
         Args:
             bot_nickname: 机器人昵称
             personality_core: 人格核心特点
-            personality_sides: 人格侧面描述
-            identity_detail: 身份细节描述
+            personality_side: 人格侧面描述
+            identity: 身份细节描述
         """
+        bot_nickname = global_config.bot.nickname
+        personality_core = global_config.personality.personality_core
+        personality_side = global_config.personality.personality_side
+        identity = global_config.personality.identity
+
         logger.info("正在初始化个体特征")
         person_info_manager = get_person_info_manager()
         self.bot_person_id = person_info_manager.get_person_id("system", "bot_id")
@@ -57,26 +53,28 @@ class Individuality:
 
         # 检查配置变化，如果变化则清空
         personality_changed, identity_changed = await self._check_config_and_clear_if_changed(
-            bot_nickname, personality_core, personality_sides, identity_detail
+            bot_nickname, personality_core, personality_side, identity
         )
 
-        # 初始化人格
+        # 初始化人格（现在包含身份）
         self.personality = Personality.initialize(
-            bot_nickname=bot_nickname, personality_core=personality_core, personality_sides=personality_sides
+            bot_nickname=bot_nickname,
+            personality_core=personality_core,
+            personality_side=personality_side,
+            identity=identity,
+            compress_personality=global_config.personality.compress_personality,
+            compress_identity=global_config.personality.compress_identity,
         )
-
-        # 初始化身份
-        self.identity = Identity(identity_detail=identity_detail)
 
         logger.info("正在将所有人设写入impression")
         # 将所有人设写入impression
         impression_parts = []
         if personality_core:
             impression_parts.append(f"核心人格: {personality_core}")
-        if personality_sides:
-            impression_parts.append(f"人格侧面: {'、'.join(personality_sides)}")
-        if identity_detail:
-            impression_parts.append(f"身份: {'、'.join(identity_detail)}")
+        if personality_side:
+            impression_parts.append(f"人格侧面: {personality_side}")
+        if identity:
+            impression_parts.append(f"身份: {identity}")
         logger.info(f"impression_parts: {impression_parts}")
 
         impression_text = "。".join(impression_parts)
@@ -102,41 +100,41 @@ class Individuality:
 
         if personality_changed:
             logger.info("检测到人格配置变化，重新生成压缩版本")
-            personality_result = await self._create_personality(personality_core, personality_sides)
+            personality_result = await self._create_personality(personality_core, personality_side)
         else:
             logger.info("人格配置未变化，使用缓存版本")
             # 从缓存中获取已有的personality结果
             existing_short_impression = await person_info_manager.get_value(self.bot_person_id, "short_impression")
             if existing_short_impression:
                 try:
-                    existing_data = ast.literal_eval(existing_short_impression)
+                    existing_data = ast.literal_eval(existing_short_impression)  # type: ignore
                     if isinstance(existing_data, list) and len(existing_data) >= 1:
                         personality_result = existing_data[0]
                 except (json.JSONDecodeError, TypeError, IndexError):
                     logger.warning("无法解析现有的short_impression，将重新生成人格部分")
-                    personality_result = await self._create_personality(personality_core, personality_sides)
+                    personality_result = await self._create_personality(personality_core, personality_side)
             else:
                 logger.info("未找到现有的人格缓存，重新生成")
-                personality_result = await self._create_personality(personality_core, personality_sides)
+                personality_result = await self._create_personality(personality_core, personality_side)
 
         if identity_changed:
             logger.info("检测到身份配置变化，重新生成压缩版本")
-            identity_result = await self._create_identity(identity_detail)
+            identity_result = await self._create_identity(identity)
         else:
             logger.info("身份配置未变化，使用缓存版本")
             # 从缓存中获取已有的identity结果
             existing_short_impression = await person_info_manager.get_value(self.bot_person_id, "short_impression")
             if existing_short_impression:
                 try:
-                    existing_data = ast.literal_eval(existing_short_impression)
+                    existing_data = ast.literal_eval(existing_short_impression)  # type: ignore
                     if isinstance(existing_data, list) and len(existing_data) >= 2:
                         identity_result = existing_data[1]
                 except (json.JSONDecodeError, TypeError, IndexError):
                     logger.warning("无法解析现有的short_impression，将重新生成身份部分")
-                    identity_result = await self._create_identity(identity_detail)
+                    identity_result = await self._create_identity(identity)
             else:
                 logger.info("未找到现有的身份缓存，重新生成")
-                identity_result = await self._create_identity(identity_detail)
+                identity_result = await self._create_identity(identity)
 
         result = [personality_result, identity_result]
 
@@ -148,174 +146,39 @@ class Individuality:
         else:
             logger.error("人设构建失败")
 
-    def to_dict(self) -> dict:
-        """将个体特征转换为字典格式"""
-        return {
-            "personality": self.personality.to_dict() if self.personality else None,
-            "identity": self.identity.to_dict() if self.identity else None,
-        }
+    async def get_personality_block(self) -> str:
+        person_info_manager = get_person_info_manager()
+        bot_person_id = person_info_manager.get_person_id("system", "bot_id")
 
-    @classmethod
-    def from_dict(cls, data: dict) -> "Individuality":
-        """从字典创建个体特征实例"""
-        instance = cls()
-        if data.get("personality"):
-            instance.personality = Personality.from_dict(data["personality"])
-        if data.get("identity"):
-            instance.identity = Identity.from_dict(data["identity"])
-        return instance
-
-    def get_personality_prompt(self, level: int, x_person: int = 2) -> str:
-        """
-        获取人格特征的prompt
-
-        Args:
-            level (int): 详细程度 (1: 核心, 2: 核心+随机侧面, 3: 核心+所有侧面)
-            x_person (int, optional): 人称代词 (0: 无人称, 1: 我, 2: 你). 默认为 2.
-
-        Returns:
-            str: 生成的人格prompt字符串
-        """
-        if x_person not in [0, 1, 2]:
-            return "无效的人称代词，请使用 0 (无人称), 1 (我) 或 2 (你)。"
-        if not self.personality:
-            return "人格特征尚未初始化。"
-
-        if x_person == 2:
-            p_pronoun = "你"
-            prompt_personality = f"{p_pronoun}{self.personality.personality_core}"
-        elif x_person == 1:
-            p_pronoun = "我"
-            prompt_personality = f"{p_pronoun}{self.personality.personality_core}"
-        else:  # x_person == 0
-            # 对于无人称，直接描述核心特征
-            prompt_personality = f"{self.personality.personality_core}"
-
-        # 根据level添加人格侧面
-        if level >= 2 and self.personality.personality_sides:
-            personality_sides = list(self.personality.personality_sides)
-            random.shuffle(personality_sides)
-            if level == 2:
-                prompt_personality += f"，有时也会{personality_sides[0]}"
-            elif level == 3:
-                sides_str = "、".join(personality_sides)
-                prompt_personality += f"，有时也会{sides_str}"
-        prompt_personality += "。"
-        return prompt_personality
-
-    def get_identity_prompt(self, level: int, x_person: int = 2) -> str:
-        """
-        获取身份特征的prompt
-
-        Args:
-            level (int): 详细程度 (1: 随机细节, 2: 所有细节, 3: 同2)
-            x_person (int, optional): 人称代词 (0: 无人称, 1: 我, 2: 你). 默认为 2.
-
-        Returns:
-            str: 生成的身份prompt字符串
-        """
-        if x_person not in [0, 1, 2]:
-            return "无效的人称代词，请使用 0 (无人称), 1 (我) 或 2 (你)。"
-        if not self.identity:
-            return "身份特征尚未初始化。"
-
-        if x_person == 2:
-            i_pronoun = "你"
-        elif x_person == 1:
-            i_pronoun = "我"
-        else:  # x_person == 0
-            i_pronoun = ""  # 无人称
-
-        identity_parts = []
-
-        # 根据level添加身份细节
-        if level >= 1 and self.identity.identity_detail:
-            identity_detail = list(self.identity.identity_detail)
-            random.shuffle(identity_detail)
-            if level == 1:
-                identity_parts.append(f"{identity_detail[0]}")
-            elif level >= 2:
-                details_str = "、".join(identity_detail)
-                identity_parts.append(f"{details_str}")
-
-        if identity_parts:
-            details_str = "，".join(identity_parts)
-            if x_person in [1, 2]:
-                return f"{i_pronoun}，{details_str}。"
-            else:  # x_person == 0
-                # 无人称时，直接返回细节，不加代词和开头的逗号
-                return f"{details_str}。"
+        bot_name = global_config.bot.nickname
+        if global_config.bot.alias_names:
+            bot_nickname = f",也有人叫你{','.join(global_config.bot.alias_names)}"
         else:
-            if x_person in [1, 2]:
-                return f"{i_pronoun}的身份信息不完整。"
-            else:  # x_person == 0
-                return "身份信息不完整。"
+            bot_nickname = ""
+        short_impression = await person_info_manager.get_value(bot_person_id, "short_impression")
+        # 解析字符串形式的Python列表
+        try:
+            if isinstance(short_impression, str) and short_impression.strip():
+                short_impression = ast.literal_eval(short_impression)
+            elif not short_impression:
+                logger.warning("short_impression为空，使用默认值")
+                short_impression = ["友好活泼", "人类"]
+        except (ValueError, SyntaxError) as e:
+            logger.error(f"解析short_impression失败: {e}, 原始值: {short_impression}")
+            short_impression = ["友好活泼", "人类"]
+        # 确保short_impression是列表格式且有足够的元素
+        if not isinstance(short_impression, list) or len(short_impression) < 2:
+            logger.warning(f"short_impression格式不正确: {short_impression}, 使用默认值")
+            short_impression = ["友好活泼", "人类"]
+        personality = short_impression[0]
+        identity = short_impression[1]
+        prompt_personality = f"{personality}，{identity}"
+        identity_block = f"你的名字是{bot_name}{bot_nickname}，你{prompt_personality}："
 
-    def get_prompt(self, level: int, x_person: int = 2) -> str:
-        """
-        获取合并的个体特征prompt
-
-        Args:
-            level (int): 详细程度 (1: 核心/随机细节, 2: 核心+随机侧面/全部细节, 3: 全部)
-            x_person (int, optional): 人称代词 (0: 无人称, 1: 我, 2: 你). 默认为 2.
-
-        Returns:
-            str: 生成的合并prompt字符串
-        """
-        if x_person not in [0, 1, 2]:
-            return "无效的人称代词，请使用 0 (无人称), 1 (我) 或 2 (你)。"
-
-        if not self.personality or not self.identity:
-            return "个体特征尚未完全初始化。"
-
-        # 调用新的独立方法
-        prompt_personality = self.get_personality_prompt(level, x_person)
-        prompt_identity = self.get_identity_prompt(level, x_person)
-
-        # 移除可能存在的错误信息，只合并有效的 prompt
-        valid_prompts = []
-        if "尚未初始化" not in prompt_personality and "无效的人称" not in prompt_personality:
-            valid_prompts.append(prompt_personality)
-        if (
-            "尚未初始化" not in prompt_identity
-            and "无效的人称" not in prompt_identity
-            and "信息不完整" not in prompt_identity
-        ):
-            # 从身份 prompt 中移除代词和句号，以便更好地合并
-            identity_content = prompt_identity
-            if x_person == 2 and identity_content.startswith("你，"):
-                identity_content = identity_content[2:]
-            elif x_person == 1 and identity_content.startswith("我，"):
-                identity_content = identity_content[2:]
-            # 对于 x_person == 0，身份提示不带前缀，无需移除
-
-            if identity_content.endswith("。"):
-                identity_content = identity_content[:-1]
-            valid_prompts.append(identity_content)
-
-        # --- 合并 Prompt ---
-        final_prompt = " ".join(valid_prompts)
-
-        return final_prompt.strip()
-
-    def get_traits(self, factor):
-        """
-        获取个体特征的特质
-        """
-        if factor == "openness":
-            return self.personality.openness
-        elif factor == "conscientiousness":
-            return self.personality.conscientiousness
-        elif factor == "extraversion":
-            return self.personality.extraversion
-        elif factor == "agreeableness":
-            return self.personality.agreeableness
-        elif factor == "neuroticism":
-            return self.personality.neuroticism
-        return None
+        return identity_block
 
     def _get_config_hash(
-        self, bot_nickname: str, personality_core: str, personality_sides: list, identity_detail: list
+        self, bot_nickname: str, personality_core: str, personality_side: str, identity: list
     ) -> tuple[str, str]:
         """获取personality和identity配置的哈希值
 
@@ -326,16 +189,16 @@ class Individuality:
         personality_config = {
             "nickname": bot_nickname,
             "personality_core": personality_core,
-            "personality_sides": sorted(personality_sides),
-            "compress_personality": global_config.personality.compress_personality,
+            "personality_side": personality_side,
+            "compress_personality": self.personality.compress_personality if self.personality else True,
         }
         personality_str = json.dumps(personality_config, sort_keys=True)
         personality_hash = hashlib.md5(personality_str.encode("utf-8")).hexdigest()
 
         # 身份配置哈希
         identity_config = {
-            "identity_detail": sorted(identity_detail),
-            "compress_identity": global_config.identity.compress_indentity,
+            "identity": sorted(identity),
+            "compress_identity": self.personality.compress_identity if self.personality else True,
         }
         identity_str = json.dumps(identity_config, sort_keys=True)
         identity_hash = hashlib.md5(identity_str.encode("utf-8")).hexdigest()
@@ -343,7 +206,7 @@ class Individuality:
         return personality_hash, identity_hash
 
     async def _check_config_and_clear_if_changed(
-        self, bot_nickname: str, personality_core: str, personality_sides: list, identity_detail: list
+        self, bot_nickname: str, personality_core: str, personality_side: str, identity: list
     ) -> tuple[bool, bool]:
         """检查配置是否发生变化，如果变化则清空相应缓存
 
@@ -352,7 +215,7 @@ class Individuality:
         """
         person_info_manager = get_person_info_manager()
         current_personality_hash, current_identity_hash = self._get_config_hash(
-            bot_nickname, personality_core, personality_sides, identity_detail
+            bot_nickname, personality_core, personality_side, identity
         )
 
         meta_info = self._load_meta_info()
@@ -408,53 +271,13 @@ class Individuality:
         except IOError as e:
             logger.error(f"保存meta_info文件失败: {e}")
 
-    async def get_keyword_info(self, keyword: str) -> str:
-        """获取指定关键词的信息
-
-        Args:
-            keyword: 关键词
-
-        Returns:
-            str: 随机选择的一条信息，如果没有则返回空字符串
-        """
-        person_info_manager = get_person_info_manager()
-        info_list_json = await person_info_manager.get_value(self.bot_person_id, "info_list")
-        if info_list_json:
-            try:
-                # get_value might return a pre-deserialized list if it comes from a cache,
-                # or a JSON string if it comes from DB.
-                info_list = json.loads(info_list_json) if isinstance(info_list_json, str) else info_list_json
-
-                for item in info_list:
-                    if isinstance(item, dict) and item.get("info_type") == keyword:
-                        return item.get("info_content", "")
-            except (json.JSONDecodeError, TypeError):
-                logger.error(f"解析info_list失败: {info_list_json}")
-                return ""
-        return ""
-
-    async def get_all_keywords(self) -> list:
-        """获取所有已缓存的关键词列表"""
-        person_info_manager = get_person_info_manager()
-        info_list_json = await person_info_manager.get_value(self.bot_person_id, "info_list")
-        keywords = []
-        if info_list_json:
-            try:
-                info_list = json.loads(info_list_json) if isinstance(info_list_json, str) else info_list_json
-                for item in info_list:
-                    if isinstance(item, dict) and "info_type" in item:
-                        keywords.append(item["info_type"])
-            except (json.JSONDecodeError, TypeError):
-                logger.error(f"解析info_list失败: {info_list_json}")
-        return keywords
-
-    async def _create_personality(self, personality_core: str, personality_sides: list) -> str:
+    async def _create_personality(self, personality_core: str, personality_side: str) -> str:
+        # sourcery skip: merge-list-append, move-assign
         """使用LLM创建压缩版本的impression
 
         Args:
             personality_core: 核心人格
-            personality_sides: 人格侧面列表
-            identity_detail: 身份细节列表
+            personality_side: 人格侧面列表
 
         Returns:
             str: 压缩后的impression文本
@@ -467,12 +290,10 @@ class Individuality:
             personality_parts.append(f"{personality_core}")
 
         # 准备需要压缩的内容
-        if global_config.personality.compress_personality:
-            personality_to_compress = []
-            if personality_sides:
-                personality_to_compress.append(f"人格特质: {'、'.join(personality_sides)}")
+        if self.personality.compress_personality:
+            personality_to_compress = f"人格特质: {personality_side}"
 
-                prompt = f"""请将以下人格信息进行简洁压缩，保留主要内容，用简练的中文表达：
+            prompt = f"""请将以下人格信息进行简洁压缩，保留主要内容，用简练的中文表达：
 {personality_to_compress}
 
 要求：
@@ -480,34 +301,32 @@ class Individuality:
 2. 尽量简洁，不超过30字
 3. 直接输出压缩后的内容，不要解释"""
 
-                response, (_, _) = await self.model.generate_response_async(
-                    prompt=prompt,
-                )
+            response, (_, _) = await self.model.generate_response_async(
+                prompt=prompt,
+            )
 
-                if response.strip():
-                    personality_parts.append(response.strip())
-                    logger.info(f"精简人格侧面: {response.strip()}")
-                else:
-                    logger.error(f"使用LLM压缩人设时出错: {response}")
-                if personality_parts:
-                    personality_result = "。".join(personality_parts)
-                else:
-                    personality_result = personality_core
+            if response.strip():
+                personality_parts.append(response.strip())
+                logger.info(f"精简人格侧面: {response.strip()}")
+            else:
+                logger.error(f"使用LLM压缩人设时出错: {response}")
+            if personality_parts:
+                personality_result = "。".join(personality_parts)
+            else:
+                personality_result = personality_core
         else:
             personality_result = personality_core
-            if personality_sides:
-                personality_result += "，".join(personality_sides)
+            if personality_side:
+                personality_result += f"，{personality_side}"
 
         return personality_result
 
-    async def _create_identity(self, identity_detail: list) -> str:
+    async def _create_identity(self, identity: list) -> str:
         """使用LLM创建压缩版本的impression"""
         logger.info("正在构建身份.........")
 
-        if global_config.identity.compress_indentity:
-            identity_to_compress = []
-            if identity_detail:
-                identity_to_compress.append(f"身份背景: {'、'.join(identity_detail)}")
+        if self.personality.compress_identity:
+            identity_to_compress = f"身份背景: {identity}"
 
             prompt = f"""请将以下身份信息进行简洁压缩，保留主要内容，用简练的中文表达：
 {identity_to_compress}
@@ -527,7 +346,7 @@ class Individuality:
             else:
                 logger.error(f"使用LLM压缩身份时出错: {response}")
         else:
-            identity_result = "。".join(identity_detail)
+            identity_result = "。".join(identity)
 
         return identity_result
 

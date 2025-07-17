@@ -62,7 +62,10 @@ class S4UStreamGenerator:
         person_name = await person_info_manager.get_value(person_id, "person_name")
 
         if message.chat_stream.user_info.user_nickname:
-            sender_name = f"[{message.chat_stream.user_info.user_nickname}]（你叫ta{person_name}）"
+            if person_name:
+                sender_name = f"[{message.chat_stream.user_info.user_nickname}]（你叫ta{person_name}）"
+            else:
+                sender_name = f"[{message.chat_stream.user_info.user_nickname}]"
         else:
             sender_name = f"用户({message.chat_stream.user_info.user_id})"
 
@@ -107,8 +110,6 @@ class S4UStreamGenerator:
         model_name: str,
         **kwargs,
     ) -> AsyncGenerator[str, None]:
-        print(prompt)
-
         buffer = ""
         delimiters = "，。！？,.!?\n\r"  # For final trimming
         punctuation_buffer = ""

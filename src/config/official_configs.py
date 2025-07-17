@@ -1,6 +1,7 @@
-from dataclasses import dataclass, field
-from typing import Any, Literal
 import re
+
+from dataclasses import dataclass, field
+from typing import Any, Literal, Optional
 
 from src.config.config_base import ConfigBase
 
@@ -34,21 +35,16 @@ class PersonalityConfig(ConfigBase):
     personality_core: str
     """核心人格"""
 
-    personality_sides: list[str] = field(default_factory=lambda: [])
+    personality_side: str
     """人格侧写"""
+
+    identity: str = ""
+    """身份特征"""
 
     compress_personality: bool = True
     """是否压缩人格，压缩后会精简人格信息，节省token消耗并提高回复性能，但是会丢失一些信息，如果人设不长，可以关闭"""
 
-
-@dataclass
-class IdentityConfig(ConfigBase):
-    """个体特征配置类"""
-
-    identity_detail: list[str] = field(default_factory=lambda: [])
-    """身份特征"""
-
-    compress_indentity: bool = True
+    compress_identity: bool = True
     """是否压缩身份，压缩后会精简身份信息，节省token消耗并提高回复性能，但是会丢失一些信息，如果不长，可以关闭"""
 
 
@@ -67,9 +63,6 @@ class RelationshipConfig(ConfigBase):
 class ChatConfig(ConfigBase):
     """聊天配置类"""
 
-    chat_mode: str = "normal"
-    """聊天模式"""
-
     max_context_size: int = 18
     """上下文长度"""
 
@@ -84,6 +77,9 @@ class ChatConfig(ConfigBase):
 
     talk_frequency: float = 1
     """回复频率阈值"""
+
+    use_s4u_prompt_mode: bool = False
+    """是否使用 s4u 对话构建模式，该模式会分开处理当前对话对象和其他所有对话的内容进行 prompt 构建"""
 
     # 修改：基于时段的回复频率配置，改为数组格式
     time_based_talk_frequency: list[str] = field(default_factory=lambda: [])
@@ -107,13 +103,10 @@ class ChatConfig(ConfigBase):
     表示从该时间开始使用该频率，直到下一个时间点
     """
 
-    auto_focus_threshold: float = 1.0
-    """自动切换到专注聊天的阈值，越低越容易进入专注聊天"""
+    focus_value: float = 1.0
+    """麦麦的专注思考能力，越低越容易专注，消耗token也越多"""
 
-    exit_focus_threshold: float = 1.0
-    """自动退出专注聊天的阈值，越低越容易退出专注聊天"""
-
-    def get_current_talk_frequency(self, chat_stream_id: str = None) -> float:
+    def get_current_talk_frequency(self, chat_stream_id: Optional[str] = None) -> float:
         """
         根据当前时间和聊天流获取对应的 talk_frequency
 
@@ -138,7 +131,7 @@ class ChatConfig(ConfigBase):
         # 如果都没有匹配，返回默认值
         return self.talk_frequency
 
-    def _get_time_based_frequency(self, time_freq_list: list[str]) -> float:
+    def _get_time_based_frequency(self, time_freq_list: list[str]) -> Optional[float]:
         """
         根据时间配置列表获取当前时段的频率
 
@@ -186,7 +179,7 @@ class ChatConfig(ConfigBase):
 
         return current_frequency
 
-    def _get_stream_specific_frequency(self, chat_stream_id: str) -> float:
+    def _get_stream_specific_frequency(self, chat_stream_id: str):
         """
         获取特定聊天流在当前时间的频率
 
@@ -217,7 +210,7 @@ class ChatConfig(ConfigBase):
 
         return None
 
-    def _parse_stream_config_to_chat_id(self, stream_config_str: str) -> str:
+    def _parse_stream_config_to_chat_id(self, stream_config_str: str) -> Optional[str]:
         """
         解析流配置字符串并生成对应的 chat_id
 
@@ -279,20 +272,6 @@ class NormalChatConfig(ConfigBase):
 
     at_bot_inevitable_reply: bool = False
     """@bot 必然回复"""
-
-    enable_planner: bool = False
-    """是否启用动作规划器"""
-
-
-@dataclass
-class FocusChatConfig(ConfigBase):
-    """专注聊天配置类"""
-
-    think_interval: float = 1
-    """思考间隔（秒）"""
-
-    consecutive_replies: float = 1
-    """连续回复能力，值越高，麦麦连续回复的概率越高"""
 
 
 @dataclass
@@ -406,6 +385,9 @@ class MemoryConfig(ConfigBase):
 
     memory_ban_words: list[str] = field(default_factory=lambda: ["表情包", "图片", "回复", "聊天记录"])
     """不允许记忆的词列表"""
+    
+    enable_instant_memory: bool = True
+    """是否启用即时记忆"""
 
 
 @dataclass
@@ -471,6 +453,13 @@ class KeywordReactionConfig(ConfigBase):
             if not isinstance(rule, KeywordRuleConfig):
                 raise ValueError(f"规则必须是KeywordRuleConfig类型，而不是{type(rule).__name__}")
 
+@dataclass
+class CustomPromptConfig(ConfigBase):
+    """自定义提示词配置类"""
+
+    image_prompt: str = ""
+    """图片提示词"""
+
 
 @dataclass
 class ResponsePostProcessConfig(ConfigBase):
@@ -528,9 +517,6 @@ class TelemetryConfig(ConfigBase):
 @dataclass
 class DebugConfig(ConfigBase):
     """调试配置类"""
-
-    debug_show_chat_mode: bool = False
-    """是否在回复后显示当前聊天模式"""
 
     show_prompt: bool = False
     """是否显示prompt"""
@@ -613,6 +599,9 @@ class LPMMKnowledgeConfig(ConfigBase):
     qa_res_top_k: int = 10
     """QA最终结果的Top K数量"""
 
+    embedding_dimension: int = 1024
+    """嵌入向量维度，应该与模型的输出维度一致"""
+
 
 @dataclass
 class ModelConfig(ConfigBase):
@@ -649,3 +638,12 @@ class ModelConfig(ConfigBase):
 
     embedding: dict[str, Any] = field(default_factory=lambda: {})
     """嵌入模型配置"""
+
+    lpmm_entity_extract: dict[str, Any] = field(default_factory=lambda: {})
+    """LPMM实体提取模型配置"""
+
+    lpmm_rdf_build: dict[str, Any] = field(default_factory=lambda: {})
+    """LPMM RDF构建模型配置"""
+
+    lpmm_qa: dict[str, Any] = field(default_factory=lambda: {})
+    """LPMM问答模型配置"""
