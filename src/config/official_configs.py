@@ -631,7 +631,7 @@ class ModelConfig(ConfigBase):
     """视觉语言模型配置"""
 
     voice: dict[str, Any] = field(default_factory=lambda: {})
-    """视觉语言模型配置"""
+    """语音识别模型配置"""
 
     tool_use: dict[str, Any] = field(default_factory=lambda: {})
     """专注工具使用模型配置"""
