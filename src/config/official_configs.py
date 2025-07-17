@@ -630,6 +630,9 @@ class ModelConfig(ConfigBase):
     vlm: dict[str, Any] = field(default_factory=lambda: {})
     """视觉语言模型配置"""
 
+    voice: dict[str, Any] = field(default_factory=lambda: {})
+    """视觉语言模型配置"""
+
     tool_use: dict[str, Any] = field(default_factory=lambda: {})
     """专注工具使用模型配置"""
 

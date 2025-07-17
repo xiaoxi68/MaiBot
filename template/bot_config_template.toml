@@ -294,6 +294,12 @@ provider = "SILICONFLOW"
 pri_in = 0.35
 pri_out = 0.35
 
+[model.voice] # 语音识别模型
+name = "FunAudioLLM/SenseVoiceSmall"
+provider = "SILICONFLOW"
+pri_in = 0
+pri_out = 0
+
 [model.tool_use] #工具调用模型，需要使用支持工具调用的模型
 name = "Qwen/Qwen3-14B"
 provider = "SILICONFLOW"

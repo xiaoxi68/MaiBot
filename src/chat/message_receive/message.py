@@ -9,6 +9,7 @@ from maim_message import Seg, UserInfo, BaseMessageInfo, MessageBase
 
 from src.common.logger import get_logger
 from src.chat.utils.utils_image import get_image_manager
+from src.chat.utils.utils_voice import get_voice_text
 from .chat_stream import ChatStream
 
 install(extra_lines=3)
@@ -106,6 +107,7 @@ class MessageRecv(Message):
         self.has_emoji = False
         self.is_picid = False
         self.has_picid = False
+        self.is_voice = False
         self.is_mentioned = None
 
         self.is_command = False
@@ -156,6 +158,14 @@ class MessageRecv(Message):
                 if isinstance(segment.data, str):
                     return await get_image_manager().get_emoji_description(segment.data)
                 return "[发了一个表情包，网卡了加载不出来]"
+            elif segment.type == "voice":
+                self.has_picid = False
+                self.is_picid = False
+                self.is_emoji = False
+                self.is_voice == True
+                if isinstance(segment.data, str):
+                    return await get_voice_text(segment.data)
+                return "[发了一段语音，网卡了加载不出来]"
             elif segment.type == "mention_bot":
                 self.is_picid = False
                 self.is_emoji = False
@@ -233,6 +243,14 @@ class MessageRecvS4U(MessageRecv):
                 if isinstance(segment.data, str):
                     return await get_image_manager().get_emoji_description(segment.data)
                 return "[发了一个表情包，网卡了加载不出来]"
+            elif segment.type == "voice":
+                self.has_picid = False
+                self.is_picid = False
+                self.is_emoji = False
+                self.is_voice == True
+                if isinstance(segment.data, str):
+                    return await get_voice_text(segment.data)
+                return "[发了一段语音，网卡了加载不出来]"
             elif segment.type == "mention_bot":
                 self.is_picid = False
                 self.is_emoji = False
@@ -343,6 +361,10 @@ class MessageProcessBase(Message):
                 if isinstance(seg.data, str):
                     return await get_image_manager().get_emoji_description(seg.data)
                 return "[表情，网卡了加载不出来]"
+            elif seg.type == "voice":
+                if isinstance(seg.data, str):
+                    return await get_voice_text(seg.data)
+                return "[发了一段语音，网卡了加载不出来]"
             elif seg.type == "at":
                 return f"[@{seg.data}]"
             elif seg.type == "reply":
