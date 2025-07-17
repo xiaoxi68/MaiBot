@@ -310,7 +310,7 @@ class LLMRequest:
             prompt: prompt文本
             image_base64: 图片的base64编码
             image_format: 图片格式
-            file_base64: 文件的二进制数据
+            file_bytes: 文件的二进制数据
             file_format: 文件格式
             payload: 请求体数据
             retry_policy: 自定义重试策略
@@ -335,23 +335,21 @@ class LLMRequest:
                 if request_content["stream_mode"]:
                     headers["Accept"] = "text/event-stream"
                 async with aiohttp.ClientSession(connector=await get_tcp_connector()) as session:
+                    post_kwargs = {"headers": headers}
+                    #form-data数据上传方式不同
                     if file_bytes:
-                        #form-data数据上传方式不同
-                        async with session.post(                            
-                            request_content["api_url"], headers=headers, data=request_content["payload"]
-                        ) as response:
-                            handled_result = await self._handle_response(
-                                response, request_content, retry, response_handler, user_id, request_type, endpoint
-                            )
-                            return handled_result             
+                        post_kwargs["data"] = request_content["payload"]
                     else:
-                        async with session.post(                            
-                            request_content["api_url"], headers=headers, json=request_content["payload"]
-                        ) as response:
-                            handled_result = await self._handle_response(
-                                response, request_content, retry, response_handler, user_id, request_type, endpoint
-                            )
-                            return handled_result
+                        post_kwargs["json"] = request_content["payload"]
+
+                    async with session.post(                            
+                        request_content["api_url"], **post_kwargs
+                    ) as response:
+                        handled_result = await self._handle_response(
+                            response, request_content, retry, response_handler, user_id, request_type, endpoint
+                        )
+                        return handled_result             
+
             except Exception as e:
                 handled_payload, count_delta = await self._handle_exception(e, retry, request_content)
                 retry += count_delta  # 降级不计入重试次数
@@ -666,7 +664,7 @@ class LLMRequest:
                 new_params["max_completion_tokens"] = new_params.pop("max_tokens")
         return new_params
 
-    async def _build_formdata_payload(self, file_bytes: str, file_format: str):
+    async def _build_formdata_payload(self, file_bytes: str, file_format: str) -> aiohttp.FormData:
         """构建form-data请求体"""
         # 目前只适配了音频文件
         # 如果后续要支持其他类型的文件，可以在这里添加更多的处理逻辑
@@ -678,11 +676,15 @@ class LLMRequest:
             "flac": "audio/flac",
             "aac": "audio/aac",
         }
-        
+
+        content_type = content_type_list.get(file_format)
+        if not content_type:
+            logger.warning(f"暂不支持的文件类型: {file_format}")
+
         data.add_field(
             "file",io.BytesIO(file_bytes),
             filename=f"file.{file_format}",
-            content_type=f'audio/{content_type_list[file_format]}' # 根据实际文件类型设置
+            content_type=f'{content_type_list[file_format]}' # 根据实际文件类型设置
         )
         data.add_field(
             "model", self.model_name

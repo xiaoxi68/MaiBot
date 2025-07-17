@@ -1,17 +1,5 @@
 import base64
-import os
-import time
-import hashlib
-import uuid
-from typing import Optional, Tuple
-from PIL import Image
-import io
-import numpy as np
-import asyncio
 
-
-from src.common.database.database import db
-from src.common.database.database_model import Images, ImageDescriptions
 from src.config.config import global_config
 from src.llm_models.utils_model import LLMRequest
 
