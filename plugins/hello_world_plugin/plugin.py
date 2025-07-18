@@ -7,7 +7,11 @@ from src.plugin_system import (
     ComponentInfo,
     ActionActivationType,
     ConfigField,
+    BaseEventPlugin,
+    BaseEventHandler,
+    EventType,
 )
+from src.plugin_system.base.component_types import MaiMessages
 
 # ===== Action组件 =====
 
@@ -93,6 +97,20 @@ class TimeCommand(BaseCommand):
         return True, f"显示了当前时间: {time_str}"
 
 
+class PrintMessage(BaseEventHandler):
+    """打印消息事件处理器 - 处理打印消息事件"""
+
+    event_type = EventType.ON_MESSAGE
+    handler_name = "print_message_handler"
+    handler_description = "打印接收到的消息"
+
+    async def execute(self, message: MaiMessages) -> Tuple[bool, str | None]:
+        """执行打印消息事件处理"""
+        # 打印接收到的消息
+        print(f"接收到消息: {message.raw_message}")
+        return True, "消息已打印"
+
+
 # ===== 插件注册 =====
 
 
@@ -130,3 +148,25 @@ class HelloWorldPlugin(BasePlugin):
             (ByeAction.get_action_info(), ByeAction),  # 添加告别Action
             (TimeCommand.get_command_info(), TimeCommand),
         ]
+
+
+@register_plugin
+class HelloWorldEventPlugin(BaseEventPlugin):
+    """Hello World事件插件 - 处理问候和告别事件"""
+
+    plugin_name = "hello_world_event_plugin"
+    enable_plugin = False
+    dependencies = []
+    python_dependencies = []
+    config_file_name = "event_config.toml"
+    
+    config_schema = {
+        "plugin": {
+            "name": ConfigField(type=str, default="hello_world_event_plugin", description="插件名称"),
+            "version": ConfigField(type=str, default="1.0.0", description="插件版本"),
+            "enabled": ConfigField(type=bool, default=True, description="是否启用插件"),
+        },
+    }
+
+    def get_plugin_components(self) -> List[Tuple[ComponentInfo, Type]]:
+        return [(PrintMessage.get_handler_info(), PrintMessage)]

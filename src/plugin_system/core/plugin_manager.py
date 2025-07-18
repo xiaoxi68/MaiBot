@@ -512,6 +512,12 @@ class PluginManager:
                         config_status = "✅" if self.plugin_paths.get(plugin_name) else "❌"
                         logger.info(f"    ⚙️ 配置: {plugin_info.config_file} {config_status}")
 
+            root_path = Path(__file__)
+
+            # 查找项目根目录
+            while not (root_path / "pyproject.toml").exists() and root_path.parent != root_path:
+                root_path = root_path.parent
+
             # 显示目录统计
             logger.info("📂 加载目录统计:")
             for directory in self.plugin_directories:
@@ -519,7 +525,11 @@ class PluginManager:
                     plugins_in_dir = []
                     for plugin_name in self.loaded_plugins.keys():
                         plugin_path = self.plugin_paths.get(plugin_name, "")
-                        if plugin_path.startswith(directory):
+                        if (
+                            Path(plugin_path)
+                            .resolve()
+                            .is_relative_to(Path(os.path.join(str(root_path), directory)).resolve())
+                        ):
                             plugins_in_dir.append(plugin_name)
 
                     if plugins_in_dir:

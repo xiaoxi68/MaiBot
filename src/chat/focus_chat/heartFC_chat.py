@@ -179,8 +179,7 @@ class HeartFChatting:
             await asyncio.sleep(10)
             if self.loop_mode == ChatMode.NORMAL:
                 self.energy_value -= 0.3
-                if self.energy_value <= 0.3:
-                    self.energy_value = 0.3
+                self.energy_value = max(self.energy_value, 0.3)
 
     def print_cycle_info(self, cycle_timers):
         # 记录循环信息和计时器结果
@@ -257,6 +256,7 @@ class HeartFChatting:
         return f"{person_name}:{message_data.get('processed_plain_text')}"
 
     async def _observe(self, message_data: Optional[Dict[str, Any]] = None):
+        # sourcery skip: hoist-statement-from-if, merge-comparisons, reintroduce-else
         if not message_data:
             message_data = {}
         action_type = "no_action"

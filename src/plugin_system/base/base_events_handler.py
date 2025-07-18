@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Tuple, Optional
 
 from src.common.logger import get_logger
-from .component_types import MaiMessages, EventType
+from .component_types import MaiMessages, EventType, EventHandlerInfo, ComponentType
 
 logger = get_logger("base_event_handler")
 
@@ -14,7 +14,7 @@ class BaseEventHandler(ABC):
     """
 
     event_type: EventType = EventType.UNKNOWN  # 事件类型，默认为未知
-    handler_name: str = ""
+    handler_name: str = ""  # 处理器名称
     handler_description: str = ""
     weight: int = 0  # 权重，数值越大优先级越高
     intercept_message: bool = False  # 是否拦截消息，默认为否
@@ -32,3 +32,17 @@ class BaseEventHandler(ABC):
             Tuple[bool, Optional[str]]: (是否执行成功, 可选的返回消息)
         """
         raise NotImplementedError("子类必须实现 execute 方法")
+
+    @classmethod
+    def get_handler_info(cls) -> "EventHandlerInfo":
+        """获取事件处理器的信息"""
+        # 从类属性读取名称，如果没有定义则使用类名自动生成
+        name: str = getattr(cls, "handler_name", cls.__name__.lower().replace("handler", ""))
+        return EventHandlerInfo(
+            name=name,
+            component_type=ComponentType.LISTENER,
+            description=getattr(cls, "handler_description", "events处理器"),
+            event_type=cls.event_type,
+            weight=cls.weight,
+            intercept_message=cls.intercept_message,
+        )

@@ -8,6 +8,7 @@ logger = get_logger("plugin_register")
 def register_plugin(cls):
     from src.plugin_system.core.plugin_manager import plugin_manager
     from src.plugin_system.base.base_plugin import BasePlugin
+    from src.plugin_system.base.base_event_plugin import BaseEventPlugin
 
     """插件注册装饰器
 
@@ -18,7 +19,7 @@ def register_plugin(cls):
             plugin_description = "我的插件"
             ...
     """
-    if not issubclass(cls, BasePlugin):
+    if not issubclass(cls, BasePlugin) and not issubclass(cls, BaseEventPlugin):
         logger.error(f"类 {cls.__name__} 不是 BasePlugin 的子类")
         return cls
 
