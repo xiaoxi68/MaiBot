@@ -9,6 +9,7 @@ from maim_message import Seg, UserInfo, BaseMessageInfo, MessageBase
 
 from src.common.logger import get_logger
 from src.chat.utils.utils_image import get_image_manager
+from src.chat.utils.utils_voice import get_voice_text
 from .chat_stream import ChatStream
 
 install(extra_lines=3)
@@ -106,6 +107,7 @@ class MessageRecv(Message):
         self.has_emoji = False
         self.is_picid = False
         self.has_picid = False
+        self.is_voice = False
         self.is_mentioned = None
 
         self.is_command = False
@@ -153,17 +155,27 @@ class MessageRecv(Message):
                 self.has_emoji = True
                 self.is_emoji = True
                 self.is_picid = False
+                self.is_voice = False
                 if isinstance(segment.data, str):
                     return await get_image_manager().get_emoji_description(segment.data)
                 return "[发了一个表情包，网卡了加载不出来]"
+            elif segment.type == "voice":
+                self.is_picid = False
+                self.is_emoji = False
+                self.is_voice = True
+                if isinstance(segment.data, str):
+                    return await get_voice_text(segment.data)
+                return "[发了一段语音，网卡了加载不出来]"
             elif segment.type == "mention_bot":
                 self.is_picid = False
                 self.is_emoji = False
+                self.is_voice = False
                 self.is_mentioned = float(segment.data)  # type: ignore
                 return ""
             elif segment.type == "priority_info":
                 self.is_picid = False
                 self.is_emoji = False
+                self.is_voice = False
                 if isinstance(segment.data, dict):
                     # 处理优先级信息
                     self.priority_mode = "priority"
@@ -212,10 +224,12 @@ class MessageRecvS4U(MessageRecv):
         """
         try:
             if segment.type == "text":
+                self.is_voice = False
                 self.is_picid = False
                 self.is_emoji = False
                 return segment.data  # type: ignore
             elif segment.type == "image":
+                self.is_voice = False
                 # 如果是base64图片数据
                 if isinstance(segment.data, str):
                     self.has_picid = True
@@ -233,12 +247,22 @@ class MessageRecvS4U(MessageRecv):
                 if isinstance(segment.data, str):
                     return await get_image_manager().get_emoji_description(segment.data)
                 return "[发了一个表情包，网卡了加载不出来]"
+            elif segment.type == "voice":
+                self.has_picid = False
+                self.is_picid = False
+                self.is_emoji = False
+                self.is_voice = True
+                if isinstance(segment.data, str):
+                    return await get_voice_text(segment.data)
+                return "[发了一段语音，网卡了加载不出来]"
             elif segment.type == "mention_bot":
+                self.is_voice = False
                 self.is_picid = False
                 self.is_emoji = False
                 self.is_mentioned = float(segment.data)  # type: ignore
                 return ""
             elif segment.type == "priority_info":
+                self.is_voice = False
                 self.is_picid = False
                 self.is_emoji = False
                 if isinstance(segment.data, dict):
@@ -253,6 +277,7 @@ class MessageRecvS4U(MessageRecv):
                     """
                 return ""
             elif segment.type == "gift":
+                self.is_voice = False
                 self.is_gift = True
                 # 解析gift_info，格式为"名称:数量"
                 name, count = segment.data.split(":", 1)  # type: ignore
@@ -343,6 +368,10 @@ class MessageProcessBase(Message):
                 if isinstance(seg.data, str):
                     return await get_image_manager().get_emoji_description(seg.data)
                 return "[表情，网卡了加载不出来]"
+            elif seg.type == "voice":
+                if isinstance(seg.data, str):
+                    return await get_voice_text(seg.data)
+                return "[发了一段语音，网卡了加载不出来]"
             elif seg.type == "at":
                 return f"[@{seg.data}]"
             elif seg.type == "reply":

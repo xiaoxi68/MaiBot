@@ -87,6 +87,7 @@ talk_frequency_adjust = [
 # - 时间支持跨天，例如 "00:10,0.3" 表示从凌晨0:10开始使用频率0.3
 # - 系统会自动将 "platform:id:type" 转换为内部的哈希chat_id进行匹配
 
+enable_asr = false # 是否启用语音识别，启用后麦麦可以通过语音输入进行对话，启用该功能需要配置语音识别模型[model.voice]
 
 [message_receive]
 # 以下是消息过滤，可以根据规则过滤特定消息，将不会读取这些消息
@@ -293,6 +294,12 @@ name = "Pro/Qwen/Qwen2.5-VL-7B-Instruct"
 provider = "SILICONFLOW"
 pri_in = 0.35
 pri_out = 0.35
+
+[model.voice] # 语音识别模型
+name = "FunAudioLLM/SenseVoiceSmall"
+provider = "SILICONFLOW"
+pri_in = 0
+pri_out = 0
 
 [model.tool_use] #工具调用模型，需要使用支持工具调用的模型
 name = "Qwen/Qwen3-14B"
