@@ -1,12 +1,10 @@
 from abc import abstractmethod
-from typing import List, Tuple, Type, TYPE_CHECKING
+from typing import List, Tuple, Type
 
 from src.common.logger import get_logger
 from .plugin_base import PluginBase
 from .component_types import EventHandlerInfo
-
-if TYPE_CHECKING:
-    from src.plugin_system.base.base_events_handler import BaseEventHandler
+from .base_events_handler import BaseEventHandler
 
 logger = get_logger("base_event_plugin")
 

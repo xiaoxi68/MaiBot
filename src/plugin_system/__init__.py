@@ -18,11 +18,16 @@ from .base import (
     CommandInfo,
     PluginInfo,
     PythonDependency,
+    BaseEventHandler,
+    EventHandlerInfo,
+    EventType,
+    BaseEventPlugin,
 )
-from .core.plugin_manager import (
+from .core import (
     plugin_manager,
     component_registry,
     dependency_manager,
+    events_manager,
 )
 
 # 导入工具模块
@@ -43,6 +48,8 @@ __all__ = [
     "BasePlugin",
     "BaseAction",
     "BaseCommand",
+    "BaseEventPlugin",
+    "BaseEventHandler",
     # 类型定义
     "ComponentType",
     "ActionActivationType",
@@ -52,10 +59,13 @@ __all__ = [
     "CommandInfo",
     "PluginInfo",
     "PythonDependency",
+    "EventHandlerInfo",
+    "EventType",
     # 管理器
     "plugin_manager",
     "component_registry",
     "dependency_manager",
+    "events_manager",
     # 装饰器
     "register_plugin",
     "ConfigField",

@@ -1,16 +1,20 @@
 # 插件API与规范修改
 
-1. 现在`plugin_system`的`__init__.py`文件中包含了所有插件API的导入，用户可以直接使用`from plugin_system import *`来导入所有API。
+1. 现在`plugin_system`的`__init__.py`文件中包含了所有插件API的导入，用户可以直接使用`from src.plugin_system import *`来导入所有API。
 
-2. register_plugin函数现在转移到了`plugin_system.apis.plugin_register_api`模块中，用户可以通过`from plugin_system.apis.plugin_register_api import register_plugin`来导入。
+2. register_plugin函数现在转移到了`plugin_system.apis.plugin_register_api`模块中，用户可以通过`from src.plugin_system.apis.plugin_register_api import register_plugin`来导入。
+  - 顺便一提，按照1中说法，你可以这么用：
+    ```python
+    from src.plugin_system import register_plugin
+    ```
 
-3. 现在强制要求的property如下：
-    - `plugin_name`: 插件名称，必须是唯一的。（与文件夹相同）
-    - `enable_plugin`: 是否启用插件，默认为`True`。
-    - `dependencies`: 插件依赖的其他插件列表，默认为空。**现在并不检查（也许）**
-    - `python_dependencies`: 插件依赖的Python包列表，默认为空。**现在并不检查**
-    - `config_file_name`: 插件配置文件名，默认为`config.toml`。
-    - `config_schema`: 插件配置文件的schema，用于自动生成配置文件。
+3. 现在强制要求的property如下，即你必须覆盖的属性有：
+  - `plugin_name`: 插件名称，必须是唯一的。（与文件夹相同）
+  - `enable_plugin`: 是否启用插件，默认为`True`。
+  - `dependencies`: 插件依赖的其他插件列表，默认为空。**现在并不检查（也许）**
+  - `python_dependencies`: 插件依赖的Python包列表，默认为空。**现在并不检查**
+  - `config_file_name`: 插件配置文件名，默认为`config.toml`。
+  - `config_schema`: 插件配置文件的schema，用于自动生成配置文件。
 
 # 插件系统修改
 1. 现在所有的匹配模式不再是关键字了，而是枚举类。**（可能有遗漏）**
@@ -22,5 +26,32 @@
   - `database_api.py`中的`db_query`方法调整了参数顺序以增强参数限制的同时，保证了typing正确；`db_get`方法增加了`single_result`参数，与`db_query`保持一致。
 4. 现在增加了参数类型检查，完善了对应注释
 5. 现在插件抽象出了总基类 `PluginBase`
-  - 基于`Action`和`Command`的插件基类现在为`BasePlugin`，它继承自`PluginBase`，由`register_plugin`装饰器注册。
-  - 基于`Event`的插件基类现在为`BaseEventPlugin`，它也继承自`PluginBase`，由`register_event_plugin`装饰器注册。
+  - 基于`Action`和`Command`的插件基类现在为`BasePlugin`。
+  - 基于`Event`的插件基类现在为`BaseEventPlugin`。
+  - 所有的插件都继承自`PluginBase`。
+  - 所有的插件都由`register_plugin`装饰器注册。
+6. 现在我们终于可以让插件有自定义的名字了！
+  - 真正实现了插件的`plugin_name`**不受文件夹名称限制**的功能。（吐槽：可乐你的某个小小细节导致我搞了好久……）
+  - 通过在插件类中定义`plugin_name`属性来指定插件内部标识符。
+  - 由于此更改一个文件中现在可以有多个插件类，但每个插件类必须有**唯一的**`plugin_name`。
+  - 在某些插件加载失败时，现在会显示包名而不是插件内部标识符。
+    - 例如：`MaiMBot.plugins.example_plugin`而不是`example_plugin`。
+    - 仅在插件 import 失败时会如此，正常注册过程中失败的插件不会显示包名，而是显示插件内部标识符。（这是特性，但是基本上不可能出现这个情况）
+7. 现在不支持单文件插件了，加载方式已经完全删除。
+
+
+# 吐槽
+```python
+plugin_path = Path(plugin_file)
+if plugin_path.parent.name != "plugins":
+    # 插件包格式：parent_dir.plugin
+    module_name = f"plugins.{plugin_path.parent.name}.plugin"
+else:
+    # 单文件格式：plugins.filename
+    module_name = f"plugins.{plugin_path.stem}"
+```
+```python
+plugin_path = Path(plugin_file)
+module_name = ".".join(plugin_path.parent.parts)
+```
+这两个区别很大的。
