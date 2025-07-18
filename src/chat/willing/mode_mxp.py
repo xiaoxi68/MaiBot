@@ -25,6 +25,8 @@ import asyncio
 import time
 import math
 
+from src.chat.message_receive.chat_stream import ChatStream
+
 
 class MxpWillingManager(BaseWillingManager):
     """Mxp意愿管理器"""
@@ -76,7 +78,7 @@ class MxpWillingManager(BaseWillingManager):
             self.chat_bot_message_time[w_info.chat_id].append(current_time)
             if len(self.chat_bot_message_time[w_info.chat_id]) == int(self.fatigue_messages_triggered_num):
                 time_interval = 60 - (current_time - self.chat_bot_message_time[w_info.chat_id].pop(0))
-                self.chat_fatigue_punishment_list[w_info.chat_id].append([current_time, time_interval * 2])
+                self.chat_fatigue_punishment_list[w_info.chat_id].append((current_time, time_interval * 2))
 
     async def after_generate_reply_handle(self, message_id: str):
         """回复后处理"""
@@ -87,12 +89,14 @@ class MxpWillingManager(BaseWillingManager):
             # rel_level = self._get_relationship_level_num(rel_value)
             # self.chat_person_reply_willing[w_info.chat_id][w_info.person_id] += rel_level * 0.05
 
-            now_chat_new_person = self.last_response_person.get(w_info.chat_id, [w_info.person_id, 0])
+            now_chat_new_person = self.last_response_person.get(w_info.chat_id, (w_info.person_id, 0))
             if now_chat_new_person[0] == w_info.person_id:
                 if now_chat_new_person[1] < 3:
-                    now_chat_new_person[1] += 1
+                    tmp_list = list(now_chat_new_person)
+                    tmp_list[1] += 1  # type: ignore
+                    self.last_response_person[w_info.chat_id] = tuple(tmp_list)  # type: ignore
             else:
-                self.last_response_person[w_info.chat_id] = [w_info.person_id, 0]
+                self.last_response_person[w_info.chat_id] = (w_info.person_id, 0)
 
     async def not_reply_handle(self, message_id: str):
         """不回复处理"""
@@ -108,11 +112,12 @@ class MxpWillingManager(BaseWillingManager):
                 self.chat_person_reply_willing[w_info.chat_id][w_info.person_id] += self.single_chat_gain * (
                     2 * self.last_response_person[w_info.chat_id][1] - 1
                 )
-            now_chat_new_person = self.last_response_person.get(w_info.chat_id, ["", 0])
+            now_chat_new_person = self.last_response_person.get(w_info.chat_id, ("", 0))
             if now_chat_new_person[0] != w_info.person_id:
-                self.last_response_person[w_info.chat_id] = [w_info.person_id, 0]
+                self.last_response_person[w_info.chat_id] = (w_info.person_id, 0)
 
     async def get_reply_probability(self, message_id: str):
+        # sourcery skip: merge-duplicate-blocks, remove-redundant-if
         """获取回复概率"""
         async with self.lock:
             w_info = self.ongoing_messages[message_id]
@@ -121,17 +126,16 @@ class MxpWillingManager(BaseWillingManager):
                 self.logger.debug(f"基础意愿值：{current_willing}")
 
             if w_info.is_mentioned_bot:
-                current_willing_ = self.mention_willing_gain / (int(current_willing) + 1)
-                current_willing += current_willing_
+                willing_gain = self.mention_willing_gain / (int(current_willing) + 1)
+                current_willing += willing_gain
                 if self.is_debug:
-                    self.logger.debug(f"提及增益：{current_willing_}")
+                    self.logger.debug(f"提及增益：{willing_gain}")
 
             if w_info.interested_rate > 0:
-                current_willing += math.atan(w_info.interested_rate / 2) / math.pi * 2 * self.interest_willing_gain
+                willing_gain = math.atan(w_info.interested_rate / 2) / math.pi * 2 * self.interest_willing_gain
+                current_willing += willing_gain
                 if self.is_debug:
-                    self.logger.debug(
-                        f"兴趣增益：{math.atan(w_info.interested_rate / 2) / math.pi * 2 * self.interest_willing_gain}"
-                    )
+                    self.logger.debug(f"兴趣增益：{willing_gain}")
 
             self.chat_person_reply_willing[w_info.chat_id][w_info.person_id] = current_willing
 
@@ -152,8 +156,8 @@ class MxpWillingManager(BaseWillingManager):
                 self.logger.debug(f"疲劳衰减：{self.chat_fatigue_willing_attenuation.get(w_info.chat_id, 0)}")
 
             chat_ongoing_messages = [msg for msg in self.ongoing_messages.values() if msg.chat_id == w_info.chat_id]
-            chat_person_ogoing_messages = [msg for msg in chat_ongoing_messages if msg.person_id == w_info.person_id]
-            if len(chat_person_ogoing_messages) >= 2:
+            chat_person_ongoing_messages = [msg for msg in chat_ongoing_messages if msg.person_id == w_info.person_id]
+            if len(chat_person_ongoing_messages) >= 2:
                 current_willing = 0
                 if self.is_debug:
                     self.logger.debug("进行中消息惩罚：归0")
@@ -191,34 +195,33 @@ class MxpWillingManager(BaseWillingManager):
                             basic_willing + (willing - basic_willing) * self.intention_decay_rate
                         )
 
-    def setup(self, message, chat, is_mentioned_bot, interested_rate):
-        super().setup(message, chat, is_mentioned_bot, interested_rate)
-
-        self.chat_reply_willing[chat.stream_id] = self.chat_reply_willing.get(
-            chat.stream_id, self.basic_maximum_willing
-        )
-        self.chat_person_reply_willing[chat.stream_id] = self.chat_person_reply_willing.get(chat.stream_id, {})
-        self.chat_person_reply_willing[chat.stream_id][
-            self.ongoing_messages[message.message_info.message_id].person_id
-        ] = self.chat_person_reply_willing[chat.stream_id].get(
-            self.ongoing_messages[message.message_info.message_id].person_id, self.chat_reply_willing[chat.stream_id]
+    def setup(self, message: dict, chat_stream: ChatStream):
+        super().setup(message, chat_stream)
+        stream_id = chat_stream.stream_id
+        self.chat_reply_willing[stream_id] = self.chat_reply_willing.get(stream_id, self.basic_maximum_willing)
+        self.chat_person_reply_willing[stream_id] = self.chat_person_reply_willing.get(stream_id, {})
+        self.chat_person_reply_willing[stream_id][self.ongoing_messages[message.get("message_id", "")].person_id] = (
+            self.chat_person_reply_willing[stream_id].get(
+                self.ongoing_messages[message.get("message_id", "")].person_id,
+                self.chat_reply_willing[stream_id],
+            )
         )
 
         current_time = time.time()
-        if chat.stream_id not in self.chat_new_message_time:
-            self.chat_new_message_time[chat.stream_id] = []
-        self.chat_new_message_time[chat.stream_id].append(current_time)
-        if len(self.chat_new_message_time[chat.stream_id]) > self.number_of_message_storage:
-            self.chat_new_message_time[chat.stream_id].pop(0)
+        if stream_id not in self.chat_new_message_time:
+            self.chat_new_message_time[stream_id] = []
+        self.chat_new_message_time[stream_id].append(current_time)
+        if len(self.chat_new_message_time[stream_id]) > self.number_of_message_storage:
+            self.chat_new_message_time[stream_id].pop(0)
 
-        if chat.stream_id not in self.chat_fatigue_punishment_list:
-            self.chat_fatigue_punishment_list[chat.stream_id] = [
+        if stream_id not in self.chat_fatigue_punishment_list:
+            self.chat_fatigue_punishment_list[stream_id] = [
                 (
                     current_time,
                     self.number_of_message_storage * self.basic_maximum_willing / self.expected_replies_per_min * 60,
                 )
             ]
-            self.chat_fatigue_willing_attenuation[chat.stream_id] = (
+            self.chat_fatigue_willing_attenuation[stream_id] = (
                 -2 * self.basic_maximum_willing * self.fatigue_coefficient
             )
 
@@ -227,12 +230,11 @@ class MxpWillingManager(BaseWillingManager):
         """意愿值转化为概率"""
         willing = max(0, willing)
         if willing < 2:
-            probability = math.atan(willing * 2) / math.pi * 2
+            return math.atan(willing * 2) / math.pi * 2
         elif willing < 2.5:
-            probability = math.atan(willing * 4) / math.pi * 2
+            return math.atan(willing * 4) / math.pi * 2
         else:
-            probability = 1
-        return probability
+            return 1
 
     async def _chat_new_message_to_change_basic_willing(self):
         """聊天流新消息改变基础意愿"""
@@ -259,7 +261,7 @@ class MxpWillingManager(BaseWillingManager):
                         update_time = 20
                     elif len(message_times) == self.number_of_message_storage:
                         time_interval = current_time - message_times[0]
-                        basic_willing = self._basic_willing_culculate(time_interval)
+                        basic_willing = self._basic_willing_calculate(time_interval)
                         self.chat_reply_willing[chat_id] = basic_willing
                         update_time = 17 * basic_willing / self.basic_maximum_willing + 3
                     else:
@@ -268,7 +270,7 @@ class MxpWillingManager(BaseWillingManager):
                 if self.is_debug:
                     self.logger.debug(f"聊天流意愿值更新：{self.chat_reply_willing}")
 
-    def _basic_willing_culculate(self, t: float) -> float:
+    def _basic_willing_calculate(self, t: float) -> float:
         """基础意愿值计算"""
         return math.tan(t * self.expected_replies_per_min * math.pi / 120 / self.number_of_message_storage) / 2
 
