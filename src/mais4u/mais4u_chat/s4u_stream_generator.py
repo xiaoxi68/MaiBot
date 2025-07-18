@@ -72,12 +72,12 @@ class S4UStreamGenerator:
         # 构建prompt
         if previous_reply_context:
             message_txt = f"""
-             你正在回复用户的消息，但中途被打断了。这是已有的对话上下文:
-             [你已经对上一条消息说的话]: {previous_reply_context}
-             ---
-             [这是用户发来的新消息, 你需要结合上下文，对此进行回复]:
-             {message.processed_plain_text}
-             """
+            你正在回复用户的消息，但中途被打断了。这是已有的对话上下文:
+            [你已经对上一条消息说的话]: {previous_reply_context}
+            ---
+            [这是用户发来的新消息, 你需要结合上下文，对此进行回复]:
+            {message.processed_plain_text}
+            """
         else:
             message_txt = message.processed_plain_text
 

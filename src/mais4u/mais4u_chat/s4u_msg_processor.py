@@ -126,7 +126,7 @@ class S4UMessageProcessor:
         asyncio.create_task(chat_action.update_action_by_message(message))
         # 视线管理：收到消息时切换视线状态
         chat_watching = watching_manager.get_watching_by_chat_id(chat.stream_id)
-        asyncio.create_task(chat_watching.on_message_received())
+        await chat_watching.on_message_received()
 
         # 上下文网页管理：启动独立task处理消息上下文
         asyncio.create_task(self._handle_context_web_update(chat.stream_id, message))
@@ -200,6 +200,8 @@ class S4UMessageProcessor:
                 await context_manager.start_server()
             
             # 添加消息到上下文并更新网页
+            await asyncio.sleep(1.5)
+            
             await context_manager.add_message(chat_id, message)
             
             logger.debug(f"✅ 上下文网页更新完成: {message.message_info.user_info.user_nickname}")
