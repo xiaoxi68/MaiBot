@@ -11,6 +11,9 @@ logger = get_logger("chat_voice")
 
 async def get_voice_text(voice_base64: str) -> str:
     """获取音频文件描述"""
+    if not global_config.chat.enable_asr:
+        logger.warning("语音识别未启用，无法处理语音消息")
+        return "[语音]"
     try:
         # 解码base64音频数据
         # 确保base64字符串只包含ASCII字符

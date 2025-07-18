@@ -684,7 +684,7 @@ class LLMRequest:
         data.add_field(
             "file",io.BytesIO(file_bytes),
             filename=f"file.{file_format}",
-            content_type=f'{content_type_list[file_format]}' # 根据实际文件类型设置
+            content_type=f'{content_type}' # 根据实际文件类型设置
         )
         data.add_field(
             "model", self.model_name
