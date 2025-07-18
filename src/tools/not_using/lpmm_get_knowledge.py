@@ -33,7 +33,7 @@ class SearchKnowledgeFromLPMMTool(BaseTool):
             Dict: 工具执行结果
         """
         try:
-            query = function_args.get("query")
+            query: str = function_args.get("query")  # type: ignore
             # threshold = function_args.get("threshold", 0.4)
 
             # 检查LPMM知识库是否启用
