@@ -27,11 +27,3 @@ def register_plugin(cls):
     logger.debug(f"插件类已注册: {plugin_name}")
 
     return cls
-
-def register_event_plugin(cls, *args, **kwargs):
-
-    """事件插件注册装饰器
-
-    用法:
-        @register_event_plugin
-    """
