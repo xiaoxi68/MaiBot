@@ -80,8 +80,9 @@ class ReplyAction(BaseAction):
         logger.info(f"{self.log_prefix} 回复目标: {reply_to}")
 
         try:
-            prepared_reply = self.action_data.get("prepared_reply", "")
-            if not prepared_reply:
+            if prepared_reply := self.action_data.get("prepared_reply", ""):
+                reply_text = prepared_reply
+            else:
                 try:
                     success, reply_set, _ = await asyncio.wait_for(
                         generator_api.generate_reply(
@@ -109,9 +110,6 @@ class ReplyAction(BaseAction):
                 logger.info(
                     f"{self.log_prefix} 从思考到回复，共有{new_message_count}条新消息，{'使用' if need_reply else '不使用'}引用回复"
                 )
-            else:
-                reply_text = prepared_reply
-
             # 构建回复文本
             reply_text = ""
             first_replied = False
@@ -120,11 +118,12 @@ class ReplyAction(BaseAction):
                 data = reply_seg[1]
                 if not first_replied:
                     if need_reply:
-                        await self.send_text(content=data, reply_to=reply_to, reply_to_platform_id=reply_to_platform_id, typing=False)
-                        first_replied = True
+                        await self.send_text(
+                            content=data, reply_to=reply_to, reply_to_platform_id=reply_to_platform_id, typing=False
+                        )
                     else:
                         await self.send_text(content=data, reply_to_platform_id=reply_to_platform_id, typing=False)
-                        first_replied = True
+                    first_replied = True
                 else:
                     await self.send_text(content=data, reply_to_platform_id=reply_to_platform_id, typing=True)
                 reply_text += data
@@ -190,17 +189,15 @@ class CoreActionsPlugin(BasePlugin):
     def get_plugin_components(self) -> List[Tuple[ComponentInfo, Type]]:
         """返回插件包含的组件列表"""
 
-        # --- 从配置动态设置Action/Command ---
-        emoji_chance = global_config.emoji.emoji_chance
-        if global_config.emoji.emoji_activate_type == "random":
-            EmojiAction.random_activation_probability = emoji_chance
-            EmojiAction.focus_activation_type = ActionActivationType.RANDOM
-            EmojiAction.normal_activation_type = ActionActivationType.RANDOM
-        elif global_config.emoji.emoji_activate_type == "llm":
+        if global_config.emoji.emoji_activate_type == "llm":
             EmojiAction.random_activation_probability = 0.0
             EmojiAction.focus_activation_type = ActionActivationType.LLM_JUDGE
             EmojiAction.normal_activation_type = ActionActivationType.LLM_JUDGE
 
+        elif global_config.emoji.emoji_activate_type == "random":
+            EmojiAction.random_activation_probability = global_config.emoji.emoji_chance
+            EmojiAction.focus_activation_type = ActionActivationType.RANDOM
+            EmojiAction.normal_activation_type = ActionActivationType.RANDOM
         # --- 根据配置注册组件 ---
         components = []
         if self.get_config("components.enable_reply", True):
