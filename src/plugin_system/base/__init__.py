@@ -20,6 +20,7 @@ from .component_types import (
     PythonDependency,
     EventHandlerInfo,
     EventType,
+    MaiMessages,
 )
 from .config_types import ConfigField
 
@@ -40,4 +41,5 @@ __all__ = [
     "EventType",
     "BaseEventPlugin",
     "BaseEventHandler",
+    "MaiMessages",
 ]

@@ -22,6 +22,7 @@ from .base import (
     EventHandlerInfo,
     EventType,
     BaseEventPlugin,
+    MaiMessages,
 )
 from .core import (
     plugin_manager,
@@ -38,7 +39,7 @@ from .utils import (
     # generate_plugin_manifest,
 )
 
-from .apis.plugin_register_api import register_plugin
+from .apis import register_plugin, get_logger
 
 
 __version__ = "1.0.0"
@@ -61,6 +62,8 @@ __all__ = [
     "PythonDependency",
     "EventHandlerInfo",
     "EventType",
+    # 消息
+    "MaiMessages",
     # 管理器
     "plugin_manager",
     "component_registry",
@@ -71,6 +74,7 @@ __all__ = [
     "ConfigField",
     # 工具函数
     "ManifestValidator",
+    "get_logger",
     # "ManifestGenerator",
     # "validate_plugin_manifest",
     # "generate_plugin_manifest",
