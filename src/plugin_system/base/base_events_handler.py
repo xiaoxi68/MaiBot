@@ -38,9 +38,12 @@ class BaseEventHandler(ABC):
         """获取事件处理器的信息"""
         # 从类属性读取名称，如果没有定义则使用类名自动生成
         name: str = getattr(cls, "handler_name", cls.__name__.lower().replace("handler", ""))
+        if "." in name:
+            logger.error(f"事件处理器名称 '{name}' 包含非法字符 '.'，请使用下划线替代")
+            raise ValueError(f"事件处理器名称 '{name}' 包含非法字符 '.'，请使用下划线替代")
         return EventHandlerInfo(
             name=name,
-            component_type=ComponentType.LISTENER,
+            component_type=ComponentType.EVENT_HANDLER,
             description=getattr(cls, "handler_description", "events处理器"),
             event_type=cls.event_type,
             weight=cls.weight,

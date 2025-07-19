@@ -21,7 +21,6 @@ from .base import (
     BaseEventHandler,
     EventHandlerInfo,
     EventType,
-    BaseEventPlugin,
     MaiMessages,
 )
 from .core import (
@@ -49,7 +48,6 @@ __all__ = [
     "BasePlugin",
     "BaseAction",
     "BaseCommand",
-    "BaseEventPlugin",
     "BaseEventHandler",
     # 类型定义
     "ComponentType",

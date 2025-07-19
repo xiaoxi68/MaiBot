@@ -11,7 +11,7 @@ class ComponentType(Enum):
     ACTION = "action"  # 动作组件
     COMMAND = "command"  # 命令组件
     SCHEDULER = "scheduler"  # 定时任务组件（预留）
-    LISTENER = "listener"  # 事件监听组件（预留）
+    EVENT_HANDLER = "event_handler"  # 事件处理组件（预留）
 
     def __str__(self) -> str:
         return self.value
@@ -161,7 +161,7 @@ class EventHandlerInfo(ComponentInfo):
 
     def __post_init__(self):
         super().__post_init__()
-        self.component_type = ComponentType.LISTENER
+        self.component_type = ComponentType.EVENT_HANDLER
 
 
 @dataclass

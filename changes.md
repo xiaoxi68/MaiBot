@@ -15,21 +15,23 @@
   - `python_dependencies`: 插件依赖的Python包列表，默认为空。**现在并不检查**
   - `config_file_name`: 插件配置文件名，默认为`config.toml`。
   - `config_schema`: 插件配置文件的schema，用于自动生成配置文件。
+4. 部分API的参数类型和返回值进行了调整
+  - `chat_api.py`中获取流的参数中可以使用一个特殊的枚举类型来获得所有平台的 ChatStream 了。
+  - `config_api.py`中的`get_global_config`和`get_plugin_config`方法现在支持嵌套访问的配置键名。
+  - `database_api.py`中的`db_query`方法调整了参数顺序以增强参数限制的同时，保证了typing正确；`db_get`方法增加了`single_result`参数，与`db_query`保持一致。
+5. 增加了`logging_api`，可以用`get_logger`来获取日志记录器。
 
 # 插件系统修改
 1. 现在所有的匹配模式不再是关键字了，而是枚举类。**（可能有遗漏）**
 2. 修复了一下显示插件信息不显示的问题。同时精简了一下显示内容
-3. 修复了插件系统混用了`plugin_name`和`display_name`的问题。现在所有的插件信息都使用`display_name`来显示，而内部标识仍然使用`plugin_name`。**（可能有遗漏）**
-3. 部分API的参数类型和返回值进行了调整
-  - `chat_api.py`中获取流的参数中可以使用一个特殊的枚举类型来获得所有平台的 ChatStream 了。
-  - `config_api.py`中的`get_global_config`和`get_plugin_config`方法现在支持嵌套访问的配置键名。
-  - `database_api.py`中的`db_query`方法调整了参数顺序以增强参数限制的同时，保证了typing正确；`db_get`方法增加了`single_result`参数，与`db_query`保持一致。
+3. 修复了插件系统混用了`plugin_name`和`display_name`的问题。现在所有的插件信息都使用`display_name`来显示，而内部标识仍然使用`plugin_name`。
 4. 现在增加了参数类型检查，完善了对应注释
 5. 现在插件抽象出了总基类 `PluginBase`
-  - 基于`Action`和`Command`的插件基类现在为`BasePlugin`。
-  - 基于`Event`的插件基类现在为`BaseEventPlugin`。
-  - 所有的插件都继承自`PluginBase`。
-  - 所有的插件都由`register_plugin`装饰器注册。
+  - <del>基于`Action`和`Command`的插件基类现在为`BasePlugin`。</del>
+  - <del>基于`Event`的插件基类现在为`BaseEventPlugin`。</del>
+  - 基于`Action`，`Command`和`Event`的插件基类现在为`BasePlugin`，所有插件都应该继承此基类。
+  - `BasePlugin`继承自`PluginBase`。
+  - 所有的插件类都由`register_plugin`装饰器注册。
 6. 现在我们终于可以让插件有自定义的名字了！
   - 真正实现了插件的`plugin_name`**不受文件夹名称限制**的功能。（吐槽：可乐你的某个小小细节导致我搞了好久……）
   - 通过在插件类中定义`plugin_name`属性来指定插件内部标识符。
@@ -38,6 +40,7 @@
     - 例如：`MaiMBot.plugins.example_plugin`而不是`example_plugin`。
     - 仅在插件 import 失败时会如此，正常注册过程中失败的插件不会显示包名，而是显示插件内部标识符。（这是特性，但是基本上不可能出现这个情况）
 7. 现在不支持单文件插件了，加载方式已经完全删除。
+8. 把`BaseEventPlugin`合并到了`BasePlugin`中，所有插件都应该继承自`BasePlugin`。
 
 
 # 吐槽

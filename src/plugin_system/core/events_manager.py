@@ -3,7 +3,7 @@ from typing import List, Dict, Optional, Type
 
 from src.chat.message_receive.message import MessageRecv
 from src.common.logger import get_logger
-from src.plugin_system.base.component_types import EventType, EventHandlerInfo, MaiMessages, PluginInfo
+from src.plugin_system.base.component_types import EventType, EventHandlerInfo, MaiMessages
 from src.plugin_system.base.base_events_handler import BaseEventHandler
 
 logger = get_logger("events_manager")
@@ -14,7 +14,6 @@ class EventsManager:
         # 有权重的 events 订阅者注册表
         self.events_subscribers: Dict[EventType, List[BaseEventHandler]] = {event: [] for event in EventType}
         self.handler_mapping: Dict[str, Type[BaseEventHandler]] = {}  # 事件处理器映射表
-        self._plugins: Dict[str, PluginInfo] = {}  # 插件注册表
 
     def register_event_subscriber(self, handler_info: EventHandlerInfo, handler_class: Type[BaseEventHandler]) -> bool:
         """注册事件处理器
@@ -41,23 +40,6 @@ class EventsManager:
         self.handler_mapping[namespace_name] = handler_class
 
         return self._insert_event_handler(handler_class)
-
-    def register_plugins(self, plugin_info: PluginInfo) -> bool:
-        """注册插件
-
-        Args:
-            plugin_info (PluginInfo): 插件信息
-
-        Returns:
-            bool: 是否注册成功
-        """
-        if plugin_info.name in self._plugins:
-            logger.warning(f"插件 {plugin_info.name} 已存在，跳过注册")
-            return False
-
-        self._plugins[plugin_info.name] = plugin_info
-        logger.debug(f"插件 {plugin_info.name} 注册成功")
-        return True
 
     async def handler_mai_events(
         self,

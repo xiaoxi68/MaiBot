@@ -2,13 +2,12 @@ from pathlib import Path
 
 from src.common.logger import get_logger
 
-logger = get_logger("plugin_register")
+logger = get_logger("plugin_manager") # 复用plugin_manager名称
 
 
 def register_plugin(cls):
     from src.plugin_system.core.plugin_manager import plugin_manager
     from src.plugin_system.base.base_plugin import BasePlugin
-    from src.plugin_system.base.base_event_plugin import BaseEventPlugin
 
     """插件注册装饰器
 
@@ -19,13 +18,16 @@ def register_plugin(cls):
             plugin_description = "我的插件"
             ...
     """
-    if not issubclass(cls, BasePlugin) and not issubclass(cls, BaseEventPlugin):
+    if not issubclass(cls, BasePlugin):
         logger.error(f"类 {cls.__name__} 不是 BasePlugin 的子类")
         return cls
 
     # 只是注册插件类，不立即实例化
     # 插件管理器会负责实例化和注册
     plugin_name: str = cls.plugin_name  # type: ignore
+    if "." in plugin_name:
+        logger.error(f"插件名称 '{plugin_name}' 包含非法字符 '.'，请使用下划线替代")
+        raise ValueError(f"插件名称 '{plugin_name}' 包含非法字符 '.'，请使用下划线替代")
     plugin_manager.plugin_classes[plugin_name] = cls
     splitted_name = cls.__module__.split(".")
     root_path = Path(__file__)
