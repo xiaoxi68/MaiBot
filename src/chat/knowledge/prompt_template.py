@@ -1,5 +1,3 @@
-from .llm_client import LLMMessage
-
 entity_extract_system_prompt = """你是一个性能优异的实体提取系统。请从段落中提取出所有实体，并以JSON列表的形式输出。
 
 输出格式示例：
@@ -63,10 +61,10 @@ qa_system_prompt = """
 """
 
 
-def build_qa_context(question: str, knowledge: list[tuple[str, str, str]]) -> list[LLMMessage]:
-    knowledge = "\n".join([f"{i + 1}. 相关性：{k[0]}\n{k[1]}" for i, k in enumerate(knowledge)])
-    messages = [
-        LLMMessage("system", qa_system_prompt).to_dict(),
-        LLMMessage("user", f"问题：\n{question}\n\n可能有帮助的信息：\n{knowledge}").to_dict(),
-    ]
-    return messages
+# def build_qa_context(question: str, knowledge: list[tuple[str, str, str]]) -> list[LLMMessage]:
+#     knowledge = "\n".join([f"{i + 1}. 相关性：{k[0]}\n{k[1]}" for i, k in enumerate(knowledge)])
+#     messages = [
+#         LLMMessage("system", qa_system_prompt).to_dict(),
+#         LLMMessage("user", f"问题：\n{question}\n\n可能有帮助的信息：\n{knowledge}").to_dict(),
+#     ]
+#     return messages

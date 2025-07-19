@@ -484,25 +484,25 @@ class MessageSending(MessageProcessBase):
         if self.message_segment:
             self.processed_plain_text = await self._process_message_segments(self.message_segment)
 
-    @classmethod
-    def from_thinking(
-        cls,
-        thinking: MessageThinking,
-        message_segment: Seg,
-        is_head: bool = False,
-        is_emoji: bool = False,
-    ) -> "MessageSending":
-        """从思考状态消息创建发送状态消息"""
-        return cls(
-            message_id=thinking.message_info.message_id,  # type: ignore
-            chat_stream=thinking.chat_stream,
-            message_segment=message_segment,
-            bot_user_info=thinking.message_info.user_info,  # type: ignore
-            reply=thinking.reply,
-            is_head=is_head,
-            is_emoji=is_emoji,
-            sender_info=None,
-        )
+    # @classmethod
+    # def from_thinking(
+    #     cls,
+    #     thinking: MessageThinking,
+    #     message_segment: Seg,
+    #     is_head: bool = False,
+    #     is_emoji: bool = False,
+    # ) -> "MessageSending":
+    #     """从思考状态消息创建发送状态消息"""
+    #     return cls(
+    #         message_id=thinking.message_info.message_id,  # type: ignore
+    #         chat_stream=thinking.chat_stream,
+    #         message_segment=message_segment,
+    #         bot_user_info=thinking.message_info.user_info,  # type: ignore
+    #         reply=thinking.reply,
+    #         is_head=is_head,
+    #         is_emoji=is_emoji,
+    #         sender_info=None,
+    #     )
 
     def to_dict(self):
         ret = super().to_dict()
