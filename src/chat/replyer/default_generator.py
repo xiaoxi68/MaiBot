@@ -508,7 +508,7 @@ class DefaultReplyer:
         for msg_dict in message_list_before_now:
             try:
                 msg_user_id = str(msg_dict.get("user_id"))
-                if msg_user_id in [bot_id, target_user_id]:
+                if msg_user_id == bot_id or msg_user_id == target_user_id:
                     # bot 和目标用户的对话
                     core_dialogue_list.append(msg_dict)
                 else:
@@ -553,7 +553,7 @@ class DefaultReplyer:
         available_actions: Optional[Dict[str, ActionInfo]] = None,
         enable_timeout: bool = False,
         enable_tool: bool = True,
-    ) -> str:    # sourcery skip: merge-else-if-into-elif, remove-redundant-if
+    ) -> str:  # sourcery skip: merge-else-if-into-elif, remove-redundant-if
         """
         构建回复器上下文
 
@@ -724,38 +724,16 @@ class DefaultReplyer:
             # 根据sender通过person_info_manager反向查找person_id，再获取user_id
             person_id = person_info_manager.get_person_id_by_person_name(sender)
 
-        if not global_config.chat.use_s4u_prompt_mode or not person_id:
-            # 使用原有的模式
-            return await global_prompt_manager.format_prompt(
-                template_name,
-                expression_habits_block=expression_habits_block,
-                chat_target=chat_target_1,
-                chat_info=chat_talking_prompt,
-                memory_block=memory_block,
-                tool_info_block=tool_info_block,
-                knowledge_prompt=prompt_info,
-                extra_info_block=extra_info_block,
-                relation_info_block=relation_info,
-                time_block=time_block,
-                reply_target_block=reply_target_block,
-                moderation_prompt=moderation_prompt_block,
-                keywords_reaction_prompt=keywords_reaction_prompt,
-                identity=identity_block,
-                target_message=target,
-                sender_name=sender,
-                config_expression_style=global_config.expression.expression_style,
-                action_descriptions=action_descriptions,
-                chat_target_2=chat_target_2,
-                mood_state=mood_prompt,
-            )
-        # 使用 s4u 对话构建模式：分离当前对话对象和其他对话
-        try:
-            user_id_value = await person_info_manager.get_value(person_id, "user_id")
-            if user_id_value:
-                target_user_id = str(user_id_value)
-        except Exception as e:
-            logger.warning(f"无法从person_id {person_id} 获取user_id: {e}")
-            target_user_id = ""
+        # 根据配置选择使用哪种 prompt 构建模式
+        if global_config.chat.use_s4u_prompt_mode and person_id:
+            # 使用 s4u 对话构建模式：分离当前对话对象和其他对话
+            try:
+                user_id_value = await person_info_manager.get_value(person_id, "user_id")
+                if user_id_value:
+                    target_user_id = str(user_id_value)
+            except Exception as e:
+                logger.warning(f"无法从person_id {person_id} 获取user_id: {e}")
+                target_user_id = ""
 
             # 构建分离的对话 prompt
             core_dialogue_prompt, background_dialogue_prompt = self.build_s4u_chat_history_prompts(
@@ -782,8 +760,8 @@ class DefaultReplyer:
 {core_dialogue_prompt}"""
             
 
-        # 使用 s4u 风格的模板
-        template_name = "s4u_style_prompt"
+            # 使用 s4u 风格的模板
+            template_name = "s4u_style_prompt"
 
             return await global_prompt_manager.format_prompt(
                 template_name,
