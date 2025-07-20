@@ -112,7 +112,7 @@ class HeartFCMessageReceiver:
 
             # subheartflow.add_message_to_normal_chat_cache(message, interested_rate, is_mentioned)
 
-            chat_mood = mood_manager.get_mood_by_chat_id(subheartflow.chat_id)  # type: ignore
+            chat_mood = mood_manager.get_mood_by_chat_id(subheartflow.chat_id)
             asyncio.create_task(chat_mood.update_mood_by_message(message, interested_rate))
 
             # 3. 日志记录

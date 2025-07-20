@@ -497,10 +497,10 @@ class MessageSending(MessageProcessBase):
     # ) -> "MessageSending":
     #     """从思考状态消息创建发送状态消息"""
     #     return cls(
-    #         message_id=thinking.message_info.message_id,  # type: ignore
+    #         message_id=thinking.message_info.message_id,
     #         chat_stream=thinking.chat_stream,
     #         message_segment=message_segment,
-    #         bot_user_info=thinking.message_info.user_info,  # type: ignore
+    #         bot_user_info=thinking.message_info.user_info,
     #         reply=thinking.reply,
     #         is_head=is_head,
     #         is_emoji=is_emoji,

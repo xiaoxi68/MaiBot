@@ -134,7 +134,7 @@ class ChatMood:
 
         self.mood_state = response
 
-        self.last_change_time = message_time  # type: ignore
+        self.last_change_time = message_time
 
     async def regress_mood(self):
         message_time = time.time()

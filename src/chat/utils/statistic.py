@@ -2348,7 +2348,7 @@ class AsyncStatisticOutputTask(AsyncTask):
 
     @staticmethod
     def _format_model_classified_stat(stats: Dict[str, Any]) -> str:
-        return StatisticOutputTask._format_model_classified_stat(stats)  # type: ignore
+        return StatisticOutputTask._format_model_classified_stat(stats)
 
     def _format_chat_stat(self, stats: Dict[str, Any]) -> str:
         return StatisticOutputTask._format_chat_stat(self, stats)  # type: ignore

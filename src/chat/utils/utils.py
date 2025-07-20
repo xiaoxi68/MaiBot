@@ -285,7 +285,7 @@ def random_remove_punctuation(text: str) -> str:
                 continue
         elif char == "，":
             rand = random.random()
-            if rand < 0.25:  # 5%概率删除逗号
+            if rand < 0.05:  # 5%概率删除逗号
                 continue
             elif rand < 0.25:  # 20%概率把逗号变成空格
                 result += " "
@@ -628,7 +628,7 @@ def get_chat_type_and_target_info(chat_id: str) -> Tuple[bool, Optional[Dict]]:
             elif chat_stream.user_info:  # It's a private chat
                 is_group_chat = False
                 user_info = chat_stream.user_info
-                platform: str = chat_stream.platform  # type: ignore
+                platform: str = chat_stream.platform
                 user_id: str = user_info.user_id  # type: ignore
 
                 # Initialize target_info with basic info
