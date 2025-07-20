@@ -71,7 +71,7 @@ class RenamePersonTool(BaseTool):
                 user_nickname=user_nickname,  # type: ignore
                 user_cardname=user_cardname,  # type: ignore
                 user_avatar=user_avatar,  # type: ignore
-                request=request_context,  # type: ignore
+                request=request_context,
             )
 
             # 3. 处理结果
