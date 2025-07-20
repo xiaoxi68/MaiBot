@@ -4,6 +4,7 @@ from typing import Tuple
 
 from src.chat.memory_system.Hippocampus import hippocampus_manager
 from src.chat.message_receive.message import MessageRecv, MessageRecvS4U
+from maim_message.message_base import GroupInfo,UserInfo
 from src.chat.message_receive.storage import MessageStorage
 from src.chat.message_receive.chat_stream import get_chat_manager
 from src.chat.utils.timer_calculator import Timer
@@ -93,6 +94,9 @@ class S4UMessageProcessor:
             group_info=groupinfo,
         )
         
+        if await self.handle_internal_message(message):
+            return
+        
         if await self.hadle_if_voice_done(message):
             return
         
@@ -136,6 +140,32 @@ class S4UMessageProcessor:
             logger.info(f"[S4U-礼物] {userinfo.user_nickname} 送出了 {message.gift_name} x{message.gift_count}")
         else:
             logger.info(f"[S4U]{userinfo.user_nickname}:{message.processed_plain_text}")
+    
+    async def handle_internal_message(self, message: MessageRecvS4U):
+        if message.is_internal:
+            
+            group_info = GroupInfo(platform = "amaidesu_default",group_id = 114514,group_name = "内心")
+            
+            chat =  await get_chat_manager().get_or_create_stream(
+                platform = "amaidesu_default",
+                user_info = message.message_info.user_info,
+                group_info = group_info
+            )
+            s4u_chat = get_s4u_chat_manager().get_or_create_chat(chat)
+            message.message_info.group_info = s4u_chat.chat_stream.group_info
+            message.message_info.platform = s4u_chat.chat_stream.platform
+            
+            
+            s4u_chat.internal_message.append(message)
+            s4u_chat._new_message_event.set()
+            
+            
+            logger.info(f"[{s4u_chat.stream_name}] 添加内部消息-------------------------------------------------------: {message.processed_plain_text}")
+            
+            
+            return True
+        return False
+    
     
     async def handle_screen_message(self, message: MessageRecvS4U):
         if message.is_screen:

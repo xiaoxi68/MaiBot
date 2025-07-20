@@ -6,7 +6,7 @@ import re
 
 from typing import List, Optional, Dict, Any, Tuple
 from datetime import datetime
-
+from src.chat.mai_thinking.mai_think import mai_thinking_manager
 from src.common.logger import get_logger
 from src.config.config import global_config
 from src.individuality.individuality import get_individuality
@@ -757,35 +757,91 @@ class DefaultReplyer:
             logger.warning(f"无法从person_id {person_id} 获取user_id: {e}")
             target_user_id = ""
 
-        # 构建分离的对话 prompt
-        core_dialogue_prompt, background_dialogue_prompt = self.build_s4u_chat_history_prompts(
-            message_list_before_now_long, target_user_id
-        )
+            # 构建分离的对话 prompt
+            core_dialogue_prompt, background_dialogue_prompt = self.build_s4u_chat_history_prompts(
+                message_list_before_now_long, target_user_id
+            )
+            
+            mai_think = mai_thinking_manager.get_mai_think(chat_id)
+            mai_think.memory_block = memory_block
+            mai_think.relation_info_block = relation_info
+            mai_think.time_block = time_block
+            mai_think.chat_target = chat_target_1
+            mai_think.chat_target_2 = chat_target_2
+            # mai_think.chat_info = chat_talking_prompt
+            mai_think.mood_state = mood_prompt
+            mai_think.identity = identity_block
+            mai_think.sender = sender
+            mai_think.target = target
+            
+            mai_think.chat_info = f"""
+{background_dialogue_prompt}
+--------------------------------
+{time_block}
+这是你和{sender}的对话，你们正在交流中：
+{core_dialogue_prompt}"""
+            
 
         # 使用 s4u 风格的模板
         template_name = "s4u_style_prompt"
 
-        return await global_prompt_manager.format_prompt(
-            template_name,
-            expression_habits_block=expression_habits_block,
-            tool_info_block=tool_info_block,
-            knowledge_prompt=prompt_info,
-            memory_block=memory_block,
-            relation_info_block=relation_info,
-            extra_info_block=extra_info_block,
-            identity=identity_block,
-            action_descriptions=action_descriptions,
-            sender_name=sender,
-            mood_state=mood_prompt,
-            background_dialogue_prompt=background_dialogue_prompt,
-            time_block=time_block,
-            core_dialogue_prompt=core_dialogue_prompt,
-            reply_target_block=reply_target_block,
-            message_txt=target,
-            config_expression_style=global_config.expression.expression_style,
-            keywords_reaction_prompt=keywords_reaction_prompt,
-            moderation_prompt=moderation_prompt_block,
-        )
+            return await global_prompt_manager.format_prompt(
+                template_name,
+                expression_habits_block=expression_habits_block,
+                tool_info_block=tool_info_block,
+                knowledge_prompt=prompt_info,
+                memory_block=memory_block,
+                relation_info_block=relation_info,
+                extra_info_block=extra_info_block,
+                identity=identity_block,
+                action_descriptions=action_descriptions,
+                sender_name=sender,
+                mood_state=mood_prompt,
+                background_dialogue_prompt=background_dialogue_prompt,
+                time_block=time_block,
+                core_dialogue_prompt=core_dialogue_prompt,
+                reply_target_block=reply_target_block,
+                message_txt=target,
+                config_expression_style=global_config.expression.expression_style,
+                keywords_reaction_prompt=keywords_reaction_prompt,
+                moderation_prompt=moderation_prompt_block,
+            )
+        else:
+            mai_think = mai_thinking_manager.get_mai_think(chat_id)
+            mai_think.memory_block = memory_block
+            mai_think.relation_info_block = relation_info
+            mai_think.time_block = time_block
+            mai_think.chat_target = chat_target_1
+            mai_think.chat_target_2 = chat_target_2
+            mai_think.chat_info = chat_talking_prompt
+            mai_think.mood_state = mood_prompt
+            mai_think.identity = identity_block
+            mai_think.sender = sender
+            mai_think.target = target
+            
+            # 使用原有的模式
+            return await global_prompt_manager.format_prompt(
+                template_name,
+                expression_habits_block=expression_habits_block,
+                chat_target=chat_target_1,
+                chat_info=chat_talking_prompt,
+                memory_block=memory_block,
+                tool_info_block=tool_info_block,
+                knowledge_prompt=prompt_info,
+                extra_info_block=extra_info_block,
+                relation_info_block=relation_info,
+                time_block=time_block,
+                reply_target_block=reply_target_block,
+                moderation_prompt=moderation_prompt_block,
+                keywords_reaction_prompt=keywords_reaction_prompt,
+                identity=identity_block,
+                target_message=target,
+                sender_name=sender,
+                config_expression_style=global_config.expression.expression_style,
+                action_descriptions=action_descriptions,
+                chat_target_2=chat_target_2,
+                mood_state=mood_prompt,
+            )
 
     async def build_prompt_rewrite_context(
         self,

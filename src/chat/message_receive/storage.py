@@ -102,6 +102,7 @@ class MessageStorage:
             )
         except Exception:
             logger.exception("存储消息失败")
+            logger.error(f"消息：{message}")
             traceback.print_exc()
 
     # 如果需要其他存储相关的函数，可以在这里添加

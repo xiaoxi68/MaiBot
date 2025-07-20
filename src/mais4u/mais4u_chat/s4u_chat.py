@@ -2,7 +2,7 @@ import asyncio
 import traceback
 import time
 import random
-from typing import Optional, Dict, Tuple  # 导入类型提示
+from typing import Optional, Dict, Tuple, List  # 导入类型提示
 from maim_message import UserInfo, Seg
 from src.common.logger import get_logger
 from src.chat.message_receive.chat_stream import ChatStream, get_chat_manager
@@ -40,6 +40,8 @@ class MessageSenderContainer:
         self.last_msg_id = ""
         
         self.voice_done = ""
+        
+
         
 
     async def add_message(self, chunk: str):
@@ -195,6 +197,7 @@ class S4UChat:
         self.gpt = S4UStreamGenerator()
         self.interest_dict: Dict[str, float] = {}  # 用户兴趣分
         
+        self.internal_message :List[MessageRecvS4U] = []
         
         self.msg_id = ""
         self.voice_done = ""
@@ -240,7 +243,7 @@ class S4UChat:
         score += self._get_interest_score(message.message_info.user_info.user_id)
         return score
     
-    def decay_interest_score(self,message: MessageRecvS4U|MessageRecv):
+    def decay_interest_score(self):
         for person_id, score in self.interest_dict.items():
             if score > 0:
                 self.interest_dict[person_id] = score * 0.95
@@ -249,7 +252,7 @@ class S4UChat:
 
     async def add_message(self, message: MessageRecvS4U|MessageRecv) -> None:
         
-        self.decay_interest_score(message)
+        self.decay_interest_score()
         
         """根据VIP状态和中断逻辑将消息放入相应队列。"""
         user_id = message.message_info.user_info.user_id
@@ -259,8 +262,8 @@ class S4UChat:
         try:
             is_gift = message.is_gift
             is_superchat = message.is_superchat
-            print(is_gift)
-            print(is_superchat)
+            # print(is_gift)
+            # print(is_superchat)
             if is_gift:
                 await self.relationship_builder.build_relation(immediate_build=person_id)
                 # 安全地增加兴趣分，如果person_id不存在则先初始化为1.0
@@ -388,18 +391,49 @@ class S4UChat:
                     queue_name = "vip"
                 # 其次处理普通队列
                 elif not self._normal_queue.empty():
-                    neg_priority, entry_count, timestamp, message = self._normal_queue.get_nowait()
-                    priority = -neg_priority
-                    # 检查普通消息是否超时
-                    if time.time() - timestamp > s4u_config.message_timeout_seconds:
-                        logger.info(
-                            f"[{self.stream_name}] Discarding stale normal message: {message.processed_plain_text[:20]}..."
-                        )
-                        self._normal_queue.task_done()
-                        continue  # 处理下一条
-                    queue_name = "normal"
+                    # 判断 normal 队列是否只有一条消息，且 internal_message 有内容
+                    if self._normal_queue.qsize() == 1 and self.internal_message:
+                        if random.random() < 0.5:
+                            # 50% 概率用 internal_message 最新一条
+                            message = self.internal_message[-1]
+                            priority = 0  # internal_message 没有优先级，设为 0
+                            queue_name = "internal"
+                            neg_priority = 0
+                            entry_count = 0
+                            logger.info(f"[{self.stream_name}] 触发 internal_message 生成回复: {getattr(message, 'processed_plain_text', str(message))[:20]}...")
+                            # 不要从 normal 队列取出消息，保留在队列中
+                        else:
+                            neg_priority, entry_count, timestamp, message = self._normal_queue.get_nowait()
+                            priority = -neg_priority
+                            # 检查普通消息是否超时
+                            if time.time() - timestamp > s4u_config.message_timeout_seconds:
+                                logger.info(
+                                    f"[{self.stream_name}] Discarding stale normal message: {message.processed_plain_text[:20]}..."
+                                )
+                                self._normal_queue.task_done()
+                                continue  # 处理下一条
+                            queue_name = "normal"
+                    else:
+                        neg_priority, entry_count, timestamp, message = self._normal_queue.get_nowait()
+                        priority = -neg_priority
+                        # 检查普通消息是否超时
+                        if time.time() - timestamp > s4u_config.message_timeout_seconds:
+                            logger.info(
+                                f"[{self.stream_name}] Discarding stale normal message: {message.processed_plain_text[:20]}..."
+                            )
+                            self._normal_queue.task_done()
+                            continue  # 处理下一条
+                        queue_name = "normal"
                 else:
-                    continue  # 没有消息了，回去等事件
+                    if self.internal_message:
+                        message = self.internal_message[-1]
+                        priority = 0
+                        neg_priority = 0
+                        entry_count = 0
+                        queue_name = "internal"
+                        logger.info(f"[{self.stream_name}] normal/vip 队列都空，触发 internal_message 回复: {getattr(message, 'processed_plain_text', str(message))[:20]}...")
+                    else:
+                        continue  # 没有消息了，回去等事件
 
                 self._current_message_being_replied = (queue_name, priority, entry_count, message)
                 self._current_generation_task = asyncio.create_task(self._generate_and_send(message))
@@ -421,6 +455,9 @@ class S4UChat:
                     # 标记任务完成
                     if queue_name == "vip":
                         self._vip_queue.task_done()
+                    elif queue_name == "internal":
+                        # 如果使用 internal_message 生成回复，则不从 normal 队列中移除
+                        pass
                     else:
                         self._normal_queue.task_done()
 
