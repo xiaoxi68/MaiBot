@@ -1,6 +1,8 @@
+from pathlib import Path
+
 from src.common.logger import get_logger
 
-logger = get_logger("plugin_register")
+logger = get_logger("plugin_manager") # 复用plugin_manager名称
 
 
 def register_plugin(cls):
@@ -22,16 +24,23 @@ def register_plugin(cls):
 
     # 只是注册插件类，不立即实例化
     # 插件管理器会负责实例化和注册
-    plugin_name = cls.plugin_name or cls.__name__
-    plugin_manager.plugin_classes[plugin_name] = cls  # type: ignore
-    logger.debug(f"插件类已注册: {plugin_name}")
+    plugin_name: str = cls.plugin_name  # type: ignore
+    if "." in plugin_name:
+        logger.error(f"插件名称 '{plugin_name}' 包含非法字符 '.'，请使用下划线替代")
+        raise ValueError(f"插件名称 '{plugin_name}' 包含非法字符 '.'，请使用下划线替代")
+    plugin_manager.plugin_classes[plugin_name] = cls
+    splitted_name = cls.__module__.split(".")
+    root_path = Path(__file__)
+
+    # 查找项目根目录
+    while not (root_path / "pyproject.toml").exists() and root_path.parent != root_path:
+        root_path = root_path.parent
+
+    if not (root_path / "pyproject.toml").exists():
+        logger.error(f"注册 {plugin_name} 无法找到项目根目录")
+        return cls
+
+    plugin_manager.plugin_paths[plugin_name] = str(Path(root_path, *splitted_name).resolve())
+    logger.debug(f"插件类已注册: {plugin_name}, 路径: {plugin_manager.plugin_paths[plugin_name]}")
 
     return cls
-
-def register_event_plugin(cls, *args, **kwargs):
-
-    """事件插件注册装饰器
-
-    用法:
-        @register_event_plugin
-    """

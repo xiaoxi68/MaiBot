@@ -18,11 +18,16 @@ from .base import (
     CommandInfo,
     PluginInfo,
     PythonDependency,
+    BaseEventHandler,
+    EventHandlerInfo,
+    EventType,
+    MaiMessages,
 )
-from .core.plugin_manager import (
+from .core import (
     plugin_manager,
     component_registry,
     dependency_manager,
+    events_manager,
 )
 
 # 导入工具模块
@@ -33,7 +38,7 @@ from .utils import (
     # generate_plugin_manifest,
 )
 
-from .apis.plugin_register_api import register_plugin
+from .apis import register_plugin, get_logger
 
 
 __version__ = "1.0.0"
@@ -43,6 +48,7 @@ __all__ = [
     "BasePlugin",
     "BaseAction",
     "BaseCommand",
+    "BaseEventHandler",
     # 类型定义
     "ComponentType",
     "ActionActivationType",
@@ -52,15 +58,21 @@ __all__ = [
     "CommandInfo",
     "PluginInfo",
     "PythonDependency",
+    "EventHandlerInfo",
+    "EventType",
+    # 消息
+    "MaiMessages",
     # 管理器
     "plugin_manager",
     "component_registry",
     "dependency_manager",
+    "events_manager",
     # 装饰器
     "register_plugin",
     "ConfigField",
     # 工具函数
     "ManifestValidator",
+    "get_logger",
     # "ManifestGenerator",
     # "validate_plugin_manifest",
     # "generate_plugin_manifest",

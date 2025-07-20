@@ -106,6 +106,9 @@ class ChatConfig(ConfigBase):
     focus_value: float = 1.0
     """麦麦的专注思考能力，越低越容易专注，消耗token也越多"""
 
+    enable_asr: bool = False
+    """是否启用语音识别"""
+
     def get_current_talk_frequency(self, chat_stream_id: Optional[str] = None) -> float:
         """
         根据当前时间和聊天流获取对应的 talk_frequency
@@ -629,6 +632,9 @@ class ModelConfig(ConfigBase):
 
     vlm: dict[str, Any] = field(default_factory=lambda: {})
     """视觉语言模型配置"""
+
+    voice: dict[str, Any] = field(default_factory=lambda: {})
+    """语音识别模型配置"""
 
     tool_use: dict[str, Any] = field(default_factory=lambda: {})
     """专注工具使用模型配置"""

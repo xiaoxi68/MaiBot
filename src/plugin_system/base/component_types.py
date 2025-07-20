@@ -1,6 +1,7 @@
 from enum import Enum
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
+from maim_message import Seg
 
 
 # 组件类型枚举
@@ -10,7 +11,10 @@ class ComponentType(Enum):
     ACTION = "action"  # 动作组件
     COMMAND = "command"  # 命令组件
     SCHEDULER = "scheduler"  # 定时任务组件（预留）
-    LISTENER = "listener"  # 事件监听组件（预留）
+    EVENT_HANDLER = "event_handler"  # 事件处理组件（预留）
+
+    def __str__(self) -> str:
+        return self.value
 
 
 # 动作激活类型枚举
@@ -46,12 +50,17 @@ class EventType(Enum):
     事件类型枚举类
     """
 
+    ON_START = "on_start"  # 启动事件，用于调用按时任务
     ON_MESSAGE = "on_message"
     ON_PLAN = "on_plan"
     POST_LLM = "post_llm"
     AFTER_LLM = "after_llm"
     POST_SEND = "post_send"
     AFTER_SEND = "after_send"
+    UNKNOWN = "unknown"  # 未知事件类型
+
+    def __str__(self) -> str:
+        return self.value
 
 
 @dataclass
@@ -143,6 +152,19 @@ class CommandInfo(ComponentInfo):
 
 
 @dataclass
+class EventHandlerInfo(ComponentInfo):
+    """事件处理器组件信息"""
+
+    event_type: EventType = EventType.ON_MESSAGE  # 监听事件类型
+    intercept_message: bool = False  # 是否拦截消息处理（默认不拦截）
+    weight: int = 0  # 事件处理器权重，决定执行顺序
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.component_type = ComponentType.EVENT_HANDLER
+
+
+@dataclass
 class PluginInfo:
     """插件信息"""
 
@@ -198,3 +220,42 @@ class PluginInfo:
     def get_pip_requirements(self) -> List[str]:
         """获取所有pip安装格式的依赖"""
         return [dep.get_pip_requirement() for dep in self.python_dependencies]
+
+
+@dataclass
+class MaiMessages:
+    """MaiM插件消息"""
+
+    message_segments: List[Seg] = field(default_factory=list)
+    """消息段列表，支持多段消息"""
+
+    message_base_info: Dict[str, Any] = field(default_factory=dict)
+    """消息基本信息，包含平台，用户信息等数据"""
+
+    plain_text: str = ""
+    """纯文本消息内容"""
+
+    raw_message: Optional[str] = None
+    """原始消息内容"""
+
+    is_group_message: bool = False
+    """是否为群组消息"""
+
+    is_private_message: bool = False
+    """是否为私聊消息"""
+
+    stream_id: Optional[str] = None
+    """流ID，用于标识消息流"""
+
+    llm_prompt: Optional[str] = None
+    """LLM提示词"""
+
+    llm_response: Optional[str] = None
+    """LLM响应内容"""
+
+    additional_data: Dict[Any, Any] = field(default_factory=dict)
+    """附加数据，可以存储额外信息"""
+
+    def __post_init__(self):
+        if self.message_segments is None:
+            self.message_segments = []

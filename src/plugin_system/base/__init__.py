@@ -7,6 +7,7 @@
 from .base_plugin import BasePlugin
 from .base_action import BaseAction
 from .base_command import BaseCommand
+from .base_events_handler import BaseEventHandler
 from .component_types import (
     ComponentType,
     ActionActivationType,
@@ -16,6 +17,9 @@ from .component_types import (
     CommandInfo,
     PluginInfo,
     PythonDependency,
+    EventHandlerInfo,
+    EventType,
+    MaiMessages,
 )
 from .config_types import ConfigField
 
@@ -32,4 +36,8 @@ __all__ = [
     "PluginInfo",
     "PythonDependency",
     "ConfigField",
+    "EventHandlerInfo",
+    "EventType",
+    "BaseEventHandler",
+    "MaiMessages",
 ]

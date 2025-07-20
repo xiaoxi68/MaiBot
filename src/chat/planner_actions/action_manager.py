@@ -262,4 +262,4 @@ class ActionManager:
         """
         from src.plugin_system.core.component_registry import component_registry
 
-        return component_registry.get_component_class(action_name)  # type: ignore
+        return component_registry.get_component_class(action_name, ComponentType.ACTION)  # type: ignore

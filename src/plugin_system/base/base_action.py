@@ -41,6 +41,7 @@ class BaseAction(ABC):
         action_message: Optional[dict] = None,
         **kwargs,
     ):
+        # sourcery skip: hoist-similar-statement-from-if, merge-else-if-into-elif, move-assign-in-block, swap-if-else-branches, swap-nested-ifs
         """初始化Action组件
 
         Args:
@@ -355,7 +356,9 @@ class BaseAction(ABC):
 
         # 从类属性读取名称，如果没有定义则使用类名自动生成
         name = getattr(cls, "action_name", cls.__name__.lower().replace("action", ""))
-
+        if "." in name:
+            logger.error(f"Action名称 '{name}' 包含非法字符 '.'，请使用下划线替代")
+            raise ValueError(f"Action名称 '{name}' 包含非法字符 '.'，请使用下划线替代")
         # 获取focus_activation_type和normal_activation_type
         focus_activation_type = getattr(cls, "focus_activation_type", ActionActivationType.ALWAYS)
         normal_activation_type = getattr(cls, "normal_activation_type", ActionActivationType.ALWAYS)

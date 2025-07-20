@@ -1,9 +1,11 @@
-from typing import Dict, List, Optional, Tuple, Type, Any
 import os
-from importlib.util import spec_from_file_location, module_from_spec
-from inspect import getmodule
-from pathlib import Path
+import inspect
 import traceback
+
+from typing import Dict, List, Optional, Tuple, Type, Any
+from importlib.util import spec_from_file_location, module_from_spec
+from pathlib import Path
+
 
 from src.common.logger import get_logger
 from src.plugin_system.core.component_registry import component_registry
@@ -28,7 +30,7 @@ class PluginManager:
         self.plugin_paths: Dict[str, str] = {}  # 记录插件名到目录路径的映射，插件名 -> 目录路径
 
         self.loaded_plugins: Dict[str, PluginBase] = {}  # 已加载的插件类实例注册表，插件名 -> 插件类实例
-        self.failed_plugins: Dict[str, str] = {}  # 记录加载失败的插件类及其错误信息，插件名 -> 错误信息
+        self.failed_plugins: Dict[str, str] = {}  # 记录加载失败的插件文件及其错误信息，插件名 -> 错误信息
 
         # 确保插件目录存在
         self._ensure_plugin_directories()
@@ -107,13 +109,9 @@ class PluginManager:
             # 使用记录的插件目录路径
             plugin_dir = self.plugin_paths.get(plugin_name)
 
-            # 如果没有记录，则尝试查找（fallback）
+            # 如果没有记录，直接返回失败
             if not plugin_dir:
-                plugin_dir = self._find_plugin_directory(plugin_class)
-                if plugin_dir:
-                    self.plugin_paths[plugin_name] = plugin_dir  # 更新路径
-                else:
-                    return False, 1
+                return False, 1
 
             plugin_instance = plugin_class(plugin_dir=plugin_dir)  # 实例化插件（可能因为缺少manifest而失败）
             if not plugin_instance:
@@ -360,24 +358,14 @@ class PluginManager:
 
         logger.debug(f"正在扫描插件根目录: {directory}")
 
-        # 遍历目录中的所有Python文件和包
+        # 遍历目录中的所有包
         for item in os.listdir(directory):
             item_path = os.path.join(directory, item)
 
-            if os.path.isfile(item_path) and item.endswith(".py") and item != "__init__.py":
-                # 单文件插件
-                plugin_name = Path(item_path).stem
-                if self._load_plugin_module_file(item_path, plugin_name, directory):
-                    loaded_count += 1
-                else:
-                    failed_count += 1
-
-            elif os.path.isdir(item_path) and not item.startswith(".") and not item.startswith("__"):
-                # 插件包
+            if os.path.isdir(item_path) and not item.startswith(".") and not item.startswith("__"):
                 plugin_file = os.path.join(item_path, "plugin.py")
                 if os.path.exists(plugin_file):
-                    plugin_name = item  # 使用目录名作为插件名
-                    if self._load_plugin_module_file(plugin_file, plugin_name, item_path):
+                    if self._load_plugin_module_file(plugin_file):
                         loaded_count += 1
                     else:
                         failed_count += 1
@@ -387,14 +375,16 @@ class PluginManager:
     def _find_plugin_directory(self, plugin_class: Type[PluginBase]) -> Optional[str]:
         """查找插件类对应的目录路径"""
         try:
-            module = getmodule(plugin_class)
-            if module and hasattr(module, "__file__") and module.__file__:
-                return os.path.dirname(module.__file__)
+            # module = getmodule(plugin_class)
+            # if module and hasattr(module, "__file__") and module.__file__:
+            #     return os.path.dirname(module.__file__)
+            file_path = inspect.getfile(plugin_class)
+            return os.path.dirname(file_path)
         except Exception as e:
             logger.debug(f"通过inspect获取插件目录失败: {e}")
         return None
 
-    def _load_plugin_module_file(self, plugin_file: str, plugin_name: str, plugin_dir: str) -> bool:
+    def _load_plugin_module_file(self, plugin_file: str) -> bool:
         # sourcery skip: extract-method
         """加载单个插件模块文件
 
@@ -405,12 +395,7 @@ class PluginManager:
         """
         # 生成模块名
         plugin_path = Path(plugin_file)
-        if plugin_path.parent.name != "plugins":
-            # 插件包格式：parent_dir.plugin
-            module_name = f"plugins.{plugin_path.parent.name}.plugin"
-        else:
-            # 单文件格式：plugins.filename
-            module_name = f"plugins.{plugin_path.stem}"
+        module_name = ".".join(plugin_path.parent.parts)
 
         try:
             # 动态导入插件模块
@@ -422,16 +407,13 @@ class PluginManager:
             module = module_from_spec(spec)
             spec.loader.exec_module(module)
 
-            # 记录插件名和目录路径的映射
-            self.plugin_paths[plugin_name] = plugin_dir
-
             logger.debug(f"插件模块加载成功: {plugin_file}")
             return True
 
         except Exception as e:
             error_msg = f"加载插件模块 {plugin_file} 失败: {e}"
             logger.error(error_msg)
-            self.failed_plugins[plugin_name] = error_msg
+            self.failed_plugins[module_name] = error_msg
             return False
 
     def _check_plugin_version_compatibility(self, plugin_name: str, manifest_data: Dict[str, Any]) -> Tuple[bool, str]:
@@ -475,13 +457,14 @@ class PluginManager:
         stats = component_registry.get_registry_stats()
         action_count = stats.get("action_components", 0)
         command_count = stats.get("command_components", 0)
+        event_handler_count = stats.get("event_handlers", 0)
         total_components = stats.get("total_components", 0)
 
         # 📋 显示插件加载总览
         if total_registered > 0:
             logger.info("🎉 插件系统加载完成!")
             logger.info(
-                f"📊 总览: {total_registered}个插件, {total_components}个组件 (Action: {action_count}, Command: {command_count})"
+                f"📊 总览: {total_registered}个插件, {total_components}个组件 (Action: {action_count}, Command: {command_count}, EventHandler: {event_handler_count})"
             )
 
             # 显示详细的插件列表
@@ -510,8 +493,9 @@ class PluginManager:
 
                     # 组件列表
                     if plugin_info.components:
-                        action_components = [c for c in plugin_info.components if c.component_type.name == "ACTION"]
-                        command_components = [c for c in plugin_info.components if c.component_type.name == "COMMAND"]
+                        action_components = [c for c in plugin_info.components if c.component_type == ComponentType.ACTION]
+                        command_components = [c for c in plugin_info.components if c.component_type == ComponentType.COMMAND]
+                        event_handler_components = [c for c in plugin_info.components if c.component_type == ComponentType.EVENT_HANDLER]
 
                         if action_components:
                             action_names = [c.name for c in action_components]
@@ -520,6 +504,10 @@ class PluginManager:
                         if command_components:
                             command_names = [c.name for c in command_components]
                             logger.info(f"    ⚡ Command组件: {', '.join(command_names)}")
+                        
+                        if event_handler_components:
+                            event_handler_names = [c.name for c in event_handler_components]
+                            logger.info(f"    📢 EventHandler组件: {', '.join(event_handler_names)}")
 
                     # 依赖信息
                     if plugin_info.dependencies:
@@ -530,6 +518,12 @@ class PluginManager:
                         config_status = "✅" if self.plugin_paths.get(plugin_name) else "❌"
                         logger.info(f"    ⚙️ 配置: {plugin_info.config_file} {config_status}")
 
+            root_path = Path(__file__)
+
+            # 查找项目根目录
+            while not (root_path / "pyproject.toml").exists() and root_path.parent != root_path:
+                root_path = root_path.parent
+
             # 显示目录统计
             logger.info("📂 加载目录统计:")
             for directory in self.plugin_directories:
@@ -537,7 +531,11 @@ class PluginManager:
                     plugins_in_dir = []
                     for plugin_name in self.loaded_plugins.keys():
                         plugin_path = self.plugin_paths.get(plugin_name, "")
-                        if plugin_path.startswith(directory):
+                        if (
+                            Path(plugin_path)
+                            .resolve()
+                            .is_relative_to(Path(os.path.join(str(root_path), directory)).resolve())
+                        ):
                             plugins_in_dir.append(plugin_name)
 
                     if plugins_in_dir:

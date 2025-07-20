@@ -1,9 +1,12 @@
 from abc import abstractmethod
-from typing import List, Type
+from typing import List, Type, Tuple, Union
 from .plugin_base import PluginBase
 
 from src.common.logger import get_logger
-from src.plugin_system.base.component_types import ComponentInfo
+from src.plugin_system.base.component_types import ComponentInfo, ActionInfo, CommandInfo, EventHandlerInfo
+from .base_action import BaseAction
+from .base_command import BaseCommand
+from .base_events_handler import BaseEventHandler
 
 logger = get_logger("base_plugin")
 
@@ -21,7 +24,15 @@ class BasePlugin(PluginBase):
         super().__init__(*args, **kwargs)
 
     @abstractmethod
-    def get_plugin_components(self) -> List[tuple[ComponentInfo, Type]]:
+    def get_plugin_components(
+        self,
+    ) -> List[
+        Union[
+            Tuple[ActionInfo, Type[BaseAction]],
+            Tuple[CommandInfo, Type[BaseCommand]],
+            Tuple[EventHandlerInfo, Type[BaseEventHandler]],
+        ]
+    ]:
         """获取插件包含的组件列表
 
         子类必须实现此方法，返回组件信息和组件类的列表

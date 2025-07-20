@@ -21,6 +21,7 @@ class ClassicalWillingManager(BaseWillingManager):
             self._decay_task = asyncio.create_task(self._decay_reply_willing())
 
     async def get_reply_probability(self, message_id):
+        # sourcery skip: inline-immediately-returned-variable
         willing_info = self.ongoing_messages[message_id]
         chat_id = willing_info.chat_id
         current_willing = self.chat_reply_willing.get(chat_id, 0)

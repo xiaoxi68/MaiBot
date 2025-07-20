@@ -219,7 +219,9 @@ class BaseCommand(ABC):
         Returns:
             CommandInfo: 生成的Command信息对象
         """
-
+        if "." in cls.command_name:
+            logger.error(f"Command名称 '{cls.command_name}' 包含非法字符 '.'，请使用下划线替代")
+            raise ValueError(f"Command名称 '{cls.command_name}' 包含非法字符 '.'，请使用下划线替代")
         return CommandInfo(
             name=cls.command_name,
             component_type=ComponentType.COMMAND,
