@@ -23,12 +23,6 @@ from src.mais4u.mais4u_chat.s4u_msg_processor import S4UMessageProcessor
 # 获取项目根目录（假设本文件在src/chat/message_receive/下，根目录为上上上级目录）
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 
-ENABLE_S4U_CHAT = os.path.isfile(os.path.join(PROJECT_ROOT, "s4u.s4u"))
-
-if ENABLE_S4U_CHAT:
-    print("""\nS4U私聊模式已开启\n!!!!!!!!!!!!!!!!!\n""")
-    # 仅内部开启
-
 # 配置主程序日志格式
 logger = get_logger("chat")
 
@@ -183,7 +177,9 @@ class ChatBot:
             # 确保所有任务已启动
             await self._ensure_started()
             
-            if ENABLE_S4U_CHAT:
+            platform = message_data["message_info"].get("platform")
+            
+            if platform == "amaidesu_default":
                 await self.do_s4u(message_data)
                 return
 
