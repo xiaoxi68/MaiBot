@@ -2,7 +2,7 @@ from rich.traceback import install
 
 from src.common.logger import get_logger
 from src.chat.message_receive.chat_stream import get_chat_manager
-from src.chat.focus_chat.heartFC_chat import HeartFChatting
+from src.chat.chat_loop.heartFC_chat import HeartFChatting
 from src.chat.utils.utils import get_chat_type_and_target_info
 
 logger = get_logger("sub_heartflow")

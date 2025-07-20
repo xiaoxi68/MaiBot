@@ -208,7 +208,10 @@ class MessageRecvS4U(MessageRecv):
         self.superchat_price = None
         self.superchat_message_text = None
         self.is_screen = False
+        self.is_internal = False
         self.voice_done = None
+        
+        self.chat_info = None
     
     async def process(self) -> None:
         self.processed_plain_text = await self._process_message_segments(self.message_segment)

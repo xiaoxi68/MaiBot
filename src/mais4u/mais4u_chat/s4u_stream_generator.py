@@ -2,7 +2,7 @@ import os
 from typing import AsyncGenerator
 from src.mais4u.openai_client import AsyncOpenAIClient
 from src.config.config import global_config
-from src.chat.message_receive.message import MessageRecv
+from src.chat.message_receive.message import MessageRecvS4U
 from src.mais4u.mais4u_chat.s4u_prompt import prompt_builder
 from src.common.logger import get_logger
 from src.person_info.person_info import PersonInfoManager, get_person_info_manager
@@ -45,16 +45,8 @@ class S4UStreamGenerator:
             r'[^.。!?？！\n\r]+(?:[.。!?？！\n\r](?![\'"])|$))',  # 匹配直到句子结束符
             re.UNICODE | re.DOTALL,
         )
-
-    async def generate_response(
-        self, message: MessageRecv, previous_reply_context: str = ""
-    ) -> AsyncGenerator[str, None]:
-        """根据当前模型类型选择对应的生成函数"""
-        # 从global_config中获取模型概率值并选择模型
-        self.partial_response = ""
-        current_client = self.client_1
-        self.current_model_name = self.model_1_name
-
+        
+    async def build_last_internal_message(self,message:MessageRecvS4U,previous_reply_context:str = ""):
         person_id = PersonInfoManager.get_person_id(
             message.chat_stream.user_info.platform, message.chat_stream.user_info.user_id
         )
@@ -78,19 +70,40 @@ class S4UStreamGenerator:
             [这是用户发来的新消息, 你需要结合上下文，对此进行回复]:
             {message.processed_plain_text}
             """
+            return True,message_txt
         else:
             message_txt = message.processed_plain_text
+            return False,message_txt
+        
+
+            
+    
+
+    async def generate_response(
+        self, message: MessageRecvS4U, previous_reply_context: str = ""
+    ) -> AsyncGenerator[str, None]:
+        """根据当前模型类型选择对应的生成函数"""
+        # 从global_config中获取模型概率值并选择模型
+        self.partial_response = ""
+        message_txt = message.processed_plain_text
+        if not message.is_internal:
+            interupted,message_txt_added = await self.build_last_internal_message(message,previous_reply_context)
+            if interupted:
+                message_txt = message_txt_added
 
         prompt = await prompt_builder.build_prompt_normal(
             message=message,
             message_txt=message_txt,
-            sender_name=sender_name,
             chat_stream=message.chat_stream,
         )
 
         logger.info(
             f"{self.current_model_name}思考:{message_txt[:30] + '...' if len(message_txt) > 30 else message_txt}"
         )  # noqa: E501
+
+        current_client = self.client_1
+        self.current_model_name = self.model_1_name
+
 
         extra_kwargs = {}
         if self.replyer_1_config.get("enable_thinking") is not None:

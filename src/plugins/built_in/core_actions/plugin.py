@@ -25,12 +25,14 @@ from src.plugin_system.apis import generator_api, message_api
 from src.plugins.built_in.core_actions.no_reply import NoReplyAction
 from src.plugins.built_in.core_actions.emoji import EmojiAction
 from src.person_info.person_info import get_person_info_manager
+from src.chat.mai_thinking.mai_think import mai_thinking_manager
 
 logger = get_logger("core_actions")
 
 # 常量定义
 WAITING_TIME_THRESHOLD = 1200  # 等待新消息时间阈值，单位秒
 
+ENABLE_THINKING = True
 
 class ReplyAction(BaseAction):
     """回复动作 - 参与聊天回复"""
@@ -130,6 +132,11 @@ class ReplyAction(BaseAction):
 
             # 存储动作记录
             reply_text = f"你对{person_name}进行了回复：{reply_text}"
+            
+            
+            if ENABLE_THINKING:
+                await mai_thinking_manager.get_mai_think(self.chat_id).do_think_after_response(reply_text)
+            
 
             await self.store_action_info(
                 action_build_into_prompt=False,

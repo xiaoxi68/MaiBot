@@ -14,13 +14,15 @@ from src.chat.utils.chat_message_builder import get_raw_msg_by_timestamp_with_ch
 from src.chat.planner_actions.planner import ActionPlanner
 from src.chat.planner_actions.action_modifier import ActionModifier
 from src.chat.planner_actions.action_manager import ActionManager
-from src.chat.focus_chat.hfc_utils import CycleDetail
+from src.chat.chat_loop.hfc_utils import CycleDetail
 from src.person_info.relationship_builder_manager import relationship_builder_manager
 from src.person_info.person_info import get_person_info_manager
 from src.plugin_system.base.component_types import ActionInfo, ChatMode
 from src.plugin_system.apis import generator_api, send_api, message_api
 from src.chat.willing.willing_manager import get_willing_manager
+from src.chat.mai_thinking.mai_think import mai_thinking_manager
 
+ENABLE_THINKING = True
 
 ERROR_LOOP_INFO = {
     "loop_plan_info": {
@@ -331,7 +333,11 @@ class HeartFChatting:
                 logger.info(f"[{self.log_prefix}] {global_config.bot.nickname} 决定的回复内容: {content}")
 
                 # 发送回复 (不再需要传入 chat)
-                await self._send_response(response_set, reply_to_str, loop_start_time,message_data)
+                reply_text = await self._send_response(response_set, reply_to_str, loop_start_time,message_data)
+                
+                if ENABLE_THINKING:
+                    await mai_thinking_manager.get_mai_think(self.stream_id).do_think_after_response(reply_text)
+                
 
                 return True
 

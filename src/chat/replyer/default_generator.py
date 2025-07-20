@@ -6,7 +6,7 @@ import re
 
 from typing import List, Optional, Dict, Any, Tuple
 from datetime import datetime
-
+from src.chat.mai_thinking.mai_think import mai_thinking_manager
 from src.common.logger import get_logger
 from src.config.config import global_config
 from src.individuality.individuality import get_individuality
@@ -739,6 +739,26 @@ class DefaultReplyer:
             core_dialogue_prompt, background_dialogue_prompt = self.build_s4u_chat_history_prompts(
                 message_list_before_now_long, target_user_id
             )
+            
+            mai_think = mai_thinking_manager.get_mai_think(chat_id)
+            mai_think.memory_block = memory_block
+            mai_think.relation_info_block = relation_info
+            mai_think.time_block = time_block
+            mai_think.chat_target = chat_target_1
+            mai_think.chat_target_2 = chat_target_2
+            # mai_think.chat_info = chat_talking_prompt
+            mai_think.mood_state = mood_prompt
+            mai_think.identity = identity_block
+            mai_think.sender = sender
+            mai_think.target = target
+            
+            mai_think.chat_info = f"""
+{background_dialogue_prompt}
+--------------------------------
+{time_block}
+这是你和{sender}的对话，你们正在交流中：
+{core_dialogue_prompt}"""
+            
 
             # 使用 s4u 风格的模板
             template_name = "s4u_style_prompt"
@@ -765,6 +785,18 @@ class DefaultReplyer:
                 moderation_prompt=moderation_prompt_block,
             )
         else:
+            mai_think = mai_thinking_manager.get_mai_think(chat_id)
+            mai_think.memory_block = memory_block
+            mai_think.relation_info_block = relation_info
+            mai_think.time_block = time_block
+            mai_think.chat_target = chat_target_1
+            mai_think.chat_target_2 = chat_target_2
+            mai_think.chat_info = chat_talking_prompt
+            mai_think.mood_state = mood_prompt
+            mai_think.identity = identity_block
+            mai_think.sender = sender
+            mai_think.target = target
+            
             # 使用原有的模式
             return await global_prompt_manager.format_prompt(
                 template_name,
