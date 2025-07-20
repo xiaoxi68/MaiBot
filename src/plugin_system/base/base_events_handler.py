@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Dict
 
 from src.common.logger import get_logger
 from .component_types import MaiMessages, EventType, EventHandlerInfo, ComponentType
@@ -21,15 +21,17 @@ class BaseEventHandler(ABC):
 
     def __init__(self):
         self.log_prefix = "[EventHandler]"
+        self.plugin_name = ""  # 对应插件名
+        self.plugin_config: Optional[Dict] = None  # 插件配置字典
         if self.event_type == EventType.UNKNOWN:
             raise NotImplementedError("事件处理器必须指定 event_type")
 
     @abstractmethod
-    async def execute(self, message: MaiMessages) -> Tuple[bool, Optional[str]]:
+    async def execute(self, message: MaiMessages) -> Tuple[bool, bool, Optional[str]]:
         """执行事件处理的抽象方法，子类必须实现
 
         Returns:
-            Tuple[bool, Optional[str]]: (是否执行成功, 可选的返回消息)
+            Tuple[bool, bool, Optional[str]]: (是否执行成功, 是否需要继续处理, 可选的返回消息)
         """
         raise NotImplementedError("子类必须实现 execute 方法")
 
@@ -49,3 +51,44 @@ class BaseEventHandler(ABC):
             weight=cls.weight,
             intercept_message=cls.intercept_message,
         )
+
+    def set_plugin_config(self, plugin_config: Dict) -> None:
+        """设置插件配置
+
+        Args:
+            plugin_config (dict): 插件配置字典
+        """
+        self.plugin_config = plugin_config
+
+    def set_plugin_name(self, plugin_name: str) -> None:
+        """设置插件名称
+
+        Args:
+            plugin_name (str): 插件名称
+        """
+        self.plugin_name = plugin_name
+
+    def get_config(self, key: str, default=None):
+        """获取插件配置值，支持嵌套键访问
+
+        Args:
+            key: 配置键名，支持嵌套访问如 "section.subsection.key"
+            default: 默认值
+
+        Returns:
+            Any: 配置值或默认值
+        """
+        if not self.plugin_config:
+            return default
+
+        # 支持嵌套键访问
+        keys = key.split(".")
+        current = self.plugin_config
+
+        for k in keys:
+            if isinstance(current, dict) and k in current:
+                current = current[k]
+            else:
+                return default
+
+        return current

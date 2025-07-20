@@ -41,6 +41,13 @@
     - 仅在插件 import 失败时会如此，正常注册过程中失败的插件不会显示包名，而是显示插件内部标识符。（这是特性，但是基本上不可能出现这个情况）
 7. 现在不支持单文件插件了，加载方式已经完全删除。
 8. 把`BaseEventPlugin`合并到了`BasePlugin`中，所有插件都应该继承自`BasePlugin`。
+9. `BaseEventHandler`现在有了`get_config`方法了。
+10. 修正了`main.py`中的错误输出。
+11. 修正了`command`所编译的`Pattern`注册时的错误输出。
+12. `events_manager`有了task相关逻辑了。
+
+### TODO
+把这个看起来就很别扭的config获取方式改一下
 
 
 # 吐槽
