@@ -5,7 +5,6 @@ from packaging.version import Version
 
 NEWEST_VER = "0.1.0"  # 当前支持的最新版本
 
-
 @dataclass
 class APIProvider:
     name: str = ""  # API提供商名称
@@ -60,6 +59,7 @@ class ModelUsageArgConfig:
     usage: List[ModelUsageArgConfigItem] = field(
         default_factory=lambda: []
     )  # 任务使用的模型列表
+
 
 
 @dataclass
