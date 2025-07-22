@@ -13,16 +13,23 @@ class BaseEventHandler(ABC):
     所有事件处理器都应该继承这个基类，提供事件处理的基本接口
     """
 
-    event_type: EventType = EventType.UNKNOWN  # 事件类型，默认为未知
-    handler_name: str = ""  # 处理器名称
+    event_type: EventType = EventType.UNKNOWN
+    """事件类型，默认为未知"""
+    handler_name: str = ""
+    """处理器名称"""
     handler_description: str = ""
-    weight: int = 0  # 权重，数值越大优先级越高
-    intercept_message: bool = False  # 是否拦截消息，默认为否
+    """处理器描述"""
+    weight: int = 0
+    """处理器权重，越大权重越高"""
+    intercept_message: bool = False
+    """是否拦截消息，默认为否"""
 
     def __init__(self):
         self.log_prefix = "[EventHandler]"
-        self.plugin_name = ""  # 对应插件名
-        self.plugin_config: Optional[Dict] = None  # 插件配置字典
+        self.plugin_name = ""
+        """对应插件名"""
+        self.plugin_config: Optional[Dict] = None
+        """插件配置字典"""
         if self.event_type == EventType.UNKNOWN:
             raise NotImplementedError("事件处理器必须指定 event_type")
 

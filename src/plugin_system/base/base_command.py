@@ -21,13 +21,18 @@ class BaseCommand(ABC):
     """
 
     command_name: str = ""
+    """Command组件的名称"""
     command_description: str = ""
+    """Command组件的描述"""
 
     # 默认命令设置（子类可以覆盖）
     command_pattern: str = ""
+    """命令匹配的正则表达式"""
     command_help: str = ""
+    """命令帮助信息"""
     command_examples: List[str] = []
-    intercept_message: bool = True  # 默认拦截消息，不继续处理
+    intercept_message: bool = True
+    """是否拦截信息，默认拦截，不进行后续处理"""
 
     def __init__(self, message: MessageRecv, plugin_config: Optional[dict] = None):
         """初始化Command组件

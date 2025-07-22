@@ -28,6 +28,7 @@ from .core import (
     component_registry,
     dependency_manager,
     events_manager,
+    global_announcement_manager,
 )
 
 # 导入工具模块
@@ -67,6 +68,7 @@ __all__ = [
     "component_registry",
     "dependency_manager",
     "events_manager",
+    "global_announcement_manager",
     # 装饰器
     "register_plugin",
     "ConfigField",

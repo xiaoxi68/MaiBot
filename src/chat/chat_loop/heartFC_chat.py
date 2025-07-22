@@ -51,6 +51,8 @@ NO_ACTION = {
     "action_prompt": "",
 }
 
+IS_MAI4U = False
+
 install(extra_lines=3)
 
 # 注释：原来的动作修改超时常量已移除，因为改为顺序执行
@@ -256,31 +258,29 @@ class HeartFChatting:
         )
         person_name = await person_info_manager.get_value(person_id, "person_name")
         return f"{person_name}:{message_data.get('processed_plain_text')}"
-    
+
     async def send_typing(self):
-        group_info = GroupInfo(platform = "amaidesu_default",group_id = 114514,group_name = "内心")
-        
-        chat =  await get_chat_manager().get_or_create_stream(
-            platform = "amaidesu_default",
-            user_info = None,
-            group_info = group_info
+        group_info = GroupInfo(platform="amaidesu_default", group_id="114514", group_name="内心")
+
+        chat = await get_chat_manager().get_or_create_stream(
+            platform="amaidesu_default",
+            user_info=None,
+            group_info=group_info,
         )
-        
-        
+
         await send_api.custom_to_stream(
             message_type="state", content="typing", stream_id=chat.stream_id, storage_message=False
         )
-        
+
     async def stop_typing(self):
-        group_info = GroupInfo(platform = "amaidesu_default",group_id = 114514,group_name = "内心")
-        
-        chat =  await get_chat_manager().get_or_create_stream(
-            platform = "amaidesu_default",
-            user_info = None,
-            group_info = group_info
+        group_info = GroupInfo(platform="amaidesu_default", group_id="114514", group_name="内心")
+
+        chat = await get_chat_manager().get_or_create_stream(
+            platform="amaidesu_default",
+            user_info=None,
+            group_info=group_info,
         )
-        
-        
+
         await send_api.custom_to_stream(
             message_type="state", content="stop_typing", stream_id=chat.stream_id, storage_message=False
         )
@@ -373,7 +373,6 @@ class HeartFChatting:
                 if ENABLE_THINKING:
                     await self.stop_typing()
                     await mai_thinking_manager.get_mai_think(self.stream_id).do_think_after_response(reply_text)
-                
 
                 return True
 
@@ -505,10 +504,9 @@ class HeartFChatting:
         """
 
         interested_rate = (message_data.get("interest_value") or 0.0) * self.willing_amplifier
-    
+
         self.willing_manager.setup(message_data, self.chat_stream)
-    
-    
+
         reply_probability = await self.willing_manager.get_reply_probability(message_data.get("message_id", ""))
 
         talk_frequency = -1.00
@@ -518,7 +516,7 @@ class HeartFChatting:
             if additional_config and "maimcore_reply_probability_gain" in additional_config:
                 reply_probability += additional_config["maimcore_reply_probability_gain"]
                 reply_probability = min(max(reply_probability, 0), 1)  # 确保概率在 0-1 之间
-            
+
             talk_frequency = global_config.chat.get_current_talk_frequency(self.stream_id)
             reply_probability = talk_frequency * reply_probability
 
@@ -528,9 +526,9 @@ class HeartFChatting:
 
         # 打印消息信息
         mes_name = self.chat_stream.group_info.group_name if self.chat_stream.group_info else "私聊"
-        
+
         # logger.info(f"[{mes_name}] 当前聊天频率: {talk_frequency:.2f},兴趣值: {interested_rate:.2f},回复概率: {reply_probability * 100:.1f}%")
-        
+
         if reply_probability > 0.05:
             logger.info(
                 f"[{mes_name}]"
@@ -546,7 +544,6 @@ class HeartFChatting:
         # 意愿管理器：注销当前message信息 (无论是否回复，只要处理过就删除)
         self.willing_manager.delete(message_data.get("message_id", ""))
         return False
-        
 
     async def _generate_response(
         self, message_data: dict, available_actions: Optional[Dict[str, ActionInfo]], reply_to: str
@@ -571,7 +568,7 @@ class HeartFChatting:
             logger.error(f"[{self.log_prefix}] 回复生成出现错误：{str(e)} {traceback.format_exc()}")
             return None
 
-    async def _send_response(self, reply_set, reply_to, thinking_start_time,message_data):
+    async def _send_response(self, reply_set, reply_to, thinking_start_time, message_data):
         current_time = time.time()
         new_message_count = message_api.count_new_messages(
             chat_id=self.chat_stream.stream_id, start_time=thinking_start_time, end_time=current_time
@@ -593,13 +590,27 @@ class HeartFChatting:
             if not first_replied:
                 if need_reply:
                     await send_api.text_to_stream(
-                        text=data, stream_id=self.chat_stream.stream_id, reply_to=reply_to, reply_to_platform_id=reply_to_platform_id, typing=False
+                        text=data,
+                        stream_id=self.chat_stream.stream_id,
+                        reply_to=reply_to,
+                        reply_to_platform_id=reply_to_platform_id,
+                        typing=False,
                     )
                 else:
-                    await send_api.text_to_stream(text=data, stream_id=self.chat_stream.stream_id, reply_to_platform_id=reply_to_platform_id, typing=False)
+                    await send_api.text_to_stream(
+                        text=data,
+                        stream_id=self.chat_stream.stream_id,
+                        reply_to_platform_id=reply_to_platform_id,
+                        typing=False,
+                    )
                 first_replied = True
             else:
-                await send_api.text_to_stream(text=data, stream_id=self.chat_stream.stream_id, reply_to_platform_id=reply_to_platform_id, typing=True)
+                await send_api.text_to_stream(
+                    text=data,
+                    stream_id=self.chat_stream.stream_id,
+                    reply_to_platform_id=reply_to_platform_id,
+                    typing=True,
+                )
             reply_text += data
 
         return reply_text

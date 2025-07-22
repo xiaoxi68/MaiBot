@@ -45,9 +45,18 @@
 10. 修正了`main.py`中的错误输出。
 11. 修正了`command`所编译的`Pattern`注册时的错误输出。
 12. `events_manager`有了task相关逻辑了。
+13. 现在有了插件卸载和重载功能了，也就是热插拔。
+14. 实现了组件的全局启用和禁用功能。
+  - 通过`enable_component`和`disable_component`方法来启用或禁用组件。
+  - 不过这个操作不会保存到配置文件~
+15. 实现了组件的局部禁用，也就是针对某一个聊天禁用的功能。
+  - 通过`disable_specific_chat_action`，`enable_specific_chat_action`，`disable_specific_chat_command`，`enable_specific_chat_command`，`disable_specific_chat_event_handler`，`enable_specific_chat_event_handler`来操作
+  - 同样不保存到配置文件~
 
 ### TODO
 把这个看起来就很别扭的config获取方式改一下
+
+来个API管理这些启用禁用！
 
 
 # 吐槽
@@ -65,3 +74,6 @@ plugin_path = Path(plugin_file)
 module_name = ".".join(plugin_path.parent.parts)
 ```
 这两个区别很大的。
+
+### 执笔BGM
+塞壬唱片！

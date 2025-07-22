@@ -1,7 +1,7 @@
 import json
 import time
 import traceback
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, List
 from rich.traceback import install
 from datetime import datetime
 from json_repair import repair_json
@@ -19,8 +19,8 @@ from src.chat.utils.chat_message_builder import (
 from src.chat.utils.utils import get_chat_type_and_target_info
 from src.chat.planner_actions.action_manager import ActionManager
 from src.chat.message_receive.chat_stream import get_chat_manager
-from src.plugin_system.base.component_types import ActionInfo, ChatMode
-
+from src.plugin_system.base.component_types import ActionInfo, ChatMode, ComponentType
+from src.plugin_system.core.component_registry import component_registry
 
 logger = get_logger("planner")
 
@@ -99,7 +99,7 @@ class ActionPlanner:
 
     async def plan(
         self, mode: ChatMode = ChatMode.FOCUS
-    ) -> Tuple[Dict[str, Dict[str, Any] | str], Optional[Dict[str, Any]]]:  # sourcery skip: dict-comprehension
+    ) -> Tuple[Dict[str, Dict[str, Any] | str], Optional[Dict[str, Any]]]:
         """
         规划器 (Planner): 使用LLM根据上下文决定做出什么动作。
         """
@@ -113,16 +113,17 @@ class ActionPlanner:
 
         try:
             is_group_chat = True
-
             is_group_chat, chat_target_info = get_chat_type_and_target_info(self.chat_id)
             logger.debug(f"{self.log_prefix}获取到聊天信息 - 群聊: {is_group_chat}, 目标信息: {chat_target_info}")
 
             current_available_actions_dict = self.action_manager.get_using_actions()
 
             # 获取完整的动作信息
-            all_registered_actions = self.action_manager.get_registered_actions()
-
-            for action_name in current_available_actions_dict.keys():
+            all_registered_actions: List[ActionInfo] = list(
+                component_registry.get_components_by_type(ComponentType.ACTION).values()  # type: ignore
+            )
+            current_available_actions = {}
+            for action_name in current_available_actions_dict:
                 if action_name in all_registered_actions:
                     current_available_actions[action_name] = all_registered_actions[action_name]
                 else:
@@ -234,10 +235,13 @@ class ActionPlanner:
             "is_parallel": is_parallel,
         }
 
-        return {
-            "action_result": action_result,
-            "action_prompt": prompt,
-        }, target_message
+        return (
+            {
+                "action_result": action_result,
+                "action_prompt": prompt,
+            },
+            target_message,
+        )
 
     async def build_planner_prompt(
         self,

@@ -65,21 +65,28 @@ class BaseAction(ABC):
         self.thinking_id = thinking_id
         self.log_prefix = log_prefix
 
-        # 保存插件配置
         self.plugin_config = plugin_config or {}
+        """对应的插件配置"""
 
         # 设置动作基本信息实例属性
         self.action_name: str = getattr(self, "action_name", self.__class__.__name__.lower().replace("action", ""))
+        """Action的名字"""
         self.action_description: str = getattr(self, "action_description", self.__doc__ or "Action组件")
+        """Action的描述"""
         self.action_parameters: dict = getattr(self.__class__, "action_parameters", {}).copy()
         self.action_require: list[str] = getattr(self.__class__, "action_require", []).copy()
 
         # 设置激活类型实例属性（从类属性复制，提供默认值）
         self.focus_activation_type = getattr(self.__class__, "focus_activation_type", ActionActivationType.ALWAYS)
+        """FOCUS模式下的激活类型"""
         self.normal_activation_type = getattr(self.__class__, "normal_activation_type", ActionActivationType.ALWAYS)
+        """NORMAL模式下的激活类型"""
         self.random_activation_probability: float = getattr(self.__class__, "random_activation_probability", 0.0)
+        """当激活类型为RANDOM时的概率"""
         self.llm_judge_prompt: str = getattr(self.__class__, "llm_judge_prompt", "")
+        """协助LLM进行判断的Prompt"""
         self.activation_keywords: list[str] = getattr(self.__class__, "activation_keywords", []).copy()
+        """激活类型为KEYWORD时的KEYWORDS列表"""
         self.keyword_case_sensitive: bool = getattr(self.__class__, "keyword_case_sensitive", False)
         self.mode_enable: ChatMode = getattr(self.__class__, "mode_enable", ChatMode.ALL)
         self.parallel_action: bool = getattr(self.__class__, "parallel_action", True)

@@ -619,9 +619,7 @@ def get_chat_type_and_target_info(chat_id: str) -> Tuple[bool, Optional[Dict]]:
     chat_target_info = None
 
     try:
-        chat_stream = get_chat_manager().get_stream(chat_id)
-
-        if chat_stream:
+        if chat_stream := get_chat_manager().get_stream(chat_id):
             if chat_stream.group_info:
                 is_group_chat = True
                 chat_target_info = None  # Explicitly None for group chat
@@ -660,8 +658,6 @@ def get_chat_type_and_target_info(chat_id: str) -> Tuple[bool, Optional[Dict]]:
                 chat_target_info = target_info
         else:
             logger.warning(f"无法获取 chat_stream for {chat_id} in utils")
-            # Keep defaults: is_group_chat=False, chat_target_info=None
-
     except Exception as e:
         logger.error(f"获取聊天类型和目标信息时出错 for {chat_id}: {e}", exc_info=True)
         # Keep defaults on error
