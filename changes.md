@@ -46,6 +46,9 @@
 11. 修正了`command`所编译的`Pattern`注册时的错误输出。
 12. `events_manager`有了task相关逻辑了。
 13. 现在有了插件卸载和重载功能了，也就是热插拔。
+14. 实现了组件的全局启用和禁用功能。
+  - 通过`enable_component`和`disable_component`方法来启用或禁用组件。
+  - 不过这个操作不会保存到配置文件~
 
 ### TODO
 把这个看起来就很别扭的config获取方式改一下

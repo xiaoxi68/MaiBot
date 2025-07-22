@@ -163,20 +163,25 @@ class ChatManager:
         """注册消息到聊天流"""
         stream_id = self._generate_stream_id(
             message.message_info.platform,  # type: ignore
-            message.message_info.user_info,  # type: ignore
+            message.message_info.user_info,
             message.message_info.group_info,
         )
         self.last_messages[stream_id] = message
         # logger.debug(f"注册消息到聊天流: {stream_id}")
 
     @staticmethod
-    def _generate_stream_id(platform: str, user_info: UserInfo, group_info: Optional[GroupInfo] = None) -> str:
+    def _generate_stream_id(
+        platform: str, user_info: Optional[UserInfo], group_info: Optional[GroupInfo] = None
+    ) -> str:
         """生成聊天流唯一ID"""
+        if not user_info and not group_info:
+            raise ValueError("用户信息或群组信息必须提供")
+
         if group_info:
             # 组合关键信息
             components = [platform, str(group_info.group_id)]
         else:
-            components = [platform, str(user_info.user_id), "private"]
+            components = [platform, str(user_info.user_id), "private"]  # type: ignore
 
         # 使用MD5生成唯一ID
         key = "_".join(components)

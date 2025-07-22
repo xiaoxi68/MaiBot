@@ -110,11 +110,17 @@ class ComponentRegistry:
         # 根据组件类型进行特定注册（使用原始名称）
         match component_type:
             case ComponentType.ACTION:
-                ret = self._register_action_component(component_info, component_class)  # type: ignore
+                assert isinstance(component_info, ActionInfo)
+                assert issubclass(component_class, BaseAction)
+                ret = self._register_action_component(component_info, component_class)
             case ComponentType.COMMAND:
-                ret = self._register_command_component(component_info, component_class)  # type: ignore
+                assert isinstance(component_info, CommandInfo)
+                assert issubclass(component_class, BaseCommand)
+                ret = self._register_command_component(component_info, component_class)
             case ComponentType.EVENT_HANDLER:
-                ret = self._register_event_handler_component(component_info, component_class)  # type: ignore
+                assert isinstance(component_info, EventHandlerInfo)
+                assert issubclass(component_class, BaseEventHandler)
+                ret = self._register_event_handler_component(component_info, component_class)
             case _:
                 logger.warning(f"未知组件类型: {component_type}")
 
@@ -217,6 +223,71 @@ class ComponentRegistry:
         self._components_by_type[component_type].pop(component_name, None)
         self._components_classes.pop(component_name, None)
         logger.info(f"组件 {component_name} 已移除")
+
+    # === 组件全局启用/禁用方法 ===
+
+    def enable_component(self, component_name: str, component_type: ComponentType) -> bool:
+        """全局的启用某个组件
+        Parameters:
+            component_name: 组件名称
+            component_type: 组件类型
+        Returns:
+            bool: 启用成功返回True，失败返回False
+        """
+        target_component_class = self.get_component_class(component_name, component_type)
+        target_component_info = self.get_component_info(component_name, component_type)
+        if not target_component_class or not target_component_info:
+            logger.warning(f"组件 {component_name} 未注册，无法启用")
+            return False
+        target_component_info.enabled = True
+        match component_type:
+            case ComponentType.ACTION:
+                assert isinstance(target_component_info, ActionInfo)
+                self._default_actions[component_name] = target_component_info
+            case ComponentType.COMMAND:
+                assert isinstance(target_component_info, CommandInfo)
+                pattern = target_component_info.command_pattern
+                self._command_patterns[re.compile(pattern)] = component_name
+            case ComponentType.EVENT_HANDLER:
+                assert isinstance(target_component_info, EventHandlerInfo)
+                assert issubclass(target_component_class, BaseEventHandler)
+                self._enabled_event_handlers[component_name] = target_component_class
+                from .events_manager import events_manager  # 延迟导入防止循环导入问题
+
+                events_manager.register_event_subscriber(target_component_info, target_component_class)
+        self._components[component_name].enabled = True
+        self._components_by_type[component_type][component_name].enabled = True
+        logger.info(f"组件 {component_name} 已启用")
+        return True
+
+    async def disable_component(self, component_name: str, component_type: ComponentType) -> bool:
+        """全局的禁用某个组件
+        Parameters:
+            component_name: 组件名称
+            component_type: 组件类型
+        Returns:
+            bool: 禁用成功返回True，失败返回False
+        """
+        target_component_class = self.get_component_class(component_name, component_type)
+        target_component_info = self.get_component_info(component_name, component_type)
+        if not target_component_class or not target_component_info:
+            logger.warning(f"组件 {component_name} 未注册，无法禁用")
+            return False
+        target_component_info.enabled = False
+        match component_type:
+            case ComponentType.ACTION:
+                self._default_actions.pop(component_name, None)
+            case ComponentType.COMMAND:
+                self._command_patterns = {k: v for k, v in self._command_patterns.items() if v != component_name}
+            case ComponentType.EVENT_HANDLER:
+                self._enabled_event_handlers.pop(component_name, None)
+                from .events_manager import events_manager  # 延迟导入防止循环导入问题
+
+                await events_manager.unregister_event_subscriber(component_name)
+        self._components[component_name].enabled = False
+        self._components_by_type[component_type][component_name].enabled = False
+        logger.info(f"组件 {component_name} 已禁用")
+        return True
 
     # === 组件查询方法 ===
     def get_component_info(
