@@ -119,9 +119,7 @@ class ActionPlanner:
             current_available_actions_dict = self.action_manager.get_using_actions()
 
             # 获取完整的动作信息
-            all_registered_actions: List[ActionInfo] = list(
-                component_registry.get_components_by_type(ComponentType.ACTION).values()  # type: ignore
-            )
+            all_registered_actions = component_registry.get_components_by_type(ComponentType.ACTION)  # type: ignore
             current_available_actions = {}
             for action_name in current_available_actions_dict:
                 if action_name in all_registered_actions:
