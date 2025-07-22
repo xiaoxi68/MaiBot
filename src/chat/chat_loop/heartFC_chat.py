@@ -23,7 +23,7 @@ from src.chat.willing.willing_manager import get_willing_manager
 from src.chat.mai_thinking.mai_think import mai_thinking_manager
 from maim_message.message_base import GroupInfo,UserInfo
 
-ENABLE_THINKING = True
+ENABLE_THINKING = False
 
 ERROR_LOOP_INFO = {
     "loop_plan_info": {
