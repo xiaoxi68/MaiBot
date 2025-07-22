@@ -297,9 +297,14 @@ class SuperChatManager:
 
 
 # 全局SuperChat管理器实例
-super_chat_manager = SuperChatManager()
+from src.mais4u.constant_s4u import ENABLE_S4U
 
+if ENABLE_S4U:
+    super_chat_manager = SuperChatManager()
+else:
+    super_chat_manager = None
 
 def get_super_chat_manager() -> SuperChatManager:
     """获取全局SuperChat管理器实例"""
-    return super_chat_manager 
+
+    return super_chat_manager

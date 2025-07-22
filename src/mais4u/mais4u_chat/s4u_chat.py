@@ -164,8 +164,11 @@ class S4UChatManager:
             self.s4u_chats[chat_stream.stream_id] = S4UChat(chat_stream)
         return self.s4u_chats[chat_stream.stream_id]
 
-
-s4u_chat_manager = S4UChatManager()
+from src.mais4u.constant_s4u import ENABLE_S4U
+if not ENABLE_S4U:
+    s4u_chat_manager = None
+else:
+    s4u_chat_manager = S4UChatManager()
 
 
 def get_s4u_chat_manager() -> S4UChatManager:

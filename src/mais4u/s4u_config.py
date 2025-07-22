@@ -352,13 +352,17 @@ def load_s4u_config(config_path: str) -> S4UGlobalConfig:
         logger.critical("S4U配置文件解析失败")
         raise e
 
+from src.mais4u.constant_s4u import ENABLE_S4U
+if not ENABLE_S4U:
+    s4u_config = None
+    s4u_config_main = None
+else:
+    # 初始化S4U配置
+    logger.info(f"S4U当前版本: {S4U_VERSION}")
+    update_s4u_config()
 
-# 初始化S4U配置
-logger.info(f"S4U当前版本: {S4U_VERSION}")
-update_s4u_config()
+    logger.info("正在加载S4U配置文件...")
+    s4u_config_main = load_s4u_config(config_path=CONFIG_PATH)
+    logger.info("S4U配置文件加载完成！")
 
-logger.info("正在加载S4U配置文件...")
-s4u_config_main = load_s4u_config(config_path=CONFIG_PATH)
-logger.info("S4U配置文件加载完成！")
-
-s4u_config: S4UConfig = s4u_config_main.s4u
+    s4u_config: S4UConfig = s4u_config_main.s4u

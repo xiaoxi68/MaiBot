@@ -1,1 +1,1 @@
-ENABLE_THINKING = False
+ENABLE_S4U = False

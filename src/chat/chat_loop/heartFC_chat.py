@@ -22,7 +22,7 @@ from src.plugin_system.apis import generator_api, send_api, message_api
 from src.chat.willing.willing_manager import get_willing_manager
 from src.chat.mai_thinking.mai_think import mai_thinking_manager
 from maim_message.message_base import GroupInfo
-from src.mais4u.constant_s4u import ENABLE_THINKING
+from src.mais4u.constant_s4u import ENABLE_S4U
 
 ERROR_LOOP_INFO = {
     "loop_plan_info": {
@@ -295,7 +295,7 @@ class HeartFChatting:
 
         logger.info(f"{self.log_prefix} 开始第{self._cycle_counter}次思考[模式：{self.loop_mode}]")
         
-        if ENABLE_THINKING:
+        if ENABLE_S4U:
             await self.send_typing()
 
         async with global_prompt_manager.async_message_scope(self.chat_stream.context.get_template_name()):
@@ -370,7 +370,7 @@ class HeartFChatting:
                 
                 
                 
-                if ENABLE_THINKING:
+                if ENABLE_S4U:
                     await self.stop_typing()
                     await mai_thinking_manager.get_mai_think(self.stream_id).do_think_after_response(reply_text)
 
