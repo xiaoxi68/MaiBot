@@ -13,8 +13,8 @@ from src.chat.message_receive.message import MessageRecv, MessageRecvS4U
 from src.chat.message_receive.storage import MessageStorage
 from src.chat.heart_flow.heartflow_message_processor import HeartFCMessageReceiver
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
-from src.plugin_system.core.component_registry import component_registry  # 导入新插件系统
-from src.plugin_system.base.base_command import BaseCommand
+from src.plugin_system.core import component_registry, events_manager  # 导入新插件系统
+from src.plugin_system.base import BaseCommand, EventType
 from src.mais4u.mais4u_chat.s4u_msg_processor import S4UMessageProcessor
 from src.llm_models.utils_model import LLMRequest
 
@@ -140,57 +140,22 @@ class ChatBot:
         message = MessageRecvS4U(message_data)
         group_info = message.message_info.group_info
         user_info = message.message_info.user_info
-        
-        
+
         get_chat_manager().register_message(message)
         chat = await get_chat_manager().get_or_create_stream(
             platform=message.message_info.platform,  # type: ignore
             user_info=user_info,  # type: ignore
             group_info=group_info,
         )
-        
+
         message.update_chat_stream(chat)
 
         # 处理消息内容
         await message.process()
-        
+
         await self.s4u_message_processor.process_message(message)
-        
+
         return
-    
-    async def hanle_notice_message(self, message: MessageRecv):
-        if message.message_info.message_id == "notice":
-            logger.info(f"收到notice消息，暂时不支持处理")
-            return True
-    
-    async def check_ban_content(self,message:MessageRecv):
-        content = message.processed_plain_text
-        model = LLMRequest(
-                model=global_config.model.utils_small,
-                temperature=0.3,
-                request_type="text_ban",
-        )
-        
-        if content.startswith("[picid:"):
-            return False
-        
-        prompt = f"""
-        你是一个直播内容审核者，请判断以下内容是否符合直播内容规范，如果符合，请输出"符合"，如果不符合，请输出"不符合"以及理由
-        如果存在反动，敏感内容，请输出"不符合"
-        
-        内容：{content}
-        
-        现在请输出：
-        """
-        
-        response, (reasoning_content, model_name) = await model.generate_response_async(prompt=prompt)
-        logger.info(f"response: {response}")
-        logger.info(f"reasoning_content: {reasoning_content}")
-        
-        if "不符合" in response:
-            return True
-        else:
-            return False
 
 
     async def message_process(self, message_data: Dict[str, Any]) -> None:
@@ -212,9 +177,9 @@ class ChatBot:
             
             # 确保所有任务已启动
             await self._ensure_started()
-            
+
             platform = message_data["message_info"].get("platform")
-            
+
             if platform == "amaidesu_default":
                 await self.do_s4u(message_data)
                 return
@@ -242,6 +207,9 @@ class ChatBot:
                 if sent_message:  # 这一段只是为了在一切处理前劫持上报的自身消息，用于更新message_id，需要ada支持上报事件，实际测试中不会对正常使用造成任何问题
                     await MessageStorage.update_message(message)
                     return
+
+            if not await events_manager.handle_mai_events(EventType.ON_MESSAGE, message):
+                return
 
             get_chat_manager().register_message(message)
 

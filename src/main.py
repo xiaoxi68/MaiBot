@@ -78,8 +78,7 @@ class MainSystem:
         # logger.info("API服务器启动成功")
 
         # 加载所有actions，包括默认的和插件的
-        plugin_count, component_count = plugin_manager.load_all_plugins()
-        logger.info(f"插件系统加载成功: {plugin_count} 个插件，{component_count} 个组件")
+        plugin_manager.load_all_plugins()
 
         # 初始化表情管理器
         get_emoji_manager().initialize()

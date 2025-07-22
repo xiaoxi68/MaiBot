@@ -159,8 +159,8 @@ class ComponentRegistry:
             pattern = re.compile(command_info.command_pattern, re.IGNORECASE | re.DOTALL)
             if pattern not in self._command_patterns:
                 self._command_patterns[pattern] = command_name
-
-            logger.warning(f"'{command_name}' 对应的命令模式与 '{self._command_patterns[pattern]}' 重复，忽略此命令")
+            else:
+                logger.warning(f"'{command_name}' 对应的命令模式与 '{self._command_patterns[pattern]}' 重复，忽略此命令")
 
         return True
 
