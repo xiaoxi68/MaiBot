@@ -27,7 +27,7 @@ class ComponentRegistry:
     def __init__(self):
         # 组件注册表
         self._components: Dict[str, ComponentInfo] = {}  # 命名空间式组件名 -> 组件信息
-        # 类型 -> 命名空间式名称 -> 组件信息
+        # 类型 -> 组件原名称 -> 组件信息
         self._components_by_type: Dict[ComponentType, Dict[str, ComponentInfo]] = {types: {} for types in ComponentType}
         # 命名空间式组件名 -> 组件类
         self._components_classes: Dict[str, Type[Union[BaseCommand, BaseAction, BaseEventHandler]]] = {}
@@ -160,7 +160,9 @@ class ComponentRegistry:
             if pattern not in self._command_patterns:
                 self._command_patterns[pattern] = command_name
             else:
-                logger.warning(f"'{command_name}' 对应的命令模式与 '{self._command_patterns[pattern]}' 重复，忽略此命令")
+                logger.warning(
+                    f"'{command_name}' 对应的命令模式与 '{self._command_patterns[pattern]}' 重复，忽略此命令"
+                )
 
         return True
 
@@ -176,6 +178,10 @@ class ComponentRegistry:
 
         self._event_handler_registry[handler_name] = handler_class
 
+        if not handler_info.enabled:
+            logger.warning(f"EventHandler组件 {handler_name} 未启用")
+            return True  # 未启用，但是也是注册成功
+
         from .events_manager import events_manager  # 延迟导入防止循环导入问题
 
         if events_manager.register_event_subscriber(handler_info, handler_class):
@@ -184,6 +190,33 @@ class ComponentRegistry:
         else:
             logger.error(f"注册事件处理器 {handler_name} 失败")
             return False
+
+    # === 组件移除相关 ===
+
+    async def remove_component(self, component_name: str, component_type: ComponentType):
+        target_component_class = self.get_component_class(component_name, component_type)
+        if not target_component_class:
+            logger.warning(f"组件 {component_name} 未注册，无法移除")
+            return
+        match component_type:
+            case ComponentType.ACTION:
+                self._action_registry.pop(component_name, None)
+                self._default_actions.pop(component_name, None)
+            case ComponentType.COMMAND:
+                self._command_registry.pop(component_name, None)
+                keys_to_remove = [k for k, v in self._command_patterns.items() if v == component_name]
+                for key in keys_to_remove:
+                    self._command_patterns.pop(key, None)
+            case ComponentType.EVENT_HANDLER:
+                from .events_manager import events_manager  # 延迟导入防止循环导入问题
+
+                self._event_handler_registry.pop(component_name, None)
+                self._enabled_event_handlers.pop(component_name, None)
+                await events_manager.unregister_event_subscriber(component_name)
+        self._components.pop(component_name, None)
+        self._components_by_type[component_type].pop(component_name, None)
+        self._components_classes.pop(component_name, None)
+        logger.info(f"组件 {component_name} 已移除")
 
     # === 组件查询方法 ===
     def get_component_info(
@@ -287,7 +320,7 @@ class ComponentRegistry:
     # === Action特定查询方法 ===
 
     def get_action_registry(self) -> Dict[str, Type[BaseAction]]:
-        """获取Action注册表（用于兼容现有系统）"""
+        """获取Action注册表"""
         return self._action_registry.copy()
 
     def get_registered_action_info(self, action_name: str) -> Optional[ActionInfo]:

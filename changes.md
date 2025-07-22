@@ -45,6 +45,7 @@
 10. 修正了`main.py`中的错误输出。
 11. 修正了`command`所编译的`Pattern`注册时的错误输出。
 12. `events_manager`有了task相关逻辑了。
+13. 现在有了插件卸载和重载功能了，也就是热插拔。
 
 ### TODO
 把这个看起来就很别扭的config获取方式改一下
@@ -65,3 +66,6 @@ plugin_path = Path(plugin_file)
 module_name = ".".join(plugin_path.parent.parts)
 ```
 这两个区别很大的。
+
+### 执笔BGM
+塞壬唱片！

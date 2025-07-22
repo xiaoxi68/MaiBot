@@ -47,7 +47,6 @@ class ActionModifier:
 
     async def modify_actions(
         self,
-        history_loop=None,
         message_content: str = "",
     ):  # sourcery skip: use-named-expression
         """
@@ -318,7 +317,7 @@ class ActionModifier:
         action_name: str,
         action_info: ActionInfo,
         chat_content: str = "",
-    ) -> bool:
+    ) -> bool:  # sourcery skip: move-assign-in-block, use-named-expression
         """
         使用LLM判定是否应该激活某个action
 

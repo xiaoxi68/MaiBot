@@ -28,7 +28,6 @@ def register_plugin(cls):
     if "." in plugin_name:
         logger.error(f"插件名称 '{plugin_name}' 包含非法字符 '.'，请使用下划线替代")
         raise ValueError(f"插件名称 '{plugin_name}' 包含非法字符 '.'，请使用下划线替代")
-    plugin_manager.plugin_classes[plugin_name] = cls
     splitted_name = cls.__module__.split(".")
     root_path = Path(__file__)
 
@@ -40,6 +39,7 @@ def register_plugin(cls):
         logger.error(f"注册 {plugin_name} 无法找到项目根目录")
         return cls
 
+    plugin_manager.plugin_classes[plugin_name] = cls
     plugin_manager.plugin_paths[plugin_name] = str(Path(root_path, *splitted_name).resolve())
     logger.debug(f"插件类已注册: {plugin_name}, 路径: {plugin_manager.plugin_paths[plugin_name]}")
 

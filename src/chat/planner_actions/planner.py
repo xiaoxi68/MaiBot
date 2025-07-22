@@ -113,7 +113,6 @@ class ActionPlanner:
 
         try:
             is_group_chat = True
-
             is_group_chat, chat_target_info = get_chat_type_and_target_info(self.chat_id)
             logger.debug(f"{self.log_prefix}获取到聊天信息 - 群聊: {is_group_chat}, 目标信息: {chat_target_info}")
 
@@ -234,10 +233,13 @@ class ActionPlanner:
             "is_parallel": is_parallel,
         }
 
-        return {
-            "action_result": action_result,
-            "action_prompt": prompt,
-        }, target_message
+        return (
+            {
+                "action_result": action_result,
+                "action_prompt": prompt,
+            },
+            target_message,
+        )
 
     async def build_planner_prompt(
         self,
