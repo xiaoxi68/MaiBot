@@ -34,7 +34,10 @@ BODY_CODE = {
     "另一个帅气的姿势": "010_0191",
     "手掌朝前可爱": "010_0210",
     "平静，双手后放":"平静，双手后放",
-    "思考": "思考"
+    "思考": "思考",
+    "优雅，左手放在腰上": "优雅，左手放在腰上",
+    "一般": "一般",
+    "可爱，双手前放": "可爱，双手前放",
 }
 
 
@@ -84,8 +87,7 @@ def init_prompt():
 class ChatAction:
     def __init__(self, chat_id: str):
         self.chat_id: str = chat_id
-        self.hand_action: str = "双手放在桌面"
-        self.body_action: str = "坐着"
+        self.body_action: str = "一般"
         self.head_action: str = "注视摄像机"
 
         self.regression_count: int = 0

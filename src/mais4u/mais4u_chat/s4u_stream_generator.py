@@ -46,6 +46,8 @@ class S4UStreamGenerator:
             re.UNICODE | re.DOTALL,
         )
         
+        self.chat_stream =None
+        
     async def build_last_internal_message(self,message:MessageRecvS4U,previous_reply_context:str = ""):
         person_id = PersonInfoManager.get_person_id(
             message.chat_stream.user_info.platform, message.chat_stream.user_info.user_id
@@ -91,10 +93,10 @@ class S4UStreamGenerator:
             if interupted:
                 message_txt = message_txt_added
 
+        message.chat_stream = self.chat_stream
         prompt = await prompt_builder.build_prompt_normal(
             message=message,
             message_txt=message_txt,
-            chat_stream=message.chat_stream,
         )
 
         logger.info(

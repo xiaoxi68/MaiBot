@@ -98,6 +98,8 @@ def init_prompt():
 {relation_info_block}
 {extra_info_block}
 
+你是一个AI虚拟主播，正在直播QQ聊天，同时也在直播间回复弹幕，不过回复的时候不用过多提及这点
+
 {identity}
 
 {action_descriptions}

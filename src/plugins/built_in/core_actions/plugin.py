@@ -32,7 +32,7 @@ logger = get_logger("core_actions")
 # 常量定义
 WAITING_TIME_THRESHOLD = 1200  # 等待新消息时间阈值，单位秒
 
-ENABLE_THINKING = True
+ENABLE_THINKING = False
 
 class ReplyAction(BaseAction):
     """回复动作 - 参与聊天回复"""

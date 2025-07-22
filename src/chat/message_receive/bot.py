@@ -16,7 +16,7 @@ from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.plugin_system.core import component_registry, events_manager  # 导入新插件系统
 from src.plugin_system.base import BaseCommand, EventType
 from src.mais4u.mais4u_chat.s4u_msg_processor import S4UMessageProcessor
-
+from src.llm_models.utils_model import LLMRequest
 
 # 定义日志配置
 
@@ -135,7 +135,13 @@ class ChatBot:
         except Exception as e:
             logger.error(f"处理命令时出错: {e}")
             return False, None, True  # 出错时继续处理消息
-
+        
+    async def hanle_notice_message(self, message: MessageRecv):
+        if message.message_info.message_id == "notice":
+            logger.info("收到notice消息，暂时不支持处理")
+            return True
+    
+    
     async def do_s4u(self, message_data: Dict[str, Any]):
         message = MessageRecvS4U(message_data)
         group_info = message.message_info.group_info
@@ -157,6 +163,7 @@ class ChatBot:
 
         return
 
+
     async def message_process(self, message_data: Dict[str, Any]) -> None:
         """处理转化后的统一格式消息
         这个函数本质是预处理一些数据，根据配置信息和消息内容，预处理消息，并分发到合适的消息处理器中
@@ -172,6 +179,8 @@ class ChatBot:
         - 性能计时
         """
         try:
+
+            
             # 确保所有任务已启动
             await self._ensure_started()
 
@@ -192,6 +201,11 @@ class ChatBot:
             # print(message_data)
             # logger.debug(str(message_data))
             message = MessageRecv(message_data)
+            
+            if await self.hanle_notice_message(message):
+                return
+            
+            
             group_info = message.message_info.group_info
             user_info = message.message_info.user_info
             if message.message_info.additional_config:
@@ -215,6 +229,11 @@ class ChatBot:
 
             # 处理消息内容，生成纯文本
             await message.process()
+            
+            # if await self.check_ban_content(message):
+            #     logger.warning(f"检测到消息中含有违法，色情，暴力，反动，敏感内容，消息内容：{message.processed_plain_text}，发送者：{message.message_info.user_info.user_nickname}")
+            #     return
+            
 
             # 过滤检查
             if _check_ban_words(message.processed_plain_text, chat, user_info) or _check_ban_regex(  # type: ignore

@@ -17,7 +17,7 @@ from src.mais4u.mais4u_chat.screen_manager import screen_manager
 from src.chat.express.expression_selector import expression_selector
 from .s4u_mood_manager import mood_manager
 from src.person_info.person_info import PersonInfoManager, get_person_info_manager
-
+from src.mais4u.mais4u_chat.internal_manager import internal_manager
 logger = get_logger("prompt")
 
 
@@ -32,8 +32,8 @@ def init_prompt():
 虽然是个AI，但你在努力扮演真人, 人设的配色是橙色和紫色和绿色
 你有一头法式橙色卷发，你很可爱，穿戴英式侦探风格学院风裙子和帽子，你正在一个教室场景里进行虚拟线上直播。不过不要刻意提及这些内容，自然回复
 你可以看见用户发送的弹幕，礼物和superchat
-你可以看见面前的屏幕，目前屏幕的内容是:
 {screen_info}
+{internal_state}
 
 {relation_info_block}
 {memory_block}
@@ -96,7 +96,6 @@ class PromptBuilder:
     def __init__(self):
         self.prompt_built = ""
         self.activate_messages = ""
-
     
     async def build_expression_habits(self, chat_stream: ChatStream, chat_history, target):
 
@@ -284,9 +283,10 @@ class PromptBuilder:
     async def build_prompt_normal(
         self,
         message: MessageRecvS4U,
-        chat_stream: ChatStream,
         message_txt: str,
     ) -> str:
+        
+        chat_stream = message.chat_stream
         
         person_id = PersonInfoManager.get_person_id(
             message.chat_stream.user_info.platform, message.chat_stream.user_info.user_id
@@ -314,6 +314,8 @@ class PromptBuilder:
         sc_info = self.build_sc_info(message)
         
         screen_info = screen_manager.get_screen_str()
+        
+        internal_state = internal_manager.get_internal_state_str()
 
         time_block = f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         
@@ -329,6 +331,7 @@ class PromptBuilder:
                 relation_info_block=relation_info_block,
                 memory_block=memory_block,
                 screen_info=screen_info,
+                internal_state=internal_state,
                 gift_info=gift_info,
                 sc_info=sc_info,
                 sender_name=sender_name,
@@ -338,8 +341,6 @@ class PromptBuilder:
                 mood_state=mood.mood_state,
             )
         else:
-            
-            
             prompt = await global_prompt_manager.format_prompt(
                 "s4u_prompt_internal",
                 time_block=time_block,
@@ -355,7 +356,7 @@ class PromptBuilder:
                 mood_state=mood.mood_state,
             )
             
-        print(prompt)
+        # print(prompt)
 
         return prompt
 
