@@ -1,6 +1,5 @@
-
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, Optional
 
 
 @dataclass
@@ -10,7 +9,7 @@ class Personality:
     bot_nickname: str  # 机器人昵称
     personality_core: str  # 人格核心特点
     personality_side: str  # 人格侧面描述
-    identity: List[str]  # 身份细节描述
+    identity: Optional[str]  # 身份细节描述
     compress_personality: bool  # 是否压缩人格
     compress_identity: bool  # 是否压缩身份
 
@@ -21,7 +20,7 @@ class Personality:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __init__(self, personality_core: str = "", personality_side: str = "", identity: List[str] = None):
+    def __init__(self, personality_core: str = "", personality_side: str = "", identity: Optional[str] = None):
         self.personality_core = personality_core
         self.personality_side = personality_side
         self.identity = identity
@@ -45,7 +44,7 @@ class Personality:
         bot_nickname: str,
         personality_core: str,
         personality_side: str,
-        identity: List[str] = None,
+        identity: Optional[str] = None,
         compress_personality: bool = True,
         compress_identity: bool = True,
     ) -> "Personality":

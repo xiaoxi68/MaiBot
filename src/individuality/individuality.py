@@ -173,12 +173,10 @@ class Individuality:
         personality = short_impression[0]
         identity = short_impression[1]
         prompt_personality = f"{personality}，{identity}"
-        identity_block = f"你的名字是{bot_name}{bot_nickname}，你{prompt_personality}："
-
-        return identity_block
+        return f"你的名字是{bot_name}{bot_nickname}，你{prompt_personality}："
 
     def _get_config_hash(
-        self, bot_nickname: str, personality_core: str, personality_side: str, identity: list
+        self, bot_nickname: str, personality_core: str, personality_side: str, identity: str
     ) -> tuple[str, str]:
         """获取personality和identity配置的哈希值
 
@@ -197,7 +195,7 @@ class Individuality:
 
         # 身份配置哈希
         identity_config = {
-            "identity": sorted(identity),
+            "identity": identity,
             "compress_identity": self.personality.compress_identity if self.personality else True,
         }
         identity_str = json.dumps(identity_config, sort_keys=True)
@@ -206,7 +204,7 @@ class Individuality:
         return personality_hash, identity_hash
 
     async def _check_config_and_clear_if_changed(
-        self, bot_nickname: str, personality_core: str, personality_side: str, identity: list
+        self, bot_nickname: str, personality_core: str, personality_side: str, identity: str
     ) -> tuple[bool, bool]:
         """检查配置是否发生变化，如果变化则清空相应缓存
 
@@ -321,7 +319,7 @@ class Individuality:
 
         return personality_result
 
-    async def _create_identity(self, identity: list) -> str:
+    async def _create_identity(self, identity: str) -> str:
         """使用LLM创建压缩版本的impression"""
         logger.info("正在构建身份.........")
 
