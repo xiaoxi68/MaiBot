@@ -5,7 +5,7 @@ from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config
 from src.chat.message_receive.message import MessageSending, MessageRecv, MessageRecvS4U
 from src.mais4u.mais4u_chat.s4u_msg_processor import S4UMessageProcessor
-
+from src.mais4u.mais4u_chat.internal_manager import internal_manager
 from src.common.logger import get_logger
 logger = get_logger(__name__)
 
@@ -90,12 +90,13 @@ class MaiThinking:
         self.mind = result
         
         logger.info(f"[{self.chat_id}] 思考前想法：{self.mind}")
-        logger.info(f"[{self.chat_id}] 思考前prompt：{prompt}")
+        # logger.info(f"[{self.chat_id}] 思考前prompt：{prompt}")
         logger.info(f"[{self.chat_id}] 思考后想法：{self.mind}")
         
         
         msg_recv = await self.build_internal_message_recv(self.mind)
         await self.s4u_message_processor.process_message(msg_recv)
+        internal_manager.set_internal_state(self.mind)
         
     
     async def do_think_when_receive_message(self):

@@ -78,7 +78,13 @@ class ChatWatching:
         await send_api.custom_to_stream(
             message_type="state", content="start_viewing", stream_id=self.chat_id, storage_message=False
         )
+        
     
+    async def on_internal_message_start(self):
+        """收到消息时调用"""
+        await send_api.custom_to_stream(
+            message_type="state", content="start_internal_thinking", stream_id=self.chat_id, storage_message=False
+        )
 
 class WatchingManager:
     def __init__(self):

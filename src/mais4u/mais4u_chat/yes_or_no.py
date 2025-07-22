@@ -47,10 +47,9 @@ async def yes_or_no_head(text: str,emotion: str = "",chat_history: str = "",chat
     )
     
     try:
-        logger.info(f"prompt: {prompt}")
+        # logger.info(f"prompt: {prompt}")
         response, (reasoning_content, model_name) = await model.generate_response_async(prompt=prompt)
         logger.info(f"response: {response}")
-        logger.info(f"reasoning_content: {reasoning_content}")
         
         if response in head_actions_list:
             head_action = response

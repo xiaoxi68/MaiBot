@@ -144,7 +144,7 @@ class S4UMessageProcessor:
     async def handle_internal_message(self, message: MessageRecvS4U):
         if message.is_internal:
             
-            group_info = GroupInfo(platform = "amaidesu_default",group_id = 114514,group_name = "内心")
+            group_info = GroupInfo(platform = "amaidesu_default",group_id = 660154,group_name = "内心")
             
             chat =  await get_chat_manager().get_or_create_stream(
                 platform = "amaidesu_default",
