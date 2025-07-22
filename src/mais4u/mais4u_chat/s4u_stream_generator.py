@@ -49,19 +49,19 @@ class S4UStreamGenerator:
         self.chat_stream =None
         
     async def build_last_internal_message(self,message:MessageRecvS4U,previous_reply_context:str = ""):
-        person_id = PersonInfoManager.get_person_id(
-            message.chat_stream.user_info.platform, message.chat_stream.user_info.user_id
-        )
-        person_info_manager = get_person_info_manager()
-        person_name = await person_info_manager.get_value(person_id, "person_name")
+        # person_id = PersonInfoManager.get_person_id(
+        #     message.chat_stream.user_info.platform, message.chat_stream.user_info.user_id
+        # )
+        # person_info_manager = get_person_info_manager()
+        # person_name = await person_info_manager.get_value(person_id, "person_name")
 
-        if message.chat_stream.user_info.user_nickname:
-            if person_name:
-                sender_name = f"[{message.chat_stream.user_info.user_nickname}]（你叫ta{person_name}）"
-            else:
-                sender_name = f"[{message.chat_stream.user_info.user_nickname}]"
-        else:
-            sender_name = f"用户({message.chat_stream.user_info.user_id})"
+        # if message.chat_stream.user_info.user_nickname:
+        #     if person_name:
+        #         sender_name = f"[{message.chat_stream.user_info.user_nickname}]（你叫ta{person_name}）"
+        #     else:
+        #         sender_name = f"[{message.chat_stream.user_info.user_nickname}]"
+        # else:
+        #     sender_name = f"用户({message.chat_stream.user_info.user_id})"
 
         # 构建prompt
         if previous_reply_context:

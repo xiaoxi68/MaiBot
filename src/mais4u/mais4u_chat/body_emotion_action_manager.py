@@ -1,6 +1,5 @@
 import json
 import time
-import random
 from src.chat.message_receive.message import MessageRecv
 from src.llm_models.utils_model import LLMRequest
 from src.common.logger import get_logger

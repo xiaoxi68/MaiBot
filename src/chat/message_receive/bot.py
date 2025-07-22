@@ -16,7 +16,6 @@ from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.plugin_system.core import component_registry, events_manager  # 导入新插件系统
 from src.plugin_system.base import BaseCommand, EventType
 from src.mais4u.mais4u_chat.s4u_msg_processor import S4UMessageProcessor
-from src.llm_models.utils_model import LLMRequest
 
 # 定义日志配置
 

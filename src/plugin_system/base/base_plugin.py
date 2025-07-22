@@ -3,7 +3,7 @@ from typing import List, Type, Tuple, Union
 from .plugin_base import PluginBase
 
 from src.common.logger import get_logger
-from src.plugin_system.base.component_types import ComponentInfo, ActionInfo, CommandInfo, EventHandlerInfo
+from src.plugin_system.base.component_types import ActionInfo, CommandInfo, EventHandlerInfo
 from .base_action import BaseAction
 from .base_command import BaseCommand
 from .base_events_handler import BaseEventHandler

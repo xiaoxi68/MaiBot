@@ -486,7 +486,7 @@ class S4UChat:
             logger.info(f"[S4U] 开始为消息生成文本和音频流: '{message.processed_plain_text[:30]}...'")
 
             if s4u_config.enable_streaming_output:
-                logger.info(f"[S4U] 开始流式输出")
+                logger.info("[S4U] 开始流式输出")
                 # 流式输出，边生成边发送
                 gen = self.gpt.generate_response(message, "")
                 async for chunk in gen:
@@ -494,7 +494,7 @@ class S4UChat:
                     await sender_container.add_message(chunk)
                     total_chars_sent += len(chunk)
             else:
-                logger.info(f"[S4U] 开始一次性输出")
+                logger.info("[S4U] 开始一次性输出")
                 # 一次性输出，先收集所有chunk
                 all_chunks = []
                 gen = self.gpt.generate_response(message, "")
