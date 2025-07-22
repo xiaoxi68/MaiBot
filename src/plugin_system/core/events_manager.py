@@ -6,6 +6,7 @@ from src.chat.message_receive.message import MessageRecv
 from src.common.logger import get_logger
 from src.plugin_system.base.component_types import EventType, EventHandlerInfo, MaiMessages
 from src.plugin_system.base.base_events_handler import BaseEventHandler
+from .global_announcement_manager import global_announcement_manager
 
 logger = get_logger("events_manager")
 
@@ -53,6 +54,10 @@ class EventsManager:
         continue_flag = True
         transformed_message = self._transform_event_message(message, llm_prompt, llm_response)
         for handler in self._events_subscribers.get(event_type, []):
+            if message.chat_stream and message.chat_stream.stream_id:
+                stream_id = message.chat_stream.stream_id
+                if handler.handler_name in global_announcement_manager.get_disabled_chat_event_handlers(stream_id):
+                    continue
             handler.set_plugin_config(component_registry.get_plugin_config(handler.plugin_name) or {})
             if handler.intercept_message:
                 try:

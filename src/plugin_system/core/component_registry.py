@@ -418,7 +418,7 @@ class ComponentRegistry:
         """获取Command模式注册表"""
         return self._command_patterns.copy()
 
-    def find_command_by_text(self, text: str) -> Optional[Tuple[Type[BaseCommand], dict, bool, str]]:
+    def find_command_by_text(self, text: str) -> Optional[Tuple[Type[BaseCommand], dict, CommandInfo]]:
         # sourcery skip: use-named-expression, use-next
         """根据文本查找匹配的命令
 
@@ -439,8 +439,7 @@ class ComponentRegistry:
         return (
             self._command_registry[command_name],
             candidates[0].match(text).groupdict(),  # type: ignore
-            command_info.intercept_message,
-            command_info.plugin_name,
+            command_info,
         )
 
     # === 事件处理器特定查询方法 ===

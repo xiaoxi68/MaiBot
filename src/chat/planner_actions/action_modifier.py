@@ -2,7 +2,7 @@ import random
 import asyncio
 import hashlib
 import time
-from typing import List, Any, Dict, TYPE_CHECKING
+from typing import List, Any, Dict, TYPE_CHECKING, Tuple
 
 from src.common.logger import get_logger
 from src.config.config import global_config
@@ -11,6 +11,7 @@ from src.chat.message_receive.chat_stream import get_chat_manager, ChatMessageCo
 from src.chat.planner_actions.action_manager import ActionManager
 from src.chat.utils.chat_message_builder import get_raw_msg_before_timestamp_with_chat, build_readable_messages
 from src.plugin_system.base.component_types import ActionInfo, ActionActivationType
+from src.plugin_system.core.global_announcement_manager import global_announcement_manager
 
 if TYPE_CHECKING:
     from src.chat.message_receive.chat_stream import ChatStream
@@ -60,8 +61,9 @@ class ActionModifier:
         """
         logger.debug(f"{self.log_prefix}开始完整动作修改流程")
 
-        removals_s1 = []
-        removals_s2 = []
+        removals_s1: List[Tuple[str, str]] = []
+        removals_s2: List[Tuple[str, str]] = []
+        removals_s3: List[Tuple[str, str]] = []
 
         self.action_manager.restore_actions()
         all_actions = self.action_manager.get_using_actions()
@@ -83,25 +85,28 @@ class ActionModifier:
         if message_content:
             chat_content = chat_content + "\n" + f"现在，最新的消息是：{message_content}"
 
-        # === 第一阶段：传统观察处理 ===
-        # if history_loop:
-        # removals_from_loop = await self.analyze_loop_actions(history_loop)
-        # if removals_from_loop:
-        # removals_s1.extend(removals_from_loop)
+        # === 第一阶段：去除用户自行禁用的 ===
+        disabled_actions = global_announcement_manager.get_disabled_chat_actions(self.chat_id)
+        if disabled_actions:
+            for disabled_action_name in disabled_actions:
+                if disabled_action_name in all_actions:
+                    removals_s1.append((disabled_action_name, "用户自行禁用"))
+                    self.action_manager.remove_action_from_using(disabled_action_name)
+                    logger.debug(f"{self.log_prefix}阶段一移除动作: {disabled_action_name}，原因: 用户自行禁用")
 
-        # 检查动作的关联类型
+        # === 第二阶段：检查动作的关联类型 ===
         chat_context = self.chat_stream.context
         type_mismatched_actions = self._check_action_associated_types(all_actions, chat_context)
 
         if type_mismatched_actions:
-            removals_s1.extend(type_mismatched_actions)
+            removals_s2.extend(type_mismatched_actions)
 
-        # 应用第一阶段的移除
-        for action_name, reason in removals_s1:
+        # 应用第二阶段的移除
+        for action_name, reason in removals_s2:
             self.action_manager.remove_action_from_using(action_name)
-            logger.debug(f"{self.log_prefix}阶段一移除动作: {action_name}，原因: {reason}")
+            logger.debug(f"{self.log_prefix}阶段二移除动作: {action_name}，原因: {reason}")
 
-        # === 第二阶段：激活类型判定 ===
+        # === 第三阶段：激活类型判定 ===
         if chat_content is not None:
             logger.debug(f"{self.log_prefix}开始激活类型判定阶段")
 
@@ -109,18 +114,18 @@ class ActionModifier:
             current_using_actions = self.action_manager.get_using_actions()
 
             # 获取因激活类型判定而需要移除的动作
-            removals_s2 = await self._get_deactivated_actions_by_type(
+            removals_s3 = await self._get_deactivated_actions_by_type(
                 current_using_actions,
                 chat_content,
             )
 
-            # 应用第二阶段的移除
-            for action_name, reason in removals_s2:
+            # 应用第三阶段的移除
+            for action_name, reason in removals_s3:
                 self.action_manager.remove_action_from_using(action_name)
-                logger.debug(f"{self.log_prefix}阶段二移除动作: {action_name}，原因: {reason}")
+                logger.debug(f"{self.log_prefix}阶段三移除动作: {action_name}，原因: {reason}")
 
         # === 统一日志记录 ===
-        all_removals = removals_s1 + removals_s2
+        all_removals = removals_s1 + removals_s2 + removals_s3
         removals_summary: str = ""
         if all_removals:
             removals_summary = " | ".join([f"{name}({reason})" for name, reason in all_removals])
@@ -130,7 +135,7 @@ class ActionModifier:
         )
 
     def _check_action_associated_types(self, all_actions: Dict[str, ActionInfo], chat_context: ChatMessageContext):
-        type_mismatched_actions = []
+        type_mismatched_actions: List[Tuple[str, str]] = []
         for action_name, action_info in all_actions.items():
             if action_info.associated_types and not chat_context.check_types(action_info.associated_types):
                 associated_types_str = ", ".join(action_info.associated_types)

@@ -1,5 +1,3 @@
-import traceback
-
 from typing import Dict, Optional, Type
 from src.plugin_system.base.base_action import BaseAction
 from src.chat.message_receive.chat_stream import ChatStream
@@ -24,37 +22,12 @@ class ActionManager:
 
     def __init__(self):
         """初始化动作管理器"""
-        # 所有注册的动作集合
-        self._registered_actions: Dict[str, ActionInfo] = {}
+
         # 当前正在使用的动作集合，默认加载默认动作
         self._using_actions: Dict[str, ActionInfo] = {}
 
-        # 初始化管理器注册表
-        self._load_plugin_system_actions()
-
         # 初始化时将默认动作加载到使用中的动作
         self._using_actions = component_registry.get_default_actions()
-
-    def _load_plugin_system_actions(self) -> None:
-        """从插件系统的component_registry加载Action组件"""
-        try:
-            # 获取所有Action组件
-            action_components: Dict[str, ActionInfo] = component_registry.get_components_by_type(ComponentType.ACTION)  # type: ignore
-
-            for action_name, action_info in action_components.items():
-                if action_name in self._registered_actions:
-                    logger.debug(f"Action组件 {action_name} 已存在，跳过")
-                    continue
-
-                self._registered_actions[action_name] = action_info
-
-                logger.debug(f"从插件系统加载Action组件: {action_name} (插件: {action_info.plugin_name})")
-
-            logger.info(f"加载了 {len(action_components)} 个Action动作")
-            logger.debug("从插件系统加载Action组件成功")
-        except Exception as e:
-            logger.error(f"从插件系统加载Action组件失败: {e}")
-            logger.error(traceback.format_exc())
 
     # === 执行Action方法 ===
 
@@ -127,43 +100,9 @@ class ActionManager:
             logger.error(traceback.format_exc())
             return None
 
-    def get_registered_actions(self) -> Dict[str, ActionInfo]:
-        """获取所有已注册的动作集"""
-        return self._registered_actions.copy()
-
     def get_using_actions(self) -> Dict[str, ActionInfo]:
         """获取当前正在使用的动作集合"""
         return self._using_actions.copy()
-
-    # === 增删Action方法 ===
-    def add_action(self, action_name: str) -> bool:
-        """增加一个Action到管理器
-
-        Parameters:
-            action_name: 动作名称
-        Returns:
-            bool: 添加是否成功
-        """
-        if action_name in self._registered_actions:
-            return True
-        component_info: ActionInfo = component_registry.get_component_info(action_name, ComponentType.ACTION)  # type: ignore
-        if not component_info:
-            logger.warning(f"添加失败: 动作 {action_name} 未注册")
-            return False
-        self._registered_actions[action_name] = component_info
-        return True
-
-    def remove_action(self, action_name: str) -> bool:
-        """从注册集移除指定动作
-        Parameters:
-            action_name: 动作名称
-        Returns:
-            bool: 移除是否成功
-        """
-        if action_name not in self._registered_actions:
-            return False
-        del self._registered_actions[action_name]
-        return True
 
     # === Modify相关方法 ===
     def remove_action_from_using(self, action_name: str) -> bool:
@@ -189,47 +128,3 @@ class ActionManager:
         actions_to_restore = list(self._using_actions.keys())
         self._using_actions = component_registry.get_default_actions()
         logger.debug(f"恢复动作集: 从 {actions_to_restore} 恢复到默认动作集 {list(self._using_actions.keys())}")
-
-    # def add_action_to_using(self, action_name: str) -> bool:
-
-    #     """
-    #     添加已注册的动作到当前使用的动作集
-
-    #     Args:
-    #         action_name: 动作名称
-
-    #     Returns:
-    #         bool: 添加是否成功
-    #     """
-    #     if action_name not in self._registered_actions:
-    #         logger.warning(f"添加失败: 动作 {action_name} 未注册")
-    #         return False
-
-    #     if action_name in self._using_actions:
-    #         logger.info(f"动作 {action_name} 已经在使用中")
-    #         return True
-
-    #     self._using_actions[action_name] = self._registered_actions[action_name]
-    #     logger.info(f"添加动作 {action_name} 到使用集")
-    #     return True
-
-    # def temporarily_remove_actions(self, actions_to_remove: List[str]) -> None:
-    #     """临时移除使用集中的指定动作"""
-    #     for name in actions_to_remove:
-    #         self._using_actions.pop(name, None)
-
-    # def add_system_action_if_needed(self, action_name: str) -> bool:
-    #     """
-    #     根据需要添加系统动作到使用集
-
-    #     Args:
-    #         action_name: 动作名称
-
-    #     Returns:
-    #         bool: 是否成功添加
-    #     """
-    #     if action_name in self._registered_actions and action_name not in self._using_actions:
-    #         self._using_actions[action_name] = self._registered_actions[action_name]
-    #         logger.info(f"临时添加系统动作到使用集: {action_name}")
-    #         return True
-    #     return False

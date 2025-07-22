@@ -52,6 +52,8 @@ NO_ACTION = {
     "action_prompt": "",
 }
 
+IS_MAI4U = False
+
 install(extra_lines=3)
 
 # 注释：原来的动作修改超时常量已移除，因为改为顺序执行
@@ -263,7 +265,7 @@ class HeartFChatting:
 
         chat = await get_chat_manager().get_or_create_stream(
             platform="amaidesu_default",
-            user_info=None,  # type: ignore
+            user_info=None,
             group_info=group_info,
         )
 
@@ -276,7 +278,7 @@ class HeartFChatting:
 
         chat = await get_chat_manager().get_or_create_stream(
             platform="amaidesu_default",
-            user_info=None,  # type: ignore
+            user_info=None,
             group_info=group_info,
         )
 
@@ -294,7 +296,8 @@ class HeartFChatting:
 
         logger.info(f"{self.log_prefix} 开始第{self._cycle_counter}次思考[模式：{self.loop_mode}]")
 
-        await self.send_typing()
+        if IS_MAI4U:
+            await self.send_typing()
 
         async with global_prompt_manager.async_message_scope(self.chat_stream.context.get_template_name()):
             loop_start_time = time.time()
@@ -364,7 +367,8 @@ class HeartFChatting:
                 # 发送回复 (不再需要传入 chat)
                 reply_text = await self._send_response(response_set, reply_to_str, loop_start_time, message_data)
 
-                await self.stop_typing()
+                if IS_MAI4U:
+                    await self.stop_typing()
 
                 if ENABLE_THINKING:
                     await mai_thinking_manager.get_mai_think(self.stream_id).do_think_after_response(reply_text)
