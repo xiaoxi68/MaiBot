@@ -22,6 +22,14 @@ class ManagementCommand(BaseCommand):
 
     async def execute(self) -> Tuple[bool, str]:
         # sourcery skip: merge-duplicate-blocks
+        if (
+            not self.message
+            or not self.message.message_info
+            or not self.message.message_info.user_info
+            or str(self.message.message_info.user_info.user_id) not in self.get_config("plugin.permission", [])  # type: ignore
+        ):
+            await self.send_text("你没有权限使用插件管理命令")
+            return False, "没有权限"
         command_list = self.matched_groups["manage_command"].strip().split(" ")
         if len(command_list) == 1:
             await self.show_help("all")
@@ -419,7 +427,12 @@ class PluginManagementPlugin(BasePlugin):
     dependencies: list[str] = []
     python_dependencies: list[str] = []
     config_file_name: str = "config.toml"
-    config_schema: dict = {"plugin": {"enable": ConfigField(bool, default=True, description="是否启用插件")}}
+    config_schema: dict = {
+        "plugin": {
+            "enable": ConfigField(bool, default=True, description="是否启用插件"),
+            "permission": ConfigField(list, default=[], description="有权限使用插件管理命令的用户列表"),
+        },
+    }
 
     def get_plugin_components(self) -> List[Tuple[CommandInfo, Type[BaseCommand]]]:
         components = []
