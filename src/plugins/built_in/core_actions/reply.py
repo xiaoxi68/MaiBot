@@ -56,7 +56,7 @@ class ReplyAction(BaseAction):
 
     async def execute(self) -> Tuple[bool, str]:
         """执行回复动作"""
-        logger.info(f"{self.log_prefix} 决定进行回复")
+        logger.debug(f"{self.log_prefix} 决定进行回复")
         start_time = self.action_data.get("loop_start_time", time.time())
 
         user_id = self.user_id
@@ -66,7 +66,7 @@ class ReplyAction(BaseAction):
         # logger.info(f"{self.log_prefix} 人物ID: {person_id}")
         person_name = get_person_info_manager().get_value_sync(person_id, "person_name")
         reply_to = f"{person_name}:{self.action_message.get('processed_plain_text', '')}"  # type: ignore
-        logger.info(f"{self.log_prefix} 回复目标: {reply_to}")
+        logger.info(f"{self.log_prefix} 决定进行回复,目标: {reply_to}")
 
         try:
             if prepared_reply := self.action_data.get("prepared_reply", ""):
@@ -96,9 +96,15 @@ class ReplyAction(BaseAction):
 
                 # 根据新消息数量决定是否使用reply_to
                 need_reply = new_message_count >= random.randint(2, 4)
-                logger.info(
-                    f"{self.log_prefix} 从思考到回复，共有{new_message_count}条新消息，{'使用' if need_reply else '不使用'}引用回复"
-                )
+                if need_reply:
+                    logger.info(
+                        f"{self.log_prefix} 从思考到回复，共有{new_message_count}条新消息，使用引用回复"
+                    )
+                else:
+                    logger.debug(
+                        f"{self.log_prefix} 从思考到回复，共有{new_message_count}条新消息，不使用引用回复"
+                    )
+
             # 构建回复文本
             reply_text = ""
             first_replied = False

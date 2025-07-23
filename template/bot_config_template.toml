@@ -231,7 +231,7 @@ show_prompt = false # 是否显示prompt
 
 
 [model]
-model_max_output_length = 1000 # 模型单次返回的最大token数
+model_max_output_length = 1024 # 模型单次返回的最大token数
 
 #------------必填：组件模型------------
 

@@ -143,7 +143,7 @@ class BaseAction(ABC):
                     self.target_id = self.user_id
 
         logger.debug(f"{self.log_prefix} Action组件初始化完成")
-        logger.info(
+        logger.debug(
             f"{self.log_prefix} 聊天信息: 类型={'群聊' if self.is_group else '私聊'}, 平台={self.platform}, 目标={self.target_id}"
         )
 

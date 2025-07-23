@@ -36,7 +36,7 @@ class Individuality:
         personality_side = global_config.personality.personality_side
         identity = global_config.personality.identity
 
-        logger.info("正在初始化个体特征")
+
         person_info_manager = get_person_info_manager()
         self.bot_person_id = person_info_manager.get_person_id("system", "bot_id")
         self.name = bot_nickname

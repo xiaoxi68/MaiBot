@@ -321,7 +321,7 @@ MODULE_COLORS = {
     # 核心模块
     "main": "\033[1;97m",  # 亮白色+粗体 (主程序)
     "api": "\033[92m",  # 亮绿色
-    "emoji": "\033[33m",  # 亮绿色
+    "emoji": "\033[38;5;214m",  # 橙黄色，偏向橙色但与replyer和action_manager不同
     "chat": "\033[92m",  # 亮蓝色
     "config": "\033[93m",  # 亮黄色
     "common": "\033[95m",  # 亮紫色
@@ -329,35 +329,32 @@ MODULE_COLORS = {
     "lpmm": "\033[96m",
     "plugin_system": "\033[91m",  # 亮红色
     "person_info": "\033[32m",  # 绿色
-    "individuality": "\033[34m",  # 蓝色
+    "individuality": "\033[94m",  # 显眼的亮蓝色
     "manager": "\033[35m",  # 紫色
     "llm_models": "\033[36m",  # 青色
-    "plugins": "\033[31m",  # 红色
-    "plugin_api": "\033[33m",  # 黄色
-    "remote": "\033[38;5;93m",  # 紫蓝色
+    "remote": "\033[38;5;242m",  # 深灰色，更不显眼
     "planner": "\033[36m",
     "memory": "\033[34m",
-    "hfc": "\033[96m",
-    "action_manager": "\033[38;5;166m",
+    "hfc": "\033[38;5;81m",  # 稍微暗一些的青色，保持可读
+    "action_manager": "\033[38;5;208m",  # 橙色，不与replyer重复
     # 关系系统
-    "relation": "\033[38;5;201m",  # 深粉色
+    "relation": "\033[38;5;139m",  # 柔和的紫色，不刺眼
     # 聊天相关模块
     "normal_chat": "\033[38;5;81m",  # 亮蓝绿色
-    "normal_chat_response": "\033[38;5;123m",  # 青绿色
-    "heartflow": "\033[38;5;213m",  # 粉色
+    "heartflow": "\033[38;5;175m",  # 柔和的粉色，不显眼但保持粉色系
     "sub_heartflow": "\033[38;5;207m",  # 粉紫色
     "subheartflow_manager": "\033[38;5;201m",  # 深粉色
     "background_tasks": "\033[38;5;240m",  # 灰色
     "chat_message": "\033[38;5;45m",  # 青色
     "chat_stream": "\033[38;5;51m",  # 亮青色
-    "sender": "\033[38;5;39m",  # 蓝色
+    "sender": "\033[38;5;67m",  # 稍微暗一些的蓝色，不显眼
     "message_storage": "\033[38;5;33m",  # 深蓝色
     # 专注聊天模块
     "replyer": "\033[38;5;166m",  # 橙色
-    "base_processor": "\033[38;5;190m",  # 绿黄色
-    "working_memory": "\033[38;5;22m",  # 深绿色
     "memory_activator": "\033[34m",  # 绿色
     # 插件系统
+    "plugins": "\033[31m",  # 红色
+    "plugin_api": "\033[33m",  # 黄色
     "plugin_manager": "\033[38;5;208m",  # 红色
     "base_plugin": "\033[38;5;202m",  # 橙红色
     "send_api": "\033[38;5;208m",  # 橙色
@@ -378,9 +375,9 @@ MODULE_COLORS = {
     "local_storage": "\033[38;5;141m",  # 紫色
     "willing": "\033[38;5;147m",  # 浅紫色
     # 工具模块
-    "tool_use": "\033[38;5;64m",  # 深绿色
-    "tool_executor": "\033[38;5;64m",  # 深绿色
-    "base_tool": "\033[38;5;70m",  # 绿色
+    "tool_use": "\033[38;5;172m",  # 橙褐色
+    "tool_executor": "\033[38;5;172m",  # 橙褐色
+    "base_tool": "\033[38;5;178m",  # 金黄色
     # 工具和实用模块
     "prompt_build": "\033[38;5;105m",  # 紫色
     "chat_utils": "\033[38;5;111m",  # 蓝色
@@ -388,14 +385,16 @@ MODULE_COLORS = {
     "maibot_statistic": "\033[38;5;129m",  # 紫色
     # 特殊功能插件
     "mute_plugin": "\033[38;5;240m",  # 灰色
-    "example_comprehensive": "\033[38;5;246m",  # 浅灰色
     "core_actions": "\033[38;5;117m",  # 深红色
     "tts_action": "\033[38;5;58m",  # 深黄色
     "doubao_pic_plugin": "\033[38;5;64m",  # 深绿色
-    "vtb_action": "\033[38;5;70m",  # 绿色
+    # Action组件
+    "no_reply_action": "\033[38;5;196m",  # 亮红色，更显眼
+    "reply_action": "\033[38;5;46m",  # 亮绿色
+    "base_action": "\033[38;5;250m",  # 浅灰色
     # 数据库和消息
     "database_model": "\033[38;5;94m",  # 橙褐色
-    "maim_message": "\033[38;5;100m",  # 绿褐色
+    "maim_message": "\033[38;5;140m",  # 紫褐色
     # 日志系统
     "logger": "\033[38;5;8m",  # 深灰色
     "confirm": "\033[1;93m",  # 黄色+粗体
