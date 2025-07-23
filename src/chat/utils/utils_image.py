@@ -6,7 +6,6 @@ import uuid
 import io
 import asyncio
 import numpy as np
-import jieba
 
 from typing import Optional, Tuple
 from PIL import Image

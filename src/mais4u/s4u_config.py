@@ -6,7 +6,7 @@ from tomlkit import TOMLDocument
 from tomlkit.items import Table
 from dataclasses import dataclass, fields, MISSING, field
 from typing import TypeVar, Type, Any, get_origin, get_args, Literal
-
+from src.mais4u.constant_s4u import ENABLE_S4U
 from src.common.logger import get_logger
 
 logger = get_logger("s4u_config")
@@ -352,7 +352,7 @@ def load_s4u_config(config_path: str) -> S4UGlobalConfig:
         logger.critical("S4U配置文件解析失败")
         raise e
 
-from src.mais4u.constant_s4u import ENABLE_S4U
+
 if not ENABLE_S4U:
     s4u_config = None
     s4u_config_main = None

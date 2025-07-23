@@ -104,7 +104,7 @@ class EmojiAction(BaseAction):
                 请直接返回最匹配的那个情感标签，不要进行任何解释或添加其他多余的文字。
                 """
 
-                if global_config.debug.enable_debug_log:
+                if global_config.debug.show_prompt:
                     logger.info(f"{self.log_prefix} 生成的LLM Prompt: {prompt}")
                 else:
                     logger.debug(f"{self.log_prefix} 生成的LLM Prompt: {prompt}")

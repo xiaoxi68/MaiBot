@@ -1,14 +1,14 @@
 import time
 import sys
 import os
-from collections import defaultdict
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List
 
 # Add project root to Python path
+from src.common.database.database_model import Expression, ChatStreams
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
-from src.common.database.database_model import Expression, ChatStreams
+
 
 
 def get_chat_name(chat_id: str) -> str:
@@ -27,7 +27,7 @@ def get_chat_name(chat_id: str) -> str:
             return f"{chat_stream.user_nickname}的私聊 ({chat_id})"
         else:
             return f"未知聊天 ({chat_id})"
-    except Exception as e:
+    except Exception:
         return f"查询失败 ({chat_id})"
 
 

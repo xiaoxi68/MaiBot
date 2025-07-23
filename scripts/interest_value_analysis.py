@@ -1,15 +1,14 @@
 import time
 import sys
 import os
-from collections import defaultdict
 from typing import Dict, List, Tuple, Optional
-from datetime import datetime, timedelta
-
+from datetime import datetime
+from src.common.database.database_model import Messages, ChatStreams
 # Add project root to Python path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
-from src.common.database.database_model import Messages, ChatStreams
+
 
 
 def get_chat_name(chat_id: str) -> str:
@@ -200,7 +199,7 @@ def analyze_interest_values(chat_id: Optional[str] = None, start_time: Optional[
     stats = get_interest_value_stats(messages)
     
     # 显示结果
-    print(f"\n=== Interest Value 分析结果 ===")
+    print("\n=== Interest Value 分析结果 ===")
     if chat_id:
         print(f"聊天: {get_chat_name(chat_id)}")
     else:
@@ -215,14 +214,14 @@ def analyze_interest_values(chat_id: Optional[str] = None, start_time: Optional[
     else:
         print("时间范围: 不限制")
     
-    print(f"\n基本统计:")
+    print("\n基本统计:")
     print(f"有效消息数量: {stats['count']} (排除null和0值)")
     print(f"最小值: {stats['min']:.3f}")
     print(f"最大值: {stats['max']:.3f}")
     print(f"平均值: {stats['avg']:.3f}")
     print(f"中位数: {stats['median']:.3f}")
     
-    print(f"\nInterest Value 分布:")
+    print("\nInterest Value 分布:")
     total = stats['count']
     for range_name, count in distribution.items():
         if count > 0:
@@ -257,7 +256,7 @@ def interactive_menu() -> None:
                 continue
             
             print(f"\n可用的聊天 (共{len(chats)}个):")
-            for i, (cid, name, count) in enumerate(chats, 1):
+            for i, (_cid, name, count) in enumerate(chats, 1):
                 print(f"{i}. {name} ({count}条有效消息)")
             
             try:

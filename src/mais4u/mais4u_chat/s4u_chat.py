@@ -19,6 +19,7 @@ from src.mais4u.s4u_config import s4u_config
 from src.person_info.person_info import PersonInfoManager
 from .super_chat_manager import get_super_chat_manager
 from .yes_or_no import yes_or_no_head
+from src.mais4u.constant_s4u import ENABLE_S4U
 
 logger = get_logger("S4U_chat")
 
@@ -164,7 +165,7 @@ class S4UChatManager:
             self.s4u_chats[chat_stream.stream_id] = S4UChat(chat_stream)
         return self.s4u_chats[chat_stream.stream_id]
 
-from src.mais4u.constant_s4u import ENABLE_S4U
+
 if not ENABLE_S4U:
     s4u_chat_manager = None
 else:

@@ -8,7 +8,6 @@ from datetime import datetime
 from collections import defaultdict
 import os
 import time
-import queue
 
 
 class LogIndex:

@@ -269,7 +269,7 @@ class DefaultReplyer:
             reasoning_content = None
             model_name = "unknown_model"
             if not prompt:
-                logger.error(f"Prompt 构建失败，无法生成回复。")
+                logger.error("Prompt 构建失败，无法生成回复。")
                 return False, None
 
             try:
@@ -345,7 +345,7 @@ class DefaultReplyer:
                     else:
                         style_habits.append(f"当{expr['situation']}时，使用 {expr['style']}")
         else:
-            logger.debug(f"没有从处理器获得表达方式，将使用空的表达方式")
+            logger.debug("没有从处理器获得表达方式，将使用空的表达方式")
             # 不再在replyer中进行随机选择，全部交给处理器处理
 
         style_habits_str = "\n".join(style_habits)
@@ -440,7 +440,7 @@ class DefaultReplyer:
                 
                 return tool_info_str
             else:
-                logger.debug(f"未获取到任何工具结果")
+                logger.debug("未获取到任何工具结果")
                 return ""
 
         except Exception as e:
