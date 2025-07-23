@@ -630,9 +630,7 @@ class StatisticOutputTask(AsyncTask):
             logger.warning(f"获取聊天显示名称失败: {e}")
             return chat_id
 
-    def _generate_versions_tab(self, stat: dict) -> str:
-        """版本对比功能占位符，防止报错"""
-        return '<div id="versions" class="tab-content"><h2>版本对比</h2><p>暂未实现版本对比功能。</p></div>'
+    # 移除_generate_versions_tab方法
 
     def _generate_html_report(self, stat: dict[str, Any], now: datetime):
         """
@@ -642,6 +640,7 @@ class StatisticOutputTask(AsyncTask):
         :return: HTML格式的统计报告
         """
 
+        # 移除版本对比内容相关tab和内容
         tab_list = [
             f'<button class="tab-link" onclick="showTab(event, \'{period[0]}\')">{period[2]}</button>'
             for period in self.stat_period
@@ -771,10 +770,7 @@ class StatisticOutputTask(AsyncTask):
             _format_stat_data(stat["all_time"], "all_time", datetime.fromtimestamp(local_storage["deploy_time"]))  # type: ignore
         )
 
-        # 添加版本对比内容
-        versions_tab = self._generate_versions_tab(stat)
-        tab_content_list.append(versions_tab)
-
+        # 不再添加版本对比内容
         # 添加图表内容
         chart_data = self._generate_chart_data(stat)
         tab_content_list.append(self._generate_chart_tab(chart_data))

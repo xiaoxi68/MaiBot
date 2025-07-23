@@ -2,6 +2,7 @@ import time
 import random
 import json
 import os
+from datetime import datetime
 
 from typing import List, Dict, Optional, Any, Tuple
 
@@ -19,6 +20,16 @@ DECAY_DAYS = 30  # 30天衰减到0.01
 DECAY_MIN = 0.01  # 最小衰减值
 
 logger = get_logger("expressor")
+
+
+def format_create_date(timestamp: float) -> str:
+    """
+    将时间戳格式化为可读的日期字符串
+    """
+    try:
+        return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
+    except (ValueError, OSError):
+        return "未知时间"
 
 
 def init_prompt() -> None:
@@ -77,6 +88,7 @@ class ExpressionLearner:
         )
         self.llm_model = None
         self._auto_migrate_json_to_db()
+        self._migrate_old_data_create_date()
 
     def _auto_migrate_json_to_db(self):
         """
@@ -127,6 +139,7 @@ class ExpressionLearner:
                                 last_active_time=last_active_time,
                                 chat_id=chat_id,
                                 type=type_str,
+                                create_date=last_active_time,  # 迁移时使用last_active_time作为创建时间
                             )
                     logger.info(f"已迁移 {expr_file} 到数据库")
                 except Exception as e:
@@ -139,6 +152,27 @@ class ExpressionLearner:
         except Exception as e:
             logger.error(f"写入done.done标记文件失败: {e}")
 
+    def _migrate_old_data_create_date(self):
+        """
+        为没有create_date的老数据设置创建日期
+        使用last_active_time作为create_date的默认值
+        """
+        try:
+            # 查找所有create_date为空的表达方式
+            old_expressions = Expression.select().where(Expression.create_date.is_null())
+            updated_count = 0
+            
+            for expr in old_expressions:
+                # 使用last_active_time作为create_date
+                expr.create_date = expr.last_active_time
+                expr.save()
+                updated_count += 1
+            
+            if updated_count > 0:
+                logger.info(f"已为 {updated_count} 个老的表达方式设置创建日期")
+        except Exception as e:
+            logger.error(f"迁移老数据创建日期失败: {e}")
+
     def get_expression_by_chat_id(self, chat_id: str) -> Tuple[List[Dict[str, float]], List[Dict[str, float]]]:
         """
         获取指定chat_id的style和grammar表达方式
@@ -150,6 +184,8 @@ class ExpressionLearner:
         # 直接从数据库查询
         style_query = Expression.select().where((Expression.chat_id == chat_id) & (Expression.type == "style"))
         for expr in style_query:
+            # 确保create_date存在，如果不存在则使用last_active_time
+            create_date = expr.create_date if expr.create_date is not None else expr.last_active_time
             learnt_style_expressions.append(
                 {
                     "situation": expr.situation,
@@ -158,10 +194,13 @@ class ExpressionLearner:
                     "last_active_time": expr.last_active_time,
                     "source_id": chat_id,
                     "type": "style",
+                    "create_date": create_date,
                 }
             )
         grammar_query = Expression.select().where((Expression.chat_id == chat_id) & (Expression.type == "grammar"))
         for expr in grammar_query:
+            # 确保create_date存在，如果不存在则使用last_active_time
+            create_date = expr.create_date if expr.create_date is not None else expr.last_active_time
             learnt_grammar_expressions.append(
                 {
                     "situation": expr.situation,
@@ -170,9 +209,39 @@ class ExpressionLearner:
                     "last_active_time": expr.last_active_time,
                     "source_id": chat_id,
                     "type": "grammar",
+                    "create_date": create_date,
                 }
             )
         return learnt_style_expressions, learnt_grammar_expressions
+
+    def get_expression_create_info(self, chat_id: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """
+        获取指定chat_id的表达方式创建信息，按创建日期排序
+        """
+        try:
+            expressions = (Expression.select()
+                         .where(Expression.chat_id == chat_id)
+                         .order_by(Expression.create_date.desc())
+                         .limit(limit))
+            
+            result = []
+            for expr in expressions:
+                create_date = expr.create_date if expr.create_date is not None else expr.last_active_time
+                result.append({
+                    "situation": expr.situation,
+                    "style": expr.style,
+                    "type": expr.type,
+                    "count": expr.count,
+                    "create_date": create_date,
+                    "create_date_formatted": format_create_date(create_date),
+                    "last_active_time": expr.last_active_time,
+                    "last_active_formatted": format_create_date(expr.last_active_time),
+                })
+            
+            return result
+        except Exception as e:
+            logger.error(f"获取表达方式创建信息失败: {e}")
+            return []
 
     def is_similar(self, s1: str, s2: str) -> bool:
         """
@@ -350,6 +419,7 @@ class ExpressionLearner:
                         last_active_time=current_time,
                         chat_id=chat_id,
                         type=type,
+                        create_date=current_time,  # 手动设置创建日期
                     )
             # 限制最大数量
             exprs = list(

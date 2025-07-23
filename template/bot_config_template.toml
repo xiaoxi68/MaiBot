@@ -1,5 +1,5 @@
 [inner]
-version = "4.4.5"
+version = "4.4.6"
 
 #----以下是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 #如果你想要修改配置文件，请在修改后将version的值进行变更
@@ -151,7 +151,7 @@ mood_decay_rate = 0.95 # 情绪衰减率
 mood_intensity_factor = 1.0 # 情绪强度因子
 
 [lpmm_knowledge] # lpmm知识库配置
-enable = true # 是否启用lpmm知识库
+enable = false # 是否启用lpmm知识库
 rag_synonym_search_top_k = 10 # 同义词搜索TopK
 rag_synonym_threshold = 0.8 # 同义词阈值（相似度高于此阈值的词语会被认为是同义词）
 info_extraction_workers = 3 # 实体提取同时执行线程数，非Pro模型不要设置超过5
