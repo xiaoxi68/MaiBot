@@ -31,6 +31,7 @@ from src.config.official_configs import (
     LPMMKnowledgeConfig,
     RelationshipConfig,
     ToolConfig,
+    VoiceConfig,
     DebugConfig,
     CustomPromptConfig,
 )
@@ -328,7 +329,7 @@ class Config(ConfigBase):
     tool: ToolConfig
     debug: DebugConfig
     custom_prompt: CustomPromptConfig
-
+    voice: VoiceConfig
 
 def load_config(config_path: str) -> Config:
     """

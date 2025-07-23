@@ -52,7 +52,7 @@ def calculate_interest_value_distribution(messages) -> Dict[str, int]:
     }
     
     for msg in messages:
-        if msg.interest_value is None:
+        if msg.interest_value is None or msg.interest_value == 0.0:
             continue
         
         value = float(msg.interest_value)
@@ -80,7 +80,7 @@ def calculate_interest_value_distribution(messages) -> Dict[str, int]:
 
 def get_interest_value_stats(messages) -> Dict[str, float]:
     """Calculate basic statistics for interest_value"""
-    values = [float(msg.interest_value) for msg in messages if msg.interest_value is not None]
+    values = [float(msg.interest_value) for msg in messages if msg.interest_value is not None and msg.interest_value != 0.0]
     
     if not values:
         return {
@@ -112,7 +112,8 @@ def get_available_chats() -> List[Tuple[str, str, int]]:
             chat_id = msg.chat_id
             count = Messages.select().where(
                 (Messages.chat_id == chat_id) & 
-                (Messages.interest_value.is_null(False))
+                (Messages.interest_value.is_null(False)) &
+                (Messages.interest_value != 0.0)
             ).count()
             if count > 0:
                 chat_counts[chat_id] = count
@@ -174,7 +175,10 @@ def analyze_interest_values(chat_id: Optional[str] = None, start_time: Optional[
     """Analyze interest values with optional filters"""
     
     # 构建查询条件
-    query = Messages.select().where(Messages.interest_value.is_null(False))
+    query = Messages.select().where(
+        (Messages.interest_value.is_null(False)) &
+        (Messages.interest_value != 0.0)
+    )
     
     if chat_id:
         query = query.where(Messages.chat_id == chat_id)
@@ -212,7 +216,7 @@ def analyze_interest_values(chat_id: Optional[str] = None, start_time: Optional[
         print("时间范围: 不限制")
     
     print(f"\n基本统计:")
-    print(f"有效消息数量: {stats['count']}")
+    print(f"有效消息数量: {stats['count']} (排除null和0值)")
     print(f"最小值: {stats['min']:.3f}")
     print(f"最大值: {stats['max']:.3f}")
     print(f"平均值: {stats['avg']:.3f}")

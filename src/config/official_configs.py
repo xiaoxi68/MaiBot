@@ -106,9 +106,6 @@ class ChatConfig(ConfigBase):
     focus_value: float = 1.0
     """麦麦的专注思考能力，越低越容易专注，消耗token也越多"""
 
-    enable_asr: bool = False
-    """是否启用语音识别"""
-
     def get_current_talk_frequency(self, chat_stream_id: Optional[str] = None) -> float:
         """
         根据当前时间和聊天流获取对应的 talk_frequency
@@ -309,6 +306,13 @@ class ToolConfig(ConfigBase):
 
     enable_in_focus_chat: bool = True
     """是否在专注聊天中启用工具"""
+    
+@dataclass
+class VoiceConfig(ConfigBase):
+    """语音识别配置类"""
+
+    enable_asr: bool = False
+    """是否启用语音识别"""
 
 
 @dataclass

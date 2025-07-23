@@ -10,13 +10,13 @@ from datetime import datetime
 import asyncio
 from src.mais4u.s4u_config import s4u_config
 from src.chat.message_receive.message import MessageRecvS4U
-from src.person_info.relationship_manager import get_relationship_manager
+from src.person_info.relationship_fetcher import relationship_fetcher_manager
+from src.person_info.person_info import PersonInfoManager, get_person_info_manager
 from src.chat.message_receive.chat_stream import ChatStream
 from src.mais4u.mais4u_chat.super_chat_manager import get_super_chat_manager
 from src.mais4u.mais4u_chat.screen_manager import screen_manager
 from src.chat.express.expression_selector import expression_selector
 from .s4u_mood_manager import mood_manager
-from src.person_info.person_info import PersonInfoManager, get_person_info_manager
 from src.mais4u.mais4u_chat.internal_manager import internal_manager
 logger = get_logger("prompt")
 
@@ -149,9 +149,17 @@ class PromptBuilder:
 
         relation_prompt = ""
         if global_config.relationship.enable_relationship and who_chat_in_group:
-            relationship_manager = get_relationship_manager()
+            relationship_fetcher = relationship_fetcher_manager.get_fetcher(chat_stream.stream_id)
+            
+            # 将 (platform, user_id, nickname) 转换为 person_id
+            person_ids = []
+            for person in who_chat_in_group:
+                person_id = PersonInfoManager.get_person_id(person[0], person[1])
+                person_ids.append(person_id)
+            
+            # 使用 RelationshipFetcher 的 build_relation_info 方法，设置 points_num=3 保持与原来相同的行为
             relation_info_list = await asyncio.gather(
-                *[relationship_manager.build_relationship_info(person) for person in who_chat_in_group]
+                *[relationship_fetcher.build_relation_info(person_id, points_num=3) for person_id in person_ids]
             )
             relation_info = "".join(relation_info_list)
             if relation_info:

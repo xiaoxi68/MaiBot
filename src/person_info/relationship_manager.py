@@ -55,60 +55,6 @@ class RelationshipManager:
         # person_id=person_id, user_nickname=user_nickname, user_cardname=user_cardname, user_avatar=user_avatar
         # )
 
-    async def build_relationship_info(self, person, is_id: bool = False) -> str:
-        if is_id:
-            person_id = person
-        else:
-            person_id = PersonInfoManager.get_person_id(person[0], person[1])
-        person_info_manager = get_person_info_manager()
-        person_name = await person_info_manager.get_value(person_id, "person_name")
-        if not person_name or person_name == "none":
-            return ""
-        short_impression = await person_info_manager.get_value(person_id, "short_impression")
-
-        current_points = await person_info_manager.get_value(person_id, "points") or []
-        # print(f"current_points: {current_points}")
-        if isinstance(current_points, str):
-            try:
-                current_points = json.loads(current_points)
-            except json.JSONDecodeError:
-                logger.error(f"解析points JSON失败: {current_points}")
-                current_points = []
-        elif not isinstance(current_points, list):
-            current_points = []
-
-        # 按时间排序forgotten_points
-        current_points.sort(key=lambda x: x[2])
-        # 按权重加权随机抽取3个points，point[1]的值在1-10之间，权重越高被抽到概率越大
-        if len(current_points) > 3:
-            # point[1] 取值范围1-10，直接作为权重
-            weights = [max(1, min(10, int(point[1]))) for point in current_points]
-            points = random.choices(current_points, weights=weights, k=3)
-        else:
-            points = current_points
-
-        # 构建points文本
-        points_text = "\n".join([f"{point[2]}：{point[0]}" for point in points])
-
-        nickname_str = await person_info_manager.get_value(person_id, "nickname")
-        platform = await person_info_manager.get_value(person_id, "platform")
-
-        if person_name == nickname_str and not short_impression:
-            return ""
-
-        if person_name == nickname_str:
-            relation_prompt = f"'{person_name}' :"
-        else:
-            relation_prompt = f"'{person_name}' ，ta在{platform}上的昵称是{nickname_str}。"
-
-        if short_impression:
-            relation_prompt += f"你对ta的印象是：{short_impression}。\n"
-
-        if points_text:
-            relation_prompt += f"你记得ta最近做的事：{points_text}"
-
-        return relation_prompt
-
     async def update_person_impression(self, person_id, timestamp, bot_engaged_messages: List[Dict[str, Any]]):
         """更新用户印象
 
