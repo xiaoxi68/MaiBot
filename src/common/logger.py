@@ -349,6 +349,7 @@ MODULE_COLORS = {
     "chat_stream": "\033[38;5;51m",  # 亮青色
     "sender": "\033[38;5;67m",  # 稍微暗一些的蓝色，不显眼
     "message_storage": "\033[38;5;33m",  # 深蓝色
+    "expressor": "\033[38;5;166m",  # 橙色
     # 专注聊天模块
     "replyer": "\033[38;5;166m",  # 橙色
     "memory_activator": "\033[34m",  # 绿色
@@ -406,6 +407,34 @@ MODULE_COLORS = {
     #s4u
     "context_web_api": "\033[38;5;240m",  # 深灰色
     "S4U_chat": "\033[92m",  # 深灰色
+}
+
+# 定义模块别名映射 - 将真实的logger名称映射到显示的别名
+MODULE_ALIASES = {
+    # 示例映射
+    "individuality": "人格特质",
+    "emoji": "表情包",
+    "no_reply_action": "摸鱼",
+    "reply_action": "回复",
+    "action_manager": "动作",
+    "memory_activator": "记忆",
+    "tool_use": "工具",
+    "expressor": "表达方式",
+    "database_model": "数据库",
+    "mood": "情绪",
+    "memory": "记忆",
+    "tool_executor": "工具",
+    "hfc": "聊天节奏",
+    "chat": "所见",
+    "plugin_manager": "插件",
+    "relationship_builder": "关系",
+    "llm_models": "模型",
+    "person_info": "人物",
+    "chat_stream": "聊天流",
+    "planner": "规划器",
+    "replyer": "言语",
+    "config": "配置",
+    "main": "主程序",
 }
 
 RESET_COLOR = "\033[0m"
@@ -496,15 +525,18 @@ class ModuleColoredConsoleRenderer:
         if self._colors and self._enable_module_colors and logger_name:
             module_color = MODULE_COLORS.get(logger_name, "")
 
-        # 模块名称（带颜色）
+        # 模块名称（带颜色和别名支持）
         if logger_name:
+            # 获取别名，如果没有别名则使用原名称
+            display_name = MODULE_ALIASES.get(logger_name, logger_name)
+            
             if self._colors and self._enable_module_colors:
                 if module_color:
-                    module_part = f"{module_color}[{logger_name}]{RESET_COLOR}"
+                    module_part = f"{module_color}[{display_name}]{RESET_COLOR}"
                 else:
-                    module_part = f"[{logger_name}]"
+                    module_part = f"[{display_name}]"
             else:
-                module_part = f"[{logger_name}]"
+                module_part = f"[{display_name}]"
             parts.append(module_part)
 
         # 消息内容（确保转换为字符串）
@@ -714,19 +746,7 @@ def configure_logging(
         root_logger.setLevel(getattr(logging, level.upper()))
 
 
-def set_module_color(module_name: str, color_code: str):
-    """为指定模块设置颜色
 
-    Args:
-        module_name: 模块名称
-        color_code: ANSI颜色代码，例如 '\033[92m' 表示亮绿色
-    """
-    MODULE_COLORS[module_name] = color_code
-
-
-def get_module_colors():
-    """获取当前模块颜色配置"""
-    return MODULE_COLORS.copy()
 
 
 def reload_log_config():
@@ -917,9 +937,20 @@ def show_module_colors():
     for module_name, _color_code in MODULE_COLORS.items():
         # 临时创建一个该模块的logger来展示颜色
         demo_logger = structlog.get_logger(module_name).bind(logger_name=module_name)
-        demo_logger.info(f"这是 {module_name} 模块的颜色效果")
+        alias = MODULE_ALIASES.get(module_name, module_name)
+        if alias != module_name:
+            demo_logger.info(f"这是 {module_name} 模块的颜色效果 (显示为: {alias})")
+        else:
+            demo_logger.info(f"这是 {module_name} 模块的颜色效果")
 
     print("=== 颜色展示结束 ===\n")
+    
+    # 显示别名映射表
+    if MODULE_ALIASES:
+        print("=== 当前别名映射 ===")
+        for module_name, alias in MODULE_ALIASES.items():
+            print(f"  {module_name} -> {alias}")
+        print("=== 别名映射结束 ===\n")
 
 
 def format_json_for_logging(data, indent=2, ensure_ascii=False):
