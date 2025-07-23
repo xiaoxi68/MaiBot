@@ -31,6 +31,7 @@ class GlobalAnnouncementManager:
                 self._user_disabled_actions[chat_id].remove(action_name)
                 return True
             except ValueError:
+                logger.warning(f"动作 {action_name} 不在禁用列表中")
                 return False
         return False
 
@@ -51,6 +52,7 @@ class GlobalAnnouncementManager:
                 self._user_disabled_commands[chat_id].remove(command_name)
                 return True
             except ValueError:
+                logger.warning(f"命令 {command_name} 不在禁用列表中")
                 return False
         return False
 
@@ -71,6 +73,7 @@ class GlobalAnnouncementManager:
                 self._user_disabled_event_handlers[chat_id].remove(handler_name)
                 return True
             except ValueError:
+                logger.warning(f"事件处理器 {handler_name} 不在禁用列表中")
                 return False
         return False
 

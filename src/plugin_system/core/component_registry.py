@@ -442,7 +442,7 @@ class ComponentRegistry:
             command_info,
         )
 
-    # === 事件处理器特定查询方法 ===
+    # === EventHandler 特定查询方法 ===
 
     def get_event_handler_registry(self) -> Dict[str, Type[BaseEventHandler]]:
         """获取事件处理器注册表"""
@@ -467,9 +467,9 @@ class ComponentRegistry:
         """获取所有插件"""
         return self._plugins.copy()
 
-    def get_enabled_plugins(self) -> Dict[str, PluginInfo]:
-        """获取所有启用的插件"""
-        return {name: info for name, info in self._plugins.items() if info.enabled}
+    # def get_enabled_plugins(self) -> Dict[str, PluginInfo]:
+    #     """获取所有启用的插件"""
+    #     return {name: info for name, info in self._plugins.items() if info.enabled}
 
     def get_plugin_components(self, plugin_name: str) -> List[ComponentInfo]:
         """获取插件的所有组件"""

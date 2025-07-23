@@ -8,7 +8,7 @@ from pathlib import Path
 
 from src.common.logger import get_logger
 from src.plugin_system.base.plugin_base import PluginBase
-from src.plugin_system.base.component_types import ComponentType, PluginInfo, PythonDependency
+from src.plugin_system.base.component_types import ComponentType, PythonDependency
 from src.plugin_system.utils.manifest_utils import VersionComparator
 from .component_registry import component_registry
 from .dependency_manager import dependency_manager
@@ -75,7 +75,7 @@ class PluginManager:
         total_failed_registration = 0
 
         for plugin_name in self.plugin_classes.keys():
-            load_status, count = self._load_registered_plugin_classes(plugin_name)
+            load_status, count = self.load_registered_plugin_classes(plugin_name)
             if load_status:
                 total_registered += 1
             else:
@@ -85,7 +85,73 @@ class PluginManager:
 
         return total_registered, total_failed_registration
 
-    async def remove_registered_plugin(self, plugin_name: str) -> None:
+    def load_registered_plugin_classes(self, plugin_name: str) -> Tuple[bool, int]:
+        # sourcery skip: extract-duplicate-method, extract-method
+        """
+        加载已经注册的插件类
+        """
+        plugin_class = self.plugin_classes.get(plugin_name)
+        if not plugin_class:
+            logger.error(f"插件 {plugin_name} 的插件类未注册或不存在")
+            return False, 1
+        try:
+            # 使用记录的插件目录路径
+            plugin_dir = self.plugin_paths.get(plugin_name)
+
+            # 如果没有记录，直接返回失败
+            if not plugin_dir:
+                return False, 1
+
+            plugin_instance = plugin_class(plugin_dir=plugin_dir)  # 实例化插件（可能因为缺少manifest而失败）
+            if not plugin_instance:
+                logger.error(f"插件 {plugin_name} 实例化失败")
+                return False, 1
+            # 检查插件是否启用
+            if not plugin_instance.enable_plugin:
+                logger.info(f"插件 {plugin_name} 已禁用，跳过加载")
+                return False, 0
+
+            # 检查版本兼容性
+            is_compatible, compatibility_error = self._check_plugin_version_compatibility(
+                plugin_name, plugin_instance.manifest_data
+            )
+            if not is_compatible:
+                self.failed_plugins[plugin_name] = compatibility_error
+                logger.error(f"❌ 插件加载失败: {plugin_name} - {compatibility_error}")
+                return False, 1
+            if plugin_instance.register_plugin():
+                self.loaded_plugins[plugin_name] = plugin_instance
+                self._show_plugin_components(plugin_name)
+                return True, 1
+            else:
+                self.failed_plugins[plugin_name] = "插件注册失败"
+                logger.error(f"❌ 插件注册失败: {plugin_name}")
+                return False, 1
+
+        except FileNotFoundError as e:
+            # manifest文件缺失
+            error_msg = f"缺少manifest文件: {str(e)}"
+            self.failed_plugins[plugin_name] = error_msg
+            logger.error(f"❌ 插件加载失败: {plugin_name} - {error_msg}")
+            return False, 1
+
+        except ValueError as e:
+            # manifest文件格式错误或验证失败
+            traceback.print_exc()
+            error_msg = f"manifest验证失败: {str(e)}"
+            self.failed_plugins[plugin_name] = error_msg
+            logger.error(f"❌ 插件加载失败: {plugin_name} - {error_msg}")
+            return False, 1
+
+        except Exception as e:
+            # 其他错误
+            error_msg = f"未知错误: {str(e)}"
+            self.failed_plugins[plugin_name] = error_msg
+            logger.error(f"❌ 插件加载失败: {plugin_name} - {error_msg}")
+            logger.debug("详细错误信息: ", exc_info=True)
+            return False, 1
+
+    async def remove_registered_plugin(self, plugin_name: str) -> bool:
         """
         禁用插件模块
         """
@@ -93,38 +159,40 @@ class PluginManager:
             raise ValueError("插件名称不能为空")
         if plugin_name not in self.loaded_plugins:
             logger.warning(f"插件 {plugin_name} 未加载")
-            return
+            return False
         plugin_instance = self.loaded_plugins[plugin_name]
         plugin_info = plugin_instance.plugin_info
         for component in plugin_info.components:
             await component_registry.remove_component(component.name, component.component_type)
         del self.loaded_plugins[plugin_name]
+        return True
 
-    async def reload_registered_plugin_module(self, plugin_name: str) -> None:
+    async def reload_registered_plugin(self, plugin_name: str) -> bool:
         """
         重载插件模块
         """
-        await self.remove_registered_plugin(plugin_name)
-        self._load_registered_plugin_classes(plugin_name)
+        if not await self.remove_registered_plugin(plugin_name):
+            return False
+        if not self.load_registered_plugin_classes(plugin_name)[0]:
+            return False
+        logger.debug(f"插件 {plugin_name} 重载成功")
+        return True
 
-    def rescan_plugin_directory(self) -> None:
+    def rescan_plugin_directory(self) -> Tuple[int, int]:
         """
         重新扫描插件根目录
         """
+        total_success = 0
+        total_fail = 0
         for directory in self.plugin_directories:
             if os.path.exists(directory):
                 logger.debug(f"重新扫描插件根目录: {directory}")
-                self._load_plugin_modules_from_directory(directory)
+                success, fail = self._load_plugin_modules_from_directory(directory)
+                total_success += success
+                total_fail += fail
             else:
                 logger.warning(f"插件根目录不存在: {directory}")
-
-    def get_loaded_plugins(self) -> List[PluginInfo]:
-        """获取所有已加载的插件信息"""
-        return list(component_registry.get_all_plugins().values())
-
-    def get_enabled_plugins(self) -> List[PluginInfo]:
-        """获取所有启用的插件信息"""
-        return list(component_registry.get_enabled_plugins().values())
+        return total_success, total_fail
 
     def get_plugin_instance(self, plugin_name: str) -> Optional["PluginBase"]:
         """获取插件实例
@@ -235,6 +303,25 @@ class PluginManager:
 
         return dependency_manager.generate_requirements_file(all_dependencies, output_path)
 
+    # === 查询方法 ===
+    def list_loaded_plugins(self) -> List[str]:
+        """
+        列出所有当前加载的插件。
+
+        Returns:
+            list: 当前加载的插件名称列表。
+        """
+        return list(self.loaded_plugins.keys())
+
+    def list_registered_plugins(self) -> List[str]:
+        """
+        列出所有已注册的插件类。
+
+        Returns:
+            list: 已注册的插件类名称列表。
+        """
+        return list(self.plugin_classes.keys())
+
     # === 私有方法 ===
     # == 目录管理 ==
     def _ensure_plugin_directories(self) -> None:
@@ -309,72 +396,6 @@ class PluginManager:
             logger.error(error_msg)
             self.failed_plugins[module_name] = error_msg
             return False
-
-    def _load_registered_plugin_classes(self, plugin_name: str) -> Tuple[bool, int]:
-        # sourcery skip: extract-duplicate-method, extract-method
-        """
-        加载已经注册的插件类
-        """
-        plugin_class = self.plugin_classes.get(plugin_name)
-        if not plugin_class:
-            logger.error(f"插件 {plugin_name} 的插件类未注册或不存在")
-            return False, 1
-        try:
-            # 使用记录的插件目录路径
-            plugin_dir = self.plugin_paths.get(plugin_name)
-
-            # 如果没有记录，直接返回失败
-            if not plugin_dir:
-                return False, 1
-
-            plugin_instance = plugin_class(plugin_dir=plugin_dir)  # 实例化插件（可能因为缺少manifest而失败）
-            if not plugin_instance:
-                logger.error(f"插件 {plugin_name} 实例化失败")
-                return False, 1
-            # 检查插件是否启用
-            if not plugin_instance.enable_plugin:
-                logger.info(f"插件 {plugin_name} 已禁用，跳过加载")
-                return False, 0
-
-            # 检查版本兼容性
-            is_compatible, compatibility_error = self._check_plugin_version_compatibility(
-                plugin_name, plugin_instance.manifest_data
-            )
-            if not is_compatible:
-                self.failed_plugins[plugin_name] = compatibility_error
-                logger.error(f"❌ 插件加载失败: {plugin_name} - {compatibility_error}")
-                return False, 1
-            if plugin_instance.register_plugin():
-                self.loaded_plugins[plugin_name] = plugin_instance
-                self._show_plugin_components(plugin_name)
-                return True, 1
-            else:
-                self.failed_plugins[plugin_name] = "插件注册失败"
-                logger.error(f"❌ 插件注册失败: {plugin_name}")
-                return False, 1
-
-        except FileNotFoundError as e:
-            # manifest文件缺失
-            error_msg = f"缺少manifest文件: {str(e)}"
-            self.failed_plugins[plugin_name] = error_msg
-            logger.error(f"❌ 插件加载失败: {plugin_name} - {error_msg}")
-            return False, 1
-
-        except ValueError as e:
-            # manifest文件格式错误或验证失败
-            traceback.print_exc()
-            error_msg = f"manifest验证失败: {str(e)}"
-            self.failed_plugins[plugin_name] = error_msg
-            logger.error(f"❌ 插件加载失败: {plugin_name} - {error_msg}")
-            return False, 1
-
-        except Exception as e:
-            # 其他错误
-            error_msg = f"未知错误: {str(e)}"
-            self.failed_plugins[plugin_name] = error_msg
-            logger.error(f"❌ 插件加载失败: {plugin_name} - {error_msg}")
-            logger.debug("详细错误信息: ", exc_info=True)
-            return False, 1
 
     # == 兼容性检查 ==
 

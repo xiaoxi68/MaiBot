@@ -23,13 +23,6 @@ from .base import (
     EventType,
     MaiMessages,
 )
-from .core import (
-    plugin_manager,
-    component_registry,
-    dependency_manager,
-    events_manager,
-    global_announcement_manager,
-)
 
 # 导入工具模块
 from .utils import (
@@ -39,12 +32,42 @@ from .utils import (
     # generate_plugin_manifest,
 )
 
-from .apis import register_plugin, get_logger
+from .apis import (
+    chat_api,
+    component_manage_api,
+    config_api,
+    database_api,
+    emoji_api,
+    generator_api,
+    llm_api,
+    message_api,
+    person_api,
+    plugin_manage_api,
+    send_api,
+    utils_api,
+    register_plugin,
+    get_logger,
+)
 
 
 __version__ = "1.0.0"
 
 __all__ = [
+    # API 模块
+    "chat_api",
+    "component_manage_api",
+    "config_api",
+    "database_api",
+    "emoji_api",
+    "generator_api",
+    "llm_api",
+    "message_api",
+    "person_api",
+    "plugin_manage_api",
+    "send_api",
+    "utils_api",
+    "register_plugin",
+    "get_logger",
     # 基础类
     "BasePlugin",
     "BaseAction",
@@ -63,12 +86,6 @@ __all__ = [
     "EventType",
     # 消息
     "MaiMessages",
-    # 管理器
-    "plugin_manager",
-    "component_registry",
-    "dependency_manager",
-    "events_manager",
-    "global_announcement_manager",
     # 装饰器
     "register_plugin",
     "ConfigField",
