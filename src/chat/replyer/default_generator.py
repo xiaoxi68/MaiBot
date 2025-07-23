@@ -6,7 +6,7 @@ import re
 
 from typing import List, Optional, Dict, Any, Tuple
 from datetime import datetime
-from src.chat.mai_thinking.mai_think import mai_thinking_manager
+from src.mais4u.mai_think import mai_thinking_manager
 from src.common.logger import get_logger
 from src.config.config import global_config
 from src.individuality.individuality import get_individuality

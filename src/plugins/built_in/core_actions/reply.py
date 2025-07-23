@@ -15,7 +15,7 @@ from src.common.logger import get_logger
 from src.plugin_system.apis import generator_api, message_api
 from src.plugins.built_in.core_actions.no_reply import NoReplyAction
 from src.person_info.person_info import get_person_info_manager
-from src.chat.mai_thinking.mai_think import mai_thinking_manager
+from src.mais4u.mai_think import mai_thinking_manager
 from src.mais4u.constant_s4u import ENABLE_S4U
 
 logger = get_logger("reply_action")
