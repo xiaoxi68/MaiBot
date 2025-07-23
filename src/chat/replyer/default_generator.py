@@ -60,7 +60,6 @@ def init_prompt():
 现在请你读读之前的聊天记录，并给出回复
 {config_expression_style}。注意不要复读你说过的话
 {keywords_reaction_prompt}
-请注意不要输出多余内容(包括前后缀，冒号和引号，at或 @等 )。只输出回复内容。
 {moderation_prompt}
 不要浮夸，不要夸张修辞，不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出回复内容""",
         "default_generator_prompt",
