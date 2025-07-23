@@ -17,6 +17,9 @@ from src.config.config_base import ConfigBase
 @dataclass
 class BotConfig(ConfigBase):
     """QQ机器人配置类"""
+    
+    platform: str
+    """平台"""
 
     qq_account: str
     """QQ账号"""
