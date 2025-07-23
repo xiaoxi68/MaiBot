@@ -1,7 +1,7 @@
 import json
 import time
 import traceback
-from typing import Dict, Any, Optional, Tuple, List
+from typing import Dict, Any, Optional, Tuple
 from rich.traceback import install
 from datetime import datetime
 from json_repair import repair_json
@@ -119,8 +119,8 @@ class ActionPlanner:
             current_available_actions_dict = self.action_manager.get_using_actions()
 
             # 获取完整的动作信息
-            all_registered_actions: List[ActionInfo] = list(
-                component_registry.get_components_by_type(ComponentType.ACTION).values()  # type: ignore
+            all_registered_actions: Dict[str, ActionInfo] = component_registry.get_components_by_type(  # type: ignore
+                ComponentType.ACTION
             )
             current_available_actions = {}
             for action_name in current_available_actions_dict:

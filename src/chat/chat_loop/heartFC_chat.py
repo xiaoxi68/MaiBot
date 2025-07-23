@@ -51,8 +51,6 @@ NO_ACTION = {
     "action_prompt": "",
 }
 
-IS_MAI4U = False
-
 install(extra_lines=3)
 
 # 注释：原来的动作修改超时常量已移除，因为改为顺序执行
