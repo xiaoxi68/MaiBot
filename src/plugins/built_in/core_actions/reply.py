@@ -1,4 +1,3 @@
-
 # 导入新插件系统
 from src.plugin_system import BaseAction, ActionActivationType, ChatMode
 from src.config.config import global_config
@@ -8,6 +7,7 @@ from typing import Tuple
 import asyncio
 import re
 import traceback
+
 # 导入依赖的系统组件
 from src.common.logger import get_logger
 
@@ -19,6 +19,7 @@ from src.chat.mai_thinking.mai_think import mai_thinking_manager
 from src.mais4u.constant_s4u import ENABLE_S4U
 
 logger = get_logger("reply_action")
+
 
 class ReplyAction(BaseAction):
     """回复动作 - 参与聊天回复"""
@@ -61,10 +62,10 @@ class ReplyAction(BaseAction):
         user_id = self.user_id
         platform = self.platform
         # logger.info(f"{self.log_prefix} 用户ID: {user_id}, 平台: {platform}")
-        person_id = get_person_info_manager().get_person_id(platform, user_id)
+        person_id = get_person_info_manager().get_person_id(platform, user_id)  # type: ignore
         # logger.info(f"{self.log_prefix} 人物ID: {person_id}")
         person_name = get_person_info_manager().get_value_sync(person_id, "person_name")
-        reply_to = f"{person_name}:{self.action_message.get('processed_plain_text', '')}"
+        reply_to = f"{person_name}:{self.action_message.get('processed_plain_text', '')}"  # type: ignore
         logger.info(f"{self.log_prefix} 回复目标: {reply_to}")
 
         try:
@@ -118,11 +119,9 @@ class ReplyAction(BaseAction):
 
             # 存储动作记录
             reply_text = f"你对{person_name}进行了回复：{reply_text}"
-            
-            
+
             if ENABLE_S4U:
                 await mai_thinking_manager.get_mai_think(self.chat_id).do_think_after_response(reply_text)
-            
 
             await self.store_action_info(
                 action_build_into_prompt=False,

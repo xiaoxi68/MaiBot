@@ -24,9 +24,8 @@ class BaseCommand(ABC):
     """Command组件的名称"""
     command_description: str = ""
     """Command组件的描述"""
-
-    # 默认命令设置（子类可以覆盖）
-    command_pattern: str = ""
+    # 默认命令设置
+    command_pattern: str = r""
     """命令匹配的正则表达式"""
     command_help: str = ""
     """命令帮助信息"""

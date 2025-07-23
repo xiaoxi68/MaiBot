@@ -220,3 +220,26 @@ def locally_disable_component(component_name: str, component_type: ComponentType
             return global_announcement_manager.disable_specific_chat_event_handler(stream_id, component_name)
         case _:
             raise ValueError(f"未知 component type: {component_type}")
+
+def get_locally_disabled_components(stream_id: str, component_type: ComponentType) -> list[str]:
+    """
+    获取指定消息流中禁用的组件列表。
+
+    Args:
+        stream_id (str): 消息流 ID。
+        component_type (ComponentType): 组件类型。
+
+    Returns:
+        list[str]: 禁用的组件名称列表。
+    """
+    from src.plugin_system.core.global_announcement_manager import global_announcement_manager
+
+    match component_type:
+        case ComponentType.ACTION:
+            return global_announcement_manager.get_disabled_chat_actions(stream_id)
+        case ComponentType.COMMAND:
+            return global_announcement_manager.get_disabled_chat_commands(stream_id)
+        case ComponentType.EVENT_HANDLER:
+            return global_announcement_manager.get_disabled_chat_event_handlers(stream_id)
+        case _:
+            raise ValueError(f"未知 component type: {component_type}")

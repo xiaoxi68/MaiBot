@@ -22,6 +22,7 @@ from src.plugins.built_in.core_actions.reply import ReplyAction
 
 logger = get_logger("core_actions")
 
+
 @register_plugin
 class CoreActionsPlugin(BasePlugin):
     """核心动作插件
@@ -35,11 +36,11 @@ class CoreActionsPlugin(BasePlugin):
     """
 
     # 插件基本信息
-    plugin_name = "core_actions"  # 内部标识符
-    enable_plugin = True
-    dependencies = []  # 插件依赖列表
-    python_dependencies = []  # Python包依赖列表
-    config_file_name = "config.toml"
+    plugin_name: str = "core_actions"  # 内部标识符
+    enable_plugin: bool = True
+    dependencies: list[str] = []  # 插件依赖列表
+    python_dependencies: list[str] = []  # Python包依赖列表
+    config_file_name: str = "config.toml"
 
     # 配置节描述
     config_section_descriptions = {
@@ -48,7 +49,7 @@ class CoreActionsPlugin(BasePlugin):
     }
 
     # 配置Schema定义
-    config_schema = {
+    config_schema: dict = {
         "plugin": {
             "enabled": ConfigField(type=bool, default=True, description="是否启用插件"),
             "config_version": ConfigField(type=str, default="0.4.0", description="配置文件版本"),

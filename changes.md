@@ -56,7 +56,7 @@
 
 # 官方插件修改
 1. `HelloWorld`插件现在有一个样例的`EventHandler`。
-
+2. 内置插件增加了一个通过`Command`来管理插件的功能。
 
 ### TODO
 把这个看起来就很别扭的config获取方式改一下
