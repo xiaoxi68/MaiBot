@@ -162,10 +162,12 @@ class PluginManager:
             return False
         plugin_instance = self.loaded_plugins[plugin_name]
         plugin_info = plugin_instance.plugin_info
+        success = True
         for component in plugin_info.components:
-            await component_registry.remove_component(component.name, component.component_type)
+            success &= await component_registry.remove_component(component.name, component.component_type, plugin_name)
+        success &= component_registry.remove_plugin_registry(plugin_name)
         del self.loaded_plugins[plugin_name]
-        return True
+        return success
 
     async def reload_registered_plugin(self, plugin_name: str) -> bool:
         """

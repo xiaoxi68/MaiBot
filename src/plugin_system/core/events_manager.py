@@ -75,6 +75,8 @@ class EventsManager:
                     handler_task = asyncio.create_task(handler.execute(transformed_message))
                     handler_task.add_done_callback(self._task_done_callback)
                     handler_task.set_name(f"{handler.plugin_name}-{handler.handler_name}")
+                    if handler.handler_name not in self._handler_tasks:
+                        self._handler_tasks[handler.handler_name] = []
                     self._handler_tasks[handler.handler_name].append(handler_task)
                 except Exception as e:
                     logger.error(f"创建事件处理器任务 {handler.handler_name} 时发生异常: {e}")

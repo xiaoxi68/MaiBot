@@ -220,9 +220,6 @@ class ChatBot:
                     await MessageStorage.update_message(message)
                     return
 
-            if not await events_manager.handle_mai_events(EventType.ON_MESSAGE, message):
-                return
-
             get_chat_manager().register_message(message)
 
             chat = await get_chat_manager().get_or_create_stream(
@@ -255,6 +252,9 @@ class ChatBot:
             if is_command and not continue_process:
                 await MessageStorage.store_message(message, chat)
                 logger.info(f"命令处理完成，跳过后续消息处理: {cmd_result}")
+                return
+
+            if not await events_manager.handle_mai_events(EventType.ON_MESSAGE, message):
                 return
 
             # 确认从接口发来的message是否有自定义的prompt模板信息
