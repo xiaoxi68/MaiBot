@@ -279,23 +279,29 @@ class ActionPlanner:
             self.last_obs_time_mark = time.time()
 
             if mode == ChatMode.FOCUS:
+                mentioned_bonus = ""
+                if global_config.chat.mentioned_bot_inevitable_reply:
+                    mentioned_bonus = "\n- 有人提到你"
+                if global_config.chat.at_bot_inevitable_reply:
+                    mentioned_bonus = "\n- 有人提到你，或者at你"
+
+                
                 by_what = "聊天内容"
                 target_prompt = '\n    "target_message_id":"触发action的消息id"'
-                no_action_block = """重要说明1：
+                no_action_block = f"""重要说明1：
 - 'no_reply' 表示只进行不进行回复，等待合适的回复时机
 - 当你刚刚发送了消息，没有人回复时，选择no_reply
 - 当你一次发送了太多消息，为了避免打扰聊天节奏，选择no_reply
 
 动作：reply
 动作描述：参与聊天回复，发送文本进行表达
-- 你想要闲聊或者随便附和
-- 有人提到你
+- 你想要闲聊或者随便附和{mentioned_bonus}
 - 如果你刚刚进行了回复，不要对同一个话题重复回应
-{
+{{
     "action": "reply",
     "target_message_id":"触发action的消息id",
     "reason":"回复的原因"
-}
+}}
 
 """
             else:

@@ -87,36 +87,90 @@ class ExpressionLearner:
             request_type="expressor.learner",
         )
         self.llm_model = None
+        self._ensure_expression_directories()
         self._auto_migrate_json_to_db()
         self._migrate_old_data_create_date()
+
+    def _ensure_expression_directories(self):
+        """
+        确保表达方式相关的目录结构存在
+        """
+        base_dir = os.path.join("data", "expression")
+        directories_to_create = [
+            base_dir,
+            os.path.join(base_dir, "learnt_style"),
+            os.path.join(base_dir, "learnt_grammar"),
+        ]
+        
+        for directory in directories_to_create:
+            try:
+                os.makedirs(directory, exist_ok=True)
+                logger.debug(f"确保目录存在: {directory}")
+            except Exception as e:
+                logger.error(f"创建目录失败 {directory}: {e}")
 
     def _auto_migrate_json_to_db(self):
         """
         自动将/data/expression/learnt_style 和 learnt_grammar 下所有expressions.json迁移到数据库。
         迁移完成后在/data/expression/done.done写入标记文件，存在则跳过。
         """
-        done_flag = os.path.join("data", "expression", "done.done")
+        base_dir = os.path.join("data", "expression")
+        done_flag = os.path.join(base_dir, "done.done")
+        
+        # 确保基础目录存在
+        try:
+            os.makedirs(base_dir, exist_ok=True)
+            logger.debug(f"确保目录存在: {base_dir}")
+        except Exception as e:
+            logger.error(f"创建表达方式目录失败: {e}")
+            return
+        
         if os.path.exists(done_flag):
             logger.info("表达方式JSON已迁移，无需重复迁移。")
             return
-        base_dir = os.path.join("data", "expression")
+            
+        logger.info("开始迁移表达方式JSON到数据库...")
+        migrated_count = 0
+        
         for type in ["learnt_style", "learnt_grammar"]:
             type_str = "style" if type == "learnt_style" else "grammar"
             type_dir = os.path.join(base_dir, type)
             if not os.path.exists(type_dir):
+                logger.debug(f"目录不存在，跳过: {type_dir}")
                 continue
-            for chat_id in os.listdir(type_dir):
+                
+            try:
+                chat_ids = os.listdir(type_dir)
+                logger.debug(f"在 {type_dir} 中找到 {len(chat_ids)} 个聊天ID目录")
+            except Exception as e:
+                logger.error(f"读取目录失败 {type_dir}: {e}")
+                continue
+                
+            for chat_id in chat_ids:
                 expr_file = os.path.join(type_dir, chat_id, "expressions.json")
                 if not os.path.exists(expr_file):
                     continue
                 try:
                     with open(expr_file, "r", encoding="utf-8") as f:
                         expressions = json.load(f)
+                    
+                    if not isinstance(expressions, list):
+                        logger.warning(f"表达方式文件格式错误，跳过: {expr_file}")
+                        continue
+                        
                     for expr in expressions:
+                        if not isinstance(expr, dict):
+                            continue
+                            
                         situation = expr.get("situation")
                         style_val = expr.get("style")
                         count = expr.get("count", 1)
                         last_active_time = expr.get("last_active_time", time.time())
+                        
+                        if not situation or not style_val:
+                            logger.warning(f"表达方式缺少必要字段，跳过: {expr}")
+                            continue
+                        
                         # 查重：同chat_id+type+situation+style
                         from src.common.database.database_model import Expression
 
@@ -141,14 +195,28 @@ class ExpressionLearner:
                                 type=type_str,
                                 create_date=last_active_time,  # 迁移时使用last_active_time作为创建时间
                             )
-                    logger.info(f"已迁移 {expr_file} 到数据库")
+                            migrated_count += 1
+                    logger.info(f"已迁移 {expr_file} 到数据库，包含 {len(expressions)} 个表达方式")
+                except json.JSONDecodeError as e:
+                    logger.error(f"JSON解析失败 {expr_file}: {e}")
                 except Exception as e:
                     logger.error(f"迁移表达方式 {expr_file} 失败: {e}")
+        
         # 标记迁移完成
         try:
+            # 确保done.done文件的父目录存在
+            done_parent_dir = os.path.dirname(done_flag)
+            if not os.path.exists(done_parent_dir):
+                os.makedirs(done_parent_dir, exist_ok=True)
+                logger.debug(f"为done.done创建父目录: {done_parent_dir}")
+            
             with open(done_flag, "w", encoding="utf-8") as f:
                 f.write("done\n")
-            logger.info("表达方式JSON迁移已完成，已写入done.done标记文件")
+            logger.info(f"表达方式JSON迁移已完成，共迁移 {migrated_count} 个表达方式，已写入done.done标记文件")
+        except PermissionError as e:
+            logger.error(f"权限不足，无法写入done.done标记文件: {e}")
+        except OSError as e:
+            logger.error(f"文件系统错误，无法写入done.done标记文件: {e}")
         except Exception as e:
             logger.error(f"写入done.done标记文件失败: {e}")
 
@@ -266,9 +334,17 @@ class ExpressionLearner:
         for type in ["style", "grammar"]:
             base_dir = os.path.join("data", "expression", f"learnt_{type}")
             if not os.path.exists(base_dir):
+                logger.debug(f"目录不存在，跳过衰减: {base_dir}")
                 continue
 
-            for chat_id in os.listdir(base_dir):
+            try:
+                chat_ids = os.listdir(base_dir)
+                logger.debug(f"在 {base_dir} 中找到 {len(chat_ids)} 个聊天ID目录进行衰减")
+            except Exception as e:
+                logger.error(f"读取目录失败 {base_dir}: {e}")
+                continue
+
+            for chat_id in chat_ids:
                 file_path = os.path.join(base_dir, chat_id, "expressions.json")
                 if not os.path.exists(file_path):
                     continue
@@ -277,14 +353,24 @@ class ExpressionLearner:
                     with open(file_path, "r", encoding="utf-8") as f:
                         expressions = json.load(f)
 
+                    if not isinstance(expressions, list):
+                        logger.warning(f"表达方式文件格式错误，跳过衰减: {file_path}")
+                        continue
+
                     # 应用全局衰减
                     decayed_expressions = self.apply_decay_to_expressions(expressions, current_time)
 
                     # 保存衰减后的结果
                     with open(file_path, "w", encoding="utf-8") as f:
                         json.dump(decayed_expressions, f, ensure_ascii=False, indent=2)
+                        
+                    logger.debug(f"已对 {file_path} 应用衰减，剩余 {len(decayed_expressions)} 个表达方式")
+                except json.JSONDecodeError as e:
+                    logger.error(f"JSON解析失败，跳过衰减 {file_path}: {e}")
+                except PermissionError as e:
+                    logger.error(f"权限不足，无法更新 {file_path}: {e}")
                 except Exception as e:
-                    logger.error(f"全局衰减{type}表达方式失败: {e}")
+                    logger.error(f"全局衰减{type}表达方式失败 {file_path}: {e}")
                     continue
 
         learnt_style: Optional[List[Tuple[str, str, str]]] = []
