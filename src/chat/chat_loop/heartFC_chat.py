@@ -236,10 +236,10 @@ class HeartFChatting:
                 if if_think:
                     factor = max(global_config.chat.focus_value, 0.1)
                     self.energy_value *= 1.1 / factor
-                    logger.info(f"{self.log_prefix} 麦麦进行了思考，能量值按倍数增加，当前能量值：{self.energy_value:.1f}")
+                    logger.info(f"{self.log_prefix} 进行了思考，能量值按倍数增加，当前能量值：{self.energy_value:.1f}")
                 else:
                     self.energy_value += 0.1 / global_config.chat.focus_value
-                    logger.info(f"{self.log_prefix} 麦麦没有进行思考，能量值线性增加，当前能量值：{self.energy_value:.1f}")
+                    logger.debug(f"{self.log_prefix} 没有进行思考，能量值线性增加，当前能量值：{self.energy_value:.1f}")
 
                 logger.debug(f"{self.log_prefix} 当前能量值：{self.energy_value:.1f}")
                 return True
