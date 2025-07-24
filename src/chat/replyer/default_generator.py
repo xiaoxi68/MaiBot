@@ -353,6 +353,7 @@ class DefaultReplyer:
 
         # 动态构建expression habits块
         expression_habits_block = ""
+        expression_habits_title = ""
         if style_habits_str.strip():
             expression_habits_title = "你可以参考以下的语言习惯，当情景合适就使用，但不要生硬使用，以合理的方式结合到你的回复中："
             expression_habits_block += f"{style_habits_str}\n"
