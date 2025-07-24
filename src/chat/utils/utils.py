@@ -103,7 +103,7 @@ def is_mentioned_bot_in_message(message: MessageRecv) -> tuple[bool, float]:
                 for nickname in nicknames:
                     if nickname in message_content:
                         is_mentioned = True
-        if is_mentioned and global_config.normal_chat.mentioned_bot_inevitable_reply:
+        if is_mentioned and global_config.chat.mentioned_bot_inevitable_reply:
             reply_probability = 1.0
             logger.debug("被提及，回复概率设置为100%")
     return is_mentioned, reply_probability
