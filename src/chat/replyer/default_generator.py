@@ -450,6 +450,9 @@ class DefaultReplyer:
     def _parse_reply_target(self, target_message: str) -> tuple:
         sender = ""
         target = ""
+        # 添加None检查，防止NoneType错误
+        if target_message is None:
+            return sender, target
         if ":" in target_message or "：" in target_message:
             # 使用正则表达式匹配中文或英文冒号
             parts = re.split(pattern=r"[:：]", string=target_message, maxsplit=1)
@@ -462,6 +465,10 @@ class DefaultReplyer:
         # 关键词检测与反应
         keywords_reaction_prompt = ""
         try:
+            # 添加None检查，防止NoneType错误
+            if target is None:
+                return keywords_reaction_prompt
+                
             # 处理关键词规则
             for rule in global_config.keyword_reaction.keyword_rules:
                 if any(keyword in target for keyword in rule.keywords):
@@ -524,7 +531,7 @@ class DefaultReplyer:
                     # 其他用户的对话
                     background_dialogue_list.append(msg_dict)
             except Exception as e:
-                logger.error(f"无法处理历史消息记录: {msg_dict}, 错误: {e}")
+                logger.error(f"![1753364551656](image/default_generator/1753364551656.png)记录: {msg_dict}, 错误: {e}")
 
         # 构建背景对话 prompt
         background_dialogue_prompt = ""

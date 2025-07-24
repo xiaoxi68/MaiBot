@@ -32,13 +32,13 @@ class ReplyAction(BaseAction):
 
     # 动作基本信息
     action_name = "reply"
-    action_description = "参与聊天回复，发送文本进行表达"
+    action_description = ""
 
     # 动作参数定义
     action_parameters = {}
 
     # 动作使用场景
-    action_require = ["你想要闲聊或者随便附和", "有人提到你", "如果你刚刚进行了回复，不要对同一个话题重复回应"]
+    action_require = [""]
 
     # 关联类型
     associated_types = ["text"]
@@ -46,6 +46,9 @@ class ReplyAction(BaseAction):
     def _parse_reply_target(self, target_message: str) -> tuple:
         sender = ""
         target = ""
+        # 添加None检查，防止NoneType错误
+        if target_message is None:
+            return sender, target
         if ":" in target_message or "：" in target_message:
             # 使用正则表达式匹配中文或英文冒号
             parts = re.split(pattern=r"[:：]", string=target_message, maxsplit=1)
