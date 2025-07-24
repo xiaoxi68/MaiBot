@@ -148,9 +148,7 @@ enable_asr = false # 是否启用语音识别，启用后麦麦可以识别语�
 
 [mood]
 enable_mood = true # 是否启用情绪系统
-mood_update_interval = 1.0 # 情绪更新间隔 单位秒
-mood_decay_rate = 0.95 # 情绪衰减率
-mood_intensity_factor = 1.0 # 情绪强度因子
+mood_update_threshold = 1 # 情绪更新阈值,越高，更新越慢
 
 [lpmm_knowledge] # lpmm知识库配置
 enable = false # 是否启用lpmm知识库

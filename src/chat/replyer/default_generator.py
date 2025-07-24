@@ -74,6 +74,7 @@ def init_prompt():
 
 你正在{chat_target_2},{reply_target_block}
 对这句话，你想表达，原句：{raw_reply},原因是：{reason}。你现在要思考怎么组织回复
+你现在的心情是：{mood_state}
 你需要使用合适的语法和句法，参考聊天内容，组织一条日常且口语化的回复。请你修改你想表达的原句，符合你的表达风格和语言习惯
 {config_expression_style}，你可以完全重组回复，保留最基本的表达含义就好，但重组后保持语意通顺。
 {keywords_reaction_prompt}
@@ -620,9 +621,12 @@ class DefaultReplyer:
         is_group_chat = bool(chat_stream.group_info)
         reply_to = reply_data.get("reply_to", "none")
         extra_info_block = reply_data.get("extra_info", "") or reply_data.get("extra_info_block", "")
-
-        chat_mood = mood_manager.get_mood_by_chat_id(chat_id)
-        mood_prompt = chat_mood.mood_state
+            
+        if global_config.mood.enable_mood:
+            chat_mood = mood_manager.get_mood_by_chat_id(chat_id)
+            mood_prompt = chat_mood.mood_state
+        else:
+            mood_prompt = ""
 
         sender, target = self._parse_reply_target(reply_to)
 
@@ -883,6 +887,13 @@ class DefaultReplyer:
         reason = reply_data.get("reason", "")
         sender, target = self._parse_reply_target(reply_to)
 
+        # 添加情绪状态获取
+        if global_config.mood.enable_mood:
+            chat_mood = mood_manager.get_mood_by_chat_id(chat_id)
+            mood_prompt = chat_mood.mood_state
+        else:
+            mood_prompt = ""
+
         message_list_before_now_half = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_id,
             timestamp=time.time(),
@@ -963,6 +974,7 @@ class DefaultReplyer:
             reply_target_block=reply_target_block,
             raw_reply=raw_reply,
             reason=reason,
+            mood_state=mood_prompt,  # 添加情绪状态参数
             config_expression_style=global_config.expression.expression_style,
             keywords_reaction_prompt=keywords_reaction_prompt,
             moderation_prompt=moderation_prompt_block,

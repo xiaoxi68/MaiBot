@@ -408,15 +408,9 @@ class MoodConfig(ConfigBase):
 
     enable_mood: bool = False
     """是否启用情绪系统"""
-
-    mood_update_interval: int = 1
-    """情绪更新间隔（秒）"""
-
-    mood_decay_rate: float = 0.95
-    """情绪衰减率"""
-
-    mood_intensity_factor: float = 0.7
-    """情绪强度因子"""
+    
+    mood_update_threshold: float = 1.0
+    """情绪更新阈值,越高，更新越慢"""
 
 
 @dataclass

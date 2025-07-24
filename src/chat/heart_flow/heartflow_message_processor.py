@@ -111,9 +111,9 @@ class HeartFCMessageReceiver:
             subheartflow: SubHeartflow = await heartflow.get_or_create_subheartflow(chat.stream_id)  # type: ignore
 
             # subheartflow.add_message_to_normal_chat_cache(message, interested_rate, is_mentioned)
-
-            chat_mood = mood_manager.get_mood_by_chat_id(subheartflow.chat_id)
-            asyncio.create_task(chat_mood.update_mood_by_message(message, interested_rate))
+            if global_config.mood.enable_mood:  
+                chat_mood = mood_manager.get_mood_by_chat_id(subheartflow.chat_id)
+                asyncio.create_task(chat_mood.update_mood_by_message(message, interested_rate))
 
             # 3. 日志记录
             mes_name = chat.group_info.group_name if chat.group_info else "私聊"
