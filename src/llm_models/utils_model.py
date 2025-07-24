@@ -10,6 +10,7 @@ import base64
 from PIL import Image
 import io
 import os
+import copy  # 添加copy模块用于深拷贝
 from src.common.database.database import db  # 确保 db 被导入用于 create_tables
 from src.common.database.database_model import LLMUsage  # 导入 LLMUsage 模型
 from src.config.config import global_config
@@ -69,23 +70,28 @@ error_code_mapping = {
 
 
 async def _safely_record(request_content: Dict[str, Any], payload: Dict[str, Any]):
+    """安全地记录请求体，用于调试日志，不会修改原始payload对象"""
+    # 创建payload的深拷贝，避免修改原始对象
+    safe_payload = copy.deepcopy(payload)
+    
     image_base64: str = request_content.get("image_base64")
     image_format: str = request_content.get("image_format")
     if (
         image_base64
-        and payload
-        and isinstance(payload, dict)
-        and "messages" in payload
-        and len(payload["messages"]) > 0
+        and safe_payload
+        and isinstance(safe_payload, dict)
+        and "messages" in safe_payload
+        and len(safe_payload["messages"]) > 0
     ):
-        if isinstance(payload["messages"][0], dict) and "content" in payload["messages"][0]:
-            content = payload["messages"][0]["content"]
+        if isinstance(safe_payload["messages"][0], dict) and "content" in safe_payload["messages"][0]:
+            content = safe_payload["messages"][0]["content"]
             if isinstance(content, list) and len(content) > 1 and "image_url" in content[1]:
-                payload["messages"][0]["content"][1]["image_url"]["url"] = (
+                # 只修改拷贝的对象，用于安全的日志记录
+                safe_payload["messages"][0]["content"][1]["image_url"]["url"] = (
                     f"data:image/{image_format.lower() if image_format else 'jpeg'};base64,"
                     f"{image_base64[:10]}...{image_base64[-10:]}"
                 )
-    return payload
+    return safe_payload
 
 
 class LLMRequest:
