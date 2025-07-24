@@ -28,10 +28,10 @@ class CompareNumbersTool(BaseTool):
         Returns:
             dict: 工具执行结果
         """
-        try:
-            num1 = function_args.get("num1")
-            num2 = function_args.get("num2")
+        num1: int | float = function_args.get("num1")  # type: ignore
+        num2: int | float = function_args.get("num2")  # type: ignore
 
+        try:
             if num1 > num2:
                 result = f"{num1} 大于 {num2}"
             elif num1 < num2:

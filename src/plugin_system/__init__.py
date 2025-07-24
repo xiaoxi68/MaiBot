@@ -5,11 +5,11 @@ MaiBot 插件系统
 """
 
 # 导出主要的公共接口
-from src.plugin_system.base.base_plugin import BasePlugin, register_plugin
-from src.plugin_system.base.base_action import BaseAction
-from src.plugin_system.base.base_command import BaseCommand
-from src.plugin_system.base.config_types import ConfigField
-from src.plugin_system.base.component_types import (
+from .base import (
+    BasePlugin,
+    BaseAction,
+    BaseCommand,
+    ConfigField,
     ComponentType,
     ActionActivationType,
     ChatMode,
@@ -18,27 +18,61 @@ from src.plugin_system.base.component_types import (
     CommandInfo,
     PluginInfo,
     PythonDependency,
+    BaseEventHandler,
+    EventHandlerInfo,
+    EventType,
+    MaiMessages,
 )
-from src.plugin_system.core.plugin_manager import plugin_manager
-from src.plugin_system.core.component_registry import component_registry
-from src.plugin_system.core.dependency_manager import dependency_manager
 
 # 导入工具模块
-from src.plugin_system.utils import (
+from .utils import (
     ManifestValidator,
-    ManifestGenerator,
-    validate_plugin_manifest,
-    generate_plugin_manifest,
+    # ManifestGenerator,
+    # validate_plugin_manifest,
+    # generate_plugin_manifest,
+)
+
+from .apis import (
+    chat_api,
+    component_manage_api,
+    config_api,
+    database_api,
+    emoji_api,
+    generator_api,
+    llm_api,
+    message_api,
+    person_api,
+    plugin_manage_api,
+    send_api,
+    utils_api,
+    register_plugin,
+    get_logger,
 )
 
 
 __version__ = "1.0.0"
 
 __all__ = [
+    # API 模块
+    "chat_api",
+    "component_manage_api",
+    "config_api",
+    "database_api",
+    "emoji_api",
+    "generator_api",
+    "llm_api",
+    "message_api",
+    "person_api",
+    "plugin_manage_api",
+    "send_api",
+    "utils_api",
+    "register_plugin",
+    "get_logger",
     # 基础类
     "BasePlugin",
     "BaseAction",
     "BaseCommand",
+    "BaseEventHandler",
     # 类型定义
     "ComponentType",
     "ActionActivationType",
@@ -48,16 +82,17 @@ __all__ = [
     "CommandInfo",
     "PluginInfo",
     "PythonDependency",
-    # 管理器
-    "plugin_manager",
-    "component_registry",
-    "dependency_manager",
+    "EventHandlerInfo",
+    "EventType",
+    # 消息
+    "MaiMessages",
     # 装饰器
     "register_plugin",
     "ConfigField",
     # 工具函数
     "ManifestValidator",
-    "ManifestGenerator",
-    "validate_plugin_manifest",
-    "generate_plugin_manifest",
+    "get_logger",
+    # "ManifestGenerator",
+    # "validate_plugin_manifest",
+    # "generate_plugin_manifest",
 ]

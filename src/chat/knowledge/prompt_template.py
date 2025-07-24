@@ -1,5 +1,3 @@
-from .llm_client import LLMMessage
-
 entity_extract_system_prompt = """你是一个性能优异的实体提取系统。请从段落中提取出所有实体，并以JSON列表的形式输出。
 
 输出格式示例：
@@ -11,12 +9,14 @@ entity_extract_system_prompt = """你是一个性能优异的实体提取系统�
 """
 
 
-def build_entity_extract_context(paragraph: str) -> list[LLMMessage]:
-    messages = [
-        LLMMessage("system", entity_extract_system_prompt).to_dict(),
-        LLMMessage("user", f"""段落：\n```\n{paragraph}```""").to_dict(),
-    ]
-    return messages
+def build_entity_extract_context(paragraph: str) -> str:
+    """构建实体提取的完整提示文本"""
+    return f"""{entity_extract_system_prompt}
+
+段落：
+```
+{paragraph}
+```"""
 
 
 rdf_triple_extract_system_prompt = """你是一个性能优异的RDF（资源描述框架，由节点和边组成，节点表示实体/资源、属性，边则表示了实体和实体之间的关系以及实体和属性的关系。）构造系统。你的任务是根据给定的段落和实体列表构建RDF图。
@@ -36,12 +36,19 @@ rdf_triple_extract_system_prompt = """你是一个性能优异的RDF（资源描
 """
 
 
-def build_rdf_triple_extract_context(paragraph: str, entities: str) -> list[LLMMessage]:
-    messages = [
-        LLMMessage("system", rdf_triple_extract_system_prompt).to_dict(),
-        LLMMessage("user", f"""段落：\n```\n{paragraph}```\n\n实体列表：\n```\n{entities}```""").to_dict(),
-    ]
-    return messages
+def build_rdf_triple_extract_context(paragraph: str, entities: str) -> str:
+    """构建RDF三元组提取的完整提示文本"""
+    return f"""{rdf_triple_extract_system_prompt}
+
+段落：
+```
+{paragraph}
+```
+
+实体列表：
+```
+{entities}
+```"""
 
 
 qa_system_prompt = """
@@ -54,10 +61,10 @@ qa_system_prompt = """
 """
 
 
-def build_qa_context(question: str, knowledge: list[tuple[str, str, str]]) -> list[LLMMessage]:
-    knowledge = "\n".join([f"{i + 1}. 相关性：{k[0]}\n{k[1]}" for i, k in enumerate(knowledge)])
-    messages = [
-        LLMMessage("system", qa_system_prompt).to_dict(),
-        LLMMessage("user", f"问题：\n{question}\n\n可能有帮助的信息：\n{knowledge}").to_dict(),
-    ]
-    return messages
+# def build_qa_context(question: str, knowledge: list[tuple[str, str, str]]) -> list[LLMMessage]:
+#     knowledge = "\n".join([f"{i + 1}. 相关性：{k[0]}\n{k[1]}" for i, k in enumerate(knowledge)])
+#     messages = [
+#         LLMMessage("system", qa_system_prompt).to_dict(),
+#         LLMMessage("user", f"问题：\n{question}\n\n可能有帮助的信息：\n{knowledge}").to_dict(),
+#     ]
+#     return messages

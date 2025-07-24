@@ -28,7 +28,7 @@ from src.common.logger import get_logger
 
 # 导入依赖
 from src.chat.message_receive.chat_stream import get_chat_manager
-from src.chat.focus_chat.heartFC_sender import HeartFCSender
+from src.chat.message_receive.uni_message_sender import HeartFCSender
 from src.chat.message_receive.message import MessageSending, MessageRecv
 from src.chat.utils.chat_message_builder import get_raw_msg_before_timestamp_with_chat
 from src.person_info.person_info import get_person_info_manager
@@ -50,7 +50,9 @@ async def _send_to_target(
     display_message: str = "",
     typing: bool = False,
     reply_to: str = "",
+    reply_to_platform_id: str = "",
     storage_message: bool = True,
+    show_log: bool = True,
 ) -> bool:
     """向指定目标发送消息的内部实现
 
@@ -66,7 +68,8 @@ async def _send_to_target(
         bool: 是否发送成功
     """
     try:
-        logger.info(f"[SendAPI] 发送{message_type}消息到 {stream_id}")
+        if show_log:
+            logger.debug(f"[SendAPI] 发送{message_type}消息到 {stream_id}")
 
         # 查找目标聊天流
         target_stream = get_chat_manager().get_stream(stream_id)
@@ -89,7 +92,7 @@ async def _send_to_target(
         )
 
         # 创建消息段
-        message_segment = Seg(type=message_type, data=content)
+        message_segment = Seg(type=message_type, data=content)  # type: ignore
 
         # 处理回复消息
         anchor_message = None
@@ -108,15 +111,20 @@ async def _send_to_target(
             is_head=True,
             is_emoji=(message_type == "emoji"),
             thinking_start_time=current_time,
+            reply_to=reply_to_platform_id,
         )
 
         # 发送消息
         sent_msg = await heart_fc_sender.send_message(
-            bot_message, typing=typing, set_reply=(anchor_message is not None), storage_message=storage_message
+            bot_message,
+            typing=typing,
+            set_reply=(anchor_message is not None),
+            storage_message=storage_message,
+            show_log=show_log,
         )
 
         if sent_msg:
-            logger.info(f"[SendAPI] 成功发送消息到 {stream_id}")
+            logger.debug(f"[SendAPI] 成功发送消息到 {stream_id}")
             return True
         else:
             logger.error("[SendAPI] 发送消息失败")
@@ -129,6 +137,7 @@ async def _send_to_target(
 
 
 async def _find_reply_message(target_stream, reply_to: str) -> Optional[MessageRecv]:
+    # sourcery skip: inline-variable, use-named-expression
     """查找要回复的消息
 
     Args:
@@ -176,14 +185,11 @@ async def _find_reply_message(target_stream, reply_to: str) -> Optional[MessageR
 
                 # 检查是否有 回复<aaa:bbb> 字段
                 reply_pattern = r"回复<([^:<>]+):([^:<>]+)>"
-                match = re.search(reply_pattern, translate_text)
-                if match:
+                if match := re.search(reply_pattern, translate_text):
                     aaa = match.group(1)
                     bbb = match.group(2)
                     reply_person_id = get_person_info_manager().get_person_id(platform, bbb)
-                    reply_person_name = await get_person_info_manager().get_value(reply_person_id, "person_name")
-                    if not reply_person_name:
-                        reply_person_name = aaa
+                    reply_person_name = await get_person_info_manager().get_value(reply_person_id, "person_name") or aaa
                     # 在内容前加上回复信息
                     translate_text = re.sub(reply_pattern, f"回复 {reply_person_name}", translate_text, count=1)
 
@@ -198,9 +204,7 @@ async def _find_reply_message(target_stream, reply_to: str) -> Optional[MessageR
                         aaa = m.group(1)
                         bbb = m.group(2)
                         at_person_id = get_person_info_manager().get_person_id(platform, bbb)
-                        at_person_name = await get_person_info_manager().get_value(at_person_id, "person_name")
-                        if not at_person_name:
-                            at_person_name = aaa
+                        at_person_name = await get_person_info_manager().get_value(at_person_id, "person_name") or aaa
                         new_content += f"@{at_person_name}"
                         last_end = m.end()
                     new_content += translate_text[last_end:]
@@ -248,7 +252,6 @@ async def _find_reply_message(target_stream, reply_to: str) -> Optional[MessageR
         message_dict = {
             "message_info": message_info,
             "raw_message": find_msg.get("processed_plain_text"),
-            "detailed_plain_text": find_msg.get("processed_plain_text"),
             "processed_plain_text": find_msg.get("processed_plain_text"),
         }
 
@@ -274,6 +277,7 @@ async def text_to_stream(
     stream_id: str,
     typing: bool = False,
     reply_to: str = "",
+    reply_to_platform_id: str = "",
     storage_message: bool = True,
 ) -> bool:
     """向指定流发送文本消息
@@ -288,7 +292,7 @@ async def text_to_stream(
     Returns:
         bool: 是否发送成功
     """
-    return await _send_to_target("text", text, stream_id, "", typing, reply_to, storage_message)
+    return await _send_to_target("text", text, stream_id, "", typing, reply_to, reply_to_platform_id, storage_message)
 
 
 async def emoji_to_stream(emoji_base64: str, stream_id: str, storage_message: bool = True) -> bool:
@@ -345,6 +349,7 @@ async def custom_to_stream(
     typing: bool = False,
     reply_to: str = "",
     storage_message: bool = True,
+    show_log: bool = True,
 ) -> bool:
     """向指定流发送自定义类型消息
 
@@ -356,11 +361,20 @@ async def custom_to_stream(
         typing: 是否显示正在输入
         reply_to: 回复消息，格式为"发送者:消息内容"
         storage_message: 是否存储消息到数据库
-
+        show_log: 是否显示日志
     Returns:
         bool: 是否发送成功
     """
-    return await _send_to_target(message_type, content, stream_id, display_message, typing, reply_to, storage_message)
+    return await _send_to_target(
+        message_type=message_type,
+        content=content,
+        stream_id=stream_id,
+        display_message=display_message,
+        typing=typing,
+        reply_to=reply_to,
+        storage_message=storage_message,
+        show_log=show_log,
+    )
 
 
 async def text_to_group(
@@ -385,7 +399,7 @@ async def text_to_group(
     """
     stream_id = get_chat_manager().get_stream_id(platform, group_id, True)
 
-    return await _send_to_target("text", text, stream_id, "", typing, reply_to, storage_message)
+    return await _send_to_target("text", text, stream_id, "", typing, reply_to, storage_message=storage_message)
 
 
 async def text_to_user(
@@ -409,7 +423,7 @@ async def text_to_user(
         bool: 是否发送成功
     """
     stream_id = get_chat_manager().get_stream_id(platform, user_id, False)
-    return await _send_to_target("text", text, stream_id, "", typing, reply_to, storage_message)
+    return await _send_to_target("text", text, stream_id, "", typing, reply_to, storage_message=storage_message)
 
 
 async def emoji_to_group(emoji_base64: str, group_id: str, platform: str = "qq", storage_message: bool = True) -> bool:
@@ -532,7 +546,9 @@ async def custom_to_group(
         bool: 是否发送成功
     """
     stream_id = get_chat_manager().get_stream_id(platform, group_id, True)
-    return await _send_to_target(message_type, content, stream_id, display_message, typing, reply_to, storage_message)
+    return await _send_to_target(
+        message_type, content, stream_id, display_message, typing, reply_to, storage_message=storage_message
+    )
 
 
 async def custom_to_user(
@@ -560,7 +576,9 @@ async def custom_to_user(
         bool: 是否发送成功
     """
     stream_id = get_chat_manager().get_stream_id(platform, user_id, False)
-    return await _send_to_target(message_type, content, stream_id, display_message, typing, reply_to, storage_message)
+    return await _send_to_target(
+        message_type, content, stream_id, display_message, typing, reply_to, storage_message=storage_message
+    )
 
 
 async def custom_message(
@@ -600,4 +618,6 @@ async def custom_message(
         await send_api.custom_message("audio", audio_base64, "123456", True, reply_to="张三:你好")
     """
     stream_id = get_chat_manager().get_stream_id(platform, target_id, is_group)
-    return await _send_to_target(message_type, content, stream_id, display_message, typing, reply_to, storage_message)
+    return await _send_to_target(
+        message_type, content, stream_id, display_message, typing, reply_to, storage_message=storage_message
+    )

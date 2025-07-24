@@ -1,12 +1,10 @@
 import os
 from typing import AsyncGenerator
-from src.llm_models.utils_model import LLMRequest
 from src.mais4u.openai_client import AsyncOpenAIClient
 from src.config.config import global_config
-from src.chat.message_receive.message import MessageRecv
+from src.chat.message_receive.message import MessageRecvS4U
 from src.mais4u.mais4u_chat.s4u_prompt import prompt_builder
 from src.common.logger import get_logger
-from src.person_info.person_info import PersonInfoManager, get_person_info_manager
 import asyncio
 import re
 
@@ -36,7 +34,6 @@ class S4UStreamGenerator:
             raise ValueError("`replyer_1` 在配置文件中缺少 `model_name` 字段")
         self.replyer_1_config = replyer_1_config
 
-        self.model_sum = LLMRequest(model=global_config.model.memory_summary, temperature=0.7, request_type="relation")
         self.current_model_name = "unknown model"
         self.partial_response = ""
 
@@ -47,49 +44,67 @@ class S4UStreamGenerator:
             r'[^.。!?？！\n\r]+(?:[.。!?？！\n\r](?![\'"])|$))',  # 匹配直到句子结束符
             re.UNICODE | re.DOTALL,
         )
+        
+        self.chat_stream =None
+        
+    async def build_last_internal_message(self,message:MessageRecvS4U,previous_reply_context:str = ""):
+        # person_id = PersonInfoManager.get_person_id(
+        #     message.chat_stream.user_info.platform, message.chat_stream.user_info.user_id
+        # )
+        # person_info_manager = get_person_info_manager()
+        # person_name = await person_info_manager.get_value(person_id, "person_name")
 
-    async def generate_response(
-        self, message: MessageRecv, previous_reply_context: str = ""
-    ) -> AsyncGenerator[str, None]:
-        """根据当前模型类型选择对应的生成函数"""
-        # 从global_config中获取模型概率值并选择模型
-        self.partial_response = ""
-        current_client = self.client_1
-        self.current_model_name = self.model_1_name
-
-        person_id = PersonInfoManager.get_person_id(
-            message.chat_stream.user_info.platform, message.chat_stream.user_info.user_id
-        )
-        person_info_manager = get_person_info_manager()
-        person_name = await person_info_manager.get_value(person_id, "person_name")
-
-        if message.chat_stream.user_info.user_nickname:
-            sender_name = f"[{message.chat_stream.user_info.user_nickname}]（你叫ta{person_name}）"
-        else:
-            sender_name = f"用户({message.chat_stream.user_info.user_id})"
+        # if message.chat_stream.user_info.user_nickname:
+        #     if person_name:
+        #         sender_name = f"[{message.chat_stream.user_info.user_nickname}]（你叫ta{person_name}）"
+        #     else:
+        #         sender_name = f"[{message.chat_stream.user_info.user_nickname}]"
+        # else:
+        #     sender_name = f"用户({message.chat_stream.user_info.user_id})"
 
         # 构建prompt
         if previous_reply_context:
             message_txt = f"""
-             你正在回复用户的消息，但中途被打断了。这是已有的对话上下文:
-             [你已经对上一条消息说的话]: {previous_reply_context}
-             ---
-             [这是用户发来的新消息, 你需要结合上下文，对此进行回复]:
-             {message.processed_plain_text}
-             """
+            你正在回复用户的消息，但中途被打断了。这是已有的对话上下文:
+            [你已经对上一条消息说的话]: {previous_reply_context}
+            ---
+            [这是用户发来的新消息, 你需要结合上下文，对此进行回复]:
+            {message.processed_plain_text}
+            """
+            return True,message_txt
         else:
             message_txt = message.processed_plain_text
+            return False,message_txt
+        
 
+            
+    
+
+    async def generate_response(
+        self, message: MessageRecvS4U, previous_reply_context: str = ""
+    ) -> AsyncGenerator[str, None]:
+        """根据当前模型类型选择对应的生成函数"""
+        # 从global_config中获取模型概率值并选择模型
+        self.partial_response = ""
+        message_txt = message.processed_plain_text
+        if not message.is_internal:
+            interupted,message_txt_added = await self.build_last_internal_message(message,previous_reply_context)
+            if interupted:
+                message_txt = message_txt_added
+
+        message.chat_stream = self.chat_stream
         prompt = await prompt_builder.build_prompt_normal(
             message=message,
             message_txt=message_txt,
-            sender_name=sender_name,
-            chat_stream=message.chat_stream,
         )
 
         logger.info(
             f"{self.current_model_name}思考:{message_txt[:30] + '...' if len(message_txt) > 30 else message_txt}"
         )  # noqa: E501
+
+        current_client = self.client_1
+        self.current_model_name = self.model_1_name
+
 
         extra_kwargs = {}
         if self.replyer_1_config.get("enable_thinking") is not None:
@@ -109,8 +124,6 @@ class S4UStreamGenerator:
         model_name: str,
         **kwargs,
     ) -> AsyncGenerator[str, None]:
-        print(prompt)
-
         buffer = ""
         delimiters = "，。！？,.!?\n\r"  # For final trimming
         punctuation_buffer = ""

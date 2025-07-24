@@ -14,10 +14,11 @@ from src.config.config import global_config
 
 logger = get_logger("llm_api")
 
-
 # =============================================================================
 # LLM模型API函数
 # =============================================================================
+
+
 
 
 def get_available_models() -> Dict[str, Any]:
@@ -31,8 +32,21 @@ def get_available_models() -> Dict[str, Any]:
             logger.error("[LLMAPI] 无法获取模型列表：全局配置中未找到 model 配置")
             return {}
 
+        # 自动获取所有属性并转换为字典形式
+        rets = {}
         models = global_config.model
-        return models
+        attrs = dir(models)
+        for attr in attrs:
+            if not attr.startswith("__"):
+                try:
+                    value = getattr(models, attr)
+                    if not callable(value):  # 排除方法
+                        rets[attr] = value
+                except Exception as e:
+                    logger.debug(f"[LLMAPI] 获取属性 {attr} 失败: {e}")
+                    continue
+        return rets
+
     except Exception as e:
         logger.error(f"[LLMAPI] 获取可用模型失败: {e}")
         return {}

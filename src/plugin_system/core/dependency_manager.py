@@ -7,7 +7,7 @@
 import subprocess
 import sys
 import importlib
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Any
 
 from src.common.logger import get_logger
 from src.plugin_system.base.component_types import PythonDependency
@@ -37,16 +37,14 @@ class DependencyManager:
         missing_optional = []
 
         for dep in dependencies:
-            if not self._is_package_available(dep.package_name):
-                if dep.optional:
-                    missing_optional.append(dep)
-                    logger.warning(f"可选依赖包缺失: {dep.package_name} - {dep.description}")
-                else:
-                    missing_required.append(dep)
-                    logger.error(f"必需依赖包缺失: {dep.package_name} - {dep.description}")
-            else:
+            if self._is_package_available(dep.package_name):
                 logger.debug(f"依赖包已存在: {dep.package_name}")
-
+            elif dep.optional:
+                missing_optional.append(dep)
+                logger.warning(f"可选依赖包缺失: {dep.package_name} - {dep.description}")
+            else:
+                missing_required.append(dep)
+                logger.error(f"必需依赖包缺失: {dep.package_name} - {dep.description}")
         return missing_required, missing_optional
 
     def _is_package_available(self, package_name: str) -> bool:
@@ -178,7 +176,7 @@ class DependencyManager:
             logger.error(f"生成requirements文件失败: {str(e)}")
             return False
 
-    def get_install_summary(self) -> Dict[str, any]:
+    def get_install_summary(self) -> Dict[str, Any]:
         """获取安装摘要"""
         return {
             "install_log": self.install_log.copy(),

@@ -1,7 +1,52 @@
 import shutil
 import tomlkit
+from tomlkit.items import Table, KeyType
 from pathlib import Path
 from datetime import datetime
+
+
+def get_key_comment(toml_table, key):
+    # 获取key的注释（如果有）
+    if hasattr(toml_table, "trivia") and hasattr(toml_table.trivia, "comment"):
+        return toml_table.trivia.comment
+    if hasattr(toml_table, "value") and isinstance(toml_table.value, dict):
+        item = toml_table.value.get(key)
+        if item is not None and hasattr(item, "trivia"):
+            return item.trivia.comment
+    if hasattr(toml_table, "keys"):
+        for k in toml_table.keys():
+            if isinstance(k, KeyType) and k.key == key:
+                return k.trivia.comment
+    return None
+
+
+def compare_dicts(new, old, path=None, new_comments=None, old_comments=None, logs=None):
+    # 递归比较两个dict，找出新增和删减项，收集注释
+    if path is None:
+        path = []
+    if logs is None:
+        logs = []
+    if new_comments is None:
+        new_comments = {}
+    if old_comments is None:
+        old_comments = {}
+    # 新增项
+    for key in new:
+        if key == "version":
+            continue
+        if key not in old:
+            comment = get_key_comment(new, key)
+            logs.append(f"新增: {'.'.join(path + [str(key)])}  注释: {comment if comment else '无'}")
+        elif isinstance(new[key], (dict, Table)) and isinstance(old.get(key), (dict, Table)):
+            compare_dicts(new[key], old[key], path + [str(key)], new_comments, old_comments, logs)
+    # 删减项
+    for key in old:
+        if key == "version":
+            continue
+        if key not in new:
+            comment = get_key_comment(old, key)
+            logs.append(f"删减: {'.'.join(path + [str(key)])}  注释: {comment if comment else '无'}")
+    return logs
 
 
 def update_config():
@@ -45,15 +90,25 @@ def update_config():
 
     # 检查version是否相同
     if old_config and "inner" in old_config and "inner" in new_config:
-        old_version = old_config["inner"].get("version")
-        new_version = new_config["inner"].get("version")
+        old_version = old_config["inner"].get("version")  # type: ignore
+        new_version = new_config["inner"].get("version")  # type: ignore
         if old_version and new_version and old_version == new_version:
             print(f"检测到版本号相同 (v{old_version})，跳过更新")
             # 如果version相同，恢复旧配置文件并返回
-            shutil.move(old_backup_path, old_config_path)
+            shutil.move(old_backup_path, old_config_path)  # type: ignore
             return
         else:
             print(f"检测到版本号不同: 旧版本 v{old_version} -> 新版本 v{new_version}")
+
+    # 输出新增和删减项及注释
+    if old_config:
+        print("配置项变动如下：")
+        logs = compare_dicts(new_config, old_config)
+        if logs:
+            for log in logs:
+                print(log)
+        else:
+            print("无新增或删减项")
 
     # 递归更新配置
     def update_dict(target, source):
@@ -62,7 +117,7 @@ def update_config():
             if key == "version":
                 continue
             if key in target:
-                if isinstance(value, dict) and isinstance(target[key], (dict, tomlkit.items.Table)):
+                if isinstance(value, dict) and isinstance(target[key], (dict, Table)):
                     update_dict(target[key], value)
                 else:
                     try:
@@ -85,10 +140,7 @@ def update_config():
                                     if value and isinstance(value[0], dict) and "regex" in value[0]:
                                         contains_regex = True
 
-                                    if contains_regex:
-                                        target[key] = value
-                                    else:
-                                        target[key] = tomlkit.array(value)
+                                    target[key] = value if contains_regex else tomlkit.array(str(value))
                         else:
                             # 其他类型使用item方法创建新值
                             target[key] = tomlkit.item(value)

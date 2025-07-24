@@ -1,12 +1,12 @@
-from typing import Dict, Any, Optional, List, Union
 import re
-from contextlib import asynccontextmanager
 import asyncio
 import contextvars
-from src.common.logger import get_logger
 
-# import traceback
 from rich.traceback import install
+from contextlib import asynccontextmanager
+from typing import Dict, Any, Optional, List, Union
+
+from src.common.logger import get_logger
 
 install(extra_lines=3)
 
@@ -32,6 +32,7 @@ class PromptContext:
 
     @asynccontextmanager
     async def async_scope(self, context_id: Optional[str] = None):
+        # sourcery skip: hoist-statement-from-if, use-contextlib-suppress
         """创建一个异步的临时提示模板作用域"""
         # 保存当前上下文并设置新上下文
         if context_id is not None:
@@ -88,8 +89,7 @@ class PromptContext:
     async def register_async(self, prompt: "Prompt", context_id: Optional[str] = None) -> None:
         """异步注册提示模板到指定作用域"""
         async with self._context_lock:
-            target_context = context_id or self._current_context
-            if target_context:
+            if target_context := context_id or self._current_context:
                 self._context_prompts.setdefault(target_context, {})[prompt.name] = prompt
 
 
@@ -151,7 +151,7 @@ class Prompt(str):
 
     @staticmethod
     def _process_escaped_braces(template) -> str:
-        """处理模板中的转义花括号，将 \{ 和 \} 替换为临时标记"""
+        """处理模板中的转义花括号，将 \{ 和 \} 替换为临时标记"""  # type: ignore
         # 如果传入的是列表，将其转换为字符串
         if isinstance(template, list):
             template = "\n".join(str(item) for item in template)
@@ -195,14 +195,8 @@ class Prompt(str):
         obj._kwargs = kwargs
 
         # 修改自动注册逻辑
-        if should_register:
-            if global_prompt_manager._context._current_context:
-                # 如果存在当前上下文，则注册到上下文中
-                # asyncio.create_task(global_prompt_manager._context.register_async(obj))
-                pass
-            else:
-                # 否则注册到全局管理器
-                global_prompt_manager.register(obj)
+        if should_register and not global_prompt_manager._context._current_context:
+            global_prompt_manager.register(obj)
         return obj
 
     @classmethod
@@ -276,15 +270,13 @@ class Prompt(str):
             self.name,
             args=list(args) if args else self._args,
             _should_register=False,
-            **kwargs if kwargs else self._kwargs,
+            **kwargs or self._kwargs,
         )
         # print(f"prompt build result: {ret} name: {ret.name} ")
         return str(ret)
 
     def __str__(self) -> str:
-        if self._kwargs or self._args:
-            return super().__str__()
-        return self.template
+        return super().__str__() if self._kwargs or self._args else self.template
 
     def __repr__(self) -> str:
         return f"Prompt(template='{self.template}', name='{self.name}')"

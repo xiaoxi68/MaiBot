@@ -1,11 +1,11 @@
 import re
+import traceback
 from typing import Union
 
-# from ...common.database.database import db  # db is now Peewee's SqliteDatabase instance
-from .message import MessageSending, MessageRecv
-from .chat_stream import ChatStream
-from ...common.database.database_model import Messages, RecalledMessages  # Import Peewee models
+from src.common.database.database_model import Messages, Images
 from src.common.logger import get_logger
+from .chat_stream import ChatStream
+from .message import MessageSending, MessageRecv
 
 logger = get_logger("message_storage")
 
@@ -25,6 +25,7 @@ class MessageStorage:
             # print(processed_plain_text)
 
             if processed_plain_text:
+                processed_plain_text = MessageStorage.replace_image_descriptions(processed_plain_text)
                 filtered_processed_plain_text = re.sub(pattern, "", processed_plain_text, flags=re.DOTALL)
             else:
                 filtered_processed_plain_text = ""
@@ -35,15 +36,27 @@ class MessageStorage:
                     filtered_display_message = re.sub(pattern, "", display_message, flags=re.DOTALL)
                 else:
                     filtered_display_message = ""
-
+                interest_value = 0
+                is_mentioned = False
                 reply_to = message.reply_to
+                priority_mode = ""
+                priority_info = {}
+                is_emoji = False
+                is_picid = False
+                is_command = False
             else:
                 filtered_display_message = ""
-
+                interest_value = message.interest_value
+                is_mentioned = message.is_mentioned
                 reply_to = ""
+                priority_mode = message.priority_mode
+                priority_info = message.priority_info
+                is_emoji = message.is_emoji
+                is_picid = message.is_picid
+                is_command = message.is_command
 
             chat_info_dict = chat_stream.to_dict()
-            user_info_dict = message.message_info.user_info.to_dict()
+            user_info_dict = message.message_info.user_info.to_dict()  # type: ignore
 
             # message_id 现在是 TextField，直接使用字符串值
             msg_id = message.message_info.message_id
@@ -55,10 +68,11 @@ class MessageStorage:
 
             Messages.create(
                 message_id=msg_id,
-                time=float(message.message_info.time),
+                time=float(message.message_info.time),  # type: ignore
                 chat_id=chat_stream.stream_id,
                 # Flattened chat_info
                 reply_to=reply_to,
+                is_mentioned=is_mentioned,
                 chat_info_stream_id=chat_info_dict.get("stream_id"),
                 chat_info_platform=chat_info_dict.get("platform"),
                 chat_info_user_platform=user_info_from_chat.get("platform"),
@@ -79,32 +93,17 @@ class MessageStorage:
                 processed_plain_text=filtered_processed_plain_text,
                 display_message=filtered_display_message,
                 memorized_times=message.memorized_times,
+                interest_value=interest_value,
+                priority_mode=priority_mode,
+                priority_info=priority_info,
+                is_emoji=is_emoji,
+                is_picid=is_picid,
+                is_command=is_command,
             )
         except Exception:
             logger.exception("存储消息失败")
-
-    @staticmethod
-    async def store_recalled_message(message_id: str, time: str, chat_stream: ChatStream) -> None:
-        """存储撤回消息到数据库"""
-        # Table creation is handled by initialize_database in database_model.py
-        try:
-            RecalledMessages.create(
-                message_id=message_id,
-                time=float(time),  # Assuming time is a string representing a float timestamp
-                stream_id=chat_stream.stream_id,
-            )
-        except Exception:
-            logger.exception("存储撤回消息失败")
-
-    @staticmethod
-    async def remove_recalled_message(time: str) -> None:
-        """删除撤回消息"""
-        try:
-            # Assuming input 'time' is a string timestamp that can be converted to float
-            current_time_float = float(time)
-            RecalledMessages.delete().where(RecalledMessages.time < (current_time_float - 300)).execute()
-        except Exception:
-            logger.exception("删除撤回消息失败")
+            logger.error(f"消息：{message}")
+            traceback.print_exc()
 
     # 如果需要其他存储相关的函数，可以在这里添加
     @staticmethod
@@ -114,25 +113,45 @@ class MessageStorage:
         """更新最新一条匹配消息的message_id"""
         try:
             if message.message_segment.type == "notify":
-                mmc_message_id = message.message_segment.data.get("echo")
-                qq_message_id = message.message_segment.data.get("actual_id")
+                mmc_message_id = message.message_segment.data.get("echo")  # type: ignore
+                qq_message_id = message.message_segment.data.get("actual_id")  # type: ignore
             else:
                 logger.info(f"更新消息ID错误，seg类型为{message.message_segment.type}")
                 return
             if not qq_message_id:
                 logger.info("消息不存在message_id，无法更新")
                 return
-            # 查询最新一条匹配消息
-            matched_message = (
+            if matched_message := (
                 Messages.select().where((Messages.message_id == mmc_message_id)).order_by(Messages.time.desc()).first()
-            )
-
-            if matched_message:
+            ):
                 # 更新找到的消息记录
-                Messages.update(message_id=qq_message_id).where(Messages.id == matched_message.id).execute()
-                logger.info(f"更新消息ID成功: {matched_message.message_id} -> {qq_message_id}")
+                Messages.update(message_id=qq_message_id).where(Messages.id == matched_message.id).execute()  # type: ignore
+                logger.debug(f"更新消息ID成功: {matched_message.message_id} -> {qq_message_id}")
             else:
                 logger.debug("未找到匹配的消息")
 
         except Exception as e:
             logger.error(f"更新消息ID失败: {e}")
+
+    @staticmethod
+    def replace_image_descriptions(text: str) -> str:
+        """将[图片：描述]替换为[picid:image_id]"""
+        # 先检查文本中是否有图片标记
+        pattern = r"\[图片：([^\]]+)\]"
+        matches = re.findall(pattern, text)
+
+        if not matches:
+            logger.debug("文本中没有图片标记，直接返回原文本")
+            return text
+
+        def replace_match(match):
+            description = match.group(1).strip()
+            try:
+                image_record = (
+                    Images.select().where(Images.description == description).order_by(Images.timestamp.desc()).first()
+                )
+                return f"[picid:{image_record.image_id}]" if image_record else match.group(0)
+            except Exception:
+                return match.group(0)
+
+        return re.sub(r"\[图片：([^\]]+)\]", replace_match, text)

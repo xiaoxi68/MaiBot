@@ -129,6 +129,9 @@ class Messages(BaseModel):
 
     reply_to = TextField(null=True)
 
+    interest_value = DoubleField(null=True)
+    is_mentioned = BooleanField(null=True)
+
     # 从 chat_info 扁平化而来的字段
     chat_info_stream_id = TextField()
     chat_info_platform = TextField()
@@ -150,8 +153,15 @@ class Messages(BaseModel):
 
     processed_plain_text = TextField(null=True)  # 处理后的纯文本消息
     display_message = TextField(null=True)  # 显示的消息
-    detailed_plain_text = TextField(null=True)  # 详细的纯文本消息
     memorized_times = IntegerField(default=0)  # 被记忆的次数
+
+    priority_mode = TextField(null=True)
+    priority_info = TextField(null=True)
+
+    additional_config = TextField(null=True)
+    is_emoji = BooleanField(default=False)
+    is_picid = BooleanField(default=False)
+    is_command = BooleanField(default=False)
 
     class Meta:
         # database = db # 继承自 BaseModel
@@ -252,12 +262,23 @@ class PersonInfo(BaseModel):
     know_times = FloatField(null=True)  # 认识时间 (时间戳)
     know_since = FloatField(null=True)  # 首次印象总结时间
     last_know = FloatField(null=True)  # 最后一次印象总结时间
-    familiarity_value = IntegerField(null=True, default=0)  # 熟悉度，0-100，从完全陌生到非常熟悉
-    liking_value = IntegerField(null=True, default=50)  # 好感度，0-100，从非常厌恶到十分喜欢
+    attitude = IntegerField(null=True, default=50)  # 态度，0-100，从非常厌恶到十分喜欢
 
     class Meta:
         # database = db # 继承自 BaseModel
         table_name = "person_info"
+
+
+class Memory(BaseModel):
+    memory_id = TextField(index=True)
+    chat_id = TextField(null=True)
+    memory_text = TextField(null=True)
+    keywords = TextField(null=True)
+    create_time = FloatField(null=True)
+    last_view_time = FloatField(null=True)
+
+    class Meta:
+        table_name = "memory"
 
 
 class Knowledges(BaseModel):
@@ -272,6 +293,23 @@ class Knowledges(BaseModel):
     class Meta:
         # database = db # 继承自 BaseModel
         table_name = "knowledges"
+
+
+class Expression(BaseModel):
+    """
+    用于存储表达风格的模型。
+    """
+
+    situation = TextField()
+    style = TextField()
+    count = FloatField()
+    last_active_time = FloatField()
+    chat_id = TextField(index=True)
+    type = TextField()
+    create_date = FloatField(null=True)  # 创建日期，允许为空以兼容老数据
+
+    class Meta:
+        table_name = "expression"
 
 
 class ThinkingLog(BaseModel):
@@ -296,19 +334,6 @@ class ThinkingLog(BaseModel):
 
     class Meta:
         table_name = "thinking_logs"
-
-
-class RecalledMessages(BaseModel):
-    """
-    用于存储撤回消息记录的模型。
-    """
-
-    message_id = TextField(index=True)  # 被撤回的消息 ID
-    time = DoubleField()  # 撤回操作发生的时间戳
-    stream_id = TextField()  # 对应的 ChatStreams stream_id
-
-    class Meta:
-        table_name = "recalled_messages"
 
 
 class GraphNodes(BaseModel):
@@ -358,10 +383,11 @@ def create_tables():
                 OnlineTime,
                 PersonInfo,
                 Knowledges,
+                Expression,
                 ThinkingLog,
-                RecalledMessages,  # 添加新模型
                 GraphNodes,  # 添加图节点表
                 GraphEdges,  # 添加图边表
+                Memory,
                 ActionRecords,  # 添加 ActionRecords 到初始化列表
             ]
         )
@@ -383,8 +409,9 @@ def initialize_database():
         OnlineTime,
         PersonInfo,
         Knowledges,
+        Expression,
+        Memory,
         ThinkingLog,
-        RecalledMessages,
         GraphNodes,
         GraphEdges,
         ActionRecords,  # 添加 ActionRecords 到初始化列表
@@ -405,9 +432,7 @@ def initialize_database():
                 existing_columns = {row[1] for row in cursor.fetchall()}
                 model_fields = set(model._meta.fields.keys())
 
-                # 检查并添加缺失字段（原有逻辑）
-                missing_fields = model_fields - existing_columns
-                if missing_fields:
+                if missing_fields := model_fields - existing_columns:
                     logger.warning(f"表 '{table_name}' 缺失字段: {missing_fields}")
 
                 for field_name, field_obj in model._meta.fields.items():
@@ -423,14 +448,14 @@ def initialize_database():
                             "DateTimeField": "DATETIME",
                         }.get(field_type, "TEXT")
                         alter_sql = f"ALTER TABLE {table_name} ADD COLUMN {field_name} {sql_type}"
-                        if field_obj.null:
-                            alter_sql += " NULL"
-                        else:
-                            alter_sql += " NOT NULL"
+                        alter_sql += " NULL" if field_obj.null else " NOT NULL"
                         if hasattr(field_obj, "default") and field_obj.default is not None:
-                            # 正确处理不同类型的默认值
+                            # 正确处理不同类型的默认值，跳过lambda函数
                             default_value = field_obj.default
-                            if isinstance(default_value, str):
+                            if callable(default_value):
+                                # 跳过lambda函数或其他可调用对象，这些无法在SQL中表示
+                                pass
+                            elif isinstance(default_value, str):
                                 alter_sql += f" DEFAULT '{default_value}'"
                             elif isinstance(default_value, bool):
                                 alter_sql += f" DEFAULT {int(default_value)}"

@@ -205,7 +205,6 @@ class MongoToSQLiteMigrator:
                     "user_info.user_nickname": "user_nickname",
                     "user_info.user_cardname": "user_cardname",
                     "processed_plain_text": "processed_plain_text",
-                    "detailed_plain_text": "detailed_plain_text",
                     "memorized_times": "memorized_times",
                 },
                 enable_validation=False,  # 禁用数据验证

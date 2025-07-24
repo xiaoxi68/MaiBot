@@ -2,6 +2,7 @@ from dataclasses import dataclass
 import json
 import os
 import math
+import asyncio
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -10,8 +11,8 @@ import pandas as pd
 # import tqdm
 import faiss
 
-from .llm_client import LLMClient
-from .lpmmconfig import ENT_NAMESPACE, PG_NAMESPACE, REL_NAMESPACE, global_config
+# from .llm_client import LLMClient
+# from .lpmmconfig import global_config
 from .utils.hash import get_sha256
 from .global_logger import logger
 from rich.traceback import install
@@ -25,14 +26,14 @@ from rich.progress import (
     SpinnerColumn,
     TextColumn,
 )
+from src.manager.local_store_manager import local_storage
+from src.chat.utils.utils import get_embedding
+from src.config.config import global_config
+
 
 install(extra_lines=3)
 ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-EMBEDDING_DATA_DIR = (
-    os.path.join(ROOT_PATH, "data", "embedding")
-    if global_config["persistence"]["embedding_data_dir"] is None
-    else os.path.join(ROOT_PATH, global_config["persistence"]["embedding_data_dir"])
-)
+EMBEDDING_DATA_DIR = os.path.join(ROOT_PATH, "data", "embedding")
 EMBEDDING_DATA_DIR_STR = str(EMBEDDING_DATA_DIR).replace("\\", "/")
 TOTAL_EMBEDDING_TIMES = 3  # 统计嵌入次数
 
@@ -59,7 +60,7 @@ EMBEDDING_SIM_THRESHOLD = 0.99
 
 def cosine_similarity(a, b):
     # 计算余弦相似度
-    dot = sum(x * y for x, y in zip(a, b))
+    dot = sum(x * y for x, y in zip(a, b, strict=False))
     norm_a = math.sqrt(sum(x * x for x in a))
     norm_b = math.sqrt(sum(x * x for x in b))
     if norm_a == 0 or norm_b == 0:
@@ -86,21 +87,43 @@ class EmbeddingStoreItem:
 
 
 class EmbeddingStore:
-    def __init__(self, llm_client: LLMClient, namespace: str, dir_path: str):
+    def __init__(self, namespace: str, dir_path: str):
         self.namespace = namespace
-        self.llm_client = llm_client
         self.dir = dir_path
-        self.embedding_file_path = dir_path + "/" + namespace + ".parquet"
-        self.index_file_path = dir_path + "/" + namespace + ".index"
+        self.embedding_file_path = f"{dir_path}/{namespace}.parquet"
+        self.index_file_path = f"{dir_path}/{namespace}.index"
         self.idx2hash_file_path = dir_path + "/" + namespace + "_i2h.json"
 
-        self.store = dict()
+        self.store = {}
 
         self.faiss_index = None
         self.idx2hash = None
 
     def _get_embedding(self, s: str) -> List[float]:
-        return self.llm_client.send_embedding_request(global_config["embedding"]["model"], s)
+        """获取字符串的嵌入向量，处理异步调用"""
+        try:
+            # 尝试获取当前事件循环
+            asyncio.get_running_loop()
+            # 如果在事件循环中，使用线程池执行
+            import concurrent.futures
+
+            def run_in_thread():
+                return asyncio.run(get_embedding(s))
+
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(run_in_thread)
+                result = future.result()
+                if result is None:
+                    logger.error(f"获取嵌入失败: {s}")
+                    return []
+                return result
+        except RuntimeError:
+            # 没有运行的事件循环，直接运行
+            result = asyncio.run(get_embedding(s))
+            if result is None:
+                logger.error(f"获取嵌入失败: {s}")
+                return []
+            return result
 
     def get_test_file_path(self):
         return EMBEDDING_TEST_FILE
@@ -258,7 +281,7 @@ class EmbeddingStore:
         # L2归一化
         faiss.normalize_L2(embeddings)
         # 构建索引
-        self.faiss_index = faiss.IndexFlatIP(global_config["embedding"]["dimension"])
+        self.faiss_index = faiss.IndexFlatIP(global_config.lpmm_knowledge.embedding_dimension)
         self.faiss_index.add(embeddings)
 
     def search_top_k(self, query: List[float], k: int) -> List[Tuple[str, float]]:
@@ -271,10 +294,10 @@ class EmbeddingStore:
         """
         if self.faiss_index is None:
             logger.debug("FaissIndex尚未构建,返回None")
-            return None
+            return []
         if self.idx2hash is None:
             logger.warning("idx2hash尚未构建,返回None")
-            return None
+            return []
 
         # L2归一化
         faiss.normalize_L2(np.array([query], dtype=np.float32))
@@ -285,7 +308,7 @@ class EmbeddingStore:
         distances = list(distances.flatten())
         result = [
             (self.idx2hash[str(int(idx))], float(sim))
-            for (idx, sim) in zip(indices, distances)
+            for (idx, sim) in zip(indices, distances, strict=False)
             if idx in range(len(self.idx2hash))
         ]
 
@@ -293,20 +316,17 @@ class EmbeddingStore:
 
 
 class EmbeddingManager:
-    def __init__(self, llm_client: LLMClient):
+    def __init__(self):
         self.paragraphs_embedding_store = EmbeddingStore(
-            llm_client,
-            PG_NAMESPACE,
+            local_storage["pg_namespace"],  # type: ignore
             EMBEDDING_DATA_DIR_STR,
         )
         self.entities_embedding_store = EmbeddingStore(
-            llm_client,
-            ENT_NAMESPACE,
+            local_storage["pg_namespace"],  # type: ignore
             EMBEDDING_DATA_DIR_STR,
         )
         self.relation_embedding_store = EmbeddingStore(
-            llm_client,
-            REL_NAMESPACE,
+            local_storage["pg_namespace"],  # type: ignore
             EMBEDDING_DATA_DIR_STR,
         )
         self.stored_pg_hashes = set()

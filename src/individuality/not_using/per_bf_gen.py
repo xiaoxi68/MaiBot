@@ -33,10 +33,10 @@ else:
 
 def adapt_scene(scene: str) -> str:
     personality_core = config["personality"]["personality_core"]
-    personality_sides = config["personality"]["personality_sides"]
-    personality_side = random.choice(personality_sides)
-    identity_details = config["identity"]["identity_detail"]
-    identity_detail = random.choice(identity_details)
+    personality_side = config["personality"]["personality_side"]
+    personality_side = random.choice(personality_side)
+    identitys = config["identity"]["identity"]
+    identity = random.choice(identitys)
 
     """
     根据config中的属性，改编场景使其更适合当前角色
@@ -56,7 +56,7 @@ def adapt_scene(scene: str) -> str:
 - 外貌: {config["identity"]["appearance"]}
 - 性格核心: {personality_core}
 - 性格侧面: {personality_side}
-- 身份细节: {identity_detail}
+- 身份细节: {identity}
 
 请根据上述形象，改编以下场景，在测评中，用户将根据该场景给出上述角色形象的反应:
 {scene}
@@ -83,8 +83,8 @@ class PersonalityEvaluatorDirect:
     def __init__(self):
         self.personality_traits = {"开放性": 0, "严谨性": 0, "外向性": 0, "宜人性": 0, "神经质": 0}
         self.scenarios = []
-        self.final_scores = {"开放性": 0, "严谨性": 0, "外向性": 0, "宜人性": 0, "神经质": 0}
-        self.dimension_counts = {trait: 0 for trait in self.final_scores.keys()}
+        self.final_scores: Dict[str, float] = {"开放性": 0, "严谨性": 0, "外向性": 0, "宜人性": 0, "神经质": 0}
+        self.dimension_counts = {trait: 0 for trait in self.final_scores}
 
         # 为每个人格特质获取对应的场景
         for trait in PERSONALITY_SCENES:
@@ -119,8 +119,7 @@ class PersonalityEvaluatorDirect:
         # 构建维度描述
         dimension_descriptions = []
         for dim in dimensions:
-            desc = FACTOR_DESCRIPTIONS.get(dim, "")
-            if desc:
+            if desc := FACTOR_DESCRIPTIONS.get(dim, ""):
                 dimension_descriptions.append(f"- {dim}：{desc}")
 
         dimensions_text = "\n".join(dimension_descriptions)
@@ -180,8 +179,8 @@ class PersonalityEvaluatorDirect:
         print("\n角色基本信息：")
         print(f"- 昵称：{config['bot']['nickname']}")
         print(f"- 性格核心：{config['personality']['personality_core']}")
-        print(f"- 性格侧面：{config['personality']['personality_sides']}")
-        print(f"- 身份细节：{config['identity']['identity_detail']}")
+        print(f"- 性格侧面：{config['personality']['personality_side']}")
+        print(f"- 身份细节：{config['identity']['identity']}")
         print("\n准备好了吗？按回车键开始...")
         input()
 
@@ -262,8 +261,8 @@ class PersonalityEvaluatorDirect:
                 "weight": config["identity"]["weight"],
                 "appearance": config["identity"]["appearance"],
                 "personality_core": config["personality"]["personality_core"],
-                "personality_sides": config["personality"]["personality_sides"],
-                "identity_detail": config["identity"]["identity_detail"],
+                "personality_side": config["personality"]["personality_side"],
+                "identity": config["identity"]["identity"],
             },
         }
 

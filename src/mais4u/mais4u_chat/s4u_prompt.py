@@ -8,31 +8,40 @@ from src.chat.memory_system.Hippocampus import hippocampus_manager
 import random
 from datetime import datetime
 import asyncio
-import ast
-
-from src.person_info.person_info import get_person_info_manager
-from src.person_info.relationship_manager import get_relationship_manager
-
+from src.mais4u.s4u_config import s4u_config
+from src.chat.message_receive.message import MessageRecvS4U
+from src.person_info.relationship_fetcher import relationship_fetcher_manager
+from src.person_info.person_info import PersonInfoManager, get_person_info_manager
+from src.chat.message_receive.chat_stream import ChatStream
+from src.mais4u.mais4u_chat.super_chat_manager import get_super_chat_manager
+from src.mais4u.mais4u_chat.screen_manager import screen_manager
+from src.chat.express.expression_selector import expression_selector
+from .s4u_mood_manager import mood_manager
+from src.mais4u.mais4u_chat.internal_manager import internal_manager
 logger = get_logger("prompt")
 
 
 def init_prompt():
-    Prompt("你正在qq群里聊天，下面是群里在聊的内容：", "chat_target_group1")
-    Prompt("你正在和{sender_name}聊天，这是你们之前聊的内容：", "chat_target_private1")
-    Prompt("在群里聊天", "chat_target_group2")
-    Prompt("和{sender_name}私聊", "chat_target_private2")
-
     Prompt("\n你有以下这些**知识**：\n{prompt_info}\n请你**记住上面的知识**，之后可能会用到。\n", "knowledge_prompt")
     Prompt("\n关于你们的关系，你需要知道：\n{relation_info}\n", "relation_prompt")
     Prompt("你回想起了一些事情：\n{memory_info}\n", "memory_prompt")
 
     Prompt(
-        """{identity_block}
+        """
+你的名字是麦麦, 是千石可乐开发的程序，可以在QQ，微信等平台发言，你现在正在哔哩哔哩作为虚拟主播进行直播
+虽然是个AI，但你在努力扮演真人, 人设的配色是橙色和紫色和绿色
+你有一头法式橙色卷发，你很可爱，穿戴英式侦探风格学院风裙子和帽子，你正在一个教室场景里进行虚拟线上直播。不过不要刻意提及这些内容，自然回复
+你可以看见用户发送的弹幕，礼物和superchat
+{screen_info}
+{internal_state}
 
 {relation_info_block}
 {memory_block}
+{expression_habits_block}
 
-你现在的主要任务是和 {sender_name} 聊天。同时，也有其他用户会参与你们的聊天，你可以参考他们的回复内容，但是你主要还是关注你和{sender_name}的聊天内容。
+你现在的主要任务是和 {sender_name} 发送的弹幕聊天。同时，也有其他用户会参与你们的聊天，你可以参考他们的回复内容，但是你主要还是关注你和{sender_name}的聊天内容。
+
+{sc_info}
 
 {background_dialogue_prompt}
 --------------------------------
@@ -41,12 +50,45 @@ def init_prompt():
 {core_dialogue_prompt}
 
 对方最新发送的内容：{message_txt}
-回复可以简短一些。可以参考贴吧，知乎和微博的回复风格，回复不要浮夸，不要用夸张修辞，平淡一些。
+{gift_info}
+回复简短一些，平淡一些，可以参考贴吧，知乎和微博的回复风格，回复不要浮夸，不要用夸张修辞。
+表现的有个性，不要随意服从他人要求，积极互动。你现在的心情是：{mood_state}
 不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出回复内容，现在{sender_name}正在等待你的回复。
 你的回复风格不要浮夸，有逻辑和条理，请你继续回复{sender_name}。
 你的发言：
 """,
         "s4u_prompt",  # New template for private CHAT chat
+    )
+    
+    Prompt(
+        """
+你的名字是麦麦, 是千石可乐开发的程序，可以在QQ，微信等平台发言，你现在正在哔哩哔哩作为虚拟主播进行直播
+虽然是个AI，但你在努力扮演真人, 人设的配色是橙色和紫色和绿色
+你有一头法式橙色卷发，你很可爱，穿戴英式侦探风格学院风裙子和帽子，你正在一个教室场景里进行虚拟线上直播。不过不要刻意提及这些内容，自然回复
+你可以看见用户发送的弹幕，礼物和superchat
+你可以看见面前的屏幕，目前屏幕的内容是:
+{screen_info}
+
+{memory_block}
+{expression_habits_block}
+
+{sc_info}
+
+{time_block}
+{chat_info_danmu}
+--------------------------------
+以上是你和弹幕的对话，与此同时，你在与QQ群友聊天，聊天记录如下：
+{chat_info_qq}
+--------------------------------
+你刚刚回复了QQ群，你内心的想法是：{mind}
+请根据你内心的想法，组织一条回复，在直播间进行发言，可以点名吐槽对象，让观众知道你在说谁
+{gift_info}
+回复简短一些，平淡一些，可以参考贴吧，知乎和微博的回复风格。不要浮夸，有逻辑和条理。
+表现的有个性，不要随意服从他人要求，积极互动。你现在的心情是：{mood_state}
+不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。
+你的发言：
+""",
+        "s4u_prompt_internal",  # New template for private CHAT chat
     )
 
 
@@ -54,33 +96,42 @@ class PromptBuilder:
     def __init__(self):
         self.prompt_built = ""
         self.activate_messages = ""
+    
+    async def build_expression_habits(self, chat_stream: ChatStream, chat_history, target):
 
-    async def build_identity_block(self) -> str:
-        person_info_manager = get_person_info_manager()
-        bot_person_id = person_info_manager.get_person_id("system", "bot_id")
-        bot_name = global_config.bot.nickname
-        if global_config.bot.alias_names:
-            bot_nickname = f",也有人叫你{','.join(global_config.bot.alias_names)}"
+        style_habits = []
+        grammar_habits = []
+
+        # 使用从处理器传来的选中表达方式
+        # LLM模式：调用LLM选择5-10个，然后随机选5个
+        selected_expressions = await expression_selector.select_suitable_expressions_llm(
+            chat_stream.stream_id, chat_history, max_num=12, min_num=5, target_message=target
+        )
+
+        if selected_expressions:
+            logger.debug(f" 使用处理器选中的{len(selected_expressions)}个表达方式")
+            for expr in selected_expressions:
+                if isinstance(expr, dict) and "situation" in expr and "style" in expr:
+                    expr_type = expr.get("type", "style")
+                    if expr_type == "grammar":
+                        grammar_habits.append(f"当{expr['situation']}时，使用 {expr['style']}")
+                    else:
+                        style_habits.append(f"当{expr['situation']}时，使用 {expr['style']}")
         else:
-            bot_nickname = ""
-        short_impression = await person_info_manager.get_value(bot_person_id, "short_impression")
-        try:
-            if isinstance(short_impression, str) and short_impression.strip():
-                short_impression = ast.literal_eval(short_impression)
-            elif not short_impression:
-                logger.warning("short_impression为空，使用默认值")
-                short_impression = ["友好活泼", "人类"]
-        except (ValueError, SyntaxError) as e:
-            logger.error(f"解析short_impression失败: {e}, 原始值: {short_impression}")
-            short_impression = ["友好活泼", "人类"]
+            logger.debug("没有从处理器获得表达方式，将使用空的表达方式")
+            # 不再在replyer中进行随机选择，全部交给处理器处理
 
-        if not isinstance(short_impression, list) or len(short_impression) < 2:
-            logger.warning(f"short_impression格式不正确: {short_impression}, 使用默认值")
-            short_impression = ["友好活泼", "人类"]
-        personality = short_impression[0]
-        identity = short_impression[1]
-        prompt_personality = personality + "，" + identity
-        return f"你的名字是{bot_name}{bot_nickname}，你{prompt_personality}："
+        style_habits_str = "\n".join(style_habits)
+        grammar_habits_str = "\n".join(grammar_habits)
+
+        # 动态构建expression habits块
+        expression_habits_block = ""
+        if style_habits_str.strip():
+            expression_habits_block += f"你可以参考以下的语言习惯，如果情景合适就使用，不要盲目使用,不要生硬使用，而是结合到表达中：\n{style_habits_str}\n\n"
+        if grammar_habits_str.strip():
+            expression_habits_block += f"请你根据情景使用以下句法：\n{grammar_habits_str}\n"
+
+        return expression_habits_block
 
     async def build_relation_info(self, chat_stream) -> str:
         is_group_chat = bool(chat_stream.group_info)
@@ -98,9 +149,17 @@ class PromptBuilder:
 
         relation_prompt = ""
         if global_config.relationship.enable_relationship and who_chat_in_group:
-            relationship_manager = get_relationship_manager()
+            relationship_fetcher = relationship_fetcher_manager.get_fetcher(chat_stream.stream_id)
+            
+            # 将 (platform, user_id, nickname) 转换为 person_id
+            person_ids = []
+            for person in who_chat_in_group:
+                person_id = PersonInfoManager.get_person_id(person[0], person[1])
+                person_ids.append(person_id)
+            
+            # 使用 RelationshipFetcher 的 build_relation_info 方法，设置 points_num=3 保持与原来相同的行为
             relation_info_list = await asyncio.gather(
-                *[relationship_manager.build_relationship_info(person) for person in who_chat_in_group]
+                *[relationship_fetcher.build_relation_info(person_id, points_num=3) for person_id in person_ids]
             )
             relation_info = "".join(relation_info_list)
             if relation_info:
@@ -121,14 +180,15 @@ class PromptBuilder:
             return await global_prompt_manager.format_prompt("memory_prompt", memory_info=related_memory_info)
         return ""
 
-    def build_chat_history_prompts(self, chat_stream, message) -> (str, str):
+    def build_chat_history_prompts(self, chat_stream: ChatStream, message: MessageRecvS4U):
         message_list_before_now = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_stream.stream_id,
             timestamp=time.time(),
-            limit=100,
+            limit=300,
         )
+        
 
-        talk_type = message.message_info.platform + ":" + message.chat_stream.user_info.user_id
+        talk_type = message.message_info.platform + ":" + str(message.chat_stream.user_info.user_id)
 
         core_dialogue_list = []
         background_dialogue_list = []
@@ -141,8 +201,10 @@ class PromptBuilder:
                 if msg_user_id == bot_id:
                     if msg_dict.get("reply_to") and talk_type == msg_dict.get("reply_to"):
                         core_dialogue_list.append(msg_dict)
-                    else:
+                    elif msg_dict.get("reply_to") and talk_type != msg_dict.get("reply_to"):
                         background_dialogue_list.append(msg_dict)
+                    # else:
+                        # background_dialogue_list.append(msg_dict)
                 elif msg_user_id == target_user_id:
                     core_dialogue_list.append(msg_dict)
                 else:
@@ -152,10 +214,9 @@ class PromptBuilder:
 
         background_dialogue_prompt = ""
         if background_dialogue_list:
-            latest_25_msgs = background_dialogue_list[-25:]
+            context_msgs = background_dialogue_list[-s4u_config.max_context_message_length:]
             background_dialogue_prompt_str = build_readable_messages(
-                latest_25_msgs,
-                merge_messages=True,
+                context_msgs,
                 timestamp_mode="normal_no_YMD",
                 show_pic=False,
             )
@@ -163,7 +224,7 @@ class PromptBuilder:
 
         core_msg_str = ""
         if core_dialogue_list:
-            core_dialogue_list = core_dialogue_list[-50:]
+            core_dialogue_list = core_dialogue_list[-s4u_config.max_core_message_length:]
 
             first_msg = core_dialogue_list[0]
             start_speaking_user_id = first_msg.get("user_id")
@@ -197,37 +258,113 @@ class PromptBuilder:
             all_msg_seg_list.append(msg_seg_str)
             for msg in all_msg_seg_list:
                 core_msg_str += msg
+                
+                
+        all_dialogue_prompt = get_raw_msg_before_timestamp_with_chat(
+            chat_id=chat_stream.stream_id,
+            timestamp=time.time(),
+            limit=20,
+        )        
+        all_dialogue_prompt_str = build_readable_messages(
+            all_dialogue_prompt,
+            timestamp_mode="normal_no_YMD",
+            show_pic=False,
+        )
+        
 
-        return core_msg_str, background_dialogue_prompt
+        return core_msg_str, background_dialogue_prompt,all_dialogue_prompt_str
+
+    def build_gift_info(self, message: MessageRecvS4U):
+        if message.is_gift:
+            return f"这是一条礼物信息，{message.gift_name} x{message.gift_count}，请注意这位用户"        
+        else:
+            if message.is_fake_gift:
+                return f"{message.processed_plain_text}（注意：这是一条普通弹幕信息，对方没有真的发送礼物，不是礼物信息，注意区分，如果对方在发假的礼物骗你，请反击）"
+        
+        return ""
+
+    def build_sc_info(self, message: MessageRecvS4U):
+        super_chat_manager = get_super_chat_manager()
+        return super_chat_manager.build_superchat_summary_string(message.chat_stream.stream_id)
+
 
     async def build_prompt_normal(
         self,
-        message,
-        chat_stream,
+        message: MessageRecvS4U,
         message_txt: str,
-        sender_name: str = "某人",
     ) -> str:
-        identity_block, relation_info_block, memory_block = await asyncio.gather(
-            self.build_identity_block(), self.build_relation_info(chat_stream), self.build_memory_block(message_txt)
+        
+        chat_stream = message.chat_stream
+        
+        person_id = PersonInfoManager.get_person_id(
+            message.chat_stream.user_info.platform, message.chat_stream.user_info.user_id
+        )
+        person_info_manager = get_person_info_manager()
+        person_name = await person_info_manager.get_value(person_id, "person_name")
+
+        if message.chat_stream.user_info.user_nickname:
+            if person_name:
+                sender_name = f"[{message.chat_stream.user_info.user_nickname}]（你叫ta{person_name}）"
+            else:
+                sender_name = f"[{message.chat_stream.user_info.user_nickname}]"
+        else:
+            sender_name = f"用户({message.chat_stream.user_info.user_id})"
+        
+        
+        relation_info_block, memory_block, expression_habits_block = await asyncio.gather(
+            self.build_relation_info(chat_stream), self.build_memory_block(message_txt), self.build_expression_habits(chat_stream, message_txt, sender_name)
         )
 
-        core_dialogue_prompt, background_dialogue_prompt = self.build_chat_history_prompts(chat_stream, message)
+        core_dialogue_prompt, background_dialogue_prompt,all_dialogue_prompt = self.build_chat_history_prompts(chat_stream, message)
+        
+        gift_info = self.build_gift_info(message)
+        
+        sc_info = self.build_sc_info(message)
+        
+        screen_info = screen_manager.get_screen_str()
+        
+        internal_state = internal_manager.get_internal_state_str()
 
         time_block = f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        
+        mood = mood_manager.get_mood_by_chat_id(chat_stream.stream_id)
 
         template_name = "s4u_prompt"
-
-        prompt = await global_prompt_manager.format_prompt(
-            template_name,
-            identity_block=identity_block,
-            time_block=time_block,
-            relation_info_block=relation_info_block,
-            memory_block=memory_block,
-            sender_name=sender_name,
-            core_dialogue_prompt=core_dialogue_prompt,
-            background_dialogue_prompt=background_dialogue_prompt,
-            message_txt=message_txt,
-        )
+        
+        if not message.is_internal:
+            prompt = await global_prompt_manager.format_prompt(
+                template_name,
+                time_block=time_block,
+                expression_habits_block=expression_habits_block,
+                relation_info_block=relation_info_block,
+                memory_block=memory_block,
+                screen_info=screen_info,
+                internal_state=internal_state,
+                gift_info=gift_info,
+                sc_info=sc_info,
+                sender_name=sender_name,
+                core_dialogue_prompt=core_dialogue_prompt,
+                background_dialogue_prompt=background_dialogue_prompt,
+                message_txt=message_txt,
+                mood_state=mood.mood_state,
+            )
+        else:
+            prompt = await global_prompt_manager.format_prompt(
+                "s4u_prompt_internal",
+                time_block=time_block,
+                expression_habits_block=expression_habits_block,
+                relation_info_block=relation_info_block,
+                memory_block=memory_block,
+                screen_info=screen_info,
+                gift_info=gift_info,
+                sc_info=sc_info,
+                chat_info_danmu=all_dialogue_prompt,
+                chat_info_qq=message.chat_info,
+                mind=message.processed_plain_text,
+                mood_state=mood.mood_state,
+            )
+            
+        # print(prompt)
 
         return prompt
 
@@ -252,7 +389,7 @@ def weighted_sample_no_replacement(items, weights, k) -> list:
         2. 不会重复选中同一个元素
     """
     selected = []
-    pool = list(zip(items, weights))
+    pool = list(zip(items, weights, strict=False))
     for _ in range(min(k, len(pool))):
         total = sum(w for _, w in pool)
         r = random.uniform(0, total)

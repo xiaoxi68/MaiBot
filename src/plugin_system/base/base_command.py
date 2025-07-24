@@ -21,15 +21,19 @@ class BaseCommand(ABC):
     """
 
     command_name: str = ""
+    """Command组件的名称"""
     command_description: str = ""
-
-    # 默认命令设置（子类可以覆盖）
-    command_pattern: str = ""
+    """Command组件的描述"""
+    # 默认命令设置
+    command_pattern: str = r""
+    """命令匹配的正则表达式"""
     command_help: str = ""
+    """命令帮助信息"""
     command_examples: List[str] = []
-    intercept_message: bool = True  # 默认拦截消息，不继续处理
+    intercept_message: bool = True
+    """是否拦截信息，默认拦截，不进行后续处理"""
 
-    def __init__(self, message: MessageRecv, plugin_config: dict = None):
+    def __init__(self, message: MessageRecv, plugin_config: Optional[dict] = None):
         """初始化Command组件
 
         Args:
@@ -135,7 +139,7 @@ class BaseCommand(ABC):
         )
 
     async def send_command(
-        self, command_name: str, args: dict = None, display_message: str = "", storage_message: bool = True
+        self, command_name: str, args: Optional[dict] = None, display_message: str = "", storage_message: bool = True
     ) -> bool:
         """发送命令消息
 
@@ -219,7 +223,9 @@ class BaseCommand(ABC):
         Returns:
             CommandInfo: 生成的Command信息对象
         """
-
+        if "." in cls.command_name:
+            logger.error(f"Command名称 '{cls.command_name}' 包含非法字符 '.'，请使用下划线替代")
+            raise ValueError(f"Command名称 '{cls.command_name}' 包含非法字符 '.'，请使用下划线替代")
         return CommandInfo(
             name=cls.command_name,
             component_type=ComponentType.COMMAND,

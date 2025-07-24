@@ -1,5 +1,5 @@
 [inner]
-version = "3.2.0"
+version = "4.4.8"
 
 #----以下是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 #如果你想要修改配置文件，请在修改后将version的值进行变更
@@ -13,6 +13,7 @@ version = "3.2.0"
 #----以上是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 
 [bot]
+platform = "qq" 
 qq_account = 1145141919810 # 麦麦的QQ账号
 nickname = "麦麦" # 麦麦的昵称
 alias_names = ["麦叠", "牢麦"] # 麦麦的别名
@@ -20,34 +21,22 @@ alias_names = ["麦叠", "牢麦"] # 麦麦的别名
 [personality]
 # 建议50字以内，描述人格的核心特质
 personality_core = "是一个积极向上的女大学生" 
-# 人格的细节，可以描述人格的一些侧面，条数任意，不能为0，不宜太多
-personality_sides = [
-    "用一句话或几句话描述人格的一些侧面",
-    "用一句话或几句话描述人格的一些侧面",
-    "用一句话或几句话描述人格的一些侧面",
-]
+# 人格的细节，描述人格的一些侧面
+personality_side = "用一句话或几句话描述人格的侧面特质"
+#アイデンティティがない 生まれないらららら
+# 可以描述外貌，性别，身高，职业，属性等等描述
+identity = "年龄为19岁,是女孩子,身高为160cm,有黑色的短发"
 
 compress_personality = false # 是否压缩人格，压缩后会精简人格信息，节省token消耗并提高回复性能，但是会丢失一些信息，如果人设不长，可以关闭
-
-
-[identity]
-#アイデンティティがない 生まれないらららら
-# 可以描述外貌，性别，身高，职业，属性等等描述,条数任意，不能为0
-identity_detail = [
-    "年龄为19岁",
-    "是女孩子",
-    "身高为160cm",
-    "有橙色的短发",
-]
-
-compress_indentity = true # 是否压缩身份，压缩后会精简身份信息，节省token消耗并提高回复性能，但是会丢失一些信息，如果不长，可以关闭
+compress_identity = true # 是否压缩身份，压缩后会精简身份信息，节省token消耗并提高回复性能，但是会丢失一些信息，如果不长，可以关闭
 
 [expression]
 # 表达方式
 enable_expression = true # 是否启用表达方式
-expression_style = "描述麦麦说话的表达风格，表达习惯，例如：(请回复的平淡一些，简短一些，说中文，不要刻意突出自身学科背景。)"
+# 描述麦麦说话的表达风格，表达习惯，例如：(请回复的平淡一些，简短一些，说中文，不要刻意突出自身学科背景。)
+expression_style = "回复可以简短一些。可以参考贴吧，知乎和微博的回复风格，回复不要浮夸，不要用夸张修辞，平淡一些。"
 enable_expression_learning = false # 是否启用表达学习，麦麦会学习不同群里人类说话风格（群之间不互通）
-learning_interval = 600 # 学习间隔 单位秒
+learning_interval = 350 # 学习间隔 单位秒
 
 expression_groups = [
     ["qq:1919810:private","qq:114514:private","qq:1111111:group"], # 在这里设置互通组，相同组的chat_id会共享学习到的表达方式
@@ -58,16 +47,20 @@ expression_groups = [
 
 [relationship]
 enable_relationship = true # 是否启用关系系统
-relation_frequency = 1 # 关系频率，麦麦构建关系的速度，仅在normal_chat模式下有效
+relation_frequency = 1 # 关系频率，麦麦构建关系的频率
+
 
 [chat] #麦麦的聊天通用设置
-chat_mode = "normal" # 聊天模式 —— 普通模式：normal，专注模式：focus，自动auto：在普通模式和专注模式之间自动切换
-# chat_mode = "focus"
-# chat_mode = "auto"
+focus_value = 1 
+# 麦麦的专注思考能力，越低越容易专注，消耗token也越多
+# 专注时能更好把握发言时机，能够进行持久的连续对话
 
-max_context_size = 18 # 上下文长度
-
+max_context_size = 25 # 上下文长度
+thinking_timeout = 20 # 麦麦一次回复最长思考规划时间，超过这个时间的思考会放弃（往往是api反应太慢）
 replyer_random_probability = 0.5 # 首要replyer模型被选择的概率
+
+use_s4u_prompt_mode = true # 是否使用 s4u 对话构建模式，该模式会更好的把握当前对话对象的对话内容，但是对群聊整理理解能力较差（测试功能！！可能有未知问题！！)
+
 
 talk_frequency = 1 # 麦麦回复频率，越高，麦麦回复越频繁
 
@@ -83,7 +76,6 @@ talk_frequency_adjust = [
     ["qq:114514:group", "12:20,1", "16:10,2", "20:10,1", "00:10,0.3"],
     ["qq:1919810:private", "8:20,1", "12:10,2", "20:10,1.5", "00:10,0.2"]
 ]
-
 # 基于聊天流的个性化时段频率配置（可选）
 # 格式：talk_frequency_adjust = [["platform:id:type", "HH:MM,frequency", ...], ...]
 # 说明：
@@ -95,12 +87,6 @@ talk_frequency_adjust = [
 # - 优先级：聊天流特定配置 > 全局时段配置 > 默认 talk_frequency
 # - 时间支持跨天，例如 "00:10,0.3" 表示从凌晨0:10开始使用频率0.3
 # - 系统会自动将 "platform:id:type" 转换为内部的哈希chat_id进行匹配
-
-auto_focus_threshold = 1 # 自动切换到专注聊天的阈值，越低越容易进入专注聊天
-exit_focus_threshold = 1 # 自动退出专注聊天的阈值，越低越容易退出专注聊天
-# 普通模式下，麦麦会针对感兴趣的消息进行回复，token消耗量较低
-# 专注模式下，麦麦会进行主动的观察和回复，并给出回复，token消耗量较高
-# 自动模式下，麦麦会根据消息内容自动切换到专注模式或普通模式
 
 [message_receive]
 # 以下是消息过滤，可以根据规则过滤特定消息，将不会读取这些消息
@@ -116,31 +102,19 @@ ban_msgs_regex = [
 
 [normal_chat] #普通聊天
 #一般回复参数
-emoji_chance = 0.2 # 麦麦一般回复时使用表情包的概率
-thinking_timeout = 30 # 麦麦最长思考规划时间，超过这个时间的思考会放弃（往往是api反应太慢）
-
 willing_mode = "classical" # 回复意愿模式 —— 经典模式：classical，mxp模式：mxp，自定义模式：custom（需要你自己实现）
-
 response_interested_rate_amplifier = 1 # 麦麦回复兴趣度放大系数
-
 mentioned_bot_inevitable_reply = true # 提及 bot 必然回复
 at_bot_inevitable_reply = true # @bot 必然回复（包含提及）
-
-enable_planner = true # 是否启用动作规划器（与focus_chat共享actions）
-
-
-[focus_chat] #专注聊天
-think_interval = 3 # 思考间隔 单位秒，可以有效减少消耗
-consecutive_replies = 1 # 连续回复能力，值越高，麦麦连续回复的概率越高
-compressed_length = 8 # 不能大于observation_context_size,心流上下文压缩的最短压缩长度，超过心流观察到的上下文长度，会压缩，最短压缩长度为5
-compress_length_limit = 4 #最多压缩份数，超过该数值的压缩上下文会被删除
-working_memory_processor = false # 是否启用工作记忆处理器，消耗量大
 
 [tool]
 enable_in_normal_chat = false # 是否在普通聊天中启用工具
 enable_in_focus_chat = true # 是否在专注聊天中启用工具
 
 [emoji]
+emoji_chance = 0.6 # 麦麦激活表情包动作的概率
+emoji_activate_type = "random" # 表情包激活类型，可选：random，llm ; random下，表情包动作随机启用，llm下，表情包动作根据llm判断是否启用
+
 max_reg_num = 60 # 表情包最大注册数量
 do_replace = true # 开启则在达到最大数量时删除（替换）表情包，关闭则达到最大数量时不会继续收集表情包
 check_interval = 10 # 检查表情包（注册，破损，删除）的时间间隔(分钟)
@@ -150,31 +124,36 @@ filtration_prompt = "符合公序良俗" # 表情包过滤要求，只有符合�
 
 [memory]
 enable_memory = true # 是否启用记忆系统
-memory_build_interval = 1000 # 记忆构建间隔 单位秒   间隔越低，麦麦学习越多，但是冗余信息也会增多
+memory_build_interval = 600 # 记忆构建间隔 单位秒   间隔越低，麦麦学习越多，但是冗余信息也会增多
 memory_build_distribution = [6.0, 3.0, 0.6, 32.0, 12.0, 0.4] # 记忆构建分布，参数：分布1均值，标准差，权重，分布2均值，标准差，权重
-memory_build_sample_num = 4 # 采样数量，数值越高记忆采样次数越多
+memory_build_sample_num = 8 # 采样数量，数值越高记忆采样次数越多
 memory_build_sample_length = 30 # 采样长度，数值越高一段记忆内容越丰富
 memory_compress_rate = 0.1 # 记忆压缩率 控制记忆精简程度 建议保持默认,调高可以获得更多信息，但是冗余信息也会增多
 
-forget_memory_interval = 1500 # 记忆遗忘间隔 单位秒   间隔越低，麦麦遗忘越频繁，记忆更精简，但更难学习
-memory_forget_time = 24 #多长时间后的记忆会被遗忘 单位小时
-memory_forget_percentage = 0.01 # 记忆遗忘比例 控制记忆遗忘程度 越大遗忘越多 建议保持默认
+forget_memory_interval = 3000 # 记忆遗忘间隔 单位秒   间隔越低，麦麦遗忘越频繁，记忆更精简，但更难学习
+memory_forget_time = 48 #多长时间后的记忆会被遗忘 单位小时
+memory_forget_percentage = 0.008 # 记忆遗忘比例 控制记忆遗忘程度 越大遗忘越多 建议保持默认
 
 consolidate_memory_interval = 1000 # 记忆整合间隔 单位秒   间隔越低，麦麦整合越频繁，记忆更精简
 consolidation_similarity_threshold = 0.7 # 相似度阈值
 consolidation_check_percentage = 0.05 # 检查节点比例
 
+enable_instant_memory = false # 是否启用即时记忆，测试功能，可能存在未知问题
+
 #不希望记忆的词，已经记忆的不会受到影响，需要手动清理
 memory_ban_words = [ "表情包", "图片", "回复", "聊天记录" ]
 
-[mood] # 暂时不再有效，请不要使用
-enable_mood = false # 是否启用情绪系统
+[voice]
+enable_asr = false # 是否启用语音识别，启用后麦麦可以识别语音消息，启用该功能需要配置语音识别模型[model.voice]s
+
+[mood]
+enable_mood = true # 是否启用情绪系统
 mood_update_interval = 1.0 # 情绪更新间隔 单位秒
 mood_decay_rate = 0.95 # 情绪衰减率
 mood_intensity_factor = 1.0 # 情绪强度因子
 
 [lpmm_knowledge] # lpmm知识库配置
-enable = true # 是否启用lpmm知识库
+enable = false # 是否启用lpmm知识库
 rag_synonym_search_top_k = 10 # 同义词搜索TopK
 rag_synonym_threshold = 0.8 # 同义词阈值（相似度高于此阈值的词语会被认为是同义词）
 info_extraction_workers = 3 # 实体提取同时执行线程数，非Pro模型不要设置超过5
@@ -185,6 +164,7 @@ qa_paragraph_node_weight = 0.05 # 段落节点权重（在图搜索&PPR计算中
 qa_ent_filter_top_k = 10 # 实体过滤TopK
 qa_ppr_damping = 0.8 # PPR阻尼系数
 qa_res_top_k = 3 # 最终提供的文段TopK
+embedding_dimension = 1024 # 嵌入向量维度,应该与模型的输出维度一致
 
 # keyword_rules 用于设置关键词触发的额外回复知识
 # 添加新规则方法：在 keyword_rules 数组中增加一项，格式如下：
@@ -202,6 +182,12 @@ keyword_rules = [
 regex_rules = [
     { regex = ["^(?P<n>\\S{1,20})是这样的$"], reaction = "请按照以下模板造句：[n]是这样的，xx只要xx就可以，可是[n]要考虑的事情就很多了，比如什么时候xx，什么时候xx，什么时候xx。（请自由发挥替换xx部分，只需保持句式结构，同时表达一种将[n]过度重视的反讽意味）" }
 ]
+
+# 可以自定义部分提示词
+[custom_prompt]
+image_prompt = "请用中文描述这张图片的内容。如果有文字，请把文字描述概括出来，请留意其主题，直观感受，输出为一段平文本，最多30字，请注意不要分点，就输出一段文本"
+
+
 
 [response_post_process]
 enable_response_post_process = true # 是否启用回复后处理，包括错别字生成器，回复分割器
@@ -228,7 +214,7 @@ console_log_level = "INFO" # 控制台日志级别，可选: DEBUG, INFO, WARNIN
 file_log_level = "DEBUG" # 文件日志级别，可选: DEBUG, INFO, WARNING, ERROR, CRITICAL
 
 # 第三方库日志控制
-suppress_libraries = ["faiss","httpx", "urllib3", "asyncio", "websockets", "httpcore", "requests", "peewee", "openai","uvicorn"] # 完全屏蔽的库
+suppress_libraries = ["faiss","httpx", "urllib3", "asyncio", "websockets", "httpcore", "requests", "peewee", "openai","uvicorn","jieba"] # 完全屏蔽的库
 library_log_levels = { "aiohttp" = "WARNING"} # 设置特定库的日志级别
 
 #下面的模型若使用硅基流动则不需要更改，使用ds官方则改成.env自定义的宏，使用自定义模型则选择定位相似的模型自己填写
@@ -240,12 +226,16 @@ library_log_levels = { "aiohttp" = "WARNING"} # 设置特定库的日志级别
 # enable_thinking = <true|false> : 用于指定模型是否启用思考
 # thinking_budget = <int> : 用于指定模型思考最长长度
 
+[debug]
+show_prompt = false # 是否显示prompt
+
+
 [model]
-model_max_output_length = 1000 # 模型单次返回的最大token数
+model_max_output_length = 1024 # 模型单次返回的最大token数
 
 #------------必填：组件模型------------
 
-[model.utils] # 在麦麦的一些组件中使用的模型，例如表情包模块，取名模块，消耗量不大
+[model.utils] # 在麦麦的一些组件中使用的模型，例如表情包模块，取名模块，关系模块，是麦麦必须的模型
 name = "Pro/deepseek-ai/DeepSeek-V3"
 provider = "SILICONFLOW"
 pri_in = 2 #模型的输入价格（非必填，可以记录消耗）
@@ -253,7 +243,7 @@ pri_out = 8 #模型的输出价格（非必填，可以记录消耗）
 #默认temp 0.2 如果你使用的是老V3或者其他模型，请自己修改temp参数
 temp = 0.2 #模型的温度，新V3建议0.1-0.3
 
-[model.utils_small] # 在麦麦的一些组件中使用的小模型，消耗量较大
+[model.utils_small] # 在麦麦的一些组件中使用的小模型，消耗量较大，建议使用速度较快的小模型
 # 强烈建议使用免费的小模型
 name = "Qwen/Qwen3-8B"
 provider = "SILICONFLOW"
@@ -278,8 +268,22 @@ pri_out = 8 #模型的输出价格（非必填，可以记录消耗）
 #默认temp 0.2 如果你使用的是老V3或者其他模型，请自己修改temp参数
 temp = 0.2 #模型的温度，新V3建议0.1-0.3
 
+[model.planner] #决策：负责决定麦麦该做什么的模型
+name = "Pro/deepseek-ai/DeepSeek-V3"
+provider = "SILICONFLOW"
+pri_in = 2
+pri_out = 8
+temp = 0.3
 
-[model.memory_summary] # 记忆的概括模型
+[model.emotion] #负责麦麦的情绪变化
+name = "Pro/deepseek-ai/DeepSeek-V3"
+provider = "SILICONFLOW"
+pri_in = 2
+pri_out = 8
+temp = 0.3
+
+
+[model.memory] # 记忆模型
 name = "Qwen/Qwen3-30B-A3B"
 provider = "SILICONFLOW"
 pri_in = 0.7
@@ -293,20 +297,11 @@ provider = "SILICONFLOW"
 pri_in = 0.35
 pri_out = 0.35
 
-[model.planner] #决策：负责决定麦麦该做什么，麦麦的决策模型
-name = "Pro/deepseek-ai/DeepSeek-V3"
+[model.voice] # 语音识别模型
+name = "FunAudioLLM/SenseVoiceSmall"
 provider = "SILICONFLOW"
-pri_in = 2
-pri_out = 8
-temp = 0.3
-
-[model.relation] #用于处理和麦麦和其他人的关系
-name = "Qwen/Qwen3-30B-A3B"
-provider = "SILICONFLOW"
-pri_in = 0.7
-pri_out = 2.8
-temp = 0.7
-enable_thinking = false # 是否启用思考
+pri_in = 0
+pri_out = 0
 
 [model.tool_use] #工具调用模型，需要使用支持工具调用的模型
 name = "Qwen/Qwen3-14B"
@@ -322,16 +317,6 @@ name = "BAAI/bge-m3"
 provider = "SILICONFLOW"
 pri_in = 0
 pri_out = 0
-
-#------------专注聊天必填模型------------
-
-[model.focus_working_memory] #工作记忆模型
-name = "Qwen/Qwen3-30B-A3B"
-provider = "SILICONFLOW"
-enable_thinking = false # 是否启用思考(qwen3 only)
-pri_in = 0.7
-pri_out = 2.8
-temp = 0.7
 
 
 #------------LPMM知识库模型------------
@@ -375,7 +360,6 @@ key_file = "" # SSL密钥文件路径，仅在use_wss=true时有效
 enable = true
 
 [experimental] #实验性功能
-debug_show_chat_mode = false # 是否在回复后显示当前聊天模式
 enable_friend_chat = false # 是否启用好友聊天
 
 

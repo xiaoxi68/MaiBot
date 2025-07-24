@@ -1,4 +1,5 @@
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Any
+
 from src.common.logger import get_logger
 from .relationship_builder import RelationshipBuilder
 
@@ -25,7 +26,7 @@ class RelationshipBuilderManager:
         """
         if chat_id not in self.builders:
             self.builders[chat_id] = RelationshipBuilder(chat_id)
-            logger.info(f"创建聊天 {chat_id} 的关系构建器")
+            logger.debug(f"创建聊天 {chat_id} 的关系构建器")
 
         return self.builders[chat_id]
 
@@ -51,7 +52,7 @@ class RelationshipBuilderManager:
         """
         if chat_id in self.builders:
             del self.builders[chat_id]
-            logger.info(f"移除聊天 {chat_id} 的关系构建器")
+            logger.debug(f"移除聊天 {chat_id} 的关系构建器")
             return True
         return False
 
@@ -63,7 +64,7 @@ class RelationshipBuilderManager:
         """
         return list(self.builders.keys())
 
-    def get_status(self) -> Dict[str, any]:
+    def get_status(self) -> Dict[str, Any]:
         """获取管理器状态
 
         Returns:
@@ -94,9 +95,7 @@ class RelationshipBuilderManager:
             bool: 是否成功清理
         """
         builder = self.get_builder(chat_id)
-        if builder:
-            return builder.force_cleanup_user_segments(person_id)
-        return False
+        return builder.force_cleanup_user_segments(person_id) if builder else False
 
 
 # 全局管理器实例

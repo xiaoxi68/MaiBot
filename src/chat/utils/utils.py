@@ -1,19 +1,22 @@
 import random
 import re
+import string
 import time
-from collections import Counter
-
 import jieba
 import numpy as np
+
+from collections import Counter
 from maim_message import UserInfo
+from typing import Optional, Tuple, Dict, List, Any
 
 from src.common.logger import get_logger
-from src.manager.mood_manager import mood_manager
-from ..message_receive.message import MessageRecv
+from src.common.message_repository import find_messages, count_messages
+from src.config.config import global_config
+from src.chat.message_receive.message import MessageRecv
+from src.chat.message_receive.chat_stream import get_chat_manager
 from src.llm_models.utils_model import LLMRequest
+from src.person_info.person_info import PersonInfoManager, get_person_info_manager
 from .typo_generator import ChineseTypoGenerator
-from ...config.config import global_config
-from ...common.message_repository import find_messages, count_messages
 
 logger = get_logger("chat_utils")
 
@@ -27,11 +30,7 @@ def db_message_to_str(message_dict: dict) -> str:
     logger.debug(f"message_dict: {message_dict}")
     time_str = time.strftime("%m-%d %H:%M:%S", time.localtime(message_dict["time"]))
     try:
-        name = "[(%s)%s]%s" % (
-            message_dict["user_id"],
-            message_dict.get("user_nickname", ""),
-            message_dict.get("user_cardname", ""),
-        )
+        name = f"[({message_dict['user_id']}){message_dict.get('user_nickname', '')}]{message_dict.get('user_cardname', '')}"
     except Exception:
         name = message_dict.get("user_nickname", "") or f"用户{message_dict['user_id']}"
     content = message_dict.get("processed_plain_text", "")
@@ -47,17 +46,18 @@ def is_mentioned_bot_in_message(message: MessageRecv) -> tuple[bool, float]:
     reply_probability = 0.0
     is_at = False
     is_mentioned = False
-
+    if message.is_mentioned is not None:
+        return bool(message.is_mentioned), message.is_mentioned
     if (
         message.message_info.additional_config is not None
         and message.message_info.additional_config.get("is_mentioned") is not None
     ):
         try:
-            reply_probability = float(message.message_info.additional_config.get("is_mentioned"))
+            reply_probability = float(message.message_info.additional_config.get("is_mentioned"))  # type: ignore
             is_mentioned = True
             return is_mentioned, reply_probability
         except Exception as e:
-            logger.warning(e)
+            logger.warning(str(e))
             logger.warning(
                 f"消息中包含不合理的设置 is_mentioned: {message.message_info.additional_config.get('is_mentioned')}"
             )
@@ -80,7 +80,7 @@ def is_mentioned_bot_in_message(message: MessageRecv) -> tuple[bool, float]:
 
     if is_at and global_config.normal_chat.at_bot_inevitable_reply:
         reply_probability = 1.0
-        logger.info("被@，回复概率设置为100%")
+        logger.debug("被@，回复概率设置为100%")
     else:
         if not is_mentioned:
             # 判断是否被回复
@@ -105,7 +105,7 @@ def is_mentioned_bot_in_message(message: MessageRecv) -> tuple[bool, float]:
                         is_mentioned = True
         if is_mentioned and global_config.normal_chat.mentioned_bot_inevitable_reply:
             reply_probability = 1.0
-            logger.info("被提及，回复概率设置为100%")
+            logger.debug("被提及，回复概率设置为100%")
     return is_mentioned, reply_probability
 
 
@@ -120,30 +120,6 @@ async def get_embedding(text, request_type="embedding"):
         logger.error(f"获取embedding失败: {str(e)}")
         embedding = None
     return embedding
-
-
-def get_recent_group_detailed_plain_text(chat_stream_id: str, limit: int = 12, combine=False):
-    filter_query = {"chat_id": chat_stream_id}
-    sort_order = [("time", -1)]
-    recent_messages = find_messages(message_filter=filter_query, sort=sort_order, limit=limit)
-
-    if not recent_messages:
-        return []
-
-    message_detailed_plain_text = ""
-    message_detailed_plain_text_list = []
-
-    # 反转消息列表，使最新的消息在最后
-    recent_messages.reverse()
-
-    if combine:
-        for msg_db_data in recent_messages:
-            message_detailed_plain_text += str(msg_db_data["detailed_plain_text"])
-        return message_detailed_plain_text
-    else:
-        for msg_db_data in recent_messages:
-            message_detailed_plain_text_list.append(msg_db_data["detailed_plain_text"])
-        return message_detailed_plain_text_list
 
 
 def get_recent_group_speaker(chat_stream_id: str, sender, limit: int = 12) -> list:
@@ -199,10 +175,7 @@ def split_into_sentences_w_remove_punctuation(text: str) -> list[str]:
 
     len_text = len(text)
     if len_text < 3:
-        if random.random() < 0.01:
-            return list(text)  # 如果文本很短且触发随机条件,直接按字符分割
-        else:
-            return [text]
+        return list(text) if random.random() < 0.01 else [text]
 
     # 定义分隔符
     separators = {"，", ",", " ", "。", ";"}
@@ -312,7 +285,7 @@ def random_remove_punctuation(text: str) -> str:
                 continue
         elif char == "，":
             rand = random.random()
-            if rand < 0.25:  # 5%概率删除逗号
+            if rand < 0.05:  # 5%概率删除逗号
                 continue
             elif rand < 0.25:  # 20%概率把逗号变成空格
                 result += " "
@@ -347,10 +320,9 @@ def process_llm_response(text: str, enable_splitter: bool = True, enable_chinese
     max_length = global_config.response_splitter.max_length * 2
     max_sentence_num = global_config.response_splitter.max_sentence_num
     # 如果基本上是中文，则进行长度过滤
-    if get_western_ratio(cleaned_text) < 0.1:
-        if len(cleaned_text) > max_length:
-            logger.warning(f"回复过长 ({len(cleaned_text)} 字符)，返回默认回复")
-            return ["懒得说"]
+    if get_western_ratio(cleaned_text) < 0.1 and len(cleaned_text) > max_length:
+        logger.warning(f"回复过长 ({len(cleaned_text)} 字符)，返回默认回复")
+        return ["懒得说"]
 
     typo_generator = ChineseTypoGenerator(
         error_rate=global_config.chinese_typo.error_rate,
@@ -408,14 +380,14 @@ def calculate_typing_time(
     - 在所有输入结束后，额外加上回车时间0.3秒
     - 如果is_emoji为True，将使用固定1秒的输入时间
     """
-    # 将0-1的唤醒度映射到-1到1
-    mood_arousal = mood_manager.current_mood.arousal
-    # 映射到0.5到2倍的速度系数
-    typing_speed_multiplier = 1.5**mood_arousal  # 唤醒度为1时速度翻倍,为-1时速度减半
-    chinese_time *= 1 / typing_speed_multiplier
-    english_time *= 1 / typing_speed_multiplier
+    # # 将0-1的唤醒度映射到-1到1
+    # mood_arousal = mood_manager.current_mood.arousal
+    # # 映射到0.5到2倍的速度系数
+    # typing_speed_multiplier = 1.5**mood_arousal  # 唤醒度为1时速度翻倍,为-1时速度减半
+    # chinese_time *= 1 / typing_speed_multiplier
+    # english_time *= 1 / typing_speed_multiplier
     # 计算中文字符数
-    chinese_chars = sum(1 for char in input_string if "\u4e00" <= char <= "\u9fff")
+    chinese_chars = sum("\u4e00" <= char <= "\u9fff" for char in input_string)
 
     # 如果只有一个中文字符，使用3倍时间
     if chinese_chars == 1 and len(input_string.strip()) == 1:
@@ -424,11 +396,7 @@ def calculate_typing_time(
     # 正常计算所有字符的输入时间
     total_time = 0.0
     for char in input_string:
-        if "\u4e00" <= char <= "\u9fff":  # 判断是否为中文字符
-            total_time += chinese_time
-        else:  # 其他字符（如英文）
-            total_time += english_time
-
+        total_time += chinese_time if "\u4e00" <= char <= "\u9fff" else english_time
     if is_emoji:
         total_time = 1
 
@@ -448,18 +416,14 @@ def cosine_similarity(v1, v2):
     dot_product = np.dot(v1, v2)
     norm1 = np.linalg.norm(v1)
     norm2 = np.linalg.norm(v2)
-    if norm1 == 0 or norm2 == 0:
-        return 0
-    return dot_product / (norm1 * norm2)
+    return 0 if norm1 == 0 or norm2 == 0 else dot_product / (norm1 * norm2)
 
 
 def text_to_vector(text):
     """将文本转换为词频向量"""
     # 分词
     words = jieba.lcut(text)
-    # 统计词频
-    word_freq = Counter(words)
-    return word_freq
+    return Counter(words)
 
 
 def find_similar_topics_simple(text: str, topics: list, top_k: int = 5) -> list:
@@ -486,9 +450,7 @@ def find_similar_topics_simple(text: str, topics: list, top_k: int = 5) -> list:
 
 def truncate_message(message: str, max_length=20) -> str:
     """截断消息，使其不超过指定长度"""
-    if len(message) > max_length:
-        return message[:max_length] + "..."
-    return message
+    return f"{message[:max_length]}..." if len(message) > max_length else message
 
 
 def protect_kaomoji(sentence):
@@ -517,7 +479,7 @@ def protect_kaomoji(sentence):
     placeholder_to_kaomoji = {}
 
     for idx, match in enumerate(kaomoji_matches):
-        kaomoji = match[0] if match[0] else match[1]
+        kaomoji = match[0] or match[1]
         placeholder = f"__KAOMOJI_{idx}__"
         sentence = sentence.replace(kaomoji, placeholder, 1)
         placeholder_to_kaomoji[placeholder] = kaomoji
@@ -558,7 +520,7 @@ def get_western_ratio(paragraph):
     if not alnum_chars:
         return 0.0
 
-    western_count = sum(1 for char in alnum_chars if is_english_letter(char))
+    western_count = sum(bool(is_english_letter(char)) for char in alnum_chars)
     return western_count / len(alnum_chars)
 
 
@@ -605,6 +567,7 @@ def count_messages_between(start_time: float, end_time: float, stream_id: str) -
 
 
 def translate_timestamp_to_human_readable(timestamp: float, mode: str = "normal") -> str:
+    # sourcery skip: merge-comparisons, merge-duplicate-blocks, switch
     """将时间戳转换为人类可读的时间格式
 
     Args:
@@ -616,7 +579,7 @@ def translate_timestamp_to_human_readable(timestamp: float, mode: str = "normal"
     """
     if mode == "normal":
         return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp))
-    if mode == "normal_no_YMD":
+    elif mode == "normal_no_YMD":
         return time.strftime("%H:%M:%S", time.localtime(timestamp))
     elif mode == "relative":
         now = time.time()
@@ -635,5 +598,172 @@ def translate_timestamp_to_human_readable(timestamp: float, mode: str = "normal"
         else:
             return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp)) + ":"
     else:  # mode = "lite" or unknown
-        # 只返回时分秒格式，喵~
+        # 只返回时分秒格式
         return time.strftime("%H:%M:%S", time.localtime(timestamp))
+
+
+def get_chat_type_and_target_info(chat_id: str) -> Tuple[bool, Optional[Dict]]:
+    """
+    获取聊天类型（是否群聊）和私聊对象信息。
+
+    Args:
+        chat_id: 聊天流ID
+
+    Returns:
+        Tuple[bool, Optional[Dict]]:
+            - bool: 是否为群聊 (True 是群聊, False 是私聊或未知)
+            - Optional[Dict]: 如果是私聊，包含对方信息的字典；否则为 None。
+            字典包含: platform, user_id, user_nickname, person_id, person_name
+    """
+    is_group_chat = False  # Default to private/unknown
+    chat_target_info = None
+
+    try:
+        if chat_stream := get_chat_manager().get_stream(chat_id):
+            if chat_stream.group_info:
+                is_group_chat = True
+                chat_target_info = None  # Explicitly None for group chat
+            elif chat_stream.user_info:  # It's a private chat
+                is_group_chat = False
+                user_info = chat_stream.user_info
+                platform: str = chat_stream.platform
+                user_id: str = user_info.user_id  # type: ignore
+
+                # Initialize target_info with basic info
+                target_info = {
+                    "platform": platform,
+                    "user_id": user_id,
+                    "user_nickname": user_info.user_nickname,
+                    "person_id": None,
+                    "person_name": None,
+                }
+
+                # Try to fetch person info
+                try:
+                    # Assume get_person_id is sync (as per original code), keep using to_thread
+                    person_id = PersonInfoManager.get_person_id(platform, user_id)
+                    person_name = None
+                    if person_id:
+                        # get_value is async, so await it directly
+                        person_info_manager = get_person_info_manager()
+                        person_name = person_info_manager.get_value_sync(person_id, "person_name")
+
+                    target_info["person_id"] = person_id
+                    target_info["person_name"] = person_name
+                except Exception as person_e:
+                    logger.warning(
+                        f"获取 person_id 或 person_name 时出错 for {platform}:{user_id} in utils: {person_e}"
+                    )
+
+                chat_target_info = target_info
+        else:
+            logger.warning(f"无法获取 chat_stream for {chat_id} in utils")
+    except Exception as e:
+        logger.error(f"获取聊天类型和目标信息时出错 for {chat_id}: {e}", exc_info=True)
+        # Keep defaults on error
+
+    return is_group_chat, chat_target_info
+
+
+def assign_message_ids(messages: List[Any]) -> List[Dict[str, Any]]:
+    """
+    为消息列表中的每个消息分配唯一的简短随机ID
+    
+    Args:
+        messages: 消息列表
+    
+    Returns:
+        包含 {'id': str, 'message': any} 格式的字典列表
+    """
+    result = []
+    used_ids = set()
+    len_i = len(messages)
+    if len_i > 100:
+        a = 10
+        b = 99
+    else:
+        a = 1
+        b = 9
+    
+    for i, message in enumerate(messages):
+        # 生成唯一的简短ID
+        while True:
+            # 使用索引+随机数生成简短ID
+            random_suffix = random.randint(a, b)
+            message_id = f"m{i+1}{random_suffix}"
+            
+            if message_id not in used_ids:
+                used_ids.add(message_id)
+                break
+        
+        result.append({
+            'id': message_id,
+            'message': message
+        })
+    
+    return result
+
+
+def assign_message_ids_flexible(
+    messages: list, 
+    prefix: str = "msg", 
+    id_length: int = 6,
+    use_timestamp: bool = False
+) -> list:
+    """
+    为消息列表中的每个消息分配唯一的简短随机ID（增强版）
+    
+    Args:
+        messages: 消息列表
+        prefix: ID前缀，默认为"msg"
+        id_length: ID的总长度（不包括前缀），默认为6
+        use_timestamp: 是否在ID中包含时间戳，默认为False
+    
+    Returns:
+        包含 {'id': str, 'message': any} 格式的字典列表
+    """
+    result = []
+    used_ids = set()
+    
+    for i, message in enumerate(messages):
+        # 生成唯一的ID
+        while True:
+            if use_timestamp:
+                # 使用时间戳的后几位 + 随机字符
+                timestamp_suffix = str(int(time.time() * 1000))[-3:]
+                remaining_length = id_length - 3
+                random_chars = ''.join(random.choices(string.ascii_lowercase + string.digits, k=remaining_length))
+                message_id = f"{prefix}{timestamp_suffix}{random_chars}"
+            else:
+                # 使用索引 + 随机字符
+                index_str = str(i + 1)
+                remaining_length = max(1, id_length - len(index_str))
+                random_chars = ''.join(random.choices(string.ascii_lowercase + string.digits, k=remaining_length))
+                message_id = f"{prefix}{index_str}{random_chars}"
+            
+            if message_id not in used_ids:
+                used_ids.add(message_id)
+                break
+        
+        result.append({
+            'id': message_id,
+            'message': message
+        })
+    
+    return result
+
+
+# 使用示例:
+# messages = ["Hello", "World", "Test message"]
+# 
+# # 基础版本
+# result1 = assign_message_ids(messages)
+# # 结果: [{'id': 'm1123', 'message': 'Hello'}, {'id': 'm2456', 'message': 'World'}, {'id': 'm3789', 'message': 'Test message'}]
+# 
+# # 增强版本 - 自定义前缀和长度
+# result2 = assign_message_ids_flexible(messages, prefix="chat", id_length=8)
+# # 结果: [{'id': 'chat1abc2', 'message': 'Hello'}, {'id': 'chat2def3', 'message': 'World'}, {'id': 'chat3ghi4', 'message': 'Test message'}]
+# 
+# # 增强版本 - 使用时间戳
+# result3 = assign_message_ids_flexible(messages, prefix="ts", use_timestamp=True)
+# # 结果: [{'id': 'ts123a1b', 'message': 'Hello'}, {'id': 'ts123c2d', 'message': 'World'}, {'id': 'ts123e3f', 'message': 'Test message'}]

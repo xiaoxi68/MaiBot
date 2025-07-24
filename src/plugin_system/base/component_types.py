@@ -1,6 +1,7 @@
 from enum import Enum
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
+from maim_message import Seg
 
 
 # 组件类型枚举
@@ -10,7 +11,10 @@ class ComponentType(Enum):
     ACTION = "action"  # 动作组件
     COMMAND = "command"  # 命令组件
     SCHEDULER = "scheduler"  # 定时任务组件（预留）
-    LISTENER = "listener"  # 事件监听组件（预留）
+    EVENT_HANDLER = "event_handler"  # 事件处理组件（预留）
+
+    def __str__(self) -> str:
+        return self.value
 
 
 # 动作激活类型枚举
@@ -23,6 +27,9 @@ class ActionActivationType(Enum):
     RANDOM = "random"  # 随机启用action到planner
     KEYWORD = "keyword"  # 关键词触发启用action到planner
 
+    def __str__(self):
+        return self.value
+
 
 # 聊天模式枚举
 class ChatMode(Enum):
@@ -30,7 +37,30 @@ class ChatMode(Enum):
 
     FOCUS = "focus"  # Focus聊天模式
     NORMAL = "normal"  # Normal聊天模式
+    PRIORITY = "priority"  # 优先级聊天模式
     ALL = "all"  # 所有聊天模式
+
+    def __str__(self):
+        return self.value
+
+
+# 事件类型枚举
+class EventType(Enum):
+    """
+    事件类型枚举类
+    """
+
+    ON_START = "on_start"  # 启动事件，用于调用按时任务
+    ON_MESSAGE = "on_message"
+    ON_PLAN = "on_plan"
+    POST_LLM = "post_llm"
+    AFTER_LLM = "after_llm"
+    POST_SEND = "post_send"
+    AFTER_SEND = "after_send"
+    UNKNOWN = "unknown"  # 未知事件类型
+
+    def __str__(self) -> str:
+        return self.value
 
 
 @dataclass
@@ -60,7 +90,7 @@ class ComponentInfo:
 
     name: str  # 组件名称
     component_type: ComponentType  # 组件类型
-    description: str  # 组件描述
+    description: str = ""  # 组件描述
     enabled: bool = True  # 是否启用
     plugin_name: str = ""  # 所属插件名称
     is_built_in: bool = False  # 是否为内置组件
@@ -75,17 +105,22 @@ class ComponentInfo:
 class ActionInfo(ComponentInfo):
     """动作组件信息"""
 
+    action_parameters: Dict[str, str] = field(
+        default_factory=dict
+    )  # 动作参数与描述，例如 {"param1": "描述1", "param2": "描述2"}
+    action_require: List[str] = field(default_factory=list)  # 动作需求说明
+    associated_types: List[str] = field(default_factory=list)  # 关联的消息类型
+    # 激活类型相关
     focus_activation_type: ActionActivationType = ActionActivationType.ALWAYS
     normal_activation_type: ActionActivationType = ActionActivationType.ALWAYS
+    activation_type: ActionActivationType = ActionActivationType.ALWAYS
     random_activation_probability: float = 0.0
     llm_judge_prompt: str = ""
     activation_keywords: List[str] = field(default_factory=list)  # 激活关键词列表
     keyword_case_sensitive: bool = False
+    # 模式和并行设置
     mode_enable: ChatMode = ChatMode.ALL
     parallel_action: bool = False
-    action_parameters: Dict[str, Any] = field(default_factory=dict)  # 动作参数
-    action_require: List[str] = field(default_factory=list)  # 动作需求说明
-    associated_types: List[str] = field(default_factory=list)  # 关联的消息类型
 
     def __post_init__(self):
         super().__post_init__()
@@ -117,9 +152,23 @@ class CommandInfo(ComponentInfo):
 
 
 @dataclass
+class EventHandlerInfo(ComponentInfo):
+    """事件处理器组件信息"""
+
+    event_type: EventType = EventType.ON_MESSAGE  # 监听事件类型
+    intercept_message: bool = False  # 是否拦截消息处理（默认不拦截）
+    weight: int = 0  # 事件处理器权重，决定执行顺序
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.component_type = ComponentType.EVENT_HANDLER
+
+
+@dataclass
 class PluginInfo:
     """插件信息"""
 
+    display_name: str  # 插件显示名称
     name: str  # 插件名称
     description: str  # 插件描述
     version: str = "1.0.0"  # 插件版本
@@ -171,3 +220,42 @@ class PluginInfo:
     def get_pip_requirements(self) -> List[str]:
         """获取所有pip安装格式的依赖"""
         return [dep.get_pip_requirement() for dep in self.python_dependencies]
+
+
+@dataclass
+class MaiMessages:
+    """MaiM插件消息"""
+
+    message_segments: List[Seg] = field(default_factory=list)
+    """消息段列表，支持多段消息"""
+
+    message_base_info: Dict[str, Any] = field(default_factory=dict)
+    """消息基本信息，包含平台，用户信息等数据"""
+
+    plain_text: str = ""
+    """纯文本消息内容"""
+
+    raw_message: Optional[str] = None
+    """原始消息内容"""
+
+    is_group_message: bool = False
+    """是否为群组消息"""
+
+    is_private_message: bool = False
+    """是否为私聊消息"""
+
+    stream_id: Optional[str] = None
+    """流ID，用于标识消息流"""
+
+    llm_prompt: Optional[str] = None
+    """LLM提示词"""
+
+    llm_response: Optional[str] = None
+    """LLM响应内容"""
+
+    additional_data: Dict[Any, Any] = field(default_factory=dict)
+    """附加数据，可以存储额外信息"""
+
+    def __post_init__(self):
+        if self.message_segments is None:
+            self.message_segments = []

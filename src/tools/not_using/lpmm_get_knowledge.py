@@ -33,12 +33,17 @@ class SearchKnowledgeFromLPMMTool(BaseTool):
             Dict: 工具执行结果
         """
         try:
-            query = function_args.get("query")
+            query: str = function_args.get("query")  # type: ignore
             # threshold = function_args.get("threshold", 0.4)
+
+            # 检查LPMM知识库是否启用
+            if qa_manager is None:
+                logger.debug("LPMM知识库已禁用，跳过知识获取")
+                return {"type": "info", "id": query, "content": "LPMM知识库已禁用"}
 
             # 调用知识库搜索
 
-            knowledge_info = qa_manager.get_knowledge(query)
+            knowledge_info = await qa_manager.get_knowledge(query)
 
             logger.debug(f"知识库查询结果: {knowledge_info}")
 

@@ -13,32 +13,42 @@
 """
 
 from typing import List, Dict, Any, Optional
-from src.common.logger import get_logger
+from enum import Enum
 
-# 导入依赖
+from src.common.logger import get_logger
 from src.chat.message_receive.chat_stream import ChatStream, get_chat_manager
-from src.chat.focus_chat.info.obs_info import ObsInfo
 
 logger = get_logger("chat_api")
+
+
+class SpecialTypes(Enum):
+    """特殊枚举类型"""
+
+    ALL_PLATFORMS = "all_platforms"
 
 
 class ChatManager:
     """聊天管理器 - 专门负责聊天信息的查询和管理"""
 
     @staticmethod
-    def get_all_streams(platform: str = "qq") -> List[ChatStream]:
+    def get_all_streams(platform: Optional[str] | SpecialTypes = "qq") -> List[ChatStream]:
         """获取所有聊天流
 
         Args:
-            platform: 平台筛选，默认为"qq"
+            platform: 平台筛选，默认为"qq", 可以使用 SpecialTypes.ALL_PLATFORMS 获取所有平台的群聊流
 
         Returns:
             List[ChatStream]: 聊天流列表
+
+        Raises:
+            TypeError: 如果 platform 不是字符串或 SpecialTypes 枚举类型
         """
+        if not isinstance(platform, (str, SpecialTypes)):
+            raise TypeError("platform 必须是字符串或是 SpecialTypes 枚举")
         streams = []
         try:
             for _, stream in get_chat_manager().streams.items():
-                if stream.platform == platform:
+                if platform == SpecialTypes.ALL_PLATFORMS or stream.platform == platform:
                     streams.append(stream)
             logger.debug(f"[ChatAPI] 获取到 {len(streams)} 个 {platform} 平台的聊天流")
         except Exception as e:
@@ -46,19 +56,21 @@ class ChatManager:
         return streams
 
     @staticmethod
-    def get_group_streams(platform: str = "qq") -> List[ChatStream]:
+    def get_group_streams(platform: Optional[str] | SpecialTypes = "qq") -> List[ChatStream]:
         """获取所有群聊聊天流
 
         Args:
-            platform: 平台筛选，默认为"qq"
+            platform: 平台筛选，默认为"qq", 可以使用 SpecialTypes.ALL_PLATFORMS 获取所有平台的群聊流
 
         Returns:
             List[ChatStream]: 群聊聊天流列表
         """
+        if not isinstance(platform, (str, SpecialTypes)):
+            raise TypeError("platform 必须是字符串或是 SpecialTypes 枚举")
         streams = []
         try:
             for _, stream in get_chat_manager().streams.items():
-                if stream.platform == platform and stream.group_info:
+                if (platform == SpecialTypes.ALL_PLATFORMS or stream.platform == platform) and stream.group_info:
                     streams.append(stream)
             logger.debug(f"[ChatAPI] 获取到 {len(streams)} 个 {platform} 平台的群聊流")
         except Exception as e:
@@ -66,19 +78,24 @@ class ChatManager:
         return streams
 
     @staticmethod
-    def get_private_streams(platform: str = "qq") -> List[ChatStream]:
+    def get_private_streams(platform: Optional[str] | SpecialTypes = "qq") -> List[ChatStream]:
         """获取所有私聊聊天流
 
         Args:
-            platform: 平台筛选，默认为"qq"
+            platform: 平台筛选，默认为"qq", 可以使用 SpecialTypes.ALL_PLATFORMS 获取所有平台的群聊流
 
         Returns:
             List[ChatStream]: 私聊聊天流列表
+
+        Raises:
+            TypeError: 如果 platform 不是字符串或 SpecialTypes 枚举类型
         """
+        if not isinstance(platform, (str, SpecialTypes)):
+            raise TypeError("platform 必须是字符串或是 SpecialTypes 枚举")
         streams = []
         try:
             for _, stream in get_chat_manager().streams.items():
-                if stream.platform == platform and not stream.group_info:
+                if (platform == SpecialTypes.ALL_PLATFORMS or stream.platform == platform) and not stream.group_info:
                     streams.append(stream)
             logger.debug(f"[ChatAPI] 获取到 {len(streams)} 个 {platform} 平台的私聊流")
         except Exception as e:
@@ -86,16 +103,28 @@ class ChatManager:
         return streams
 
     @staticmethod
-    def get_stream_by_group_id(group_id: str, platform: str = "qq") -> Optional[ChatStream]:
+    def get_group_stream_by_group_id(
+        group_id: str, platform: Optional[str] | SpecialTypes = "qq"
+    ) -> Optional[ChatStream]:
         """根据群ID获取聊天流
 
         Args:
             group_id: 群聊ID
-            platform: 平台，默认为"qq"
+            platform: 平台筛选，默认为"qq", 可以使用 SpecialTypes.ALL_PLATFORMS 获取所有平台的群聊流
 
         Returns:
             Optional[ChatStream]: 聊天流对象，如果未找到返回None
+
+        Raises:
+            ValueError: 如果 group_id 为空字符串
+            TypeError: 如果 group_id 不是字符串类型或 platform 不是字符串或 SpecialTypes
         """
+        if not isinstance(group_id, str):
+            raise TypeError("group_id 必须是字符串类型")
+        if not isinstance(platform, (str, SpecialTypes)):
+            raise TypeError("platform 必须是字符串或是 SpecialTypes 枚举")
+        if not group_id:
+            raise ValueError("group_id 不能为空")
         try:
             for _, stream in get_chat_manager().streams.items():
                 if (
@@ -111,16 +140,28 @@ class ChatManager:
         return None
 
     @staticmethod
-    def get_stream_by_user_id(user_id: str, platform: str = "qq") -> Optional[ChatStream]:
+    def get_private_stream_by_user_id(
+        user_id: str, platform: Optional[str] | SpecialTypes = "qq"
+    ) -> Optional[ChatStream]:
         """根据用户ID获取私聊流
 
         Args:
             user_id: 用户ID
-            platform: 平台，默认为"qq"
+            platform: 平台筛选，默认为"qq", 可以使用 SpecialTypes.ALL_PLATFORMS 获取所有平台的群聊流
 
         Returns:
             Optional[ChatStream]: 聊天流对象，如果未找到返回None
+
+        Raises:
+            ValueError: 如果 user_id 为空字符串
+            TypeError: 如果 user_id 不是字符串类型或 platform 不是字符串或 SpecialTypes
         """
+        if not isinstance(user_id, str):
+            raise TypeError("user_id 必须是字符串类型")
+        if not isinstance(platform, (str, SpecialTypes)):
+            raise TypeError("platform 必须是字符串或是 SpecialTypes 枚举")
+        if not user_id:
+            raise ValueError("user_id 不能为空")
         try:
             for _, stream in get_chat_manager().streams.items():
                 if (
@@ -144,9 +185,15 @@ class ChatManager:
 
         Returns:
             str: 聊天类型 ("group", "private", "unknown")
+
+        Raises:
+            TypeError: 如果 chat_stream 不是 ChatStream 类型
+            ValueError: 如果 chat_stream 为空
         """
+        if not isinstance(chat_stream, ChatStream):
+            raise TypeError("chat_stream 必须是 ChatStream 类型")
         if not chat_stream:
-            return "unknown"
+            raise ValueError("chat_stream 不能为 None")
 
         if hasattr(chat_stream, "group_info"):
             return "group" if chat_stream.group_info else "private"
@@ -161,12 +208,18 @@ class ChatManager:
 
         Returns:
             Dict[str, Any]: 聊天流信息字典
+
+        Raises:
+            TypeError: 如果 chat_stream 不是 ChatStream 类型
+            ValueError: 如果 chat_stream 为空
         """
         if not chat_stream:
-            return {}
+            raise ValueError("chat_stream 不能为 None")
+        if not isinstance(chat_stream, ChatStream):
+            raise TypeError("chat_stream 必须是 ChatStream 类型")
 
         try:
-            info = {
+            info: Dict[str, Any] = {
                 "stream_id": chat_stream.stream_id,
                 "platform": chat_stream.platform,
                 "type": ChatManager.get_stream_type(chat_stream),
@@ -194,39 +247,6 @@ class ChatManager:
             return {}
 
     @staticmethod
-    def get_recent_messages_from_obs(observations: List[Any], count: int = 5) -> List[Dict[str, Any]]:
-        """从观察对象获取最近的消息
-
-        Args:
-            observations: 观察对象列表
-            count: 要获取的消息数量
-
-        Returns:
-            List[Dict]: 消息列表，每个消息包含发送者、内容等信息
-        """
-        messages = []
-
-        try:
-            if observations and len(observations) > 0:
-                obs = observations[0]
-                if hasattr(obs, "get_talking_message"):
-                    obs: ObsInfo
-                    raw_messages = obs.get_talking_message()
-                    # 转换为简化格式
-                    for msg in raw_messages[-count:]:
-                        simple_msg = {
-                            "sender": msg.get("sender", "未知"),
-                            "content": msg.get("content", ""),
-                            "timestamp": msg.get("timestamp", 0),
-                        }
-                        messages.append(simple_msg)
-            logger.debug(f"[ChatAPI] 获取到 {len(messages)} 条最近消息")
-        except Exception as e:
-            logger.error(f"[ChatAPI] 获取最近消息失败: {e}")
-
-        return messages
-
-    @staticmethod
     def get_streams_summary() -> Dict[str, int]:
         """获取聊天流统计摘要
 
@@ -234,9 +254,9 @@ class ChatManager:
             Dict[str, int]: 包含各种统计信息的字典
         """
         try:
-            all_streams = ChatManager.get_all_streams()
-            group_streams = ChatManager.get_group_streams()
-            private_streams = ChatManager.get_private_streams()
+            all_streams = ChatManager.get_all_streams(SpecialTypes.ALL_PLATFORMS)
+            group_streams = ChatManager.get_group_streams(SpecialTypes.ALL_PLATFORMS)
+            private_streams = ChatManager.get_private_streams(SpecialTypes.ALL_PLATFORMS)
 
             summary = {
                 "total_streams": len(all_streams),
@@ -249,7 +269,12 @@ class ChatManager:
             return summary
         except Exception as e:
             logger.error(f"[ChatAPI] 获取聊天流统计失败: {e}")
-            return {"total_streams": 0, "group_streams": 0, "private_streams": 0, "qq_streams": 0}
+            return {
+                "total_streams": 0,
+                "group_streams": 0,
+                "private_streams": 0,
+                "qq_streams": 0,
+            }
 
 
 # =============================================================================
@@ -257,41 +282,41 @@ class ChatManager:
 # =============================================================================
 
 
-def get_all_streams(platform: str = "qq") -> List[ChatStream]:
+def get_all_streams(platform: Optional[str] | SpecialTypes = "qq"):
     """获取所有聊天流的便捷函数"""
     return ChatManager.get_all_streams(platform)
 
 
-def get_group_streams(platform: str = "qq") -> List[ChatStream]:
+def get_group_streams(platform: Optional[str] | SpecialTypes = "qq"):
     """获取群聊聊天流的便捷函数"""
     return ChatManager.get_group_streams(platform)
 
 
-def get_private_streams(platform: str = "qq") -> List[ChatStream]:
+def get_private_streams(platform: Optional[str] | SpecialTypes = "qq"):
     """获取私聊聊天流的便捷函数"""
     return ChatManager.get_private_streams(platform)
 
 
-def get_stream_by_group_id(group_id: str, platform: str = "qq") -> Optional[ChatStream]:
+def get_stream_by_group_id(group_id: str, platform: Optional[str] | SpecialTypes = "qq"):
     """根据群ID获取聊天流的便捷函数"""
-    return ChatManager.get_stream_by_group_id(group_id, platform)
+    return ChatManager.get_group_stream_by_group_id(group_id, platform)
 
 
-def get_stream_by_user_id(user_id: str, platform: str = "qq") -> Optional[ChatStream]:
+def get_stream_by_user_id(user_id: str, platform: Optional[str] | SpecialTypes = "qq"):
     """根据用户ID获取私聊流的便捷函数"""
-    return ChatManager.get_stream_by_user_id(user_id, platform)
+    return ChatManager.get_private_stream_by_user_id(user_id, platform)
 
 
-def get_stream_type(chat_stream: ChatStream) -> str:
+def get_stream_type(chat_stream: ChatStream):
     """获取聊天流类型的便捷函数"""
     return ChatManager.get_stream_type(chat_stream)
 
 
-def get_stream_info(chat_stream: ChatStream) -> Dict[str, Any]:
+def get_stream_info(chat_stream: ChatStream):
     """获取聊天流信息的便捷函数"""
     return ChatManager.get_stream_info(chat_stream)
 
 
-def get_streams_summary() -> Dict[str, int]:
+def get_streams_summary():
     """获取聊天流统计摘要的便捷函数"""
     return ChatManager.get_streams_summary()

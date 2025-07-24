@@ -6,6 +6,7 @@ from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.tools.tool_use import ToolUser
 from src.chat.utils.json_utils import process_llm_tool_calls
 from typing import List, Dict, Tuple, Optional
+from src.chat.message_receive.chat_stream import get_chat_manager
 
 logger = get_logger("tool_executor")
 
@@ -33,7 +34,7 @@ class ToolExecutor:
     可以直接输入聊天消息内容，自动判断并执行相应的工具，返回结构化的工具执行结果。
     """
 
-    def __init__(self, chat_id: str = None, enable_cache: bool = True, cache_ttl: int = 3):
+    def __init__(self, chat_id: str, enable_cache: bool = True, cache_ttl: int = 3):
         """初始化工具执行器
 
         Args:
@@ -42,7 +43,9 @@ class ToolExecutor:
             cache_ttl: 缓存生存时间（周期数）
         """
         self.chat_id = chat_id
-        self.log_prefix = f"[ToolExecutor:{self.chat_id}] "
+        self.chat_stream = get_chat_manager().get_stream(self.chat_id)
+        self.log_prefix = f"[{get_chat_manager().get_stream_name(self.chat_id) or self.chat_id}]"
+
         self.llm_model = LLMRequest(
             model=global_config.model.tool_use,
             request_type="tool_executor",
@@ -59,8 +62,8 @@ class ToolExecutor:
         logger.info(f"{self.log_prefix}工具执行器初始化完成，缓存{'启用' if enable_cache else '禁用'}，TTL={cache_ttl}")
 
     async def execute_from_chat_message(
-        self, target_message: str, chat_history: list[str], sender: str, return_details: bool = False
-    ) -> List[Dict] | Tuple[List[Dict], List[str], str]:
+        self, target_message: str, chat_history: str, sender: str, return_details: bool = False
+    ) -> Tuple[List[Dict], List[str], str]:
         """从聊天消息执行工具
 
         Args:
@@ -76,16 +79,14 @@ class ToolExecutor:
 
         # 首先检查缓存
         cache_key = self._generate_cache_key(target_message, chat_history, sender)
-        cached_result = self._get_from_cache(cache_key)
-
-        if cached_result:
+        if cached_result := self._get_from_cache(cache_key):
             logger.info(f"{self.log_prefix}使用缓存结果，跳过工具执行")
-            if return_details:
-                # 从缓存结果中提取工具名称
-                used_tools = [result.get("tool_name", "unknown") for result in cached_result]
-                return cached_result, used_tools, "使用缓存结果"
-            else:
-                return cached_result
+            if not return_details:
+                return cached_result, [], "使用缓存结果"
+
+            # 从缓存结果中提取工具名称
+            used_tools = [result.get("tool_name", "unknown") for result in cached_result]
+            return cached_result, used_tools, "使用缓存结果"
 
         # 缓存未命中，执行工具调用
         # 获取可用工具
@@ -125,12 +126,13 @@ class ToolExecutor:
         if tool_results:
             self._set_cache(cache_key, tool_results)
 
-        logger.info(f"{self.log_prefix}工具执行完成，共执行{len(used_tools)}个工具: {used_tools}")
+        if used_tools:
+            logger.info(f"{self.log_prefix}工具执行完成，共执行{len(used_tools)}个工具: {used_tools}")
 
         if return_details:
             return tool_results, used_tools, prompt
         else:
-            return tool_results
+            return tool_results, [], ""
 
     async def _execute_tool_calls(self, tool_calls) -> Tuple[List[Dict], List[str]]:
         """执行工具调用
@@ -183,7 +185,11 @@ class ToolExecutor:
                     tool_results.append(tool_info)
 
                     logger.info(f"{self.log_prefix}工具{tool_name}执行成功，类型: {tool_info['type']}")
-                    logger.debug(f"{self.log_prefix}工具{tool_name}结果内容: {tool_info['content'][:200]}...")
+                    content = tool_info["content"]
+                    if not isinstance(content, (str, list, tuple)):
+                        content = str(content)
+                    preview = content[:200]
+                    logger.debug(f"{self.log_prefix}工具{tool_name}结果内容: {preview}...")
 
             except Exception as e:
                 logger.error(f"{self.log_prefix}工具{tool_name}执行失败: {e}")
@@ -199,7 +205,7 @@ class ToolExecutor:
 
         return tool_results, used_tools
 
-    def _generate_cache_key(self, target_message: str, chat_history: list[str], sender: str) -> str:
+    def _generate_cache_key(self, target_message: str, chat_history: str, sender: str) -> str:
         """生成缓存键
 
         Args:
@@ -259,10 +265,7 @@ class ToolExecutor:
             return
 
         expired_keys = []
-        for cache_key, cache_item in self.tool_cache.items():
-            if cache_item["ttl"] <= 0:
-                expired_keys.append(cache_key)
-
+        expired_keys.extend(cache_key for cache_key, cache_item in self.tool_cache.items() if cache_item["ttl"] <= 0)
         for key in expired_keys:
             del self.tool_cache[key]
 
@@ -347,7 +350,7 @@ class ToolExecutor:
             "ttl_distribution": ttl_distribution,
         }
 
-    def set_cache_config(self, enable_cache: bool = None, cache_ttl: int = None):
+    def set_cache_config(self, enable_cache: Optional[bool] = None, cache_ttl: int = -1):
         """动态修改缓存配置
 
         Args:
@@ -358,7 +361,7 @@ class ToolExecutor:
             self.enable_cache = enable_cache
             logger.info(f"{self.log_prefix}缓存状态修改为: {'启用' if enable_cache else '禁用'}")
 
-        if cache_ttl is not None and cache_ttl > 0:
+        if cache_ttl > 0:
             self.cache_ttl = cache_ttl
             logger.info(f"{self.log_prefix}缓存TTL修改为: {cache_ttl}")
 
@@ -372,7 +375,7 @@ init_tool_executor_prompt()
 
 # 1. 基础使用 - 从聊天消息执行工具（启用缓存，默认TTL=3）
 executor = ToolExecutor(executor_id="my_executor")
-results = await executor.execute_from_chat_message(
+results, _, _ = await executor.execute_from_chat_message(
     talking_message_str="今天天气怎么样？现在几点了？",
     is_group_chat=False
 )

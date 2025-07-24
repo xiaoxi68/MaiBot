@@ -1,10 +1,14 @@
-from abc import ABC, abstractmethod
-from typing import Tuple, Optional
-from src.common.logger import get_logger
-from src.plugin_system.base.component_types import ActionActivationType, ChatMode, ActionInfo, ComponentType
-from src.plugin_system.apis import send_api, database_api, message_api
 import time
 import asyncio
+
+from abc import ABC, abstractmethod
+from typing import Tuple, Optional
+
+from src.common.logger import get_logger
+from src.chat.message_receive.chat_stream import ChatStream
+from src.plugin_system.base.component_types import ActionActivationType, ChatMode, ActionInfo, ComponentType
+from src.plugin_system.apis import send_api, database_api, message_api
+
 
 logger = get_logger("base_action")
 
@@ -31,12 +35,13 @@ class BaseAction(ABC):
         reasoning: str,
         cycle_timers: dict,
         thinking_id: str,
-        chat_stream=None,
+        chat_stream: ChatStream,
         log_prefix: str = "",
-        shutting_down: bool = False,
-        plugin_config: dict = None,
+        plugin_config: Optional[dict] = None,
+        action_message: Optional[dict] = None,
         **kwargs,
     ):
+        # sourcery skip: hoist-similar-statement-from-if, merge-else-if-into-elif, move-assign-in-block, swap-if-else-branches, swap-nested-ifs
         """初始化Action组件
 
         Args:
@@ -44,7 +49,6 @@ class BaseAction(ABC):
             reasoning: 执行该动作的理由
             cycle_timers: 计时器字典
             thinking_id: 思考ID
-            observations: 观察列表
             expressor: 表达器对象
             replyer: 回复器对象
             chat_stream: 聊天流对象
@@ -60,25 +64,33 @@ class BaseAction(ABC):
         self.cycle_timers = cycle_timers
         self.thinking_id = thinking_id
         self.log_prefix = log_prefix
-        self.shutting_down = shutting_down
 
-        # 保存插件配置
         self.plugin_config = plugin_config or {}
+        """对应的插件配置"""
 
         # 设置动作基本信息实例属性
         self.action_name: str = getattr(self, "action_name", self.__class__.__name__.lower().replace("action", ""))
+        """Action的名字"""
         self.action_description: str = getattr(self, "action_description", self.__doc__ or "Action组件")
+        """Action的描述"""
         self.action_parameters: dict = getattr(self.__class__, "action_parameters", {}).copy()
         self.action_require: list[str] = getattr(self.__class__, "action_require", []).copy()
 
         # 设置激活类型实例属性（从类属性复制，提供默认值）
-        self.focus_activation_type: str = self._get_activation_type_value("focus_activation_type", "always")
-        self.normal_activation_type: str = self._get_activation_type_value("normal_activation_type", "always")
+        self.focus_activation_type = getattr(self.__class__, "focus_activation_type", ActionActivationType.ALWAYS)
+        """FOCUS模式下的激活类型"""
+        self.normal_activation_type = getattr(self.__class__, "normal_activation_type", ActionActivationType.ALWAYS)
+        """NORMAL模式下的激活类型"""
+        self.activation_type = getattr(self.__class__, "activation_type", self.focus_activation_type)
+        """激活类型"""
         self.random_activation_probability: float = getattr(self.__class__, "random_activation_probability", 0.0)
+        """当激活类型为RANDOM时的概率"""
         self.llm_judge_prompt: str = getattr(self.__class__, "llm_judge_prompt", "")
+        """协助LLM进行判断的Prompt"""
         self.activation_keywords: list[str] = getattr(self.__class__, "activation_keywords", []).copy()
+        """激活类型为KEYWORD时的KEYWORDS列表"""
         self.keyword_case_sensitive: bool = getattr(self.__class__, "keyword_case_sensitive", False)
-        self.mode_enable: str = self._get_mode_value("mode_enable", "all")
+        self.mode_enable: ChatMode = getattr(self.__class__, "mode_enable", ChatMode.ALL)
         self.parallel_action: bool = getattr(self.__class__, "parallel_action", True)
         self.associated_types: list[str] = getattr(self.__class__, "associated_types", []).copy()
 
@@ -88,58 +100,54 @@ class BaseAction(ABC):
 
         # 获取聊天流对象
         self.chat_stream = chat_stream or kwargs.get("chat_stream")
-
         self.chat_id = self.chat_stream.stream_id
+        self.platform = getattr(self.chat_stream, "platform", None)
+
         # 初始化基础信息（带类型注解）
-        self.is_group: bool = False
-        self.platform: Optional[str] = None
-        self.group_id: Optional[str] = None
-        self.user_id: Optional[str] = None
-        self.target_id: Optional[str] = None
-        self.group_name: Optional[str] = None
-        self.user_nickname: Optional[str] = None
+        self.action_message = action_message
 
-        # 如果有聊天流，提取所有信息
-        if self.chat_stream:
-            self.platform = getattr(self.chat_stream, "platform", None)
+        self.group_id = None
+        self.group_name = None
+        self.user_id = None
+        self.user_nickname = None
+        self.is_group = False
+        self.target_id = None
+        self.has_action_message = False
 
-            # 获取群聊信息
-            # print(self.chat_stream)
-            # print(self.chat_stream.group_info)
-            if self.chat_stream.group_info:
-                self.is_group = True
-                self.group_id = str(self.chat_stream.group_info.group_id)
-                self.group_name = getattr(self.chat_stream.group_info, "group_name", None)
+        if self.action_message:
+            self.has_action_message = True
+        else:
+            self.action_message = {}
+
+        if self.has_action_message:
+            if self.action_name != "no_reply":
+                self.group_id = str(self.action_message.get("chat_info_group_id", None))
+                self.group_name = self.action_message.get("chat_info_group_name", None)
+
+                self.user_id = str(self.action_message.get("user_id", None))
+                self.user_nickname = self.action_message.get("user_nickname", None)
+                if self.group_id:
+                    self.is_group = True
+                    self.target_id = self.group_id
+                else:
+                    self.is_group = False
+                    self.target_id = self.user_id
             else:
-                self.is_group = False
-                self.user_id = str(self.chat_stream.user_info.user_id)
-                self.user_nickname = getattr(self.chat_stream.user_info, "user_nickname", None)
-
-            # 设置目标ID（群聊用群ID，私聊用户ID）
-            self.target_id = self.group_id if self.is_group else self.user_id
+                if self.chat_stream.group_info:
+                    self.group_id = self.chat_stream.group_info.group_id
+                    self.group_name = self.chat_stream.group_info.group_name
+                    self.is_group = True
+                    self.target_id = self.group_id
+                else:
+                    self.user_id = self.chat_stream.user_info.user_id
+                    self.user_nickname = self.chat_stream.user_info.user_nickname
+                    self.is_group = False
+                    self.target_id = self.user_id
 
         logger.debug(f"{self.log_prefix} Action组件初始化完成")
         logger.debug(
             f"{self.log_prefix} 聊天信息: 类型={'群聊' if self.is_group else '私聊'}, 平台={self.platform}, 目标={self.target_id}"
         )
-
-    def _get_activation_type_value(self, attr_name: str, default: str) -> str:
-        """获取激活类型的字符串值"""
-        attr = getattr(self.__class__, attr_name, None)
-        if attr is None:
-            return default
-        if hasattr(attr, "value"):
-            return attr.value
-        return str(attr)
-
-    def _get_mode_value(self, attr_name: str, default: str) -> str:
-        """获取模式的字符串值"""
-        attr = getattr(self.__class__, attr_name, None)
-        if attr is None:
-            return default
-        if hasattr(attr, "value"):
-            return attr.value
-        return str(attr)
 
     async def wait_for_new_message(self, timeout: int = 1200) -> Tuple[bool, str]:
         """等待新消息或超时
@@ -201,7 +209,9 @@ class BaseAction(ABC):
             logger.error(f"{self.log_prefix} 等待新消息时发生错误: {e}")
             return False, f"等待新消息失败: {str(e)}"
 
-    async def send_text(self, content: str, reply_to: str = "", typing: bool = False) -> bool:
+    async def send_text(
+        self, content: str, reply_to: str = "", reply_to_platform_id: str = "", typing: bool = False
+    ) -> bool:
         """发送文本消息
 
         Args:
@@ -215,7 +225,13 @@ class BaseAction(ABC):
             logger.error(f"{self.log_prefix} 缺少聊天ID")
             return False
 
-        return await send_api.text_to_stream(text=content, stream_id=self.chat_id, reply_to=reply_to, typing=typing)
+        return await send_api.text_to_stream(
+            text=content,
+            stream_id=self.chat_id,
+            reply_to=reply_to,
+            reply_to_platform_id=reply_to_platform_id,
+            typing=typing,
+        )
 
     async def send_emoji(self, emoji_base64: str) -> bool:
         """发送表情包
@@ -295,7 +311,7 @@ class BaseAction(ABC):
         )
 
     async def send_command(
-        self, command_name: str, args: dict = None, display_message: str = None, storage_message: bool = True
+        self, command_name: str, args: Optional[dict] = None, display_message: str = "", storage_message: bool = True
     ) -> bool:
         """发送命令消息
 
@@ -349,35 +365,26 @@ class BaseAction(ABC):
 
         # 从类属性读取名称，如果没有定义则使用类名自动生成
         name = getattr(cls, "action_name", cls.__name__.lower().replace("action", ""))
+        if "." in name:
+            logger.error(f"Action名称 '{name}' 包含非法字符 '.'，请使用下划线替代")
+            raise ValueError(f"Action名称 '{name}' 包含非法字符 '.'，请使用下划线替代")
+        # 获取focus_activation_type和normal_activation_type
+        focus_activation_type = getattr(cls, "focus_activation_type", ActionActivationType.ALWAYS)
+        normal_activation_type = getattr(cls, "normal_activation_type", ActionActivationType.ALWAYS)
 
-        # 从类属性读取描述，如果没有定义则使用文档字符串的第一行
-        description = getattr(cls, "action_description", None)
-        if description is None:
-            description = "Action动作"
-
-        # 安全获取激活类型值
-        def get_enum_value(attr_name, default):
-            attr = getattr(cls, attr_name, None)
-            if attr is None:
-                # 如果没有定义，返回默认的枚举值
-                return getattr(ActionActivationType, default.upper(), ActionActivationType.NEVER)
-            return attr
-
-        def get_mode_value(attr_name, default):
-            attr = getattr(cls, attr_name, None)
-            if attr is None:
-                return getattr(ChatMode, default.upper(), ChatMode.ALL)
-            return attr
+        # 处理activation_type：如果插件中声明了就用插件的值，否则默认使用focus_activation_type
+        activation_type = getattr(cls, "activation_type", focus_activation_type)
 
         return ActionInfo(
             name=name,
             component_type=ComponentType.ACTION,
-            description=description,
-            focus_activation_type=get_enum_value("focus_activation_type", "always"),
-            normal_activation_type=get_enum_value("normal_activation_type", "always"),
+            description=getattr(cls, "action_description", "Action动作"),
+            focus_activation_type=focus_activation_type,
+            normal_activation_type=normal_activation_type,
+            activation_type=activation_type,
             activation_keywords=getattr(cls, "activation_keywords", []).copy(),
             keyword_case_sensitive=getattr(cls, "keyword_case_sensitive", False),
-            mode_enable=get_mode_value("mode_enable", "all"),
+            mode_enable=getattr(cls, "mode_enable", ChatMode.ALL),
             parallel_action=getattr(cls, "parallel_action", True),
             random_activation_probability=getattr(cls, "random_activation_probability", 0.3),
             llm_judge_prompt=getattr(cls, "llm_judge_prompt", ""),
@@ -407,17 +414,17 @@ class BaseAction(ABC):
         """
         return await self.execute()
 
-    def get_action_context(self, key: str, default=None):
-        """获取action上下文信息
+    # def get_action_context(self, key: str, default=None):
+    #     """获取action上下文信息
 
-        Args:
-            key: 上下文键名
-            default: 默认值
+    #     Args:
+    #         key: 上下文键名
+    #         default: 默认值
 
-        Returns:
-            Any: 上下文值或默认值
-        """
-        return self.api.get_action_context(key, default)
+    #     Returns:
+    #         Any: 上下文值或默认值
+    #     """
+    #     return self.api.get_action_context(key, default)
 
     def get_config(self, key: str, default=None):
         """获取插件配置值，支持嵌套键访问

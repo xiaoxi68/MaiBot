@@ -1,4 +1,5 @@
-from src.plugin_system.base.base_plugin import BasePlugin, register_plugin
+from src.plugin_system.apis.plugin_register_api import register_plugin
+from src.plugin_system.base.base_plugin import BasePlugin
 from src.plugin_system.base.component_types import ComponentInfo
 from src.common.logger import get_logger
 from src.plugin_system.base.base_action import BaseAction, ActionActivationType, ChatMode
@@ -59,6 +60,11 @@ class TTSAction(BaseAction):
             # 发送TTS消息
             await self.send_custom(message_type="tts_text", content=processed_text)
 
+            # 记录动作信息
+            await self.store_action_info(
+                action_build_into_prompt=True, action_prompt_display="已经发送了语音消息。", action_done=True
+            )
+
             logger.info(f"{self.log_prefix} TTS动作执行成功，文本长度: {len(processed_text)}")
             return True, "TTS动作执行成功"
 
@@ -86,7 +92,7 @@ class TTSAction(BaseAction):
 
         # 确保句子结尾有合适的标点
         if not any(processed_text.endswith(end) for end in [".", "?", "!", "。", "！", "？"]):
-            processed_text = processed_text + "。"
+            processed_text = f"{processed_text}。"
 
         return processed_text
 
@@ -101,9 +107,11 @@ class TTSPlugin(BasePlugin):
     """
 
     # 插件基本信息
-    plugin_name = "tts_plugin"  # 内部标识符
-    enable_plugin = True
-    config_file_name = "config.toml"
+    plugin_name: str = "tts_plugin"  # 内部标识符
+    enable_plugin: bool = True
+    dependencies: list[str] = []  # 插件依赖列表
+    python_dependencies: list[str] = []  # Python包依赖列表
+    config_file_name: str = "config.toml"
 
     # 配置节描述
     config_section_descriptions = {
@@ -113,7 +121,7 @@ class TTSPlugin(BasePlugin):
     }
 
     # 配置Schema定义
-    config_schema = {
+    config_schema: dict = {
         "plugin": {
             "name": ConfigField(type=str, default="tts_plugin", description="插件名称", required=True),
             "version": ConfigField(type=str, default="0.1.0", description="插件版本号"),
