@@ -365,8 +365,7 @@ class DefaultReplyer:
             expression_habits_title = "你可以参考以下的语言习惯和句法，如果情景合适就使用，不要盲目使用,不要生硬使用，以合理的方式结合到你的回复中："
             
         expression_habits_block = f"{expression_habits_title}\n{expression_habits_block}"
-            
-            
+        
 
         return expression_habits_block
 
