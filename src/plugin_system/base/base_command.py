@@ -60,10 +60,10 @@ class BaseCommand(ABC):
         pass
 
     def get_config(self, key: str, default=None):
-        """获取插件配置值，支持嵌套键访问
+        """获取插件配置值，使用嵌套键访问
 
         Args:
-            key: 配置键名，支持嵌套访问如 "section.subsection.key"
+            key: 配置键名，使用嵌套访问如 "section.subsection.key"
             default: 默认值
 
         Returns:

@@ -16,7 +16,8 @@ class ToolUser:
         return get_all_tool_definitions()
 
     @staticmethod
-    async def _execute_tool_call(tool_call):
+    async def execute_tool_call(tool_call):
+        # sourcery skip: use-assigned-variable
         """执行特定的工具调用
 
         Args:

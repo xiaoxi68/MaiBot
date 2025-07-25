@@ -268,7 +268,6 @@ action_message为一个字典，包含的键值对如下（省略了不必要的
 ## Action 内置方法说明
 ```python
 class BaseAction:
-    # 配置相关
     def get_config(self, key: str, default=None):
         """获取插件配置值，使用嵌套键访问"""
     
