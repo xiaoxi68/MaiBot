@@ -3,8 +3,10 @@ import io
 
 from PIL import Image
 
-from . import _logger as logger
+from src.common.logger import get_logger
 from .payload_content.message import Message, MessageBuilder
+
+logger = get_logger("消息压缩工具")
 
 
 def compress_messages(

@@ -2,10 +2,11 @@ from datetime import datetime
 from enum import Enum
 from typing import Tuple
 
-from pymongo.synchronous.database import Database
+from src.common.logger import get_logger
+from src.config.api_ada_configs import ModelInfo
+from src.common.database.database_model import LLMUsage
 
-from . import _logger as logger
-from .config.config import ModelInfo
+logger = get_logger("模型使用统计")
 
 
 class ReqType(Enum):
@@ -29,33 +30,21 @@ class UsageCallStatus(Enum):
 
 
 class ModelUsageStatistic:
-    db: Database | None = None
+    """
+    模型使用统计类 - 使用SQLite+Peewee
+    """
 
-    def __init__(self, db: Database):
-        if db is None:
-            logger.warning(
-                "Warning: No database provided, ModelUsageStatistic will not work."
-            )
-            return
-        if self._init_database(db):
-            # 成功初始化
-            self.db = db
-
-    @staticmethod
-    def _init_database(db: Database):
+    def __init__(self):
         """
-        初始化数据库相关索引
+        初始化统计类
+        由于使用Peewee ORM，不需要传入数据库实例
         """
+        # 确保表已经创建
         try:
-            db.llm_usage.create_index([("timestamp", 1)])
-            db.llm_usage.create_index([("model_name", 1)])
-            db.llm_usage.create_index([("task_name", 1)])
-            db.llm_usage.create_index([("request_type", 1)])
-            db.llm_usage.create_index([("status", 1)])
-            return True
+            from src.common.database.database import db
+            db.create_tables([LLMUsage], safe=True)
         except Exception as e:
-            logger.error(f"创建数据库索引失败: {e}")
-            return False
+            logger.error(f"创建LLMUsage表失败: {e}")
 
     @staticmethod
     def _calculate_cost(
@@ -67,6 +56,7 @@ class ModelUsageStatistic:
         Args:
             prompt_tokens: 输入token数量
             completion_tokens: 输出token数量
+            model_info: 模型信息
 
         Returns:
             float: 总成本（元）
@@ -81,46 +71,50 @@ class ModelUsageStatistic:
         model_name: str,
         task_name: str = "N/A",
         request_type: ReqType = ReqType.CHAT,
-    ) -> str | None:
+        user_id: str = "system",
+        endpoint: str = "/chat/completions",
+    ) -> int | None:
         """
         创建模型使用情况记录
-        :param model_name: 模型名
-        :param task_name: 任务名称
-        :param request_type: 请求类型，默认为Chat
-        :return:
-        """
-        if self.db is None:
-            return None  # 如果没有数据库连接，则不记录使用情况
 
+        Args:
+            model_name: 模型名
+            task_name: 任务名称
+            request_type: 请求类型，默认为Chat
+            user_id: 用户ID，默认为system
+            endpoint: API端点
+
+        Returns:
+            int | None: 返回记录ID，失败返回None
+        """
         try:
-            usage_data = {
-                "model_name": model_name,
-                "task_name": task_name,
-                "request_type": request_type.value,
-                "prompt_tokens": 0,
-                "completion_tokens": 0,
-                "total_tokens": 0,
-                "cost": 0.0,
-                "status": "processing",
-                "timestamp": datetime.now(),
-                "ext_msg": None,
-            }
-            result = self.db.llm_usage.insert_one(usage_data)
+            usage_record = LLMUsage.create(
+                model_name=model_name,
+                user_id=user_id,
+                request_type=request_type.value,
+                endpoint=endpoint,
+                prompt_tokens=0,
+                completion_tokens=0,
+                total_tokens=0,
+                cost=0.0,
+                status=UsageCallStatus.PROCESSING.value,
+                timestamp=datetime.now(),
+            )
 
             logger.trace(
                 f"创建了一条模型使用情况记录 - 模型: {model_name}, "
-                f"子任务: {task_name}, 类型: {request_type}"
-                f"记录ID: {str(result.inserted_id)}"
+                f"子任务: {task_name}, 类型: {request_type.value}, "
+                f"用户: {user_id}, 记录ID: {usage_record.id}"
             )
 
-            return str(result.inserted_id)
+            return usage_record.id
         except Exception as e:
             logger.error(f"创建模型使用情况记录失败: {str(e)}")
             return None
 
     def update_usage(
         self,
-        record_id: str | None,
+        record_id: int | None,
         model_info: ModelInfo,
         usage_data: Tuple[int, int, int] | None = None,
         stat: UsageCallStatus = UsageCallStatus.SUCCESS,
@@ -136,9 +130,6 @@ class ModelUsageStatistic:
             stat: 任务调用状态
             ext_msg: 额外信息
         """
-        if self.db is None:
-            return  # 如果没有数据库连接，则不记录使用情况
-
         if not record_id:
             logger.error("更新模型使用情况失败: record_id不能为空")
             return
@@ -153,28 +144,27 @@ class ModelUsageStatistic:
         total_tokens = usage_data[2] if usage_data else 0
 
         try:
-            self.db.llm_usage.update_one(
-                {"_id": record_id},
-                {
-                    "$set": {
-                        "status": stat.value,
-                        "ext_msg": ext_msg,
-                        "prompt_tokens": prompt_tokens,
-                        "completion_tokens": completion_tokens,
-                        "total_tokens": total_tokens,
-                        "cost": self._calculate_cost(
-                            prompt_tokens, completion_tokens, model_info
-                        )
-                        if usage_data
-                        else 0.0,
-                    }
-                },
-            )
+            # 使用Peewee更新记录
+            update_query = LLMUsage.update(
+                status=stat.value,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                total_tokens=total_tokens,
+                cost=self._calculate_cost(
+                    prompt_tokens, completion_tokens, model_info
+                ) if usage_data else 0.0,
+            ).where(LLMUsage.id == record_id)
+            
+            updated_count = update_query.execute()
+            
+            if updated_count == 0:
+                logger.warning(f"记录ID {record_id} 不存在，无法更新")
+                return
 
-            logger.trace(
+            logger.debug(
                 f"Token使用情况 - 模型: {model_info.name}, "
-                f"记录ID： {record_id}, "
-                f"任务状态: {stat.value}, 额外信息： {ext_msg if ext_msg else 'N/A'}, "
+                f"记录ID: {record_id}, "
+                f"任务状态: {stat.value}, 额外信息: {ext_msg or 'N/A'}, "
                 f"提示词: {prompt_tokens}, 完成: {completion_tokens}, "
                 f"总计: {total_tokens}"
             )

@@ -15,7 +15,7 @@ from google.genai.errors import (
 )
 
 from .base_client import APIResponse, UsageRecord
-from ..config.config import ModelInfo, APIProvider
+from src.config.api_ada_configs import ModelInfo, APIProvider
 from . import BaseClient
 
 from ..exceptions import (

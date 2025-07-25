@@ -5,7 +5,7 @@ from typing import Callable, Any
 from openai import AsyncStream
 from openai.types.chat import ChatCompletionChunk, ChatCompletion
 
-from ..config.config import ModelInfo, APIProvider
+from src.config.api_ada_configs import ModelInfo, APIProvider
 from ..payload_content.message import Message
 from ..payload_content.resp_format import RespFormat
 from ..payload_content.tool_option import ToolOption, ToolCall

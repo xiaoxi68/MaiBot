@@ -1,15 +1,13 @@
 import importlib
 from typing import Dict
 
+from src.config.config import model_config
+from src.config.api_ada_configs import ModuleConfig, ModelUsageArgConfig
+from src.common.logger import get_logger
 
-from .config.config import (
-    ModelUsageArgConfig,
-    ModuleConfig,
-)
-
-from . import _logger as logger
 from .model_client import ModelRequestHandler, BaseClient
 
+logger = get_logger("模型管理器")
 
 class ModelManager:
     # TODO: 添加读写锁，防止异步刷新配置时发生数据竞争
@@ -77,3 +75,5 @@ class ModelManager:
         :return: 是否在模型列表中
         """
         return task_name in self.config.task_model_arg_map
+
+

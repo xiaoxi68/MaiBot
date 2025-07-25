@@ -13,7 +13,6 @@ from packaging.version import Version, InvalidVersion
 from typing import Any, Dict, List
 
 from src.common.logger import get_logger
-from src.common.message import api
 from src.config.config_base import ConfigBase
 from src.config.official_configs import (
     BotConfig,
@@ -314,7 +313,7 @@ def api_ada_load_config(config_path: str) -> ModuleConfig:
                 logger.error(f"配置文件中缺少必需的字段: '{key}'")
                 raise KeyError(f"配置文件中缺少必需的字段: '{key}'")
 
-        logger.success(f"成功加载配置文件: {config_path}")
+        logger.info(f"成功加载配置文件: {config_path}")
 
     return config
 

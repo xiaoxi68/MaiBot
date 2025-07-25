@@ -5,8 +5,7 @@ from openai import AsyncStream
 from openai.types.chat import ChatCompletionChunk, ChatCompletion
 
 from .base_client import BaseClient, APIResponse
-from .. import _logger as logger
-from ..config.config import (
+from src.config.api_ada_configs import (
     ModelInfo,
     ModelUsageArgConfigItem,
     RequestConfig,
@@ -22,6 +21,9 @@ from ..payload_content.message import Message
 from ..payload_content.resp_format import RespFormat
 from ..payload_content.tool_option import ToolOption
 from ..utils import compress_messages
+from src.common.logger import get_logger
+
+logger = get_logger("模型客户端")
 
 
 def _check_retry(
@@ -288,7 +290,7 @@ class ModelRequestHandler:
                         interrupt_flag=interrupt_flag,
                     )
                 except Exception as e:
-                    logger.trace(e)
+                    logger.debug(e)
                     remain_try -= 1  # 剩余尝试次数减1
 
                     # 处理异常
@@ -340,7 +342,7 @@ class ModelRequestHandler:
                         embedding_input=embedding_input,
                     )
                 except Exception as e:
-                    logger.trace(e)
+                    logger.debug(e)
                     remain_try -= 1  # 剩余尝试次数减1
 
                     # 处理异常
