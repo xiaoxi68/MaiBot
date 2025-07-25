@@ -78,7 +78,7 @@ class ChatMood:
         if interested_rate <= 0:
             interest_multiplier = 0
         else:
-            interest_multiplier = 3 * math.pow(interested_rate, 0.25)
+            interest_multiplier = 2 * math.pow(interested_rate, 0.25)
 
         logger.debug(
             f"base_probability: {base_probability}, time_multiplier: {time_multiplier}, interest_multiplier: {interest_multiplier}"
