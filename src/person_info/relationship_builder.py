@@ -419,7 +419,7 @@ class RelationshipBuilder:
     async def update_impression_on_segments(self, person_id: str, chat_id: str, segments: List[Dict[str, Any]]):
         """基于消息段更新用户印象"""
         original_segment_count = len(segments)
-        logger.info(f"开始为 {person_id} 基于 {original_segment_count} 个消息段更新印象")
+        logger.debug(f"开始为 {person_id} 基于 {original_segment_count} 个消息段更新印象")
         try:
             # 筛选要处理的消息段，每个消息段有10%的概率被丢弃
             segments_to_process = [s for s in segments if random.random() >= 0.1]
@@ -432,7 +432,7 @@ class RelationshipBuilder:
 
             dropped_count = original_segment_count - len(segments_to_process)
             if dropped_count > 0:
-                logger.info(f"为 {person_id} 随机丢弃了 {dropped_count} / {original_segment_count} 个消息段")
+                logger.debug(f"为 {person_id} 随机丢弃了 {dropped_count} / {original_segment_count} 个消息段")
 
             processed_messages = []
 
