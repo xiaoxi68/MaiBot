@@ -126,7 +126,8 @@ class LLMRequest:
         # 兼容新旧模型配置格式
         # 新格式使用 model_name，旧格式使用 name
         self.model_name: str = model.get("model_name", model.get("name", ""))
-        self.provider = model.get("provider", "")
+        # 在新架构中，provider信息从model_config.toml自动获取，不需要在这里设置
+        self.provider = model.get("provider", "")  # 保留兼容性，但在新架构中不使用
         
         # 从全局配置中获取任务配置
         self.request_type = kwargs.pop("request_type", "default")

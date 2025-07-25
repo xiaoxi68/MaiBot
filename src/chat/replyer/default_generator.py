@@ -213,8 +213,10 @@ class DefaultReplyer:
                 with Timer("LLM生成", {}):  # 内部计时器，可选保留
                     # 加权随机选择一个模型配置
                     selected_model_config = self._select_weighted_model_config()
+                    # 兼容新旧格式的模型名称获取
+                    model_display_name = selected_model_config.get('model_name', selected_model_config.get('name', 'N/A'))
                     logger.info(
-                        f"使用模型生成回复: {selected_model_config.get('name', 'N/A')} (选中概率: {selected_model_config.get('weight', 1.0)})"
+                        f"使用模型生成回复: {model_display_name} (选中概率: {selected_model_config.get('weight', 1.0)})"
                     )
 
                     express_model = LLMRequest(
@@ -277,8 +279,10 @@ class DefaultReplyer:
                 with Timer("LLM生成", {}):  # 内部计时器，可选保留
                     # 加权随机选择一个模型配置
                     selected_model_config = self._select_weighted_model_config()
+                    # 兼容新旧格式的模型名称获取
+                    model_display_name = selected_model_config.get('model_name', selected_model_config.get('name', 'N/A'))
                     logger.info(
-                        f"使用模型重写回复: {selected_model_config.get('name', 'N/A')} (选中概率: {selected_model_config.get('weight', 1.0)})"
+                        f"使用模型重写回复: {model_display_name} (选中概率: {selected_model_config.get('weight', 1.0)})"
                     )
 
                     express_model = LLMRequest(
