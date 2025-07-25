@@ -17,7 +17,7 @@ from src.chat.message_receive.uni_message_sender import HeartFCSender
 from src.chat.utils.timer_calculator import Timer  # <--- Import Timer
 from src.chat.utils.utils import get_chat_type_and_target_info
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
-from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_before_timestamp_with_chat
+from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_before_timestamp_with_chat, replace_user_references_in_content
 from src.chat.express.expression_selector import expression_selector
 from src.chat.knowledge.knowledge_lib import qa_manager
 from src.chat.memory_system.memory_activator import MemoryActivator
@@ -629,6 +629,14 @@ class DefaultReplyer:
             mood_prompt = ""
 
         sender, target = self._parse_reply_target(reply_to)
+        
+        target = replace_user_references_in_content(
+            target, 
+            chat_stream.platform, 
+            is_async=False, 
+            replace_bot_name=True
+        )
+        
 
         # 构建action描述 (如果启用planner)
         action_descriptions = ""

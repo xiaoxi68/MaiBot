@@ -2,7 +2,7 @@ import time  # 导入 time 模块以获取当前时间
 import random
 import re
 
-from typing import List, Dict, Any, Tuple, Optional
+from typing import List, Dict, Any, Tuple, Optional, Union, Callable
 from rich.traceback import install
 
 from src.config.config import global_config
@@ -13,6 +13,155 @@ from src.person_info.person_info import PersonInfoManager, get_person_info_manag
 from src.chat.utils.utils import translate_timestamp_to_human_readable,assign_message_ids
 
 install(extra_lines=3)
+
+
+def replace_user_references_in_content(
+    content: str,
+    platform: str,
+    name_resolver: Union[Callable[[str, str], str], Callable[[str, str], Any]] = None,
+    is_async: bool = False,
+    replace_bot_name: bool = True
+) -> Union[str, Any]:
+    """
+    替换内容中的用户引用格式，包括回复<aaa:bbb>和@<aaa:bbb>格式
+    
+    Args:
+        content: 要处理的内容字符串
+        platform: 平台标识
+        name_resolver: 名称解析函数，接收(platform, user_id)参数，返回用户名称
+                      如果为None，则使用默认的person_info_manager
+        is_async: 是否为异步模式
+        replace_bot_name: 是否将机器人的user_id替换为"机器人昵称(你)"
+    
+    Returns:
+        处理后的内容字符串（同步模式）或awaitable对象（异步模式）
+    """
+    if is_async:
+        return _replace_user_references_async(content, platform, name_resolver, replace_bot_name)
+    else:
+        return _replace_user_references_sync(content, platform, name_resolver, replace_bot_name)
+
+
+def _replace_user_references_sync(
+    content: str,
+    platform: str,
+    name_resolver: Optional[Callable[[str, str], str]] = None,
+    replace_bot_name: bool = True
+) -> str:
+    """同步版本的用户引用替换"""
+    if name_resolver is None:
+        person_info_manager = get_person_info_manager()
+        def default_resolver(platform: str, user_id: str) -> str:
+            # 检查是否是机器人自己
+            if replace_bot_name and user_id == global_config.bot.qq_account:
+                return f"{global_config.bot.nickname}(你)"
+            person_id = PersonInfoManager.get_person_id(platform, user_id)
+            return person_info_manager.get_value_sync(person_id, "person_name") or user_id
+        name_resolver = default_resolver
+    
+    # 处理回复<aaa:bbb>格式
+    reply_pattern = r"回复<([^:<>]+):([^:<>]+)>"
+    match = re.search(reply_pattern, content)
+    if match:
+        aaa = match.group(1)
+        bbb = match.group(2)
+        try:
+            # 检查是否是机器人自己
+            if replace_bot_name and bbb == global_config.bot.qq_account:
+                reply_person_name = f"{global_config.bot.nickname}(你)"
+            else:
+                reply_person_name = name_resolver(platform, bbb) or aaa
+            content = re.sub(reply_pattern, f"回复 {reply_person_name}", content, count=1)
+        except Exception:
+            # 如果解析失败，使用原始昵称
+            content = re.sub(reply_pattern, f"回复 {aaa}", content, count=1)
+    
+    # 处理@<aaa:bbb>格式
+    at_pattern = r"@<([^:<>]+):([^:<>]+)>"
+    at_matches = list(re.finditer(at_pattern, content))
+    if at_matches:
+        new_content = ""
+        last_end = 0
+        for m in at_matches:
+            new_content += content[last_end:m.start()]
+            aaa = m.group(1)
+            bbb = m.group(2)
+            try:
+                # 检查是否是机器人自己
+                if replace_bot_name and bbb == global_config.bot.qq_account:
+                    at_person_name = f"{global_config.bot.nickname}(你)"
+                else:
+                    at_person_name = name_resolver(platform, bbb) or aaa
+                new_content += f"@{at_person_name}"
+            except Exception:
+                # 如果解析失败，使用原始昵称
+                new_content += f"@{aaa}"
+            last_end = m.end()
+        new_content += content[last_end:]
+        content = new_content
+    
+    return content
+
+
+async def _replace_user_references_async(
+    content: str,
+    platform: str,
+    name_resolver: Optional[Callable[[str, str], Any]] = None,
+    replace_bot_name: bool = True
+) -> str:
+    """异步版本的用户引用替换"""
+    if name_resolver is None:
+        person_info_manager = get_person_info_manager()
+        async def default_resolver(platform: str, user_id: str) -> str:
+            # 检查是否是机器人自己
+            if replace_bot_name and user_id == global_config.bot.qq_account:
+                return f"{global_config.bot.nickname}(你)"
+            person_id = PersonInfoManager.get_person_id(platform, user_id)
+            return await person_info_manager.get_value(person_id, "person_name") or user_id
+        name_resolver = default_resolver
+    
+    # 处理回复<aaa:bbb>格式
+    reply_pattern = r"回复<([^:<>]+):([^:<>]+)>"
+    match = re.search(reply_pattern, content)
+    if match:
+        aaa = match.group(1)
+        bbb = match.group(2)
+        try:
+            # 检查是否是机器人自己
+            if replace_bot_name and bbb == global_config.bot.qq_account:
+                reply_person_name = f"{global_config.bot.nickname}(你)"
+            else:
+                reply_person_name = await name_resolver(platform, bbb) or aaa
+            content = re.sub(reply_pattern, f"回复 {reply_person_name}", content, count=1)
+        except Exception:
+            # 如果解析失败，使用原始昵称
+            content = re.sub(reply_pattern, f"回复 {aaa}", content, count=1)
+    
+    # 处理@<aaa:bbb>格式
+    at_pattern = r"@<([^:<>]+):([^:<>]+)>"
+    at_matches = list(re.finditer(at_pattern, content))
+    if at_matches:
+        new_content = ""
+        last_end = 0
+        for m in at_matches:
+            new_content += content[last_end:m.start()]
+            aaa = m.group(1)
+            bbb = m.group(2)
+            try:
+                # 检查是否是机器人自己
+                if replace_bot_name and bbb == global_config.bot.qq_account:
+                    at_person_name = f"{global_config.bot.nickname}(你)"
+                else:
+                    at_person_name = await name_resolver(platform, bbb) or aaa
+                new_content += f"@{at_person_name}"
+            except Exception:
+                # 如果解析失败，使用原始昵称
+                new_content += f"@{aaa}"
+            last_end = m.end()
+        new_content += content[last_end:]
+        content = new_content
+    
+    return content
 
 
 def get_raw_msg_by_timestamp(
@@ -374,33 +523,8 @@ def _build_readable_messages_internal(
             else:
                 person_name = "某人"
 
-        # 检查是否有 回复<aaa:bbb> 字段
-        reply_pattern = r"回复<([^:<>]+):([^:<>]+)>"
-        match = re.search(reply_pattern, content)
-        if match:
-            aaa: str = match[1]
-            bbb: str = match[2]
-            reply_person_id = PersonInfoManager.get_person_id(platform, bbb)
-            reply_person_name = person_info_manager.get_value_sync(reply_person_id, "person_name") or aaa
-            # 在内容前加上回复信息
-            content = re.sub(reply_pattern, lambda m, name=reply_person_name: f"回复 {name}", content, count=1)
-
-        # 检查是否有 @<aaa:bbb> 字段 @<{member_info.get('nickname')}:{member_info.get('user_id')}>
-        at_pattern = r"@<([^:<>]+):([^:<>]+)>"
-        at_matches = list(re.finditer(at_pattern, content))
-        if at_matches:
-            new_content = ""
-            last_end = 0
-            for m in at_matches:
-                new_content += content[last_end : m.start()]
-                aaa = m.group(1)
-                bbb = m.group(2)
-                at_person_id = PersonInfoManager.get_person_id(platform, bbb)
-                at_person_name = person_info_manager.get_value_sync(at_person_id, "person_name") or aaa
-                new_content += f"@{at_person_name}"
-                last_end = m.end()
-            new_content += content[last_end:]
-            content = new_content
+        # 使用独立函数处理用户引用格式
+        content = replace_user_references_in_content(content, platform, is_async=False, replace_bot_name=replace_bot_name)
 
         target_str = "这是QQ的一个功能，用于提及某人，但没那么明显"
         if target_str in content and random.random() < 0.6:
@@ -916,38 +1040,14 @@ async def build_anonymous_messages(messages: List[Dict[str, Any]]) -> str:
             anon_name = get_anon_name(platform, user_id)
             # print(f"anon_name:{anon_name}")
 
-            # 处理 回复<aaa:bbb>
-            reply_pattern = r"回复<([^:<>]+):([^:<>]+)>"
-            match = re.search(reply_pattern, content)
-            if match:
-                # print(f"发现回复match:{match}")
-                bbb = match.group(2)
+            # 使用独立函数处理用户引用格式，传入自定义的匿名名称解析器
+            def anon_name_resolver(platform: str, user_id: str) -> str:
                 try:
-                    anon_reply = get_anon_name(platform, bbb)
-                    # print(f"anon_reply:{anon_reply}")
+                    return get_anon_name(platform, user_id)
                 except Exception:
-                    anon_reply = "?"
-                content = re.sub(reply_pattern, f"回复 {anon_reply}", content, count=1)
-
-            # 处理 @<aaa:bbb>，无嵌套def
-            at_pattern = r"@<([^:<>]+):([^:<>]+)>"
-            at_matches = list(re.finditer(at_pattern, content))
-            if at_matches:
-                # print(f"发现@match:{at_matches}")
-                new_content = ""
-                last_end = 0
-                for m in at_matches:
-                    new_content += content[last_end : m.start()]
-                    bbb = m.group(2)
-                    try:
-                        anon_at = get_anon_name(platform, bbb)
-                        # print(f"anon_at:{anon_at}")
-                    except Exception:
-                        anon_at = "?"
-                    new_content += f"@{anon_at}"
-                    last_end = m.end()
-                new_content += content[last_end:]
-                content = new_content
+                    return "?"
+            
+            content = replace_user_references_in_content(content, platform, anon_name_resolver, is_async=False, replace_bot_name=False)
 
             header = f"{anon_name}说 "
             output_lines.append(header)

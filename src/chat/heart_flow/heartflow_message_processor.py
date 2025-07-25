@@ -12,6 +12,7 @@ from src.chat.message_receive.storage import MessageStorage
 from src.chat.heart_flow.heartflow import heartflow
 from src.chat.utils.utils import is_mentioned_bot_in_message
 from src.chat.utils.timer_calculator import Timer
+from src.chat.utils.chat_message_builder import replace_user_references_in_content
 from src.common.logger import get_logger
 from src.person_info.relationship_manager import get_relationship_manager
 from src.mood.mood_manager import mood_manager
@@ -56,6 +57,7 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool]:
     with Timer("记忆激活"):
         interested_rate = await hippocampus_manager.get_activate_from_text(
             message.processed_plain_text,
+            max_depth= 5,
             fast_retrieval=False,
         )
         logger.debug(f"记忆激活率: {interested_rate:.2f}")
@@ -147,6 +149,14 @@ class HeartFCMessageReceiver:
             # 如果消息中包含图片标识，则将 [picid:...] 替换为 [图片]
             picid_pattern = r"\[picid:([^\]]+)\]"
             processed_plain_text = re.sub(picid_pattern, "[图片]", message.processed_plain_text)
+            
+            # 应用用户引用格式替换，将回复<aaa:bbb>和@<aaa:bbb>格式转换为可读格式
+            processed_plain_text = replace_user_references_in_content(
+                processed_plain_text, 
+                message.message_info.platform, 
+                is_async=False, 
+                replace_bot_name=True
+            )
 
             logger.info(f"[{mes_name}]{userinfo.user_nickname}:{processed_plain_text}[兴趣度：{interested_rate:.2f}]")  # type: ignore
 
