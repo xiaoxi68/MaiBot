@@ -39,11 +39,7 @@ class CompareNumbersTool(BaseTool):
             else:
                 result = f"{num1} 等于 {num2}"
 
-            return {"type": "comparison_result", "id": f"{num1}_vs_{num2}", "content": result}
+            return {"name": self.name, "content": result}
         except Exception as e:
             logger.error(f"比较数字失败: {str(e)}")
-            return {"type": "info", "id": f"{num1}_vs_{num2}", "content": f"比较数字失败，炸了: {str(e)}"}
-
-
-# 注册工具
-# register_tool(CompareNumbersTool)
+            return {"name": self.name, "content": f"比较数字失败，炸了: {str(e)}"}
