@@ -405,6 +405,8 @@ class TimeCommand(BaseCommand):
 
 **绝对不要手动创建 `config.toml` 文件！**
 
+更详细的配置系统介绍请参考 [配置指南](./configuration-guide.md)。
+
 ### 2. 创建说明文档
 
 你可以创建一个 `README.md` 文件，描述插件的功能和使用方法。
