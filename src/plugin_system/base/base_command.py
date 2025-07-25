@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Tuple, Optional, List
+from typing import Dict, Tuple, Optional
 from src.common.logger import get_logger
 from src.plugin_system.base.component_types import CommandInfo, ComponentType
 from src.chat.message_receive.message import MessageRecv
@@ -26,9 +26,6 @@ class BaseCommand(ABC):
     # 默认命令设置
     command_pattern: str = r""
     """命令匹配的正则表达式"""
-    command_help: str = ""
-    """命令帮助信息"""
-    command_examples: List[str] = []
 
     def __init__(self, message: MessageRecv, plugin_config: Optional[dict] = None):
         """初始化Command组件
@@ -228,6 +225,4 @@ class BaseCommand(ABC):
             component_type=ComponentType.COMMAND,
             description=cls.command_description,
             command_pattern=cls.command_pattern,
-            command_help=cls.command_help,
-            command_examples=cls.command_examples.copy() if cls.command_examples else [],
         )

@@ -20,6 +20,7 @@ class HelloAction(BaseAction):
     # === 基本信息（必须填写）===
     action_name = "hello_greeting"
     action_description = "向用户发送问候消息"
+    activation_type = ActionActivationType.ALWAYS  # 始终激活
 
     # === 功能描述（必须填写）===
     action_parameters = {"greeting_message": "要发送的问候消息"}
@@ -44,8 +45,7 @@ class ByeAction(BaseAction):
     action_description = "向用户发送告别消息"
 
     # 使用关键词激活
-    focus_activation_type = ActionActivationType.KEYWORD
-    normal_activation_type = ActionActivationType.KEYWORD
+    activation_type = ActionActivationType.KEYWORD
 
     # 关键词设置
     activation_keywords = ["再见", "bye", "88", "拜拜"]
@@ -75,8 +75,6 @@ class TimeCommand(BaseCommand):
 
     # === 命令设置（必须填写）===
     command_pattern = r"^/time$"  # 精确匹配 "/time" 命令
-    command_help = "查询当前时间"
-    command_examples = ["/time"]
 
     async def execute(self) -> Tuple[bool, str, bool]:
         """执行时间查询"""
