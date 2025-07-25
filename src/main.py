@@ -115,7 +115,6 @@ class MainSystem:
 
         # 初始化个体特征
         await self.individuality.initialize()
-        logger.info("个体特征初始化成功")
 
         try:
             init_time = int(1000 * (time.time() - init_start_time))

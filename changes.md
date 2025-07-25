@@ -20,6 +20,9 @@
   - `config_api.py`中的`get_global_config`和`get_plugin_config`方法现在支持嵌套访问的配置键名。
   - `database_api.py`中的`db_query`方法调整了参数顺序以增强参数限制的同时，保证了typing正确；`db_get`方法增加了`single_result`参数，与`db_query`保持一致。
 5. 增加了`logging_api`，可以用`get_logger`来获取日志记录器。
+6. 增加了插件和组件管理的API。
+7. `BaseCommand`的`execute`方法现在返回一个三元组，包含是否执行成功、可选的回复消息和是否拦截消息。
+  - 这意味着你终于可以动态控制是否继续后续消息的处理了。
 
 # 插件系统修改
 1. 现在所有的匹配模式不再是关键字了，而是枚举类。**（可能有遗漏）**
@@ -45,6 +48,17 @@
 10. 修正了`main.py`中的错误输出。
 11. 修正了`command`所编译的`Pattern`注册时的错误输出。
 12. `events_manager`有了task相关逻辑了。
+13. 现在有了插件卸载和重载功能了，也就是热插拔。
+14. 实现了组件的全局启用和禁用功能。
+  - 通过`enable_component`和`disable_component`方法来启用或禁用组件。
+  - 不过这个操作不会保存到配置文件~
+15. 实现了组件的局部禁用，也就是针对某一个聊天禁用的功能。
+  - 通过`disable_specific_chat_action`，`enable_specific_chat_action`，`disable_specific_chat_command`，`enable_specific_chat_command`，`disable_specific_chat_event_handler`，`enable_specific_chat_event_handler`来操作
+  - 同样不保存到配置文件~
+
+# 官方插件修改
+1. `HelloWorld`插件现在有一个样例的`EventHandler`。
+2. 内置插件增加了一个通过`Command`来管理插件的功能。具体是使用`/pm`命令唤起。
 
 ### TODO
 把这个看起来就很别扭的config获取方式改一下
@@ -65,3 +79,6 @@ plugin_path = Path(plugin_file)
 module_name = ".".join(plugin_path.parent.parts)
 ```
 这两个区别很大的。
+
+### 执笔BGM
+塞壬唱片！

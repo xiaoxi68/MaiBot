@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional
 from src.common.logger import get_logger
 from src.chat.message_receive.message import MessageRecvS4U
+# 全局SuperChat管理器实例
+from src.mais4u.constant_s4u import ENABLE_S4U
 
 logger = get_logger("super_chat_manager")
 
@@ -296,10 +298,14 @@ class SuperChatManager:
         logger.info("SuperChat管理器已关闭")
 
 
-# 全局SuperChat管理器实例
-super_chat_manager = SuperChatManager()
 
+
+if ENABLE_S4U:
+    super_chat_manager = SuperChatManager()
+else:
+    super_chat_manager = None
 
 def get_super_chat_manager() -> SuperChatManager:
     """获取全局SuperChat管理器实例"""
-    return super_chat_manager 
+
+    return super_chat_manager

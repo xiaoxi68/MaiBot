@@ -10,6 +10,7 @@ import base64
 from PIL import Image
 import io
 import os
+import copy  # 添加copy模块用于深拷贝
 from src.common.database.database import db  # 确保 db 被导入用于 create_tables
 from src.common.database.database_model import LLMUsage  # 导入 LLMUsage 模型
 from src.config.config import global_config
@@ -69,23 +70,28 @@ error_code_mapping = {
 
 
 async def _safely_record(request_content: Dict[str, Any], payload: Dict[str, Any]):
+    """安全地记录请求体，用于调试日志，不会修改原始payload对象"""
+    # 创建payload的深拷贝，避免修改原始对象
+    safe_payload = copy.deepcopy(payload)
+    
     image_base64: str = request_content.get("image_base64")
     image_format: str = request_content.get("image_format")
     if (
         image_base64
-        and payload
-        and isinstance(payload, dict)
-        and "messages" in payload
-        and len(payload["messages"]) > 0
+        and safe_payload
+        and isinstance(safe_payload, dict)
+        and "messages" in safe_payload
+        and len(safe_payload["messages"]) > 0
     ):
-        if isinstance(payload["messages"][0], dict) and "content" in payload["messages"][0]:
-            content = payload["messages"][0]["content"]
+        if isinstance(safe_payload["messages"][0], dict) and "content" in safe_payload["messages"][0]:
+            content = safe_payload["messages"][0]["content"]
             if isinstance(content, list) and len(content) > 1 and "image_url" in content[1]:
-                payload["messages"][0]["content"][1]["image_url"]["url"] = (
+                # 只修改拷贝的对象，用于安全的日志记录
+                safe_payload["messages"][0]["content"][1]["image_url"]["url"] = (
                     f"data:image/{image_format.lower() if image_format else 'jpeg'};base64,"
                     f"{image_base64[:10]}...{image_base64[-10:]}"
                 )
-    return payload
+    return safe_payload
 
 
 class LLMRequest:
@@ -109,10 +115,15 @@ class LLMRequest:
 
     def __init__(self, model: dict, **kwargs):
         # 将大写的配置键转换为小写并从config中获取实际值
+        logger.debug(f"🔍 [模型初始化] 开始初始化模型: {model.get('name', 'Unknown')}")
+        logger.debug(f"🔍 [模型初始化] 模型配置: {model}")
+        logger.debug(f"🔍 [模型初始化] 额外参数: {kwargs}")
+        
         try:
             # print(f"model['provider']: {model['provider']}")
             self.api_key = os.environ[f"{model['provider']}_KEY"]
             self.base_url = os.environ[f"{model['provider']}_BASE_URL"]
+            logger.debug(f"🔍 [模型初始化] 成功获取环境变量: {model['provider']}_KEY 和 {model['provider']}_BASE_URL")
         except AttributeError as e:
             logger.error(f"原始 model dict 信息：{model}")
             logger.error(f"配置错误：找不到对应的配置项 - {str(e)}")
@@ -124,6 +135,10 @@ class LLMRequest:
         self.model_name: str = model["name"]
         self.params = kwargs
 
+        # 记录配置文件中声明了哪些参数（不管值是什么）
+        self.has_enable_thinking = "enable_thinking" in model
+        self.has_thinking_budget = "thinking_budget" in model
+        
         self.enable_thinking = model.get("enable_thinking", False)
         self.temp = model.get("temp", 0.7)
         self.thinking_budget = model.get("thinking_budget", 4096)
@@ -132,12 +147,24 @@ class LLMRequest:
         self.pri_out = model.get("pri_out", 0)
         self.max_tokens = model.get("max_tokens", global_config.model.model_max_output_length)
         # print(f"max_tokens: {self.max_tokens}")
+        
+        logger.debug(f"🔍 [模型初始化] 模型参数设置完成:")
+        logger.debug(f"   - model_name: {self.model_name}")
+        logger.debug(f"   - has_enable_thinking: {self.has_enable_thinking}")
+        logger.debug(f"   - enable_thinking: {self.enable_thinking}")
+        logger.debug(f"   - has_thinking_budget: {self.has_thinking_budget}")
+        logger.debug(f"   - thinking_budget: {self.thinking_budget}")
+        logger.debug(f"   - temp: {self.temp}")
+        logger.debug(f"   - stream: {self.stream}")
+        logger.debug(f"   - max_tokens: {self.max_tokens}")
+        logger.debug(f"   - base_url: {self.base_url}")
 
         # 获取数据库实例
         self._init_database()
 
         # 从 kwargs 中提取 request_type，如果没有提供则默认为 "default"
         self.request_type = kwargs.pop("request_type", "default")
+        logger.debug(f"🔍 [模型初始化] 初始化完成，request_type: {self.request_type}")
 
     @staticmethod
     def _init_database():
@@ -262,11 +289,12 @@ class LLMRequest:
             if self.temp != 0.7:
                 payload["temperature"] = self.temp
 
-            # 添加enable_thinking参数（如果不是默认值False）
-            if not self.enable_thinking:
-                payload["enable_thinking"] = False
+            # 添加enable_thinking参数（只有配置文件中声明了才添加，不管值是true还是false）
+            if self.has_enable_thinking:
+                payload["enable_thinking"] = self.enable_thinking
 
-            if self.thinking_budget != 4096:
+            # 添加thinking_budget参数（只有配置文件中声明了才添加）
+            if self.has_thinking_budget:
                 payload["thinking_budget"] = self.thinking_budget
 
             if self.max_tokens:
@@ -334,6 +362,19 @@ class LLMRequest:
                 # 似乎是openai流式必须要的东西,不过阿里云的qwq-plus加了这个没有影响
                 if request_content["stream_mode"]:
                     headers["Accept"] = "text/event-stream"
+                
+                # 添加请求发送前的调试信息
+                logger.debug(f"🔍 [请求调试] 模型 {self.model_name} 准备发送请求")
+                logger.debug(f"🔍 [请求调试] API URL: {request_content['api_url']}")
+                logger.debug(f"🔍 [请求调试] 请求头: {await self._build_headers(no_key=True, is_formdata=file_bytes is not None)}")
+                
+                if not file_bytes:
+                    # 安全地记录请求体（隐藏敏感信息）
+                    safe_payload = await _safely_record(request_content, request_content["payload"])
+                    logger.debug(f"🔍 [请求调试] 请求体: {json.dumps(safe_payload, indent=2, ensure_ascii=False)}")
+                else:
+                    logger.debug(f"🔍 [请求调试] 文件上传请求，文件格式: {request_content['file_format']}")
+                
                 async with aiohttp.ClientSession(connector=await get_tcp_connector()) as session:
                     post_kwargs = {"headers": headers}
                     # form-data数据上传方式不同
@@ -491,7 +532,36 @@ class LLMRequest:
                 logger.warning(f"模型 {self.model_name} 请求限制(429)，等待{wait_time}秒后重试...")
                 raise RuntimeError("请求限制(429)")
         elif response.status in policy["abort_codes"]:
-            if response.status != 403:
+            # 特别处理400错误，添加详细调试信息
+            if response.status == 400:
+                logger.error(f"🔍 [调试信息] 模型 {self.model_name} 参数错误 (400) - 开始详细诊断")
+                logger.error(f"🔍 [调试信息] 模型名称: {self.model_name}")
+                logger.error(f"🔍 [调试信息] API地址: {self.base_url}")
+                logger.error(f"🔍 [调试信息] 模型配置参数:")
+                logger.error(f"   - enable_thinking: {self.enable_thinking}")
+                logger.error(f"   - temp: {self.temp}")
+                logger.error(f"   - thinking_budget: {self.thinking_budget}")
+                logger.error(f"   - stream: {self.stream}")
+                logger.error(f"   - max_tokens: {self.max_tokens}")
+                logger.error(f"   - pri_in: {self.pri_in}")
+                logger.error(f"   - pri_out: {self.pri_out}")
+                logger.error(f"🔍 [调试信息] 原始params: {self.params}")
+                
+                # 尝试获取服务器返回的详细错误信息
+                try:
+                    error_text = await response.text()
+                    logger.error(f"🔍 [调试信息] 服务器返回的原始错误内容: {error_text}")
+                    
+                    try:
+                        error_json = json.loads(error_text)
+                        logger.error(f"🔍 [调试信息] 解析后的错误JSON: {json.dumps(error_json, indent=2, ensure_ascii=False)}")
+                    except json.JSONDecodeError:
+                        logger.error(f"🔍 [调试信息] 错误响应不是有效的JSON格式")
+                except Exception as e:
+                    logger.error(f"🔍 [调试信息] 无法读取错误响应内容: {str(e)}")
+                
+                raise RequestAbortException("参数错误，请检查调试信息", response)
+            elif response.status != 403:
                 raise RequestAbortException("请求出现错误，中断处理", response)
             else:
                 raise PermissionDeniedException("模型禁止访问")
@@ -510,6 +580,19 @@ class LLMRequest:
             logger.error(
                 f"模型 {self.model_name} 错误码: {response.status} - {error_code_mapping.get(response.status)}"
             )
+            
+            # 如果是400错误，额外输出请求体信息用于调试
+            if response.status == 400:
+                logger.error(f"🔍 [异常调试] 400错误 - 请求体调试信息:")
+                try:
+                    safe_payload = await _safely_record(request_content, payload)
+                    logger.error(f"🔍 [异常调试] 发送的请求体: {json.dumps(safe_payload, indent=2, ensure_ascii=False)}")
+                except Exception as debug_error:
+                    logger.error(f"🔍 [异常调试] 无法安全记录请求体: {str(debug_error)}")
+                    logger.error(f"🔍 [异常调试] 原始payload类型: {type(payload)}")
+                    if isinstance(payload, dict):
+                        logger.error(f"🔍 [异常调试] 原始payload键: {list(payload.keys())}")
+            
             # print(request_content)
             # print(response)
             # 尝试获取并记录服务器返回的详细错误信息
@@ -654,14 +737,27 @@ class LLMRequest:
         """
         # 复制一份参数，避免直接修改原始数据
         new_params = dict(params)
+        
+        logger.debug(f"🔍 [参数转换] 模型 {self.model_name} 开始参数转换")
+        logger.debug(f"🔍 [参数转换] 是否为CoT模型: {self.model_name.lower() in self.MODELS_NEEDING_TRANSFORMATION}")
+        logger.debug(f"🔍 [参数转换] CoT模型列表: {self.MODELS_NEEDING_TRANSFORMATION}")
 
         if self.model_name.lower() in self.MODELS_NEEDING_TRANSFORMATION:
+            logger.debug(f"🔍 [参数转换] 检测到CoT模型，开始参数转换")
             # 删除 'temperature' 参数（如果存在），但避免删除我们在_build_payload中添加的自定义温度
             if "temperature" in new_params and new_params["temperature"] == 0.7:
-                new_params.pop("temperature")
+                removed_temp = new_params.pop("temperature")
+                logger.debug(f"🔍 [参数转换] 移除默认temperature参数: {removed_temp}")
             # 如果存在 'max_tokens'，则重命名为 'max_completion_tokens'
             if "max_tokens" in new_params:
+                old_value = new_params["max_tokens"]
                 new_params["max_completion_tokens"] = new_params.pop("max_tokens")
+                logger.debug(f"🔍 [参数转换] 参数重命名: max_tokens({old_value}) -> max_completion_tokens({new_params['max_completion_tokens']})")
+        else:
+            logger.debug(f"🔍 [参数转换] 非CoT模型，无需参数转换")
+            
+        logger.debug(f"🔍 [参数转换] 转换前参数: {params}")
+        logger.debug(f"🔍 [参数转换] 转换后参数: {new_params}")
         return new_params
 
     async def _build_formdata_payload(self, file_bytes: bytes, file_format: str) -> aiohttp.FormData:
@@ -693,7 +789,12 @@ class LLMRequest:
     async def _build_payload(self, prompt: str, image_base64: str = None, image_format: str = None) -> dict:
         """构建请求体"""
         # 复制一份参数，避免直接修改 self.params
+        logger.debug(f"🔍 [参数构建] 模型 {self.model_name} 开始构建请求体")
+        logger.debug(f"🔍 [参数构建] 原始self.params: {self.params}")
+        
         params_copy = await self._transform_parameters(self.params)
+        logger.debug(f"🔍 [参数构建] 转换后的params_copy: {params_copy}")
+        
         if image_base64:
             messages = [
                 {
@@ -715,26 +816,37 @@ class LLMRequest:
             "messages": messages,
             **params_copy,
         }
+        
+        logger.debug(f"🔍 [参数构建] 基础payload构建完成: {list(payload.keys())}")
 
         # 添加temp参数（如果不是默认值0.7）
         if self.temp != 0.7:
             payload["temperature"] = self.temp
+            logger.debug(f"🔍 [参数构建] 添加temperature参数: {self.temp}")
 
-        # 添加enable_thinking参数（如果不是默认值False）
-        if not self.enable_thinking:
-            payload["enable_thinking"] = False
+        # 添加enable_thinking参数（只有配置文件中声明了才添加，不管值是true还是false）
+        if self.has_enable_thinking:
+            payload["enable_thinking"] = self.enable_thinking
+            logger.debug(f"🔍 [参数构建] 添加enable_thinking参数: {self.enable_thinking}")
 
-        if self.thinking_budget != 4096:
+        # 添加thinking_budget参数（只有配置文件中声明了才添加）
+        if self.has_thinking_budget:
             payload["thinking_budget"] = self.thinking_budget
+            logger.debug(f"🔍 [参数构建] 添加thinking_budget参数: {self.thinking_budget}")
 
         if self.max_tokens:
             payload["max_tokens"] = self.max_tokens
+            logger.debug(f"🔍 [参数构建] 添加max_tokens参数: {self.max_tokens}")
 
         # if "max_tokens" not in payload and "max_completion_tokens" not in payload:
         # payload["max_tokens"] = global_config.model.model_max_output_length
         # 如果 payload 中依然存在 max_tokens 且需要转换，在这里进行再次检查
         if self.model_name.lower() in self.MODELS_NEEDING_TRANSFORMATION and "max_tokens" in payload:
+            old_value = payload["max_tokens"]
             payload["max_completion_tokens"] = payload.pop("max_tokens")
+            logger.debug(f"🔍 [参数构建] CoT模型参数转换: max_tokens({old_value}) -> max_completion_tokens({payload['max_completion_tokens']})")
+        
+        logger.debug(f"🔍 [参数构建] 最终payload键列表: {list(payload.keys())}")
         return payload
 
     def _default_response_handler(

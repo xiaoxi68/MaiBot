@@ -13,10 +13,9 @@ from src.chat.message_receive.message import MessageRecv, MessageRecvS4U
 from src.chat.message_receive.storage import MessageStorage
 from src.chat.heart_flow.heartflow_message_processor import HeartFCMessageReceiver
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
-from src.plugin_system.core import component_registry, events_manager  # 导入新插件系统
+from src.plugin_system.core import component_registry, events_manager, global_announcement_manager
 from src.plugin_system.base import BaseCommand, EventType
 from src.mais4u.mais4u_chat.s4u_msg_processor import S4UMessageProcessor
-from src.llm_models.utils_model import LLMRequest
 
 # 定义日志配置
 
@@ -92,8 +91,19 @@ class ChatBot:
             # 使用新的组件注册中心查找命令
             command_result = component_registry.find_command_by_text(text)
             if command_result:
+                command_class, matched_groups, command_info = command_result
+                plugin_name = command_info.plugin_name
+                command_name = command_info.name
+                if (
+                    message.chat_stream
+                    and message.chat_stream.stream_id
+                    and command_name
+                    in global_announcement_manager.get_disabled_chat_commands(message.chat_stream.stream_id)
+                ):
+                    logger.info("用户禁用的命令，跳过处理")
+                    return False, None, True
+
                 message.is_command = True
-                command_class, matched_groups, intercept_message, plugin_name = command_result
 
                 # 获取插件配置
                 plugin_config = component_registry.get_plugin_config(plugin_name)
@@ -104,7 +114,7 @@ class ChatBot:
 
                 try:
                     # 执行命令
-                    success, response = await command_instance.execute()
+                    success, response, intercept_message = await command_instance.execute()
 
                     # 记录命令执行结果
                     if success:
@@ -117,8 +127,6 @@ class ChatBot:
 
                 except Exception as e:
                     logger.error(f"执行命令时出错: {command_class.__name__} - {e}")
-                    import traceback
-
                     logger.error(traceback.format_exc())
 
                     try:
@@ -127,7 +135,7 @@ class ChatBot:
                         logger.error(f"发送错误消息失败: {send_error}")
 
                     # 命令出错时，根据命令的拦截设置决定是否继续处理消息
-                    return True, str(e), not intercept_message
+                    return True, str(e), False  # 出错时继续处理消息
 
             # 没有找到命令，继续处理消息
             return False, None, True
@@ -135,13 +143,12 @@ class ChatBot:
         except Exception as e:
             logger.error(f"处理命令时出错: {e}")
             return False, None, True  # 出错时继续处理消息
-        
+
     async def hanle_notice_message(self, message: MessageRecv):
         if message.message_info.message_id == "notice":
             logger.info("收到notice消息，暂时不支持处理")
             return True
-    
-    
+
     async def do_s4u(self, message_data: Dict[str, Any]):
         message = MessageRecvS4U(message_data)
         group_info = message.message_info.group_info
@@ -163,7 +170,6 @@ class ChatBot:
 
         return
 
-
     async def message_process(self, message_data: Dict[str, Any]) -> None:
         """处理转化后的统一格式消息
         这个函数本质是预处理一些数据，根据配置信息和消息内容，预处理消息，并分发到合适的消息处理器中
@@ -179,8 +185,6 @@ class ChatBot:
         - 性能计时
         """
         try:
-
-            
             # 确保所有任务已启动
             await self._ensure_started()
 
@@ -201,11 +205,10 @@ class ChatBot:
             # print(message_data)
             # logger.debug(str(message_data))
             message = MessageRecv(message_data)
-            
+
             if await self.hanle_notice_message(message):
                 return
-            
-            
+
             group_info = message.message_info.group_info
             user_info = message.message_info.user_info
             if message.message_info.additional_config:
@@ -213,9 +216,6 @@ class ChatBot:
                 if sent_message:  # 这一段只是为了在一切处理前劫持上报的自身消息，用于更新message_id，需要ada支持上报事件，实际测试中不会对正常使用造成任何问题
                     await MessageStorage.update_message(message)
                     return
-
-            if not await events_manager.handle_mai_events(EventType.ON_MESSAGE, message):
-                return
 
             get_chat_manager().register_message(message)
 
@@ -229,11 +229,10 @@ class ChatBot:
 
             # 处理消息内容，生成纯文本
             await message.process()
-            
+
             # if await self.check_ban_content(message):
             #     logger.warning(f"检测到消息中含有违法，色情，暴力，反动，敏感内容，消息内容：{message.processed_plain_text}，发送者：{message.message_info.user_info.user_nickname}")
             #     return
-            
 
             # 过滤检查
             if _check_ban_words(message.processed_plain_text, chat, user_info) or _check_ban_regex(  # type: ignore
@@ -250,6 +249,9 @@ class ChatBot:
             if is_command and not continue_process:
                 await MessageStorage.store_message(message, chat)
                 logger.info(f"命令处理完成，跳过后续消息处理: {cmd_result}")
+                return
+
+            if not await events_manager.handle_mai_events(EventType.ON_MESSAGE, message):
                 return
 
             # 确认从接口发来的message是否有自定义的prompt模板信息

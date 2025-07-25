@@ -306,6 +306,7 @@ class Expression(BaseModel):
     last_active_time = FloatField()
     chat_id = TextField(index=True)
     type = TextField()
+    create_date = FloatField(null=True)  # 创建日期，允许为空以兼容老数据
 
     class Meta:
         table_name = "expression"
@@ -449,9 +450,12 @@ def initialize_database():
                         alter_sql = f"ALTER TABLE {table_name} ADD COLUMN {field_name} {sql_type}"
                         alter_sql += " NULL" if field_obj.null else " NOT NULL"
                         if hasattr(field_obj, "default") and field_obj.default is not None:
-                            # 正确处理不同类型的默认值
+                            # 正确处理不同类型的默认值，跳过lambda函数
                             default_value = field_obj.default
-                            if isinstance(default_value, str):
+                            if callable(default_value):
+                                # 跳过lambda函数或其他可调用对象，这些无法在SQL中表示
+                                pass
+                            elif isinstance(default_value, str):
                                 alter_sql += f" DEFAULT '{default_value}'"
                             elif isinstance(default_value, bool):
                                 alter_sql += f" DEFAULT {int(default_value)}"

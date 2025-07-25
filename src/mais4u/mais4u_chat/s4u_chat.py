@@ -19,6 +19,7 @@ from src.mais4u.s4u_config import s4u_config
 from src.person_info.person_info import PersonInfoManager
 from .super_chat_manager import get_super_chat_manager
 from .yes_or_no import yes_or_no_head
+from src.mais4u.constant_s4u import ENABLE_S4U
 
 logger = get_logger("S4U_chat")
 
@@ -165,7 +166,10 @@ class S4UChatManager:
         return self.s4u_chats[chat_stream.stream_id]
 
 
-s4u_chat_manager = S4UChatManager()
+if not ENABLE_S4U:
+    s4u_chat_manager = None
+else:
+    s4u_chat_manager = S4UChatManager()
 
 
 def get_s4u_chat_manager() -> S4UChatManager:
@@ -486,7 +490,7 @@ class S4UChat:
             logger.info(f"[S4U] 开始为消息生成文本和音频流: '{message.processed_plain_text[:30]}...'")
 
             if s4u_config.enable_streaming_output:
-                logger.info(f"[S4U] 开始流式输出")
+                logger.info("[S4U] 开始流式输出")
                 # 流式输出，边生成边发送
                 gen = self.gpt.generate_response(message, "")
                 async for chunk in gen:
@@ -494,7 +498,7 @@ class S4UChat:
                     await sender_container.add_message(chunk)
                     total_chars_sent += len(chunk)
             else:
-                logger.info(f"[S4U] 开始一次性输出")
+                logger.info("[S4U] 开始一次性输出")
                 # 一次性输出，先收集所有chunk
                 all_chunks = []
                 gen = self.gpt.generate_response(message, "")

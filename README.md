@@ -25,9 +25,11 @@
 
 **🍔MaiCore 是一个基于大语言模型的可交互智能体**
 
-- 💭 **智能对话系统**：基于 LLM 的自然语言交互。
+- 💭 **智能对话系统**：基于 LLM 的自然语言交互，支持normal和focus统一化处理。
+- 🔌 **强大插件系统**：全面重构的插件架构，支持完整的管理API和权限控制。
 - 🤔 **实时思维系统**：模拟人类思考过程。
-- 💝 **情感表达系统**：丰富的表情包和情绪表达。
+- 🧠 **表达学习功能**：学习群友的说话风格和表达方式
+- 💝 **情感表达系统**：情绪系统和表情包系统。
 - 🧠 **持久记忆系统**：基于图的长期记忆存储。
 - 🔄 **动态人格系统**：自适应的性格特征和表达方式。
 
@@ -44,11 +46,10 @@
 
 ## 🔥 更新和安装
 
-
-**最新版本: v0.8.1** ([更新日志](changelogs/changelog.md))
+**最新版本: v0.9.1** ([更新日志](changelogs/changelog.md))
 
 可前往 [Release](https://github.com/MaiM-with-u/MaiBot/releases/) 页面下载最新版本
-可前往 [启动器发布页面](https://github.com/MaiM-with-u/mailauncher/releases/tag/v0.1.0)下载最新启动器
+可前往 [启动器发布页面](https://github.com/MaiM-with-u/mailauncher/releases/)下载最新启动器
 **GitHub 分支说明：**
 - `main`: 稳定发布版本(推荐)
 - `dev`: 开发测试版本(不稳定)
@@ -68,11 +69,17 @@
 
 ## 💬 讨论
 
-- [四群](https://qm.qq.com/q/wGePTl1UyY) |
-  [一群](https://qm.qq.com/q/VQ3XZrWgMs) | 
+**技术交流群：**
+- [一群](https://qm.qq.com/q/VQ3XZrWgMs) | 
   [二群](https://qm.qq.com/q/RzmCiRtHEW) | 
-  [五群](https://qm.qq.com/q/JxvHZnxyec) | 
-  [三群](https://qm.qq.com/q/wlH5eT8OmQ)
+  [三群](https://qm.qq.com/q/wlH5eT8OmQ) |
+  [四群](https://qm.qq.com/q/wGePTl1UyY)
+
+**聊天吹水群：**
+- [五群](https://qm.qq.com/q/JxvHZnxyec)
+
+**插件开发测试版群：**
+- [插件开发群](https://qm.qq.com/q/1036092828)
 
 ## 📚 文档
 

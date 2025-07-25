@@ -41,8 +41,6 @@ person_info_default = {
     "know_times": 0,
     "know_since": None,
     "last_know": None,
-    # "user_cardname": None, # This field is not in Peewee model PersonInfo
-    # "user_avatar": None,   # This field is not in Peewee model PersonInfo
     "impression": None,  # Corrected from person_impression
     "short_impression": None,
     "info_list": None,

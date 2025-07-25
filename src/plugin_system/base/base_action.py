@@ -49,12 +49,10 @@ class BaseAction(ABC):
             reasoning: 执行该动作的理由
             cycle_timers: 计时器字典
             thinking_id: 思考ID
-            expressor: 表达器对象
-            replyer: 回复器对象
             chat_stream: 聊天流对象
             log_prefix: 日志前缀
-            shutting_down: 是否正在关闭
             plugin_config: 插件配置字典
+            action_message: 消息数据
             **kwargs: 其他参数
         """
         if plugin_config is None:
@@ -65,21 +63,30 @@ class BaseAction(ABC):
         self.thinking_id = thinking_id
         self.log_prefix = log_prefix
 
-        # 保存插件配置
         self.plugin_config = plugin_config or {}
+        """对应的插件配置"""
 
         # 设置动作基本信息实例属性
         self.action_name: str = getattr(self, "action_name", self.__class__.__name__.lower().replace("action", ""))
+        """Action的名字"""
         self.action_description: str = getattr(self, "action_description", self.__doc__ or "Action组件")
+        """Action的描述"""
         self.action_parameters: dict = getattr(self.__class__, "action_parameters", {}).copy()
         self.action_require: list[str] = getattr(self.__class__, "action_require", []).copy()
 
         # 设置激活类型实例属性（从类属性复制，提供默认值）
         self.focus_activation_type = getattr(self.__class__, "focus_activation_type", ActionActivationType.ALWAYS)
+        """FOCUS模式下的激活类型"""
         self.normal_activation_type = getattr(self.__class__, "normal_activation_type", ActionActivationType.ALWAYS)
+        """NORMAL模式下的激活类型"""
+        self.activation_type = getattr(self.__class__, "activation_type", self.focus_activation_type)
+        """激活类型"""
         self.random_activation_probability: float = getattr(self.__class__, "random_activation_probability", 0.0)
+        """当激活类型为RANDOM时的概率"""
         self.llm_judge_prompt: str = getattr(self.__class__, "llm_judge_prompt", "")
+        """协助LLM进行判断的Prompt"""
         self.activation_keywords: list[str] = getattr(self.__class__, "activation_keywords", []).copy()
+        """激活类型为KEYWORD时的KEYWORDS列表"""
         self.keyword_case_sensitive: bool = getattr(self.__class__, "keyword_case_sensitive", False)
         self.mode_enable: ChatMode = getattr(self.__class__, "mode_enable", ChatMode.ALL)
         self.parallel_action: bool = getattr(self.__class__, "parallel_action", True)
@@ -136,7 +143,7 @@ class BaseAction(ABC):
                     self.target_id = self.user_id
 
         logger.debug(f"{self.log_prefix} Action组件初始化完成")
-        logger.info(
+        logger.debug(
             f"{self.log_prefix} 聊天信息: 类型={'群聊' if self.is_group else '私聊'}, 平台={self.platform}, 目标={self.target_id}"
         )
 
@@ -405,23 +412,11 @@ class BaseAction(ABC):
         """
         return await self.execute()
 
-    # def get_action_context(self, key: str, default=None):
-    #     """获取action上下文信息
-
-    #     Args:
-    #         key: 上下文键名
-    #         default: 默认值
-
-    #     Returns:
-    #         Any: 上下文值或默认值
-    #     """
-    #     return self.api.get_action_context(key, default)
-
     def get_config(self, key: str, default=None):
-        """获取插件配置值，支持嵌套键访问
+        """获取插件配置值，使用嵌套键访问
 
         Args:
-            key: 配置键名，支持嵌套访问如 "section.subsection.key"
+            key: 配置键名，使用嵌套访问如 "section.subsection.key"
             default: 默认值
 
         Returns:

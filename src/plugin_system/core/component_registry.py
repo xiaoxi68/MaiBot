@@ -25,27 +25,35 @@ class ComponentRegistry:
     """
 
     def __init__(self):
-        # 组件注册表
-        self._components: Dict[str, ComponentInfo] = {}  # 命名空间式组件名 -> 组件信息
-        # 类型 -> 命名空间式名称 -> 组件信息
+        # 命名空间式组件名构成法 f"{component_type}.{component_name}"
+        self._components: Dict[str, ComponentInfo] = {}
+        """组件注册表 命名空间式组件名 -> 组件信息"""
         self._components_by_type: Dict[ComponentType, Dict[str, ComponentInfo]] = {types: {} for types in ComponentType}
-        # 命名空间式组件名 -> 组件类
+        """类型 -> 组件原名称 -> 组件信息"""
         self._components_classes: Dict[str, Type[Union[BaseCommand, BaseAction, BaseEventHandler]]] = {}
+        """命名空间式组件名 -> 组件类"""
 
         # 插件注册表
-        self._plugins: Dict[str, PluginInfo] = {}  # 插件名 -> 插件信息
+        self._plugins: Dict[str, PluginInfo] = {}
+        """插件名 -> 插件信息"""
 
         # Action特定注册表
-        self._action_registry: Dict[str, Type[BaseAction]] = {}  # action名 -> action类
-        self._default_actions: Dict[str, ActionInfo] = {}  # 默认动作集，即启用的Action集，用于重置ActionManager状态
+        self._action_registry: Dict[str, Type[BaseAction]] = {}
+        """Action注册表 action名 -> action类"""
+        self._default_actions: Dict[str, ActionInfo] = {}
+        """默认动作集，即启用的Action集，用于重置ActionManager状态"""
 
         # Command特定注册表
-        self._command_registry: Dict[str, Type[BaseCommand]] = {}  # command名 -> command类
-        self._command_patterns: Dict[Pattern, str] = {}  # 编译后的正则 -> command名
+        self._command_registry: Dict[str, Type[BaseCommand]] = {}
+        """Command类注册表 command名 -> command类"""
+        self._command_patterns: Dict[Pattern, str] = {}
+        """编译后的正则 -> command名"""
 
         # EventHandler特定注册表
-        self._event_handler_registry: Dict[str, Type[BaseEventHandler]] = {}  # event_handler名 -> event_handler类
-        self._enabled_event_handlers: Dict[str, Type[BaseEventHandler]] = {}  # 启用的事件处理器
+        self._event_handler_registry: Dict[str, Type[BaseEventHandler]] = {}
+        """event_handler名 -> event_handler类"""
+        self._enabled_event_handlers: Dict[str, Type[BaseEventHandler]] = {}
+        """启用的事件处理器 event_handler名 -> event_handler类"""
 
         logger.info("组件注册中心初始化完成")
 
@@ -110,11 +118,17 @@ class ComponentRegistry:
         # 根据组件类型进行特定注册（使用原始名称）
         match component_type:
             case ComponentType.ACTION:
-                ret = self._register_action_component(component_info, component_class)  # type: ignore
+                assert isinstance(component_info, ActionInfo)
+                assert issubclass(component_class, BaseAction)
+                ret = self._register_action_component(component_info, component_class)
             case ComponentType.COMMAND:
-                ret = self._register_command_component(component_info, component_class)  # type: ignore
+                assert isinstance(component_info, CommandInfo)
+                assert issubclass(component_class, BaseCommand)
+                ret = self._register_command_component(component_info, component_class)
             case ComponentType.EVENT_HANDLER:
-                ret = self._register_event_handler_component(component_info, component_class)  # type: ignore
+                assert isinstance(component_info, EventHandlerInfo)
+                assert issubclass(component_class, BaseEventHandler)
+                ret = self._register_event_handler_component(component_info, component_class)
             case _:
                 logger.warning(f"未知组件类型: {component_type}")
 
@@ -160,7 +174,9 @@ class ComponentRegistry:
             if pattern not in self._command_patterns:
                 self._command_patterns[pattern] = command_name
             else:
-                logger.warning(f"'{command_name}' 对应的命令模式与 '{self._command_patterns[pattern]}' 重复，忽略此命令")
+                logger.warning(
+                    f"'{command_name}' 对应的命令模式与 '{self._command_patterns[pattern]}' 重复，忽略此命令"
+                )
 
         return True
 
@@ -176,6 +192,10 @@ class ComponentRegistry:
 
         self._event_handler_registry[handler_name] = handler_class
 
+        if not handler_info.enabled:
+            logger.warning(f"EventHandler组件 {handler_name} 未启用")
+            return True  # 未启用，但是也是注册成功
+
         from .events_manager import events_manager  # 延迟导入防止循环导入问题
 
         if events_manager.register_event_subscriber(handler_info, handler_class):
@@ -184,6 +204,124 @@ class ComponentRegistry:
         else:
             logger.error(f"注册事件处理器 {handler_name} 失败")
             return False
+
+    # === 组件移除相关 ===
+
+    async def remove_component(self, component_name: str, component_type: ComponentType, plugin_name: str) -> bool:
+        target_component_class = self.get_component_class(component_name, component_type)
+        if not target_component_class:
+            logger.warning(f"组件 {component_name} 未注册，无法移除")
+            return False
+        try:
+            match component_type:
+                case ComponentType.ACTION:
+                    self._action_registry.pop(component_name)
+                    self._default_actions.pop(component_name)
+                case ComponentType.COMMAND:
+                    self._command_registry.pop(component_name)
+                    keys_to_remove = [k for k, v in self._command_patterns.items() if v == component_name]
+                    for key in keys_to_remove:
+                        self._command_patterns.pop(key)
+                case ComponentType.EVENT_HANDLER:
+                    from .events_manager import events_manager  # 延迟导入防止循环导入问题
+
+                    self._event_handler_registry.pop(component_name)
+                    self._enabled_event_handlers.pop(component_name)
+                    await events_manager.unregister_event_subscriber(component_name)
+            namespaced_name = f"{component_type}.{component_name}"
+            self._components.pop(namespaced_name)
+            self._components_by_type[component_type].pop(component_name)
+            self._components_classes.pop(namespaced_name)
+            logger.info(f"组件 {component_name} 已移除")
+            return True
+        except KeyError:
+            logger.warning(f"移除组件时未找到组件: {component_name}")
+            return False
+        except Exception as e:
+            logger.error(f"移除组件 {component_name} 时发生错误: {e}")
+            return False
+    
+    def remove_plugin_registry(self, plugin_name: str) -> bool:
+        """移除插件注册信息
+
+        Args:
+            plugin_name: 插件名称
+
+        Returns:
+            bool: 是否成功移除
+        """
+        if plugin_name not in self._plugins:
+            logger.warning(f"插件 {plugin_name} 未注册，无法移除")
+            return False
+        del self._plugins[plugin_name]
+        logger.info(f"插件 {plugin_name} 已移除")
+        return True
+
+    # === 组件全局启用/禁用方法 ===
+
+    def enable_component(self, component_name: str, component_type: ComponentType) -> bool:
+        """全局的启用某个组件
+        Parameters:
+            component_name: 组件名称
+            component_type: 组件类型
+        Returns:
+            bool: 启用成功返回True，失败返回False
+        """
+        target_component_class = self.get_component_class(component_name, component_type)
+        target_component_info = self.get_component_info(component_name, component_type)
+        if not target_component_class or not target_component_info:
+            logger.warning(f"组件 {component_name} 未注册，无法启用")
+            return False
+        target_component_info.enabled = True
+        match component_type:
+            case ComponentType.ACTION:
+                assert isinstance(target_component_info, ActionInfo)
+                self._default_actions[component_name] = target_component_info
+            case ComponentType.COMMAND:
+                assert isinstance(target_component_info, CommandInfo)
+                pattern = target_component_info.command_pattern
+                self._command_patterns[re.compile(pattern)] = component_name
+            case ComponentType.EVENT_HANDLER:
+                assert isinstance(target_component_info, EventHandlerInfo)
+                assert issubclass(target_component_class, BaseEventHandler)
+                self._enabled_event_handlers[component_name] = target_component_class
+                from .events_manager import events_manager  # 延迟导入防止循环导入问题
+
+                events_manager.register_event_subscriber(target_component_info, target_component_class)
+        namespaced_name = f"{component_type}.{component_name}"
+        self._components[namespaced_name].enabled = True
+        self._components_by_type[component_type][component_name].enabled = True
+        logger.info(f"组件 {component_name} 已启用")
+        return True
+
+    async def disable_component(self, component_name: str, component_type: ComponentType) -> bool:
+        """全局的禁用某个组件
+        Parameters:
+            component_name: 组件名称
+            component_type: 组件类型
+        Returns:
+            bool: 禁用成功返回True，失败返回False
+        """
+        target_component_class = self.get_component_class(component_name, component_type)
+        target_component_info = self.get_component_info(component_name, component_type)
+        if not target_component_class or not target_component_info:
+            logger.warning(f"组件 {component_name} 未注册，无法禁用")
+            return False
+        target_component_info.enabled = False
+        match component_type:
+            case ComponentType.ACTION:
+                self._default_actions.pop(component_name, None)
+            case ComponentType.COMMAND:
+                self._command_patterns = {k: v for k, v in self._command_patterns.items() if v != component_name}
+            case ComponentType.EVENT_HANDLER:
+                self._enabled_event_handlers.pop(component_name, None)
+                from .events_manager import events_manager  # 延迟导入防止循环导入问题
+
+                await events_manager.unregister_event_subscriber(component_name)
+        self._components[component_name].enabled = False
+        self._components_by_type[component_type][component_name].enabled = False
+        logger.info(f"组件 {component_name} 已禁用")
+        return True
 
     # === 组件查询方法 ===
     def get_component_info(
@@ -287,7 +425,7 @@ class ComponentRegistry:
     # === Action特定查询方法 ===
 
     def get_action_registry(self) -> Dict[str, Type[BaseAction]]:
-        """获取Action注册表（用于兼容现有系统）"""
+        """获取Action注册表"""
         return self._action_registry.copy()
 
     def get_registered_action_info(self, action_name: str) -> Optional[ActionInfo]:
@@ -314,7 +452,7 @@ class ComponentRegistry:
         """获取Command模式注册表"""
         return self._command_patterns.copy()
 
-    def find_command_by_text(self, text: str) -> Optional[Tuple[Type[BaseCommand], dict, bool, str]]:
+    def find_command_by_text(self, text: str) -> Optional[Tuple[Type[BaseCommand], dict, CommandInfo]]:
         # sourcery skip: use-named-expression, use-next
         """根据文本查找匹配的命令
 
@@ -335,11 +473,10 @@ class ComponentRegistry:
         return (
             self._command_registry[command_name],
             candidates[0].match(text).groupdict(),  # type: ignore
-            command_info.intercept_message,
-            command_info.plugin_name,
+            command_info,
         )
 
-    # === 事件处理器特定查询方法 ===
+    # === EventHandler 特定查询方法 ===
 
     def get_event_handler_registry(self) -> Dict[str, Type[BaseEventHandler]]:
         """获取事件处理器注册表"""
@@ -364,9 +501,9 @@ class ComponentRegistry:
         """获取所有插件"""
         return self._plugins.copy()
 
-    def get_enabled_plugins(self) -> Dict[str, PluginInfo]:
-        """获取所有启用的插件"""
-        return {name: info for name, info in self._plugins.items() if info.enabled}
+    # def get_enabled_plugins(self) -> Dict[str, PluginInfo]:
+    #     """获取所有启用的插件"""
+    #     return {name: info for name, info in self._plugins.items() if info.enabled}
 
     def get_plugin_components(self, plugin_name: str) -> List[ComponentInfo]:
         """获取插件的所有组件"""

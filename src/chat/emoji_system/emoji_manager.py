@@ -836,7 +836,7 @@ class EmojiManager:
             return False
 
     async def build_emoji_description(self, image_base64: str) -> Tuple[str, List[str]]:
-        """获取表情包描述和情感列表
+        """获取表情包描述和情感列表，优化复用已有描述
 
         Args:
             image_base64: 图片的base64编码
@@ -850,18 +850,35 @@ class EmojiManager:
             if isinstance(image_base64, str):
                 image_base64 = image_base64.encode("ascii", errors="ignore").decode("ascii")
             image_bytes = base64.b64decode(image_base64)
+            image_hash = hashlib.md5(image_bytes).hexdigest()
             image_format = Image.open(io.BytesIO(image_bytes)).format.lower()  # type: ignore
 
-            # 调用AI获取描述
-            if image_format == "gif" or image_format == "GIF":
-                image_base64 = get_image_manager().transform_gif(image_base64)  # type: ignore
-                if not image_base64:
-                    raise RuntimeError("GIF表情包转换失败")
-                prompt = "这是一个动态图表情包，每一张图代表了动态图的某一帧，黑色背景代表透明，描述一下表情包表达的情感和内容，描述细节，从互联网梗,meme的角度去分析"
-                description, _ = await self.vlm.generate_response_for_image(prompt, image_base64, "jpg")
+            # 尝试从Images表获取已有的详细描述（可能在收到表情包时已生成）
+            existing_description = None
+            try:
+                from src.common.database.database_model import Images
+                existing_image = Images.get_or_none((Images.emoji_hash == image_hash) & (Images.type == "emoji"))
+                if existing_image and existing_image.description:
+                    existing_description = existing_image.description
+                    logger.info(f"[复用描述] 找到已有详细描述: {existing_description[:50]}...")
+            except Exception as e:
+                logger.debug(f"查询已有描述时出错: {e}")
+
+            # 第一步：VLM视觉分析（如果没有已有描述才调用）
+            if existing_description:
+                description = existing_description
+                logger.info("[优化] 复用已有的详细描述，跳过VLM调用")
             else:
-                prompt = "这是一个表情包，请详细描述一下表情包所表达的情感和内容，描述细节，从互联网梗,meme的角度去分析"
-                description, _ = await self.vlm.generate_response_for_image(prompt, image_base64, image_format)
+                logger.info("[VLM分析] 生成新的详细描述")
+                if image_format == "gif" or image_format == "GIF":
+                    image_base64 = get_image_manager().transform_gif(image_base64)  # type: ignore
+                    if not image_base64:
+                        raise RuntimeError("GIF表情包转换失败")
+                    prompt = "这是一个动态图表情包，每一张图代表了动态图的某一帧，黑色背景代表透明，描述一下表情包表达的情感和内容，描述细节，从互联网梗,meme的角度去分析"
+                    description, _ = await self.vlm.generate_response_for_image(prompt, image_base64, "jpg")
+                else:
+                    prompt = "这是一个表情包，请详细描述一下表情包所表达的情感和内容，描述细节，从互联网梗,meme的角度去分析"
+                    description, _ = await self.vlm.generate_response_for_image(prompt, image_base64, image_format)
 
             # 审核表情包
             if global_config.emoji.content_filtration:
@@ -877,7 +894,7 @@ class EmojiManager:
                 if content == "否":
                     return "", []
 
-            # 分析情感含义
+            # 第二步：LLM情感分析 - 基于详细描述生成情感标签列表
             emotion_prompt = f"""
             请你识别这个表情包的含义和适用场景，给我简短的描述，每个描述不要超过15个字
             这是一个基于这个表情包的描述：'{description}'
@@ -889,11 +906,13 @@ class EmojiManager:
             # 处理情感列表
             emotions = [e.strip() for e in emotions_text.split(",") if e.strip()]
 
-            # 根据情感标签数量随机选择喵~超过5个选3个，超过2个选2个
+            # 根据情感标签数量随机选择 - 超过5个选3个，超过2个选2个
             if len(emotions) > 5:
                 emotions = random.sample(emotions, 3)
             elif len(emotions) > 2:
                 emotions = random.sample(emotions, 2)
+
+            logger.info(f"[注册分析] 详细描述: {description[:50]}... -> 情感标签: {emotions}")
 
             return f"[表情包：{description}]", emotions
 

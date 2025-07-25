@@ -13,7 +13,7 @@ from src.plugin_system.apis import message_api
 from src.config.config import global_config
 
 
-logger = get_logger("core_actions")
+logger = get_logger("no_reply_action")
 
 
 class NoReplyAction(BaseAction):

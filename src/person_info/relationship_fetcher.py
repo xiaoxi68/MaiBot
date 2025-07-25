@@ -112,15 +112,6 @@ class RelationshipFetcher:
 
         current_points = await person_info_manager.get_value(person_id, "points") or []
 
-        if isinstance(current_points, str):
-            try:
-                current_points = json.loads(current_points)
-            except json.JSONDecodeError:
-                logger.error(f"解析points JSON失败: {current_points}")
-                current_points = []
-        elif not isinstance(current_points, list):
-            current_points = []
-
         # 按时间排序forgotten_points
         current_points.sort(key=lambda x: x[2])
         # 按权重加权随机抽取最多3个不重复的points，point[1]的值在1-10之间，权重越高被抽到概率越大
@@ -370,60 +361,6 @@ class RelationshipFetcher:
             logger.error(f"{self.log_prefix} 执行信息提取时出错: {e}")
             logger.error(traceback.format_exc())
 
-    def _organize_known_info(self) -> str:
-        """组织已知的用户信息为字符串
-
-        Returns:
-            str: 格式化的用户信息字符串
-        """
-        persons_infos_str = ""
-
-        if self.info_fetched_cache:
-            persons_with_known_info = []  # 有已知信息的人员
-            persons_with_unknown_info = []  # 有未知信息的人员
-
-            for person_id in self.info_fetched_cache:
-                person_known_infos = []
-                person_unknown_infos = []
-                person_name = ""
-
-                for info_type in self.info_fetched_cache[person_id]:
-                    person_name = self.info_fetched_cache[person_id][info_type]["person_name"]
-                    if not self.info_fetched_cache[person_id][info_type]["unknown"]:
-                        info_content = self.info_fetched_cache[person_id][info_type]["info"]
-                        person_known_infos.append(f"[{info_type}]：{info_content}")
-                    else:
-                        person_unknown_infos.append(info_type)
-
-                # 如果有已知信息，添加到已知信息列表
-                if person_known_infos:
-                    known_info_str = "；".join(person_known_infos) + "；"
-                    persons_with_known_info.append((person_name, known_info_str))
-
-                # 如果有未知信息，添加到未知信息列表
-                if person_unknown_infos:
-                    persons_with_unknown_info.append((person_name, person_unknown_infos))
-
-            # 先输出有已知信息的人员
-            for person_name, known_info_str in persons_with_known_info:
-                persons_infos_str += f"你对 {person_name} 的了解：{known_info_str}\n"
-
-            # 统一处理未知信息，避免重复的警告文本
-            if persons_with_unknown_info:
-                unknown_persons_details = []
-                for person_name, unknown_types in persons_with_unknown_info:
-                    unknown_types_str = "、".join(unknown_types)
-                    unknown_persons_details.append(f"{person_name}的[{unknown_types_str}]")
-
-                if len(unknown_persons_details) == 1:
-                    persons_infos_str += (
-                        f"你不了解{unknown_persons_details[0]}信息，不要胡乱回答，可以直接说不知道或忘记了；\n"
-                    )
-                else:
-                    unknown_all_str = "、".join(unknown_persons_details)
-                    persons_infos_str += f"你不了解{unknown_all_str}等信息，不要胡乱回答，可以直接说不知道或忘记了；\n"
-
-        return persons_infos_str
 
     async def _save_info_to_cache(self, person_id: str, info_type: str, info_content: str):
         # sourcery skip: use-next

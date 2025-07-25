@@ -18,6 +18,9 @@ from packaging.version import Version
 @dataclass
 class BotConfig(ConfigBase):
     """QQ机器人配置类"""
+    
+    platform: str
+    """平台"""
 
     qq_account: str
     """QQ账号"""
@@ -82,6 +85,12 @@ class ChatConfig(ConfigBase):
     use_s4u_prompt_mode: bool = False
     """是否使用 s4u 对话构建模式，该模式会分开处理当前对话对象和其他所有对话的内容进行 prompt 构建"""
 
+    mentioned_bot_inevitable_reply: bool = False
+    """提及 bot 必然回复"""
+
+    at_bot_inevitable_reply: bool = False
+    """@bot 必然回复"""
+
     # 修改：基于时段的回复频率配置，改为数组格式
     time_based_talk_frequency: list[str] = field(default_factory=lambda: [])
     """
@@ -106,9 +115,6 @@ class ChatConfig(ConfigBase):
 
     focus_value: float = 1.0
     """麦麦的专注思考能力，越低越容易专注，消耗token也越多"""
-
-    enable_asr: bool = False
-    """是否启用语音识别"""
 
     def get_current_talk_frequency(self, chat_stream_id: Optional[str] = None) -> float:
         """
@@ -271,11 +277,7 @@ class NormalChatConfig(ConfigBase):
     response_interested_rate_amplifier: float = 1.0
     """回复兴趣度放大系数"""
 
-    mentioned_bot_inevitable_reply: bool = False
-    """提及 bot 必然回复"""
 
-    at_bot_inevitable_reply: bool = False
-    """@bot 必然回复"""
 
 
 @dataclass
@@ -310,6 +312,13 @@ class ToolConfig(ConfigBase):
 
     enable_in_focus_chat: bool = True
     """是否在专注聊天中启用工具"""
+    
+@dataclass
+class VoiceConfig(ConfigBase):
+    """语音识别配置类"""
+
+    enable_asr: bool = False
+    """是否启用语音识别"""
 
 
 @dataclass
@@ -400,15 +409,9 @@ class MoodConfig(ConfigBase):
 
     enable_mood: bool = False
     """是否启用情绪系统"""
-
-    mood_update_interval: int = 1
-    """情绪更新间隔（秒）"""
-
-    mood_decay_rate: float = 0.95
-    """情绪衰减率"""
-
-    mood_intensity_factor: float = 0.7
-    """情绪强度因子"""
+    
+    mood_update_threshold: float = 1.0
+    """情绪更新阈值,越高，更新越慢"""
 
 
 @dataclass

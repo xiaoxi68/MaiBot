@@ -6,6 +6,7 @@ from src.chat.message_receive.message import MessageRecv
 from src.common.logger import get_logger
 from src.plugin_system.base.component_types import EventType, EventHandlerInfo, MaiMessages
 from src.plugin_system.base.base_events_handler import BaseEventHandler
+from .global_announcement_manager import global_announcement_manager
 
 logger = get_logger("events_manager")
 
@@ -28,18 +29,16 @@ class EventsManager:
             bool: 是否注册成功
         """
         handler_name = handler_info.name
-        plugin_name = getattr(handler_info, "plugin_name", "unknown")
 
-        namespace_name = f"{plugin_name}.{handler_name}"
-        if namespace_name in self._handler_mapping:
-            logger.warning(f"事件处理器 {namespace_name} 已存在，跳过注册")
+        if handler_name in self._handler_mapping:
+            logger.warning(f"事件处理器 {handler_name} 已存在，跳过注册")
             return False
 
         if not issubclass(handler_class, BaseEventHandler):
             logger.error(f"类 {handler_class.__name__} 不是 BaseEventHandler 的子类")
             return False
 
-        self._handler_mapping[namespace_name] = handler_class
+        self._handler_mapping[handler_name] = handler_class
         return self._insert_event_handler(handler_class, handler_info)
 
     async def handle_mai_events(
@@ -55,6 +54,10 @@ class EventsManager:
         continue_flag = True
         transformed_message = self._transform_event_message(message, llm_prompt, llm_response)
         for handler in self._events_subscribers.get(event_type, []):
+            if message.chat_stream and message.chat_stream.stream_id:
+                stream_id = message.chat_stream.stream_id
+                if handler.handler_name in global_announcement_manager.get_disabled_chat_event_handlers(stream_id):
+                    continue
             handler.set_plugin_config(component_registry.get_plugin_config(handler.plugin_name) or {})
             if handler.intercept_message:
                 try:
@@ -71,7 +74,9 @@ class EventsManager:
                 try:
                     handler_task = asyncio.create_task(handler.execute(transformed_message))
                     handler_task.add_done_callback(self._task_done_callback)
-                    handler_task.set_name(f"EventHandler-{handler.handler_name}-{event_type.name}")
+                    handler_task.set_name(f"{handler.plugin_name}-{handler.handler_name}")
+                    if handler.handler_name not in self._handler_tasks:
+                        self._handler_tasks[handler.handler_name] = []
                     self._handler_tasks[handler.handler_name].append(handler_task)
                 except Exception as e:
                     logger.error(f"创建事件处理器任务 {handler.handler_name} 时发生异常: {e}")
@@ -91,7 +96,7 @@ class EventsManager:
 
         return True
 
-    def _remove_event_handler(self, handler_class: Type[BaseEventHandler]) -> bool:
+    def _remove_event_handler_instance(self, handler_class: Type[BaseEventHandler]) -> bool:
         """从事件类型列表中移除事件处理器"""
         display_handler_name = handler_class.handler_name or handler_class.__name__
         if handler_class.event_type == EventType.UNKNOWN:
@@ -189,6 +194,21 @@ class EventsManager:
             logger.error(f"取消事件处理器 {handler_name} 的任务时发生异常: {e}")
         finally:
             del self._handler_tasks[handler_name]
+
+    async def unregister_event_subscriber(self, handler_name: str) -> bool:
+        """取消注册事件处理器"""
+        if handler_name not in self._handler_mapping:
+            logger.warning(f"事件处理器 {handler_name} 不存在，无法取消注册")
+            return False
+
+        await self.cancel_handler_tasks(handler_name)
+
+        handler_class = self._handler_mapping.pop(handler_name)
+        if not self._remove_event_handler_instance(handler_class):
+            return False
+
+        logger.info(f"事件处理器 {handler_name} 已成功取消注册")
+        return True
 
 
 events_manager = EventsManager()

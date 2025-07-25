@@ -83,12 +83,12 @@ class ChatMood:
         logger.debug(
             f"base_probability: {base_probability}, time_multiplier: {time_multiplier}, interest_multiplier: {interest_multiplier}"
         )
-        update_probability = min(1.0, base_probability * time_multiplier * interest_multiplier)
+        update_probability = global_config.mood.mood_update_threshold * min(1.0, base_probability * time_multiplier * interest_multiplier)
 
         if random.random() > update_probability:
             return
 
-        logger.info(f"{self.log_prefix} 更新情绪状态，感兴趣度: {interested_rate}, 更新概率: {update_probability}")
+        logger.debug(f"{self.log_prefix} 更新情绪状态，感兴趣度: {interested_rate:.2f}, 更新概率: {update_probability:.2f}")
 
         message_time: float = message.message_info.time  # type: ignore
         message_list_before_now = get_raw_msg_by_timestamp_with_chat_inclusive(
@@ -201,7 +201,7 @@ class MoodRegressionTask(AsyncTask):
                 if mood.regression_count >= 3:
                     continue
 
-                logger.info(f"chat {mood.chat_id} 开始情绪回归, 这是第 {mood.regression_count + 1} 次")
+                logger.info(f"{mood.log_prefix} 开始情绪回归, 这是第 {mood.regression_count + 1} 次")
                 await mood.regress_mood()
 
 

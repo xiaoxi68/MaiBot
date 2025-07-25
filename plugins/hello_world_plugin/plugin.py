@@ -77,9 +77,8 @@ class TimeCommand(BaseCommand):
     command_pattern = r"^/time$"  # 精确匹配 "/time" 命令
     command_help = "查询当前时间"
     command_examples = ["/time"]
-    intercept_message = True  # 拦截消息，不让其他组件处理
 
-    async def execute(self) -> Tuple[bool, str]:
+    async def execute(self) -> Tuple[bool, str, bool]:
         """执行时间查询"""
         import datetime
 
@@ -92,7 +91,7 @@ class TimeCommand(BaseCommand):
         message = f"⏰ 当前时间：{time_str}"
         await self.send_text(message)
 
-        return True, f"显示了当前时间: {time_str}"
+        return True, f"显示了当前时间: {time_str}", True
 
 
 class PrintMessage(BaseEventHandler):
@@ -118,17 +117,17 @@ class HelloWorldPlugin(BasePlugin):
     """Hello World插件 - 你的第一个MaiCore插件"""
 
     # 插件基本信息
-    plugin_name = "hello_world_plugin"  # 内部标识符
-    enable_plugin = True
-    dependencies = []  # 插件依赖列表
-    python_dependencies = []  # Python包依赖列表
-    config_file_name = "config.toml"  # 配置文件名
+    plugin_name: str = "hello_world_plugin"  # 内部标识符
+    enable_plugin: bool = True
+    dependencies: List[str] = []  # 插件依赖列表
+    python_dependencies: List[str] = []  # Python包依赖列表
+    config_file_name: str = "config.toml"  # 配置文件名
 
     # 配置节描述
     config_section_descriptions = {"plugin": "插件基本信息", "greeting": "问候功能配置", "time": "时间查询配置"}
 
     # 配置Schema定义
-    config_schema = {
+    config_schema: dict = {
         "plugin": {
             "name": ConfigField(type=str, default="hello_world_plugin", description="插件名称"),
             "version": ConfigField(type=str, default="1.0.0", description="插件版本"),

@@ -132,7 +132,8 @@ class ExpressionSelector:
                     "count": expr.count,
                     "last_active_time": expr.last_active_time,
                     "source_id": cid,
-                    "type": "style"
+                    "type": "style",
+                    "create_date": expr.create_date if expr.create_date is not None else expr.last_active_time,
                 } for expr in style_query
             ])
             grammar_exprs.extend([
@@ -142,7 +143,8 @@ class ExpressionSelector:
                     "count": expr.count,
                     "last_active_time": expr.last_active_time,
                     "source_id": cid,
-                    "type": "grammar"
+                    "type": "grammar",
+                    "create_date": expr.create_date if expr.create_date is not None else expr.last_active_time,
                 } for expr in grammar_query
             ])
         style_num = int(total_num * style_percentage)

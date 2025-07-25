@@ -10,6 +10,7 @@ from src.common.logger import get_logger
 # 导入API模块 - 标准Python包方式
 from src.plugin_system.apis import emoji_api, llm_api, message_api
 from src.plugins.built_in.core_actions.no_reply import NoReplyAction
+from src.config.config import global_config
 
 
 logger = get_logger("emoji")
@@ -102,7 +103,11 @@ class EmojiAction(BaseAction):
                 这里是可用的情感标签：{available_emotions}
                 请直接返回最匹配的那个情感标签，不要进行任何解释或添加其他多余的文字。
                 """
-                logger.info(f"{self.log_prefix} 生成的LLM Prompt: {prompt}")
+
+                if global_config.debug.show_prompt:
+                    logger.info(f"{self.log_prefix} 生成的LLM Prompt: {prompt}")
+                else:
+                    logger.debug(f"{self.log_prefix} 生成的LLM Prompt: {prompt}")
 
                 # 5. 调用LLM
                 models = llm_api.get_available_models()
