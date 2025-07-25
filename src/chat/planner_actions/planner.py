@@ -40,7 +40,6 @@ def init_prompt():
 {moderation_prompt}
 
 现在请你根据{by_what}选择合适的action和触发action的消息:
-你刚刚选择并执行过的action是：
 {actions_before_now_block}
 
 {no_action_block}
@@ -130,17 +129,18 @@ class ActionPlanner:
                     logger.warning(f"{self.log_prefix}使用中的动作 {action_name} 未在已注册动作中找到")
 
             # 如果没有可用动作或只有no_reply动作，直接返回no_reply
-            if not current_available_actions:
-                action = "no_reply" if mode == ChatMode.FOCUS else "no_action"
-                reasoning = "没有可用的动作"
-                logger.info(f"{self.log_prefix}{reasoning}")
-                return {
-                    "action_result": {
-                        "action_type": action,
-                        "action_data": action_data,
-                        "reasoning": reasoning,
-                    },
-                }, None
+            # 因为现在reply是永远激活，所以不需要空跳判定
+            # if not current_available_actions:
+            #     action = "no_reply" if mode == ChatMode.FOCUS else "no_action"
+            #     reasoning = "没有可用的动作"
+            #     logger.info(f"{self.log_prefix}{reasoning}")
+            #     return {
+            #         "action_result": {
+            #             "action_type": action,
+            #             "action_data": action_data,
+            #             "reasoning": reasoning,
+            #         },
+            #     }, None
 
             # --- 构建提示词 (调用修改后的 PromptBuilder 方法) ---
             prompt, message_id_list = await self.build_planner_prompt(
@@ -268,6 +268,7 @@ class ActionPlanner:
 
             actions_before_now = get_actions_by_timestamp_with_chat(
                 chat_id=self.chat_id,
+                timestamp_start=time.time()-3600,
                 timestamp_end=time.time(),
                 limit=5,
             )
@@ -275,6 +276,8 @@ class ActionPlanner:
             actions_before_now_block = build_readable_actions(
                 actions=actions_before_now,
             )
+            
+            actions_before_now_block = f"你刚刚选择并执行过的action是：\n{actions_before_now_block}"
 
             self.last_obs_time_mark = time.time()
 
@@ -288,7 +291,7 @@ class ActionPlanner:
                 
                 by_what = "聊天内容"
                 target_prompt = '\n    "target_message_id":"触发action的消息id"'
-                no_action_block = f"""重要说明1：
+                no_action_block = f"""重要说明：
 - 'no_reply' 表示只进行不进行回复，等待合适的回复时机
 - 当你刚刚发送了消息，没有人回复时，选择no_reply
 - 当你一次发送了太多消息，为了避免打扰聊天节奏，选择no_reply
