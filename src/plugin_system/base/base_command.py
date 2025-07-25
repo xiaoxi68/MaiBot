@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Tuple, Optional, List
+from typing import Dict, Tuple, Optional
 from src.common.logger import get_logger
 from src.plugin_system.base.component_types import CommandInfo, ComponentType
 from src.chat.message_receive.message import MessageRecv
@@ -17,7 +17,6 @@ class BaseCommand(ABC):
     - command_pattern: 命令匹配的正则表达式
     - command_help: 命令帮助信息
     - command_examples: 命令使用示例列表
-    - intercept_message: 是否拦截消息处理（默认True拦截，False继续传递）
     """
 
     command_name: str = ""
@@ -27,11 +26,6 @@ class BaseCommand(ABC):
     # 默认命令设置
     command_pattern: str = r""
     """命令匹配的正则表达式"""
-    command_help: str = ""
-    """命令帮助信息"""
-    command_examples: List[str] = []
-    intercept_message: bool = True
-    """是否拦截信息，默认拦截，不进行后续处理"""
 
     def __init__(self, message: MessageRecv, plugin_config: Optional[dict] = None):
         """初始化Command组件
@@ -57,11 +51,11 @@ class BaseCommand(ABC):
         self.matched_groups = groups
 
     @abstractmethod
-    async def execute(self) -> Tuple[bool, Optional[str]]:
+    async def execute(self) -> Tuple[bool, Optional[str], bool]:
         """执行Command的抽象方法，子类必须实现
 
         Returns:
-            Tuple[bool, Optional[str]]: (是否执行成功, 可选的回复消息)
+            Tuple[bool, Optional[str], bool]: (是否执行成功, 可选的回复消息, 是否拦截消息 不进行 后续处理)
         """
         pass
 
@@ -231,7 +225,4 @@ class BaseCommand(ABC):
             component_type=ComponentType.COMMAND,
             description=cls.command_description,
             command_pattern=cls.command_pattern,
-            command_help=cls.command_help,
-            command_examples=cls.command_examples.copy() if cls.command_examples else [],
-            intercept_message=cls.intercept_message,
         )

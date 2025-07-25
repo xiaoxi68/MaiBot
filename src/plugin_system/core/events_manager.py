@@ -182,17 +182,17 @@ class EventsManager:
 
     async def cancel_handler_tasks(self, handler_name: str) -> None:
         tasks_to_be_cancelled = self._handler_tasks.get(handler_name, [])
-        remaining_tasks = [task for task in tasks_to_be_cancelled if not task.done()]
-        for task in remaining_tasks:
-            task.cancel()
-        try:
-            await asyncio.wait_for(asyncio.gather(*remaining_tasks, return_exceptions=True), timeout=5)
-            logger.info(f"已取消事件处理器 {handler_name} 的所有任务")
-        except asyncio.TimeoutError:
-            logger.warning(f"取消事件处理器 {handler_name} 的任务超时，开始强制取消")
-        except Exception as e:
-            logger.error(f"取消事件处理器 {handler_name} 的任务时发生异常: {e}")
-        finally:
+        if remaining_tasks := [task for task in tasks_to_be_cancelled if not task.done()]:
+            for task in remaining_tasks:
+                task.cancel()
+            try:
+                await asyncio.wait_for(asyncio.gather(*remaining_tasks, return_exceptions=True), timeout=5)
+                logger.info(f"已取消事件处理器 {handler_name} 的所有任务")
+            except asyncio.TimeoutError:
+                logger.warning(f"取消事件处理器 {handler_name} 的任务超时，开始强制取消")
+            except Exception as e:
+                logger.error(f"取消事件处理器 {handler_name} 的任务时发生异常: {e}")
+        if handler_name in self._handler_tasks:
             del self._handler_tasks[handler_name]
 
     async def unregister_event_subscriber(self, handler_name: str) -> bool:
