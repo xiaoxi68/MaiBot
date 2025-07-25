@@ -305,7 +305,7 @@ class Hippocampus:
         memories.sort(key=lambda x: x[2], reverse=True)
         return memories
     
-    async def get_keywords_from_text(self, text: str, fast_retrieval: bool = False) -> list:
+    async def get_keywords_from_text(self, text: str) -> list:
         """从文本中提取关键词。
         
         Args:
@@ -317,50 +317,45 @@ class Hippocampus:
         if not text:
             return []
 
-        if fast_retrieval:
-            # 使用jieba分词提取关键词
+        # 使用LLM提取关键词 - 根据详细文本长度分布优化topic_num计算
+        text_length = len(text)
+        topic_num:str|list[int] = None
+        if text_length <= 5:
             words = jieba.cut(text)
-            # 过滤掉停用词和单字词
             keywords = [word for word in words if len(word) > 1]
-            # 去重
-            keywords = list(set(keywords))
-            # 限制关键词数量
-            logger.debug(f"提取关键词: {keywords}")
-
+            keywords = list(set(keywords))[:3]  # 限制最多3个关键词
+            logger.info(f"提取关键词: {keywords}")
+            return keywords
+        elif text_length <= 10:
+            topic_num = [1,3]  # 6-10字符: 1个关键词 (27.18%的文本)
+        elif text_length <= 20:
+            topic_num = [2,4]  # 11-20字符: 2个关键词 (22.76%的文本)
+        elif text_length <= 30:
+            topic_num = [3,5]  # 21-30字符: 3个关键词 (10.33%的文本)
+        elif text_length <= 50:
+            topic_num = [4,5]  # 31-50字符: 4个关键词 (9.79%的文本)
         else:
-            # 使用LLM提取关键词 - 根据详细文本长度分布优化topic_num计算
-            text_length = len(text)
-            topic_num:str|list[int] = None
-            if text_length <= 5:
-                topic_num = [1,2]  # 1-5字符: 1个关键词 (26.57%的文本)
-            elif text_length <= 10:
-                topic_num = 2  # 6-10字符: 1个关键词 (27.18%的文本)
-            elif text_length <= 20:
-                topic_num = [2,3]  # 11-20字符: 2个关键词 (22.76%的文本)
-            elif text_length <= 30:
-                topic_num = 3  # 21-30字符: 3个关键词 (10.33%的文本)
-            elif text_length <= 50:
-                topic_num = 4  # 31-50字符: 4个关键词 (9.79%的文本)
-            else:
-                topic_num = 5  # 51+字符: 5个关键词 (其余长文本)
-            
-            # logger.info(f"提取关键词数量: {topic_num}")
-            topics_response, (reasoning_content, model_name) = await self.model_summary.generate_response_async(
-                self.find_topic_llm(text, topic_num)
-            )
+            topic_num = 5  # 51+字符: 5个关键词 (其余长文本)
+        
+        
+        topics_response, (reasoning_content, model_name) = await self.model_summary.generate_response_async(
+            self.find_topic_llm(text, topic_num)
+        )
 
-            # 提取关键词
-            keywords = re.findall(r"<([^>]+)>", topics_response)
-            if not keywords:
-                keywords = []
-            else:
-                keywords = [
-                    keyword.strip()
-                    for keyword in ",".join(keywords).replace("，", ",").replace("、", ",").replace(" ", ",").split(",")
-                    if keyword.strip()
-                ]
-            
-            return keywords 
+        # 提取关键词
+        keywords = re.findall(r"<([^>]+)>", topics_response)
+        if not keywords:
+            keywords = []
+        else:
+            keywords = [
+                keyword.strip()
+                for keyword in ",".join(keywords).replace("，", ",").replace("、", ",").replace(" ", ",").split(",")
+                if keyword.strip()
+            ]
+        
+        logger.info(f"提取关键词: {keywords}")
+        
+        return keywords 
         
 
     async def get_memory_from_text(
@@ -388,7 +383,7 @@ class Hippocampus:
                 - memory_items: list, 该主题下的记忆项列表
                 - similarity: float, 与文本的相似度
         """
-        keywords = await self.get_keywords_from_text(text, fast_retrieval)
+        keywords = await self.get_keywords_from_text(text)
 
         # 过滤掉不存在于记忆图中的关键词
         valid_keywords = [keyword for keyword in keywords if keyword in self.memory_graph.G]
@@ -710,7 +705,7 @@ class Hippocampus:
         Returns:
             float: 激活节点数与总节点数的比值
         """
-        keywords = await self.get_keywords_from_text(text, fast_retrieval)
+        keywords = await self.get_keywords_from_text(text)
 
         # 过滤掉不存在于记忆图中的关键词
         valid_keywords = [keyword for keyword in keywords if keyword in self.memory_graph.G]
