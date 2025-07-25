@@ -24,6 +24,10 @@ try:
     # 不在模块级别初始化ModelManager，延迟到实际使用时
     ModelManager_class = ModelManager
     model_manager = None  # 延迟初始化
+    
+    # 添加请求处理器缓存，避免重复创建
+    _request_handler_cache = {}  # 格式: {(model_name, task_name): ModelRequestHandler}
+    
     NEW_ARCHITECTURE_AVAILABLE = True
     logger.info("新架构模块导入成功")
 except Exception as e:
@@ -32,6 +36,7 @@ except Exception as e:
     model_manager = None
     ModelRequestHandler = None
     MessageBuilder = None
+    _request_handler_cache = {}
     NEW_ARCHITECTURE_AVAILABLE = False
 
 
@@ -81,30 +86,6 @@ error_code_mapping = {
 }
 
 
-async def _safely_record(request_content: Dict[str, Any], payload: Dict[str, Any]):
-    """安全地记录请求体，用于调试日志，不会修改原始payload对象"""
-    # 创建payload的深拷贝，避免修改原始对象
-    safe_payload = copy.deepcopy(payload)
-    
-    image_base64: str = request_content.get("image_base64")
-    image_format: str = request_content.get("image_format")
-    if (
-        image_base64
-        and safe_payload
-        and isinstance(safe_payload, dict)
-        and "messages" in safe_payload
-        and len(safe_payload["messages"]) > 0
-        and isinstance(safe_payload["messages"][0], dict) 
-        and "content" in safe_payload["messages"][0]
-    ):
-        content = safe_payload["messages"][0]["content"]
-        if isinstance(content, list) and len(content) > 1 and "image_url" in content[1]:
-            # 只修改拷贝的对象，用于安全的日志记录
-            safe_payload["messages"][0]["content"][1]["image_url"]["url"] = (
-                f"data:image/{image_format.lower() if image_format else 'jpeg'};base64,"
-                f"{image_base64[:10]}...{image_base64[-10:]}"
-            )
-    return safe_payload
 
 
 class LLMRequest:
@@ -157,14 +138,25 @@ class LLMRequest:
         if NEW_ARCHITECTURE_AVAILABLE and ModelManager_class is not None:
             try:
                 # 延迟初始化ModelManager
-                global model_manager
+                global model_manager, _request_handler_cache
                 if model_manager is None:
                     from src.config.config import model_config
                     model_manager = ModelManager_class(model_config)
                     logger.debug("🔍 [模型初始化] ModelManager延迟初始化成功")
                 
-                # 使用新架构获取模型请求处理器
-                self.request_handler = model_manager[task_name]
+                # 构建缓存键
+                cache_key = (self.model_name, task_name)
+                
+                # 检查是否已有缓存的请求处理器
+                if cache_key in _request_handler_cache:
+                    self.request_handler = _request_handler_cache[cache_key]
+                    logger.debug(f"🚀 [性能优化] 从LLMRequest缓存获取请求处理器: {cache_key}")
+                else:
+                    # 使用新架构获取模型请求处理器
+                    self.request_handler = model_manager[task_name]
+                    _request_handler_cache[cache_key] = self.request_handler
+                    logger.debug(f"🔧 [性能优化] 创建并缓存LLMRequest请求处理器: {cache_key}")
+                
                 logger.debug(f"🔍 [模型初始化] 成功获取模型请求处理器，任务: {task_name}")
                 self.use_new_architecture = True
             except Exception as e:

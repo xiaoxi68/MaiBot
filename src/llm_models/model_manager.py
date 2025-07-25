@@ -21,6 +21,9 @@ class ModelManager:
 
         self.api_client_map: Dict[str, BaseClient] = {}
         """API客户端映射表"""
+        
+        self._request_handler_cache: Dict[str, ModelRequestHandler] = {}
+        """ModelRequestHandler缓存，避免重复创建"""
 
         for provider_name, api_provider in self.config.api_providers.items():
             # 初始化API客户端
@@ -48,17 +51,27 @@ class ModelManager:
     def __getitem__(self, task_name: str) -> ModelRequestHandler:
         """
         获取任务所需的模型客户端（封装）
+        使用缓存机制避免重复创建ModelRequestHandler
         :param task_name: 任务名称
         :return: 模型客户端
         """
         if task_name not in self.config.task_model_arg_map:
             raise KeyError(f"'{task_name}' not registered in ModelManager")
 
-        return ModelRequestHandler(
+        # 检查缓存中是否已存在
+        if task_name in self._request_handler_cache:
+            logger.debug(f"🚀 [性能优化] 从缓存获取ModelRequestHandler: {task_name}")
+            return self._request_handler_cache[task_name]
+
+        # 创建新的ModelRequestHandler并缓存
+        logger.debug(f"🔧 [性能优化] 创建并缓存ModelRequestHandler: {task_name}")
+        handler = ModelRequestHandler(
             task_name=task_name,
             config=self.config,
             api_client_map=self.api_client_map,
         )
+        self._request_handler_cache[task_name] = handler
+        return handler
 
     def __setitem__(self, task_name: str, value: ModelUsageArgConfig):
         """
