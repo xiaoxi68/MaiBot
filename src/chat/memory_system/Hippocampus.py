@@ -324,7 +324,8 @@ class Hippocampus:
             words = jieba.cut(text)
             keywords = [word for word in words if len(word) > 1]
             keywords = list(set(keywords))[:3]  # 限制最多3个关键词
-            logger.info(f"提取关键词: {keywords}")
+            if keywords:
+                logger.info(f"提取关键词: {keywords}")
             return keywords
         elif text_length <= 10:
             topic_num = [1,3]  # 6-10字符: 1个关键词 (27.18%的文本)
@@ -353,7 +354,8 @@ class Hippocampus:
                 if keyword.strip()
             ]
         
-        logger.info(f"提取关键词: {keywords}")
+        if keywords:
+            logger.info(f"提取关键词: {keywords}")
         
         return keywords 
         

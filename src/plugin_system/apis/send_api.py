@@ -19,11 +19,9 @@
     await send_api.custom_message("video", video_data, "123456", True)
 """
 
-import asyncio
 import traceback
 import time
 import difflib
-import re
 from typing import Optional, Union
 from src.common.logger import get_logger
 
