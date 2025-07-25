@@ -429,6 +429,7 @@ class PluginManagementPlugin(BasePlugin):
     config_schema: dict = {
         "plugin": {
             "enable": ConfigField(bool, default=False, description="是否启用插件"),
+            "config_version": ConfigField(type=str, default="1.0.0", description="配置文件版本"),
             "permission": ConfigField(list, default=[], description="有权限使用插件管理命令的用户列表"),
         },
     }
