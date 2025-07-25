@@ -172,7 +172,7 @@ class ToolExecutor:
                 logger.debug(f"{self.log_prefix}执行工具: {tool_name}")
 
                 # 执行工具
-                result = await self.tool_instance._execute_tool_call(tool_call)
+                result = await self.tool_instance.execute_tool_call(tool_call)
 
                 if result:
                     tool_info = {
@@ -299,7 +299,7 @@ class ToolExecutor:
 
             logger.info(f"{self.log_prefix}直接执行工具: {tool_name}")
 
-            result = await self.tool_instance._execute_tool_call(tool_call)
+            result = await self.tool_instance.execute_tool_call(tool_call)
 
             if result:
                 tool_info = {

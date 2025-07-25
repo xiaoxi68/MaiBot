@@ -59,6 +59,9 @@ max_context_size = 25 # 上下文长度
 thinking_timeout = 20 # 麦麦一次回复最长思考规划时间，超过这个时间的思考会放弃（往往是api反应太慢）
 replyer_random_probability = 0.5 # 首要replyer模型被选择的概率
 
+mentioned_bot_inevitable_reply = true # 提及 bot 大概率回复
+at_bot_inevitable_reply = true # @bot 或 提及bot 大概率回复
+
 use_s4u_prompt_mode = true # 是否使用 s4u 对话构建模式，该模式会更好的把握当前对话对象的对话内容，但是对群聊整理理解能力较差（测试功能！！可能有未知问题！！)
 
 
@@ -101,11 +104,8 @@ ban_msgs_regex = [
 ]
 
 [normal_chat] #普通聊天
-#一般回复参数
 willing_mode = "classical" # 回复意愿模式 —— 经典模式：classical，mxp模式：mxp，自定义模式：custom（需要你自己实现）
 response_interested_rate_amplifier = 1 # 麦麦回复兴趣度放大系数
-mentioned_bot_inevitable_reply = true # 提及 bot 必然回复
-at_bot_inevitable_reply = true # @bot 必然回复（包含提及）
 
 [tool]
 enable_in_normal_chat = false # 是否在普通聊天中启用工具
@@ -148,9 +148,7 @@ enable_asr = false # 是否启用语音识别，启用后麦麦可以识别语�
 
 [mood]
 enable_mood = true # 是否启用情绪系统
-mood_update_interval = 1.0 # 情绪更新间隔 单位秒
-mood_decay_rate = 0.95 # 情绪衰减率
-mood_intensity_factor = 1.0 # 情绪强度因子
+mood_update_threshold = 1 # 情绪更新阈值,越高，更新越慢
 
 [lpmm_knowledge] # lpmm知识库配置
 enable = false # 是否启用lpmm知识库

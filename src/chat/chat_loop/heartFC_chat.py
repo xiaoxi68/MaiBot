@@ -236,10 +236,10 @@ class HeartFChatting:
                 if if_think:
                     factor = max(global_config.chat.focus_value, 0.1)
                     self.energy_value *= 1.1 / factor
-                    logger.info(f"{self.log_prefix} 麦麦进行了思考，能量值按倍数增加，当前能量值：{self.energy_value:.1f}")
+                    logger.info(f"{self.log_prefix} 进行了思考，能量值按倍数增加，当前能量值：{self.energy_value:.1f}")
                 else:
                     self.energy_value += 0.1 / global_config.chat.focus_value
-                    logger.info(f"{self.log_prefix} 麦麦没有进行思考，能量值线性增加，当前能量值：{self.energy_value:.1f}")
+                    logger.debug(f"{self.log_prefix} 没有进行思考，能量值线性增加，当前能量值：{self.energy_value:.1f}")
 
                 logger.debug(f"{self.log_prefix} 当前能量值：{self.energy_value:.1f}")
                 return True
@@ -330,13 +330,13 @@ class HeartFChatting:
 
             if self.loop_mode == ChatMode.NORMAL:
                 if action_type == "no_action":
-                    logger.info(f"[{self.log_prefix}] {global_config.bot.nickname} 决定进行回复")
+                    logger.info(f"{self.log_prefix}{global_config.bot.nickname} 决定进行回复")
                 elif is_parallel:
                     logger.info(
-                        f"[{self.log_prefix}] {global_config.bot.nickname} 决定进行回复, 同时执行{action_type}动作"
+                        f"{self.log_prefix}{global_config.bot.nickname} 决定进行回复, 同时执行{action_type}动作"
                     )
                 else:
-                    logger.info(f"[{self.log_prefix}] {global_config.bot.nickname} 决定执行{action_type}动作")
+                    logger.info(f"{self.log_prefix}{global_config.bot.nickname} 决定执行{action_type}动作")
 
             if action_type == "no_action":
                 # 等待回复生成完毕
@@ -351,15 +351,15 @@ class HeartFChatting:
 
                 # 模型炸了，没有回复内容生成
                 if not response_set:
-                    logger.warning(f"[{self.log_prefix}] 模型未生成回复内容")
+                    logger.warning(f"{self.log_prefix}模型未生成回复内容")
                     return False
                 elif action_type not in ["no_action"] and not is_parallel:
                     logger.info(
-                        f"[{self.log_prefix}] {global_config.bot.nickname} 原本想要回复：{content}，但选择执行{action_type}，不发表回复"
+                        f"{self.log_prefix}{global_config.bot.nickname} 原本想要回复：{content}，但选择执行{action_type}，不发表回复"
                     )
                     return False
 
-                logger.info(f"[{self.log_prefix}] {global_config.bot.nickname} 决定的回复内容: {content}")
+                logger.info(f"{self.log_prefix}{global_config.bot.nickname} 决定的回复内容: {content}")
 
                 # 发送回复 (不再需要传入 chat)
                 reply_text = await self._send_response(response_set, reply_to_str, loop_start_time,message_data)
@@ -563,7 +563,7 @@ class HeartFChatting:
             return reply_set
 
         except Exception as e:
-            logger.error(f"[{self.log_prefix}] 回复生成出现错误：{str(e)} {traceback.format_exc()}")
+            logger.error(f"{self.log_prefix}回复生成出现错误：{str(e)} {traceback.format_exc()}")
             return None
 
     async def _send_response(self, reply_set, reply_to, thinking_start_time, message_data):

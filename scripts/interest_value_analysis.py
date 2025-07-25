@@ -3,10 +3,10 @@ import sys
 import os
 from typing import Dict, List, Tuple, Optional
 from datetime import datetime
-from src.common.database.database_model import Messages, ChatStreams
 # Add project root to Python path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
+from src.common.database.database_model import Messages, ChatStreams #noqa
 
 
 

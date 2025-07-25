@@ -92,7 +92,6 @@ class ChatBot:
             command_result = component_registry.find_command_by_text(text)
             if command_result:
                 command_class, matched_groups, command_info = command_result
-                intercept_message = command_info.intercept_message
                 plugin_name = command_info.plugin_name
                 command_name = command_info.name
                 if (
@@ -115,7 +114,7 @@ class ChatBot:
 
                 try:
                     # 执行命令
-                    success, response = await command_instance.execute()
+                    success, response, intercept_message = await command_instance.execute()
 
                     # 记录命令执行结果
                     if success:
@@ -128,8 +127,6 @@ class ChatBot:
 
                 except Exception as e:
                     logger.error(f"执行命令时出错: {command_class.__name__} - {e}")
-                    import traceback
-
                     logger.error(traceback.format_exc())
 
                     try:
@@ -138,7 +135,7 @@ class ChatBot:
                         logger.error(f"发送错误消息失败: {send_error}")
 
                     # 命令出错时，根据命令的拦截设置决定是否继续处理消息
-                    return True, str(e), not intercept_message
+                    return True, str(e), False  # 出错时继续处理消息
 
             # 没有找到命令，继续处理消息
             return False, None, True

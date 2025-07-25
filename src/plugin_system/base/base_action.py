@@ -49,12 +49,10 @@ class BaseAction(ABC):
             reasoning: 执行该动作的理由
             cycle_timers: 计时器字典
             thinking_id: 思考ID
-            expressor: 表达器对象
-            replyer: 回复器对象
             chat_stream: 聊天流对象
             log_prefix: 日志前缀
-            shutting_down: 是否正在关闭
             plugin_config: 插件配置字典
+            action_message: 消息数据
             **kwargs: 其他参数
         """
         if plugin_config is None:
@@ -414,23 +412,11 @@ class BaseAction(ABC):
         """
         return await self.execute()
 
-    # def get_action_context(self, key: str, default=None):
-    #     """获取action上下文信息
-
-    #     Args:
-    #         key: 上下文键名
-    #         default: 默认值
-
-    #     Returns:
-    #         Any: 上下文值或默认值
-    #     """
-    #     return self.api.get_action_context(key, default)
-
     def get_config(self, key: str, default=None):
-        """获取插件配置值，支持嵌套键访问
+        """获取插件配置值，使用嵌套键访问
 
         Args:
-            key: 配置键名，支持嵌套访问如 "section.subsection.key"
+            key: 配置键名，使用嵌套访问如 "section.subsection.key"
             default: 默认值
 
         Returns:

@@ -84,6 +84,12 @@ class ChatConfig(ConfigBase):
     use_s4u_prompt_mode: bool = False
     """是否使用 s4u 对话构建模式，该模式会分开处理当前对话对象和其他所有对话的内容进行 prompt 构建"""
 
+    mentioned_bot_inevitable_reply: bool = False
+    """提及 bot 必然回复"""
+
+    at_bot_inevitable_reply: bool = False
+    """@bot 必然回复"""
+
     # 修改：基于时段的回复频率配置，改为数组格式
     time_based_talk_frequency: list[str] = field(default_factory=lambda: [])
     """
@@ -270,11 +276,7 @@ class NormalChatConfig(ConfigBase):
     response_interested_rate_amplifier: float = 1.0
     """回复兴趣度放大系数"""
 
-    mentioned_bot_inevitable_reply: bool = False
-    """提及 bot 必然回复"""
 
-    at_bot_inevitable_reply: bool = False
-    """@bot 必然回复"""
 
 
 @dataclass
@@ -406,15 +408,9 @@ class MoodConfig(ConfigBase):
 
     enable_mood: bool = False
     """是否启用情绪系统"""
-
-    mood_update_interval: int = 1
-    """情绪更新间隔（秒）"""
-
-    mood_decay_rate: float = 0.95
-    """情绪衰减率"""
-
-    mood_intensity_factor: float = 0.7
-    """情绪强度因子"""
+    
+    mood_update_threshold: float = 1.0
+    """情绪更新阈值,越高，更新越慢"""
 
 
 @dataclass

@@ -17,7 +17,7 @@ from src.chat.message_receive.uni_message_sender import HeartFCSender
 from src.chat.utils.timer_calculator import Timer  # <--- Import Timer
 from src.chat.utils.utils import get_chat_type_and_target_info
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
-from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_before_timestamp_with_chat
+from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_before_timestamp_with_chat, replace_user_references_in_content
 from src.chat.express.expression_selector import expression_selector
 from src.chat.knowledge.knowledge_lib import qa_manager
 from src.chat.memory_system.memory_activator import MemoryActivator
@@ -74,6 +74,7 @@ def init_prompt():
 
 你正在{chat_target_2},{reply_target_block}
 对这句话，你想表达，原句：{raw_reply},原因是：{reason}。你现在要思考怎么组织回复
+你现在的心情是：{mood_state}
 你需要使用合适的语法和句法，参考聊天内容，组织一条日常且口语化的回复。请你修改你想表达的原句，符合你的表达风格和语言习惯
 {config_expression_style}，你可以完全重组回复，保留最基本的表达含义就好，但重组后保持语意通顺。
 {keywords_reaction_prompt}
@@ -450,6 +451,9 @@ class DefaultReplyer:
     def _parse_reply_target(self, target_message: str) -> tuple:
         sender = ""
         target = ""
+        # 添加None检查，防止NoneType错误
+        if target_message is None:
+            return sender, target
         if ":" in target_message or "：" in target_message:
             # 使用正则表达式匹配中文或英文冒号
             parts = re.split(pattern=r"[:：]", string=target_message, maxsplit=1)
@@ -462,6 +466,10 @@ class DefaultReplyer:
         # 关键词检测与反应
         keywords_reaction_prompt = ""
         try:
+            # 添加None检查，防止NoneType错误
+            if target is None:
+                return keywords_reaction_prompt
+                
             # 处理关键词规则
             for rule in global_config.keyword_reaction.keyword_rules:
                 if any(keyword in target for keyword in rule.keywords):
@@ -524,7 +532,7 @@ class DefaultReplyer:
                     # 其他用户的对话
                     background_dialogue_list.append(msg_dict)
             except Exception as e:
-                logger.error(f"无法处理历史消息记录: {msg_dict}, 错误: {e}")
+                logger.error(f"![1753364551656](image/default_generator/1753364551656.png)记录: {msg_dict}, 错误: {e}")
 
         # 构建背景对话 prompt
         background_dialogue_prompt = ""
@@ -613,11 +621,22 @@ class DefaultReplyer:
         is_group_chat = bool(chat_stream.group_info)
         reply_to = reply_data.get("reply_to", "none")
         extra_info_block = reply_data.get("extra_info", "") or reply_data.get("extra_info_block", "")
-
-        chat_mood = mood_manager.get_mood_by_chat_id(chat_id)
-        mood_prompt = chat_mood.mood_state
+            
+        if global_config.mood.enable_mood:
+            chat_mood = mood_manager.get_mood_by_chat_id(chat_id)
+            mood_prompt = chat_mood.mood_state
+        else:
+            mood_prompt = ""
 
         sender, target = self._parse_reply_target(reply_to)
+        
+        target = replace_user_references_in_content(
+            target, 
+            chat_stream.platform, 
+            is_async=False, 
+            replace_bot_name=True
+        )
+        
 
         # 构建action描述 (如果启用planner)
         action_descriptions = ""
@@ -876,6 +895,13 @@ class DefaultReplyer:
         reason = reply_data.get("reason", "")
         sender, target = self._parse_reply_target(reply_to)
 
+        # 添加情绪状态获取
+        if global_config.mood.enable_mood:
+            chat_mood = mood_manager.get_mood_by_chat_id(chat_id)
+            mood_prompt = chat_mood.mood_state
+        else:
+            mood_prompt = ""
+
         message_list_before_now_half = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_id,
             timestamp=time.time(),
@@ -956,6 +982,7 @@ class DefaultReplyer:
             reply_target_block=reply_target_block,
             raw_reply=raw_reply,
             reason=reason,
+            mood_state=mood_prompt,  # 添加情绪状态参数
             config_expression_style=global_config.expression.expression_style,
             keywords_reaction_prompt=keywords_reaction_prompt,
             moderation_prompt=moderation_prompt_block,

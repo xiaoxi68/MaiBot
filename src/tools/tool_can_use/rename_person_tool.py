@@ -1,7 +1,6 @@
 from src.tools.tool_can_use.base_tool import BaseTool
 from src.person_info.person_info import get_person_info_manager
 from src.common.logger import get_logger
-import time
 
 
 logger = get_logger("rename_person_tool")
@@ -24,7 +23,7 @@ class RenamePersonTool(BaseTool):
         "required": ["person_name"],
     }
 
-    async def execute(self, function_args: dict, message_txt=""):
+    async def execute(self, function_args: dict):
         """
         执行取名工具逻辑
 
@@ -82,7 +81,7 @@ class RenamePersonTool(BaseTool):
 
                 content = f"已成功将用户 {person_name_to_find} 的备注名更新为 {new_name}"
                 logger.info(content)
-                return {"type": "info", "id": f"rename_success_{time.time()}", "content": content}
+                return {"name": self.name, "content": content}
             else:
                 logger.warning(f"为用户 {person_id} 调用 qv_person_name 后未能成功获取新昵称。")
                 # 尝试从内存中获取可能已经更新的名字
@@ -101,4 +100,4 @@ class RenamePersonTool(BaseTool):
         except Exception as e:
             error_msg = f"重命名失败: {str(e)}"
             logger.error(error_msg, exc_info=True)
-            return {"type": "info_error", "id": f"rename_error_{time.time()}", "content": error_msg}
+            return {"name": self.name, "content": error_msg}

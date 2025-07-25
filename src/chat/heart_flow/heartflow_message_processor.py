@@ -12,6 +12,7 @@ from src.chat.message_receive.storage import MessageStorage
 from src.chat.heart_flow.heartflow import heartflow
 from src.chat.utils.utils import is_mentioned_bot_in_message
 from src.chat.utils.timer_calculator import Timer
+from src.chat.utils.chat_message_builder import replace_user_references_in_content
 from src.common.logger import get_logger
 from src.person_info.relationship_manager import get_relationship_manager
 from src.mood.mood_manager import mood_manager
@@ -56,16 +57,41 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool]:
     with Timer("记忆激活"):
         interested_rate = await hippocampus_manager.get_activate_from_text(
             message.processed_plain_text,
+            max_depth= 5,
             fast_retrieval=False,
         )
         logger.debug(f"记忆激活率: {interested_rate:.2f}")
 
     text_len = len(message.processed_plain_text)
-    # 根据文本长度调整兴趣度，长度越大兴趣度越高，但增长率递减，最低0.01，最高0.05
-    # 采用对数函数实现递减增长
-
-    base_interest = 0.01 + (0.05 - 0.01) * (math.log10(text_len + 1) / math.log10(1000 + 1))
-    base_interest = min(max(base_interest, 0.01), 0.05)
+    # 根据文本长度分布调整兴趣度，采用分段函数实现更精确的兴趣度计算
+    # 基于实际分布：0-5字符(26.57%), 6-10字符(27.18%), 11-20字符(22.76%), 21-30字符(10.33%), 31+字符(13.86%)
+    
+    if text_len == 0:
+        base_interest = 0.01  # 空消息最低兴趣度
+    elif text_len <= 5:
+        # 1-5字符：线性增长 0.01 -> 0.03
+        base_interest = 0.01 + (text_len - 1) * (0.03 - 0.01) / 4
+    elif text_len <= 10:
+        # 6-10字符：线性增长 0.03 -> 0.06
+        base_interest = 0.03 + (text_len - 5) * (0.06 - 0.03) / 5
+    elif text_len <= 20:
+        # 11-20字符：线性增长 0.06 -> 0.12
+        base_interest = 0.06 + (text_len - 10) * (0.12 - 0.06) / 10
+    elif text_len <= 30:
+        # 21-30字符：线性增长 0.12 -> 0.18
+        base_interest = 0.12 + (text_len - 20) * (0.18 - 0.12) / 10
+    elif text_len <= 50:
+        # 31-50字符：线性增长 0.18 -> 0.22
+        base_interest = 0.18 + (text_len - 30) * (0.22 - 0.18) / 20
+    elif text_len <= 100:
+        # 51-100字符：线性增长 0.22 -> 0.26
+        base_interest = 0.22 + (text_len - 50) * (0.26 - 0.22) / 50
+    else:
+        # 100+字符：对数增长 0.26 -> 0.3，增长率递减
+        base_interest = 0.26 + (0.3 - 0.26) * (math.log10(text_len - 99) / math.log10(901))  # 1000-99=901
+    
+    # 确保在范围内
+    base_interest = min(max(base_interest, 0.01), 0.3)
 
     interested_rate += base_interest
 
@@ -111,9 +137,9 @@ class HeartFCMessageReceiver:
             subheartflow: SubHeartflow = await heartflow.get_or_create_subheartflow(chat.stream_id)  # type: ignore
 
             # subheartflow.add_message_to_normal_chat_cache(message, interested_rate, is_mentioned)
-
-            chat_mood = mood_manager.get_mood_by_chat_id(subheartflow.chat_id)
-            asyncio.create_task(chat_mood.update_mood_by_message(message, interested_rate))
+            if global_config.mood.enable_mood:  
+                chat_mood = mood_manager.get_mood_by_chat_id(subheartflow.chat_id)
+                asyncio.create_task(chat_mood.update_mood_by_message(message, interested_rate))
 
             # 3. 日志记录
             mes_name = chat.group_info.group_name if chat.group_info else "私聊"
@@ -123,8 +149,16 @@ class HeartFCMessageReceiver:
             # 如果消息中包含图片标识，则将 [picid:...] 替换为 [图片]
             picid_pattern = r"\[picid:([^\]]+)\]"
             processed_plain_text = re.sub(picid_pattern, "[图片]", message.processed_plain_text)
+            
+            # 应用用户引用格式替换，将回复<aaa:bbb>和@<aaa:bbb>格式转换为可读格式
+            processed_plain_text = replace_user_references_in_content(
+                processed_plain_text, 
+                message.message_info.platform, 
+                is_async=False, 
+                replace_bot_name=True
+            )
 
-            logger.info(f"[{mes_name}]{userinfo.user_nickname}:{processed_plain_text}")  # type: ignore
+            logger.info(f"[{mes_name}]{userinfo.user_nickname}:{processed_plain_text}[兴趣度：{interested_rate:.2f}]")  # type: ignore
 
             logger.debug(f"[{mes_name}][当前时段回复频率: {current_talk_frequency}]")
 
