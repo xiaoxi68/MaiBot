@@ -56,6 +56,7 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool]:
     with Timer("记忆激活"):
         interested_rate = await hippocampus_manager.get_activate_from_text(
             message.processed_plain_text,
+            max_depth= 5,
             fast_retrieval=False,
         )
         logger.debug(f"记忆激活率: {interested_rate:.2f}")

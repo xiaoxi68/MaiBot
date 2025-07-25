@@ -224,10 +224,15 @@ class Hippocampus:
         return hash((source, target))
 
     @staticmethod
-    def find_topic_llm(text, topic_num):
-        # sourcery skip: inline-immediately-returned-variable
+    def find_topic_llm(text:str, topic_num:int|list[int]):
+        topic_num_str = ""
+        if isinstance(topic_num, list):
+            topic_num_str = f"{topic_num[0]}-{topic_num[1]}"
+        else:
+            topic_num_str = topic_num
+        
         prompt = (
-            f"这是一段文字：\n{text}\n\n请你从这段话中总结出最多{topic_num}个关键的概念，可以是名词，动词，或者特定人物，帮我列出来，"
+            f"这是一段文字：\n{text}\n\n请你从这段话中总结出最多{topic_num_str}个关键的概念，可以是名词，动词，或者特定人物，帮我列出来，"
             f"将主题用逗号隔开，并加上<>,例如<主题1>,<主题2>......尽可能精简。只需要列举最多{topic_num}个话题就好，不要有序号，不要告诉我其他内容。"
             f"如果确定找不出主题或者没有明显主题，返回<none>。"
         )
@@ -325,12 +330,13 @@ class Hippocampus:
         else:
             # 使用LLM提取关键词 - 根据详细文本长度分布优化topic_num计算
             text_length = len(text)
+            topic_num:str|list[int] = None
             if text_length <= 5:
-                topic_num = 1  # 1-5字符: 1个关键词 (26.57%的文本)
+                topic_num = [1,2]  # 1-5字符: 1个关键词 (26.57%的文本)
             elif text_length <= 10:
-                topic_num = 1  # 6-10字符: 1个关键词 (27.18%的文本)
+                topic_num = 2  # 6-10字符: 1个关键词 (27.18%的文本)
             elif text_length <= 20:
-                topic_num = 2  # 11-20字符: 2个关键词 (22.76%的文本)
+                topic_num = [2,3]  # 11-20字符: 2个关键词 (22.76%的文本)
             elif text_length <= 30:
                 topic_num = 3  # 21-30字符: 3个关键词 (10.33%的文本)
             elif text_length <= 50:
@@ -721,7 +727,7 @@ class Hippocampus:
         for keyword in valid_keywords:
             logger.debug(f"开始以关键词 '{keyword}' 为中心进行扩散检索 (最大深度: {max_depth}):")
             # 初始化激活值
-            activation_values = {keyword: 1.0}
+            activation_values = {keyword: 1.5}
             # 记录已访问的节点
             visited_nodes = {keyword}
             # 待处理的节点队列，每个元素是(节点, 激活值, 当前深度)
