@@ -18,9 +18,8 @@ class ManagementCommand(BaseCommand):
     command_name: str = "management"
     description: str = "管理命令"
     command_pattern: str = r"(?P<manage_command>^/pm(\s[a-zA-Z0-9_]+)*\s*$)"
-    intercept_message: bool = True
 
-    async def execute(self) -> Tuple[bool, str]:
+    async def execute(self) -> Tuple[bool, str, bool]:
         # sourcery skip: merge-duplicate-blocks
         if (
             not self.message
@@ -29,11 +28,11 @@ class ManagementCommand(BaseCommand):
             or str(self.message.message_info.user_info.user_id) not in self.get_config("plugin.permission", [])  # type: ignore
         ):
             await self.send_text("你没有权限使用插件管理命令")
-            return False, "没有权限"
+            return False, "没有权限", True
         command_list = self.matched_groups["manage_command"].strip().split(" ")
         if len(command_list) == 1:
             await self.show_help("all")
-            return True, "帮助已发送"
+            return True, "帮助已发送", True
         if len(command_list) == 2:
             match command_list[1]:
                 case "plugin":
@@ -44,7 +43,7 @@ class ManagementCommand(BaseCommand):
                     await self.show_help("all")
                 case _:
                     await self.send_text("插件管理命令不合法")
-                    return False, "命令不合法"
+                    return False, "命令不合法", True
         if len(command_list) == 3:
             if command_list[1] == "plugin":
                 match command_list[2]:
@@ -58,7 +57,7 @@ class ManagementCommand(BaseCommand):
                         await self._rescan_plugin_dirs()
                     case _:
                         await self.send_text("插件管理命令不合法")
-                        return False, "命令不合法"
+                        return False, "命令不合法", True
             elif command_list[1] == "component":
                 if command_list[2] == "list":
                     await self._list_all_registered_components()
@@ -66,10 +65,10 @@ class ManagementCommand(BaseCommand):
                     await self.show_help("component")
                 else:
                     await self.send_text("插件管理命令不合法")
-                    return False, "命令不合法"
+                    return False, "命令不合法", True
             else:
                 await self.send_text("插件管理命令不合法")
-                return False, "命令不合法"
+                return False, "命令不合法", True
         if len(command_list) == 4:
             if command_list[1] == "plugin":
                 match command_list[2]:
@@ -83,28 +82,28 @@ class ManagementCommand(BaseCommand):
                         await self._add_dir(command_list[3])
                     case _:
                         await self.send_text("插件管理命令不合法")
-                        return False, "命令不合法"
+                        return False, "命令不合法", True
             elif command_list[1] == "component":
                 if command_list[2] != "list":
                     await self.send_text("插件管理命令不合法")
-                    return False, "命令不合法"
+                    return False, "命令不合法", True
                 if command_list[3] == "enabled":
                     await self._list_enabled_components()
                 elif command_list[3] == "disabled":
                     await self._list_disabled_components()
                 else:
                     await self.send_text("插件管理命令不合法")
-                    return False, "命令不合法"
+                    return False, "命令不合法", True
             else:
                 await self.send_text("插件管理命令不合法")
-                return False, "命令不合法"
+                return False, "命令不合法", True
         if len(command_list) == 5:
             if command_list[1] != "component":
                 await self.send_text("插件管理命令不合法")
-                return False, "命令不合法"
+                return False, "命令不合法", True
             if command_list[2] != "list":
                 await self.send_text("插件管理命令不合法")
-                return False, "命令不合法"
+                return False, "命令不合法", True
             if command_list[3] == "enabled":
                 await self._list_enabled_components(target_type=command_list[4])
             elif command_list[3] == "disabled":
@@ -113,11 +112,11 @@ class ManagementCommand(BaseCommand):
                 await self._list_registered_components_by_type(command_list[4])
             else:
                 await self.send_text("插件管理命令不合法")
-                return False, "命令不合法"
+                return False, "命令不合法", True
         if len(command_list) == 6:
             if command_list[1] != "component":
                 await self.send_text("插件管理命令不合法")
-                return False, "命令不合法"
+                return False, "命令不合法", True
             if command_list[2] == "enable":
                 if command_list[3] == "global":
                     await self._globally_enable_component(command_list[4], command_list[5])
@@ -125,7 +124,7 @@ class ManagementCommand(BaseCommand):
                     await self._locally_enable_component(command_list[4], command_list[5])
                 else:
                     await self.send_text("插件管理命令不合法")
-                    return False, "命令不合法"
+                    return False, "命令不合法", True
             elif command_list[2] == "disable":
                 if command_list[3] == "global":
                     await self._globally_disable_component(command_list[4], command_list[5])
@@ -133,12 +132,12 @@ class ManagementCommand(BaseCommand):
                     await self._locally_disable_component(command_list[4], command_list[5])
                 else:
                     await self.send_text("插件管理命令不合法")
-                    return False, "命令不合法"
+                    return False, "命令不合法", True
             else:
                 await self.send_text("插件管理命令不合法")
-                return False, "命令不合法"
+                return False, "命令不合法", True
 
-        return True, "命令执行完成"
+        return True, "命令执行完成", True
 
     async def show_help(self, target: str):
         help_msg = ""

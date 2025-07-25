@@ -77,9 +77,8 @@ class TimeCommand(BaseCommand):
     command_pattern = r"^/time$"  # 精确匹配 "/time" 命令
     command_help = "查询当前时间"
     command_examples = ["/time"]
-    intercept_message = True  # 拦截消息，不让其他组件处理
 
-    async def execute(self) -> Tuple[bool, str]:
+    async def execute(self) -> Tuple[bool, str, bool]:
         """执行时间查询"""
         import datetime
 
@@ -92,7 +91,7 @@ class TimeCommand(BaseCommand):
         message = f"⏰ 当前时间：{time_str}"
         await self.send_text(message)
 
-        return True, f"显示了当前时间: {time_str}"
+        return True, f"显示了当前时间: {time_str}", True
 
 
 class PrintMessage(BaseEventHandler):

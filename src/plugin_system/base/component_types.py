@@ -142,7 +142,6 @@ class CommandInfo(ComponentInfo):
     command_pattern: str = ""  # 命令匹配模式（正则表达式）
     command_help: str = ""  # 命令帮助信息
     command_examples: List[str] = field(default_factory=list)  # 命令使用示例
-    intercept_message: bool = True  # 是否拦截消息处理（默认拦截）
 
     def __post_init__(self):
         super().__post_init__()
