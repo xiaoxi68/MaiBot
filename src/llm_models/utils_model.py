@@ -148,7 +148,7 @@ class LLMRequest:
         self.max_tokens = model.get("max_tokens", global_config.model.model_max_output_length)
         # print(f"max_tokens: {self.max_tokens}")
         
-        logger.debug(f"🔍 [模型初始化] 模型参数设置完成:")
+        logger.debug("🔍 [模型初始化] 模型参数设置完成:")
         logger.debug(f"   - model_name: {self.model_name}")
         logger.debug(f"   - has_enable_thinking: {self.has_enable_thinking}")
         logger.debug(f"   - enable_thinking: {self.enable_thinking}")
@@ -537,7 +537,7 @@ class LLMRequest:
                 logger.error(f"🔍 [调试信息] 模型 {self.model_name} 参数错误 (400) - 开始详细诊断")
                 logger.error(f"🔍 [调试信息] 模型名称: {self.model_name}")
                 logger.error(f"🔍 [调试信息] API地址: {self.base_url}")
-                logger.error(f"🔍 [调试信息] 模型配置参数:")
+                logger.error("🔍 [调试信息] 模型配置参数:")
                 logger.error(f"   - enable_thinking: {self.enable_thinking}")
                 logger.error(f"   - temp: {self.temp}")
                 logger.error(f"   - thinking_budget: {self.thinking_budget}")
@@ -556,7 +556,7 @@ class LLMRequest:
                         error_json = json.loads(error_text)
                         logger.error(f"🔍 [调试信息] 解析后的错误JSON: {json.dumps(error_json, indent=2, ensure_ascii=False)}")
                     except json.JSONDecodeError:
-                        logger.error(f"🔍 [调试信息] 错误响应不是有效的JSON格式")
+                        logger.error("🔍 [调试信息] 错误响应不是有效的JSON格式")
                 except Exception as e:
                     logger.error(f"🔍 [调试信息] 无法读取错误响应内容: {str(e)}")
                 
@@ -583,7 +583,7 @@ class LLMRequest:
             
             # 如果是400错误，额外输出请求体信息用于调试
             if response.status == 400:
-                logger.error(f"🔍 [异常调试] 400错误 - 请求体调试信息:")
+                logger.error("🔍 [异常调试] 400错误 - 请求体调试信息:")
                 try:
                     safe_payload = await _safely_record(request_content, payload)
                     logger.error(f"🔍 [异常调试] 发送的请求体: {json.dumps(safe_payload, indent=2, ensure_ascii=False)}")
@@ -743,7 +743,7 @@ class LLMRequest:
         logger.debug(f"🔍 [参数转换] CoT模型列表: {self.MODELS_NEEDING_TRANSFORMATION}")
 
         if self.model_name.lower() in self.MODELS_NEEDING_TRANSFORMATION:
-            logger.debug(f"🔍 [参数转换] 检测到CoT模型，开始参数转换")
+            logger.debug("🔍 [参数转换] 检测到CoT模型，开始参数转换")
             # 删除 'temperature' 参数（如果存在），但避免删除我们在_build_payload中添加的自定义温度
             if "temperature" in new_params and new_params["temperature"] == 0.7:
                 removed_temp = new_params.pop("temperature")
@@ -754,7 +754,7 @@ class LLMRequest:
                 new_params["max_completion_tokens"] = new_params.pop("max_tokens")
                 logger.debug(f"🔍 [参数转换] 参数重命名: max_tokens({old_value}) -> max_completion_tokens({new_params['max_completion_tokens']})")
         else:
-            logger.debug(f"🔍 [参数转换] 非CoT模型，无需参数转换")
+            logger.debug("🔍 [参数转换] 非CoT模型，无需参数转换")
             
         logger.debug(f"🔍 [参数转换] 转换前参数: {params}")
         logger.debug(f"🔍 [参数转换] 转换后参数: {new_params}")
