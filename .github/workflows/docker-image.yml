@@ -1,16 +1,21 @@
 name: Docker Build and Push
 
 on:
-  push:
+  # push:
+  #   branches:
+  #     - main
+  #     - classical
+  #     - dev
+  #   tags:
+  #     - "v*.*.*"
+  #     - "v*"
+  #     - "*.*.*"
+  #     - "*.*.*-*"
+  workflow_dispatch: # 允许手动触发工作流
     branches:
       - main
-      - classical
       - dev
-    tags:
-      - "v*.*.*"
-      - "v*"
-      - "*.*.*"
-      - "*.*.*-*"
+      - dev-refactor
 
 # Workflow's jobs
 jobs:
