@@ -18,7 +18,6 @@ class ManagementCommand(BaseCommand):
     command_name: str = "management"
     description: str = "管理命令"
     command_pattern: str = r"(?P<manage_command>^/pm(\s[a-zA-Z0-9_]+)*\s*$)"
-    intercept_message: bool = True
 
     async def execute(self) -> Tuple[bool, str]:
         # sourcery skip: merge-duplicate-blocks
@@ -423,13 +422,13 @@ class ManagementCommand(BaseCommand):
 @register_plugin
 class PluginManagementPlugin(BasePlugin):
     plugin_name: str = "plugin_management_plugin"
-    enable_plugin: bool = True
+    enable_plugin: bool = False
     dependencies: list[str] = []
     python_dependencies: list[str] = []
     config_file_name: str = "config.toml"
     config_schema: dict = {
         "plugin": {
-            "enable": ConfigField(bool, default=True, description="是否启用插件"),
+            "enable": ConfigField(bool, default=False, description="是否启用插件"),
             "permission": ConfigField(list, default=[], description="有权限使用插件管理命令的用户列表"),
         },
     }
