@@ -1,5 +1,5 @@
 [inner]
-version = "4.4.9"
+version = "4.5.0"
 
 #----以下是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 #如果你想要修改配置文件，请在修改后将version的值进行变更
@@ -63,8 +63,6 @@ replyer_random_probability = 0.5 # 首要replyer模型被选择的概率
 
 mentioned_bot_inevitable_reply = true # 提及 bot 大概率回复
 at_bot_inevitable_reply = true # @bot 或 提及bot 大概率回复
-
-use_s4u_prompt_mode = true # 是否使用 s4u 对话构建模式，该模式会更好的把握当前对话对象的对话内容，但是对群聊整理理解能力较差（测试功能！！可能有未知问题！！)
 
 
 talk_frequency = 1 # 麦麦回复频率，越高，麦麦回复越频繁

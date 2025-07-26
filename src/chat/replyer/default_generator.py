@@ -40,33 +40,7 @@ def init_prompt():
     Prompt("你正在和{sender_name}聊天，这是你们之前聊的内容：", "chat_target_private1")
     Prompt("在群里聊天", "chat_target_group2")
     Prompt("和{sender_name}聊天", "chat_target_private2")
-    Prompt("\n你有以下这些**知识**：\n{prompt_info}\n请你**记住上面的知识**，之后可能会用到。\n", "knowledge_prompt")
-
-    Prompt(
-        """
-{expression_habits_block}
-{tool_info_block}
-{knowledge_prompt}
-{memory_block}
-{relation_info_block}
-{extra_info_block}
-
-{chat_target}
-{time_block}
-{chat_info}
-{reply_target_block}
-{identity}
-
-{action_descriptions}
-你正在{chat_target_2},你现在的心情是：{mood_state}
-现在请你读读之前的聊天记录，并给出回复
-{config_expression_style}。注意不要复读你说过的话
-{keywords_reaction_prompt}
-{moderation_prompt}
-不要浮夸，不要夸张修辞，不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出回复内容""",
-        "default_generator_prompt",
-    )
-
+    
     Prompt(
         """
 {expression_habits_block}
@@ -114,7 +88,8 @@ def init_prompt():
 {core_dialogue_prompt}
 
 {reply_target_block}
-对方最新发送的内容：{message_txt}
+
+
 你现在的心情是：{mood_state}
 {config_expression_style}
 注意不要复读你说过的话
@@ -781,103 +756,63 @@ class DefaultReplyer:
             # 根据sender通过person_info_manager反向查找person_id，再获取user_id
             person_id = person_info_manager.get_person_id_by_person_name(sender)
 
-        # 根据配置选择使用哪种 prompt 构建模式
-        if global_config.chat.use_s4u_prompt_mode and person_id:
-            # 使用 s4u 对话构建模式：分离当前对话对象和其他对话
-            try:
-                user_id_value = await person_info_manager.get_value(person_id, "user_id")
-                if user_id_value:
-                    target_user_id = str(user_id_value)
-            except Exception as e:
-                logger.warning(f"无法从person_id {person_id} 获取user_id: {e}")
-                target_user_id = ""
+        # 使用 s4u 对话构建模式：分离当前对话对象和其他对话
+        try:
+            user_id_value = await person_info_manager.get_value(person_id, "user_id")
+            if user_id_value:
+                target_user_id = str(user_id_value)
+        except Exception as e:
+            logger.warning(f"无法从person_id {person_id} 获取user_id: {e}")
+            target_user_id = ""
 
-            # 构建分离的对话 prompt
-            core_dialogue_prompt, background_dialogue_prompt = self.build_s4u_chat_history_prompts(
-                message_list_before_now_long, target_user_id
-            )
+        # 构建分离的对话 prompt
+        core_dialogue_prompt, background_dialogue_prompt = self.build_s4u_chat_history_prompts(
+            message_list_before_now_long, target_user_id
+        )
 
-            self.build_mai_think_context(
-                chat_id=chat_id,
-                memory_block=memory_block,
-                relation_info=relation_info,
-                time_block=time_block,
-                chat_target_1=chat_target_1,
-                chat_target_2=chat_target_2,
-                mood_prompt=mood_prompt,
-                identity_block=identity_block,
-                sender=sender,
-                target=target,
-                chat_info=f"""
+        self.build_mai_think_context(
+            chat_id=chat_id,
+            memory_block=memory_block,
+            relation_info=relation_info,
+            time_block=time_block,
+            chat_target_1=chat_target_1,
+            chat_target_2=chat_target_2,
+            mood_prompt=mood_prompt,
+            identity_block=identity_block,
+            sender=sender,
+            target=target,
+            chat_info=f"""
 {background_dialogue_prompt}
 --------------------------------
 {time_block}
 这是你和{sender}的对话，你们正在交流中：
 {core_dialogue_prompt}""",
-            )
+        )
 
-            # 使用 s4u 风格的模板
-            template_name = "s4u_style_prompt"
+        # 使用 s4u 风格的模板
+        template_name = "s4u_style_prompt"
 
-            return await global_prompt_manager.format_prompt(
-                template_name,
-                expression_habits_block=expression_habits_block,
-                tool_info_block=tool_info,
-                knowledge_prompt=prompt_info,
-                memory_block=memory_block,
-                relation_info_block=relation_info,
-                extra_info_block=extra_info_block,
-                identity=identity_block,
-                action_descriptions=action_descriptions,
-                sender_name=sender,
-                mood_state=mood_prompt,
-                background_dialogue_prompt=background_dialogue_prompt,
-                time_block=time_block,
-                core_dialogue_prompt=core_dialogue_prompt,
-                reply_target_block=reply_target_block,
-                message_txt=target,
-                config_expression_style=global_config.expression.expression_style,
-                keywords_reaction_prompt=keywords_reaction_prompt,
-                moderation_prompt=moderation_prompt_block,
-            )
-        else:
-            self.build_mai_think_context(
-                chat_id=chat_id,
-                memory_block=memory_block,
-                relation_info=relation_info,
-                time_block=time_block,
-                chat_target_1=chat_target_1,
-                chat_target_2=chat_target_2,
-                mood_prompt=mood_prompt,
-                identity_block=identity_block,
-                sender=sender,
-                target=target,
-                chat_info=chat_talking_prompt,
-            )
-
-            # 使用原有的模式
-            return await global_prompt_manager.format_prompt(
-                template_name,
-                expression_habits_block=expression_habits_block,
-                chat_target=chat_target_1,
-                chat_info=chat_talking_prompt,
-                memory_block=memory_block,
-                tool_info_block=tool_info,
-                knowledge_prompt=prompt_info,
-                extra_info_block=extra_info_block,
-                relation_info_block=relation_info,
-                time_block=time_block,
-                reply_target_block=reply_target_block,
-                moderation_prompt=moderation_prompt_block,
-                keywords_reaction_prompt=keywords_reaction_prompt,
-                identity=identity_block,
-                target_message=target,
-                sender_name=sender,
-                config_expression_style=global_config.expression.expression_style,
-                action_descriptions=action_descriptions,
-                chat_target_2=chat_target_2,
-                mood_state=mood_prompt,
-            )
+        return await global_prompt_manager.format_prompt(
+            template_name,
+            expression_habits_block=expression_habits_block,
+            tool_info_block=tool_info,
+            knowledge_prompt=prompt_info,
+            memory_block=memory_block,
+            relation_info_block=relation_info,
+            extra_info_block=extra_info_block,
+            identity=identity_block,
+            action_descriptions=action_descriptions,
+            sender_name=sender,
+            mood_state=mood_prompt,
+            background_dialogue_prompt=background_dialogue_prompt,
+            time_block=time_block,
+            core_dialogue_prompt=core_dialogue_prompt,
+            reply_target_block=reply_target_block,
+            message_txt=target,
+            config_expression_style=global_config.expression.expression_style,
+            keywords_reaction_prompt=keywords_reaction_prompt,
+            moderation_prompt=moderation_prompt_block,
+        )
 
     async def build_prompt_rewrite_context(
         self,
@@ -1078,9 +1013,7 @@ async def get_prompt_info(message: str, threshold: float):
             logger.debug(f"获取知识库内容，相关信息：{related_info[:100]}...，信息长度: {len(related_info)}")
 
             # 格式化知识信息
-            formatted_prompt_info = await global_prompt_manager.format_prompt(
-                "knowledge_prompt", prompt_info=related_info
-            )
+            formatted_prompt_info = f"你有以下这些**知识**：\n{related_info}\n请你**记住上面的知识**，之后可能会用到。\n"
             return formatted_prompt_info
         else:
             logger.debug("从LPMM知识库获取知识失败，可能是从未导入过知识，返回空知识...")

@@ -83,9 +83,6 @@ class ChatConfig(ConfigBase):
     talk_frequency: float = 1
     """回复频率阈值"""
 
-    use_s4u_prompt_mode: bool = False
-    """是否使用 s4u 对话构建模式，该模式会分开处理当前对话对象和其他所有对话的内容进行 prompt 构建"""
-
     mentioned_bot_inevitable_reply: bool = False
     """提及 bot 必然回复"""
 

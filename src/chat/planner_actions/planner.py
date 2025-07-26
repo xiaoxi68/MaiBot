@@ -33,8 +33,9 @@ def init_prompt():
 {time_block}
 {identity_block}
 你现在需要根据聊天内容，选择的合适的action来参与聊天。
-{chat_context_description}，以下是具体的聊天内容：
+{chat_context_description}，以下是具体的聊天内容
 {chat_content_block}
+
 
 
 {moderation_prompt}
