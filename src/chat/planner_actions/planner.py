@@ -46,7 +46,7 @@ def init_prompt():
 {no_action_block}
 {action_options_text}
 
-你必须从上面列出的可用action中选择一个，并说明触发action的消息id和原因。
+你必须从上面列出的可用action中选择一个，并说明触发action的消息id（不是消息原文）和选择该action的原因。
 
 请根据动作示例，以严格的 JSON 格式输出，且仅包含 JSON 内容：
 """,

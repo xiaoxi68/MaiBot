@@ -261,6 +261,9 @@ class HeartFChatting:
             message_data = {}
         action_type = "no_action"
         reply_text = ""  # 初始化reply_text变量，避免UnboundLocalError
+        gen_task = None  # 初始化gen_task变量，避免UnboundLocalError
+        reply_to_str = ""  # 初始化reply_to_str变量
+        
         # 创建新的循环信息
         cycle_timers, thinking_id = self.start_cycle()
 
@@ -312,10 +315,9 @@ class HeartFChatting:
                         "action_prompt": "",
                     }
                     target_message = message_data            
-                # 如果normal，开始一个回复生成进程，先准备好回复（其实是和planer同时进行的）
-                gen_task = None
-                reply_to_str = ""
-                if self.loop_mode == ChatMode.NORMAL:
+                
+                # 如果normal模式且不跳过规划器，开始一个回复生成进程，先准备好回复（其实是和planer同时进行的）
+                if not skip_planner:
                     reply_to_str = await self.build_reply_to_str(message_data)
                     gen_task = asyncio.create_task(self._generate_response(message_data, available_actions, reply_to_str, "chat.replyer.normal"))
                     
@@ -341,35 +343,50 @@ class HeartFChatting:
                     f"{self.log_prefix}{global_config.bot.nickname} 决定进行回复, 同时执行{action_type}动作"
                 )
             else:
-                if not gen_task.done():
-                    gen_task.cancel()
-                    logger.debug(f"{self.log_prefix} 已取消预生成的回复任务")
-                    logger.info(
-                        f"{self.log_prefix}{global_config.bot.nickname} 原本想要回复，但选择执行{action_type}，不发表回复"
-                    )
-                else:
-                    content = " ".join([item[1] for item in gen_task.result() if item[0] == "text"])
-                    logger.debug(f"{self.log_prefix} 预生成的回复任务已完成")
-                    logger.info(
-                        f"{self.log_prefix}{global_config.bot.nickname} 原本想要回复：{content}，但选择执行{action_type}，不发表回复"
-                    )
+                # 只有在gen_task存在时才进行相关操作
+                if gen_task is not None:
+                    if not gen_task.done():
+                        gen_task.cancel()
+                        logger.debug(f"{self.log_prefix} 已取消预生成的回复任务")
+                        logger.info(
+                            f"{self.log_prefix}{global_config.bot.nickname} 原本想要回复，但选择执行{action_type}，不发表回复"
+                        )
+                    else:
+                        content = " ".join([item[1] for item in gen_task.result() if item[0] == "text"])
+                        logger.debug(f"{self.log_prefix} 预生成的回复任务已完成")
+                        logger.info(
+                            f"{self.log_prefix}{global_config.bot.nickname} 原本想要回复：{content}，但选择执行{action_type}，不发表回复"
+                        )
 
 
             action_message: Dict[str, Any] = message_data or target_message  # type: ignore
             if action_type == "reply" or is_parallel:
                 # 等待回复生成完毕
                 if self.loop_mode == ChatMode.NORMAL:
-                    gather_timeout = global_config.chat.thinking_timeout
-                    try:
-                        response_set = await asyncio.wait_for(gen_task, timeout=gather_timeout)
-                    except asyncio.TimeoutError:
-                        logger.warning(f"{self.log_prefix} 回复生成超时>{global_config.chat.thinking_timeout}s，已跳过")
-                        response_set = None
+                    # 只有在gen_task存在时才等待
+                    if gen_task is not None:
+                        gather_timeout = global_config.chat.thinking_timeout
+                        try:
+                            response_set = await asyncio.wait_for(gen_task, timeout=gather_timeout)
+                        except asyncio.TimeoutError:
+                            logger.warning(f"{self.log_prefix} 回复生成超时>{global_config.chat.thinking_timeout}s，已跳过")
+                            response_set = None
 
-                    # 模型炸了或超时，没有回复内容生成
-                    if not response_set:
-                        logger.warning(f"{self.log_prefix}模型未生成回复内容")
-                        return False
+                        # 模型炸了或超时，没有回复内容生成
+                        if not response_set:
+                            logger.warning(f"{self.log_prefix}模型未生成回复内容")
+                            return False
+                    else:
+                        # 如果没有预生成任务，直接生成回复
+                        if not reply_to_str:
+                            reply_to_str = await self.build_reply_to_str(action_message)
+                        
+                        with Timer("回复生成", cycle_timers):
+                            response_set = await self._generate_response(action_message, available_actions, reply_to_str, "chat.replyer.normal")
+                        
+                        if not response_set:
+                            logger.warning(f"{self.log_prefix}模型未生成回复内容")
+                            return False
                 else:
                     logger.info(f"{self.log_prefix}{global_config.bot.nickname} 决定进行回复 (focus模式)")
                     
