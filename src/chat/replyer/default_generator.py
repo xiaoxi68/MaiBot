@@ -25,7 +25,7 @@ from src.chat.memory_system.instant_memory import InstantMemory
 from src.mood.mood_manager import mood_manager
 from src.person_info.relationship_fetcher import relationship_fetcher_manager
 from src.person_info.person_info import get_person_info_manager
-from src.tools.tool_executor import ToolExecutor
+from src.plugin_system.core.tool_executor import ToolExecutor
 from src.plugin_system.base.component_types import ActionInfo
 
 logger = get_logger("replyer")

@@ -1,6 +1,6 @@
 import json
 from src.common.logger import get_logger
-from src.tools.tool_can_use import get_all_tool_definitions, get_tool_instance
+from src.plugin_system.apis.tool_api import get_llm_available_tool_definitions,get_tool_instance
 
 logger = get_logger("tool_use")
 
@@ -13,7 +13,7 @@ class ToolUser:
         Returns:
             list: 工具定义列表
         """
-        return get_all_tool_definitions()
+        return get_llm_available_tool_definitions()
 
     @staticmethod
     async def execute_tool_call(tool_call):
@@ -30,6 +30,7 @@ class ToolUser:
         try:
             function_name = tool_call["function"]["name"]
             function_args = json.loads(tool_call["function"]["arguments"])
+            function_args["llm_called"] = True # 标记为LLM调用
 
             # 获取对应工具实例
             tool_instance = get_tool_instance(function_name)
@@ -54,3 +55,5 @@ class ToolUser:
         except Exception as e:
             logger.error(f"执行工具调用时发生错误: {str(e)}")
             return None
+
+tool_user = ToolUser()

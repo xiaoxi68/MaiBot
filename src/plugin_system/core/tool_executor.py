@@ -3,7 +3,7 @@ from src.config.config import global_config
 import time
 from src.common.logger import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
-from src.tools.tool_use import ToolUser
+from .tool_use import tool_user
 from src.chat.utils.json_utils import process_llm_tool_calls
 from typing import List, Dict, Tuple, Optional
 from src.chat.message_receive.chat_stream import get_chat_manager
@@ -52,7 +52,7 @@ class ToolExecutor:
         )
 
         # 初始化工具实例
-        self.tool_instance = ToolUser()
+        self.tool_instance = tool_user
 
         # 缓存配置
         self.enable_cache = enable_cache
