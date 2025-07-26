@@ -279,6 +279,7 @@ class ExpressionSelector:
 
             if not isinstance(result, dict) or "selected_situations" not in result:
                 logger.error("LLM返回格式错误")
+                logger.info(f"LLM返回结果: \n{content}")
                 return []
 
             selected_indices = result["selected_situations"]
