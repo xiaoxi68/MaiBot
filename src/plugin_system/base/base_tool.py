@@ -6,8 +6,6 @@ install(extra_lines=3)
 
 logger = get_logger("base_tool")
 
-# 工具注册表
-TOOL_REGISTRY = {}
 
 
 class BaseTool:

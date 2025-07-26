@@ -151,7 +151,7 @@ class ToolInfo(ComponentInfo):
     """工具组件信息"""
 
     tool_parameters: Dict[str, Any] = field(default_factory=dict)  # 工具参数定义
-    available_for_llm: bool = True  # 是否可供LLM使用
+    available_for_llm: bool = False  # 是否可供LLM使用
     tool_description: str = ""  # 工具描述
 
     def __post_init__(self):
