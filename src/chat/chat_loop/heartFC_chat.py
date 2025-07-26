@@ -284,6 +284,8 @@ class HeartFChatting:
                     logger.error(f"{self.log_prefix} 动作修改失败: {e}")
 
             # 如果normal，开始一个回复生成进程，先准备好回复（其实是和planer同时进行的）
+            gen_task = None
+            reply_to_str = ""
             if self.loop_mode == ChatMode.NORMAL:
                 reply_to_str = await self.build_reply_to_str(message_data)
                 gen_task = asyncio.create_task(self._generate_response(message_data, available_actions, reply_to_str, "chat.replyer.normal"))
@@ -301,20 +303,32 @@ class HeartFChatting:
 
             action_data["loop_start_time"] = loop_start_time
 
-            if self.loop_mode == ChatMode.NORMAL:
-                if action_type == "reply":
-                    logger.info(f"{self.log_prefix}{global_config.bot.nickname} 决定进行回复")
-                elif is_parallel:
+
+            if action_type == "reply":
+                logger.info(f"{self.log_prefix}{global_config.bot.nickname} 决定进行回复")
+            elif is_parallel:
+                logger.info(
+                    f"{self.log_prefix}{global_config.bot.nickname} 决定进行回复, 同时执行{action_type}动作"
+                )
+            else:
+                if not gen_task.done():
+                    gen_task.cancel()
+                    logger.debug(f"{self.log_prefix} 已取消预生成的回复任务")
                     logger.info(
-                        f"{self.log_prefix}{global_config.bot.nickname} 决定进行回复, 同时执行{action_type}动作"
+                        f"{self.log_prefix}{global_config.bot.nickname} 原本想要回复，但选择执行{action_type}，不发表回复"
                     )
                 else:
-                    logger.info(f"{self.log_prefix}{global_config.bot.nickname} 决定执行{action_type}动作")
+                    content = " ".join([item[1] for item in gen_task.result() if item[0] == "text"])
+                    logger.debug(f"{self.log_prefix} 预生成的回复任务已完成")
+                    logger.info(
+                        f"{self.log_prefix}{global_config.bot.nickname} 原本想要回复：{content}，但选择执行{action_type}，不发表回复"
+                    )
+
 
             action_message: Dict[str, Any] = message_data or target_message  # type: ignore
-            if action_type == "no_action" or (self.loop_mode == ChatMode.FOCUS and action_type == "reply"):
+            if action_type == "reply" or is_parallel:
                 # 等待回复生成完毕
-                if action_type == "no_action":
+                if self.loop_mode == ChatMode.NORMAL:
                     gather_timeout = global_config.chat.thinking_timeout
                     try:
                         response_set = await asyncio.wait_for(gen_task, timeout=gather_timeout)
@@ -322,17 +336,9 @@ class HeartFChatting:
                         logger.warning(f"{self.log_prefix} 回复生成超时>{global_config.chat.thinking_timeout}s，已跳过")
                         response_set = None
 
-                    if response_set:
-                        content = " ".join([item[1] for item in response_set if item[0] == "text"])
-
                     # 模型炸了或超时，没有回复内容生成
                     if not response_set:
                         logger.warning(f"{self.log_prefix}模型未生成回复内容")
-                        return False
-                    elif action_type not in ["no_action"] and not is_parallel:
-                        logger.info(
-                            f"{self.log_prefix}{global_config.bot.nickname} 原本想要回复：{content}，但选择执行{action_type}，不发表回复"
-                        )
                         return False
                 else:
                     logger.info(f"{self.log_prefix}{global_config.bot.nickname} 决定进行回复 (focus模式)")
@@ -391,6 +397,24 @@ class HeartFChatting:
                 return True
 
             else:
+                # 如果是并行执行且在normal模式下，需要等待预生成的回复任务完成
+                # if self.loop_mode == ChatMode.NORMAL and is_parallel and gen_task:
+                #     # 等待预生成的回复任务完成
+                #     gather_timeout = global_config.chat.thinking_timeout
+                #     try:
+                #         response_set = await asyncio.wait_for(gen_task, timeout=gather_timeout)
+                #         if response_set:
+                #             # 发送回复
+                #             with Timer("回复发送", cycle_timers):
+                #                 reply_text_parallel = await self._send_response(response_set, reply_to_str, loop_start_time, action_message)
+                #             logger.info(f"{self.log_prefix} 并行执行：已发送回复内容")
+                #         else:
+                #             logger.warning(f"{self.log_prefix} 并行执行：预生成回复内容为空")
+                #     except asyncio.TimeoutError:
+                #         logger.warning(f"{self.log_prefix} 并行执行：回复生成超时>{global_config.chat.thinking_timeout}s，已跳过")
+                #     except asyncio.CancelledError:
+                #         logger.debug(f"{self.log_prefix} 并行执行：回复生成任务已被取消")
+                
                 # 动作执行计时
                 with Timer("动作执行", cycle_timers):
                     success, reply_text, command = await self._handle_action(

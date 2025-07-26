@@ -225,8 +225,9 @@ class ActionPlanner:
             reasoning = f"Planner 内部处理错误: {outer_e}"
 
         is_parallel = False
-        if action in current_available_actions:
-            is_parallel = current_available_actions[action].parallel_action
+        if mode == ChatMode.NORMAL:
+            if action in current_available_actions:
+                is_parallel = current_available_actions[action].parallel_action
 
         action_result = {
             "action_type": action,
