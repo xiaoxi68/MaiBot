@@ -140,6 +140,7 @@ async def generate_reply(
 
     except Exception as e:
         logger.error(f"[GeneratorAPI] 生成回复时出错: {e}")
+        logger.error(traceback.format_exc())
         return False, [], None
 
 

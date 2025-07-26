@@ -524,7 +524,7 @@ class ExpressionLearner:
             chat_str=random_msg_str,
         )
 
-        logger.debug(f"学习{type_str}的prompt: {prompt}")
+        logger.info(f"学习{type_str}的prompt: {prompt}")
 
         try:
             response, _ = await self.express_learn_model.generate_response_async(prompt)
