@@ -198,7 +198,9 @@ class ComponentRegistry:
         # 如果是llm可用的且启用的工具,添加到 llm可用工具列表
         if tool_info.available_for_llm and tool_info.enabled:
             self._llm_available_tools[tool_name] = tool_class
- 
+
+        return True
+    
     def _register_event_handler_component(
         self, handler_info: EventHandlerInfo, handler_class: Type[BaseEventHandler]
     ) -> bool:

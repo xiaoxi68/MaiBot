@@ -1,7 +1,7 @@
 from typing import List, Any, Optional, Type
 from src.common.logger import get_logger
 from rich.traceback import install
-from src.plugin_system.base.component_types import ToolInfo
+from src.plugin_system.base.component_types import ComponentType, ToolInfo
 install(extra_lines=3)
 
 logger = get_logger("base_tool")
@@ -44,14 +44,15 @@ class BaseTool:
             raise NotImplementedError(f"工具类 {cls.__name__} 必须定义 name 和 description 属性")
             
         return ToolInfo(
-            tool_name=cls.name,
+            name=cls.name,
             tool_description=cls.description,
             available_for_llm=cls.available_for_llm,
-            tool_parameters=cls.parameters
+            tool_parameters=cls.parameters,
+            component_type=ComponentType.TOOL,
         )
 
     # 工具参数定义，子类必须重写
-    async def execute(self, **function_args: dict[str, Any]) -> dict[str, Any]:
+    async def execute(self, function_args: dict[str, Any]) -> dict[str, Any]:
         """执行工具函数
 
         Args:
