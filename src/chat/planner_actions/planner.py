@@ -129,20 +129,6 @@ class ActionPlanner:
                 else:
                     logger.warning(f"{self.log_prefix}使用中的动作 {action_name} 未在已注册动作中找到")
 
-            # 如果没有可用动作或只有no_reply动作，直接返回no_reply
-            # 因为现在reply是永远激活，所以不需要空跳判定
-            # if not current_available_actions:
-            #     action = "no_reply" if mode == ChatMode.FOCUS else "no_action"
-            #     reasoning = "没有可用的动作"
-            #     logger.info(f"{self.log_prefix}{reasoning}")
-            #     return {
-            #         "action_result": {
-            #             "action_type": action,
-            #             "action_data": action_data,
-            #             "reasoning": reasoning,
-            #         },
-            #     }, None
-
             # --- 构建提示词 (调用修改后的 PromptBuilder 方法) ---
             prompt, message_id_list = await self.build_planner_prompt(
                 is_group_chat=is_group_chat,  # <-- Pass HFC state
