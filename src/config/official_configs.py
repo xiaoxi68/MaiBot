@@ -68,6 +68,8 @@ class ChatConfig(ConfigBase):
 
     max_context_size: int = 18
     """上下文长度"""
+    
+    willing_amplifier: float = 1.0
 
     replyer_random_probability: float = 0.5
     """
@@ -272,12 +274,6 @@ class NormalChatConfig(ConfigBase):
 
     willing_mode: str = "classical"
     """意愿模式"""
-
-    response_interested_rate_amplifier: float = 1.0
-    """回复兴趣度放大系数"""
-
-
-
 
 @dataclass
 class ExpressionConfig(ConfigBase):

@@ -224,10 +224,16 @@ class Hippocampus:
         return hash((source, target))
 
     @staticmethod
-    def find_topic_llm(text, topic_num):
+    def find_topic_llm(text: str, topic_num: int | list[int]):
         # sourcery skip: inline-immediately-returned-variable
+        topic_num_str = ""
+        if isinstance(topic_num, list):
+            topic_num_str = f"{topic_num[0]}-{topic_num[1]}"
+        else:
+            topic_num_str = topic_num
+
         prompt = (
-            f"这是一段文字：\n{text}\n\n请你从这段话中总结出最多{topic_num}个关键的概念，可以是名词，动词，或者特定人物，帮我列出来，"
+            f"这是一段文字：\n{text}\n\n请你从这段话中总结出最多{topic_num_str}个关键的概念，可以是名词，动词，或者特定人物，帮我列出来，"
             f"将主题用逗号隔开，并加上<>,例如<主题1>,<主题2>......尽可能精简。只需要列举最多{topic_num}个话题就好，不要有序号，不要告诉我其他内容。"
             f"如果确定找不出主题或者没有明显主题，返回<none>。"
         )
@@ -300,6 +306,60 @@ class Hippocampus:
         memories.sort(key=lambda x: x[2], reverse=True)
         return memories
 
+    async def get_keywords_from_text(self, text: str) -> list:
+        """从文本中提取关键词。
+
+        Args:
+            text (str): 输入文本
+            fast_retrieval (bool, optional): 是否使用快速检索。默认为False。
+                如果为True，使用jieba分词提取关键词，速度更快但可能不够准确。
+                如果为False，使用LLM提取关键词，速度较慢但更准确。
+        """
+        if not text:
+            return []
+
+        # 使用LLM提取关键词 - 根据详细文本长度分布优化topic_num计算
+        text_length = len(text)
+        topic_num: int | list[int] = 0
+        if text_length <= 5:
+            words = jieba.cut(text)
+            keywords = [word for word in words if len(word) > 1]
+            keywords = list(set(keywords))[:3]  # 限制最多3个关键词
+            if keywords:
+                logger.info(f"提取关键词: {keywords}")
+            return keywords
+        elif text_length <= 10:
+            topic_num = [1, 3]  # 6-10字符: 1个关键词 (27.18%的文本)
+        elif text_length <= 20:
+            topic_num = [2, 4]  # 11-20字符: 2个关键词 (22.76%的文本)
+        elif text_length <= 30:
+            topic_num = [3, 5]  # 21-30字符: 3个关键词 (10.33%的文本)
+        elif text_length <= 50:
+            topic_num = [4, 5]  # 31-50字符: 4个关键词 (9.79%的文本)
+        else:
+            topic_num = 5  # 51+字符: 5个关键词 (其余长文本)
+
+        topics_response, (reasoning_content, model_name) = await self.model_summary.generate_response_async(
+            self.find_topic_llm(text, topic_num)
+        )
+
+        # 提取关键词
+        keywords = re.findall(r"<([^>]+)>", topics_response)
+        if not keywords:
+            keywords = []
+        else:
+            keywords = [
+                keyword.strip()
+                for keyword in ",".join(keywords).replace("，", ",").replace("、", ",").replace(" ", ",").split(",")
+                if keyword.strip()
+            ]
+        
+        if keywords:
+            logger.info(f"提取关键词: {keywords}")
+        
+        return keywords 
+        
+
     async def get_memory_from_text(
         self,
         text: str,
@@ -325,39 +385,7 @@ class Hippocampus:
                 - memory_items: list, 该主题下的记忆项列表
                 - similarity: float, 与文本的相似度
         """
-        if not text:
-            return []
-
-        if fast_retrieval:
-            # 使用jieba分词提取关键词
-            words = jieba.cut(text)
-            # 过滤掉停用词和单字词
-            keywords = [word for word in words if len(word) > 1]
-            # 去重
-            keywords = list(set(keywords))
-            # 限制关键词数量
-            logger.debug(f"提取关键词: {keywords}")
-
-        else:
-            # 使用LLM提取关键词
-            topic_num = min(5, max(1, int(len(text) * 0.1)))  # 根据文本长度动态调整关键词数量
-            # logger.info(f"提取关键词数量: {topic_num}")
-            topics_response, (reasoning_content, model_name) = await self.model_summary.generate_response_async(
-                self.find_topic_llm(text, topic_num)
-            )
-
-            # 提取关键词
-            keywords = re.findall(r"<([^>]+)>", topics_response)
-            if not keywords:
-                keywords = []
-            else:
-                keywords = [
-                    keyword.strip()
-                    for keyword in ",".join(keywords).replace("，", ",").replace("、", ",").replace(" ", ",").split(",")
-                    if keyword.strip()
-                ]
-
-        # logger.info(f"提取的关键词: {', '.join(keywords)}")
+        keywords = await self.get_keywords_from_text(text)
 
         # 过滤掉不存在于记忆图中的关键词
         valid_keywords = [keyword for keyword in keywords if keyword in self.memory_graph.G]
@@ -679,38 +707,7 @@ class Hippocampus:
         Returns:
             float: 激活节点数与总节点数的比值
         """
-        if not text:
-            return 0
-
-        if fast_retrieval:
-            # 使用jieba分词提取关键词
-            words = jieba.cut(text)
-            # 过滤掉停用词和单字词
-            keywords = [word for word in words if len(word) > 1]
-            # 去重
-            keywords = list(set(keywords))
-            # 限制关键词数量
-            keywords = keywords[:5]
-        else:
-            # 使用LLM提取关键词
-            topic_num = min(5, max(1, int(len(text) * 0.1)))  # 根据文本长度动态调整关键词数量
-            # logger.info(f"提取关键词数量: {topic_num}")
-            topics_response, (reasoning_content, model_name) = await self.model_summary.generate_response_async(
-                self.find_topic_llm(text, topic_num)
-            )
-
-            # 提取关键词
-            keywords = re.findall(r"<([^>]+)>", topics_response)
-            if not keywords:
-                keywords = []
-            else:
-                keywords = [
-                    keyword.strip()
-                    for keyword in ",".join(keywords).replace("，", ",").replace("、", ",").replace(" ", ",").split(",")
-                    if keyword.strip()
-                ]
-
-        # logger.info(f"提取的关键词: {', '.join(keywords)}")
+        keywords = await self.get_keywords_from_text(text)
 
         # 过滤掉不存在于记忆图中的关键词
         valid_keywords = [keyword for keyword in keywords if keyword in self.memory_graph.G]
@@ -727,7 +724,7 @@ class Hippocampus:
         for keyword in valid_keywords:
             logger.debug(f"开始以关键词 '{keyword}' 为中心进行扩散检索 (最大深度: {max_depth}):")
             # 初始化激活值
-            activation_values = {keyword: 1.0}
+            activation_values = {keyword: 1.5}
             # 记录已访问的节点
             visited_nodes = {keyword}
             # 待处理的节点队列，每个元素是(节点, 激活值, 当前深度)
@@ -1315,6 +1312,7 @@ class ParahippocampalGyrus:
         return compressed_memory, similar_topics_dict
 
     async def operation_build_memory(self):
+        # sourcery skip: merge-list-appends-into-extend
         logger.info("------------------------------------开始构建记忆--------------------------------------")
         start_time = time.time()
         memory_samples = self.hippocampus.entorhinal_cortex.get_memory_sample()

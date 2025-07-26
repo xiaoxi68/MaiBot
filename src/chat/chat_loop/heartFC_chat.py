@@ -88,11 +88,6 @@ class HeartFChatting:
 
         self.loop_mode = ChatMode.NORMAL  # 初始循环模式为普通模式
 
-        # 新增：消息计数器和疲惫阈值
-        self._message_count = 0  # 发送的消息计数
-        self._message_threshold = max(10, int(30 * global_config.chat.focus_value))
-        self._fatigue_triggered = False  # 是否已触发疲惫退出
-
         self.action_manager = ActionManager()
         self.action_planner = ActionPlanner(chat_id=self.stream_id, action_manager=self.action_manager)
         self.action_modifier = ActionModifier(action_manager=self.action_manager, chat_id=self.stream_id)
@@ -112,7 +107,6 @@ class HeartFChatting:
 
         self.last_read_time = time.time() - 1
 
-        self.willing_amplifier = 1
         self.willing_manager = get_willing_manager()
 
         logger.info(f"{self.log_prefix} HeartFChatting 初始化完成")
@@ -182,6 +176,9 @@ class HeartFChatting:
             if self.loop_mode == ChatMode.NORMAL:
                 self.energy_value -= 0.3
                 self.energy_value = max(self.energy_value, 0.3)
+            if self.loop_mode == ChatMode.FOCUS:
+                self.energy_value -= 0.6
+                self.energy_value = max(self.energy_value, 0.3)
 
     def print_cycle_info(self, cycle_timers):
         # 记录循环信息和计时器结果
@@ -200,9 +197,9 @@ class HeartFChatting:
     async def _loopbody(self):
         if self.loop_mode == ChatMode.FOCUS:
             if await self._observe():
-                self.energy_value -= 1 * global_config.chat.focus_value
+                self.energy_value -= 1 / global_config.chat.focus_value
             else:
-                self.energy_value -= 3 * global_config.chat.focus_value
+                self.energy_value -= 3 / global_config.chat.focus_value
             if self.energy_value <= 1:
                 self.energy_value = 1
                 self.loop_mode = ChatMode.NORMAL
@@ -218,15 +215,15 @@ class HeartFChatting:
                 limit_mode="earliest",
                 filter_bot=True,
             )
+            if global_config.chat.focus_value != 0:
+                if len(new_messages_data) > 3 / pow(global_config.chat.focus_value,0.5):
+                    self.loop_mode = ChatMode.FOCUS
+                    self.energy_value = 10 + (len(new_messages_data) / (3 / pow(global_config.chat.focus_value,0.5))) * 10
+                    return True
 
-            if len(new_messages_data) > 3 * global_config.chat.focus_value:
-                self.loop_mode = ChatMode.FOCUS
-                self.energy_value = 10 + (len(new_messages_data) / (3 * global_config.chat.focus_value)) * 10
-                return True
-
-            if self.energy_value >= 30 * global_config.chat.focus_value:
-                self.loop_mode = ChatMode.FOCUS
-                return True
+                if self.energy_value >= 30:
+                    self.loop_mode = ChatMode.FOCUS
+                    return True
 
             if new_messages_data:
                 earliest_messages_data = new_messages_data[0]
@@ -235,10 +232,10 @@ class HeartFChatting:
                 if_think = await self.normal_response(earliest_messages_data)
                 if if_think:
                     factor = max(global_config.chat.focus_value, 0.1)
-                    self.energy_value *= 1.1 / factor
+                    self.energy_value *= 1.1 * factor
                     logger.info(f"{self.log_prefix} 进行了思考，能量值按倍数增加，当前能量值：{self.energy_value:.1f}")
                 else:
-                    self.energy_value += 0.1 / global_config.chat.focus_value
+                    self.energy_value += 0.1 * global_config.chat.focus_value
                     logger.debug(f"{self.log_prefix} 没有进行思考，能量值线性增加，当前能量值：{self.energy_value:.1f}")
 
                 logger.debug(f"{self.log_prefix} 当前能量值：{self.energy_value:.1f}")
@@ -330,13 +327,13 @@ class HeartFChatting:
 
             if self.loop_mode == ChatMode.NORMAL:
                 if action_type == "no_action":
-                    logger.info(f"[{self.log_prefix}] {global_config.bot.nickname} 决定进行回复")
+                    logger.info(f"{self.log_prefix}{global_config.bot.nickname} 决定进行回复")
                 elif is_parallel:
                     logger.info(
-                        f"[{self.log_prefix}] {global_config.bot.nickname} 决定进行回复, 同时执行{action_type}动作"
+                        f"{self.log_prefix}{global_config.bot.nickname} 决定进行回复, 同时执行{action_type}动作"
                     )
                 else:
-                    logger.info(f"[{self.log_prefix}] {global_config.bot.nickname} 决定执行{action_type}动作")
+                    logger.info(f"{self.log_prefix}{global_config.bot.nickname} 决定执行{action_type}动作")
 
             if action_type == "no_action":
                 # 等待回复生成完毕
@@ -351,15 +348,15 @@ class HeartFChatting:
 
                 # 模型炸了，没有回复内容生成
                 if not response_set:
-                    logger.warning(f"[{self.log_prefix}] 模型未生成回复内容")
+                    logger.warning(f"{self.log_prefix}模型未生成回复内容")
                     return False
                 elif action_type not in ["no_action"] and not is_parallel:
                     logger.info(
-                        f"[{self.log_prefix}] {global_config.bot.nickname} 原本想要回复：{content}，但选择执行{action_type}，不发表回复"
+                        f"{self.log_prefix}{global_config.bot.nickname} 原本想要回复：{content}，但选择执行{action_type}，不发表回复"
                     )
                     return False
 
-                logger.info(f"[{self.log_prefix}] {global_config.bot.nickname} 决定的回复内容: {content}")
+                logger.info(f"{self.log_prefix}{global_config.bot.nickname} 决定的回复内容: {content}")
 
                 # 发送回复 (不再需要传入 chat)
                 reply_text = await self._send_response(response_set, reply_to_str, loop_start_time,message_data)
@@ -406,8 +403,18 @@ class HeartFChatting:
         if self.loop_mode == ChatMode.NORMAL:
             await self.willing_manager.after_generate_reply_handle(message_data.get("message_id", ""))
 
+        # 管理no_reply计数器：当执行了非no_reply动作时，重置计数器
         if action_type != "no_reply" and action_type != "no_action":
+            # 导入NoReplyAction并重置计数器
+            from src.plugins.built_in.core_actions.no_reply import NoReplyAction
+            NoReplyAction.reset_consecutive_count()
+            logger.info(f"{self.log_prefix} 执行了{action_type}动作，重置no_reply计数器")
             return True
+        elif action_type == "no_action":
+            # 当执行回复动作时，也重置no_reply计数器
+            from src.plugins.built_in.core_actions.no_reply import NoReplyAction
+            NoReplyAction.reset_consecutive_count()
+            logger.info(f"{self.log_prefix} 执行了回复动作，重置no_reply计数器")
 
         return True
 
@@ -501,7 +508,7 @@ class HeartFChatting:
         在"兴趣"模式下，判断是否回复并生成内容。
         """
 
-        interested_rate = (message_data.get("interest_value") or 0.0) * self.willing_amplifier
+        interested_rate = (message_data.get("interest_value") or 0.0) * global_config.chat.willing_amplifier
 
         self.willing_manager.setup(message_data, self.chat_stream)
 
@@ -515,8 +522,8 @@ class HeartFChatting:
                 reply_probability += additional_config["maimcore_reply_probability_gain"]
                 reply_probability = min(max(reply_probability, 0), 1)  # 确保概率在 0-1 之间
 
-            talk_frequency = global_config.chat.get_current_talk_frequency(self.stream_id)
-            reply_probability = talk_frequency * reply_probability
+        talk_frequency = global_config.chat.get_current_talk_frequency(self.stream_id)
+        reply_probability = talk_frequency * reply_probability
 
         # 处理表情包
         if message_data.get("is_emoji") or message_data.get("is_picid"):
@@ -563,7 +570,7 @@ class HeartFChatting:
             return reply_set
 
         except Exception as e:
-            logger.error(f"[{self.log_prefix}] 回复生成出现错误：{str(e)} {traceback.format_exc()}")
+            logger.error(f"{self.log_prefix}回复生成出现错误：{str(e)} {traceback.format_exc()}")
             return None
 
     async def _send_response(self, reply_set, reply_to, thinking_start_time, message_data):

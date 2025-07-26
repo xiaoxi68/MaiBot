@@ -22,7 +22,6 @@
 import traceback
 import time
 import difflib
-import re
 from typing import Optional, Union
 from src.common.logger import get_logger
 
@@ -30,7 +29,7 @@ from src.common.logger import get_logger
 from src.chat.message_receive.chat_stream import get_chat_manager
 from src.chat.message_receive.uni_message_sender import HeartFCSender
 from src.chat.message_receive.message import MessageSending, MessageRecv
-from src.chat.utils.chat_message_builder import get_raw_msg_before_timestamp_with_chat
+from src.chat.utils.chat_message_builder import get_raw_msg_before_timestamp_with_chat, replace_user_references_async
 from src.person_info.person_info import get_person_info_manager
 from maim_message import Seg, UserInfo
 from src.config.config import global_config
@@ -183,32 +182,8 @@ async def _find_reply_message(target_stream, reply_to: str) -> Optional[MessageR
             if person_name == sender:
                 translate_text = message["processed_plain_text"]
 
-                # 检查是否有 回复<aaa:bbb> 字段
-                reply_pattern = r"回复<([^:<>]+):([^:<>]+)>"
-                if match := re.search(reply_pattern, translate_text):
-                    aaa = match.group(1)
-                    bbb = match.group(2)
-                    reply_person_id = get_person_info_manager().get_person_id(platform, bbb)
-                    reply_person_name = await get_person_info_manager().get_value(reply_person_id, "person_name") or aaa
-                    # 在内容前加上回复信息
-                    translate_text = re.sub(reply_pattern, f"回复 {reply_person_name}", translate_text, count=1)
-
-                # 检查是否有 @<aaa:bbb> 字段
-                at_pattern = r"@<([^:<>]+):([^:<>]+)>"
-                at_matches = list(re.finditer(at_pattern, translate_text))
-                if at_matches:
-                    new_content = ""
-                    last_end = 0
-                    for m in at_matches:
-                        new_content += translate_text[last_end : m.start()]
-                        aaa = m.group(1)
-                        bbb = m.group(2)
-                        at_person_id = get_person_info_manager().get_person_id(platform, bbb)
-                        at_person_name = await get_person_info_manager().get_value(at_person_id, "person_name") or aaa
-                        new_content += f"@{at_person_name}"
-                        last_end = m.end()
-                    new_content += translate_text[last_end:]
-                    translate_text = new_content
+                # 使用独立函数处理用户引用格式
+                translate_text = await replace_user_references_async(translate_text, platform)
 
                 similarity = difflib.SequenceMatcher(None, text, translate_text).ratio()
                 if similarity >= 0.9:

@@ -66,13 +66,12 @@ class CoreActionsPlugin(BasePlugin):
 
         if global_config.emoji.emoji_activate_type == "llm":
             EmojiAction.random_activation_probability = 0.0
-            EmojiAction.focus_activation_type = ActionActivationType.LLM_JUDGE
-            EmojiAction.normal_activation_type = ActionActivationType.LLM_JUDGE
+            EmojiAction.activation_type = ActionActivationType.LLM_JUDGE
 
         elif global_config.emoji.emoji_activate_type == "random":
             EmojiAction.random_activation_probability = global_config.emoji.emoji_chance
-            EmojiAction.focus_activation_type = ActionActivationType.RANDOM
-            EmojiAction.normal_activation_type = ActionActivationType.RANDOM
+            EmojiAction.activation_type = ActionActivationType.RANDOM
+
         # --- 根据配置注册组件 ---
         components = []
         if self.get_config("components.enable_reply", True):
