@@ -283,25 +283,55 @@ class HeartFChatting:
                 except Exception as e:
                     logger.error(f"{self.log_prefix} 动作修改失败: {e}")
 
-            # 如果normal，开始一个回复生成进程，先准备好回复（其实是和planer同时进行的）
-            gen_task = None
-            reply_to_str = ""
+            # 检查是否在normal模式下没有可用动作（除了reply相关动作）
+            skip_planner = False
             if self.loop_mode == ChatMode.NORMAL:
-                reply_to_str = await self.build_reply_to_str(message_data)
-                gen_task = asyncio.create_task(self._generate_response(message_data, available_actions, reply_to_str, "chat.replyer.normal"))
+                # 过滤掉reply相关的动作，检查是否还有其他动作
+                non_reply_actions = {k: v for k, v in available_actions.items() 
+                                if k not in ['reply', 'no_reply', 'no_action']}
+                
+                if not non_reply_actions:
+                    skip_planner = True
+                    logger.info(f"{self.log_prefix} Normal模式下没有可用动作，直接回复")
+                    
+                    # 直接设置为reply动作
+                    action_type = "reply"
+                    reasoning = ""
+                    action_data = {"loop_start_time": loop_start_time}
+                    is_parallel = False
+                    
+                    # 构建plan_result用于后续处理
+                    plan_result = {
+                        "action_result": {
+                            "action_type": action_type,
+                            "action_data": action_data,
+                            "reasoning": reasoning,
+                            "timestamp": time.time(),
+                            "is_parallel": is_parallel,
+                        },
+                        "action_prompt": "",
+                    }
+                    target_message = message_data            
+                # 如果normal，开始一个回复生成进程，先准备好回复（其实是和planer同时进行的）
+                gen_task = None
+                reply_to_str = ""
+                if self.loop_mode == ChatMode.NORMAL:
+                    reply_to_str = await self.build_reply_to_str(message_data)
+                    gen_task = asyncio.create_task(self._generate_response(message_data, available_actions, reply_to_str, "chat.replyer.normal"))
+                    
+            if not skip_planner:
+                with Timer("规划器", cycle_timers):
+                    plan_result, target_message = await self.action_planner.plan(mode=self.loop_mode)
 
-            with Timer("规划器", cycle_timers):
-                plan_result, target_message = await self.action_planner.plan(mode=self.loop_mode)
+                action_result: dict = plan_result.get("action_result", {})  # type: ignore
+                action_type, action_data, reasoning, is_parallel = (
+                    action_result.get("action_type", "error"),
+                    action_result.get("action_data", {}),
+                    action_result.get("reasoning", "未提供理由"),
+                    action_result.get("is_parallel", True),
+                )
 
-            action_result: dict = plan_result.get("action_result", {})  # type: ignore
-            action_type, action_data, reasoning, is_parallel = (
-                action_result.get("action_type", "error"),
-                action_result.get("action_data", {}),
-                action_result.get("reasoning", "未提供理由"),
-                action_result.get("is_parallel", True),
-            )
-
-            action_data["loop_start_time"] = loop_start_time
+                action_data["loop_start_time"] = loop_start_time
 
 
             if action_type == "reply":
@@ -358,7 +388,7 @@ class HeartFChatting:
                 with Timer("回复发送", cycle_timers):
                     reply_text = await self._send_response(response_set, reply_to_str, loop_start_time, action_message)
                     
-                # 存储reply action信息 (focus模式)
+                # 存储reply action信息
                 person_info_manager = get_person_info_manager()
                 person_id = person_info_manager.get_person_id(
                     action_message.get("chat_info_platform", ""),

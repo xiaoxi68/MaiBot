@@ -62,14 +62,6 @@ class CoreActionsPlugin(BasePlugin):
     def get_plugin_components(self) -> List[Tuple[ComponentInfo, Type]]:
         """返回插件包含的组件列表"""
 
-        if global_config.emoji.emoji_activate_type == "llm":
-            EmojiAction.random_activation_probability = 0.0
-            EmojiAction.activation_type = ActionActivationType.LLM_JUDGE
-
-        elif global_config.emoji.emoji_activate_type == "random":
-            EmojiAction.random_activation_probability = global_config.emoji.emoji_chance
-            EmojiAction.activation_type = ActionActivationType.RANDOM
-
         # --- 根据配置注册组件 ---
         components = []
         if self.get_config("components.enable_no_reply", True):
@@ -77,6 +69,5 @@ class CoreActionsPlugin(BasePlugin):
         if self.get_config("components.enable_emoji", True):
             components.append((EmojiAction.get_action_info(), EmojiAction))
 
-        # components.append((DeepReplyAction.get_action_info(), DeepReplyAction))
 
         return components
