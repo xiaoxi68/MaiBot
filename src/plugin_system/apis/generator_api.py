@@ -108,7 +108,7 @@ async def generate_reply(
 
         logger.debug("[GeneratorAPI] 开始生成回复")
         
-        if not reply_to:
+        if not reply_to and action_data:
             reply_to = action_data.get("reply_to", "")
         if not extra_info and action_data:
             extra_info = action_data.get("extra_info", "")
