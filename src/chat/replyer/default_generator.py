@@ -139,7 +139,7 @@ class DefaultReplyer:
         self.memory_activator = MemoryActivator()
         self.instant_memory = InstantMemory(chat_id=self.chat_stream.stream_id)
 
-        from src.plugin_system.core.tool_executor import ToolExecutor # 延迟导入ToolExecutor，不然会循环依赖
+        from src.plugin_system.core.tool_use import ToolExecutor # 延迟导入ToolExecutor，不然会循环依赖
         self.tool_executor = ToolExecutor(chat_id=self.chat_stream.stream_id, enable_cache=True, cache_ttl=3)
 
     def _select_weighted_model_config(self) -> Dict[str, Any]:
