@@ -107,10 +107,14 @@ async def generate_reply(
             return False, [], None
 
         logger.debug("[GeneratorAPI] 开始生成回复")
+        
+        if not reply_to:
+            reply_to = action_data.get("reply_to", "")
+        if not extra_info and action_data:
+            extra_info = action_data.get("extra_info", "")
 
         # 调用回复器生成回复
         success, content, prompt = await replyer.generate_reply_with_context(
-            reply_data=action_data or {},
             reply_to=reply_to,
             extra_info=extra_info,
             available_actions=available_actions,

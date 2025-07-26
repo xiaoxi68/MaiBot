@@ -77,7 +77,7 @@ class ChatConfig(ConfigBase):
     选择普通模型的概率为 1 - reasoning_normal_model_probability
     """
 
-    thinking_timeout: int = 30
+    thinking_timeout: int = 40
     """麦麦最长思考规划时间，超过这个时间的思考会放弃（往往是api反应太慢）"""
 
     talk_frequency: float = 1
@@ -299,11 +299,8 @@ class ExpressionConfig(ConfigBase):
 class ToolConfig(ConfigBase):
     """工具配置类"""
 
-    enable_in_normal_chat: bool = False
-    """是否在普通聊天中启用工具"""
-
-    enable_in_focus_chat: bool = True
-    """是否在专注聊天中启用工具"""
+    enable_tool: bool = False
+    """是否在聊天中启用工具"""
     
 @dataclass
 class VoiceConfig(ConfigBase):

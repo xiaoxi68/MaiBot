@@ -58,7 +58,7 @@ focus_value = 1
 willing_amplifier = 1 # 麦麦回复意愿
 
 max_context_size = 25 # 上下文长度
-thinking_timeout = 20 # 麦麦一次回复最长思考规划时间，超过这个时间的思考会放弃（往往是api反应太慢）
+thinking_timeout = 40 # 麦麦一次回复最长思考规划时间，超过这个时间的思考会放弃（往往是api反应太慢）
 replyer_random_probability = 0.5 # 首要replyer模型被选择的概率
 
 mentioned_bot_inevitable_reply = true # 提及 bot 大概率回复
@@ -107,8 +107,7 @@ ban_msgs_regex = [
 willing_mode = "classical" # 回复意愿模式 —— 经典模式：classical，mxp模式：mxp，自定义模式：custom（需要你自己实现）
 
 [tool]
-enable_in_normal_chat = false # 是否在普通聊天中启用工具
-enable_in_focus_chat = true # 是否在专注聊天中启用工具
+enable_tool = false # 是否在普通聊天中启用工具
 
 [emoji]
 emoji_chance = 0.6 # 麦麦激活表情包动作的概率

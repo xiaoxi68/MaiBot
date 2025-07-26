@@ -312,7 +312,7 @@ class ActionPlanner:
                 by_what = "聊天内容和用户的最新消息"
                 target_prompt = ""
                 no_action_block = """重要说明：
-- 'no_action' 表示只进行普通聊天回复，不执行任何额外动作
+- 'reply' 表示只进行普通聊天回复，不执行任何额外动作
 - 其他action表示在普通回复的基础上，执行相应的额外动作"""
 
             chat_context_description = "你现在正在一个群聊中"
