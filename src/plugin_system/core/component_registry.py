@@ -53,7 +53,7 @@ class ComponentRegistry:
 
         # 工具特定注册表
         self._tool_registry: Dict[str, BaseTool] = {}  # 工具名 -> 工具类
-        self._llm_available_tools: Dict[str, str] = {}  # 公开的工具名 -> 描述
+        self._llm_available_tools: Dict[str, str] = {}  # llm可用的工具名 -> 描述
 
         # EventHandler特定注册表
         self._event_handler_registry: Dict[str, Type[BaseEventHandler]] = {}
