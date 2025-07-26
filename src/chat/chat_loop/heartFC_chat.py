@@ -215,15 +215,15 @@ class HeartFChatting:
                 limit_mode="earliest",
                 filter_bot=True,
             )
+            if global_config.chat.focus_value != 0:
+                if len(new_messages_data) > 3 / pow(global_config.chat.focus_value,0.5):
+                    self.loop_mode = ChatMode.FOCUS
+                    self.energy_value = 10 + (len(new_messages_data) / (3 / pow(global_config.chat.focus_value,0.5))) * 10
+                    return True
 
-            if len(new_messages_data) > 3 / pow(global_config.chat.focus_value,0.5):
-                self.loop_mode = ChatMode.FOCUS
-                self.energy_value = 10 + (len(new_messages_data) / (3 / pow(global_config.chat.focus_value,0.5))) * 10
-                return True
-
-            if self.energy_value >= 30:
-                self.loop_mode = ChatMode.FOCUS
-                return True
+                if self.energy_value >= 30:
+                    self.loop_mode = ChatMode.FOCUS
+                    return True
 
             if new_messages_data:
                 earliest_messages_data = new_messages_data[0]
@@ -403,8 +403,18 @@ class HeartFChatting:
         if self.loop_mode == ChatMode.NORMAL:
             await self.willing_manager.after_generate_reply_handle(message_data.get("message_id", ""))
 
+        # 管理no_reply计数器：当执行了非no_reply动作时，重置计数器
         if action_type != "no_reply" and action_type != "no_action":
+            # 导入NoReplyAction并重置计数器
+            from src.plugins.built_in.core_actions.no_reply import NoReplyAction
+            NoReplyAction.reset_consecutive_count()
+            logger.info(f"{self.log_prefix} 执行了{action_type}动作，重置no_reply计数器")
             return True
+        elif action_type == "no_action":
+            # 当执行回复动作时，也重置no_reply计数器
+            from src.plugins.built_in.core_actions.no_reply import NoReplyAction
+            NoReplyAction.reset_consecutive_count()
+            logger.info(f"{self.log_prefix} 执行了回复动作，重置no_reply计数器")
 
         return True
 
