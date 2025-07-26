@@ -8,9 +8,8 @@
 from typing import List, Tuple, Type
 
 # 导入新插件系统
-from src.plugin_system import BasePlugin, register_plugin, ComponentInfo, ActionActivationType
+from src.plugin_system import BasePlugin, register_plugin, ComponentInfo
 from src.plugin_system.base.config_types import ConfigField
-from src.config.config import global_config
 
 # 导入依赖的系统组件
 from src.common.logger import get_logger
