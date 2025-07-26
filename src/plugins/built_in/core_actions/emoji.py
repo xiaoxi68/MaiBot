@@ -21,10 +21,14 @@ class EmojiAction(BaseAction):
     """表情动作 - 发送表情包"""
 
     # 激活设置
-    activation_type = ActionActivationType.RANDOM
+    if global_config.emoji.emoji_activate_type == "llm":
+        activation_type = ActionActivationType.LLM_JUDGE
+        random_activation_probability = 0
+    else:
+        activation_type = ActionActivationType.RANDOM
+        random_activation_probability = global_config.emoji.emoji_chance
     mode_enable = ChatMode.ALL
     parallel_action = True
-    random_activation_probability = 0.2  # 默认值，可通过配置覆盖
 
     # 动作基本信息
     action_name = "emoji"
