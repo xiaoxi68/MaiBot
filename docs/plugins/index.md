@@ -72,3 +72,9 @@ Command vs Action 选择指南
 2. 查看相关示例代码
 3. 参考其他类似插件
 4. 提交文档仓库issue
+
+## 一个方便的小设计
+
+我们在`__init__.py`中定义了一个`__all__`变量，包含了所有需要导出的类和函数。
+这样在其他地方导入时，可以直接使用 `from src.plugin_system import *` 来导入所有插件相关的类和函数。
+或者你可以直接使用 `from src.plugin_system import BasePlugin, register_plugin, ComponentInfo` 之类的方式来导入你需要的部分。
