@@ -61,7 +61,6 @@ class NoReplyAction(BaseAction):
 
     async def execute(self) -> Tuple[bool, str]:
         """执行不回复动作"""
-        import asyncio
 
         try:
             reason = self.action_data.get("reason", "")
