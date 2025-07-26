@@ -88,11 +88,6 @@ class HeartFChatting:
 
         self.loop_mode = ChatMode.NORMAL  # 初始循环模式为普通模式
 
-        # 新增：消息计数器和疲惫阈值
-        self._message_count = 0  # 发送的消息计数
-        self._message_threshold = max(10, int(30 * global_config.chat.focus_value))
-        self._fatigue_triggered = False  # 是否已触发疲惫退出
-
         self.action_manager = ActionManager()
         self.action_planner = ActionPlanner(chat_id=self.stream_id, action_manager=self.action_manager)
         self.action_modifier = ActionModifier(action_manager=self.action_manager, chat_id=self.stream_id)
@@ -112,7 +107,6 @@ class HeartFChatting:
 
         self.last_read_time = time.time() - 1
 
-        self.willing_amplifier = 1
         self.willing_manager = get_willing_manager()
 
         logger.info(f"{self.log_prefix} HeartFChatting 初始化完成")
@@ -182,6 +176,9 @@ class HeartFChatting:
             if self.loop_mode == ChatMode.NORMAL:
                 self.energy_value -= 0.3
                 self.energy_value = max(self.energy_value, 0.3)
+            if self.loop_mode == ChatMode.FOCUS:
+                self.energy_value -= 0.6
+                self.energy_value = max(self.energy_value, 0.3)
 
     def print_cycle_info(self, cycle_timers):
         # 记录循环信息和计时器结果
@@ -200,9 +197,9 @@ class HeartFChatting:
     async def _loopbody(self):
         if self.loop_mode == ChatMode.FOCUS:
             if await self._observe():
-                self.energy_value -= 1 * global_config.chat.focus_value
+                self.energy_value -= 1 / global_config.chat.focus_value
             else:
-                self.energy_value -= 3 * global_config.chat.focus_value
+                self.energy_value -= 3 / global_config.chat.focus_value
             if self.energy_value <= 1:
                 self.energy_value = 1
                 self.loop_mode = ChatMode.NORMAL
@@ -219,12 +216,12 @@ class HeartFChatting:
                 filter_bot=True,
             )
 
-            if len(new_messages_data) > 3 * global_config.chat.focus_value:
+            if len(new_messages_data) > 3 / pow(global_config.chat.focus_value,0.5):
                 self.loop_mode = ChatMode.FOCUS
-                self.energy_value = 10 + (len(new_messages_data) / (3 * global_config.chat.focus_value)) * 10
+                self.energy_value = 10 + (len(new_messages_data) / (3 / pow(global_config.chat.focus_value,0.5))) * 10
                 return True
 
-            if self.energy_value >= 30 * global_config.chat.focus_value:
+            if self.energy_value >= 30:
                 self.loop_mode = ChatMode.FOCUS
                 return True
 
@@ -235,10 +232,10 @@ class HeartFChatting:
                 if_think = await self.normal_response(earliest_messages_data)
                 if if_think:
                     factor = max(global_config.chat.focus_value, 0.1)
-                    self.energy_value *= 1.1 / factor
+                    self.energy_value *= 1.1 * factor
                     logger.info(f"{self.log_prefix} 进行了思考，能量值按倍数增加，当前能量值：{self.energy_value:.1f}")
                 else:
-                    self.energy_value += 0.1 / global_config.chat.focus_value
+                    self.energy_value += 0.1 * global_config.chat.focus_value
                     logger.debug(f"{self.log_prefix} 没有进行思考，能量值线性增加，当前能量值：{self.energy_value:.1f}")
 
                 logger.debug(f"{self.log_prefix} 当前能量值：{self.energy_value:.1f}")
@@ -501,7 +498,7 @@ class HeartFChatting:
         在"兴趣"模式下，判断是否回复并生成内容。
         """
 
-        interested_rate = (message_data.get("interest_value") or 0.0) * self.willing_amplifier
+        interested_rate = (message_data.get("interest_value") or 0.0) * global_config.chat.willing_amplifier
 
         self.willing_manager.setup(message_data, self.chat_stream)
 

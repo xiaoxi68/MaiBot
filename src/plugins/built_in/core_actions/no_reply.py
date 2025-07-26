@@ -39,14 +39,14 @@ class NoReplyAction(BaseAction):
     # 新增：兴趣值退出阈值
     _interest_exit_threshold = 3.0
     # 新增：消息数量退出阈值
-    _min_exit_message_count = 5
-    _max_exit_message_count = 10
+    _min_exit_message_count = 3
+    _max_exit_message_count = 6
 
     # 动作参数定义
     action_parameters = {}
 
     # 动作使用场景
-    action_require = ["你发送了消息，目前无人回复"]
+    action_require = [""]
 
     # 关联类型
     associated_types = []
@@ -66,9 +66,6 @@ class NoReplyAction(BaseAction):
 
             # 随机生成本次等待需要的新消息数量阈值
             exit_message_count_threshold = random.randint(self._min_exit_message_count, self._max_exit_message_count)
-            logger.info(
-                f"{self.log_prefix} 本次no_reply需要 {exit_message_count_threshold} 条新消息或累计兴趣值超过 {self._interest_exit_threshold} 才能打断"
-            )
 
             logger.info(f"{self.log_prefix} 选择不回复(第{count}次)，开始摸鱼，原因: {reason}")
 
@@ -89,9 +86,12 @@ class NoReplyAction(BaseAction):
 
                 # 2. 检查消息数量是否达到阈值
                 talk_frequency = global_config.chat.get_current_talk_frequency(self.chat_id)
-                if new_message_count >= exit_message_count_threshold / talk_frequency:
+                
+                modified_exit_count_threshold = (exit_message_count_threshold / talk_frequency) / global_config.chat.willing_amplifier
+                
+                if new_message_count >= modified_exit_count_threshold:
                     logger.info(
-                        f"{self.log_prefix} 累计消息数量达到{new_message_count}条(>{exit_message_count_threshold / talk_frequency})，结束等待"
+                        f"{self.log_prefix} 累计消息数量达到{new_message_count}条(>{modified_exit_count_threshold})，结束等待"
                     )
                     exit_reason = f"{global_config.bot.nickname}（你）看到了{new_message_count}条新消息，可以考虑一下是否要进行回复"
                     await self.store_action_info(
@@ -108,7 +108,7 @@ class NoReplyAction(BaseAction):
                         text = msg_dict.get("processed_plain_text", "")
                         interest_value = msg_dict.get("interest_value", 0.0)
                         if text:
-                            accumulated_interest += interest_value
+                            accumulated_interest += interest_value * global_config.chat.willing_amplifier
                     
                     talk_frequency = global_config.chat.get_current_talk_frequency(self.chat_id)
                     # 只在兴趣值变化时输出log

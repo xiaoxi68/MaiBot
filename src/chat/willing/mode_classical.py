@@ -28,7 +28,7 @@ class ClassicalWillingManager(BaseWillingManager):
         
         # print(f"[{chat_id}] 回复意愿: {current_willing}")
 
-        interested_rate = willing_info.interested_rate * global_config.normal_chat.response_interested_rate_amplifier
+        interested_rate = willing_info.interested_rate
         
         # print(f"[{chat_id}] 兴趣值: {interested_rate}")
 
