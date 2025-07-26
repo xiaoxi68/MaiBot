@@ -512,8 +512,8 @@ class HeartFChatting:
                 reply_probability += additional_config["maimcore_reply_probability_gain"]
                 reply_probability = min(max(reply_probability, 0), 1)  # 确保概率在 0-1 之间
 
-            talk_frequency = global_config.chat.get_current_talk_frequency(self.stream_id)
-            reply_probability = talk_frequency * reply_probability
+        talk_frequency = global_config.chat.get_current_talk_frequency(self.stream_id)
+        reply_probability = talk_frequency * reply_probability
 
         # 处理表情包
         if message_data.get("is_emoji") or message_data.get("is_picid"):
