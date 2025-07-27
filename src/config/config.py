@@ -122,6 +122,7 @@ def _api_providers(parent: Dict, config: ModuleConfig):
         name = provider.get("name", None)
         base_url = provider.get("base_url", None)
         api_key = provider.get("api_key", None)
+        api_keys = provider.get("api_keys", [])  # 新增：支持多个API Key
         client_type = provider.get("client_type", "openai")
 
         if name in config.api_providers:  # 查重
@@ -129,10 +130,22 @@ def _api_providers(parent: Dict, config: ModuleConfig):
             raise KeyError(f"重复的API提供商名称: {name}，请检查配置文件。")
 
         if name and base_url:
+            # 处理API Key配置：支持单个api_key或多个api_keys
+            if api_keys:
+                # 使用新格式：api_keys列表
+                logger.debug(f"API提供商 '{name}' 配置了 {len(api_keys)} 个API Key")
+            elif api_key:
+                # 向后兼容：使用单个api_key
+                api_keys = [api_key]
+                logger.debug(f"API提供商 '{name}' 使用单个API Key（向后兼容模式）")
+            else:
+                logger.warning(f"API提供商 '{name}' 没有配置API Key，某些功能可能不可用")
+            
             config.api_providers[name] = APIProvider(
                 name=name,
                 base_url=base_url,
-                api_key=api_key,
+                api_key=api_key,  # 保留向后兼容
+                api_keys=api_keys,  # 新格式
                 client_type=client_type,
             )
         else:

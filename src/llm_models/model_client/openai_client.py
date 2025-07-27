@@ -23,6 +23,7 @@ from openai.types.chat.chat_completion_chunk import ChoiceDelta
 from .base_client import APIResponse, UsageRecord
 from src.config.api_ada_configs import ModelInfo, APIProvider
 from . import BaseClient
+from src.common.logger import get_logger
 
 from ..exceptions import (
     RespParseException,
@@ -33,6 +34,8 @@ from ..exceptions import (
 from ..payload_content.message import Message, RoleType
 from ..payload_content.resp_format import RespFormat
 from ..payload_content.tool_option import ToolOption, ToolParam, ToolCall
+
+logger = get_logger("OpenAI客户端")
 
 
 def _convert_messages(messages: list[Message]) -> list[ChatCompletionMessageParam]:
@@ -385,11 +388,60 @@ def _default_normal_response_parser(
 class OpenaiClient(BaseClient):
     def __init__(self, api_provider: APIProvider):
         super().__init__(api_provider)
-        self.client: AsyncOpenAI = AsyncOpenAI(
-            base_url=api_provider.base_url,
-            api_key=api_provider.api_key,
-            max_retries=0,
-        )
+        # 不再在初始化时创建固定的client，而是在请求时动态创建
+        self._clients_cache = {}  # API Key -> AsyncOpenAI client 的缓存
+
+    def _get_client(self, api_key: str = None) -> AsyncOpenAI:
+        """获取或创建对应API Key的客户端"""
+        if api_key is None:
+            api_key = self.api_provider.get_current_api_key()
+        
+        if not api_key:
+            raise ValueError(f"API Provider '{self.api_provider.name}' 没有可用的API Key")
+        
+        # 使用缓存避免重复创建客户端
+        if api_key not in self._clients_cache:
+            self._clients_cache[api_key] = AsyncOpenAI(
+                base_url=self.api_provider.base_url,
+                api_key=api_key,
+                max_retries=0,
+            )
+        
+        return self._clients_cache[api_key]
+
+    async def _execute_with_fallback(self, func, *args, **kwargs):
+        """执行请求并在失败时切换API Key"""
+        current_api_key = self.api_provider.get_current_api_key()
+        max_attempts = len(self.api_provider.api_keys) if self.api_provider.api_keys else 1
+        
+        for attempt in range(max_attempts):
+            try:
+                client = self._get_client(current_api_key)
+                result = await func(client, *args, **kwargs)
+                # 成功时重置失败计数
+                self.api_provider.reset_key_failures(current_api_key)
+                return result
+                
+            except (APIStatusError, APIConnectionError) as e:
+                # 记录失败并尝试下一个API Key
+                logger.warning(f"API Key失败 (尝试 {attempt + 1}/{max_attempts}): {str(e)}")
+                
+                if attempt < max_attempts - 1:  # 还有重试机会
+                    next_api_key = self.api_provider.mark_key_failed(current_api_key)
+                    if next_api_key and next_api_key != current_api_key:
+                        current_api_key = next_api_key
+                        logger.info(f"切换到下一个API Key: {current_api_key[:8]}***{current_api_key[-4:]}")
+                        continue
+                
+                # 所有API Key都失败了，重新抛出异常
+                if isinstance(e, APIStatusError):
+                    raise RespNotOkException(e.status_code, e.message) from e
+                elif isinstance(e, APIConnectionError):
+                    raise NetworkConnectionError(str(e)) from e
+            
+            except Exception as e:
+                # 其他异常直接抛出
+                raise e
 
     async def get_response(
         self,
@@ -423,6 +475,40 @@ class OpenaiClient(BaseClient):
         :param interrupt_flag: 中断信号量（可选，默认为None）
         :return: (响应文本, 推理文本, 工具调用, 其他数据)
         """
+        return await self._execute_with_fallback(
+            self._get_response_internal,
+            model_info,
+            message_list,
+            tool_options,
+            max_tokens,
+            temperature,
+            response_format,
+            stream_response_handler,
+            async_response_parser,
+            interrupt_flag,
+        )
+
+    async def _get_response_internal(
+        self,
+        client: AsyncOpenAI,
+        model_info: ModelInfo,
+        message_list: list[Message],
+        tool_options: list[ToolOption] | None = None,
+        max_tokens: int = 1024,
+        temperature: float = 0.7,
+        response_format: RespFormat | None = None,
+        stream_response_handler: Callable[
+            [AsyncStream[ChatCompletionChunk], asyncio.Event | None],
+            tuple[APIResponse, tuple[int, int, int]],
+        ]
+        | None = None,
+        async_response_parser: Callable[
+            [ChatCompletion], tuple[APIResponse, tuple[int, int, int]]
+        ]
+        | None = None,
+        interrupt_flag: asyncio.Event | None = None,
+    ) -> APIResponse:
+        """内部方法：执行实际的API调用"""
         if stream_response_handler is None:
             stream_response_handler = _default_stream_response_handler
 
@@ -439,7 +525,7 @@ class OpenaiClient(BaseClient):
         try:
             if model_info.force_stream_mode:
                 req_task = asyncio.create_task(
-                    self.client.chat.completions.create(
+                    client.chat.completions.create(
                         model=model_info.model_identifier,
                         messages=messages,
                         tools=tools,
@@ -464,7 +550,7 @@ class OpenaiClient(BaseClient):
             else:
                 # 发送请求并获取响应
                 req_task = asyncio.create_task(
-                    self.client.chat.completions.create(
+                    client.chat.completions.create(
                         model=model_info.model_identifier,
                         messages=messages,
                         tools=tools,
@@ -513,8 +599,21 @@ class OpenaiClient(BaseClient):
         :param embedding_input: 嵌入输入文本
         :return: 嵌入响应
         """
+        return await self._execute_with_fallback(
+            self._get_embedding_internal,
+            model_info,
+            embedding_input,
+        )
+
+    async def _get_embedding_internal(
+        self,
+        client: AsyncOpenAI,
+        model_info: ModelInfo,
+        embedding_input: str,
+    ) -> APIResponse:
+        """内部方法：执行实际的嵌入API调用"""
         try:
-            raw_response = await self.client.embeddings.create(
+            raw_response = await client.embeddings.create(
                 model=model_info.model_identifier,
                 input=embedding_input,
             )

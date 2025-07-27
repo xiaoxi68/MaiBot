@@ -17,6 +17,7 @@ from google.genai.errors import (
 from .base_client import APIResponse, UsageRecord
 from src.config.api_ada_configs import ModelInfo, APIProvider
 from . import BaseClient
+from src.common.logger import get_logger
 
 from ..exceptions import (
     RespParseException,
@@ -28,6 +29,7 @@ from ..payload_content.message import Message, RoleType
 from ..payload_content.resp_format import RespFormat, RespFormatType
 from ..payload_content.tool_option import ToolOption, ToolParam, ToolCall
 
+logger = get_logger("Gemini客户端")
 T = TypeVar("T")
 
 
@@ -309,13 +311,55 @@ def _default_normal_response_parser(
 
 
 class GeminiClient(BaseClient):
-    client: genai.Client
-
     def __init__(self, api_provider: APIProvider):
         super().__init__(api_provider)
-        self.client = genai.Client(
-            api_key=api_provider.api_key,
-        )  # 这里和openai不一样，gemini会自己决定自己是否需要retry
+        # 不再在初始化时创建固定的client，而是在请求时动态创建
+        self._clients_cache = {}  # API Key -> genai.Client 的缓存
+
+    def _get_client(self, api_key: str = None) -> genai.Client:
+        """获取或创建对应API Key的客户端"""
+        if api_key is None:
+            api_key = self.api_provider.get_current_api_key()
+        
+        if not api_key:
+            raise ValueError(f"API Provider '{self.api_provider.name}' 没有可用的API Key")
+        
+        # 使用缓存避免重复创建客户端
+        if api_key not in self._clients_cache:
+            self._clients_cache[api_key] = genai.Client(api_key=api_key)
+        
+        return self._clients_cache[api_key]
+
+    async def _execute_with_fallback(self, func, *args, **kwargs):
+        """执行请求并在失败时切换API Key"""
+        current_api_key = self.api_provider.get_current_api_key()
+        max_attempts = len(self.api_provider.api_keys) if self.api_provider.api_keys else 1
+        
+        for attempt in range(max_attempts):
+            try:
+                client = self._get_client(current_api_key)
+                result = await func(client, *args, **kwargs)
+                # 成功时重置失败计数
+                self.api_provider.reset_key_failures(current_api_key)
+                return result
+                
+            except (ClientError, ServerError) as e:
+                # 记录失败并尝试下一个API Key
+                logger.warning(f"API Key失败 (尝试 {attempt + 1}/{max_attempts}): {str(e)}")
+                
+                if attempt < max_attempts - 1:  # 还有重试机会
+                    next_api_key = self.api_provider.mark_key_failed(current_api_key)
+                    if next_api_key and next_api_key != current_api_key:
+                        current_api_key = next_api_key
+                        logger.info(f"切换到下一个API Key: {current_api_key[:8]}***{current_api_key[-4:]}")
+                        continue
+                
+                # 所有API Key都失败了，重新抛出异常
+                raise RespNotOkException(e.status_code, e.message) from e
+            
+            except Exception as e:
+                # 其他异常直接抛出
+                raise e
 
     async def get_response(
         self,
@@ -348,6 +392,39 @@ class GeminiClient(BaseClient):
         :param interrupt_flag: 中断信号量（可选，默认为None）
         :return: (响应文本, 推理文本, 工具调用, 其他数据)
         """
+        return await self._execute_with_fallback(
+            self._get_response_internal,
+            model_info,
+            message_list,
+            tool_options,
+            max_tokens,
+            temperature,
+            thinking_budget,
+            response_format,
+            stream_response_handler,
+            async_response_parser,
+            interrupt_flag,
+        )
+
+    async def _get_response_internal(
+        self,
+        client: genai.Client,
+        model_info: ModelInfo,
+        message_list: list[Message],
+        tool_options: list[ToolOption] | None = None,
+        max_tokens: int = 1024,
+        temperature: float = 0.7,
+        thinking_budget: int = 0,
+        response_format: RespFormat | None = None,
+        stream_response_handler: Callable[
+            [Iterator[GenerateContentResponse], asyncio.Event | None], APIResponse
+        ]
+        | None = None,
+        async_response_parser: Callable[[GenerateContentResponse], APIResponse]
+        | None = None,
+        interrupt_flag: asyncio.Event | None = None,
+    ) -> APIResponse:
+        """内部方法：执行实际的API调用"""
         if stream_response_handler is None:
             stream_response_handler = _default_stream_response_handler
 
@@ -385,7 +462,7 @@ class GeminiClient(BaseClient):
         try:
             if model_info.force_stream_mode:
                 req_task = asyncio.create_task(
-                    self.client.aio.models.generate_content_stream(
+                    client.aio.models.generate_content_stream(
                         model=model_info.model_identifier,
                         contents=messages[0],
                         config=generation_config,
@@ -402,7 +479,7 @@ class GeminiClient(BaseClient):
                 )
             else:
                 req_task = asyncio.create_task(
-                    self.client.aio.models.generate_content(
+                    client.aio.models.generate_content(
                         model=model_info.model_identifier,
                         contents=messages[0],
                         config=generation_config,
@@ -418,13 +495,13 @@ class GeminiClient(BaseClient):
                 resp, usage_record = async_response_parser(req_task.result())
         except (ClientError, ServerError) as e:
             # 重封装ClientError和ServerError为RespNotOkException
-            raise RespNotOkException(e.status_code, e.message)
+            raise RespNotOkException(e.status_code, e.message) from e
         except (
             UnknownFunctionCallArgumentError,
             UnsupportedFunctionError,
             FunctionInvocationError,
         ) as e:
-            raise ValueError("工具类型错误：请检查工具选项和参数：" + str(e))
+            raise ValueError(f"工具类型错误：请检查工具选项和参数：{str(e)}") from e
         except Exception as e:
             raise NetworkConnectionError() from e
 
@@ -437,6 +514,8 @@ class GeminiClient(BaseClient):
                 total_tokens=usage_record[2],
             )
 
+        return resp
+
     async def get_embedding(
         self,
         model_info: ModelInfo,
@@ -448,9 +527,22 @@ class GeminiClient(BaseClient):
         :param embedding_input: 嵌入输入文本
         :return: 嵌入响应
         """
+        return await self._execute_with_fallback(
+            self._get_embedding_internal,
+            model_info,
+            embedding_input,
+        )
+
+    async def _get_embedding_internal(
+        self,
+        client: genai.Client,
+        model_info: ModelInfo,
+        embedding_input: str,
+    ) -> APIResponse:
+        """内部方法：执行实际的嵌入API调用"""
         try:
             raw_response: types.EmbedContentResponse = (
-                await self.client.aio.models.embed_content(
+                await client.aio.models.embed_content(
                     model=model_info.model_identifier,
                     contents=embedding_input,
                     config=types.EmbedContentConfig(task_type="SEMANTIC_SIMILARITY"),
@@ -458,7 +550,7 @@ class GeminiClient(BaseClient):
             )
         except (ClientError, ServerError) as e:
             # 重封装ClientError和ServerError为RespNotOkException
-            raise RespNotOkException(e.status_code)
+            raise RespNotOkException(e.status_code) from e
         except Exception as e:
             raise NetworkConnectionError() from e
 

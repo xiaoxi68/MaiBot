@@ -74,8 +74,22 @@ def _handle_resp_not_ok(
     :return: (等待间隔（如果为0则不等待，为-1则不再请求该模型）, 新的消息列表（适用于压缩消息）)
     """
     # 响应错误
-    if e.status_code in [400, 401, 402, 403, 404]:
-        # 客户端错误
+    if e.status_code in [401, 403]:
+        # API Key认证错误 - 让多API Key机制处理，给一次重试机会
+        if remain_try > 0:
+            logger.warning(
+                f"任务-'{task_name}' 模型-'{model_name}'\n"
+                f"API Key认证失败（错误代码-{e.status_code}），多API Key机制会自动切换"
+            )
+            return 0, None  # 立即重试，让底层客户端切换API Key
+        else:
+            logger.warning(
+                f"任务-'{task_name}' 模型-'{model_name}'\n"
+                f"所有API Key都认证失败，错误代码-{e.status_code}，错误信息-{e.message}"
+            )
+            return -1, None  # 不再重试请求该模型
+    elif e.status_code in [400, 402, 404]:
+        # 其他客户端错误（不应该重试）
         logger.warning(
             f"任务-'{task_name}' 模型-'{model_name}'\n"
             f"请求失败，错误代码-{e.status_code}，错误信息-{e.message}"
@@ -105,17 +119,17 @@ def _handle_resp_not_ok(
         )
         return -1, None
     elif e.status_code == 429:
-        # 请求过于频繁
+        # 请求过于频繁 - 让多API Key机制处理，适当延迟后重试
         return _check_retry(
             remain_try,
-            retry_interval,
+            min(retry_interval, 5),  # 限制最大延迟为5秒，让API Key切换更快生效
             can_retry_msg=(
                 f"任务-'{task_name}' 模型-'{model_name}'\n"
-                f"请求过于频繁，将于{retry_interval}秒后重试"
+                f"请求过于频繁，多API Key机制会自动切换，{min(retry_interval, 5)}秒后重试"
             ),
             cannot_retry_msg=(
                 f"任务-'{task_name}' 模型-'{model_name}'\n"
-                "请求过于频繁，超过最大重试次数，放弃请求"
+                "请求过于频繁，所有API Key都被限制，放弃请求"
             ),
         )
     elif e.status_code >= 500:
@@ -161,12 +175,13 @@ def default_exception_handler(
     """
 
     if isinstance(e, NetworkConnectionError):  # 网络连接错误
+        # 网络错误可能是某个API Key的端点问题，给多API Key机制一次快速重试机会
         return _check_retry(
             remain_try,
-            retry_interval,
+            min(retry_interval, 3),  # 网络错误时减少等待时间，让API Key切换更快
             can_retry_msg=(
                 f"任务-'{task_name}' 模型-'{model_name}'\n"
-                f"连接异常，将于{retry_interval}秒后重试"
+                f"连接异常，多API Key机制会尝试其他Key，{min(retry_interval, 3)}秒后重试"
             ),
             cannot_retry_msg=(
                 f"任务-'{task_name}' 模型-'{model_name}'\n"

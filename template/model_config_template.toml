@@ -1,7 +1,23 @@
 [inner]
-version = "0.1.1"
+version = "0.2.0"
 
 # 配置文件版本号迭代规则同bot_config.toml
+# 
+# === 多API Key支持 ===
+# 本配置文件支持为每个API服务商配置多个API Key，实现以下功能：
+# 1. 错误自动切换：当某个API Key失败时，自动切换到下一个可用的Key
+# 2. 负载均衡：在多个可用的API Key之间循环使用，避免单个Key的频率限制
+# 3. 向后兼容：仍然支持单个key字段的配置方式
+# 
+# 配置方式：
+# - 多Key配置：使用 api_keys = ["key1", "key2", "key3"] 数组格式
+# - 单Key配置：使用 key = "your-key" 字符串格式（向后兼容）
+# 
+# 错误处理机制：
+# - 401/403认证错误：立即切换到下一个API Key
+# - 429频率限制：等待后重试，如果持续失败则切换Key
+# - 网络错误：短暂等待后重试，失败则切换Key
+# - 其他错误：按照正常重试机制处理
 
 [request_conf] # 请求配置（此配置项数值均为默认值，如想修改，请取消对应条目的注释）
 #max_retry = 2 # 最大重试次数（单个模型API调用失败，最多重试的次数）
@@ -13,20 +29,32 @@ version = "0.1.1"
 
 [[api_providers]] # API服务提供商（可以配置多个）
 name = "DeepSeek"                       # API服务商名称（可随意命名，在models的api-provider中需使用这个命名）
-base_url = "https://api.deepseek.cn"    # API服务商的BaseURL
-key = "******"                          # API Key （可选，默认为None）
-client_type = "openai"                  # 请求客户端（可选，默认值为"openai"，使用gimini等Google系模型时请配置为"google"）
+base_url = "https://api.deepseek.cn/v1"    # API服务商的BaseURL
+# 支持多个API Key，实现自动切换和负载均衡
+api_keys = [                            # API Key列表（多个key支持错误自动切换和负载均衡）
+    "sk-your-first-key-here",
+    "sk-your-second-key-here",
+    "sk-your-third-key-here"
+]
+# 向后兼容：如果只有一个key，也可以使用单个key字段
+#key = "******"                         # API Key （可选，默认为None）
+client_type = "openai"                  # 请求客户端（可选，默认值为"openai"，使用gimini等Google系模型时请配置为"gemini"）
 
-#[[api_providers]] # 特殊：Google的Gimini使用特殊API，与OpenAI格式不兼容，需要配置client为"google"
-#name = "Google"
-#base_url = "https://api.google.com"
-#key = "******"
-#client_type = "google"
-#
-#[[api_providers]]
-#name = "SiliconFlow"
-#base_url = "https://api.siliconflow.cn"
-#key = "******"
+[[api_providers]] # 特殊：Google的Gimini使用特殊API，与OpenAI格式不兼容，需要配置client为"gemini"
+name = "Google"
+base_url = "https://api.google.com/v1"
+# Google API同样支持多key配置
+api_keys = [
+    "your-google-api-key-1",
+    "your-google-api-key-2"
+]
+client_type = "gemini"
+
+[[api_providers]]
+name = "SiliconFlow"
+base_url = "https://api.siliconflow.cn/v1"
+# 单个key的示例（向后兼容）
+key = "******"
 #
 #[[api_providers]]
 #name = "LocalHost"
