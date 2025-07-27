@@ -210,7 +210,7 @@ class ChatManager:
             chat_stream: 聊天流对象
 
         Returns:
-            Dict[str, Any]: 聊天流信息字典
+            Dict ({str: Any}): 聊天流信息字典
 
         Raises:
             TypeError: 如果 chat_stream 不是 ChatStream 类型
@@ -285,41 +285,41 @@ class ChatManager:
 # =============================================================================
 
 
-def get_all_streams(platform: Optional[str] | SpecialTypes = "qq"):
+def get_all_streams(platform: Optional[str] | SpecialTypes = "qq") -> List[ChatStream]:
     """获取所有聊天流的便捷函数"""
     return ChatManager.get_all_streams(platform)
 
 
-def get_group_streams(platform: Optional[str] | SpecialTypes = "qq"):
+def get_group_streams(platform: Optional[str] | SpecialTypes = "qq") -> List[ChatStream]:
     """获取群聊聊天流的便捷函数"""
     return ChatManager.get_group_streams(platform)
 
 
-def get_private_streams(platform: Optional[str] | SpecialTypes = "qq"):
+def get_private_streams(platform: Optional[str] | SpecialTypes = "qq") -> List[ChatStream]:
     """获取私聊聊天流的便捷函数"""
     return ChatManager.get_private_streams(platform)
 
 
-def get_stream_by_group_id(group_id: str, platform: Optional[str] | SpecialTypes = "qq"):
+def get_stream_by_group_id(group_id: str, platform: Optional[str] | SpecialTypes = "qq") -> Optional[ChatStream]:
     """根据群ID获取聊天流的便捷函数"""
     return ChatManager.get_group_stream_by_group_id(group_id, platform)
 
 
-def get_stream_by_user_id(user_id: str, platform: Optional[str] | SpecialTypes = "qq"):
+def get_stream_by_user_id(user_id: str, platform: Optional[str] | SpecialTypes = "qq") -> Optional[ChatStream]:
     """根据用户ID获取私聊流的便捷函数"""
     return ChatManager.get_private_stream_by_user_id(user_id, platform)
 
 
-def get_stream_type(chat_stream: ChatStream):
+def get_stream_type(chat_stream: ChatStream) -> str:
     """获取聊天流类型的便捷函数"""
     return ChatManager.get_stream_type(chat_stream)
 
 
-def get_stream_info(chat_stream: ChatStream):
+def get_stream_info(chat_stream: ChatStream) -> Dict[str, Any]:
     """获取聊天流信息的便捷函数"""
     return ChatManager.get_stream_info(chat_stream)
 
 
-def get_streams_summary():
+def get_streams_summary() -> Dict[str, int]:
     """获取聊天流统计摘要的便捷函数"""
     return ChatManager.get_streams_summary()
