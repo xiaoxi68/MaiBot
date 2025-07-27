@@ -84,18 +84,23 @@ async def generate_reply(
     enable_chinese_typo: bool = True,
     return_prompt: bool = False,
     model_configs: Optional[List[Dict[str, Any]]] = None,
-    request_type: str = "",
-    enable_timeout: bool = False,
+    request_type: str = "generator_api",
 ) -> Tuple[bool, List[Tuple[str, Any]], Optional[str]]:
     """生成回复
 
     Args:
         chat_stream: 聊天流对象（优先）
         chat_id: 聊天ID（备用）
-        action_data: 动作数据
+        action_data: 动作数据（向下兼容，包含reply_to和extra_info）
+        reply_to: 回复对象，格式为 "发送者:消息内容"
+        extra_info: 额外信息，用于补充上下文
+        available_actions: 可用动作
+        enable_tool: 是否启用工具调用
         enable_splitter: 是否启用消息分割器
         enable_chinese_typo: 是否启用错字生成器
         return_prompt: 是否返回提示词
+        model_configs: 模型配置列表
+        request_type: 请求类型（可选，记录LLM使用）
     Returns:
         Tuple[bool, List[Tuple[str, Any]], Optional[str]]: (是否成功, 回复集合, 提示词)
     """
@@ -107,7 +112,7 @@ async def generate_reply(
             return False, [], None
 
         logger.debug("[GeneratorAPI] 开始生成回复")
-        
+
         if not reply_to and action_data:
             reply_to = action_data.get("reply_to", "")
         if not extra_info and action_data:
@@ -118,7 +123,6 @@ async def generate_reply(
             reply_to=reply_to,
             extra_info=extra_info,
             available_actions=available_actions,
-            enable_timeout=enable_timeout,
             enable_tool=enable_tool,
         )
         reply_set = []
@@ -154,12 +158,13 @@ async def rewrite_reply(
     raw_reply: str = "",
     reason: str = "",
     reply_to: str = "",
-) -> Tuple[bool, List[Tuple[str, Any]]]:
+    return_prompt: bool = False,
+) -> Tuple[bool, List[Tuple[str, Any]], Optional[str]]:
     """重写回复
 
     Args:
         chat_stream: 聊天流对象（优先）
-        reply_data: 回复数据字典（备用，当其他参数缺失时从此获取）
+        reply_data: 回复数据字典（向下兼容备用，当其他参数缺失时从此获取）
         chat_id: 聊天ID（备用）
         enable_splitter: 是否启用消息分割器
         enable_chinese_typo: 是否启用错字生成器
@@ -167,6 +172,7 @@ async def rewrite_reply(
         raw_reply: 原始回复内容
         reason: 回复原因
         reply_to: 回复对象
+        return_prompt: 是否返回提示词
 
     Returns:
         Tuple[bool, List[Tuple[str, Any]]]: (是否成功, 回复集合)
@@ -176,7 +182,7 @@ async def rewrite_reply(
         replyer = get_replyer(chat_stream, chat_id, model_configs=model_configs)
         if not replyer:
             logger.error("[GeneratorAPI] 无法获取回复器")
-            return False, []
+            return False, [], None
 
         logger.info("[GeneratorAPI] 开始重写回复")
 
@@ -187,10 +193,11 @@ async def rewrite_reply(
             reply_to = reply_to or reply_data.get("reply_to", "")
 
         # 调用回复器重写回复
-        success, content = await replyer.rewrite_reply_with_context(
+        success, content, prompt = await replyer.rewrite_reply_with_context(
             raw_reply=raw_reply,
             reason=reason,
             reply_to=reply_to,
+            return_prompt=return_prompt,
         )
         reply_set = []
         if content:
@@ -201,14 +208,14 @@ async def rewrite_reply(
         else:
             logger.warning("[GeneratorAPI] 重写回复失败")
 
-        return success, reply_set
+        return success, reply_set, prompt if return_prompt else None
 
     except ValueError as ve:
         raise ve
 
     except Exception as e:
         logger.error(f"[GeneratorAPI] 重写回复时出错: {e}")
-        return False, []
+        return False, [], None
 
 
 async def process_human_text(content: str, enable_splitter: bool, enable_chinese_typo: bool) -> List[Tuple[str, Any]]:
@@ -234,3 +241,27 @@ async def process_human_text(content: str, enable_splitter: bool, enable_chinese
     except Exception as e:
         logger.error(f"[GeneratorAPI] 处理人形文本时出错: {e}")
         return []
+
+async def generate_response_custom(
+    chat_stream: Optional[ChatStream] = None,
+    chat_id: Optional[str] = None,
+    model_configs: Optional[List[Dict[str, Any]]] = None,
+    prompt: str = "",
+) -> Optional[str]:
+    replyer = get_replyer(chat_stream, chat_id, model_configs=model_configs)
+    if not replyer:
+        logger.error("[GeneratorAPI] 无法获取回复器")
+        return None
+
+    try:
+        logger.debug("[GeneratorAPI] 开始生成自定义回复")
+        response = await replyer.llm_generate_content(prompt)
+        if response:
+            logger.debug("[GeneratorAPI] 自定义回复生成成功")
+            return response
+        else:
+            logger.warning("[GeneratorAPI] 自定义回复生成失败")
+            return None
+    except Exception as e:
+        logger.error(f"[GeneratorAPI] 生成自定义回复时出错: {e}")
+        return None
