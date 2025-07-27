@@ -4,7 +4,7 @@ def list_loaded_plugins() -> List[str]:
     列出所有当前加载的插件。
 
     Returns:
-        list: 当前加载的插件名称列表。
+        List[str]: 当前加载的插件名称列表。
     """
     from src.plugin_system.core.plugin_manager import plugin_manager
 
@@ -16,7 +16,7 @@ def list_registered_plugins() -> List[str]:
     列出所有已注册的插件。
 
     Returns:
-        list: 已注册的插件名称列表。
+        List[str]: 已注册的插件名称列表。
     """
     from src.plugin_system.core.plugin_manager import plugin_manager
 
