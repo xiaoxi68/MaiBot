@@ -229,119 +229,83 @@ show_prompt = false # 是否显示prompt
 
 
 [model]
-model_max_output_length = 1024 # 模型单次返回的最大token数
+model_max_output_length = 800 # 模型单次返回的最大token数
 
-#------------必填：组件模型------------
+#------------模型任务配置------------
+# 所有模型名称需要对应 model_config.toml 中配置的模型名称
 
 [model.utils] # 在麦麦的一些组件中使用的模型，例如表情包模块，取名模块，关系模块，是麦麦必须的模型
-name = "Pro/deepseek-ai/DeepSeek-V3"
-provider = "SILICONFLOW"
-pri_in = 2 #模型的输入价格（非必填，可以记录消耗）
-pri_out = 8 #模型的输出价格（非必填，可以记录消耗）
-#默认temp 0.2 如果你使用的是老V3或者其他模型，请自己修改temp参数
-temp = 0.2 #模型的温度，新V3建议0.1-0.3
+model_name = "siliconflow-deepseek-v3"  # 对应 model_config.toml 中的模型名称
+temperature = 0.2  # 模型温度，新V3建议0.1-0.3
+max_tokens = 800   # 最大输出token数
 
 [model.utils_small] # 在麦麦的一些组件中使用的小模型，消耗量较大，建议使用速度较快的小模型
-# 强烈建议使用免费的小模型
-name = "Qwen/Qwen3-8B"
-provider = "SILICONFLOW"
-pri_in = 0
-pri_out = 0
-temp = 0.7
+model_name = "qwen3-8b"  # 对应 model_config.toml 中的模型名称
+temperature = 0.7
+max_tokens = 800
 enable_thinking = false # 是否启用思考
 
 [model.replyer_1] # 首要回复模型，还用于表达器和表达方式学习
-name = "Pro/deepseek-ai/DeepSeek-V3"
-provider = "SILICONFLOW"
-pri_in = 2 #模型的输入价格（非必填，可以记录消耗）
-pri_out = 8 #模型的输出价格（非必填，可以记录消耗）
-#默认temp 0.2 如果你使用的是老V3或者其他模型，请自己修改temp参数
-temp = 0.2 #模型的温度，新V3建议0.1-0.3
+model_name = "siliconflow-deepseek-v3"  # 对应 model_config.toml 中的模型名称
+temperature = 0.2  # 模型温度，新V3建议0.1-0.3
+max_tokens = 800
 
 [model.replyer_2] # 次要回复模型
-name = "Pro/deepseek-ai/DeepSeek-V3"
-provider = "SILICONFLOW"
-pri_in = 2 #模型的输入价格（非必填，可以记录消耗）
-pri_out = 8 #模型的输出价格（非必填，可以记录消耗）
-#默认temp 0.2 如果你使用的是老V3或者其他模型，请自己修改temp参数
-temp = 0.2 #模型的温度，新V3建议0.1-0.3
+model_name = "siliconflow-deepseek-r1"  # 对应 model_config.toml 中的模型名称
+temperature = 0.7  # 模型温度
+max_tokens = 800
 
 [model.planner] #决策：负责决定麦麦该做什么的模型
-name = "Pro/deepseek-ai/DeepSeek-V3"
-provider = "SILICONFLOW"
-pri_in = 2
-pri_out = 8
-temp = 0.3
+model_name = "siliconflow-deepseek-v3"  # 对应 model_config.toml 中的模型名称
+temperature = 0.3
+max_tokens = 800
 
 [model.emotion] #负责麦麦的情绪变化
-name = "Pro/deepseek-ai/DeepSeek-V3"
-provider = "SILICONFLOW"
-pri_in = 2
-pri_out = 8
-temp = 0.3
-
+model_name = "siliconflow-deepseek-v3"  # 对应 model_config.toml 中的模型名称
+temperature = 0.3
+max_tokens = 800
 
 [model.memory] # 记忆模型
-name = "Qwen/Qwen3-30B-A3B"
-provider = "SILICONFLOW"
-pri_in = 0.7
-pri_out = 2.8
-temp = 0.7
+model_name = "qwen3-30b"  # 对应 model_config.toml 中的模型名称
+temperature = 0.7
+max_tokens = 800
 enable_thinking = false # 是否启用思考
 
 [model.vlm] # 图像识别模型
-name = "Pro/Qwen/Qwen2.5-VL-7B-Instruct"
-provider = "SILICONFLOW"
-pri_in = 0.35
-pri_out = 0.35
+model_name = "qwen2.5-vl-72b"  # 对应 model_config.toml 中的模型名称
+max_tokens = 800
 
 [model.voice] # 语音识别模型
-name = "FunAudioLLM/SenseVoiceSmall"
-provider = "SILICONFLOW"
-pri_in = 0
-pri_out = 0
+model_name = "sensevoice-small"  # 对应 model_config.toml 中的模型名称
 
 [model.tool_use] #工具调用模型，需要使用支持工具调用的模型
-name = "Qwen/Qwen3-14B"
-provider = "SILICONFLOW"
-pri_in = 0.5
-pri_out = 2
-temp = 0.7
+model_name = "qwen3-14b"  # 对应 model_config.toml 中的模型名称
+temperature = 0.7
+max_tokens = 800
 enable_thinking = false # 是否启用思考（qwen3 only）
 
 #嵌入模型
 [model.embedding]
-name = "BAAI/bge-m3"
-provider = "SILICONFLOW"
-pri_in = 0
-pri_out = 0
-
+model_name = "bge-m3"  # 对应 model_config.toml 中的模型名称
 
 #------------LPMM知识库模型------------
 
 [model.lpmm_entity_extract] # 实体提取模型
-name = "Pro/deepseek-ai/DeepSeek-V3"
-provider = "SILICONFLOW"
-pri_in = 2
-pri_out = 8
-temp = 0.2
-
+model_name = "siliconflow-deepseek-v3"  # 对应 model_config.toml 中的模型名称
+temperature = 0.2
+max_tokens = 800
 
 [model.lpmm_rdf_build] # RDF构建模型
-name = "Pro/deepseek-ai/DeepSeek-V3"
-provider = "SILICONFLOW"
-pri_in = 2
-pri_out = 8
-temp = 0.2
-
+model_name = "siliconflow-deepseek-v3"  # 对应 model_config.toml 中的模型名称
+temperature = 0.2
+max_tokens = 800
 
 [model.lpmm_qa] # 问答模型
-name = "Qwen/Qwen3-30B-A3B"
-provider = "SILICONFLOW"
-pri_in = 0.7
-pri_out = 2.8
-temp = 0.7
+model_name = "deepseek-r1-distill-qwen-32b"  # 对应 model_config.toml 中的模型名称
+temperature = 0.7
+max_tokens = 800
 enable_thinking = false # 是否启用思考
+
 
 [maim_message]
 auth_token = [] # 认证令牌，用于API验证，为空则不启用验证
