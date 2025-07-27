@@ -158,7 +158,17 @@ class DefaultReplyer:
         enable_timeout: bool = False,
     ) -> Tuple[bool, Optional[str], Optional[str]]:
         """
-        回复器 (Replier): 核心逻辑，负责生成回复文本。
+        回复器 (Replier): 负责生成回复文本的核心逻辑。
+        
+        Args:
+            reply_to: 回复对象，格式为 "发送者:消息内容"
+            extra_info: 额外信息，用于补充上下文
+            available_actions: 可用的动作信息字典
+            enable_tool: 是否启用工具调用
+            enable_timeout: 是否启用超时处理
+            
+        Returns:
+            Tuple[bool, Optional[str], Optional[str]]: (是否成功, 生成的回复内容, 使用的prompt)
         """
         prompt = None
         if available_actions is None:
@@ -219,25 +229,30 @@ class DefaultReplyer:
 
     async def rewrite_reply_with_context(
         self,
-        reply_data: Dict[str, Any],
         raw_reply: str = "",
         reason: str = "",
         reply_to: str = "",
-        relation_info: str = "",
     ) -> Tuple[bool, Optional[str]]:
         """
-        表达器 (Expressor): 核心逻辑，负责生成回复文本。
+        表达器 (Expressor): 负责重写和优化回复文本。
+        
+        Args:
+            raw_reply: 原始回复内容
+            reason: 回复原因
+            reply_to: 回复对象，格式为 "发送者:消息内容"
+            relation_info: 关系信息
+            
+        Returns:
+            Tuple[bool, Optional[str]]: (是否成功, 重写后的回复内容)
         """
         try:
-            if not reply_data:
-                reply_data = {
-                    "reply_to": reply_to,
-                    "relation_info": relation_info,
-                }
 
+            
             with Timer("构建Prompt", {}):  # 内部计时器，可选保留
                 prompt = await self.build_prompt_rewrite_context(
-                    reply_data=reply_data,
+                    raw_reply=raw_reply,
+                    reason=reason,
+                    reply_to=reply_to,
                 )
 
             content = None
@@ -296,7 +311,16 @@ class DefaultReplyer:
 
         return await relationship_fetcher.build_relation_info(person_id, points_num=5)
 
-    async def build_expression_habits(self, chat_history, target):
+    async def build_expression_habits(self, chat_history: str, target: str) -> str:
+        """构建表达习惯块
+        
+        Args:
+            chat_history: 聊天历史记录
+            target: 目标消息内容
+            
+        Returns:
+            str: 表达习惯信息字符串
+        """
         if not global_config.expression.enable_expression:
             return ""
 
@@ -346,7 +370,16 @@ class DefaultReplyer:
 
         return expression_habits_block
 
-    async def build_memory_block(self, chat_history, target):
+    async def build_memory_block(self, chat_history: str, target: str) -> str:
+        """构建记忆块
+        
+        Args:
+            chat_history: 聊天历史记录
+            target: 目标消息内容
+            
+        Returns:
+            str: 记忆信息字符串
+        """
         if not global_config.memory.enable_memory:
             return ""
 
@@ -374,12 +407,13 @@ class DefaultReplyer:
 
         return memory_str
 
-    async def build_tool_info(self, chat_history, reply_to: str = "", enable_tool: bool = True):
+    async def build_tool_info(self, chat_history: str, reply_to: str = "", enable_tool: bool = True) -> str:
         """构建工具信息块
 
         Args:
-            reply_data: 回复数据，包含要回复的消息内容
-            chat_history: 聊天历史
+            chat_history: 聊天历史记录
+            reply_to: 回复对象，格式为 "发送者:消息内容"
+            enable_tool: 是否启用工具调用
 
         Returns:
             str: 工具信息字符串
@@ -423,7 +457,15 @@ class DefaultReplyer:
             logger.error(f"工具信息获取失败: {e}")
             return ""
 
-    def _parse_reply_target(self, target_message: str) -> tuple:
+    def _parse_reply_target(self, target_message: str) -> Tuple[str, str]:
+        """解析回复目标消息
+        
+        Args:
+            target_message: 目标消息，格式为 "发送者:消息内容" 或 "发送者：消息内容"
+            
+        Returns:
+            Tuple[str, str]: (发送者名称, 消息内容)
+        """
         sender = ""
         target = ""
         # 添加None检查，防止NoneType错误
@@ -437,7 +479,15 @@ class DefaultReplyer:
                 target = parts[1].strip()
         return sender, target
 
-    async def build_keywords_reaction_prompt(self, target):
+    async def build_keywords_reaction_prompt(self, target: Optional[str]) -> str:
+        """构建关键词反应提示
+        
+        Args:
+            target: 目标消息内容
+            
+        Returns:
+            str: 关键词反应提示字符串
+        """
         # 关键词检测与反应
         keywords_reaction_prompt = ""
         try:
@@ -471,15 +521,23 @@ class DefaultReplyer:
 
         return keywords_reaction_prompt
 
-    async def _time_and_run_task(self, coroutine, name: str):
-        """一个简单的帮助函数，用于计时和运行异步任务，返回任务名、结果和耗时"""
+    async def _time_and_run_task(self, coroutine, name: str) -> Tuple[str, Any, float]:
+        """计时并运行异步任务的辅助函数
+        
+        Args:
+            coroutine: 要执行的协程
+            name: 任务名称
+            
+        Returns:
+            Tuple[str, Any, float]: (任务名称, 任务结果, 执行耗时)
+        """
         start_time = time.time()
         result = await coroutine
         end_time = time.time()
         duration = end_time - start_time
         return name, result, duration
 
-    def build_s4u_chat_history_prompts(self, message_list_before_now: list, target_user_id: str) -> tuple[str, str]:
+    def build_s4u_chat_history_prompts(self, message_list_before_now: List[Dict[str, Any]], target_user_id: str) -> Tuple[str, str]:
         """
         构建 s4u 风格的分离对话 prompt
 
@@ -488,7 +546,7 @@ class DefaultReplyer:
             target_user_id: 目标用户ID（当前对话对象）
 
         Returns:
-            tuple: (核心对话prompt, 背景对话prompt)
+            Tuple[str, str]: (核心对话prompt, 背景对话prompt)
         """
         core_dialogue_list = []
         background_dialogue_list = []
@@ -507,7 +565,7 @@ class DefaultReplyer:
                     # 其他用户的对话
                     background_dialogue_list.append(msg_dict)
             except Exception as e:
-                logger.error(f"![1753364551656](image/default_generator/1753364551656.png)记录: {msg_dict}, 错误: {e}")
+                logger.error(f"处理消息记录时出错: {msg_dict}, 错误: {e}")
 
         # 构建背景对话 prompt
         background_dialogue_prompt = ""
@@ -552,8 +610,25 @@ class DefaultReplyer:
         sender: str,
         target: str,
         chat_info: str,
-    ):
-        """构建 mai_think 上下文信息"""
+    ) -> Any:
+        """构建 mai_think 上下文信息
+        
+        Args:
+            chat_id: 聊天ID
+            memory_block: 记忆块内容
+            relation_info: 关系信息
+            time_block: 时间块内容
+            chat_target_1: 聊天目标1
+            chat_target_2: 聊天目标2
+            mood_prompt: 情绪提示
+            identity_block: 身份块内容
+            sender: 发送者名称
+            target: 目标消息内容
+            chat_info: 聊天信息
+            
+        Returns:
+            Any: mai_think 实例
+        """
         mai_think = mai_thinking_manager.get_mai_think(chat_id)
         mai_think.memory_block = memory_block
         mai_think.relation_info_block = relation_info
@@ -799,15 +874,14 @@ class DefaultReplyer:
 
     async def build_prompt_rewrite_context(
         self,
-        reply_data: Dict[str, Any],
+        raw_reply: str,
+        reason: str,
+        reply_to: str,
     ) -> str:
         chat_stream = self.chat_stream
         chat_id = chat_stream.stream_id
         is_group_chat = bool(chat_stream.group_info)
 
-        reply_to = reply_data.get("reply_to", "none")
-        raw_reply = reply_data.get("raw_reply", "")
-        reason = reply_data.get("reason", "")
         sender, target = self._parse_reply_target(reply_to)
 
         # 添加情绪状态获取
@@ -834,7 +908,7 @@ class DefaultReplyer:
         # 并行执行2个构建任务
         expression_habits_block, relation_info = await asyncio.gather(
             self.build_expression_habits(chat_talking_prompt_half, target),
-            self.build_relation_info(reply_data),
+            self.build_relation_info(reply_to),
         )
 
         keywords_reaction_prompt = await self.build_keywords_reaction_prompt(target)
