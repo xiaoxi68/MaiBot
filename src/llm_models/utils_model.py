@@ -311,7 +311,7 @@ class LLMRequest:
         """CoT思维链提取"""
         match = re.search(r"(?:<think>)?(.*?)</think>", content, re.DOTALL)
         content = re.sub(r"(?:<think>)?.*?</think>", "", content, flags=re.DOTALL, count=1).strip()
-        reasoning = match.group(1).strip() if match else ""
+        reasoning = match[1].strip() if match else ""
         return content, reasoning
 
     # === 主要API方法 ===
