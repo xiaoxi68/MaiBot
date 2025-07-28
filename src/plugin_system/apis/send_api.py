@@ -49,6 +49,7 @@ async def _send_to_target(
     display_message: str = "",
     typing: bool = False,
     reply_to: str = "",
+    reply_to_platform_id: Optional[str] = None,
     storage_message: bool = True,
     show_log: bool = True,
 ) -> bool:
@@ -61,6 +62,7 @@ async def _send_to_target(
         display_message: 显示消息
         typing: 是否模拟打字等待。
         reply_to: 回复消息，格式为"发送者:消息内容"
+        reply_to_platform_id: 回复消息，格式为"平台:用户ID"，如果不提供则自动查找（插件开发者禁用！）
         storage_message: 是否存储消息到数据库
         show_log: 发送是否显示日志
 
@@ -96,11 +98,12 @@ async def _send_to_target(
 
         # 处理回复消息
         anchor_message = None
-        reply_to_platform_id: Optional[str] = None
         if reply_to:
             anchor_message = await _find_reply_message(target_stream, reply_to)
-            if anchor_message and anchor_message.message_info.user_info:
-                reply_to_platform_id = f"{anchor_message.message_info.platform}:{anchor_message.message_info.user_info.user_id}"
+            if anchor_message and anchor_message.message_info.user_info and not reply_to_platform_id:
+                reply_to_platform_id = (
+                    f"{anchor_message.message_info.platform}:{anchor_message.message_info.user_info.user_id}"
+                )
 
         # 构建发送消息对象
         bot_message = MessageSending(
@@ -256,6 +259,7 @@ async def text_to_stream(
     stream_id: str,
     typing: bool = False,
     reply_to: str = "",
+    reply_to_platform_id: str = "",
     storage_message: bool = True,
 ) -> bool:
     """向指定流发送文本消息
@@ -265,12 +269,22 @@ async def text_to_stream(
         stream_id: 聊天流ID
         typing: 是否显示正在输入
         reply_to: 回复消息，格式为"发送者:消息内容"
+        reply_to_platform_id: 回复消息，格式为"平台:用户ID"，如果不提供则自动查找（插件开发者禁用！）
         storage_message: 是否存储消息到数据库
 
     Returns:
         bool: 是否发送成功
     """
-    return await _send_to_target("text", text, stream_id, "", typing, reply_to, storage_message=storage_message)
+    return await _send_to_target(
+        "text",
+        text,
+        stream_id,
+        "",
+        typing,
+        reply_to,
+        reply_to_platform_id=reply_to_platform_id,
+        storage_message=storage_message,
+    )
 
 
 async def emoji_to_stream(emoji_base64: str, stream_id: str, storage_message: bool = True) -> bool:
