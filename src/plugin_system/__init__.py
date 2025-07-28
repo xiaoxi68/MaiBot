@@ -46,7 +46,6 @@ from .apis import (
     person_api,
     plugin_manage_api,
     send_api,
-    utils_api,
     register_plugin,
     get_logger,
 )
@@ -68,7 +67,6 @@ __all__ = [
     "person_api",
     "plugin_manage_api",
     "send_api",
-    "utils_api",
     "register_plugin",
     "get_logger",
     # 基础类

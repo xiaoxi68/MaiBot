@@ -54,7 +54,7 @@ def get_available_models() -> Dict[str, Any]:
 
 async def generate_with_model(
     prompt: str, model_config: Dict[str, Any], request_type: str = "plugin.generate", **kwargs
-) -> Tuple[bool, str, str, str]:
+) -> Tuple[bool, str]:
     """使用指定模型生成内容
 
     Args:
@@ -73,10 +73,11 @@ async def generate_with_model(
 
         llm_request = LLMRequest(model=model_config, request_type=request_type, **kwargs)
 
-        response, (reasoning, model_name) = await llm_request.generate_response_async(prompt)
-        return True, response, reasoning, model_name
+        # TODO: 复活这个_
+        response, _ = await llm_request.generate_response_async(prompt)
+        return True, response
 
     except Exception as e:
         error_msg = f"生成内容时出错: {str(e)}"
         logger.error(f"[LLMAPI] {error_msg}")
-        return False, error_msg, "", ""
+        return False, error_msg
