@@ -224,6 +224,18 @@ class PluginManager:
             list: 已注册的插件类名称列表。
         """
         return list(self.plugin_classes.keys())
+    
+    def get_plugin_path(self, plugin_name: str) -> Optional[str]:
+        """
+        获取指定插件的路径。
+
+        Args:
+            plugin_name: 插件名称
+
+        Returns:
+            Optional[str]: 插件目录的绝对路径，如果插件不存在则返回None。
+        """
+        return self.plugin_paths.get(plugin_name)
 
     # === 私有方法 ===
     # == 目录管理 ==

@@ -36,7 +36,18 @@ def list_registered_plugins() -> List[str]:
 **Returns:**
 - `List[str]` - 已注册的插件名称列表。
 
-### 3. 卸载指定的插件
+### 3. 获取插件路径
+```python
+def get_plugin_path(plugin_name: str) -> str:
+```
+获取指定插件的路径。
+
+**Args:**
+- `plugin_name` (str): 要查询的插件名称。
+**Returns:**
+- `str` - 插件的路径，如果插件不存在则 raise ValueError。
+
+### 4. 卸载指定的插件
 ```python
 async def remove_plugin(plugin_name: str) -> bool:
 ```
@@ -48,7 +59,7 @@ async def remove_plugin(plugin_name: str) -> bool:
 **Returns:**
 - `bool` - 卸载是否成功。
 
-### 4. 重新加载指定的插件
+### 5. 重新加载指定的插件
 ```python
 async def reload_plugin(plugin_name: str) -> bool:
 ```
@@ -60,7 +71,7 @@ async def reload_plugin(plugin_name: str) -> bool:
 **Returns:**
 - `bool` - 重新加载是否成功。
 
-### 5. 加载指定的插件
+### 6. 加载指定的插件
 ```python
 def load_plugin(plugin_name: str) -> Tuple[bool, int]:
 ```
@@ -72,7 +83,7 @@ def load_plugin(plugin_name: str) -> Tuple[bool, int]:
 **Returns:**
 - `Tuple[bool, int]` - 加载是否成功，成功或失败的个数。
 
-### 6. 添加插件目录
+### 7. 添加插件目录
 ```python
 def add_plugin_directory(plugin_directory: str) -> bool:
 ```
@@ -84,7 +95,7 @@ def add_plugin_directory(plugin_directory: str) -> bool:
 **Returns:**
 - `bool` - 添加是否成功。
 
-### 7. 重新扫描插件目录
+### 8. 重新扫描插件目录
 ```python
 def rescan_plugin_directory() -> Tuple[int, int]:
 ```
