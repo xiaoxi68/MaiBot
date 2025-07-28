@@ -80,7 +80,7 @@ class BaseTool:
         Returns:
             dict: 工具执行结果
         """     
-        if not self.parameters.get("required") in function_args.keys():
-            raise ValueError(f"工具类 {self.__class__.__name__} 的参数 {self.parameters.get('required')} 必须在在调用时中提供")
+        if self.parameters and (missing := [p for p in self.parameters.get("required", []) if p not in function_args]):
+            raise ValueError(f"工具类 {self.__class__.__name__} 缺少必要参数: {', '.join(missing)}")
 
         return await self.execute(function_args)
