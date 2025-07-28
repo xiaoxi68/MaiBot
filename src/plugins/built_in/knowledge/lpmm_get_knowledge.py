@@ -1,4 +1,4 @@
-from src.tools.tool_can_use.base_tool import BaseTool
+from src.plugin_system.base.base_tool import BaseTool
 
 # from src.common.database import db
 from src.common.logger import get_logger

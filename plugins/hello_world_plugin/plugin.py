@@ -1,4 +1,4 @@
-from typing import List, Tuple, Type
+from typing import List, Tuple, Type, Any
 from src.plugin_system import (
     BasePlugin,
     register_plugin,
@@ -13,32 +13,45 @@ from src.plugin_system import (
     MaiMessages,
 )
 
-class HelloTool(BaseTool):
-    """问候工具 - 用于发送问候消息"""
 
-    name = "hello_tool"
-    description = "发送问候消息"
+class CompareNumbersTool(BaseTool):
+    """比较两个数大小的工具"""
+
+    name = "compare_numbers"
+    description = "使用工具 比较两个数的大小，返回较大的数"
     parameters = {
         "type": "object",
         "properties": {
-            "greeting_message": {
-                "type": "string",
-                "description": "要发送的问候消息"
-            },
+            "num1": {"type": "number", "description": "第一个数字"},
+            "num2": {"type": "number", "description": "第二个数字"},
         },
-        "required": ["greeting_message"]
+        "required": ["num1", "num2"],
     }
-    available_for_llm = True
 
+    async def execute(self, function_args: dict[str, Any]) -> dict[str, Any]:
+        """执行比较两个数的大小
 
-    async def execute(self, function_args):
-        """执行问候工具"""
-        import random
-        greeting_message = random.choice(function_args.get("greeting_message", ["嗨！很高兴见到你！😊"]))
-        return {
-            "name": self.name,
-            "content": greeting_message
-        }
+        Args:
+            function_args: 工具参数
+
+        Returns:
+            dict: 工具执行结果
+        """
+        num1: int | float = function_args.get("num1")  # type: ignore
+        num2: int | float = function_args.get("num2")  # type: ignore
+
+        try:
+            if num1 > num2:
+                result = f"{num1} 大于 {num2}"
+            elif num1 < num2:
+                result = f"{num1} 小于 {num2}"
+            else:
+                result = f"{num1} 等于 {num2}"
+
+            return {"name": self.name, "content": result}
+        except Exception as e:
+            return {"name": self.name, "content": f"比较数字失败，炸了: {str(e)}"}
+
 
 # ===== Action组件 =====
 class HelloAction(BaseAction):
@@ -159,7 +172,9 @@ class HelloWorldPlugin(BasePlugin):
             "enabled": ConfigField(type=bool, default=False, description="是否启用插件"),
         },
         "greeting": {
-            "message": ConfigField(type=list, default=["嗨！很开心见到你！😊","Ciallo～(∠・ω< )⌒★"], description="默认问候消息"),
+            "message": ConfigField(
+                type=list, default=["嗨！很开心见到你！😊", "Ciallo～(∠・ω< )⌒★"], description="默认问候消息"
+            ),
             "enable_emoji": ConfigField(type=bool, default=True, description="是否启用表情符号"),
         },
         "time": {"format": ConfigField(type=str, default="%Y-%m-%d %H:%M:%S", description="时间显示格式")},
@@ -169,7 +184,7 @@ class HelloWorldPlugin(BasePlugin):
     def get_plugin_components(self) -> List[Tuple[ComponentInfo, Type]]:
         return [
             (HelloAction.get_action_info(), HelloAction),
-            (HelloTool.get_tool_info(), HelloTool),  # 添加问候工具
+            (CompareNumbersTool.get_tool_info(), CompareNumbersTool),  # 添加比较数字工具
             (ByeAction.get_action_info(), ByeAction),  # 添加告别Action
             (TimeCommand.get_command_info(), TimeCommand),
             (PrintMessage.get_handler_info(), PrintMessage),

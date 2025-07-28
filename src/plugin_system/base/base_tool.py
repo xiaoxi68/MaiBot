@@ -10,7 +10,6 @@ install(extra_lines=3)
 logger = get_logger("base_tool")
 
 
-
 class BaseTool(ABC):
     """所有工具的基类"""
 
@@ -37,7 +36,7 @@ class BaseTool(ABC):
             "type": "function",
             "function": {"name": cls.name, "description": cls.description, "parameters": cls.parameters},
         }
-    
+
     @classmethod
     def get_tool_info(cls) -> ToolInfo:
         """获取工具信息"""
@@ -79,7 +78,7 @@ class BaseTool(ABC):
 
         Returns:
             dict: 工具执行结果
-        """     
+        """
         if self.parameters and (missing := [p for p in self.parameters.get("required", []) if p not in function_args]):
             raise ValueError(f"工具类 {self.__class__.__name__} 缺少必要参数: {', '.join(missing)}")
 

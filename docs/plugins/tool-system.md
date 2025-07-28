@@ -1,10 +1,10 @@
 # 🔧 工具系统详解
 
-## 📖 什么是工具系统
+## 📖 什么是工具
 
-工具系统是MaiBot的信息获取能力扩展组件。如果说Action组件功能五花八门，可以拓展麦麦能做的事情，那么Tool就是在某个过程中拓宽了麦麦能够获得的信息量。
+工具是MaiBot的信息获取能力扩展组件。如果说Action组件功能五花八门，可以拓展麦麦能做的事情，那么Tool就是在某个过程中拓宽了麦麦能够获得的信息量。
 
-### 🎯 工具系统的特点
+### 🎯 工具的特点
 
 - 🔍 **信息获取增强**：扩展麦麦获取外部信息的能力
 - 📊 **数据丰富**：帮助麦麦获得更多背景信息和实时数据
@@ -20,14 +20,11 @@
 | **目标** | 让麦麦做更多事情 | 提供具体功能 | 让麦麦知道更多信息 |
 | **使用场景** | 增强交互体验 | 功能服务 | 信息查询和分析 |
 
-## 🏗️ 工具基本结构
-
-### 必要组件
+## 🏗️ Tool组件的基本结构
 
 每个工具必须继承 `BaseTool` 基类并实现以下属性和方法：
-
 ```python
-from src.tools.tool_can_use.base_tool import BaseTool, register_tool
+from src.plugin_system import BaseTool
 
 class MyTool(BaseTool):
     # 工具名称，必须唯一
@@ -51,6 +48,8 @@ class MyTool(BaseTool):
         },
         "required": ["query"]
     }
+
+    available_for_llm = True  # 是否对LLM可用
     
     async def execute(self, function_args: Dict[str, Any]):
         """执行工具逻辑"""
@@ -77,15 +76,6 @@ class MyTool(BaseTool):
 |-----|------|--------|------|
 | `execute` | `function_args` | `dict` | 执行工具核心逻辑 |
 
-## 🔄 自动注册机制
-
-工具系统采用自动发现和注册机制：
-
-1. **文件扫描**：系统自动遍历 `tool_can_use` 目录中的所有Python文件
-2. **类识别**：寻找继承自 `BaseTool` 的工具类
-3. **自动注册**：只需要实现对应的类并把文件放在正确文件夹中就可自动注册
-4. **即用即加载**：工具在需要时被实例化和调用
-
 ---
 
 ## 🎨 完整工具示例
@@ -93,7 +83,7 @@ class MyTool(BaseTool):
 完成一个天气查询工具
 
 ```python
-from src.tools.tool_can_use.base_tool import BaseTool, register_tool
+from src.plugin_system import BaseTool
 import aiohttp
 import json
 
@@ -177,55 +167,12 @@ class WeatherTool(BaseTool):
 
 ---
 
-## 📊 工具开发步骤
-
-### 1. 创建工具文件
-
-在 `src/tools/tool_can_use/` 目录下创建新的Python文件：
-
-```bash
-# 例如创建 my_new_tool.py
-touch src/tools/tool_can_use/my_new_tool.py
-```
-
-### 2. 实现工具类
-
-```python
-from src.tools.tool_can_use.base_tool import BaseTool, register_tool
-
-class MyNewTool(BaseTool):
-    name = "my_new_tool"
-    description = "新工具的功能描述"
-    
-    parameters = {
-        "type": "object",
-        "properties": {
-            # 定义参数
-        },
-        "required": []
-    }
-    
-    async def execute(self, function_args, message_txt=""):
-        # 实现工具逻辑
-        return {
-            "name": self.name,
-            "content": "执行结果"
-        }
-```
-
-### 3. 系统集成
-
-工具创建完成后，系统会自动发现和注册，无需额外配置。
-
----
-
 ## 🚨 注意事项和限制
 
 ### 当前限制
 
-1. **独立开发**：需要单独编写，暂未完全融入插件系统
-2. **适用范围**：主要适用于信息获取场景
-3. **配置要求**：必须开启工具处理器
+1. **适用范围**：主要适用于信息获取场景
+2. **配置要求**：必须开启工具处理器
 
 ### 开发建议
 
