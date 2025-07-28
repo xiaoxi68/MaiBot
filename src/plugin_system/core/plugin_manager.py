@@ -289,6 +289,7 @@ class PluginManager:
                 return False
 
             module = module_from_spec(spec)
+            module.__package__ = module_name  # 设置模块包名
             spec.loader.exec_module(module)
 
             logger.debug(f"插件模块加载成功: {plugin_file}")
