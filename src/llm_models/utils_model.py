@@ -216,24 +216,59 @@ class LLMRequest:
     def _determine_task_name(self, model: dict) -> str:
         """
         根据模型配置确定任务名称
+        优先使用配置文件中明确定义的任务类型，避免基于模型名称的脆弱推断
+        
         Args:
             model: 模型配置字典
         Returns:
             任务名称
         """
-        # 兼容新旧格式的模型名称
-        model_name = model.get("model_name", model.get("name", ""))
+        # 方法1: 优先使用配置文件中明确定义的 task_type 字段
+        if "task_type" in model:
+            task_type = model["task_type"]
+            logger.debug(f"🎯 [任务确定] 使用配置中的 task_type: {task_type}")
+            return task_type
         
-        # 根据模型名称推断任务类型
+        # 方法2: 使用 capabilities 字段来推断主要任务类型
+        if "capabilities" in model:
+            capabilities = model["capabilities"]
+            if isinstance(capabilities, list):
+                # 按优先级顺序检查能力
+                if "vision" in capabilities:
+                    logger.debug(f"🎯 [任务确定] 从 capabilities {capabilities} 推断为: vision")
+                    return "vision"
+                elif "embedding" in capabilities:
+                    logger.debug(f"🎯 [任务确定] 从 capabilities {capabilities} 推断为: embedding")
+                    return "embedding"
+                elif "speech" in capabilities:
+                    logger.debug(f"🎯 [任务确定] 从 capabilities {capabilities} 推断为: speech")
+                    return "speech"
+                elif "text" in capabilities:
+                    # 如果只有文本能力，则根据request_type细分
+                    task = "llm_reasoning" if self.request_type == "reasoning" else "llm_normal"
+                    logger.debug(f"🎯 [任务确定] 从 capabilities {capabilities} 和 request_type {self.request_type} 推断为: {task}")
+                    return task
+        
+        # 方法3: 向后兼容 - 基于模型名称的关键字推断（不推荐但保留兼容性）
+        model_name = model.get("model_name", model.get("name", ""))
+        logger.warning(f"⚠️ [任务确定] 配置中未找到 task_type 或 capabilities，回退到基于模型名称的推断: {model_name}")
+        logger.warning("⚠️ [建议] 请在 model_config.toml 中为模型添加明确的 task_type 或 capabilities 字段")
+        
+        # 保留原有的关键字匹配逻辑作为fallback
         if any(keyword in model_name.lower() for keyword in ["vlm", "vision", "gpt-4o", "claude", "vl-"]):
+            logger.debug(f"🎯 [任务确定] 从模型名称 {model_name} 推断为: vision")
             return "vision"
         elif any(keyword in model_name.lower() for keyword in ["embed", "text-embedding", "bge-"]):
+            logger.debug(f"🎯 [任务确定] 从模型名称 {model_name} 推断为: embedding")
             return "embedding" 
         elif any(keyword in model_name.lower() for keyword in ["whisper", "speech", "voice"]):
+            logger.debug(f"🎯 [任务确定] 从模型名称 {model_name} 推断为: speech")
             return "speech"
         else:
             # 根据request_type确定，映射到配置文件中定义的任务
-            return "llm_reasoning" if self.request_type == "reasoning" else "llm_normal"
+            task = "llm_reasoning" if self.request_type == "reasoning" else "llm_normal"
+            logger.debug(f"🎯 [任务确定] 从 request_type {self.request_type} 推断为: {task}")
+            return task
 
     @staticmethod
     def _init_database():
