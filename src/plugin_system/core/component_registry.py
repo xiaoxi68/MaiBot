@@ -193,14 +193,11 @@ class ComponentRegistry:
     def _register_tool_component(self, tool_info: ToolInfo, tool_class: BaseTool):
         """注册Tool组件到Tool特定注册表"""
         tool_name = tool_info.name
-        if not tool_info.enabled:
-            logger.info(f"Tool组件 {tool_name} 未启用，跳过注册")
-            return False
         
         self._tool_registry[tool_name] = tool_class
         
-        # 如果是llm可用的工具,添加到 llm可用工具列表
-        if tool_info.available_for_llm:
+        # 如果是llm可用的且启用的工具,添加到 llm可用工具列表
+        if tool_info.available_for_llm and tool_info.enabled:
             self._llm_available_tools[tool_name] = tool_class
 
         return True

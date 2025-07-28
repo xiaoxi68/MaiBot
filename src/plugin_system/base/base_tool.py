@@ -19,8 +19,6 @@ class BaseTool:
     parameters = None
     # 是否可供LLM使用，默认为False
     available_for_llm = False
-    # 是否启用该工具
-    enabled = True
 
     @classmethod
     def get_tool_definition(cls) -> dict[str, Any]:
@@ -45,7 +43,6 @@ class BaseTool:
             
         return ToolInfo(
             name=cls.name,
-            enabled=cls.enabled,
             tool_description=cls.description,
             available_for_llm=cls.available_for_llm,
             tool_parameters=cls.parameters,
