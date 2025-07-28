@@ -851,7 +851,7 @@ class LLMRequest:
 
     def _default_response_handler(
         self, result: dict, user_id: str = "system", request_type: str = None, endpoint: str = "/chat/completions"
-    ) -> Tuple:
+    ):
         """默认响应解析"""
         if "choices" in result and result["choices"]:
             message = result["choices"][0]["message"]

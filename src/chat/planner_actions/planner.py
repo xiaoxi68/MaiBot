@@ -211,9 +211,8 @@ class ActionPlanner:
             reasoning = f"Planner 内部处理错误: {outer_e}"
 
         is_parallel = False
-        if mode == ChatMode.NORMAL:
-            if action in current_available_actions:
-                is_parallel = current_available_actions[action].parallel_action
+        if mode == ChatMode.NORMAL and action in current_available_actions:
+            is_parallel = current_available_actions[action].parallel_action
 
         action_result = {
             "action_type": action,
@@ -256,7 +255,7 @@ class ActionPlanner:
 
             actions_before_now = get_actions_by_timestamp_with_chat(
                 chat_id=self.chat_id,
-                timestamp_start=time.time()-3600,
+                timestamp_start=time.time() - 3600,
                 timestamp_end=time.time(),
                 limit=5,
             )
@@ -264,7 +263,7 @@ class ActionPlanner:
             actions_before_now_block = build_readable_actions(
                 actions=actions_before_now,
             )
-            
+
             actions_before_now_block = f"你刚刚选择并执行过的action是：\n{actions_before_now_block}"
 
             self.last_obs_time_mark = time.time()
@@ -276,7 +275,6 @@ class ActionPlanner:
                 if global_config.chat.at_bot_inevitable_reply:
                     mentioned_bonus = "\n- 有人提到你，或者at你"
 
-                
                 by_what = "聊天内容"
                 target_prompt = '\n    "target_message_id":"触发action的消息id"'
                 no_action_block = f"""重要说明：

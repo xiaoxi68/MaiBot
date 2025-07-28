@@ -43,19 +43,22 @@ Command vs Action 选择指南
 - [LLM API](api/llm-api.md) - 大语言模型交互接口，可以使用内置LLM生成内容
 - [✨ 回复生成器API](api/generator-api.md) - 智能回复生成接口，可以使用内置风格化生成器
 
-### 表情包api
+### 表情包API
 - [😊 表情包API](api/emoji-api.md) - 表情包选择和管理接口
 
-### 关系系统api
+### 关系系统API
 - [人物信息API](api/person-api.md) - 用户信息，处理麦麦认识的人和关系的接口
 
 ### 数据与配置API
 - [🗄️ 数据库API](api/database-api.md) - 数据库操作接口
 - [⚙️ 配置API](api/config-api.md) - 配置读取和用户信息接口
 
-### 工具API
-- [工具API](api/utils-api.md) - 文件操作、时间处理等工具函数
+### 插件和组件管理API
+- [🔌 插件API](api/plugin-manage-api.md) - 插件加载和管理接口
+- [🧩 组件API](api/component-manage-api.md) - 组件注册和管理接口
 
+### 日志API
+- [📜 日志API](api/logging-api.md) - logger实例获取接口
 
 ## 实验性
 
