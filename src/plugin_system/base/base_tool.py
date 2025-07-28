@@ -19,6 +19,8 @@ class BaseTool:
     parameters = None
     # 是否可供LLM使用，默认为False
     available_for_llm = False
+    # 是否启用该工具
+    enabled = True
 
     @classmethod
     def get_tool_definition(cls) -> dict[str, Any]:
@@ -43,6 +45,7 @@ class BaseTool:
             
         return ToolInfo(
             name=cls.name,
+            enabled=cls.enabled,
             tool_description=cls.description,
             available_for_llm=cls.available_for_llm,
             tool_parameters=cls.parameters,
@@ -51,7 +54,9 @@ class BaseTool:
 
     # 工具参数定义，子类必须重写
     async def execute(self, function_args: dict[str, Any]) -> dict[str, Any]:
-        """执行工具函数
+        """执行工具函数(供llm调用)
+           通过该方法，maicore会通过llm的tool call来调用工具
+           传入的是json格式的参数，符合parameters定义的格式
 
         Args:
             function_args: 工具调用参数
@@ -60,3 +65,22 @@ class BaseTool:
             dict: 工具执行结果
         """
         raise NotImplementedError("子类必须实现execute方法")
+
+    async def direct_execute(self, **function_args: dict[str, Any]) -> dict[str, Any]:
+        """直接执行工具函数(供插件调用)
+           通过该方法，插件可以直接调用工具，而不需要传入字典格式的参数
+           插件可以直接调用此方法，用更加明了的方式传入参数
+           示例: result = await tool.direct_execute(arg1="参数",arg2="参数2")
+
+           工具开发者可以重写此方法以实现与llm调用差异化的执行逻辑
+
+        Args:
+            **function_args: 工具调用参数
+
+        Returns:
+            dict: 工具执行结果
+        """     
+        if not self.parameters.get("required") in function_args.keys():
+            raise ValueError(f"工具类 {self.__class__.__name__} 的参数 {self.parameters.get('required')} 必须在在调用时中提供")
+
+        return await self.execute(function_args)
