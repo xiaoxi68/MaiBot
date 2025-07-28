@@ -1,5 +1,4 @@
 from typing import List, Tuple, Type
-from src.plugin_system.apis import tool_api
 from src.plugin_system import (
     BasePlugin,
     register_plugin,
@@ -58,10 +57,7 @@ class HelloAction(BaseAction):
     async def execute(self) -> Tuple[bool, str]:
         """执行问候动作 - 这是核心功能"""
         # 发送问候消息
-        hello_tool = tool_api.get_tool_instance("hello_tool")
-        greeting_message = await hello_tool.execute({
-            "greeting_message": self.action_data.get("greeting_message", "")
-        })
+        greeting_message = self.action_data.get("greeting_message", "")
         base_message = self.get_config("greeting.message", "嗨！很开心见到你！😊")
         message = base_message + greeting_message
         await self.send_text(message)

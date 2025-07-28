@@ -85,7 +85,9 @@ class ComponentRegistry:
         return True
 
     def register_component(
-        self, component_info: ComponentInfo, component_class: Type[Union[BaseCommand, BaseAction, BaseEventHandler]]
+        self,
+        component_info: ComponentInfo,
+        component_class: Type[Union[BaseCommand, BaseAction, BaseEventHandler, BaseTool]],
     ) -> bool:
         """注册组件
 
@@ -190,17 +192,17 @@ class ComponentRegistry:
 
         return True
 
-    def _register_tool_component(self, tool_info: ToolInfo, tool_class: BaseTool):
+    def _register_tool_component(self, tool_info: ToolInfo, tool_class: Type[BaseTool]) -> bool:
         """注册Tool组件到Tool特定注册表"""
         tool_name = tool_info.name
         self._tool_registry[tool_name] = tool_class
-        
+
         # 如果是llm可用的且启用的工具,添加到 llm可用工具列表
-        if tool_info.available_for_llm and tool_info.enabled:
+        if tool_info.enabled:
             self._llm_available_tools[tool_name] = tool_class
 
         return True
-    
+
     def _register_event_handler_component(
         self, handler_info: EventHandlerInfo, handler_class: Type[BaseEventHandler]
     ) -> bool:
@@ -243,6 +245,9 @@ class ComponentRegistry:
                     keys_to_remove = [k for k, v in self._command_patterns.items() if v == component_name]
                     for key in keys_to_remove:
                         self._command_patterns.pop(key)
+                case ComponentType.TOOL:
+                    self._tool_registry.pop(component_name)
+                    self._llm_available_tools.pop(component_name)
                 case ComponentType.EVENT_HANDLER:
                     from .events_manager import events_manager  # 延迟导入防止循环导入问题
 
@@ -255,13 +260,13 @@ class ComponentRegistry:
             self._components_classes.pop(namespaced_name)
             logger.info(f"组件 {component_name} 已移除")
             return True
-        except KeyError:
-            logger.warning(f"移除组件时未找到组件: {component_name}")
+        except KeyError as e:
+            logger.warning(f"移除组件时未找到组件: {component_name}, 发生错误: {e}")
             return False
         except Exception as e:
             logger.error(f"移除组件 {component_name} 时发生错误: {e}")
             return False
-    
+
     def remove_plugin_registry(self, plugin_name: str) -> bool:
         """移除插件注册信息
 
@@ -302,6 +307,10 @@ class ComponentRegistry:
                 assert isinstance(target_component_info, CommandInfo)
                 pattern = target_component_info.command_pattern
                 self._command_patterns[re.compile(pattern)] = component_name
+            case ComponentType.TOOL:
+                assert isinstance(target_component_info, ToolInfo)
+                assert issubclass(target_component_class, BaseTool)
+                self._llm_available_tools[component_name] = target_component_class
             case ComponentType.EVENT_HANDLER:
                 assert isinstance(target_component_info, EventHandlerInfo)
                 assert issubclass(target_component_class, BaseEventHandler)
@@ -329,20 +338,29 @@ class ComponentRegistry:
             logger.warning(f"组件 {component_name} 未注册，无法禁用")
             return False
         target_component_info.enabled = False
-        match component_type:
-            case ComponentType.ACTION:
-                self._default_actions.pop(component_name, None)
-            case ComponentType.COMMAND:
-                self._command_patterns = {k: v for k, v in self._command_patterns.items() if v != component_name}
-            case ComponentType.EVENT_HANDLER:
-                self._enabled_event_handlers.pop(component_name, None)
-                from .events_manager import events_manager  # 延迟导入防止循环导入问题
+        try:
+            match component_type:
+                case ComponentType.ACTION:
+                    self._default_actions.pop(component_name)
+                case ComponentType.COMMAND:
+                    self._command_patterns = {k: v for k, v in self._command_patterns.items() if v != component_name}
+                case ComponentType.TOOL:
+                    self._llm_available_tools.pop(component_name)
+                case ComponentType.EVENT_HANDLER:
+                    self._enabled_event_handlers.pop(component_name)
+                    from .events_manager import events_manager  # 延迟导入防止循环导入问题
 
-                await events_manager.unregister_event_subscriber(component_name)
-        self._components[component_name].enabled = False
-        self._components_by_type[component_type][component_name].enabled = False
-        logger.info(f"组件 {component_name} 已禁用")
-        return True
+                    await events_manager.unregister_event_subscriber(component_name)
+            self._components[component_name].enabled = False
+            self._components_by_type[component_type][component_name].enabled = False
+            logger.info(f"组件 {component_name} 已禁用")
+            return True
+        except KeyError as e:
+            logger.warning(f"禁用组件时未找到组件或已禁用: {component_name}, 发生错误: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"禁用组件 {component_name} 时发生错误: {e}")
+            return False
 
     # === 组件查询方法 ===
     def get_component_info(
@@ -392,7 +410,7 @@ class ComponentRegistry:
         self,
         component_name: str,
         component_type: Optional[ComponentType] = None,
-    ) -> Optional[Union[Type[BaseCommand], Type[BaseAction], Type[BaseEventHandler]]]:
+    ) -> Optional[Union[Type[BaseCommand], Type[BaseAction], Type[BaseEventHandler], Type[BaseTool]]]:
         """获取组件类，支持自动命名空间解析
 
         Args:
@@ -496,13 +514,13 @@ class ComponentRegistry:
             candidates[0].match(text).groupdict(),  # type: ignore
             command_info,
         )
-    
+
     # === Tool 特定查询方法 ===
     def get_tool_registry(self) -> Dict[str, Type[BaseTool]]:
         """获取Tool注册表"""
         return self._tool_registry.copy()
-    
-    def get_llm_available_tools(self) -> Dict[str, str]:
+
+    def get_llm_available_tools(self) -> Dict[str, Type[BaseTool]]:
         """获取LLM可用的Tool列表"""
         return self._llm_available_tools.copy()
 
@@ -517,7 +535,7 @@ class ComponentRegistry:
         """
         info = self.get_component_info(tool_name, ComponentType.TOOL)
         return info if isinstance(info, ToolInfo) else None
-    
+
     # === EventHandler 特定查询方法 ===
 
     def get_event_handler_registry(self) -> Dict[str, Type[BaseEventHandler]]:
@@ -572,7 +590,7 @@ class ComponentRegistry:
         action_components: int = 0
         command_components: int = 0
         tool_components: int = 0
-        events_handlers: int = 0        
+        events_handlers: int = 0
         for component in self._components.values():
             if component.component_type == ComponentType.ACTION:
                 action_components += 1

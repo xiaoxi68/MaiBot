@@ -51,7 +51,7 @@ from .apis import (
 )
 
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 
 __all__ = [
     # API 模块
