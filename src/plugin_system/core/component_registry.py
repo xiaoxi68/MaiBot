@@ -195,6 +195,7 @@ class ComponentRegistry:
     def _register_tool_component(self, tool_info: ToolInfo, tool_class: Type[BaseTool]) -> bool:
         """注册Tool组件到Tool特定注册表"""
         tool_name = tool_info.name
+        
         self._tool_registry[tool_name] = tool_class
 
         # 如果是llm可用的且启用的工具,添加到 llm可用工具列表

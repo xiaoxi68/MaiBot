@@ -54,7 +54,9 @@ class BaseTool(ABC):
 
     @abstractmethod
     async def execute(self, function_args: dict[str, Any]) -> dict[str, Any]:
-        """执行工具函数
+        """执行工具函数(供llm调用)
+           通过该方法，maicore会通过llm的tool call来调用工具
+           传入的是json格式的参数，符合parameters定义的格式
 
         Args:
             function_args: 工具调用参数
@@ -63,3 +65,22 @@ class BaseTool(ABC):
             dict: 工具执行结果
         """
         raise NotImplementedError("子类必须实现execute方法")
+
+    async def direct_execute(self, **function_args: dict[str, Any]) -> dict[str, Any]:
+        """直接执行工具函数(供插件调用)
+           通过该方法，插件可以直接调用工具，而不需要传入字典格式的参数
+           插件可以直接调用此方法，用更加明了的方式传入参数
+           示例: result = await tool.direct_execute(arg1="参数",arg2="参数2")
+
+           工具开发者可以重写此方法以实现与llm调用差异化的执行逻辑
+
+        Args:
+            **function_args: 工具调用参数
+
+        Returns:
+            dict: 工具执行结果
+        """     
+        if self.parameters and (missing := [p for p in self.parameters.get("required", []) if p not in function_args]):
+            raise ValueError(f"工具类 {self.__class__.__name__} 缺少必要参数: {', '.join(missing)}")
+
+        return await self.execute(function_args)
