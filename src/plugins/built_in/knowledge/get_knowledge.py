@@ -1,4 +1,4 @@
-from src.tools.tool_can_use.base_tool import BaseTool
+from src.plugin_system.base.base_tool import BaseTool
 from src.chat.utils.utils import get_embedding
 from src.common.database.database_model import Knowledges  # Updated import
 from src.common.logger import get_logger
@@ -77,7 +77,7 @@ class SearchKnowledgeTool(BaseTool):
             Union[str, list]: 格式化的信息字符串或原始结果列表
         """
         if not query_embedding:
-            return "" if not return_raw else []
+            return [] if return_raw else ""
 
         similar_items = []
         try:
@@ -115,10 +115,10 @@ class SearchKnowledgeTool(BaseTool):
 
         except Exception as e:
             logger.error(f"从 Peewee 数据库获取知识信息失败: {str(e)}")
-            return "" if not return_raw else []
+            return [] if return_raw else ""
 
         if not results:
-            return "" if not return_raw else []
+            return [] if return_raw else ""
 
         if return_raw:
             # Peewee 模型实例不能直接序列化为 JSON，如果需要原始模型，调用者需要处理

@@ -33,8 +33,9 @@ def init_prompt():
 {time_block}
 {identity_block}
 你现在需要根据聊天内容，选择的合适的action来参与聊天。
-{chat_context_description}，以下是具体的聊天内容：
+{chat_context_description}，以下是具体的聊天内容
 {chat_content_block}
+
 
 
 {moderation_prompt}
@@ -45,7 +46,7 @@ def init_prompt():
 {no_action_block}
 {action_options_text}
 
-你必须从上面列出的可用action中选择一个，并说明触发action的消息id和原因。
+你必须从上面列出的可用action中选择一个，并说明触发action的消息id（不是消息原文）和选择该action的原因。
 
 请根据动作示例，以严格的 JSON 格式输出，且仅包含 JSON 内容：
 """,
@@ -127,20 +128,6 @@ class ActionPlanner:
                     current_available_actions[action_name] = all_registered_actions[action_name]
                 else:
                     logger.warning(f"{self.log_prefix}使用中的动作 {action_name} 未在已注册动作中找到")
-
-            # 如果没有可用动作或只有no_reply动作，直接返回no_reply
-            # 因为现在reply是永远激活，所以不需要空跳判定
-            # if not current_available_actions:
-            #     action = "no_reply" if mode == ChatMode.FOCUS else "no_action"
-            #     reasoning = "没有可用的动作"
-            #     logger.info(f"{self.log_prefix}{reasoning}")
-            #     return {
-            #         "action_result": {
-            #             "action_type": action,
-            #             "action_data": action_data,
-            #             "reasoning": reasoning,
-            #         },
-            #     }, None
 
             # --- 构建提示词 (调用修改后的 PromptBuilder 方法) ---
             prompt, message_id_list = await self.build_planner_prompt(
@@ -224,7 +211,7 @@ class ActionPlanner:
             reasoning = f"Planner 内部处理错误: {outer_e}"
 
         is_parallel = False
-        if action in current_available_actions:
+        if mode == ChatMode.NORMAL and action in current_available_actions:
             is_parallel = current_available_actions[action].parallel_action
 
         action_result = {
@@ -268,7 +255,7 @@ class ActionPlanner:
 
             actions_before_now = get_actions_by_timestamp_with_chat(
                 chat_id=self.chat_id,
-                timestamp_start=time.time()-3600,
+                timestamp_start=time.time() - 3600,
                 timestamp_end=time.time(),
                 limit=5,
             )
@@ -276,7 +263,7 @@ class ActionPlanner:
             actions_before_now_block = build_readable_actions(
                 actions=actions_before_now,
             )
-            
+
             actions_before_now_block = f"你刚刚选择并执行过的action是：\n{actions_before_now_block}"
 
             self.last_obs_time_mark = time.time()
@@ -288,7 +275,6 @@ class ActionPlanner:
                 if global_config.chat.at_bot_inevitable_reply:
                     mentioned_bonus = "\n- 有人提到你，或者at你"
 
-                
                 by_what = "聊天内容"
                 target_prompt = '\n    "target_message_id":"触发action的消息id"'
                 no_action_block = f"""重要说明：
@@ -311,7 +297,7 @@ class ActionPlanner:
                 by_what = "聊天内容和用户的最新消息"
                 target_prompt = ""
                 no_action_block = """重要说明：
-- 'no_action' 表示只进行普通聊天回复，不执行任何额外动作
+- 'reply' 表示只进行普通聊天回复，不执行任何额外动作
 - 其他action表示在普通回复的基础上，执行相应的额外动作"""
 
             chat_context_description = "你现在正在一个群聊中"

@@ -444,7 +444,7 @@ class MessageSending(MessageProcessBase):
         is_emoji: bool = False,
         thinking_start_time: float = 0,
         apply_set_reply_logic: bool = False,
-        reply_to: str = None,  # type: ignore
+        reply_to: Optional[str] = None,
     ):
         # 调用父类初始化
         super().__init__(

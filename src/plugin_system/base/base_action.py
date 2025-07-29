@@ -208,7 +208,7 @@ class BaseAction(ABC):
             return False, f"等待新消息失败: {str(e)}"
 
     async def send_text(
-        self, content: str, reply_to: str = "", reply_to_platform_id: str = "", typing: bool = False
+        self, content: str, reply_to: str = "", typing: bool = False
     ) -> bool:
         """发送文本消息
 
@@ -227,7 +227,6 @@ class BaseAction(ABC):
             text=content,
             stream_id=self.chat_id,
             reply_to=reply_to,
-            reply_to_platform_id=reply_to_platform_id,
             typing=typing,
         )
 
@@ -384,7 +383,7 @@ class BaseAction(ABC):
             keyword_case_sensitive=getattr(cls, "keyword_case_sensitive", False),
             mode_enable=getattr(cls, "mode_enable", ChatMode.ALL),
             parallel_action=getattr(cls, "parallel_action", True),
-            random_activation_probability=getattr(cls, "random_activation_probability", 0.3),
+            random_activation_probability=getattr(cls, "random_activation_probability", 0.0),
             llm_judge_prompt=getattr(cls, "llm_judge_prompt", ""),
             # 使用正确的字段名
             action_parameters=getattr(cls, "action_parameters", {}).copy(),

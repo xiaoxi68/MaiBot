@@ -163,12 +163,11 @@ class VersionComparator:
                     version_normalized, max_normalized
                 )
 
-                if is_compatible:
-                    logger.info(f"版本兼容性检查：{compat_msg}")
-                    return True, compat_msg
-                else:
+                if not is_compatible:
                     return False, f"版本 {version_normalized} 高于最大支持版本 {max_normalized}，且无兼容性映射"
 
+                logger.info(f"版本兼容性检查：{compat_msg}")
+                return True, compat_msg
         return True, ""
 
     @staticmethod
@@ -358,14 +357,10 @@ class ManifestValidator:
 
         if self.validation_errors:
             report.append("❌ 验证错误:")
-            for error in self.validation_errors:
-                report.append(f"  - {error}")
-
+            report.extend(f"  - {error}" for error in self.validation_errors)
         if self.validation_warnings:
             report.append("⚠️ 验证警告:")
-            for warning in self.validation_warnings:
-                report.append(f"  - {warning}")
-
+            report.extend(f"  - {warning}" for warning in self.validation_warnings)
         if not self.validation_errors and not self.validation_warnings:
             report.append("✅ Manifest文件验证通过")
 

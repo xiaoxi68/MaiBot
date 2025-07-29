@@ -22,7 +22,7 @@ class ExampleAction(BaseAction):
     action_name = "example_action" # 动作的唯一标识符
     action_description = "这是一个示例动作" # 动作描述
     activation_type = ActionActivationType.ALWAYS # 这里以 ALWAYS 为例
-    mode_enable = ChatMode.ALL # 这里以 ALL 为例
+    mode_enable = ChatMode.ALL # 一般取ALL，表示在所有聊天模式下都可用
     associated_types = ["text", "emoji", ...] # 关联类型
     parallel_action = False # 是否允许与其他Action并行执行
     action_parameters = {"param1": "参数1的说明", "param2": "参数2的说明", ...}
@@ -60,7 +60,7 @@ class ExampleAction(BaseAction):
 **请知悉，对于不同的处理器，其支持的消息类型可能会有所不同。在开发时请注意。**
 
 #### action_parameters: 该Action的参数说明。
-这是一个字典，键为参数名，值为参数说明。这个字段可以帮助LLM理解如何使用这个Action，并由LLM返回对应的参数，最后传递到 Action 的 action_data 属性中。其格式与你定义的格式完全相同 **（除非LLM哈气了，返回了错误的内容）**。
+这是一个字典，键为参数名，值为参数说明。这个字段可以帮助LLM理解如何使用这个Action，并由LLM返回对应的参数，最后传递到 Action 的 **`action_data`** 属性中。其格式与你定义的格式完全相同 **（除非LLM哈气了，返回了错误的内容）**。
 
 ---
 
@@ -180,6 +180,8 @@ class GreetingAction(BaseAction):
         return True, "发送了问候"
 ```
 
+一个完整的使用`ActionActivationType.KEYWORD`的例子请参考`plugins/hello_world_plugin`中的`ByeAction`。
+
 #### 第二层：使用决策
 
 **在Action被激活后，使用条件决定麦麦什么时候会"选择"使用这个Action**。
@@ -268,7 +270,6 @@ action_message为一个字典，包含的键值对如下（省略了不必要的
 ## Action 内置方法说明
 ```python
 class BaseAction:
-    # 配置相关
     def get_config(self, key: str, default=None):
         """获取插件配置值，使用嵌套键访问"""
     
