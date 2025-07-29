@@ -42,14 +42,13 @@ class ModelUsageStatistic:
         # 确保表已经创建
         try:
             from src.common.database.database import db
+
             db.create_tables([LLMUsage], safe=True)
         except Exception as e:
             logger.error(f"创建LLMUsage表失败: {e}")
 
     @staticmethod
-    def _calculate_cost(
-        prompt_tokens: int, completion_tokens: int, model_info: ModelInfo
-    ) -> float:
+    def _calculate_cost(prompt_tokens: int, completion_tokens: int, model_info: ModelInfo) -> float:
         """计算API调用成本
         使用模型的pri_in和pri_out价格计算输入和输出的成本
 
@@ -101,11 +100,11 @@ class ModelUsageStatistic:
                 timestamp=datetime.now(),
             )
 
-            logger.trace(
-                f"创建了一条模型使用情况记录 - 模型: {model_name}, "
-                f"子任务: {task_name}, 类型: {request_type.value}, "
-                f"用户: {user_id}, 记录ID: {usage_record.id}"
-            )
+            # logger.trace(
+            #     f"创建了一条模型使用情况记录 - 模型: {model_name}, "
+            #     f"子任务: {task_name}, 类型: {request_type.value}, "
+            #     f"用户: {user_id}, 记录ID: {usage_record.id}"
+            # )
 
             return usage_record.id
         except Exception as e:
@@ -150,13 +149,11 @@ class ModelUsageStatistic:
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
                 total_tokens=total_tokens,
-                cost=self._calculate_cost(
-                    prompt_tokens, completion_tokens, model_info
-                ) if usage_data else 0.0,
-            ).where(LLMUsage.id == record_id)
-            
+                cost=self._calculate_cost(prompt_tokens, completion_tokens, model_info) if usage_data else 0.0,
+            ).where(LLMUsage.id == record_id)  # type: ignore
+
             updated_count = update_query.execute()
-            
+
             if updated_count == 0:
                 logger.warning(f"记录ID {record_id} 不存在，无法更新")
                 return
