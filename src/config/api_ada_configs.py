@@ -85,7 +85,7 @@ class APIProvider:
             # 如果所有key都不可用，返回当前key（让上层处理）
             return api_key
     
-    def reset_key_failures(self, api_key: str = None):
+    def reset_key_failures(self, api_key: str | None = None):
         """重置失败计数（成功调用后调用）"""
         with self._lock:
             if api_key and api_key in self.api_keys:
@@ -124,6 +124,10 @@ class ModelInfo:
     price_out: float = 0.0  # 每M token输出价格
 
     force_stream_mode: bool = False  # 是否强制使用流式输出模式
+    
+    # 新增：任务类型和能力字段
+    task_type: str = ""  # 任务类型：llm_normal, llm_reasoning, vision, embedding, speech
+    capabilities: List[str] = field(default_factory=list)  # 模型能力：text, vision, embedding, speech, tool_calling, reasoning
 
 
 @dataclass

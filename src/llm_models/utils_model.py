@@ -131,12 +131,24 @@ class LLMRequest:
             **kwargs: 额外参数
         """
         logger.debug(f"🔍 [模型初始化] 开始初始化模型: {model.get('model_name', model.get('name', 'Unknown'))}")
-        logger.debug(f"🔍 [模型初始化] 模型配置: {model}")
+        logger.debug(f"🔍 [模型初始化] 输入的模型配置: {model}")
         logger.debug(f"🔍 [模型初始化] 额外参数: {kwargs}")
         
         # 兼容新旧模型配置格式
         # 新格式使用 model_name，旧格式使用 name
         self.model_name: str = model.get("model_name", model.get("name", ""))
+        
+        # 如果传入的配置不完整，自动从全局配置中获取完整配置
+        if not all(key in model for key in ["task_type", "capabilities"]):
+            logger.debug("🔍 [模型初始化] 检测到不完整的模型配置，尝试获取完整配置")
+            if (full_model_config := self._get_full_model_config(self.model_name)):
+                logger.debug("🔍 [模型初始化] 成功获取完整模型配置，合并配置信息")
+                # 合并配置：运行时参数优先，但添加缺失的配置字段
+                model = {**full_model_config, **model}
+                logger.debug(f"🔍 [模型初始化] 合并后的模型配置: {model}")
+            else:
+                logger.warning(f"⚠️ [模型初始化] 无法获取模型 {self.model_name} 的完整配置，使用原始配置")
+        
         # 在新架构中，provider信息从model_config.toml自动获取，不需要在这里设置
         self.provider = model.get("provider", "")  # 保留兼容性，但在新架构中不使用
         
@@ -235,6 +247,13 @@ class LLMRequest:
         Returns:
             任务名称
         """
+        # 调试信息：打印模型配置字典的所有键
+        logger.debug(f"🔍 [任务确定] 模型配置字典的所有键: {list(model.keys())}")
+        logger.debug(f"🔍 [任务确定] 模型配置字典内容: {model}")
+        
+        # 获取模型名称
+        model_name = model.get("model_name", model.get("name", ""))
+        
         # 方法1: 优先使用配置文件中明确定义的 task_type 字段
         if "task_type" in model:
             task_type = model["task_type"]
@@ -262,7 +281,6 @@ class LLMRequest:
                     return task
         
         # 方法3: 向后兼容 - 基于模型名称的关键字推断（不推荐但保留兼容性）
-        model_name = model.get("model_name", model.get("name", ""))
         logger.warning(f"⚠️ [任务确定] 配置中未找到 task_type 或 capabilities，回退到基于模型名称的推断: {model_name}")
         logger.warning("⚠️ [建议] 请在 model_config.toml 中为模型添加明确的 task_type 或 capabilities 字段")
         
@@ -281,6 +299,76 @@ class LLMRequest:
             task = "llm_reasoning" if self.request_type == "reasoning" else "llm_normal"
             logger.debug(f"🎯 [任务确定] 从 request_type {self.request_type} 推断为: {task}")
             return task
+
+    def _get_full_model_config(self, model_name: str) -> dict | None:
+        """
+        根据模型名称从全局配置中获取完整的模型配置
+        现在直接使用已解析的ModelInfo对象，不再读取TOML文件
+        
+        Args:
+            model_name: 模型名称
+        Returns:
+            完整的模型配置字典，如果找不到则返回None
+        """
+        try:
+            from src.config.config import model_config
+            return self._get_model_config_from_parsed(model_name, model_config)
+            
+        except Exception as e:
+            logger.warning(f"⚠️ [配置查找] 获取模型配置时出错: {str(e)}")
+            return None
+    
+    def _get_model_config_from_parsed(self, model_name: str, model_config) -> dict | None:
+        """
+        从已解析的配置对象中获取模型配置
+        使用扩展后的ModelInfo类，包含task_type和capabilities字段
+        """
+        try:
+            # 直接通过模型名称查找
+            if model_name in model_config.models:
+                model_info = model_config.models[model_name]
+                logger.debug(f"🔍 [配置查找] 找到模型 {model_name} 的配置对象: {model_info}")
+                
+                # 将ModelInfo对象转换为字典
+                model_dict = {
+                    "model_identifier": model_info.model_identifier,
+                    "name": model_info.name,
+                    "api_provider": model_info.api_provider,
+                    "price_in": model_info.price_in,
+                    "price_out": model_info.price_out,
+                    "force_stream_mode": model_info.force_stream_mode,
+                    "task_type": model_info.task_type,
+                    "capabilities": model_info.capabilities,
+                }
+                
+                logger.debug(f"🔍 [配置查找] 转换后的模型配置字典: {model_dict}")
+                return model_dict
+            
+            # 如果直接查找失败，尝试通过model_identifier查找
+            for name, model_info in model_config.models.items():
+                if (model_info.model_identifier == model_name or
+                    hasattr(model_info, 'model_name') and model_info.model_name == model_name):
+                    
+                    logger.debug(f"🔍 [配置查找] 通过标识符找到模型 {model_name} (配置名称: {name})")
+                    # 同样转换为字典
+                    model_dict = {
+                        "model_identifier": model_info.model_identifier,
+                        "name": model_info.name,
+                        "api_provider": model_info.api_provider,
+                        "price_in": model_info.price_in,
+                        "price_out": model_info.price_out,
+                        "force_stream_mode": model_info.force_stream_mode,
+                        "task_type": model_info.task_type,
+                        "capabilities": model_info.capabilities,
+                    }
+                    
+                    return model_dict
+            
+            return None
+            
+        except Exception as e:
+            logger.warning(f"⚠️ [配置查找] 从已解析配置获取模型配置时出错: {str(e)}")
+            return None
 
     @staticmethod
     def _init_database():

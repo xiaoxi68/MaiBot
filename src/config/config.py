@@ -162,6 +162,8 @@ def _models(parent: Dict, config: ModuleConfig):
         price_in = model.get("price_in", 0.0)
         price_out = model.get("price_out", 0.0)
         force_stream_mode = model.get("force_stream_mode", False)
+        task_type = model.get("task_type", "")
+        capabilities = model.get("capabilities", [])
 
         if name in config.models:  # 查重
             logger.error(f"重复的模型名称: {name}，请检查配置文件。")
@@ -181,6 +183,8 @@ def _models(parent: Dict, config: ModuleConfig):
                 price_in=price_in,
                 price_out=price_out,
                 force_stream_mode=force_stream_mode,
+                task_type=task_type,
+                capabilities=capabilities,
             )
         else:
             logger.error(f"模型 '{name}' 的配置不完整，请检查配置文件。")
