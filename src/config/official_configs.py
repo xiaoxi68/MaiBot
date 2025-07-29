@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal, Optional
 
 from src.config.config_base import ConfigBase
+from packaging.version import Version
 
 """
 须知：
@@ -597,7 +598,6 @@ class LPMMKnowledgeConfig(ConfigBase):
 
     embedding_dimension: int = 1024
     """嵌入向量维度，应该与模型的输出维度一致"""
-
 
 @dataclass
 class ModelConfig(ConfigBase):
