@@ -103,70 +103,70 @@ price_in = 0
 price_out = 0
 
 
-[model.utils] # 在麦麦的一些组件中使用的模型，例如表情包模块，取名模块，关系模块，是麦麦必须的模型
+[model_task_config.utils] # 在麦麦的一些组件中使用的模型，例如表情包模块，取名模块，关系模块，是麦麦必须的模型
 model_list = ["siliconflow-deepseek-v3"] # 使用的模型列表，每个子项对应上面的模型名称(name)
 temperature = 0.2                        # 模型温度，新V3建议0.1-0.3
 max_tokens = 800                         # 最大输出token数
 
-[model.utils_small] # 在麦麦的一些组件中使用的小模型，消耗量较大，建议使用速度较快的小模型
+[model_task_config.utils_small] # 在麦麦的一些组件中使用的小模型，消耗量较大，建议使用速度较快的小模型
 model_list = ["qwen3-8b"]
 temperature = 0.7
 max_tokens = 800
 
-[model.replyer_1] # 首要回复模型，还用于表达器和表达方式学习
+[model_task_config.replyer_1] # 首要回复模型，还用于表达器和表达方式学习
 model_list = ["siliconflow-deepseek-v3"]
 temperature = 0.2                        # 模型温度，新V3建议0.1-0.3
 max_tokens = 800
 
-[model.replyer_2] # 次要回复模型
+[model_task_config.replyer_2] # 次要回复模型
 model_list = ["siliconflow-deepseek-v3"]
 temperature = 0.7
 max_tokens = 800
 
-[model.planner] #决策：负责决定麦麦该做什么的模型
+[model_task_config.planner] #决策：负责决定麦麦该做什么的模型
 model_list = ["siliconflow-deepseek-v3"]
 temperature = 0.3
 max_tokens = 800
 
-[model.emotion] #负责麦麦的情绪变化
+[model_task_config.emotion] #负责麦麦的情绪变化
 model_list = ["siliconflow-deepseek-v3"]
 temperature = 0.3
 max_tokens = 800
 
-[model.memory] # 记忆模型
+[model_task_config.memory] # 记忆模型
 model_list = ["qwen3-30b"]
 temperature = 0.7
 max_tokens = 800
 
-[model.vlm] # 图像识别模型
+[model_task_config.vlm] # 图像识别模型
 model_list = ["qwen2.5-vl-72b"]
 max_tokens = 800
 
-[model.voice] # 语音识别模型
+[model_task_config.voice] # 语音识别模型
 model_list = ["sensevoice-small"]
 
-[model.tool_use] #工具调用模型，需要使用支持工具调用的模型
+[model_task_config.tool_use] #工具调用模型，需要使用支持工具调用的模型
 model_list = ["qwen3-14b"]
 temperature = 0.7
 max_tokens = 800
 
 #嵌入模型
-[model.embedding]
+[model_task_config.embedding]
 model_list = ["bge-m3"]
 
 #------------LPMM知识库模型------------
 
-[model.lpmm_entity_extract] # 实体提取模型
+[model_task_config.lpmm_entity_extract] # 实体提取模型
 model_list = ["siliconflow-deepseek-v3"]
 temperature = 0.2
 max_tokens = 800
 
-[model.lpmm_rdf_build] # RDF构建模型
+[model_task_config.lpmm_rdf_build] # RDF构建模型
 model_list = ["siliconflow-deepseek-v3"]
 temperature = 0.2
 max_tokens = 800
 
-[model.lpmm_qa] # 问答模型
+[model_task_config.lpmm_qa] # 问答模型
 model_list = ["deepseek-r1-distill-qwen-32b"]
 temperature = 0.7
 max_tokens = 800
