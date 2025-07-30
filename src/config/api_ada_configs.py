@@ -54,11 +54,8 @@ class ModelInfo(ConfigBase):
     force_stream_mode: bool = field(default=False)
     """是否强制使用流式输出模式"""
 
-    has_thinking: bool = field(default=False)
-    """是否有思考参数"""
-
-    enable_thinking: bool = field(default=False)
-    """是否启用思考"""
+    extra_params: dict = field(default_factory=dict)
+    """额外参数（用于API调用时的额外配置）"""
 
 
 @dataclass

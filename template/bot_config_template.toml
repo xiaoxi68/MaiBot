@@ -216,7 +216,6 @@ library_log_levels = { "aiohttp" = "WARNING"} # 设置特定库的日志级别
 [debug]
 show_prompt = false # 是否显示prompt
 
-
 [maim_message]
 auth_token = [] # 认证令牌，用于API验证，为空则不启用验证
 # 以下项目若要使用需要打开use_custom，并单独配置maim_message的服务器
