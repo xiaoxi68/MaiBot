@@ -376,6 +376,12 @@ class APIAdapterConfig(ConfigBase):
 
         self.api_providers_dict = {provider.name: provider for provider in self.api_providers}
         self.models_dict = {model.name: model for model in self.models}
+        
+        for model in self.models:
+            if not model.model_identifier:
+                raise ValueError(f"模型 '{model.name}' 的 model_identifier 不能为空")
+            if not model.api_provider or model.api_provider not in self.api_providers_dict:
+                raise ValueError(f"模型 '{model.name}' 的 api_provider '{model.api_provider}' 不存在")
 
     def get_model_info(self, model_name: str) -> ModelInfo:
         """根据模型名称获取模型信息"""

@@ -47,13 +47,6 @@ price_in = 2.0
 price_out = 8.0
 
 [[models]]
-model_identifier = "Pro/deepseek-ai/DeepSeek-R1"
-name = "siliconflow-deepseek-r1"
-api_provider = "SiliconFlow"
-price_in = 4.0
-price_out = 16.0
-
-[[models]]
 model_identifier = "Pro/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"
 name = "deepseek-r1-distill-qwen-32b"
 api_provider = "SiliconFlow"
