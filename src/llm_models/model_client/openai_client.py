@@ -396,6 +396,7 @@ class OpenaiClient(BaseClient):
             Callable[[ChatCompletion], tuple[APIResponse, Optional[tuple[int, int, int]]]]
         ] = None,
         interrupt_flag: asyncio.Event | None = None,
+        extra_params: dict[str, Any] | None = None,
     ) -> APIResponse:
         """
         获取对话响应
@@ -434,6 +435,7 @@ class OpenaiClient(BaseClient):
                         max_tokens=max_tokens,
                         stream=True,
                         response_format=NOT_GIVEN,
+                        extra_body=extra_params,
                     )
                 )
                 while not req_task.done():
@@ -455,6 +457,7 @@ class OpenaiClient(BaseClient):
                         max_tokens=max_tokens,
                         stream=False,
                         response_format=NOT_GIVEN,
+                        extra_body=extra_params,
                     )
                 )
                 while not req_task.done():
@@ -487,6 +490,7 @@ class OpenaiClient(BaseClient):
         self,
         model_info: ModelInfo,
         embedding_input: str,
+        extra_params: dict[str, Any] | None = None,
     ) -> APIResponse:
         """
         获取文本嵌入
@@ -498,6 +502,7 @@ class OpenaiClient(BaseClient):
             raw_response = await self.client.embeddings.create(
                 model=model_info.model_identifier,
                 input=embedding_input,
+                extra_body=extra_params,
             )
         except APIConnectionError as e:
             raise NetworkConnectionError() from e

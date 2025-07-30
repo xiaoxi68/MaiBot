@@ -1,5 +1,5 @@
 [inner]
-version = "1.1.0"
+version = "1.1.1"
 
 # 配置文件版本号迭代规则同bot_config.toml
 
@@ -59,6 +59,8 @@ name = "qwen3-8b"
 api_provider = "SiliconFlow"
 price_in = 0
 price_out = 0
+[models.extra_params] # 可选的额外参数配置
+enable_thinking = false # 不启用思考
 
 [[models]]
 model_identifier = "Qwen/Qwen3-14B"
@@ -66,6 +68,8 @@ name = "qwen3-14b"
 api_provider = "SiliconFlow"
 price_in = 0.5
 price_out = 2.0
+[models.extra_params] # 可选的额外参数配置
+enable_thinking = false # 不启用思考
 
 [[models]]
 model_identifier = "Qwen/Qwen3-30B-A3B"
@@ -73,6 +77,8 @@ name = "qwen3-30b"
 api_provider = "SiliconFlow"
 price_in = 0.7
 price_out = 2.8
+[models.extra_params] # 可选的额外参数配置
+enable_thinking = false # 不启用思考
 
 [[models]]
 model_identifier = "Qwen/Qwen2.5-VL-72B-Instruct"

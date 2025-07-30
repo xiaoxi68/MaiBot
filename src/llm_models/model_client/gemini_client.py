@@ -1,3 +1,4 @@
+raise DeprecationWarning("Genimi Client is not fully available yet.")
 import asyncio
 import io
 from collections.abc import Iterable

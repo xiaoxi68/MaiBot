@@ -83,6 +83,7 @@ class BaseClient:
         | None = None,
         async_response_parser: Callable[[ChatCompletion], tuple[APIResponse, tuple[int, int, int]]] | None = None,
         interrupt_flag: asyncio.Event | None = None,
+        extra_params: dict[str, Any] | None = None,
     ) -> APIResponse:
         """
         获取对话响应
@@ -103,6 +104,7 @@ class BaseClient:
         self,
         model_info: ModelInfo,
         embedding_input: str,
+        extra_params: dict[str, Any] | None = None,
     ) -> APIResponse:
         """
         获取文本嵌入
