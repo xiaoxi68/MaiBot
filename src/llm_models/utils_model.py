@@ -253,10 +253,15 @@ class LLMRequest:
                         response_format=response_format,
                         stream_response_handler=stream_response_handler,
                         async_response_parser=async_response_parser,
+                        extra_params=model_info.extra_params,
                     )
                 elif request_type == RequestType.EMBEDDING:
                     assert embedding_input, "embedding_input cannot be empty for embedding requests"
-                    return await client.get_embedding(model_info=model_info, embedding_input=embedding_input)
+                    return await client.get_embedding(
+                        model_info=model_info,
+                        embedding_input=embedding_input,
+                        extra_params=model_info.extra_params,
+                    )
             except Exception as e:
                 logger.debug(f"请求失败: {str(e)}")
                 # 处理异常
