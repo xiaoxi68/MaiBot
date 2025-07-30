@@ -1,5 +1,5 @@
 [inner]
-version = "0.2.1"
+version = "1.0.0"
 
 # 配置文件版本号迭代规则同bot_config.toml
 # 
@@ -42,53 +42,31 @@ version = "0.2.1"
 # - 未配置新字段时会自动回退到基于模型名称的推断
 
 [request_conf] # 请求配置（此配置项数值均为默认值，如想修改，请取消对应条目的注释）
-#max_retry = 2 # 最大重试次数（单个模型API调用失败，最多重试的次数）
-#timeout = 10 # API调用的超时时长（超过这个时长，本次请求将被视为“请求超时”，单位：秒）
-#retry_interval = 10 # 重试间隔（如果API调用失败，重试的间隔时间，单位：秒）
-#default_temperature = 0.7 # 默认的温度（如果bot_config.toml中没有设置temperature参数，默认使用这个值）
-#default_max_tokens = 1024 # 默认的最大输出token数（如果bot_config.toml中没有设置max_tokens参数，默认使用这个值）
+max_retry = 2 # 最大重试次数（单个模型API调用失败，最多重试的次数）
+timeout = 10 # API调用的超时时长（超过这个时长，本次请求将被视为“请求超时”，单位：秒）
+retry_interval = 10 # 重试间隔（如果API调用失败，重试的间隔时间，单位：秒）
+default_temperature = 0.7 # 默认的温度（如果bot_config.toml中没有设置temperature参数，默认使用这个值）
+default_max_tokens = 1024 # 默认的最大输出token数（如果bot_config.toml中没有设置max_tokens参数，默认使用这个值）
 
 
 [[api_providers]] # API服务提供商（可以配置多个）
 name = "DeepSeek"                       # API服务商名称（可随意命名，在models的api-provider中需使用这个命名）
 base_url = "https://api.deepseek.cn/v1"    # API服务商的BaseURL
 # 支持多个API Key，实现自动切换和负载均衡
-api_keys = [                            # API Key列表（多个key支持错误自动切换和负载均衡）
-    "sk-your-first-key-here",
-    "sk-your-second-key-here",
-    "sk-your-third-key-here"
-]
-# 向后兼容：如果只有一个key，也可以使用单个key字段
-#key = "******"                         # API Key （可选，默认为None）
+api_key = "sk-your-first-key-here"
 client_type = "openai"                  # 请求客户端（可选，默认值为"openai"，使用gimini等Google系模型时请配置为"gemini"）
 
 [[api_providers]] # 特殊：Google的Gimini使用特殊API，与OpenAI格式不兼容，需要配置client为"gemini"
 name = "Google"
 base_url = "https://api.google.com/v1"
-# Google API同样支持多key配置
-api_keys = [
-    "your-google-api-key-1",
-    "your-google-api-key-2"
-]
+api_key = "your-google-api-key-1"
 client_type = "gemini"
-
-[[api_providers]]
-name = "SiliconFlow"
-base_url = "https://api.siliconflow.cn/v1"
-# 单个key的示例（向后兼容）
-key = "******"
-#
-#[[api_providers]]
-#name = "LocalHost"
-#base_url = "https://localhost:8888"
-#key = "lm-studio"
 
 
 [[models]] # 模型（可以配置多个）
 # 模型标识符（API服务商提供的模型标识符）
 model_identifier = "deepseek-chat"
 # 模型名称（可随意命名，在bot_config.toml中需使用这个命名）
-#（可选，若无该字段，则将自动使用model_identifier填充）
 name = "deepseek-v3"
 # API服务商名称（对应在api_providers中配置的服务商名称）
 api_provider = "DeepSeek"
@@ -111,20 +89,15 @@ price_out = 8.0
 model_identifier = "deepseek-reasoner"
 name = "deepseek-r1"
 api_provider = "DeepSeek"
-# 推理模型的配置示例
-task_type = "llm_reasoning"
-capabilities = ["text", "tool_calling", "reasoning"]
-# 保留向后兼容的model_flags字段（已废弃，建议使用capabilities）
-model_flags = [ "text", "tool_calling", "reasoning",]
 price_in = 4.0
 price_out = 16.0
+has_thinking = true # 有无思考参数
+enable_thinking = true # 是否启用思考
 
 [[models]]
 model_identifier = "Pro/deepseek-ai/DeepSeek-V3"
 name = "siliconflow-deepseek-v3"
 api_provider = "SiliconFlow"
-task_type = "llm_normal"
-capabilities = ["text", "tool_calling"]
 price_in = 2.0
 price_out = 8.0
 
@@ -132,8 +105,6 @@ price_out = 8.0
 model_identifier = "Pro/deepseek-ai/DeepSeek-R1"
 name = "siliconflow-deepseek-r1"
 api_provider = "SiliconFlow"
-task_type = "llm_reasoning"
-capabilities = ["text", "tool_calling", "reasoning"]
 price_in = 4.0
 price_out = 16.0
 
@@ -141,8 +112,6 @@ price_out = 16.0
 model_identifier = "Pro/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"
 name = "deepseek-r1-distill-qwen-32b"
 api_provider = "SiliconFlow"
-task_type = "llm_reasoning"
-capabilities = ["text", "tool_calling", "reasoning"]
 price_in = 4.0
 price_out = 16.0
 
@@ -150,8 +119,6 @@ price_out = 16.0
 model_identifier = "Qwen/Qwen3-8B"
 name = "qwen3-8b"
 api_provider = "SiliconFlow"
-task_type = "llm_normal"
-capabilities = ["text"]
 price_in = 0
 price_out = 0
 
@@ -159,8 +126,6 @@ price_out = 0
 model_identifier = "Qwen/Qwen3-14B"
 name = "qwen3-14b"
 api_provider = "SiliconFlow"
-task_type = "llm_normal"
-capabilities = ["text", "tool_calling"]
 price_in = 0.5
 price_out = 2.0
 
@@ -168,8 +133,6 @@ price_out = 2.0
 model_identifier = "Qwen/Qwen3-30B-A3B"
 name = "qwen3-30b"
 api_provider = "SiliconFlow"
-task_type = "llm_normal"
-capabilities = ["text", "tool_calling"]
 price_in = 0.7
 price_out = 2.8
 
@@ -177,11 +140,6 @@ price_out = 2.8
 model_identifier = "Qwen/Qwen2.5-VL-72B-Instruct"
 name = "qwen2.5-vl-72b"
 api_provider = "SiliconFlow"
-# 视觉模型的配置示例
-task_type = "vision"
-capabilities = ["vision", "text"]
-# 保留向后兼容的model_flags字段（已废弃，建议使用capabilities）
-model_flags = [ "vision", "text",]
 price_in = 4.13
 price_out = 4.13
 
@@ -189,11 +147,6 @@ price_out = 4.13
 model_identifier = "FunAudioLLM/SenseVoiceSmall"
 name = "sensevoice-small"
 api_provider = "SiliconFlow"
-# 语音模型的配置示例
-task_type = "speech"
-capabilities = ["speech"]
-# 保留向后兼容的model_flags字段（已废弃，建议使用capabilities）
-model_flags = [ "audio",]
 price_in = 0
 price_out = 0
 
@@ -210,11 +163,73 @@ price_in = 0
 price_out = 0
 
 
-[task_model_usage]
-llm_reasoning = {model="deepseek-r1", temperature=0.8, max_tokens=1024, max_retry=0}
-llm_normal = {model="deepseek-r1", max_tokens=1024, max_retry=0}
-embedding = "siliconflow-bge-m3"
-#schedule = [
-#    "deepseek-v3",
-#    "deepseek-r1",
-#]
+[model.utils] # 在麦麦的一些组件中使用的模型，例如表情包模块，取名模块，关系模块，是麦麦必须的模型
+model_list = ["siliconflow-deepseek-v3","qwen3-8b"]
+temperature = 0.2  # 模型温度，新V3建议0.1-0.3
+max_tokens = 800   # 最大输出token数
+
+[model.utils_small] # 在麦麦的一些组件中使用的小模型，消耗量较大，建议使用速度较快的小模型
+model_name = "qwen3-8b"  # 对应 model_config.toml 中的模型名称
+temperature = 0.7
+max_tokens = 800
+
+[model.replyer_1] # 首要回复模型，还用于表达器和表达方式学习
+model_name = "siliconflow-deepseek-v3"  # 对应 model_config.toml 中的模型名称
+temperature = 0.2  # 模型温度，新V3建议0.1-0.3
+max_tokens = 800
+
+[model.replyer_2] # 次要回复模型
+model_name = "siliconflow-deepseek-r1"  # 对应 model_config.toml 中的模型名称
+temperature = 0.7  # 模型温度
+max_tokens = 800
+
+[model.planner] #决策：负责决定麦麦该做什么的模型
+model_name = "siliconflow-deepseek-v3"  # 对应 model_config.toml 中的模型名称
+temperature = 0.3
+max_tokens = 800
+
+[model.emotion] #负责麦麦的情绪变化
+model_name = "siliconflow-deepseek-v3"  # 对应 model_config.toml 中的模型名称
+temperature = 0.3
+max_tokens = 800
+
+[model.memory] # 记忆模型
+model_name = "qwen3-30b"  # 对应 model_config.toml 中的模型名称
+temperature = 0.7
+max_tokens = 800
+enable_thinking = false # 是否启用思考
+
+[model.vlm] # 图像识别模型
+model_name = "qwen2.5-vl-72b"  # 对应 model_config.toml 中的模型名称
+max_tokens = 800
+
+[model.voice] # 语音识别模型
+model_name = "sensevoice-small"  # 对应 model_config.toml 中的模型名称
+
+[model.tool_use] #工具调用模型，需要使用支持工具调用的模型
+model_name = "qwen3-14b"  # 对应 model_config.toml 中的模型名称
+temperature = 0.7
+max_tokens = 800
+enable_thinking = false # 是否启用思考（qwen3 only）
+
+#嵌入模型
+[model.embedding]
+model_name = "bge-m3"  # 对应 model_config.toml 中的模型名称
+
+#------------LPMM知识库模型------------
+
+[model.lpmm_entity_extract] # 实体提取模型
+model_name = "siliconflow-deepseek-v3"  # 对应 model_config.toml 中的模型名称
+temperature = 0.2
+max_tokens = 800
+
+[model.lpmm_rdf_build] # RDF构建模型
+model_name = "siliconflow-deepseek-v3"  # 对应 model_config.toml 中的模型名称
+temperature = 0.2
+max_tokens = 800
+
+[model.lpmm_qa] # 问答模型
+model_name = "deepseek-r1-distill-qwen-32b"  # 对应 model_config.toml 中的模型名称
+temperature = 0.7
+max_tokens = 800
+enable_thinking = false # 是否启用思考
