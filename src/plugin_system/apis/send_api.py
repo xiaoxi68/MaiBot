@@ -335,7 +335,7 @@ async def command_to_stream(
 
 async def custom_to_stream(
     message_type: str,
-    content: str,
+    content: str | dict,
     stream_id: str,
     display_message: str = "",
     typing: bool = False,

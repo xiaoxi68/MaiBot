@@ -58,6 +58,7 @@ class EmojiAction(BaseAction):
     associated_types = ["emoji"]
 
     async def execute(self) -> Tuple[bool, str]:
+        # sourcery skip: assign-if-exp, introduce-default-else, swap-if-else-branches, use-named-expression
         """执行表情动作"""
         logger.info(f"{self.log_prefix} 决定发送表情")
 
@@ -120,7 +121,7 @@ class EmojiAction(BaseAction):
                     logger.error(f"{self.log_prefix} 未找到'utils_small'模型配置，无法调用LLM")
                     return False, "未找到'utils_small'模型配置"
 
-                success, chosen_emotion = await llm_api.generate_with_model(
+                success, chosen_emotion, _, _ = await llm_api.generate_with_model(
                     prompt, model_config=chat_model_config, request_type="emoji"
                 )
 

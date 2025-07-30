@@ -8,7 +8,8 @@ from typing import List, Optional, Dict, Any, Tuple
 from datetime import datetime
 from src.mais4u.mai_think import mai_thinking_manager
 from src.common.logger import get_logger
-from src.config.config import global_config
+from src.config.config import global_config, model_config
+from src.config.api_ada_configs import TaskConfig
 from src.individuality.individuality import get_individuality
 from src.llm_models.utils_model import LLMRequest
 from src.chat.message_receive.message import UserInfo, Seg, MessageRecv, MessageSending
@@ -106,31 +107,36 @@ class DefaultReplyer:
     def __init__(
         self,
         chat_stream: ChatStream,
-        model_configs: Optional[List[Dict[str, Any]]] = None,
+        model_set_with_weight: Optional[List[Tuple[TaskConfig, float]]] = None,
         request_type: str = "focus.replyer",
     ):
         self.request_type = request_type
 
-        if model_configs:
-            self.express_model_configs = model_configs
+        if model_set_with_weight:
+            # self.express_model_configs = model_configs
+            self.model_set: List[Tuple[TaskConfig, float]] = model_set_with_weight
         else:
             # 当未提供配置时，使用默认配置并赋予默认权重
 
-            model_config_1 = global_config.model.replyer_1.copy()
-            model_config_2 = global_config.model.replyer_2.copy()
+            # model_config_1 = global_config.model.replyer_1.copy()
+            # model_config_2 = global_config.model.replyer_2.copy()
             prob_first = global_config.chat.replyer_random_probability
 
-            model_config_1["weight"] = prob_first
-            model_config_2["weight"] = 1.0 - prob_first
+            # model_config_1["weight"] = prob_first
+            # model_config_2["weight"] = 1.0 - prob_first
 
-            self.express_model_configs = [model_config_1, model_config_2]
+            # self.express_model_configs = [model_config_1, model_config_2]
+            self.model_set = [
+                (model_config.model_task_config.replyer_1, prob_first),
+                (model_config.model_task_config.replyer_2, 1.0 - prob_first),
+            ]
 
-        if not self.express_model_configs:
-            logger.warning("未找到有效的模型配置，回复生成可能会失败。")
-            # 提供一个最终的回退，以防止在空列表上调用 random.choice
-            fallback_config = global_config.model.replyer_1.copy()
-            fallback_config.setdefault("weight", 1.0)
-            self.express_model_configs = [fallback_config]
+        # if not self.express_model_configs:
+        #     logger.warning("未找到有效的模型配置，回复生成可能会失败。")
+        #     # 提供一个最终的回退，以防止在空列表上调用 random.choice
+        #     fallback_config = global_config.model.replyer_1.copy()
+        #     fallback_config.setdefault("weight", 1.0)
+        #     self.express_model_configs = [fallback_config]
 
         self.chat_stream = chat_stream
         self.is_group_chat, self.chat_target_info = get_chat_type_and_target_info(self.chat_stream.stream_id)
@@ -139,14 +145,15 @@ class DefaultReplyer:
         self.memory_activator = MemoryActivator()
         self.instant_memory = InstantMemory(chat_id=self.chat_stream.stream_id)
 
-        from src.plugin_system.core.tool_use import ToolExecutor # 延迟导入ToolExecutor，不然会循环依赖
+        from src.plugin_system.core.tool_use import ToolExecutor  # 延迟导入ToolExecutor，不然会循环依赖
+
         self.tool_executor = ToolExecutor(chat_id=self.chat_stream.stream_id, enable_cache=True, cache_ttl=3)
 
-    def _select_weighted_model_config(self) -> Dict[str, Any]:
+    def _select_weighted_models_config(self) -> Tuple[TaskConfig, float]:
         """使用加权随机选择来挑选一个模型配置"""
-        configs = self.express_model_configs
+        configs = self.model_set
         # 提取权重，如果模型配置中没有'weight'键，则默认为1.0
-        weights = [config.get("weight", 1.0) for config in configs]
+        weights = [weight for _, weight in configs]
 
         return random.choices(population=configs, weights=weights, k=1)[0]
 
@@ -188,12 +195,11 @@ class DefaultReplyer:
 
             # 4. 调用 LLM 生成回复
             content = None
-            # TODO: 复活这里
-            # reasoning_content = None
-            # model_name = "unknown_model"
+            reasoning_content = None
+            model_name = "unknown_model"
 
             try:
-                content = await self.llm_generate_content(prompt)
+                content, reasoning_content, model_name, _ = await self.llm_generate_content(prompt)
                 logger.debug(f"replyer生成内容: {content}")
 
             except Exception as llm_e:
@@ -236,15 +242,14 @@ class DefaultReplyer:
                 )
 
             content = None
-            # TODO: 复活这里
-            # reasoning_content = None
-            # model_name = "unknown_model"
+            reasoning_content = None
+            model_name = "unknown_model"
             if not prompt:
                 logger.error("Prompt 构建失败，无法生成回复。")
                 return False, None, None
 
             try:
-                content = await self.llm_generate_content(prompt)
+                content, reasoning_content, model_name, _ = await self.llm_generate_content(prompt)
                 logger.info(f"想要表达：{raw_reply}||理由：{reason}||生成回复: {content}\n")
 
             except Exception as llm_e:
@@ -843,7 +848,7 @@ class DefaultReplyer:
         raw_reply: str,
         reason: str,
         reply_to: str,
-    ) -> str:
+    ) -> str:  # sourcery skip: remove-redundant-if
         chat_stream = self.chat_stream
         chat_id = chat_stream.stream_id
         is_group_chat = bool(chat_stream.group_info)
@@ -977,30 +982,23 @@ class DefaultReplyer:
             display_message=display_message,
         )
 
-    async def llm_generate_content(self, prompt: str) -> str:
+    async def llm_generate_content(self, prompt: str):
         with Timer("LLM生成", {}):  # 内部计时器，可选保留
             # 加权随机选择一个模型配置
-            selected_model_config = self._select_weighted_model_config()
-            model_display_name = selected_model_config.get('model_name') or selected_model_config.get('name', 'N/A')
-            logger.info(
-                f"使用模型生成回复: {model_display_name} (选中概率: {selected_model_config.get('weight', 1.0)})"
-            )
+            selected_model_config, weight = self._select_weighted_models_config()
+            logger.info(f"使用模型集生成回复: {selected_model_config} (选中概率: {weight})")
 
-            express_model = LLMRequest(
-                model=selected_model_config,
-                request_type=self.request_type,
-            )
+            express_model = LLMRequest(model_set=selected_model_config, request_type=self.request_type)
 
             if global_config.debug.show_prompt:
                 logger.info(f"\n{prompt}\n")
             else:
                 logger.debug(f"\n{prompt}\n")
 
-            # TODO: 这里的_应该做出替换
-            content, _ = await express_model.generate_response_async(prompt)
+            content, (reasoning_content, model_name, tool_calls) = await express_model.generate_response_async(prompt)
 
             logger.debug(f"replyer生成内容: {content}")
-        return content
+        return content, reasoning_content, model_name, tool_calls
 
 
 def weighted_sample_no_replacement(items, weights, k) -> list:

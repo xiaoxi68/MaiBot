@@ -7,10 +7,11 @@
     success, response, reasoning, model_name = await llm_api.generate_with_model(prompt, model_config)
 """
 
-from typing import Tuple, Dict, Any
+from typing import Tuple, Dict
 from src.common.logger import get_logger
 from src.llm_models.utils_model import LLMRequest
-from src.config.config import global_config
+from src.config.config import global_config, model_config
+from src.config.api_ada_configs import TaskConfig
 
 logger = get_logger("llm_api")
 
@@ -19,9 +20,7 @@ logger = get_logger("llm_api")
 # =============================================================================
 
 
-
-
-def get_available_models() -> Dict[str, Any]:
+def get_available_models() -> Dict[str, TaskConfig]:
     """获取所有可用的模型配置
 
     Returns:
@@ -33,14 +32,14 @@ def get_available_models() -> Dict[str, Any]:
             return {}
 
         # 自动获取所有属性并转换为字典形式
-        rets = {}
-        models = global_config.model
+        models = model_config.model_task_config
         attrs = dir(models)
+        rets: Dict[str, TaskConfig] = {}
         for attr in attrs:
             if not attr.startswith("__"):
                 try:
                     value = getattr(models, attr)
-                    if not callable(value):  # 排除方法
+                    if not callable(value) and isinstance(value, TaskConfig):
                         rets[attr] = value
                 except Exception as e:
                     logger.debug(f"[LLMAPI] 获取属性 {attr} 失败: {e}")
@@ -53,8 +52,8 @@ def get_available_models() -> Dict[str, Any]:
 
 
 async def generate_with_model(
-    prompt: str, model_config: Dict[str, Any], request_type: str = "plugin.generate", **kwargs
-) -> Tuple[bool, str]:
+    prompt: str, model_config: TaskConfig, request_type: str = "plugin.generate", **kwargs
+) -> Tuple[bool, str, str, str]:
     """使用指定模型生成内容
 
     Args:
@@ -67,17 +66,16 @@ async def generate_with_model(
         Tuple[bool, str, str, str]: (是否成功, 生成的内容, 推理过程, 模型名称)
     """
     try:
-        model_name = model_config.get("name")
-        logger.info(f"[LLMAPI] 使用模型 {model_name} 生成内容")
+        model_name_list = model_config.model_list
+        logger.info(f"[LLMAPI] 使用模型集合 {model_name_list} 生成内容")
         logger.debug(f"[LLMAPI] 完整提示词: {prompt}")
 
-        llm_request = LLMRequest(model=model_config, request_type=request_type, **kwargs)
+        llm_request = LLMRequest(model_set=model_config, request_type=request_type, **kwargs)
 
-        # TODO: 复活这个_
-        response, _ = await llm_request.generate_response_async(prompt)
-        return True, response
+        response, (reasoning_content, model_name, _) = await llm_request.generate_response_async(prompt)
+        return True, response, reasoning_content, model_name
 
     except Exception as e:
         error_msg = f"生成内容时出错: {str(e)}"
         logger.error(f"[LLMAPI] {error_msg}")
-        return False, error_msg
+        return False, error_msg, "", ""

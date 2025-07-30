@@ -203,7 +203,7 @@ class MessageRecvS4U(MessageRecv):
         self.is_superchat = False
         self.gift_info = None
         self.gift_name = None
-        self.gift_count = None
+        self.gift_count: Optional[str] = None
         self.superchat_info = None
         self.superchat_price = None
         self.superchat_message_text = None

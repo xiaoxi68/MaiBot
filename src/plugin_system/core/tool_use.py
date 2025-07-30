@@ -4,7 +4,7 @@ from typing import List, Dict, Tuple, Optional, Any
 from src.plugin_system.apis.tool_api import get_llm_available_tool_definitions, get_tool_instance
 from src.plugin_system.core.global_announcement_manager import global_announcement_manager
 from src.llm_models.utils_model import LLMRequest
-from src.config.config import global_config
+from src.config.config import global_config, model_config
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.utils.json_utils import process_llm_tool_calls
 from src.chat.message_receive.chat_stream import get_chat_manager
@@ -52,10 +52,7 @@ class ToolExecutor:
         self.chat_stream = get_chat_manager().get_stream(self.chat_id)
         self.log_prefix = f"[{get_chat_manager().get_stream_name(self.chat_id) or self.chat_id}]"
 
-        self.llm_model = LLMRequest(
-            model=global_config.model.tool_use,
-            request_type="tool_executor",
-        )
+        self.llm_model = LLMRequest(model_set=model_config.model_task_config.tool_use, request_type="tool_executor")
 
         # 缓存配置
         self.enable_cache = enable_cache
@@ -137,7 +134,7 @@ class ToolExecutor:
             return tool_results, used_tools, prompt
         else:
             return tool_results, [], ""
-    
+
     def _get_tool_definitions(self) -> List[Dict[str, Any]]:
         all_tools = get_llm_available_tool_definitions()
         user_disabled_tools = global_announcement_manager.get_disabled_chat_tools(self.chat_id)

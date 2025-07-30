@@ -7,7 +7,7 @@ from datetime import datetime
 from json_repair import repair_json
 
 from src.llm_models.utils_model import LLMRequest
-from src.config.config import global_config
+from src.config.config import global_config, model_config
 from src.common.logger import get_logger
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.utils.chat_message_builder import (
@@ -73,10 +73,7 @@ class ActionPlanner:
         self.log_prefix = f"[{get_chat_manager().get_stream_name(chat_id) or chat_id}]"
         self.action_manager = action_manager
         # LLM规划器配置
-        self.planner_llm = LLMRequest(
-            model=global_config.model.planner,
-            request_type="planner",  # 用于动作规划
-        )
+        self.planner_llm = LLMRequest(model_set=model_config.model_task_config.planner, request_type="planner")  # 用于动作规划
 
         self.last_obs_time_mark = 0.0
 
@@ -140,7 +137,7 @@ class ActionPlanner:
             # --- 调用 LLM (普通文本生成) ---
             llm_content = None
             try:
-                llm_content, (reasoning_content, _) = await self.planner_llm.generate_response_async(prompt=prompt)
+                llm_content, (reasoning_content, _, _) = await self.planner_llm.generate_response_async(prompt=prompt)
 
                 if global_config.debug.show_prompt:
                     logger.info(f"{self.log_prefix}规划器原始提示词: {prompt}")
