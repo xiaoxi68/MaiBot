@@ -34,7 +34,7 @@ class Message:
 class MessageBuilder:
     def __init__(self):
         self.__role: RoleType = RoleType.User
-        self.__content: list[tuple[str, str] | str] = []
+        self.__content: list[tuple[str, str] | str | tuple[str, BytesIO]] = []
         self.__tool_call_id: str | None = None
 
     def set_role(self, role: RoleType = RoleType.User) -> "MessageBuilder":
