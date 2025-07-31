@@ -1,4 +1,4 @@
-# 🔧 工具系统详解
+# 🔧 工具组件详解
 
 ## 📖 什么是工具
 
@@ -74,6 +74,11 @@ class MyTool(BaseTool):
 | `name` | str | 工具的唯一标识名称 |
 | `description` | str | 工具功能描述，帮助LLM理解用途 |
 | `parameters` | list[tuple] | 参数定义 |
+
+其构造而成的工具定义为:
+```python
+{"name": cls.name, "description": cls.description, "parameters": cls.parameters}
+```
 
 ### 方法说明
 

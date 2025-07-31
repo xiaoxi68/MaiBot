@@ -43,7 +43,7 @@ def get_replyer(
     Args:
         chat_stream: 聊天流对象（优先）
         chat_id: 聊天ID（实际上就是stream_id）
-        model_configs: 模型配置列表
+        model_set_with_weight: 模型配置列表，每个元素为 (TaskConfig, weight) 元组
         request_type: 请求类型
 
     Returns:
@@ -100,7 +100,7 @@ async def generate_reply(
         enable_splitter: 是否启用消息分割器
         enable_chinese_typo: 是否启用错字生成器
         return_prompt: 是否返回提示词
-        model_configs: 模型配置列表
+        model_set_with_weight: 模型配置列表，每个元素为 (TaskConfig, weight) 元组
         request_type: 请求类型（可选，记录LLM使用）
     Returns:
         Tuple[bool, List[Tuple[str, Any]], Optional[str]]: (是否成功, 回复集合, 提示词)
@@ -169,7 +169,7 @@ async def rewrite_reply(
         chat_id: 聊天ID（备用）
         enable_splitter: 是否启用消息分割器
         enable_chinese_typo: 是否启用错字生成器
-        model_configs: 模型配置列表
+        model_set_with_weight: 模型配置列表，每个元素为 (TaskConfig, weight) 元组
         raw_reply: 原始回复内容
         reason: 回复原因
         reply_to: 回复对象
