@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 from dataclasses import dataclass, field
 from maim_message import Seg
 
@@ -150,7 +150,7 @@ class CommandInfo(ComponentInfo):
 class ToolInfo(ComponentInfo):
     """工具组件信息"""
 
-    tool_parameters: Dict[str, Any] = field(default_factory=dict)  # 工具参数定义
+    tool_parameters: List[Tuple[str, str, str, bool]] = field(default_factory=list)  # 工具参数定义
     tool_description: str = ""  # 工具描述
 
     def __post_init__(self):

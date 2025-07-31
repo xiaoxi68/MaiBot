@@ -1,4 +1,4 @@
-raise DeprecationWarning("Genimi Client is not fully available yet.")
+raise DeprecationWarning("Genimi Client is not fully available yet. Please remove your Gemini API Provider")
 import asyncio
 import io
 from collections.abc import Iterable

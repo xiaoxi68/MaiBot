@@ -412,7 +412,7 @@ class DefaultReplyer:
                 for tool_result in tool_results:
                     tool_name = tool_result.get("tool_name", "unknown")
                     content = tool_result.get("content", "")
-                    result_type = tool_result.get("type", "info")
+                    result_type = tool_result.get("type", "tool_result")
 
                     tool_info_str += f"- 【{tool_name}】{result_type}: {content}\n"
 
@@ -848,7 +848,7 @@ class DefaultReplyer:
         raw_reply: str,
         reason: str,
         reply_to: str,
-    ) -> str:  # sourcery skip: remove-redundant-if
+    ) -> str:  # sourcery skip: merge-else-if-into-elif, remove-redundant-if
         chat_stream = self.chat_stream
         chat_id = chat_stream.stream_id
         is_group_chat = bool(chat_stream.group_info)

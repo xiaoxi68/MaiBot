@@ -14,14 +14,10 @@ class SearchKnowledgeTool(BaseTool):
 
     name = "search_knowledge"
     description = "使用工具从知识库中搜索相关信息"
-    parameters = {
-        "type": "object",
-        "properties": {
-            "query": {"type": "string", "description": "搜索查询关键词"},
-            "threshold": {"type": "number", "description": "相似度阈值，0.0到1.0之间"},
-        },
-        "required": ["query"],
-    }
+    parameters = [
+        ("query", "string", "搜索查询关键词", True),
+        ("threshold", "float", "相似度阈值，0.0到1.0之间", False),
+    ]
 
     async def execute(self, function_args: dict[str, Any]) -> dict[str, Any]:
         """执行知识库搜索
