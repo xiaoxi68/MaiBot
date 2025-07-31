@@ -10,7 +10,7 @@ import networkx as nx
 import numpy as np
 
 from itertools import combinations
-from typing import List, Tuple, Coroutine, Any, Dict, Set
+from typing import List, Tuple, Coroutine, Any, Set
 from collections import Counter
 from rich.traceback import install
 
@@ -1267,7 +1267,7 @@ class ParahippocampalGyrus:
         logger.debug(f"过滤后话题: {filtered_topics}")
 
         # 4. 创建所有话题的摘要生成任务
-        tasks: List[Tuple[str, Coroutine[Any, Any, Tuple[str, Tuple[str, str, List[Dict[str, Any]] | None]]]]] = []
+        tasks: List[Tuple[str, Coroutine[Any, Any, Tuple[str, Tuple[str, str, List | None]]]]] = []
         for topic in filtered_topics:
             # 调用修改后的 topic_what，不再需要 time_info
             topic_what_prompt = self.hippocampus.topic_what(input_text, topic)

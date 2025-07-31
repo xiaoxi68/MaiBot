@@ -33,21 +33,26 @@ class MyTool(BaseTool):
     # 工具描述，告诉LLM这个工具的用途
     description = "这个工具用于获取特定类型的信息"
     
-    # 参数定义，遵循JSONSchema格式
-    parameters = {
-        "type": "object",
-        "properties": {
-            "query": {
-                "type": "string",
-                "description": "查询参数"
-            },
-            "limit": {
-                "type": "integer", 
-                "description": "结果数量限制"
-            }
-        },
-        "required": ["query"]
-    }
+    # 参数定义，仅定义参数
+    # 比如想要定义一个类似下面的openai格式的参数表，则可以这么定义:
+    # {
+    #     "type": "object",
+    #     "properties": {
+    #         "query": {
+    #             "type": "string",
+    #             "description": "查询参数"
+    #         },
+    #         "limit": {
+    #             "type": "integer", 
+    #             "description": "结果数量限制"
+    #         }
+    #     },
+    #     "required": ["query"]
+    # }
+    parameters = [
+        ("query", "string", "查询参数", True),  # 必填参数
+        ("limit", "integer", "结果数量限制", False)  # 可选参数
+    ]
 
     available_for_llm = True  # 是否对LLM可用
     
@@ -68,7 +73,7 @@ class MyTool(BaseTool):
 |-----|------|------|
 | `name` | str | 工具的唯一标识名称 |
 | `description` | str | 工具功能描述，帮助LLM理解用途 |
-| `parameters` | dict | JSONSchema格式的参数定义 |
+| `parameters` | list[tuple] | 参数定义 |
 
 ### 方法说明
 
@@ -92,23 +97,13 @@ class WeatherTool(BaseTool):
     
     name = "weather_query"
     description = "查询指定城市的实时天气信息，包括温度、湿度、天气状况等"
+    available_for_llm = True  # 允许LLM调用此工具
+    parameters = [
+        ("city", "string", "要查询天气的城市名称，如：北京、上海、纽约", True),
+        ("country", "string", "国家代码，如：CN、US，可选参数", False)
+    ]
     
-    parameters = {
-        "type": "object",
-        "properties": {
-            "city": {
-                "type": "string",
-                "description": "要查询天气的城市名称，如：北京、上海、纽约"
-            },
-            "country": {
-                "type": "string", 
-                "description": "国家代码，如：CN、US，可选参数"
-            }
-        },
-        "required": ["city"]
-    }
-    
-    async def execute(self, function_args, message_txt=""):
+    async def execute(self, function_args: dict):
         """执行天气查询"""
         try:
             city = function_args.get("city")
@@ -185,66 +180,49 @@ class WeatherTool(BaseTool):
 ## 🎯 最佳实践
 
 ### 1. 工具命名规范
-
+#### ✅ 好的命名
 ```python
-# ✅ 好的命名
 name = "weather_query"        # 清晰表达功能
 name = "knowledge_search"     # 描述性强
 name = "stock_price_check"    # 功能明确
-
-# ❌ 避免的命名
+```
+#### ❌ 避免的命名
+```python
 name = "tool1"               # 无意义
 name = "wq"                  # 过于简短
 name = "weather_and_news"    # 功能过于复杂
 ```
 
 ### 2. 描述规范
-
+#### ✅ 良好的描述
 ```python
-# ✅ 好的描述
 description = "查询指定城市的实时天气信息，包括温度、湿度、天气状况"
-
-# ❌ 避免的描述
+```
+#### ❌ 避免的描述
+```python
 description = "天气"         # 过于简单
 description = "获取信息"      # 不够具体
 ```
 
 ### 3. 参数设计
 
+#### ✅ 合理的参数设计
 ```python
-# ✅ 合理的参数设计
-parameters = {
-    "type": "object",
-    "properties": {
-        "city": {
-            "type": "string",
-            "description": "城市名称，如：北京、上海"
-        },
-        "unit": {
-            "type": "string",
-            "description": "温度单位：celsius(摄氏度) 或 fahrenheit(华氏度)",
-            "enum": ["celsius", "fahrenheit"]
-        }
-    },
-    "required": ["city"]
-}
-
-# ❌ 避免的参数设计
-parameters = {
-    "type": "object",
-    "properties": {
-        "data": {
-            "type": "string",
-            "description": "数据"  # 描述不清晰
-        }
-    }
-}
+parameters = [
+    ("city", "string", "城市名称，如：北京、上海", True),
+    ("unit", "string", "温度单位：celsius 或 fahrenheit", False)
+]
+```
+#### ❌ 避免的参数设计
+```python
+parameters = [
+    ("data", "string", "数据", True)  # 参数过于模糊
+]
 ```
 
 ### 4. 结果格式化
-
+#### ✅ 良好的结果格式
 ```python
-# ✅ 良好的结果格式
 def _format_result(self, data):
     return f"""
 🔍 查询结果
@@ -254,12 +232,9 @@ def _format_result(self, data):
 📝 说明: {data['description']}
 ━━━━━━━━━━━━
     """.strip()
-
-# ❌ 避免的结果格式
+```
+#### ❌ 避免的结果格式
+```python
 def _format_result(self, data):
     return str(data)  # 直接返回原始数据
 ```
-
----
-
-🎉 **工具系统为麦麦提供了强大的信息获取能力！合理使用工具可以让麦麦变得更加智能和博学。** 
