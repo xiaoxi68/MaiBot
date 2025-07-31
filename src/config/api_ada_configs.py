@@ -31,6 +31,15 @@ class APIProvider(ConfigBase):
     def get_api_key(self) -> str:
         return self.api_key
 
+    def __post_init__(self):
+        """确保api_key在repr中不被显示"""
+        if not self.api_key:
+            raise ValueError("API密钥不能为空，请在配置中设置有效的API密钥。")
+        if not self.base_url:
+            raise ValueError("API基础URL不能为空，请在配置中设置有效的基础URL。")
+        if not self.name:
+            raise ValueError("API提供商名称不能为空，请在配置中设置有效的名称。")
+
 
 @dataclass
 class ModelInfo(ConfigBase):
@@ -56,6 +65,14 @@ class ModelInfo(ConfigBase):
 
     extra_params: dict = field(default_factory=dict)
     """额外参数（用于API调用时的额外配置）"""
+
+    def __post_init__(self):
+        if not self.model_identifier:
+            raise ValueError("模型标识符不能为空，请在配置中设置有效的模型标识符。")
+        if not self.name:
+            raise ValueError("模型名称不能为空，请在配置中设置有效的模型名称。")
+        if not self.api_provider:
+            raise ValueError("API提供商不能为空，请在配置中设置有效的API提供商。")
 
 
 @dataclass

@@ -364,6 +364,11 @@ class APIAdapterConfig(ConfigBase):
     """API提供商列表"""
 
     def __post_init__(self):
+        if not self.models:
+            raise ValueError("模型列表不能为空，请在配置中设置有效的模型列表。")
+        if not self.api_providers:
+            raise ValueError("API提供商列表不能为空，请在配置中设置有效的API提供商列表。")
+
         # 检查API提供商名称是否重复
         provider_names = [provider.name for provider in self.api_providers]
         if len(provider_names) != len(set(provider_names)):
@@ -376,7 +381,7 @@ class APIAdapterConfig(ConfigBase):
 
         self.api_providers_dict = {provider.name: provider for provider in self.api_providers}
         self.models_dict = {model.name: model for model in self.models}
-        
+
         for model in self.models:
             if not model.model_identifier:
                 raise ValueError(f"模型 '{model.name}' 的 model_identifier 不能为空")
