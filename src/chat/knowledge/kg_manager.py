@@ -162,7 +162,7 @@ class KGManager:
         ent_hash_list = list(ent_hash_list)
 
         synonym_hash_set = set()
-        synonym_result = dict()
+        synonym_result = {}
 
         # rich 进度条
         total = len(ent_hash_list)

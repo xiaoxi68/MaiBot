@@ -5,13 +5,15 @@ from .global_logger import logger
 
 # from . import prompt_template
 from .embedding_store import EmbeddingManager
+
 # from .llm_client import LLMClient
 from .kg_manager import KGManager
+
 # from .lpmmconfig import global_config
 from .utils.dyn_topk import dyn_select_top_k
 from src.llm_models.utils_model import LLMRequest
 from src.chat.utils.utils import get_embedding
-from src.config.config import global_config
+from src.config.config import global_config, model_config
 
 MAX_KNOWLEDGE_LENGTH = 10000  # 最大知识长度
 
@@ -21,15 +23,10 @@ class QAManager:
         self,
         embed_manager: EmbeddingManager,
         kg_manager: KGManager,
-
     ):
         self.embed_manager = embed_manager
         self.kg_manager = kg_manager
-        # TODO: API-Adapter修改标记
-        self.qa_model = LLMRequest(
-            model=global_config.model.lpmm_qa,
-            request_type="lpmm.qa"
-        )
+        self.qa_model = LLMRequest(model_set=model_config.model_task_config.lpmm_qa, request_type="lpmm.qa")
 
     async def process_query(self, question: str) -> Tuple[List[Tuple[str, float, float]], Optional[Dict[str, float]]]:
         """处理查询"""

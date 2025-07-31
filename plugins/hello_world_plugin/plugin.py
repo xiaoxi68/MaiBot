@@ -19,14 +19,10 @@ class CompareNumbersTool(BaseTool):
 
     name = "compare_numbers"
     description = "使用工具 比较两个数的大小，返回较大的数"
-    parameters = {
-        "type": "object",
-        "properties": {
-            "num1": {"type": "number", "description": "第一个数字"},
-            "num2": {"type": "number", "description": "第二个数字"},
-        },
-        "required": ["num1", "num2"],
-    }
+    parameters = [
+        ("num1", "number", "第一个数字", True),
+        ("num2", "number", "第二个数字", True),
+    ]
 
     async def execute(self, function_args: dict[str, Any]) -> dict[str, Any]:
         """执行比较两个数的大小
