@@ -1,395 +1,324 @@
-# MaiBot 模型配置指南
+# 模型配置指南
 
-本文档详细说明 MaiBot 的模型配置系统，包括 `model_config.toml` 和 `bot_config.toml` 中模型相关的配置项。
+本文档将指导您如何配置 `model_config.toml` 文件，该文件用于配置 MaiBot 的各种AI模型和API服务提供商。
 
-## 目录
+## 配置文件结构
 
-1. [配置文件概述](#配置文件概述)
-2. [model_config.toml 详细配置](#model_configtoml-详细配置)
-3. [bot_config.toml 模型任务配置](#bot_configtoml-模型任务配置)
-4. [任务类型和能力系统](#任务类型和能力系统)
-5. [多API Key支持](#多api-key支持)
-6. [配置示例](#配置示例)
-7. [最佳实践](#最佳实践)
-8. [故障排除](#故障排除)
+配置文件主要包含以下几个部分：
+- 版本信息
+- API服务提供商配置
+- 模型配置
+- 模型任务配置
 
-## 配置文件概述
-
-MaiBot 的模型配置分为两个文件：
-
-- **`model_config.toml`**: 定义可用的模型、API提供商和基础配置
-- **`bot_config.toml`**: 定义具体任务使用哪些模型以及模型参数
-
-### 配置关系
-
-```
-model_config.toml → 定义模型池
-                 ↓
-bot_config.toml → 从模型池中选择模型用于具体任务
-```
-
-## model_config.toml 详细配置
-
-### 基础结构
+## 1. 版本信息
 
 ```toml
 [inner]
-version = "0.2.1"  # 配置文件版本
-
-[request_conf]      # 全局请求配置
-[[api_providers]]   # API服务提供商配置（可配置多个）
-[[models]]          # 模型配置（可配置多个）
-[task_model_usage]  # 任务模型使用配置
+version = "1.1.1"
 ```
 
-### 1. 请求配置 [request_conf]
+用于标识配置文件的版本，遵循语义化版本规则。
 
-全局的API请求配置，影响所有模型调用：
+## 2. API服务提供商配置
 
-```toml
-[request_conf]
-max_retry = 2                    # 最大重试次数
-timeout = 10                     # API调用超时时长（秒）
-retry_interval = 10              # 重试间隔（秒）
-default_temperature = 0.7        # 默认温度值
-default_max_tokens = 1024        # 默认最大输出token数
-```
+### 2.1 基本配置
 
-**参数说明：**
-- `max_retry`: 单个API调用失败时的最大重试次数
-- `timeout`: 单次API调用的超时时间，超过此时间请求将被取消
-- `retry_interval`: API调用失败后的重试间隔时间
-- `default_temperature`: 当bot_config.toml中未设置时的默认温度值
-- `default_max_tokens`: 当bot_config.toml中未设置时的默认最大输出token数
-
-### 2. API提供商配置 [[api_providers]]
-
-配置各个API服务商的连接信息，支持多个提供商：
+使用 `[[api_providers]]` 数组配置多个API服务提供商：
 
 ```toml
 [[api_providers]]
-name = "DeepSeek"                           # 提供商名称（自定义）
-base_url = "https://api.deepseek.cn/v1"     # API基础URL
-api_keys = [                                # 多个API Key（推荐）
-    "sk-your-first-key-here",
-    "sk-your-second-key-here",
-    "sk-your-third-key-here"
-]
-# 或者使用单个key（向后兼容）
-# key = "sk-your-single-key-here"
-client_type = "openai"                      # 客户端类型
+name = "DeepSeek"                       # 服务商名称（自定义）
+base_url = "https://api.deepseek.cn/v1" # API服务的基础URL
+api_key = "your-api-key-here"           # API密钥
+client_type = "openai"                  # 客户端类型
+max_retry = 2                           # 最大重试次数
+timeout = 30                            # 超时时间（秒）
+retry_interval = 10                     # 重试间隔（秒）
 ```
 
-**参数说明：**
-- `name`: 提供商的自定义名称，在models配置中引用
-- `base_url`: API服务的基础URL
-- `api_keys`: API密钥数组，支持多个key实现负载均衡和错误切换
-- `key`: 单个API密钥（向后兼容，建议使用api_keys）
-- `client_type`: 客户端类型，可选值：
-  - `"openai"`: OpenAI兼容格式（默认）
-  - `"gemini"`: Google Gemini专用格式
+### 2.2 配置参数说明
 
-#### 多API Key优势
+| 参数 | 必填 | 说明 | 默认值 |
+|------|------|------|--------|
+| `name` | ✅ | 服务商名称，需要在模型配置中引用 | - |
+| `base_url` | ✅ | API服务的基础URL | - |
+| `api_key` | ✅ | API密钥，请替换为实际密钥 | - |
+| `client_type` | ❌ | 客户端类型：`openai`（OpenAI格式）或 `gemini`（Gemini格式，现在支持不良好） | `openai` |
+| `max_retry` | ❌ | API调用失败时的最大重试次数 | 2 |
+| `timeout` | ❌ | API请求超时时间（秒） | 30 |
+| `retry_interval` | ❌ | 重试间隔时间（秒） | 10 |
 
-1. **错误自动切换**: 当某个key失败时自动切换
-2. **负载均衡**: 在多个key之间循环使用
-3. **提高可用性**: 避免单点故障
+### 2.3 支持的服务商示例
 
-#### 错误处理机制
-
-- **401/403认证错误**: 立即切换到下一个API Key
-- **429频率限制**: 等待后重试，持续失败则切换Key
-- **网络错误**: 短暂等待后重试，失败则切换Key
-- **其他错误**: 按照正常重试机制处理
-
-### 3. 模型配置 [[models]]
-
-定义可用的模型及其属性：
-
+#### DeepSeek
 ```toml
-[[models]]
-model_identifier = "deepseek-chat"          # API服务商的模型标识符
-name = "deepseek-v3"                        # 自定义模型名称（可选）
-api_provider = "DeepSeek"                   # 对应的API提供商名称
-task_type = "llm_normal"                    # 任务类型（推荐配置）
-capabilities = ["text", "tool_calling"]    # 模型能力列表（推荐配置）
-price_in = 2.0                              # 输入价格（元/兆token）
-price_out = 8.0                             # 输出价格（元/兆token）
-force_stream_mode = false                   # 是否强制流式输出
-```
-
-**必填参数：**
-- `model_identifier`: API服务商提供的模型标识符
-- `api_provider`: 对应在api_providers中配置的服务商名称
-
-**可选参数：**
-- `name`: 自定义模型名称，如果不指定则使用model_identifier
-- `task_type`: 模型主要任务类型（详见任务类型说明）
-- `capabilities`: 模型支持的能力列表（详见能力说明）
-- `price_in/price_out`: 用于统计API调用成本
-- `force_stream_mode`: 当模型不支持非流式输出时启用
-
-### 4. 任务模型使用配置 [task_model_usage]
-
-定义系统任务使用的默认模型：
-
-```toml
-[task_model_usage]
-llm_reasoning = {model="deepseek-r1", temperature=0.8, max_tokens=1024, max_retry=0}
-llm_normal = {model="deepseek-v3", max_tokens=1024, max_retry=0}
-embedding = "bge-m3"
-# 可选：模型调度列表
-# schedule = ["deepseek-v3", "deepseek-r1"]
-```
-
-## bot_config.toml 模型任务配置
-
-### 模型任务分类
-
-MaiBot 将不同功能分配给不同的模型以优化性能：
-
-#### 核心对话模型
-
-```toml
-[model.replyer_1]                           # 首要回复模型
-model_name = "siliconflow-deepseek-v3"      # 对应model_config.toml中的模型名称
-temperature = 0.2                           # 模型温度（0.0-2.0）
-max_tokens = 800                            # 最大输出token数
-
-[model.replyer_2]                           # 次要回复模型
-model_name = "siliconflow-deepseek-r1"
-temperature = 0.7
-max_tokens = 800
-```
-
-#### 功能性模型
-
-```toml
-[model.utils]                               # 通用工具模型
-model_name = "siliconflow-deepseek-v3"      # 用于表情包、取名、关系等模块
-temperature = 0.2
-max_tokens = 800
-
-[model.utils_small]                         # 小型工具模型
-model_name = "qwen3-8b"                     # 用于高频率调用的场景
-temperature = 0.7
-max_tokens = 800
-enable_thinking = false                     # 是否启用思考模式
-
-[model.planner]                             # 决策模型
-model_name = "siliconflow-deepseek-v3"      # 负责决定麦麦该做什么
-temperature = 0.3
-max_tokens = 800
-
-[model.emotion]                             # 情绪模型
-model_name = "siliconflow-deepseek-v3"      # 负责情绪变化
-temperature = 0.3
-max_tokens = 800
-
-[model.memory]                              # 记忆模型
-model_name = "qwen3-30b"                    # 用于记忆构建和管理
-temperature = 0.7
-max_tokens = 800
-enable_thinking = false
-```
-
-#### 专用模型
-
-```toml
-[model.vlm]                                 # 视觉理解模型
-model_name = "qwen2.5-vl-72b"              # 图像识别和理解
-max_tokens = 800
-
-[model.voice]                               # 语音识别模型
-model_name = "sensevoice-small"             # 语音转文字
-
-[model.tool_use]                            # 工具调用模型
-model_name = "qwen3-14b"                    # 需要支持工具调用的模型
-temperature = 0.7
-max_tokens = 800
-enable_thinking = false
-
-[model.embedding]                           # 嵌入模型
-model_name = "bge-m3"                       # 用于文本向量化
-```
-
-#### LPMM知识库模型
-
-```toml
-[model.lpmm_entity_extract]                 # 实体提取模型
-model_name = "siliconflow-deepseek-v3"
-temperature = 0.2
-max_tokens = 800
-
-[model.lpmm_rdf_build]                      # RDF构建模型
-model_name = "siliconflow-deepseek-v3"
-temperature = 0.2
-max_tokens = 800
-
-[model.lpmm_qa]                             # 问答模型
-model_name = "deepseek-r1-distill-qwen-32b"
-temperature = 0.7
-max_tokens = 800
-enable_thinking = false
-```
-
-### 模型参数说明
-
-- **`model_name`**: 必填，对应model_config.toml中配置的模型名称
-- **`temperature`**: 模型温度，控制回答的随机性（0.0-2.0）
-  - 0.0-0.3: 确定性强，适合事实性任务
-  - 0.4-0.7: 平衡创造性和准确性
-  - 0.8-2.0: 创造性强，适合创意任务
-- **`max_tokens`**: 单次回复的最大token数
-- **`enable_thinking`**: 是否启用思考模式（仅支持特定模型）
-- **`thinking_budget`**: 思考模式的最大token数
-
-## 任务类型和能力系统
-
-### 任务类型 (task_type)
-
-明确指定模型的主要用途：
-
-- **`llm_normal`**: 普通语言模型，用于一般对话
-- **`llm_reasoning`**: 推理语言模型，用于复杂思考
-- **`vision`**: 视觉模型，用于图像理解
-- **`embedding`**: 嵌入模型，用于文本向量化
-- **`speech`**: 语音模型，用于语音识别
-
-### 能力列表 (capabilities)
-
-描述模型支持的具体能力：
-
-- **`text`**: 文本理解和生成
-- **`vision`**: 图像理解
-- **`embedding`**: 文本向量化
-- **`speech`**: 语音处理
-- **`tool_calling`**: 工具调用
-- **`reasoning`**: 推理思考
-
-### 配置优先级
-
-系统按以下优先级确定模型任务类型：
-
-1. **`task_type`** (最高优先级) - 直接指定任务类型
-2. **`capabilities`** (中等优先级) - 根据能力推断任务类型
-3. **模型名称关键字** (最低优先级) - 基于模型名称的关键字匹配
-
-### 示例配置
-
-```toml
-# 推荐配置方式 - 明确指定任务类型和能力
-[[models]]
-model_identifier = "deepseek-chat"
-name = "deepseek-v3"
-api_provider = "DeepSeek"
-task_type = "llm_normal"                    # 明确指定为普通语言模型
-capabilities = ["text", "tool_calling"]    # 支持文本和工具调用
-
-# 视觉模型示例
-[[models]]
-model_identifier = "Qwen/Qwen2.5-VL-72B-Instruct"
-name = "qwen2.5-vl-72b"
-api_provider = "SiliconFlow"
-task_type = "vision"                        # 视觉任务
-capabilities = ["vision", "text"]          # 支持视觉和文本
-
-# 嵌入模型示例
-[[models]]
-model_identifier = "BAAI/bge-m3"
-name = "bge-m3"
-api_provider = "SiliconFlow"
-task_type = "embedding"                     # 嵌入任务
-capabilities = ["text", "embedding"]       # 支持文本和向量化
-```
-
-## 配置示例
-
-### 完整的多提供商配置
-
-```toml
-# API提供商配置
 [[api_providers]]
 name = "DeepSeek"
 base_url = "https://api.deepseek.cn/v1"
-api_keys = [
-    "sk-deepseek-key-1",
-    "sk-deepseek-key-2"
-]
+api_key = "your-deepseek-api-key"
 client_type = "openai"
+```
 
+#### SiliconFlow
+```toml
 [[api_providers]]
 name = "SiliconFlow"
 base_url = "https://api.siliconflow.cn/v1"
-key = "sk-siliconflow-key"
+api_key = "your-siliconflow-api-key"
 client_type = "openai"
+```
 
+#### Google Gemini
+```toml
 [[api_providers]]
 name = "Google"
 base_url = "https://api.google.com/v1"
-api_keys = ["google-api-key-1", "google-api-key-2"]
-client_type = "gemini"
-
-# 模型配置示例
-[[models]]
-model_identifier = "deepseek-chat"
-name = "deepseek-v3"
-api_provider = "DeepSeek"
-task_type = "llm_normal"
-capabilities = ["text", "tool_calling"]
-price_in = 2.0
-price_out = 8.0
-
-[[models]]
-model_identifier = "deepseek-reasoner"
-name = "deepseek-r1"
-api_provider = "DeepSeek"
-task_type = "llm_reasoning"
-capabilities = ["text", "tool_calling", "reasoning"]
-price_in = 4.0
-price_out = 16.0
-
-[[models]]
-model_identifier = "Pro/deepseek-ai/DeepSeek-V3"
-name = "siliconflow-deepseek-v3"
-api_provider = "SiliconFlow"
-task_type = "llm_normal"
-capabilities = ["text", "tool_calling"]
-price_in = 2.0
-price_out = 8.0
+api_key = "your-google-api-key"
+client_type = "gemini"  # 注意：Gemini需要使用特殊客户端
 ```
 
-### bot_config.toml 任务配置示例
+## 3. 模型配置
+
+### 3.1 基本模型配置
+
+使用 `[[models]]` 数组配置多个模型：
 
 ```toml
-# 核心对话模型
-[model.replyer_1]
-model_name = "deepseek-v3"
-temperature = 0.2
-max_tokens = 800
-
-[model.replyer_2]
-model_name = "deepseek-r1"
-temperature = 0.7
-max_tokens = 800
-
-# 工具模型
-[model.utils]
-model_name = "siliconflow-deepseek-v3"
-temperature = 0.2
-max_tokens = 800
-
-[model.utils_small]
-model_name = "qwen3-8b"
-temperature = 0.7
-max_tokens = 800
-enable_thinking = false
-
-# 专用模型
-[model.vlm]
-model_name = "qwen2.5-vl-72b"
-max_tokens = 800
-
-[model.embedding]
-model_name = "bge-m3"
+[[models]]
+model_identifier = "deepseek-chat"  # 模型在API服务商中的标识符
+name = "deepseek-v3"               # 自定义模型名称
+api_provider = "DeepSeek"          # 引用的API服务商名称
+price_in = 2.0                     # 输入价格（元/M token）
+price_out = 8.0                    # 输出价格（元/M token）
 ```
+
+### 3.2 高级模型配置
+
+#### 强制流式输出
+对于不支持非流式输出的模型：
+```toml
+[[models]]
+model_identifier = "some-model"
+name = "custom-name"
+api_provider = "Provider"
+force_stream_mode = true  # 启用强制流式输出
+```
+
+#### 额外参数配置
+```toml
+[[models]]
+model_identifier = "Qwen/Qwen3-8B"
+name = "qwen3-8b"
+api_provider = "SiliconFlow"
+[models.extra_params]
+enable_thinking = false  # 禁用思考模式
+```
+如果想要添加其他额外参数，可以在 `extra_params` 中添加更多配置项。
+
+### 3.3 配置参数说明
+
+| 参数 | 必填 | 说明 |
+|------|------|------|
+| `model_identifier` | ✅ | API服务商提供的模型标识符 |
+| `name` | ✅ | 自定义模型名称，用于在任务配置中引用 |
+| `api_provider` | ✅ | 对应的API服务商名称 |
+| `price_in` | ❌ | 输入价格（元/M token），用于成本统计 |
+| `price_out` | ❌ | 输出价格（元/M token），用于成本统计 |
+| `force_stream_mode` | ❌ | 是否强制使用流式输出 |
+| `extra_params` | ❌ | 额外的模型参数配置 |
+
+## 4. 模型任务配置
+
+### 4.1 核心任务模型
+
+#### utils - 工具模型
+用于表情包模块、取名模块、关系模块等核心功能：
+```toml
+[model_task_config.utils]
+model_list = ["siliconflow-deepseek-v3"]
+temperature = 0.2
+max_tokens = 800
+```
+
+#### utils_small - 小型工具模型
+用于高频率调用的场景，建议使用速度快的小模型：
+```toml
+[model_task_config.utils_small]
+model_list = ["qwen3-8b"]
+temperature = 0.7
+max_tokens = 800
+```
+
+#### replyer_1 - 主要回复模型
+首要回复模型，也用于表达器和表达方式学习：
+```toml
+[model_task_config.replyer_1]
+model_list = ["siliconflow-deepseek-v3"]
+temperature = 0.2
+max_tokens = 800
+```
+
+#### replyer_2 - 次要回复模型
+```toml
+[model_task_config.replyer_2]
+model_list = ["siliconflow-deepseek-v3"]
+temperature = 0.7
+max_tokens = 800
+```
+
+### 4.2 智能决策模型
+
+#### planner - 决策模型
+负责决定MaiBot该做什么：
+```toml
+[model_task_config.planner]
+model_list = ["siliconflow-deepseek-v3"]
+temperature = 0.3
+max_tokens = 800
+```
+
+#### emotion - 情绪模型
+负责MaiBot的情绪变化：
+```toml
+[model_task_config.emotion]
+model_list = ["siliconflow-deepseek-v3"]
+temperature = 0.3
+max_tokens = 800
+```
+
+#### memory - 记忆模型
+```toml
+[model_task_config.memory]
+model_list = ["qwen3-30b"]
+temperature = 0.7
+max_tokens = 800
+```
+
+### 4.3 多模态模型
+
+#### vlm - 视觉语言模型
+用于图像识别：
+```toml
+[model_task_config.vlm]
+model_list = ["qwen2.5-vl-72b"]
+max_tokens = 800
+```
+
+#### voice - 语音识别模型
+```toml
+[model_task_config.voice]
+model_list = ["sensevoice-small"]
+```
+
+#### embedding - 嵌入模型
+```toml
+[model_task_config.embedding]
+model_list = ["bge-m3"]
+```
+
+### 4.4 功能增强模型
+
+#### tool_use - 工具调用模型
+需要使用支持工具调用的模型：
+```toml
+[model_task_config.tool_use]
+model_list = ["qwen3-14b"]
+temperature = 0.7
+max_tokens = 800
+```
+
+### 4.5 LPMM知识库模型
+
+#### lpmm_entity_extract - 实体提取模型
+```toml
+[model_task_config.lpmm_entity_extract]
+model_list = ["siliconflow-deepseek-v3"]
+temperature = 0.2
+max_tokens = 800
+```
+
+#### lpmm_rdf_build - RDF构建模型
+```toml
+[model_task_config.lpmm_rdf_build]
+model_list = ["siliconflow-deepseek-v3"]
+temperature = 0.2
+max_tokens = 800
+```
+
+#### lpmm_qa - 问答模型
+```toml
+[model_task_config.lpmm_qa]
+model_list = ["deepseek-r1-distill-qwen-32b"]
+temperature = 0.7
+max_tokens = 800
+```
+
+## 5. 配置建议
+
+### 5.1 Temperature 参数选择
+
+| 任务类型 | 推荐温度 | 说明 |
+|----------|----------|------|
+| 精确任务（工具调用、实体提取） | 0.1-0.3 | 需要准确性和一致性 |
+| 创意任务（对话、记忆） | 0.5-0.8 | 需要多样性和创造性 |
+| 平衡任务（决策、情绪） | 0.3-0.5 | 平衡准确性和灵活性 |
+
+### 5.2 模型选择建议
+
+| 任务类型 | 推荐模型类型 | 示例 |
+|----------|--------------|------|
+| 高精度任务 | 大模型 | DeepSeek-V3, GPT-4 |
+| 高频率任务 | 小模型 | Qwen3-8B |
+| 多模态任务 | 专用模型 | Qwen2.5-VL, SenseVoice |
+| 工具调用 | 支持Function Call的模型 | Qwen3-14B |
+
+### 5.3 成本优化
+
+1. **分层使用**：核心功能使用高质量模型，辅助功能使用经济模型
+2. **合理配置max_tokens**：根据实际需求设置，避免浪费
+3. **选择免费模型**：对于测试环境，优先使用price为0的模型
+
+## 6. 配置验证
+
+### 6.1 必要检查项
+
+1. ✅ API密钥是否正确配置
+2. ✅ 模型标识符是否与API服务商提供的一致
+3. ✅ 任务配置中引用的模型名称是否在models中定义
+4. ✅ 多模态任务是否配置了对应的专用模型
+
+### 6.2 测试配置
+
+建议在正式使用前：
+1. 使用少量测试数据验证配置
+2. 检查API调用是否正常
+3. 确认成本统计功能正常工作
+
+## 7. 故障排除
+
+### 7.1 常见问题
+
+**问题1**: API调用失败
+- 检查API密钥是否正确
+- 确认base_url是否可访问
+- 检查模型标识符是否正确
+
+**问题2**: 模型未找到
+- 确认模型名称在任务配置和模型定义中一致
+- 检查api_provider名称是否匹配
+
+**问题3**: 响应异常
+- 检查温度参数是否合理（0-1之间）
+- 确认max_tokens设置是否合适
+- 验证模型是否支持所需功能
+
+### 7.2 日志查看
+
+查看 `logs/` 目录下的日志文件，寻找相关错误信息。
+
+## 8. 更新和维护
+
+1. **定期更新**: 关注API服务商的模型更新，及时调整配置
+2. **性能监控**: 监控模型调用的成本和性能
+3. **备份配置**: 在修改前备份当前配置文件
+
