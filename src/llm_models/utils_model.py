@@ -266,6 +266,7 @@ class LLMRequest:
                     self.task_name,
                     model_name=model_info.name,
                     remain_try=retry_remain,
+                    retry_interval=api_provider.retry_interval,
                     messages=(message_list, compressed_messages is not None) if message_list else None,
                 )
 
