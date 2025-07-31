@@ -542,7 +542,7 @@ class OpenaiClient(BaseClient):
         """
         获取音频转录
         :param model_info: 模型信息
-        :param audio_base64: 音频的base64编码
+        :param message_list: 消息列表，包含音频内容
         :return: 转录响应
         """
         try:
