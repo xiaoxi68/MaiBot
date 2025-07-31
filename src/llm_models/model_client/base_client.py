@@ -113,6 +113,20 @@ class BaseClient:
         :return: 嵌入响应
         """
         raise RuntimeError("This method should be overridden in subclasses")
+    
+    async def get_audio_transcriptions(
+        self,
+        model_info: ModelInfo,
+        message_list: list[Message],
+        extra_params: dict[str, Any] | None = None,
+    ) -> APIResponse:
+        """
+        获取音频转录
+        :param model_info: 模型信息
+        :param message_list: 消息列表，包含音频内容
+        :return: 音频转录响应
+        """
+        raise RuntimeError("This method should be overridden in subclasses")
 
 
 class ClientRegistry:

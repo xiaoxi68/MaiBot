@@ -38,7 +38,7 @@ class RequestType(Enum):
 
     RESPONSE = "response"
     EMBEDDING = "embedding"
-
+    AUDIO = "audio"
 
 class LLMRequest:
     """LLM请求类"""
@@ -106,8 +106,32 @@ class LLMRequest:
             )
         return content, (reasoning_content, model_info.name, tool_calls)
 
-    async def generate_response_for_voice(self):
-        pass
+    async def generate_response_for_voice(self, voice_base64: str) -> Optional[str]:
+        """
+        为语音生成响应
+        Args:
+            voice_base64 (str): 语音的Base64编码字符串
+        Returns:
+            (Optional[str]): 生成的文本描述或None
+        """
+        # 请求体构建
+        message_builder = MessageBuilder()
+        message_builder.add_file_content(file_name="audio.wav", file_base64=voice_base64)
+        messages = [message_builder.build()]
+
+        # 模型选择
+        model_info, api_provider, client = self._select_model()
+
+        # 请求并处理返回值
+        response = await self._execute_request(
+            api_provider=api_provider,
+            client=client,
+            request_type=RequestType.AUDIO,
+            model_info=model_info,
+            message_list=messages,
+        )
+        return response.content or None
+
 
     async def generate_response_async(
         self,
@@ -253,6 +277,13 @@ class LLMRequest:
                     return await client.get_embedding(
                         model_info=model_info,
                         embedding_input=embedding_input,
+                        extra_params=model_info.extra_params,
+                    )
+                elif request_type == RequestType.AUDIO:
+                    assert message_list is not None, "message_list cannot be None for audio requests"
+                    return await client.get_audio_transcriptions(
+                        model_info=model_info,
+                        message_list=message_list,
                         extra_params=model_info.extra_params,
                     )
             except Exception as e:

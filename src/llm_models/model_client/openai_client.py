@@ -532,3 +532,37 @@ class OpenaiClient(BaseClient):
             )
 
         return response
+
+    async def get_audio_transcriptions(
+        self,
+        model_info: ModelInfo,
+        message_list: list[Message],
+        extra_params: dict[str, Any] | None = None,
+    ) -> APIResponse:
+        """
+        获取音频转录
+        :param model_info: 模型信息
+        :param audio_base64: 音频的base64编码
+        :return: 转录响应
+        """
+        try:
+            raw_response = await self.client.audio.transcriptions.create(
+                model=model_info.model_identifier,
+                file=message_list[0].content[0],
+                extra_body=extra_params
+            )
+        except APIConnectionError as e:
+            raise NetworkConnectionError() from e
+        except APIStatusError as e:
+            # 重封装APIError为RespNotOkException
+            raise RespNotOkException(e.status_code) from e
+        response = APIResponse()
+        # 解析转录响应
+        if hasattr(raw_response, "text"):
+            response.content = raw_response.text
+        else:
+            raise RespParseException(
+                raw_response,
+                "响应解析失败，缺失转录文本。",
+            )
+        return response
