@@ -228,6 +228,7 @@ class LLMRequest:
         model_info = model_config.get_model_info(least_used_model_name)
         api_provider = model_config.get_provider(model_info.api_provider)
         client = client_registry.get_client_class(api_provider.client_type)(copy.deepcopy(api_provider))
+        logger.debug(f"选择请求模型: {model_info.name}")
         return model_info, api_provider, client
 
     async def _execute_request(
