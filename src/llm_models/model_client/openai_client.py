@@ -551,7 +551,7 @@ class OpenaiClient(BaseClient):
             raw_response = await self.client.audio.transcriptions.create(
                 model=model_info.model_identifier,
                 file=("audio.wav", io.BytesIO(base64.b64decode(audio_base64))),
-                extra_body=extra_params
+                extra_body=extra_params,
             )
         except APIConnectionError as e:
             raise NetworkConnectionError() from e

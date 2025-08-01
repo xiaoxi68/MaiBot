@@ -113,7 +113,7 @@ class BaseClient:
         :return: 嵌入响应
         """
         raise RuntimeError("This method should be overridden in subclasses")
-    
+
     async def get_audio_transcriptions(
         self,
         model_info: ModelInfo,
