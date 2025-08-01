@@ -104,16 +104,33 @@ api_provider = "Provider"
 force_stream_mode = true  # 启用强制流式输出
 ```
 
-#### 额外参数配置
+#### 额外参数配置`extra_params`
 ```toml
 [[models]]
 model_identifier = "Qwen/Qwen3-8B"
 name = "qwen3-8b"
 api_provider = "SiliconFlow"
 [models.extra_params]
-enable_thinking = false  # 禁用思考模式
+enable_thinking = false # 禁用思考
 ```
-如果想要添加其他额外参数，可以在 `extra_params` 中添加更多配置项。
+这里的 `extra_params` 可以包含任何API服务商支持的额外参数配置，**配置时应参考相应的API文档**。
+
+比如上面就是参考SiliconFlow的文档配置配置的`Qwen3`禁用思考参数。
+
+![SiliconFlow文档截图](image-1.png)
+
+以豆包文档为另一个例子
+
+![豆包文档截图](image.png)
+
+得到豆包`"doubao-seed-1-6-250615"`的禁用思考配置方法为
+```toml
+[[models]]
+# 你的模型
+[models.extra_params]
+thinking = {type = "disabled"} # 禁用思考
+```
+请注意，`extra_params` 的配置应该构成一个合法的TOML字典结构，具体内容取决于API服务商的要求。
 
 ### 3.3 配置参数说明
 
@@ -129,9 +146,7 @@ enable_thinking = false  # 禁用思考模式
 
 ## 4. 模型任务配置
 
-### 4.1 核心任务模型
-
-#### utils - 工具模型
+### utils - 工具模型
 用于表情包模块、取名模块、关系模块等核心功能：
 ```toml
 [model_task_config.utils]
@@ -140,7 +155,7 @@ temperature = 0.2
 max_tokens = 800
 ```
 
-#### utils_small - 小型工具模型
+### utils_small - 小型工具模型
 用于高频率调用的场景，建议使用速度快的小模型：
 ```toml
 [model_task_config.utils_small]
@@ -149,7 +164,7 @@ temperature = 0.7
 max_tokens = 800
 ```
 
-#### replyer_1 - 主要回复模型
+### replyer_1 - 主要回复模型
 首要回复模型，也用于表达器和表达方式学习：
 ```toml
 [model_task_config.replyer_1]
@@ -158,7 +173,7 @@ temperature = 0.2
 max_tokens = 800
 ```
 
-#### replyer_2 - 次要回复模型
+### replyer_2 - 次要回复模型
 ```toml
 [model_task_config.replyer_2]
 model_list = ["siliconflow-deepseek-v3"]
@@ -166,9 +181,7 @@ temperature = 0.7
 max_tokens = 800
 ```
 
-### 4.2 智能决策模型
-
-#### planner - 决策模型
+### planner - 决策模型
 负责决定MaiBot该做什么：
 ```toml
 [model_task_config.planner]
@@ -177,7 +190,7 @@ temperature = 0.3
 max_tokens = 800
 ```
 
-#### emotion - 情绪模型
+### emotion - 情绪模型
 负责MaiBot的情绪变化：
 ```toml
 [model_task_config.emotion]
@@ -186,7 +199,7 @@ temperature = 0.3
 max_tokens = 800
 ```
 
-#### memory - 记忆模型
+### memory - 记忆模型
 ```toml
 [model_task_config.memory]
 model_list = ["qwen3-30b"]
@@ -194,9 +207,7 @@ temperature = 0.7
 max_tokens = 800
 ```
 
-### 4.3 多模态模型
-
-#### vlm - 视觉语言模型
+### vlm - 视觉语言模型
 用于图像识别：
 ```toml
 [model_task_config.vlm]
@@ -204,21 +215,19 @@ model_list = ["qwen2.5-vl-72b"]
 max_tokens = 800
 ```
 
-#### voice - 语音识别模型
+### voice - 语音识别模型
 ```toml
 [model_task_config.voice]
 model_list = ["sensevoice-small"]
 ```
 
-#### embedding - 嵌入模型
+### embedding - 嵌入模型
 ```toml
 [model_task_config.embedding]
 model_list = ["bge-m3"]
 ```
 
-### 4.4 功能增强模型
-
-#### tool_use - 工具调用模型
+### tool_use - 工具调用模型
 需要使用支持工具调用的模型：
 ```toml
 [model_task_config.tool_use]
@@ -227,9 +236,7 @@ temperature = 0.7
 max_tokens = 800
 ```
 
-### 4.5 LPMM知识库模型
-
-#### lpmm_entity_extract - 实体提取模型
+### lpmm_entity_extract - 实体提取模型
 ```toml
 [model_task_config.lpmm_entity_extract]
 model_list = ["siliconflow-deepseek-v3"]
@@ -237,7 +244,7 @@ temperature = 0.2
 max_tokens = 800
 ```
 
-#### lpmm_rdf_build - RDF构建模型
+### lpmm_rdf_build - RDF构建模型
 ```toml
 [model_task_config.lpmm_rdf_build]
 model_list = ["siliconflow-deepseek-v3"]
@@ -245,7 +252,7 @@ temperature = 0.2
 max_tokens = 800
 ```
 
-#### lpmm_qa - 问答模型
+### lpmm_qa - 问答模型
 ```toml
 [model_task_config.lpmm_qa]
 model_list = ["deepseek-r1-distill-qwen-32b"]
