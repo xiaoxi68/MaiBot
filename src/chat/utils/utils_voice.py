@@ -15,13 +15,8 @@ async def get_voice_text(voice_base64: str) -> str:
         logger.warning("语音识别未启用，无法处理语音消息")
         return "[语音]"
     try:
-        # 解码base64音频数据
-        # 确保base64字符串只包含ASCII字符
-        if isinstance(voice_base64, str):
-            voice_base64 = voice_base64.encode("ascii", errors="ignore").decode("ascii")
-        voice_bytes = base64.b64decode(voice_base64)
         _llm = LLMRequest(model_set=model_config.model_task_config.voice, request_type="voice")
-        text = await _llm.generate_response_for_voice(voice_bytes)
+        text = await _llm.generate_response_for_voice(voice_base64)
         if text is None:
             logger.warning("未能生成语音文本")
             return "[语音(文本生成失败)]"

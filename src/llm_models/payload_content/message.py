@@ -53,7 +53,7 @@ class MessageBuilder:
         """
         self.__content.append(text)
         return self
-
+    
     def add_image_content(
         self, image_format: str, image_base64: str
     ) -> "MessageBuilder":

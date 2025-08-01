@@ -2,6 +2,7 @@ import asyncio
 import io
 import json
 import re
+import base64
 from collections.abc import Iterable
 from typing import Callable, Any, Coroutine, Optional
 from json_repair import repair_json
@@ -531,4 +532,39 @@ class OpenaiClient(BaseClient):
                 total_tokens=raw_response.usage.total_tokens or 0,
             )
 
+        return response
+
+    async def get_audio_transcriptions(
+        self,
+        model_info: ModelInfo,
+        audio_base64: str,
+        extra_params: dict[str, Any] | None = None,
+    ) -> APIResponse:
+        """
+        获取音频转录
+        :param model_info: 模型信息
+        :param audio_base64: base64编码的音频数据
+        :extra_params: 附加的请求参数
+        :return: 音频转录响应
+        """
+        try:
+            raw_response = await self.client.audio.transcriptions.create(
+                model=model_info.model_identifier,
+                file=("audio.wav", io.BytesIO(base64.b64decode(audio_base64))),
+                extra_body=extra_params
+            )
+        except APIConnectionError as e:
+            raise NetworkConnectionError() from e
+        except APIStatusError as e:
+            # 重封装APIError为RespNotOkException
+            raise RespNotOkException(e.status_code) from e
+        response = APIResponse()
+        # 解析转录响应
+        if hasattr(raw_response, "text"):
+            response.content = raw_response.text
+        else:
+            raise RespParseException(
+                raw_response,
+                "响应解析失败，缺失转录文本。",
+            )
         return response
