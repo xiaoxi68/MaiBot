@@ -2,6 +2,7 @@ import asyncio
 import io
 import json
 import re
+import base64
 from collections.abc import Iterable
 from typing import Callable, Any, Coroutine, Optional
 from json_repair import repair_json
@@ -536,19 +537,20 @@ class OpenaiClient(BaseClient):
     async def get_audio_transcriptions(
         self,
         model_info: ModelInfo,
-        message_list: list[Message],
+        audio_base64: str,
         extra_params: dict[str, Any] | None = None,
     ) -> APIResponse:
         """
         获取音频转录
         :param model_info: 模型信息
-        :param message_list: 消息列表，包含音频内容
-        :return: 转录响应
+        :param audio_base64: base64编码的音频数据
+        :extra_params: 附加的请求参数
+        :return: 音频转录响应
         """
         try:
             raw_response = await self.client.audio.transcriptions.create(
                 model=model_info.model_identifier,
-                file=message_list[0].content[0],
+                file=("audio.wav", io.BytesIO(base64.b64decode(audio_base64))),
                 extra_body=extra_params
             )
         except APIConnectionError as e:

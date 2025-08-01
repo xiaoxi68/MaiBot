@@ -114,11 +114,6 @@ class LLMRequest:
         Returns:
             (Optional[str]): 生成的文本描述或None
         """
-        # 请求体构建
-        message_builder = MessageBuilder()
-        message_builder.add_file_content(file_name="audio.wav", file_base64=voice_base64)
-        messages = [message_builder.build()]
-
         # 模型选择
         model_info, api_provider, client = self._select_model()
 
@@ -128,7 +123,7 @@ class LLMRequest:
             client=client,
             request_type=RequestType.AUDIO,
             model_info=model_info,
-            message_list=messages,
+            audio_base64=voice_base64,
         )
         return response.content or None
 
@@ -249,6 +244,7 @@ class LLMRequest:
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
         embedding_input: str = "",
+        audio_base64: str = ""
     ) -> APIResponse:
         """
         实际执行请求的方法
@@ -283,7 +279,7 @@ class LLMRequest:
                     assert message_list is not None, "message_list cannot be None for audio requests"
                     return await client.get_audio_transcriptions(
                         model_info=model_info,
-                        message_list=message_list,
+                        audio_base64=audio_base64,
                         extra_params=model_info.extra_params,
                     )
             except Exception as e:

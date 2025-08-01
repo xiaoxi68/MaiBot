@@ -1,6 +1,5 @@
-import base64
 from enum import Enum
-from io import BytesIO
+
 
 # 设计这系列类的目的是为未来可能的扩展做准备
 
@@ -34,7 +33,7 @@ class Message:
 class MessageBuilder:
     def __init__(self):
         self.__role: RoleType = RoleType.User
-        self.__content: list[tuple[str, str] | str | tuple[str, BytesIO]] = []
+        self.__content: list[tuple[str, str] | str] = []
         self.__tool_call_id: str | None = None
 
     def set_role(self, role: RoleType = RoleType.User) -> "MessageBuilder":
@@ -53,20 +52,6 @@ class MessageBuilder:
         :return: MessageBuilder对象
         """
         self.__content.append(text)
-        return self
-
-    def add_file_content(
-        self, file_name: str, file_base64: str
-    ) -> "MessageBuilder":
-        """
-        添加文件内容
-        :param file_name: 文件名(包含类型后缀)
-        :param file_base64: 文件的base64编码
-        :return: MessageBuilder对象
-        """
-        if not file_name or not file_base64:
-            raise ValueError("文件名和base64编码不能为空")
-        self.__content.append((file_name, BytesIO(base64.b64decode(file_base64))))
         return self
     
     def add_image_content(
