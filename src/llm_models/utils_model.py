@@ -40,6 +40,7 @@ class RequestType(Enum):
     EMBEDDING = "embedding"
     AUDIO = "audio"
 
+
 class LLMRequest:
     """LLM请求类"""
 
@@ -70,14 +71,14 @@ class LLMRequest:
         Returns:
             (Tuple[str, str, str, Optional[List[ToolCall]]]): 响应内容、推理内容、模型名称、工具调用列表
         """
+        # 模型选择
+        model_info, api_provider, client = self._select_model()
+
         # 请求体构建
         message_builder = MessageBuilder()
         message_builder.add_text_content(prompt)
-        message_builder.add_image_content(image_base64=image_base64, image_format=image_format)
+        message_builder.add_image_content(image_base64=image_base64, image_format=image_format, support_formats=client.get_support_image_formats())
         messages = [message_builder.build()]
-
-        # 模型选择
-        model_info, api_provider, client = self._select_model()
 
         # 请求并处理返回值
         response = await self._execute_request(
@@ -126,7 +127,6 @@ class LLMRequest:
             audio_base64=voice_base64,
         )
         return response.content or None
-
 
     async def generate_response_async(
         self,
@@ -245,7 +245,7 @@ class LLMRequest:
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
         embedding_input: str = "",
-        audio_base64: str = ""
+        audio_base64: str = "",
     ) -> APIResponse:
         """
         实际执行请求的方法

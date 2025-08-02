@@ -11,7 +11,7 @@ class RoleType(Enum):
     Tool = "tool"
 
 
-SUPPORTED_IMAGE_FORMATS = ["jpg", "jpeg", "png", "webp", "gif"]
+SUPPORTED_IMAGE_FORMATS = ["jpg", "jpeg", "png", "webp", "gif"]  # openai支持的图片格式
 
 
 class Message:
@@ -53,9 +53,12 @@ class MessageBuilder:
         """
         self.__content.append(text)
         return self
-    
+
     def add_image_content(
-        self, image_format: str, image_base64: str
+        self,
+        image_format: str,
+        image_base64: str,
+        support_formats: list[str] = SUPPORTED_IMAGE_FORMATS,  # 默认支持格式
     ) -> "MessageBuilder":
         """
         添加图片内容
@@ -63,7 +66,7 @@ class MessageBuilder:
         :param image_base64: 图片的base64编码
         :return: MessageBuilder对象
         """
-        if image_format.lower() not in SUPPORTED_IMAGE_FORMATS:
+        if image_format.lower() not in support_formats:
             raise ValueError("不受支持的图片格式")
         if not image_base64:
             raise ValueError("图片的base64编码不能为空")

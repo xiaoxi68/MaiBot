@@ -286,9 +286,9 @@ async def _default_stream_response_handler(
         if event.usage:
             # 如果有使用情况，则将其存储在APIResponse对象中
             _usage_record = (
-                event.usage.prompt_tokens,
-                event.usage.completion_tokens,
-                event.usage.total_tokens,
+                event.usage.prompt_tokens or 0,
+                event.usage.completion_tokens or 0,
+                event.usage.total_tokens or 0,
             )
 
     try:
@@ -356,9 +356,9 @@ def _default_normal_response_parser(
     # 提取Usage信息
     if resp.usage:
         _usage_record = (
-            resp.usage.prompt_tokens,
-            resp.usage.completion_tokens,
-            resp.usage.total_tokens,
+            resp.usage.prompt_tokens or 0,
+            resp.usage.completion_tokens or 0,
+            resp.usage.total_tokens or 0,
         )
     else:
         _usage_record = None
@@ -568,3 +568,10 @@ class OpenaiClient(BaseClient):
                 "响应解析失败，缺失转录文本。",
             )
         return response
+
+    def get_support_image_formats(self) -> list[str]:
+        """
+        获取支持的图片格式
+        :return: 支持的图片格式列表
+        """
+        return ["jpg", "jpeg", "png", "webp", "gif"]
