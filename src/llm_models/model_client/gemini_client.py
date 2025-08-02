@@ -2,7 +2,7 @@ import asyncio
 import io
 import base64
 from collections.abc import Iterable
-from typing import Callable, Iterator, TypeVar, AsyncIterator, Optional, Coroutine, Any, List
+from typing import Callable, TypeVar, AsyncIterator, Optional, Coroutine, Any, List
 
 from google import genai
 from google.genai import types
@@ -220,7 +220,7 @@ async def _default_stream_response_handler(
         if _fc_delta_buffer and not _fc_delta_buffer.closed:
             _fc_delta_buffer.close()
 
-    async for chunk in _to_async_iterable(resp_stream):
+    async for chunk in resp_stream:
         # 检查是否有中断量
         if interrupt_flag and interrupt_flag.is_set():
             # 如果中断量被设置，则抛出ReqAbortException
