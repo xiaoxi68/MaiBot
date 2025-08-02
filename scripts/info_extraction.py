@@ -25,7 +25,7 @@ from rich.progress import (
     TextColumn,
 )
 from raw_data_preprocessor import RAW_DATA_PATH, load_raw_data
-from src.config.config import global_config
+from src.config.config import global_config, model_config
 from src.llm_models.utils_model import LLMRequest
 from dotenv import load_dotenv
 
@@ -96,11 +96,11 @@ open_ie_doc_lock = Lock()
 shutdown_event = Event()
 
 lpmm_entity_extract_llm = LLMRequest(
-    model=global_config.model.lpmm_entity_extract,
+    model_set=model_config.model_task_config.lpmm_entity_extract,
     request_type="lpmm.entity_extract"
 )
 lpmm_rdf_build_llm = LLMRequest(
-    model=global_config.model.lpmm_rdf_build,
+    model_set=model_config.model_task_config.lpmm_rdf_build,
     request_type="lpmm.rdf_build"
 )
 def process_single_text(pg_hash, raw_data):

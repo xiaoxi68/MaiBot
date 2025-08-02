@@ -277,7 +277,7 @@ class LLMRequest:
                         extra_params=model_info.extra_params,
                     )
                 elif request_type == RequestType.AUDIO:
-                    assert message_list is not None, "message_list cannot be None for audio requests"
+                    assert audio_base64 is not None, "audio_base64 cannot be None for audio requests"
                     return await client.get_audio_transcriptions(
                         model_info=model_info,
                         audio_base64=audio_base64,
