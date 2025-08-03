@@ -26,6 +26,7 @@ from google.genai.errors import (
 )
 
 from src.config.api_ada_configs import ModelInfo, APIProvider
+from src.common.logger import get_logger
 
 from .base_client import APIResponse, UsageRecord, BaseClient, client_registry
 from ..exceptions import (
@@ -37,6 +38,8 @@ from ..exceptions import (
 from ..payload_content.message import Message, RoleType
 from ..payload_content.resp_format import RespFormat, RespFormatType
 from ..payload_content.tool_option import ToolOption, ToolParam, ToolCall
+
+logger = get_logger("Gemini客户端")
 
 
 def _convert_messages(
@@ -114,10 +117,13 @@ def _convert_tool_options(tool_options: list[ToolOption]) -> list[FunctionDeclar
         :param tool_option_param: 工具参数对象
         :return: 转换后的工具参数字典
         """
-        return {
+        return_dict: dict[str, Any] = {
             "type": tool_option_param.param_type.value,
             "description": tool_option_param.description,
         }
+        if tool_option_param.enum_values:
+            return_dict["enum"] = tool_option_param.enum_values
+        return return_dict
 
     def _convert_tool_option_item(tool_option: ToolOption) -> FunctionDeclaration:
         """
@@ -259,6 +265,17 @@ def _default_normal_response_parser(
 
     if not hasattr(resp, "candidates") or not resp.candidates:
         raise RespParseException(resp, "响应解析失败，缺失candidates字段")
+    try:
+        if resp.candidates[0].content and resp.candidates[0].content.parts:
+            for part in resp.candidates[0].content.parts:
+                if not part.text:
+                    continue
+                if part.thought:
+                    api_response.reasoning_content = (
+                        api_response.reasoning_content + part.text if api_response.reasoning_content else part.text
+                    )
+    except Exception as e:
+        logger.warning(f"解析思考内容时发生错误: {e}，跳过解析")
 
     if resp.text:
         api_response.content = resp.text
@@ -269,9 +286,9 @@ def _default_normal_response_parser(
             try:
                 if not isinstance(call.args, dict):
                     raise RespParseException(resp, "响应解析失败，工具调用参数无法解析为字典类型")
-                if not call.id or not call.name:
-                    raise RespParseException(resp, "响应解析失败，工具调用缺失id或name字段")
-                api_response.tool_calls.append(ToolCall(call.id, call.name, call.args or {}))
+                if not call.name:
+                    raise RespParseException(resp, "响应解析失败，工具调用缺失name字段")
+                api_response.tool_calls.append(ToolCall(call.id or "gemini-tool_call", call.name, call.args or {}))
             except Exception as e:
                 raise RespParseException(resp, "响应解析失败，无法解析工具调用参数") from e
 
@@ -306,7 +323,6 @@ class GeminiClient(BaseClient):
         tool_options: list[ToolOption] | None = None,
         max_tokens: int = 1024,
         temperature: float = 0.7,
-        thinking_budget: int = 0,
         response_format: RespFormat | None = None,
         stream_response_handler: Optional[
             Callable[
@@ -322,17 +338,18 @@ class GeminiClient(BaseClient):
     ) -> APIResponse:
         """
         获取对话响应
-        :param model_info: 模型信息
-        :param message_list: 对话体
-        :param tool_options: 工具选项（可选，默认为None）
-        :param max_tokens: 最大token数（可选，默认为1024）
-        :param temperature: 温度（可选，默认为0.7）
-        :param thinking_budget: 思考预算（可选，默认为0）
-        :param response_format: 响应格式（默认为text/plain,如果是输入的JSON Schema则必须遵守OpenAPI3.0格式,理论上和openai是一样的，暂不支持其它相应格式输入）
-        :param stream_response_handler: 流式响应处理函数（可选，默认为default_stream_response_handler）
-        :param async_response_parser: 响应解析函数（可选，默认为default_response_parser）
-        :param interrupt_flag: 中断信号量（可选，默认为None）
-        :return: (响应文本, 推理文本, 工具调用, 其他数据)
+        Args:
+            model_info: 模型信息
+            message_list: 对话体
+            tool_options: 工具选项（可选，默认为None）
+            max_tokens: 最大token数（可选，默认为1024）
+            temperature: 温度（可选，默认为0.7）
+            response_format: 响应格式（默认为text/plain,如果是输入的JSON Schema则必须遵守OpenAPI3.0格式,理论上和openai是一样的，暂不支持其它相应格式输入）
+            stream_response_handler: 流式响应处理函数（可选，默认为default_stream_response_handler）
+            async_response_parser: 响应解析函数（可选，默认为default_response_parser）
+            interrupt_flag: 中断信号量（可选，默认为None）
+        Returns:
+            APIResponse对象，包含响应内容、推理内容、工具调用等信息
         """
         if stream_response_handler is None:
             stream_response_handler = _default_stream_response_handler
@@ -348,13 +365,14 @@ class GeminiClient(BaseClient):
         generation_config_dict = {
             "max_output_tokens": max_tokens,
             "temperature": temperature,
-            "response_modalities": ["TEXT"],  # 暂时只支持文本输出
+            "response_modalities": ["TEXT"],
+            "thinking_config": ThinkingConfig(
+                include_thoughts=True,
+                thinking_budget=(
+                    extra_params["thinking_budget"] if extra_params and "thinking_budget" in extra_params else None
+                ),
+            ),
         }
-        if "2.5" in model_info.model_identifier.lower():
-            # 我偷个懒，在这里识别一下2.5然后开摆，反正现在只有2.5支持思维链，然后我测试之后发现它不返回思考内容，反正我也怕他有朝一日返回了，我决定干掉任何有关的思维内容
-            generation_config_dict["thinking_config"] = ThinkingConfig(
-                thinking_budget=thinking_budget, include_thoughts=False
-            )
         if tools:
             generation_config_dict["tools"] = Tool(function_declarations=tools)
         if messages[1]:
