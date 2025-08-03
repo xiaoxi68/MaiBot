@@ -483,6 +483,11 @@ class GeminiClient(BaseClient):
 
         return response
 
+    def get_audio_transcriptions(
+        self, model_info: ModelInfo, audio_base64: str, extra_params: dict[str, Any] | None = None
+    ) -> APIResponse:
+        raise NotImplementedError("尚未实现音频转录功能")
+
     def get_support_image_formats(self) -> list[str]:
         """
         获取支持的图片格式
