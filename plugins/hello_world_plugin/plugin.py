@@ -11,6 +11,7 @@ from src.plugin_system import (
     BaseEventHandler,
     EventType,
     MaiMessages,
+    ToolParamType
 )
 
 
@@ -20,8 +21,8 @@ class CompareNumbersTool(BaseTool):
     name = "compare_numbers"
     description = "使用工具 比较两个数的大小，返回较大的数"
     parameters = [
-        ("num1", "number", "第一个数字", True),
-        ("num2", "number", "第二个数字", True),
+        ("num1", ToolParamType.FLOAT, "第一个数字", True, None),
+        ("num2", ToolParamType.FLOAT, "第二个数字", True, None),
     ]
 
     async def execute(self, function_args: dict[str, Any]) -> dict[str, Any]:
