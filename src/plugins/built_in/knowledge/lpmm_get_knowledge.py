@@ -1,10 +1,8 @@
-from src.plugin_system.base.base_tool import BaseTool
-
-# from src.common.database import db
-from src.common.logger import get_logger
 from typing import Dict, Any
-from src.chat.knowledge.knowledge_lib import qa_manager
 
+from src.common.logger import get_logger
+from src.chat.knowledge.knowledge_lib import qa_manager
+from src.plugin_system import BaseTool, ToolParamType
 
 logger = get_logger("lpmm_get_knowledge_tool")
 
@@ -15,8 +13,8 @@ class SearchKnowledgeFromLPMMTool(BaseTool):
     name = "lpmm_search_knowledge"
     description = "从知识库中搜索相关信息，如果你需要知识，就使用这个工具"
     parameters = [
-        ("query", "string", "搜索查询关键词", True),
-        ("threshold", "float", "相似度阈值，0.0到1.0之间", False),
+        ("query", ToolParamType.STRING, "搜索查询关键词", True, None),
+        ("threshold", ToolParamType.FLOAT, "相似度阈值，0.0到1.0之间", False, None),
     ]
 
     async def execute(self, function_args: Dict[str, Any]) -> Dict[str, Any]:

@@ -1,10 +1,12 @@
-from src.plugin_system.base.base_tool import BaseTool
+import json  # Added for parsing embedding
+import math  # Added for cosine similarity
+from typing import Any, Union, List  # Added List
+
 from src.chat.utils.utils import get_embedding
 from src.common.database.database_model import Knowledges  # Updated import
 from src.common.logger import get_logger
-from typing import Any, Union, List  # Added List
-import json  # Added for parsing embedding
-import math  # Added for cosine similarity
+from src.plugin_system import BaseTool, ToolParamType
+
 
 logger = get_logger("get_knowledge_tool")
 
@@ -15,8 +17,8 @@ class SearchKnowledgeTool(BaseTool):
     name = "search_knowledge"
     description = "使用工具从知识库中搜索相关信息"
     parameters = [
-        ("query", "string", "搜索查询关键词", True),
-        ("threshold", "float", "相似度阈值，0.0到1.0之间", False),
+        ("query", ToolParamType.STRING, "搜索查询关键词", True, None),
+        ("threshold", ToolParamType.FLOAT, "相似度阈值，0.0到1.0之间", False, None),
     ]
 
     async def execute(self, function_args: dict[str, Any]) -> dict[str, Any]:

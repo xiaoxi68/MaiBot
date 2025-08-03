@@ -24,7 +24,7 @@
 
 每个工具必须继承 `BaseTool` 基类并实现以下属性和方法：
 ```python
-from src.plugin_system import BaseTool
+from src.plugin_system import BaseTool, ToolParamType
 
 class MyTool(BaseTool):
     # 工具名称，必须唯一
@@ -45,13 +45,14 @@ class MyTool(BaseTool):
     #         "limit": {
     #             "type": "integer", 
     #             "description": "结果数量限制"
+    #             "enum": [10, 20, 50]  # 可选值
     #         }
     #     },
     #     "required": ["query"]
     # }
     parameters = [
-        ("query", "string", "查询参数", True),  # 必填参数
-        ("limit", "integer", "结果数量限制", False)  # 可选参数
+        ("query", ToolParamType.STRING, "查询参数", True, None),  # 必填参数
+        ("limit", ToolParamType.INTEGER, "结果数量限制", False, ["10", "20", "50"])  # 可选参数
     ]
 
     available_for_llm = True  # 是否对LLM可用
@@ -104,8 +105,8 @@ class WeatherTool(BaseTool):
     description = "查询指定城市的实时天气信息，包括温度、湿度、天气状况等"
     available_for_llm = True  # 允许LLM调用此工具
     parameters = [
-        ("city", "string", "要查询天气的城市名称，如：北京、上海、纽约", True),
-        ("country", "string", "国家代码，如：CN、US，可选参数", False)
+        ("city", ToolParamType.STRING, "要查询天气的城市名称，如：北京、上海、纽约", True, None),
+        ("country", ToolParamType.STRING, "国家代码，如：CN、US，可选参数", False, None)
     ]
     
     async def execute(self, function_args: dict):
@@ -214,8 +215,8 @@ description = "获取信息"      # 不够具体
 #### ✅ 合理的参数设计
 ```python
 parameters = [
-    ("city", "string", "城市名称，如：北京、上海", True),
-    ("unit", "string", "温度单位：celsius 或 fahrenheit", False)
+    ("city", ToolParamType.STRING, "城市名称，如：北京、上海", True, None),
+    ("unit", ToolParamType.STRING, "温度单位：celsius 或 fahrenheit", False, ["celsius", "fahrenheit"])
 ]
 ```
 #### ❌ 避免的参数设计
