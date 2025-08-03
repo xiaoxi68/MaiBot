@@ -50,7 +50,7 @@ class QAManager:
             # 过滤阈值
             # 考虑动态阈值：当存在显著数值差异的结果时，保留显著结果；否则，保留所有结果
             relation_search_res = dyn_select_top_k(relation_search_res, 0.5, 1.0)
-            if relation_search_res[0][1] < global_config.lpmm_knowledge.qa_relation_threshold:
+            if not relation_search_res or relation_search_res[0][1] < global_config.lpmm_knowledge.qa_relation_threshold:
                 # 未找到相关关系
                 logger.debug("未找到相关关系，跳过关系检索")
                 relation_search_res = []
@@ -106,6 +106,11 @@ class QAManager:
         processed_result = await self.process_query(question)
         if processed_result is not None:
             query_res = processed_result[0]
+            # 检查查询结果是否为空
+            if not query_res:
+                logger.debug("知识库查询结果为空，可能是知识库中没有相关内容")
+                return None
+                
             knowledge = [
                 (
                     self.embed_manager.paragraphs_embedding_store.store[res[0]].str,
