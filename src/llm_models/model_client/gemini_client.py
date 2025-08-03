@@ -192,17 +192,6 @@ def _build_stream_api_resp(
     return resp
 
 
-async def _to_async_iterable(iterable: Iterable[T]) -> AsyncIterator[T]:
-    """
-    将迭代器转换为异步迭代器
-    :param iterable: 迭代器对象
-    :return: 异步迭代器对象
-    """
-    for item in iterable:
-        await asyncio.sleep(0)
-        yield item
-
-
 async def _default_stream_response_handler(
     resp_stream: AsyncIterator[GenerateContentResponse],
     interrupt_flag: asyncio.Event | None,

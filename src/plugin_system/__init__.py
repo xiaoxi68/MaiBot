@@ -18,11 +18,13 @@ from .base import (
     ActionInfo,
     CommandInfo,
     PluginInfo,
+    ToolInfo,
     PythonDependency,
     BaseEventHandler,
     EventHandlerInfo,
     EventType,
     MaiMessages,
+    ToolParamType,
 )
 
 # 导入工具模块
@@ -83,9 +85,11 @@ __all__ = [
     "ActionInfo",
     "CommandInfo",
     "PluginInfo",
+    "ToolInfo",
     "PythonDependency",
     "EventHandlerInfo",
     "EventType",
+    "ToolParamType",
     # 消息
     "MaiMessages",
     # 装饰器

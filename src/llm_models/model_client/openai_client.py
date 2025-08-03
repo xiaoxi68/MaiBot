@@ -94,16 +94,19 @@ def _convert_tool_options(tool_options: list[ToolOption]) -> list[dict[str, Any]
     :return: 转换后的工具选项列表
     """
 
-    def _convert_tool_param(tool_option_param: ToolParam) -> dict[str, str]:
+    def _convert_tool_param(tool_option_param: ToolParam) -> dict[str, Any]:
         """
         转换单个工具参数格式
         :param tool_option_param: 工具参数对象
         :return: 转换后的工具参数字典
         """
-        return {
+        return_dict: dict[str, Any] = {
             "type": tool_option_param.param_type.value,
             "description": tool_option_param.description,
         }
+        if tool_option_param.enum_values:
+            return_dict["enum"] = tool_option_param.enum_values
+        return return_dict
 
     def _convert_tool_option_item(tool_option: ToolOption) -> dict[str, Any]:
         """

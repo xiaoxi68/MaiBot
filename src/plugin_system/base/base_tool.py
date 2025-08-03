@@ -3,7 +3,7 @@ from typing import Any, List, Tuple
 from rich.traceback import install
 
 from src.common.logger import get_logger
-from src.plugin_system.base.component_types import ComponentType, ToolInfo
+from src.plugin_system.base.component_types import ComponentType, ToolInfo, ToolParamType
 
 install(extra_lines=3)
 
@@ -17,8 +17,15 @@ class BaseTool(ABC):
     """工具的名称"""
     description: str = ""
     """工具的描述"""
-    parameters: List[Tuple[str, str, str, bool]] = []
-    """工具的参数定义，为[("param_name", "param_type", "description", required)]"""
+    parameters: List[Tuple[str, ToolParamType, str, bool, List[str] | None]] = []
+    """工具的参数定义，为[("param_name", param_type, "description", required, enum_values)]格式
+       param_name: 参数名称
+       param_type: 参数类型
+       description: 参数描述
+       required: 是否必填
+       enum_values: 枚举值列表
+       例如: [("arg1", ToolParamType.STRING, "参数1描述", True, None), ("arg2", ToolParamType.INTEGER, "参数2描述", False, ["1", "2", "3"])]
+    """
     available_for_llm: bool = False
     """是否可供LLM使用"""
 

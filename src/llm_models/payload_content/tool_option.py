@@ -6,10 +6,10 @@ class ToolParamType(Enum):
     工具调用参数类型
     """
 
-    String = "string"  # 字符串
-    Int = "integer"  # 整型
-    Float = "float"  # 浮点型
-    Boolean = "bool"  # 布尔型
+    STRING = "string"  # 字符串
+    INTEGER = "integer"  # 整型
+    FLOAT = "float"  # 浮点型
+    BOOLEAN = "bool"  # 布尔型
 
 
 class ToolParam:
@@ -18,7 +18,12 @@ class ToolParam:
     """
 
     def __init__(
-        self, name: str, param_type: ToolParamType, description: str, required: bool
+        self,
+        name: str,
+        param_type: ToolParamType,
+        description: str,
+        required: bool,
+        enum_values: list[str] | None = None,
     ):
         """
         初始化工具调用参数
@@ -32,6 +37,7 @@ class ToolParam:
         self.param_type: ToolParamType = param_type
         self.description: str = description
         self.required: bool = required
+        self.enum_values: list[str] | None = enum_values
 
 
 class ToolOption:
@@ -95,6 +101,7 @@ class ToolOptionBuilder:
         param_type: ToolParamType,
         description: str,
         required: bool = False,
+        enum_values: list[str] | None = None,
     ) -> "ToolOptionBuilder":
         """
         添加工具参数
@@ -113,6 +120,7 @@ class ToolOptionBuilder:
                 param_type=param_type,
                 description=description,
                 required=required,
+                enum_values=enum_values,
             )
         )
 

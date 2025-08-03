@@ -77,7 +77,9 @@ class LLMRequest:
         # 请求体构建
         message_builder = MessageBuilder()
         message_builder.add_text_content(prompt)
-        message_builder.add_image_content(image_base64=image_base64, image_format=image_format, support_formats=client.get_support_image_formats())
+        message_builder.add_image_content(
+            image_base64=image_base64, image_format=image_format, support_formats=client.get_support_image_formats()
+        )
         messages = [message_builder.build()]
 
         # 请求并处理返回值
@@ -458,6 +460,7 @@ class LLMRequest:
             return -1, None
 
     def _build_tool_options(self, tools: Optional[List[Dict[str, Any]]]) -> Optional[List[ToolOption]]:
+        # sourcery skip: extract-method
         """构建工具选项列表"""
         if not tools:
             return None
@@ -467,18 +470,25 @@ class LLMRequest:
             tool_options_builder = ToolOptionBuilder()
             tool_options_builder.set_name(tool.get("name", ""))
             tool_options_builder.set_description(tool.get("description", ""))
-            parameters: List[Tuple[str, str, str, bool]] = tool.get("parameters", [])
+            parameters: List[Tuple[str, str, str, bool, List[str] | None]] = tool.get("parameters", [])
             for param in parameters:
                 try:
+                    assert isinstance(param, tuple) and len(param) == 5, "参数必须是包含5个元素的元组"
+                    assert isinstance(param[0], str), "参数名称必须是字符串"
+                    assert isinstance(param[1], ToolParamType), "参数类型必须是ToolParamType枚举"
+                    assert isinstance(param[2], str), "参数描述必须是字符串"
+                    assert isinstance(param[3], bool), "参数是否必填必须是布尔值"
+                    assert isinstance(param[4], list) or param[4] is None, "参数枚举值必须是列表或None"
                     tool_options_builder.add_param(
                         name=param[0],
-                        param_type=ToolParamType(param[1]),
+                        param_type=param[1],
                         description=param[2],
                         required=param[3],
+                        enum_values=param[4],
                     )
-                except ValueError as ve:
+                except AssertionError as ae:
                     tool_legal = False
-                    logger.error(f"{param[1]} 参数类型错误: {str(ve)}")
+                    logger.error(f"{param[0]} 参数定义错误: {str(ae)}")
                 except Exception as e:
                     tool_legal = False
                     logger.error(f"构建工具参数失败: {str(e)}")
