@@ -181,7 +181,8 @@ class LLMRequest:
                 endpoint="/chat/completions",
             )
         if not content:
-            raise RuntimeError("获取LLM生成内容失败")
+            logger.warning("生成的响应为空")
+            content = "生成的响应为空，请检查模型配置或输入内容是否正确"
 
         return content, (reasoning_content, model_info.name, tool_calls)
 

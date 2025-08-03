@@ -24,13 +24,13 @@ from src.chat.utils.chat_message_builder import (
     replace_user_references_sync,
 )
 from src.chat.express.expression_selector import expression_selector
-from src.chat.knowledge.knowledge_lib import qa_manager
 from src.chat.memory_system.memory_activator import MemoryActivator
 from src.chat.memory_system.instant_memory import InstantMemory
 from src.mood.mood_manager import mood_manager
 from src.person_info.relationship_fetcher import relationship_fetcher_manager
 from src.person_info.person_info import get_person_info_manager
 from src.plugin_system.base.component_types import ActionInfo
+from src.plugin_system.apis import llm_api
 
 logger = get_logger("replyer")
 
@@ -100,6 +100,22 @@ def init_prompt():
 现在，你说：
 """,
         "s4u_style_prompt",
+    )
+
+    Prompt(
+        """
+你是一个专门获取知识的助手。你的名字是{bot_name}。现在是{time_now}。
+群里正在进行的聊天内容：
+{chat_history}
+
+现在，{sender}发送了内容:{target_message},你想要回复ta。
+请仔细分析聊天内容，考虑以下几点：
+1. 内容中是否包含需要查询信息的问题
+2. 是否有明确的知识获取指令
+
+If you need to use the search tool, please directly call the function "lpmm_search_knowledge". If you do not need to use any tool, simply output "No tool needed".
+""",
+        name="lpmm_get_knowledge_prompt",
     )
 
 
@@ -698,7 +714,7 @@ class DefaultReplyer:
             self._time_and_run_task(
                 self.build_tool_info(chat_talking_prompt_short, reply_to, enable_tool=enable_tool), "tool_info"
             ),
-            self._time_and_run_task(get_prompt_info(target, threshold=0.38), "prompt_info"),
+            self._time_and_run_task(self.get_prompt_info(chat_talking_prompt_short, reply_to), "prompt_info"),
         )
 
         # 任务名称中英文映射
@@ -1000,6 +1016,63 @@ class DefaultReplyer:
             logger.debug(f"replyer生成内容: {content}")
         return content, reasoning_content, model_name, tool_calls
 
+    async def get_prompt_info(self, message: str, reply_to: str):
+        related_info = ""
+        start_time = time.time()
+        from src.plugins.built_in.knowledge.lpmm_get_knowledge import SearchKnowledgeFromLPMMTool
+        if not reply_to:
+            logger.debug("没有回复对象，跳过获取知识库内容")
+            return ""
+        sender, content = self._parse_reply_target(reply_to)
+        if not content:
+            logger.debug("回复对象内容为空，跳过获取知识库内容")
+            return ""
+        logger.debug(f"获取知识库内容，元消息：{message[:30]}...，消息长度: {len(message)}")
+        # 从LPMM知识库获取知识
+        try:
+            # 检查LPMM知识库是否启用
+            if not global_config.lpmm_knowledge.enable:
+                logger.debug("LPMM知识库未启用，跳过获取知识库内容")
+                return ""
+            time_now = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+
+            bot_name = global_config.bot.nickname
+
+            prompt = await global_prompt_manager.format_prompt(
+                "lpmm_get_knowledge_prompt",
+                bot_name=bot_name,
+                time_now=time_now,
+                chat_history=message,
+                sender=sender,
+                target_message=content,
+            )
+            _, _, _, _, tool_calls = await llm_api.generate_with_model_with_tools(
+                prompt,
+                model_config=model_config.model_task_config.tool_use,
+                tool_options=[SearchKnowledgeFromLPMMTool.get_tool_definition()],
+            )
+            if tool_calls:
+                result = await self.tool_executor.execute_tool_call(tool_calls[0], SearchKnowledgeFromLPMMTool())
+                end_time = time.time()
+                if not result or not result.get("content"):
+                    logger.debug("从LPMM知识库获取知识失败，返回空知识...")
+                    return ""
+                found_knowledge_from_lpmm = result.get("content", "")
+                logger.debug(
+                    f"从LPMM知识库获取知识，相关信息：{found_knowledge_from_lpmm[:100]}...，信息长度: {len(found_knowledge_from_lpmm)}"
+                )
+                related_info += found_knowledge_from_lpmm
+                logger.debug(f"获取知识库内容耗时: {(end_time - start_time):.3f}秒")
+                logger.debug(f"获取知识库内容，相关信息：{related_info[:100]}...，信息长度: {len(related_info)}")
+
+                return f"你有以下这些**知识**：\n{related_info}\n请你**记住上面的知识**，之后可能会用到。\n"
+            else:
+                logger.debug("从LPMM知识库获取知识失败，可能是从未导入过知识，返回空知识...")
+                return ""
+        except Exception as e:
+            logger.error(f"获取知识库内容时发生异常: {str(e)}")
+            return ""
+
 
 def weighted_sample_no_replacement(items, weights, k) -> list:
     """
@@ -1033,38 +1106,6 @@ def weighted_sample_no_replacement(items, weights, k) -> list:
                 pool.pop(idx)
                 break
     return selected
-
-
-async def get_prompt_info(message: str, threshold: float):
-    related_info = ""
-    start_time = time.time()
-
-    logger.debug(f"获取知识库内容，元消息：{message[:30]}...，消息长度: {len(message)}")
-    # 从LPMM知识库获取知识
-    try:
-        # 检查LPMM知识库是否启用
-        if qa_manager is None:
-            logger.debug("LPMM知识库已禁用，跳过知识获取")
-            return ""
-
-        found_knowledge_from_lpmm = await qa_manager.get_knowledge(message)
-
-        end_time = time.time()
-        if found_knowledge_from_lpmm is not None:
-            logger.debug(
-                f"从LPMM知识库获取知识，相关信息：{found_knowledge_from_lpmm[:100]}...，信息长度: {len(found_knowledge_from_lpmm)}"
-            )
-            related_info += found_knowledge_from_lpmm
-            logger.debug(f"获取知识库内容耗时: {(end_time - start_time):.3f}秒")
-            logger.debug(f"获取知识库内容，相关信息：{related_info[:100]}...，信息长度: {len(related_info)}")
-
-            return f"你有以下这些**知识**：\n{related_info}\n请你**记住上面的知识**，之后可能会用到。\n"
-        else:
-            logger.debug("从LPMM知识库获取知识失败，可能是从未导入过知识，返回空知识...")
-            return ""
-    except Exception as e:
-        logger.error(f"获取知识库内容时发生异常: {str(e)}")
-        return ""
 
 
 init_prompt()
