@@ -20,7 +20,7 @@ from quick_algo import di_graph, pagerank
 
 from .utils.hash import get_sha256
 from .embedding_store import EmbeddingManager, EmbeddingStoreItem
-from .lpmmconfig import global_config
+from src.config.config import global_config
 
 from .global_logger import logger
 
@@ -179,14 +179,14 @@ class KGManager:
                 assert isinstance(ent, EmbeddingStoreItem)
                 # 查询相似实体
                 similar_ents = embedding_manager.entities_embedding_store.search_top_k(
-                    ent.embedding, global_config["rag"]["params"]["synonym_search_top_k"]
+                    ent.embedding, global_config.lpmm_knowledge.rag_synonym_search_top_k
                 )
                 res_ent = []  # Debug
                 for res_ent_hash, similarity in similar_ents:
                     if res_ent_hash == ent_hash:
                         # 避免自连接
                         continue
-                    if similarity < global_config["rag"]["params"]["synonym_threshold"]:
+                    if similarity < global_config.lpmm_knowledge.rag_synonym_threshold:
                         # 相似度阈值
                         continue
                     node_to_node[(res_ent_hash, ent_hash)] = similarity
@@ -369,7 +369,7 @@ class KGManager:
             for ent_hash in ent_weights.keys():
                 ent_weights[ent_hash] = 1.0
         else:
-            down_edge = global_config["qa"]["params"]["paragraph_node_weight"]
+            down_edge = global_config.lpmm_knowledge.qa_paragraph_node_weight
             # 缩放取值区间至[down_edge, 1]
             for ent_hash, score in ent_weights.items():
                 # 缩放相似度
@@ -378,7 +378,7 @@ class KGManager:
                 ) + down_edge
 
         # 取平均相似度的top_k实体
-        top_k = global_config["qa"]["params"]["ent_filter_top_k"]
+        top_k = global_config.lpmm_knowledge.qa_ent_filter_top_k
         if len(ent_mean_scores) > top_k:
             # 从大到小排序，取后len - k个
             ent_mean_scores = {k: v for k, v in sorted(ent_mean_scores.items(), key=lambda item: item[1], reverse=True)}
@@ -407,7 +407,7 @@ class KGManager:
 
         for pg_hash, score in pg_sim_scores.items():
             pg_weights[pg_hash] = (
-                score * global_config["qa"]["params"]["paragraph_node_weight"]
+                score * global_config.lpmm_knowledge.qa_paragraph_node_weight
             )  # 文段权重 = 归一化相似度 * 文段节点权重参数
         del pg_sim_scores
 
@@ -420,7 +420,7 @@ class KGManager:
             self.graph,
             personalization=ppr_node_weights,
             max_iter=100,
-            alpha=global_config["qa"]["params"]["ppr_damping"],
+            alpha=global_config.lpmm_knowledge.qa_ppr_damping,
         )
 
         # 获取最终结果

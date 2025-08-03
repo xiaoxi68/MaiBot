@@ -1,11 +1,8 @@
-from src.chat.knowledge.lpmmconfig import global_config
 from src.chat.knowledge.embedding_store import EmbeddingManager
-from src.chat.knowledge.llm_client import LLMClient
-from src.chat.knowledge.mem_active_manager import MemoryActiveManager
 from src.chat.knowledge.qa_manager import QAManager
 from src.chat.knowledge.kg_manager import KGManager
 from src.chat.knowledge.global_logger import logger
-from src.config.config import global_config as bot_global_config
+from src.config.config import global_config
 import os
 
 INVALID_ENTITY = [
@@ -34,15 +31,9 @@ qa_manager = None
 inspire_manager = None
 
 # 检查LPMM知识库是否启用
-if bot_global_config.lpmm_knowledge.enable:
+if global_config.lpmm_knowledge.enable:
     logger.info("正在初始化Mai-LPMM")
     logger.info("创建LLM客户端")
-    llm_client_list = {}
-    for key in global_config["llm_providers"]:
-        llm_client_list[key] = LLMClient(
-            global_config["llm_providers"][key]["base_url"],  # type: ignore
-            global_config["llm_providers"][key]["api_key"],  # type: ignore
-        )
 
     # 初始化Embedding库
     embed_manager = EmbeddingManager()
@@ -78,11 +69,11 @@ if bot_global_config.lpmm_knowledge.enable:
         kg_manager,
     )
 
-    # 记忆激活（用于记忆库）
-    inspire_manager = MemoryActiveManager(
-        embed_manager,
-        llm_client_list[global_config["embedding"]["provider"]],
-    )
+    # # 记忆激活（用于记忆库）
+    # inspire_manager = MemoryActiveManager(
+    #     embed_manager,
+    #     llm_client_list[global_config["embedding"]["provider"]],
+    # )
 else:
     logger.info("LPMM知识库已禁用，跳过初始化")
     # 创建空的占位符对象，避免导入错误
