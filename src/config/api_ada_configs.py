@@ -35,7 +35,7 @@ class APIProvider(ConfigBase):
         """确保api_key在repr中不被显示"""
         if not self.api_key:
             raise ValueError("API密钥不能为空，请在配置中设置有效的API密钥。")
-        if not self.base_url:
+        if not self.base_url and self.client_type != "gemini":
             raise ValueError("API基础URL不能为空，请在配置中设置有效的基础URL。")
         if not self.name:
             raise ValueError("API提供商名称不能为空，请在配置中设置有效的名称。")
