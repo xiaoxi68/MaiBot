@@ -1,6 +1,7 @@
 from typing import Dict, Any
 
 from src.common.logger import get_logger
+from src.config.config import global_config
 from src.chat.knowledge.knowledge_lib import qa_manager
 from src.plugin_system import BaseTool, ToolParamType
 
@@ -16,6 +17,7 @@ class SearchKnowledgeFromLPMMTool(BaseTool):
         ("query", ToolParamType.STRING, "搜索查询关键词", True, None),
         ("threshold", ToolParamType.FLOAT, "相似度阈值，0.0到1.0之间", False, None),
     ]
+    available_for_llm = global_config.lpmm_knowledge.enable
 
     async def execute(self, function_args: Dict[str, Any]) -> Dict[str, Any]:
         """执行知识库搜索

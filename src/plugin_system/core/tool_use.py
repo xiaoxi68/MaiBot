@@ -1,6 +1,7 @@
 import time
 from typing import List, Dict, Tuple, Optional, Any
 from src.plugin_system.apis.tool_api import get_llm_available_tool_definitions, get_tool_instance
+from src.plugin_system.base.base_tool import BaseTool
 from src.plugin_system.core.global_announcement_manager import global_announcement_manager
 from src.llm_models.utils_model import LLMRequest
 from src.llm_models.payload_content import ToolCall
@@ -114,7 +115,7 @@ class ToolExecutor:
         )
 
         # 执行工具调用
-        tool_results, used_tools = await self._execute_tool_calls(tool_calls)
+        tool_results, used_tools = await self.execute_tool_calls(tool_calls)
 
         # 缓存结果
         if tool_results:
@@ -133,7 +134,7 @@ class ToolExecutor:
         user_disabled_tools = global_announcement_manager.get_disabled_chat_tools(self.chat_id)
         return [definition for name, definition in all_tools if name not in user_disabled_tools]
 
-    async def _execute_tool_calls(self, tool_calls: Optional[List[ToolCall]]) -> Tuple[List[Dict[str, Any]], List[str]]:
+    async def execute_tool_calls(self, tool_calls: Optional[List[ToolCall]]) -> Tuple[List[Dict[str, Any]], List[str]]:
         """执行工具调用
 
         Args:
@@ -161,7 +162,7 @@ class ToolExecutor:
                 logger.debug(f"{self.log_prefix}执行工具: {tool_name}")
 
                 # 执行工具
-                result = await self._execute_tool_call(tool_call)
+                result = await self.execute_tool_call(tool_call)
 
                 if result:
                     tool_info = {
@@ -194,7 +195,7 @@ class ToolExecutor:
 
         return tool_results, used_tools
 
-    async def _execute_tool_call(self, tool_call: ToolCall) -> Optional[Dict[str, Any]]:
+    async def execute_tool_call(self, tool_call: ToolCall, tool_instance: Optional[BaseTool] = None) -> Optional[Dict[str, Any]]:
         # sourcery skip: use-assigned-variable
         """执行单个工具调用
 
@@ -210,7 +211,7 @@ class ToolExecutor:
             function_args["llm_called"] = True  # 标记为LLM调用
 
             # 获取对应工具实例
-            tool_instance = get_tool_instance(function_name)
+            tool_instance = tool_instance or get_tool_instance(function_name)
             if not tool_instance:
                 logger.warning(f"未知工具名称: {function_name}")
                 return None
@@ -297,7 +298,7 @@ class ToolExecutor:
         if expired_keys:
             logger.debug(f"{self.log_prefix}清理了{len(expired_keys)}个过期缓存")
 
-    async def execute_specific_tool(self, tool_name: str, tool_args: Dict) -> Optional[Dict]:
+    async def execute_specific_tool_simple(self, tool_name: str, tool_args: Dict) -> Optional[Dict]:
         """直接执行指定工具
 
         Args:
@@ -317,7 +318,7 @@ class ToolExecutor:
 
             logger.info(f"{self.log_prefix}直接执行工具: {tool_name}")
 
-            result = await self._execute_tool_call(tool_call)
+            result = await self.execute_tool_call(tool_call)
 
             if result:
                 tool_info = {
@@ -408,7 +409,7 @@ results, used_tools, prompt = await executor.execute_from_chat_message(
 )
 
 # 5. 直接执行特定工具
-result = await executor.execute_specific_tool(
+result = await executor.execute_specific_tool_simple(
     tool_name="get_knowledge",
     tool_args={"query": "机器学习"}
 )

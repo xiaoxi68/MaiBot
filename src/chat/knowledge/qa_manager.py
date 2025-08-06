@@ -2,11 +2,7 @@ import time
 from typing import Tuple, List, Dict, Optional
 
 from .global_logger import logger
-
-# from . import prompt_template
 from .embedding_store import EmbeddingManager
-
-# from .llm_client import LLMClient
 from .kg_manager import KGManager
 
 # from .lpmmconfig import global_config

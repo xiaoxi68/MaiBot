@@ -48,6 +48,7 @@ retry_interval = 10                     # 重试间隔（秒）
 | `timeout` | ❌ | API请求超时时间（秒） | 30 |
 | `retry_interval` | ❌ | 重试间隔时间（秒） | 10 |
 
+**请注意，对于`client_type`为`gemini`的模型，`base_url`字段无效。**
 ### 2.3 支持的服务商示例
 
 #### DeepSeek
@@ -132,6 +133,7 @@ thinking = {type = "disabled"} # 禁用思考
 ```
 请注意，`extra_params` 的配置应该构成一个合法的TOML字典结构，具体内容取决于API服务商的要求。
 
+**请注意，对于`client_type`为`gemini`的模型，此字段无效。**
 ### 3.3 配置参数说明
 
 | 参数 | 必填 | 说明 |

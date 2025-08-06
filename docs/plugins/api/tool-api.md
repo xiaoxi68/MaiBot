@@ -36,7 +36,7 @@ def get_llm_available_tool_definitions():
 
 **Returns**:
 - `List[Tuple[str, Dict[str, Any]]]`: 工具定义列表，每个元素为 `(工具名称, 工具定义字典)` 的元组
-  - 其具体定义请参照[tool-components.md](../tool-components.md)中的工具定义格式。
+  - 其具体定义请参照[tool-components.md](../tool-components.md#属性说明)中的工具定义格式。
 #### 示例：
 
 ```python

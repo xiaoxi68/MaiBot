@@ -78,7 +78,7 @@ class MyTool(BaseTool):
 
 其构造而成的工具定义为:
 ```python
-{"name": cls.name, "description": cls.description, "parameters": cls.parameters}
+definition: Dict[str, Any] = {"name": cls.name, "description": cls.description, "parameters": cls.parameters}
 ```
 
 ### 方法说明
