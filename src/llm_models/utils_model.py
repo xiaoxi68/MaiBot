@@ -138,6 +138,7 @@ class LLMRequest:
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
         tools: Optional[List[Dict[str, Any]]] = None,
+        raise_when_empty: bool = True,
     ) -> Tuple[str, Tuple[str, str, Optional[List[ToolCall]]]]:
         """
         异步生成响应
@@ -183,7 +184,9 @@ class LLMRequest:
                 endpoint="/chat/completions",
             )
         if not content:
-            logger.warning("生成的响应为空")
+            if raise_when_empty:
+                logger.warning("生成的响应为空")
+                raise RuntimeError("生成的响应为空")
             content = "生成的响应为空，请检查模型配置或输入内容是否正确"
 
         return content, (reasoning_content, model_info.name, tool_calls)

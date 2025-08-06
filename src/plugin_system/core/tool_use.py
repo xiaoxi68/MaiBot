@@ -111,7 +111,7 @@ class ToolExecutor:
 
         # 调用LLM进行工具决策
         response, (reasoning_content, model_name, tool_calls) = await self.llm_model.generate_response_async(
-            prompt=prompt, tools=tools
+            prompt=prompt, tools=tools, raise_when_empty=False
         )
 
         # 执行工具调用
