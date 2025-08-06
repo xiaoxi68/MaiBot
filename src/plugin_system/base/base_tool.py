@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, List, Tuple
+from typing import Any, List, Optional, Tuple
 from rich.traceback import install
 
 from src.common.logger import get_logger
@@ -28,6 +28,9 @@ class BaseTool(ABC):
     """
     available_for_llm: bool = False
     """是否可供LLM使用"""
+
+    def __init__(self, plugin_config: Optional[dict] = None):
+        self.plugin_config = plugin_config or {}  # 直接存储插件配置字典
 
     @classmethod
     def get_tool_definition(cls) -> dict[str, Any]:
@@ -89,3 +92,28 @@ class BaseTool(ABC):
                 raise ValueError(f"工具类 {self.__class__.__name__} 缺少必要参数: {param_name}")
 
         return await self.execute(function_args)
+
+    def get_config(self, key: str, default=None):
+        """获取插件配置值，使用嵌套键访问
+
+        Args:
+            key: 配置键名，使用嵌套访问如 "section.subsection.key"
+            default: 默认值
+
+        Returns:
+            Any: 配置值或默认值
+        """
+        if not self.plugin_config:
+            return default
+
+        # 支持嵌套键访问
+        keys = key.split(".")
+        current = self.plugin_config
+
+        for k in keys:
+            if isinstance(current, dict) and k in current:
+                current = current[k]
+            else:
+                return default
+
+        return current

@@ -149,8 +149,11 @@ class ToolExecutor:
         if not tool_calls:
             logger.debug(f"{self.log_prefix}无需执行工具")
             return [], []
-
-        logger.info(f"{self.log_prefix}开始执行工具调用: {tool_calls}")
+        
+        # 提取tool_calls中的函数名称
+        func_names = [call.func_name for call in tool_calls if call.func_name]
+        
+        logger.info(f"{self.log_prefix}开始执行工具调用: {func_names}")
 
         # 执行每个工具调用
         for tool_call in tool_calls:
