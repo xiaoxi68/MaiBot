@@ -10,9 +10,12 @@ logger = get_logger("tool_api")
 def get_tool_instance(tool_name: str) -> Optional[BaseTool]:
     """获取公开工具实例"""
     from src.plugin_system.core import component_registry
+    # 获取插件配置
+    plugin_name =component_registry.get_component_info(tool_name, ComponentType.TOOL).plugin_name
+    plugin_config = component_registry.get_plugin_config(plugin_name)
 
     tool_class: Type[BaseTool] = component_registry.get_component_class(tool_name, ComponentType.TOOL)  # type: ignore
-    return tool_class() if tool_class else None
+    return tool_class(plugin_config) if tool_class else None
 
 
 def get_llm_available_tool_definitions():
