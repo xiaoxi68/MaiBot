@@ -11,7 +11,7 @@ from typing import Tuple, Dict, List, Any, Optional
 from src.common.logger import get_logger
 from src.llm_models.payload_content.tool_option import ToolCall
 from src.llm_models.utils_model import LLMRequest
-from src.config.config import global_config, model_config
+from src.config.config import model_config
 from src.config.api_ada_configs import TaskConfig
 
 logger = get_logger("llm_api")
@@ -28,10 +28,6 @@ def get_available_models() -> Dict[str, TaskConfig]:
         Dict[str, Any]: 模型配置字典，key为模型名称，value为模型配置
     """
     try:
-        if not hasattr(global_config, "model"):
-            logger.error("[LLMAPI] 无法获取模型列表：全局配置中未找到 model 配置")
-            return {}
-
         # 自动获取所有属性并转换为字典形式
         models = model_config.model_task_config
         attrs = dir(models)
