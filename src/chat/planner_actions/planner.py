@@ -76,6 +76,9 @@ class ActionPlanner:
         )  # 用于动作规划
 
         self.last_obs_time_mark = 0.0
+        # 添加重试计数器
+        self.plan_retry_count = 0
+        self.max_plan_retries = 3
 
     def find_message_by_id(self, message_id: str, message_id_list: list) -> Optional[Dict[str, Any]]:
         # sourcery skip: use-next
@@ -94,6 +97,21 @@ class ActionPlanner:
                 return item.get("message")
         return None
 
+    def get_latest_message(self, message_id_list: list) -> Optional[Dict[str, Any]]:
+        """
+        获取消息列表中的最新消息
+        
+        Args:
+            message_id_list: 消息ID列表，格式为[{'id': str, 'message': dict}, ...]
+            
+        Returns:
+            最新的消息字典，如果列表为空则返回None
+        """
+        if not message_id_list:
+            return None
+        # 假设消息列表是按时间顺序排列的，最后一个是最新的
+        return message_id_list[-1].get("message")
+
     async def plan(
         self, mode: ChatMode = ChatMode.FOCUS
     ) -> Tuple[Dict[str, Dict[str, Any] | str], Optional[Dict[str, Any]]]:
@@ -107,6 +125,7 @@ class ActionPlanner:
         current_available_actions: Dict[str, ActionInfo] = {}
         target_message: Optional[Dict[str, Any]] = None  # 初始化target_message变量
         prompt: str = ""
+        message_id_list: list = []
 
         try:
             is_group_chat, chat_target_info, current_available_actions = self.get_necessary_info()
@@ -168,6 +187,23 @@ class ActionPlanner:
                         if target_message_id := parsed_json.get("target_message_id"):
                             # 根据target_message_id查找原始消息
                             target_message = self.find_message_by_id(target_message_id, message_id_list)
+                            # target_message = None
+                            # 如果获取的target_message为None，输出warning并重新plan
+                            if target_message is None:
+                                self.plan_retry_count += 1
+                                logger.warning(f"{self.log_prefix}无法找到target_message_id '{target_message_id}' 对应的消息，重试次数: {self.plan_retry_count}/{self.max_plan_retries}")
+                                
+                                # 如果连续三次plan均为None，输出error并选取最新消息
+                                if self.plan_retry_count >= self.max_plan_retries:
+                                    logger.error(f"{self.log_prefix}连续{self.max_plan_retries}次plan获取target_message失败，选择最新消息作为target_message")
+                                    target_message = self.get_latest_message(message_id_list)
+                                    self.plan_retry_count = 0  # 重置计数器
+                                else:
+                                    # 递归重新plan
+                                    return await self.plan(mode)
+                            else:
+                                # 成功获取到target_message，重置计数器
+                                self.plan_retry_count = 0
                         else:
                             logger.warning(f"{self.log_prefix}FOCUS模式下动作'{action}'缺少target_message_id")
 
