@@ -264,9 +264,14 @@ class ExpressionSelector:
 
         # 4. 调用LLM
         try:
-            content, _ = await self.llm_model.generate_response_async(prompt=prompt)
+            content, (reasoning_content, model_name, _) = await self.llm_model.generate_response_async(prompt=prompt)
 
-            # logger.info(f"{self.log_prefix} LLM返回结果: {content}")
+            # logger.info(f"模型名称: {model_name}")
+            # logger.info(f"LLM返回结果: {content}")
+            # if reasoning_content:
+            #     logger.info(f"LLM推理: {reasoning_content}")
+            # else:
+            #     logger.info(f"LLM推理: 无")
 
             if not content:
                 logger.warning("LLM返回空结果")
