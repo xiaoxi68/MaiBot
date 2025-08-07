@@ -606,21 +606,24 @@ class HeartFChatting:
     async def _main_chat_loop(self):
         """主循环，持续进行计划并可能回复消息，直到被外部取消。"""
         try:
-            while self.running:  # 主循环
-                success = await self._loopbody()
-                await asyncio.sleep(0.1)
-                if not success:
-                    break
-
-            logger.info(f"{self.log_prefix} 麦麦已强制离开聊天")
+            while self.running:
+                try:
+                    # 主循环
+                    success = await self._loopbody()
+                    await asyncio.sleep(0.1)
+                    if not success:
+                        break
+                except Exception:
+                    logger.error(f"{self.log_prefix} 麦麦聊天循环意外错误")
+                    print(traceback.format_exc())
+                # 理论上不能到这里
         except asyncio.CancelledError:
             # 设置了关闭标志位后被取消是正常流程
             logger.info(f"{self.log_prefix} 麦麦已关闭聊天")
         except Exception:
             logger.error(f"{self.log_prefix} 麦麦聊天意外错误")
             print(traceback.format_exc())
-        # 理论上不能到这里
-        logger.error(f"{self.log_prefix} 麦麦聊天意外错误，结束了聊天循环")
+        logger.error(f"{self.log_prefix} 结束了聊天循环")
 
     async def _handle_action(
         self,
