@@ -17,7 +17,8 @@ from src.chat.planner_actions.action_manager import ActionManager
 from src.chat.chat_loop.hfc_utils import CycleDetail
 from src.person_info.relationship_builder_manager import relationship_builder_manager
 from src.person_info.person_info import get_person_info_manager
-from src.plugin_system.base.component_types import ActionInfo, ChatMode
+from src.plugin_system.base.component_types import ActionInfo, ChatMode, EventType
+from src.plugin_system.core import events_manager
 from src.plugin_system.apis import generator_api, send_api, message_api, database_api
 from src.chat.willing.willing_manager import get_willing_manager
 from src.mais4u.mai_think import mai_thinking_manager
@@ -304,7 +305,7 @@ class HeartFChatting:
 
         return loop_info, reply_text, cycle_timers
 
-    async def _observe(self, message_data: Optional[Dict[str, Any]] = None):
+    async def _observe(self, message_data: Optional[Dict[str, Any]] = None) -> bool:
         # sourcery skip: hoist-statement-from-if, merge-comparisons, reintroduce-else
         if not message_data:
             message_data = {}
@@ -379,6 +380,13 @@ class HeartFChatting:
                     )
 
             if not skip_planner:
+                planner_info = self.action_planner.get_necessary_info()
+                prompt_info = await self.action_planner.build_planner_prompt(
+                    is_group_chat=planner_info[0],
+                    chat_target_info=planner_info[1],
+                    current_available_actions=planner_info[2],
+                )
+                await events_manager.handle_mai_events(EventType.ON_PLAN, None, prompt_info[0], None)
                 with Timer("规划器", cycle_timers):
                     plan_result, target_message = await self.action_planner.plan(mode=self.loop_mode)
 
