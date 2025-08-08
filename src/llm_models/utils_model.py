@@ -165,7 +165,7 @@ class LLMRequest:
         model_info, api_provider, client = self._select_model()
         
         # 请求并处理返回值
-        logger.info(f"LLM选择耗时: {model_info.name} {time.time() - start_time}")
+        logger.debug(f"LLM选择耗时: {model_info.name} {time.time() - start_time}")
         
         response = await self._execute_request(
             api_provider=api_provider,

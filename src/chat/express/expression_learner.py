@@ -10,7 +10,7 @@ from src.common.logger import get_logger
 from src.common.database.database_model import Expression
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import model_config, global_config
-from src.chat.utils.chat_message_builder import get_raw_msg_by_timestamp_random, build_anonymous_messages
+from src.chat.utils.chat_message_builder import get_raw_msg_by_timestamp_with_chat_inclusive, build_anonymous_messages
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.message_receive.chat_stream import get_chat_manager
 
@@ -146,8 +146,10 @@ class ExpressionLearner:
             return False
             
         # 检查消息数量（只检查指定聊天流的消息）
-        recent_messages = get_raw_msg_by_timestamp_random(
-            self.last_learning_time, current_time, limit=self.min_messages_for_learning + 1, chat_id=self.chat_id
+        recent_messages = get_raw_msg_by_timestamp_with_chat_inclusive(
+            chat_id=self.chat_id,
+            timestamp_start=self.last_learning_time,
+            timestamp_end=time.time(),
         )
         
         if not recent_messages or len(recent_messages) < self.min_messages_for_learning:
@@ -404,9 +406,11 @@ class ExpressionLearner:
         current_time = time.time()
         
         # 获取上次学习时间
-        last_time = self.last_learning_time.get(self.chat_id, current_time - 3600 * 24)
-        random_msg: Optional[List[Dict[str, Any]]] = get_raw_msg_by_timestamp_random(
-            last_time, current_time, limit=num, chat_id=self.chat_id
+        random_msg: Optional[List[Dict[str, Any]]] = get_raw_msg_by_timestamp_with_chat_inclusive(
+            chat_id=self.chat_id,
+            timestamp_start=self.last_learning_time,
+            timestamp_end=current_time,
+            limit=num,
         )
             
         # print(random_msg)

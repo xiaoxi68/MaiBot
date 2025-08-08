@@ -196,7 +196,7 @@ class MoodRegressionTask(AsyncTask):
         self.mood_manager = mood_manager
 
     async def run(self):
-        logger.debug("Running mood regression task...")
+        logger.debug("开始情绪回归任务...")
         now = time.time()
         for mood in self.mood_manager.mood_list:
             if mood.last_change_time == 0:
@@ -206,7 +206,7 @@ class MoodRegressionTask(AsyncTask):
                 if mood.regression_count >= 3:
                     continue
 
-                logger.info(f"{mood.log_prefix} 开始情绪回归, 这是第 {mood.regression_count + 1} 次")
+                logger.info(f"{mood.log_prefix} 开始情绪回归, 第 {mood.regression_count + 1} 次")
                 await mood.regress_mood()
 
 
