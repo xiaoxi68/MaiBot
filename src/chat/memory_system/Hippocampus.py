@@ -190,7 +190,7 @@ class MemoryGraph:
 class Hippocampus:
     def __init__(self):
         self.memory_graph = MemoryGraph()
-        self.model_summary: LLMRequest = None  # type: ignore
+        self.model_small: LLMRequest = None  # type: ignore
         self.entorhinal_cortex: EntorhinalCortex = None  # type: ignore
         self.parahippocampal_gyrus: ParahippocampalGyrus = None  # type: ignore
 
@@ -200,7 +200,7 @@ class Hippocampus:
         self.parahippocampal_gyrus = ParahippocampalGyrus(self)
         # 从数据库加载记忆图
         self.entorhinal_cortex.sync_memory_from_db()
-        self.model_summary = LLMRequest(model_set=model_config.model_task_config.memory, request_type="memory.builder")
+        self.model_small = LLMRequest(model_set=model_config.model_task_config.utils_small, request_type="memory.small")
 
     def get_all_node_names(self) -> list:
         """获取记忆图中所有节点的名字列表"""
@@ -340,7 +340,7 @@ class Hippocampus:
         else:
             topic_num = 5  # 51+字符: 5个关键词 (其余长文本)
 
-        topics_response, _ = await self.model_summary.generate_response_async(self.find_topic_llm(text, topic_num))
+        topics_response, _ = await self.model_small.generate_response_async(self.find_topic_llm(text, topic_num))
 
         # 提取关键词
         keywords = re.findall(r"<([^>]+)>", topics_response)

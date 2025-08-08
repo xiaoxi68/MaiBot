@@ -36,11 +36,7 @@ def init_prompt():
 请以JSON格式输出，只需要输出选中的情境编号：
 例如：
 {{
-    "selected_situations": [2, 3, 5, 7, 19, 22, 25, 38, 39, 45, 48 , 64]
-}}
-例如：
-{{
-    "selected_situations": [1, 4, 7, 9, 23, 38, 44]
+    "selected_situations": [2, 3, 5, 7, 19, 22, 25, 38, 39, 45, 48, 64]
 }}
 
 请严格按照JSON格式输出，不要包含其他内容：
@@ -214,7 +210,7 @@ class ExpressionSelector:
         """使用LLM选择适合的表达方式"""
 
         # 1. 获取35个随机表达方式（现在按权重抽取）
-        style_exprs, grammar_exprs = self.get_random_expressions(chat_id, 50, 0.5, 0.5)
+        style_exprs, grammar_exprs = self.get_random_expressions(chat_id, 30, 0.5, 0.5)
 
         # 2. 构建所有表达方式的索引和情境列表
         all_expressions = []
@@ -264,7 +260,10 @@ class ExpressionSelector:
 
         # 4. 调用LLM
         try:
+            
+            start_time = time.time()
             content, (reasoning_content, model_name, _) = await self.llm_model.generate_response_async(prompt=prompt)
+            logger.info(f"LLM请求时间: {model_name}  {time.time() - start_time} \n{prompt}")
 
             # logger.info(f"模型名称: {model_name}")
             # logger.info(f"LLM返回结果: {content}")

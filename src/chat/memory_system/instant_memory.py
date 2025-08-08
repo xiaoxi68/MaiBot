@@ -38,7 +38,7 @@ class InstantMemory:
         self.chat_id = chat_id
         self.last_view_time = time.time()
         self.summary_model = LLMRequest(
-            model_set=model_config.model_task_config.memory,
+            model_set=model_config.model_task_config.utils,
             request_type="memory.summary",
         )
 

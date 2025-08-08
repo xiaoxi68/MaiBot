@@ -1,6 +1,7 @@
 import re
 import copy
 import asyncio
+import time
 
 from enum import Enum
 from rich.traceback import install
@@ -150,14 +151,22 @@ class LLMRequest:
             (Tuple[str, str, str, Optional[List[ToolCall]]]): 响应内容、推理内容、模型名称、工具调用列表
         """
         # 请求体构建
+        start_time = time.time()
+        
+        
+        
         message_builder = MessageBuilder()
         message_builder.add_text_content(prompt)
         messages = [message_builder.build()]
+        
         tool_built = self._build_tool_options(tools)
+        
         # 模型选择
         model_info, api_provider, client = self._select_model()
-
+        
         # 请求并处理返回值
+        logger.info(f"LLM选择耗时: {model_info.name} {time.time() - start_time}")
+        
         response = await self._execute_request(
             api_provider=api_provider,
             client=client,
@@ -168,6 +177,8 @@ class LLMRequest:
             max_tokens=max_tokens,
             tool_options=tool_built,
         )
+        
+        
         content = response.content
         reasoning_content = response.reasoning_content or ""
         tool_calls = response.tool_calls
@@ -175,6 +186,7 @@ class LLMRequest:
         if not reasoning_content and content:
             content, extracted_reasoning = self._extract_reasoning(content)
             reasoning_content = extracted_reasoning
+            
         if usage := response.usage:
             llm_usage_recorder.record_usage_to_database(
                 model_info=model_info,
@@ -183,6 +195,7 @@ class LLMRequest:
                 request_type=self.request_type,
                 endpoint="/chat/completions",
             )
+        
         if not content:
             if raise_when_empty:
                 logger.warning("生成的响应为空")

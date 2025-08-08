@@ -105,9 +105,6 @@ class ModelTaskConfig(ConfigBase):
     replyer_2: TaskConfig
     """normal_chat次要回复模型配置"""
 
-    memory: TaskConfig
-    """记忆模型配置"""
-
     emotion: TaskConfig
     """情绪模型配置"""
 

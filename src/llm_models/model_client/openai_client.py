@@ -1,6 +1,7 @@
 import asyncio
 import io
 import json
+import time
 import re
 import base64
 from collections.abc import Iterable
@@ -452,6 +453,7 @@ class OpenaiClient(BaseClient):
                 resp, usage_record = await stream_response_handler(req_task.result(), interrupt_flag)
             else:
                 # 发送请求并获取响应
+                # start_time = time.time()
                 req_task = asyncio.create_task(
                     self.client.chat.completions.create(
                         model=model_info.model_identifier,
@@ -469,7 +471,9 @@ class OpenaiClient(BaseClient):
                         # 如果中断量存在且被设置，则取消任务并抛出异常
                         req_task.cancel()
                         raise ReqAbortException("请求被外部信号中断")
-                    await asyncio.sleep(0.5)  # 等待0.5秒后再次检查任务&中断信号量状态
+                    await asyncio.sleep(0.1)  # 等待0.5秒后再次检查任务&中断信号量状态
+                
+                # logger.info(f"OpenAI请求时间: {model_info.model_identifier}  {time.time() - start_time} \n{messages}")
 
                 resp, usage_record = async_response_parser(req_task.result())
         except APIConnectionError as e:
