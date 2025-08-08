@@ -1,7 +1,6 @@
 import asyncio
 import io
 import json
-import time
 import re
 import base64
 from collections.abc import Iterable
