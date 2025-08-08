@@ -1200,6 +1200,8 @@ class ParahippocampalGyrus:
     def __init__(self, hippocampus: Hippocampus):
         self.hippocampus = hippocampus
         self.memory_graph = hippocampus.memory_graph
+        
+        self.memory_modify_model = LLMRequest(model_set=model_config.model_task_config.utils, request_type="memory.modify")
 
     async def memory_compress(self, messages: list, compress_rate=0.1):
         """压缩和总结消息内容，生成记忆主题和摘要。
@@ -1244,7 +1246,7 @@ class ParahippocampalGyrus:
 
         # 2. 使用LLM提取关键主题
         topic_num = self.hippocampus.calculate_topic_num(input_text, compress_rate)
-        topics_response, _ = await self.hippocampus.model_summary.generate_response_async(
+        topics_response, _ = await self.memory_modify_model.generate_response_async(
             self.hippocampus.find_topic_llm(input_text, topic_num)
         )
 
@@ -1273,7 +1275,7 @@ class ParahippocampalGyrus:
             # 调用修改后的 topic_what，不再需要 time_info
             topic_what_prompt = self.hippocampus.topic_what(input_text, topic)
             try:
-                task = self.hippocampus.model_summary.generate_response_async(topic_what_prompt)
+                task = self.memory_modify_model.generate_response_async(topic_what_prompt)
                 tasks.append((topic.strip(), task))
             except Exception as e:
                 logger.error(f"生成话题 '{topic}' 的摘要时发生错误: {e}")

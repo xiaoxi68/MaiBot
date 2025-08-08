@@ -183,7 +183,7 @@ class ChatMood:
             logger.info(f"{self.log_prefix} response: {response}")
             logger.info(f"{self.log_prefix} reasoning_content: {reasoning_content}")
 
-        logger.info(f"{self.log_prefix} 情绪状态回归为: {response}")
+        logger.info(f"{self.log_prefix} 情绪状态转变为: {response}")
 
         self.mood_state = response
 
@@ -206,7 +206,7 @@ class MoodRegressionTask(AsyncTask):
                 if mood.regression_count >= 3:
                     continue
 
-                logger.info(f"{mood.log_prefix} 开始情绪回归, 第 {mood.regression_count + 1} 次")
+                logger.debug(f"{mood.log_prefix} 开始情绪回归, 第 {mood.regression_count + 1} 次")
                 await mood.regress_mood()
 
 
