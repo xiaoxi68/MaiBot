@@ -386,7 +386,7 @@ class HeartFChatting:
                     chat_target_info=planner_info[1],
                     current_available_actions=planner_info[2],
                 )
-                await events_manager.handle_mai_events(EventType.ON_PLAN, None, prompt_info[0], None)
+                await events_manager.handle_mai_events(EventType.ON_PLAN, None, prompt_info[0], None, self.chat_stream.stream_id)
                 with Timer("规划器", cycle_timers):
                     plan_result, target_message = await self.action_planner.plan(mode=self.loop_mode)
 

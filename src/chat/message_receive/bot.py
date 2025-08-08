@@ -148,7 +148,7 @@ class ChatBot:
         if message.message_info.message_id == "notice":
             message.is_notify = True
             logger.info("notice消息")
-            print(message)
+            # print(message)
 
             return True
 

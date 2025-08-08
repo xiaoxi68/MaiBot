@@ -3,7 +3,7 @@ import contextlib
 from typing import List, Dict, Optional, Type, Tuple
 
 from src.chat.message_receive.message import MessageRecv
-from src.chat.message_receive.chat_stream import chat_manager
+from src.chat.message_receive.chat_stream import get_chat_manager
 from src.common.logger import get_logger
 from src.plugin_system.base.component_types import EventType, EventHandlerInfo, MaiMessages
 from src.plugin_system.base.base_events_handler import BaseEventHandler
@@ -174,7 +174,7 @@ class EventsManager:
         self, stream_id: str, llm_prompt: Optional[str] = None, llm_response: Optional[str] = None
     ) -> MaiMessages:
         """从流ID构建消息"""
-        chat_stream = chat_manager.get_stream(stream_id)
+        chat_stream = get_chat_manager().get_stream(stream_id)
         assert chat_stream, f"未找到流ID为 {stream_id} 的聊天流"
         message = chat_stream.context.get_last_message()
         return self._transform_event_message(message, llm_prompt, llm_response)
