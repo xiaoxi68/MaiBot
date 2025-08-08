@@ -71,7 +71,9 @@ class ActionPlanner:
         self.log_prefix = f"[{get_chat_manager().get_stream_name(chat_id) or chat_id}]"
         self.action_manager = action_manager
         # LLM规划器配置
-        self.planner_llm = LLMRequest(model_set=model_config.model_task_config.planner, request_type="planner")  # 用于动作规划
+        self.planner_llm = LLMRequest(
+            model_set=model_config.model_task_config.planner, request_type="planner"
+        )  # 用于动作规划
 
         self.last_obs_time_mark = 0.0
         # 添加重试计数器
@@ -126,22 +128,7 @@ class ActionPlanner:
         message_id_list: list = []
 
         try:
-            is_group_chat = True
-            is_group_chat, chat_target_info = get_chat_type_and_target_info(self.chat_id)
-            logger.debug(f"{self.log_prefix}获取到聊天信息 - 群聊: {is_group_chat}, 目标信息: {chat_target_info}")
-
-            current_available_actions_dict = self.action_manager.get_using_actions()
-
-            # 获取完整的动作信息
-            all_registered_actions: Dict[str, ActionInfo] = component_registry.get_components_by_type(  # type: ignore
-                ComponentType.ACTION
-            )
-            current_available_actions = {}
-            for action_name in current_available_actions_dict:
-                if action_name in all_registered_actions:
-                    current_available_actions[action_name] = all_registered_actions[action_name]
-                else:
-                    logger.warning(f"{self.log_prefix}使用中的动作 {action_name} 未在已注册动作中找到")
+            is_group_chat, chat_target_info, current_available_actions = self.get_necessary_info()
 
             # --- 构建提示词 (调用修改后的 PromptBuilder 方法) ---
             prompt, message_id_list = await self.build_planner_prompt(
@@ -395,6 +382,29 @@ class ActionPlanner:
             logger.error(f"构建 Planner 提示词时出错: {e}")
             logger.error(traceback.format_exc())
             return "构建 Planner Prompt 时出错", []
+
+    def get_necessary_info(self) -> Tuple[bool, Optional[dict], Dict[str, ActionInfo]]:
+        """
+        获取 Planner 需要的必要信息
+        """
+        is_group_chat = True
+        is_group_chat, chat_target_info = get_chat_type_and_target_info(self.chat_id)
+        logger.debug(f"{self.log_prefix}获取到聊天信息 - 群聊: {is_group_chat}, 目标信息: {chat_target_info}")
+
+        current_available_actions_dict = self.action_manager.get_using_actions()
+
+        # 获取完整的动作信息
+        all_registered_actions: Dict[str, ActionInfo] = component_registry.get_components_by_type(  # type: ignore
+            ComponentType.ACTION
+        )
+        current_available_actions = {}
+        for action_name in current_available_actions_dict:
+            if action_name in all_registered_actions:
+                current_available_actions[action_name] = all_registered_actions[action_name]
+            else:
+                logger.warning(f"{self.log_prefix}使用中的动作 {action_name} 未在已注册动作中找到")
+
+        return is_group_chat, chat_target_info, current_available_actions
 
 
 init_prompt()
