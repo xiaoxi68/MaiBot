@@ -327,7 +327,7 @@ class Hippocampus:
             keywords = [word for word in words if len(word) > 1]
             keywords = list(set(keywords))[:3]  # 限制最多3个关键词
             if keywords:
-                logger.info(f"提取关键词: {keywords}")
+                logger.debug(f"提取关键词: {keywords}")
             return keywords
         elif text_length <= 10:
             topic_num = [1, 3]  # 6-10字符: 1个关键词 (27.18%的文本)
@@ -354,7 +354,7 @@ class Hippocampus:
             ]
 
         if keywords:
-            logger.info(f"提取关键词: {keywords}")
+            logger.debug(f"提取关键词: {keywords}")
 
         return keywords
 
@@ -391,7 +391,7 @@ class Hippocampus:
             logger.debug("没有找到有效的关键词节点")
             return []
 
-        logger.debug(f"有效的关键词: {', '.join(valid_keywords)}")
+        logger.info(f"有效的关键词: {', '.join(valid_keywords)}")
 
         # 从每个关键词获取记忆
         activate_map = {}  # 存储每个词的累计激活值
@@ -692,7 +692,7 @@ class Hippocampus:
 
         return result
 
-    async def get_activate_from_text(self, text: str, max_depth: int = 3, fast_retrieval: bool = False) -> float:
+    async def get_activate_from_text(self, text: str, max_depth: int = 3, fast_retrieval: bool = False) -> tuple[float, list[str]]:
         """从文本中提取关键词并获取相关记忆。
 
         Args:
@@ -704,6 +704,7 @@ class Hippocampus:
 
         Returns:
             float: 激活节点数与总节点数的比值
+            list[str]: 有效的关键词
         """
         keywords = await self.get_keywords_from_text(text)
 
@@ -711,7 +712,7 @@ class Hippocampus:
         valid_keywords = [keyword for keyword in keywords if keyword in self.memory_graph.G]
         if not valid_keywords:
             # logger.info("没有找到有效的关键词节点")
-            return 0
+            return 0, []
 
         logger.debug(f"有效的关键词: {', '.join(valid_keywords)}")
 
@@ -778,7 +779,7 @@ class Hippocampus:
         activation_ratio = activation_ratio * 60
         logger.debug(f"总激活值: {total_activation:.2f}, 总节点数: {total_nodes}, 激活: {activation_ratio}")
 
-        return activation_ratio
+        return activation_ratio, keywords
 
 
 # 负责海马体与其他部分的交互
@@ -1738,16 +1739,16 @@ class HippocampusManager:
             response = []
         return response
 
-    async def get_activate_from_text(self, text: str, max_depth: int = 3, fast_retrieval: bool = False) -> float:
+    async def get_activate_from_text(self, text: str, max_depth: int = 3, fast_retrieval: bool = False) -> tuple[float, list[str]]:
         """从文本中获取激活值的公共接口"""
         if not self._initialized:
             raise RuntimeError("HippocampusManager 尚未初始化，请先调用 initialize 方法")
         try:
-            response = await self._hippocampus.get_activate_from_text(text, max_depth, fast_retrieval)
+            response, keywords = await self._hippocampus.get_activate_from_text(text, max_depth, fast_retrieval)
         except Exception as e:
             logger.error(f"文本产生激活值失败: {e}")
             response = 0.0
-        return response
+        return response, keywords
 
     def get_memory_from_keyword(self, keyword: str, max_depth: int = 2) -> list:
         """从关键词获取相关记忆的公共接口"""

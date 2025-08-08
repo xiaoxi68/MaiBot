@@ -2,7 +2,6 @@ import asyncio
 import time
 from maim_message import MessageServer
 
-from src.chat.express.expression_learner import get_expression_learner
 from src.common.remote import TelemetryHeartBeatTask
 from src.manager.async_task_manager import async_task_manager
 from src.chat.utils.statistic import OnlineTimeRecordTask, StatisticOutputTask
@@ -142,8 +141,6 @@ class MainSystem:
                     ]
                 )
 
-            tasks.append(self.learn_and_store_expression_task())
-
             await asyncio.gather(*tasks)
 
     async def build_memory_task(self):
@@ -168,17 +165,6 @@ class MainSystem:
             logger.info("[记忆整合] 开始整合记忆...")
             await self.hippocampus_manager.consolidate_memory()  # type: ignore
             logger.info("[记忆整合] 记忆整合完成")
-
-    @staticmethod
-    async def learn_and_store_expression_task():
-        """学习并存储表达方式任务"""
-        expression_learner = get_expression_learner()
-        while True:
-            await asyncio.sleep(global_config.expression.learning_interval)
-            if global_config.expression.enable_expression_learning and global_config.expression.enable_expression:
-                logger.info("[表达方式学习] 开始学习表达方式...")
-                await expression_learner.learn_and_store_expression()
-                logger.info("[表达方式学习] 表达方式学习完成")
 
 
 async def main():

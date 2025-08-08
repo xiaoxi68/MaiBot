@@ -20,10 +20,12 @@ from rich.traceback import install
 
 # 最早期初始化日志系统，确保所有后续模块都使用正确的日志格式
 from src.common.logger import initialize_logging, get_logger, shutdown_logging
-from src.main import MainSystem
-from src.manager.async_task_manager import async_task_manager
-
 initialize_logging()
+
+from src.main import MainSystem #noqa
+from src.manager.async_task_manager import async_task_manager #noqa
+
+
 
 logger = get_logger("main")
 

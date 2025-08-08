@@ -16,6 +16,7 @@ from src.chat.planner_actions.action_modifier import ActionModifier
 from src.chat.planner_actions.action_manager import ActionManager
 from src.chat.chat_loop.hfc_utils import CycleDetail
 from src.person_info.relationship_builder_manager import relationship_builder_manager
+from src.chat.express.expression_learner import expression_learner_manager
 from src.person_info.person_info import get_person_info_manager
 from src.plugin_system.base.component_types import ActionInfo, ChatMode, EventType
 from src.plugin_system.core import events_manager
@@ -87,6 +88,7 @@ class HeartFChatting:
         self.log_prefix = f"[{get_chat_manager().get_stream_name(self.stream_id) or self.stream_id}]"
 
         self.relationship_builder = relationship_builder_manager.get_or_create_builder(self.stream_id)
+        self.expression_learner = expression_learner_manager.get_expression_learner(self.stream_id)
 
         self.loop_mode = ChatMode.NORMAL  # 初始循环模式为普通模式
 
@@ -325,6 +327,7 @@ class HeartFChatting:
         async with global_prompt_manager.async_message_scope(self.chat_stream.context.get_template_name()):
             loop_start_time = time.time()
             await self.relationship_builder.build_relation()
+            await self.expression_learner.trigger_learning_for_chat()
 
             available_actions = {}
 

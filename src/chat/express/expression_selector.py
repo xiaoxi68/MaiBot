@@ -11,7 +11,6 @@ from src.config.config import global_config, model_config
 from src.common.logger import get_logger
 from src.common.database.database_model import Expression
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
-from .expression_learner import get_expression_learner
 
 logger = get_logger("expression_selector")
 
@@ -71,10 +70,26 @@ def weighted_sample(population: List[Dict], weights: List[float], k: int) -> Lis
 
 class ExpressionSelector:
     def __init__(self):
-        self.expression_learner = get_expression_learner()
         self.llm_model = LLMRequest(
             model_set=model_config.model_task_config.utils_small, request_type="expression.selector"
         )
+
+    def can_use_expression_for_chat(self, chat_id: str) -> bool:
+        """
+        检查指定聊天流是否允许使用表达
+        
+        Args:
+            chat_id: 聊天流ID
+            
+        Returns:
+            bool: 是否允许使用表达
+        """
+        try:
+            use_expression, _, _ = global_config.expression.get_expression_config_for_chat(chat_id)
+            return use_expression
+        except Exception as e:
+            logger.error(f"检查表达使用权限失败: {e}")
+            return False
 
     @staticmethod
     def _parse_stream_config_to_chat_id(stream_config_str: str) -> Optional[str]:
@@ -208,6 +223,11 @@ class ExpressionSelector:
     ) -> List[Dict[str, Any]]:
         # sourcery skip: inline-variable, list-comprehension
         """使用LLM选择适合的表达方式"""
+        
+        # 检查是否允许在此聊天流中使用表达
+        if not self.can_use_expression_for_chat(chat_id):
+            logger.debug(f"聊天流 {chat_id} 不允许使用表达，返回空列表")
+            return []
 
         # 1. 获取35个随机表达方式（现在按权重抽取）
         style_exprs, grammar_exprs = self.get_random_expressions(chat_id, 30, 0.5, 0.5)
@@ -305,6 +325,7 @@ class ExpressionSelector:
         except Exception as e:
             logger.error(f"LLM处理表达方式选择时出错: {e}")
             return []
+    
 
 
 init_prompt()

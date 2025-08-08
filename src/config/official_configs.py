@@ -43,6 +43,9 @@ class PersonalityConfig(ConfigBase):
 
     identity: str = ""
     """身份特征"""
+    
+    reply_style: str = ""
+    """表达风格"""
 
     compress_personality: bool = True
     """是否压缩人格，压缩后会精简人格信息，节省token消耗并提高回复性能，但是会丢失一些信息，如果人设不长，可以关闭"""
@@ -295,23 +298,156 @@ class NormalChatConfig(ConfigBase):
 class ExpressionConfig(ConfigBase):
     """表达配置类"""
 
-    enable_expression: bool = True
-    """是否启用表达方式"""
-
-    expression_style: str = ""
-    """表达风格"""
-
-    learning_interval: int = 300
-    """学习间隔（秒）"""
-
-    enable_expression_learning: bool = True
-    """是否启用表达学习"""
+    expression_learning: list[list] = field(default_factory=lambda: [])
+    """
+    表达学习配置列表，支持按聊天流配置
+    格式: [["chat_stream_id", "use_expression", "enable_learning", learning_intensity], ...]
+    
+    示例:
+    [
+        ["", "enable", "enable", 1.0],  # 全局配置：使用表达，启用学习，学习强度1.0
+        ["qq:1919810:private", "enable", "enable", 1.5],  # 特定私聊配置：使用表达，启用学习，学习强度1.5
+        ["qq:114514:private", "enable", "disable", 0.5],  # 特定私聊配置：使用表达，禁用学习，学习强度0.5
+    ]
+    
+    说明:
+    - 第一位: chat_stream_id，空字符串表示全局配置
+    - 第二位: 是否使用学到的表达 ("enable"/"disable")
+    - 第三位: 是否学习表达 ("enable"/"disable") 
+    - 第四位: 学习强度（浮点数），影响学习频率，最短学习时间间隔 = 300/学习强度（秒）
+    """
 
     expression_groups: list[list[str]] = field(default_factory=list)
     """
     表达学习互通组
     格式: [["qq:12345:group", "qq:67890:private"]]
     """
+
+    def _parse_stream_config_to_chat_id(self, stream_config_str: str) -> Optional[str]:
+        """
+        解析流配置字符串并生成对应的 chat_id
+        
+        Args:
+            stream_config_str: 格式为 "platform:id:type" 的字符串
+            
+        Returns:
+            str: 生成的 chat_id，如果解析失败则返回 None
+        """
+        try:
+            parts = stream_config_str.split(":")
+            if len(parts) != 3:
+                return None
+                
+            platform = parts[0]
+            id_str = parts[1] 
+            stream_type = parts[2]
+            
+            # 判断是否为群聊
+            is_group = stream_type == "group"
+            
+            # 使用与 ChatStream.get_stream_id 相同的逻辑生成 chat_id
+            import hashlib
+            
+            if is_group:
+                components = [platform, str(id_str)]
+            else:
+                components = [platform, str(id_str), "private"]
+            key = "_".join(components)
+            return hashlib.md5(key.encode()).hexdigest()
+            
+        except (ValueError, IndexError):
+            return None
+
+    def get_expression_config_for_chat(self, chat_stream_id: Optional[str] = None) -> tuple[bool, bool, int]:
+        """
+        根据聊天流ID获取表达配置
+        
+        Args:
+            chat_stream_id: 聊天流ID，格式为哈希值
+            
+        Returns:
+            tuple: (是否使用表达, 是否学习表达, 学习间隔)
+        """
+        if not self.expression_learning:
+            # 如果没有配置，使用默认值：启用表达，启用学习，300秒间隔
+            return True, True, 300
+            
+        # 优先检查聊天流特定的配置
+        if chat_stream_id:
+            specific_config = self._get_stream_specific_config(chat_stream_id)
+            if specific_config is not None:
+                return specific_config
+                
+        # 检查全局配置（第一个元素为空字符串的配置）
+        global_config = self._get_global_config()
+        if global_config is not None:
+            return global_config
+            
+        # 如果都没有匹配，返回默认值
+        return True, True, 300
+
+    def _get_stream_specific_config(self, chat_stream_id: str) -> Optional[tuple[bool, bool, int]]:
+        """
+        获取特定聊天流的表达配置
+        
+        Args:
+            chat_stream_id: 聊天流ID（哈希值）
+            
+        Returns:
+            tuple: (是否使用表达, 是否学习表达, 学习间隔)，如果没有配置则返回 None
+        """
+        for config_item in self.expression_learning:
+            if not config_item or len(config_item) < 4:
+                continue
+                
+            stream_config_str = config_item[0]  # 例如 "qq:1026294844:group"
+            
+            # 如果是空字符串，跳过（这是全局配置）
+            if stream_config_str == "":
+                continue
+                
+            # 解析配置字符串并生成对应的 chat_id
+            config_chat_id = self._parse_stream_config_to_chat_id(stream_config_str)
+            if config_chat_id is None:
+                continue
+                
+            # 比较生成的 chat_id
+            if config_chat_id != chat_stream_id:
+                continue
+                
+            # 解析配置
+            try:
+                use_expression = config_item[1].lower() == "enable"
+                enable_learning = config_item[2].lower() == "enable"
+                learning_intensity = float(config_item[3])
+                return use_expression, enable_learning, learning_intensity
+            except (ValueError, IndexError):
+                continue
+                
+        return None
+
+    def _get_global_config(self) -> Optional[tuple[bool, bool, int]]:
+        """
+        获取全局表达配置
+        
+        Returns:
+            tuple: (是否使用表达, 是否学习表达, 学习间隔)，如果没有配置则返回 None
+        """
+        for config_item in self.expression_learning:
+            if not config_item or len(config_item) < 4:
+                continue
+                
+            # 检查是否为全局配置（第一个元素为空字符串）
+            if config_item[0] == "":
+                try:
+                    use_expression = config_item[1].lower() == "enable"
+                    enable_learning = config_item[2].lower() == "enable"
+                    learning_intensity = float(config_item[3])
+                    return use_expression, enable_learning, learning_intensity
+                except (ValueError, IndexError):
+                    continue
+                    
+        return None
 
 
 @dataclass

@@ -42,25 +42,25 @@ async def _process_relationship(message: MessageRecv) -> None:
         await relationship_manager.first_knowing_some_one(platform, user_id, nickname, cardname)  # type: ignore
 
 
-async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool]:
+async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool, list[str]]:
     """计算消息的兴趣度
 
     Args:
         message: 待处理的消息对象
 
     Returns:
-        Tuple[float, bool]: (兴趣度, 是否被提及)
+        Tuple[float, bool, list[str]]: (兴趣度, 是否被提及, 关键词)
     """
     is_mentioned, _ = is_mentioned_bot_in_message(message)
     interested_rate = 0.0
 
     with Timer("记忆激活"):
-        interested_rate = await hippocampus_manager.get_activate_from_text(
+        interested_rate, keywords = await hippocampus_manager.get_activate_from_text(
             message.processed_plain_text,
             max_depth= 5,
             fast_retrieval=False,
         )
-        logger.debug(f"记忆激活率: {interested_rate:.2f}")
+        logger.debug(f"记忆激活率: {interested_rate:.2f}, 关键词: {keywords}")
 
     text_len = len(message.processed_plain_text)
     # 根据文本长度分布调整兴趣度，采用分段函数实现更精确的兴趣度计算
@@ -99,7 +99,7 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool]:
         interest_increase_on_mention = 1
         interested_rate += interest_increase_on_mention
 
-    return interested_rate, is_mentioned
+    return interested_rate, is_mentioned, keywords
 
 
 class HeartFCMessageReceiver:
@@ -128,7 +128,7 @@ class HeartFCMessageReceiver:
             chat = message.chat_stream
 
             # 2. 兴趣度计算与更新
-            interested_rate, is_mentioned = await _calculate_interest(message)
+            interested_rate, is_mentioned, keywords = await _calculate_interest(message)
             message.interest_value = interested_rate
             message.is_mentioned = is_mentioned
 
@@ -157,7 +157,10 @@ class HeartFCMessageReceiver:
                 replace_bot_name=True
             )
 
-            logger.info(f"[{mes_name}]{userinfo.user_nickname}:{processed_plain_text}[兴趣度：{interested_rate:.2f}]")  # type: ignore
+            if keywords:
+                logger.info(f"[{mes_name}]{userinfo.user_nickname}:{processed_plain_text}[兴趣度：{interested_rate:.2f}][关键词：{keywords}]")  # type: ignore
+            else:
+                logger.info(f"[{mes_name}]{userinfo.user_nickname}:{processed_plain_text}[兴趣度：{interested_rate:.2f}]")  # type: ignore
 
             logger.debug(f"[{mes_name}][当前时段回复频率: {current_talk_frequency}]")
 

@@ -5,7 +5,7 @@ import json
 import threading
 import time
 import structlog
-import toml
+import tomlkit
 
 from pathlib import Path
 from typing import Callable, Optional
@@ -188,22 +188,23 @@ def load_log_config():  # sourcery skip: use-contextlib-suppress
     """从配置文件加载日志设置"""
     config_path = Path("config/bot_config.toml")
     default_config = {
-        "date_style": "Y-m-d H:i:s",
+        "date_style": "m-d H:i:s",
         "log_level_style": "lite",
-        "color_text": "title",
+        "color_text": "full",
         "log_level": "INFO",  # 全局日志级别（向下兼容）
         "console_log_level": "INFO",  # 控制台日志级别
         "file_log_level": "DEBUG",  # 文件日志级别
-        "suppress_libraries": [],
-        "library_log_levels": {},
+        "suppress_libraries": ["faiss","httpx", "urllib3", "asyncio", "websockets", "httpcore", "requests", "peewee", "openai","uvicorn","jieba"],
+        "library_log_levels": { "aiohttp": "WARNING"},
     }
 
     try:
         if config_path.exists():
             with open(config_path, "r", encoding="utf-8") as f:
-                config = toml.load(f)
+                config = tomlkit.load(f)
                 return config.get("log", default_config)
-    except Exception:
+    except Exception as e:
+        print(f"[日志系统] 加载日志配置失败: {e}")
         pass
 
     return default_config
@@ -706,181 +707,6 @@ def get_logger(name: Optional[str]) -> structlog.stdlib.BoundLogger:
     return logger
 
 
-def configure_logging(
-    level: str = "INFO",
-    console_level: Optional[str] = None,
-    file_level: Optional[str] = None,
-    max_bytes: int = 5 * 1024 * 1024,
-    backup_count: int = 30,
-    log_dir: str = "logs",
-):
-    """动态配置日志参数"""
-    log_path = Path(log_dir)
-    log_path.mkdir(exist_ok=True)
-
-    # 更新文件handler配置
-    file_handler = get_file_handler()
-    if file_handler and isinstance(file_handler, TimestampedFileHandler):
-        file_handler.max_bytes = max_bytes
-        file_handler.backup_count = backup_count
-        file_handler.log_dir = Path(log_dir)
-
-        # 更新文件handler日志级别
-        if file_level:
-            file_handler.setLevel(getattr(logging, file_level.upper(), logging.INFO))
-
-    # 更新控制台handler日志级别
-    console_handler = get_console_handler()
-    if console_handler and console_level:
-        console_handler.setLevel(getattr(logging, console_level.upper(), logging.INFO))
-
-    # 设置根logger日志级别为最低级别
-    if console_level or file_level:
-        console_level_num = getattr(logging, (console_level or level).upper(), logging.INFO)
-        file_level_num = getattr(logging, (file_level or level).upper(), logging.INFO)
-        min_level = min(console_level_num, file_level_num)
-        root_logger = logging.getLogger()
-        root_logger.setLevel(min_level)
-    else:
-        root_logger = logging.getLogger()
-        root_logger.setLevel(getattr(logging, level.upper()))
-
-
-
-
-
-def reload_log_config():
-    """重新加载日志配置"""
-    global LOG_CONFIG
-    LOG_CONFIG = load_log_config()
-
-    if file_handler := get_file_handler():
-        file_level = LOG_CONFIG.get("file_log_level", LOG_CONFIG.get("log_level", "INFO"))
-        file_handler.setLevel(getattr(logging, file_level.upper(), logging.INFO))
-
-    if console_handler := get_console_handler():
-        console_level = LOG_CONFIG.get("console_log_level", LOG_CONFIG.get("log_level", "INFO"))
-        console_handler.setLevel(getattr(logging, console_level.upper(), logging.INFO))
-
-    # 重新配置console渲染器
-    root_logger = logging.getLogger()
-    for handler in root_logger.handlers:
-        if isinstance(handler, logging.StreamHandler):
-            # 这是控制台处理器，更新其格式化器
-            handler.setFormatter(
-                structlog.stdlib.ProcessorFormatter(
-                    processor=ModuleColoredConsoleRenderer(colors=True),
-                    foreign_pre_chain=[
-                        structlog.stdlib.add_logger_name,
-                        structlog.stdlib.add_log_level,
-                        structlog.stdlib.PositionalArgumentsFormatter(),
-                        structlog.processors.TimeStamper(fmt=get_timestamp_format(), utc=False),
-                        structlog.processors.StackInfoRenderer(),
-                        structlog.processors.format_exc_info,
-                    ],
-                )
-            )
-
-    # 重新配置第三方库日志
-    configure_third_party_loggers()
-
-    # 重新配置所有已存在的logger
-    reconfigure_existing_loggers()
-
-
-def get_log_config():
-    """获取当前日志配置"""
-    return LOG_CONFIG.copy()
-
-
-def set_console_log_level(level: str):
-    """设置控制台日志级别
-
-    Args:
-        level: 日志级别 ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
-    """
-    global LOG_CONFIG
-    LOG_CONFIG["console_log_level"] = level.upper()
-
-    if console_handler := get_console_handler():
-        console_handler.setLevel(getattr(logging, level.upper(), logging.INFO))
-
-    # 重新设置root logger级别
-    configure_third_party_loggers()
-
-    logger = get_logger("logger")
-    logger.info(f"控制台日志级别已设置为: {level.upper()}")
-
-
-def set_file_log_level(level: str):
-    """设置文件日志级别
-
-    Args:
-        level: 日志级别 ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
-    """
-    global LOG_CONFIG
-    LOG_CONFIG["file_log_level"] = level.upper()
-
-    if file_handler := get_file_handler():
-        file_handler.setLevel(getattr(logging, level.upper(), logging.INFO))
-
-    # 重新设置root logger级别
-    configure_third_party_loggers()
-
-    logger = get_logger("logger")
-    logger.info(f"文件日志级别已设置为: {level.upper()}")
-
-
-def get_current_log_levels():
-    """获取当前的日志级别设置"""
-    file_handler = get_file_handler()
-    console_handler = get_console_handler()
-
-    file_level = logging.getLevelName(file_handler.level) if file_handler else "UNKNOWN"
-    console_level = logging.getLevelName(console_handler.level) if console_handler else "UNKNOWN"
-
-    return {
-        "console_level": console_level,
-        "file_level": file_level,
-        "root_level": logging.getLevelName(logging.getLogger().level),
-    }
-
-
-def force_reset_all_loggers():
-    """强制重置所有logger，解决格式不一致问题"""
-    # 先关闭现有的handler
-    close_handlers()
-
-    # 清除所有现有的logger配置
-    logging.getLogger().manager.loggerDict.clear()
-
-    # 重新配置根logger
-    root_logger = logging.getLogger()
-    root_logger.handlers.clear()
-
-    # 使用单例handler避免重复创建
-    file_handler = get_file_handler()
-    console_handler = get_console_handler()
-
-    # 重新添加我们的handler
-    root_logger.addHandler(file_handler)
-    root_logger.addHandler(console_handler)
-
-    # 设置格式化器
-    file_handler.setFormatter(file_formatter)
-    console_handler.setFormatter(console_formatter)
-
-    # 设置根logger级别为所有handler中最低的级别
-    console_level = LOG_CONFIG.get("console_log_level", LOG_CONFIG.get("log_level", "INFO"))
-    file_level = LOG_CONFIG.get("file_log_level", LOG_CONFIG.get("log_level", "INFO"))
-
-    console_level_num = getattr(logging, console_level.upper(), logging.INFO)
-    file_level_num = getattr(logging, file_level.upper(), logging.INFO)
-    min_level = min(console_level_num, file_level_num)
-
-    root_logger.setLevel(min_level)
-
-
 def initialize_logging():
     """手动初始化日志系统，确保所有logger都使用正确的配置
 
@@ -888,6 +714,7 @@ def initialize_logging():
     """
     global LOG_CONFIG
     LOG_CONFIG = load_log_config()
+    # print(LOG_CONFIG)
     configure_third_party_loggers()
     reconfigure_existing_loggers()
 
@@ -899,77 +726,10 @@ def initialize_logging():
     console_level = LOG_CONFIG.get("console_log_level", LOG_CONFIG.get("log_level", "INFO"))
     file_level = LOG_CONFIG.get("file_log_level", LOG_CONFIG.get("log_level", "INFO"))
 
-    logger.info("日志系统已重新初始化:")
+    logger.info("日志系统已初始化:")
     logger.info(f"  - 控制台级别: {console_level}")
     logger.info(f"  - 文件级别: {file_level}")
-    logger.info("  - 轮转份数: 30个文件")
-    logger.info("  - 自动清理: 30天前的日志")
-
-
-def force_initialize_logging():
-    """强制重新初始化整个日志系统，解决格式不一致问题"""
-    global LOG_CONFIG
-    LOG_CONFIG = load_log_config()
-
-    # 强制重置所有logger
-    force_reset_all_loggers()
-
-    # 重新配置structlog
-    configure_structlog()
-
-    # 配置第三方库
-    configure_third_party_loggers()
-
-    # 输出初始化信息
-    logger = get_logger("logger")
-    console_level = LOG_CONFIG.get("console_log_level", LOG_CONFIG.get("log_level", "INFO"))
-    file_level = LOG_CONFIG.get("file_log_level", LOG_CONFIG.get("log_level", "INFO"))
-    logger.info(
-        f"日志系统已强制重新初始化，控制台级别: {console_level}，文件级别: {file_level}，轮转份数: 30个文件，所有logger格式已统一"
-    )
-
-
-def show_module_colors():
-    """显示所有模块的颜色效果"""
-    get_logger("demo")
-    print("\n=== 模块颜色展示 ===")
-
-    for module_name, _color_code in MODULE_COLORS.items():
-        # 临时创建一个该模块的logger来展示颜色
-        demo_logger = structlog.get_logger(module_name).bind(logger_name=module_name)
-        alias = MODULE_ALIASES.get(module_name, module_name)
-        if alias != module_name:
-            demo_logger.info(f"这是 {module_name} 模块的颜色效果 (显示为: {alias})")
-        else:
-            demo_logger.info(f"这是 {module_name} 模块的颜色效果")
-
-    print("=== 颜色展示结束 ===\n")
-    
-    # 显示别名映射表
-    if MODULE_ALIASES:
-        print("=== 当前别名映射 ===")
-        for module_name, alias in MODULE_ALIASES.items():
-            print(f"  {module_name} -> {alias}")
-        print("=== 别名映射结束 ===\n")
-
-
-def format_json_for_logging(data, indent=2, ensure_ascii=False):
-    """将JSON数据格式化为可读字符串
-
-    Args:
-        data: 要格式化的数据（字典、列表等）
-        indent: 缩进空格数
-        ensure_ascii: 是否确保ASCII编码
-
-    Returns:
-        str: 格式化后的JSON字符串
-    """
-    if not isinstance(data, str):
-        # 如果是对象，直接格式化
-        return json.dumps(data, indent=indent, ensure_ascii=ensure_ascii)
-    # 如果是JSON字符串，先解析再格式化
-    parsed_data = json.loads(data)
-    return json.dumps(parsed_data, indent=indent, ensure_ascii=ensure_ascii)
+    logger.info("  - 轮转份数: 30个文件|自动清理: 30天前的日志")
 
 
 def cleanup_old_logs():
@@ -1015,35 +775,6 @@ def start_log_cleanup_task():
 
     logger = get_logger("logger")
     logger.info("已启动日志清理任务，将自动清理30天前的日志文件（轮转份数限制: 30个文件）")
-
-
-def get_log_stats():
-    """获取日志文件统计信息"""
-    stats = {"total_files": 0, "total_size": 0, "files": []}
-
-    try:
-        if not LOG_DIR.exists():
-            return stats
-
-        for log_file in LOG_DIR.glob("*.log*"):
-            file_info = {
-                "name": log_file.name,
-                "size": log_file.stat().st_size,
-                "modified": datetime.fromtimestamp(log_file.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
-            }
-
-            stats["files"].append(file_info)
-            stats["total_files"] += 1
-            stats["total_size"] += file_info["size"]
-
-        # 按修改时间排序
-        stats["files"].sort(key=lambda x: x["modified"], reverse=True)
-
-    except Exception as e:
-        logger = get_logger("logger")
-        logger.error(f"获取日志统计信息时出错: {e}")
-
-    return stats
 
 
 def shutdown_logging():

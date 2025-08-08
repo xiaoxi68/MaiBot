@@ -55,7 +55,7 @@ def init_prompt():
 对这句话，你想表达，原句：{raw_reply},原因是：{reason}。你现在要思考怎么组织回复
 你现在的心情是：{mood_state}
 你需要使用合适的语法和句法，参考聊天内容，组织一条日常且口语化的回复。请你修改你想表达的原句，符合你的表达风格和语言习惯
-{config_expression_style}，你可以完全重组回复，保留最基本的表达含义就好，但重组后保持语意通顺。
+{reply_style}，你可以完全重组回复，保留最基本的表达含义就好，但重组后保持语意通顺。
 {keywords_reaction_prompt}
 {moderation_prompt}
 不要浮夸，不要夸张修辞，平淡且不要输出多余内容(包括前后缀，冒号和引号，括号，表情包，at或 @等 )，只输出一条回复就好。
@@ -91,7 +91,7 @@ def init_prompt():
 
 
 你现在的心情是：{mood_state}
-{config_expression_style}
+{reply_style}
 注意不要复读你说过的话
 {keywords_reaction_prompt}
 请注意不要输出多余内容(包括前后缀，冒号和引号，at或 @等 )。只输出回复内容。
@@ -310,7 +310,9 @@ class DefaultReplyer:
         Returns:
             str: 表达习惯信息字符串
         """
-        if not global_config.expression.enable_expression:
+        # 检查是否允许在此聊天流中使用表达
+        use_expression, _, _ = global_config.expression.get_expression_config_for_chat(self.chat_stream.stream_id)
+        if not use_expression:
             return ""
 
         style_habits = []
@@ -854,7 +856,7 @@ class DefaultReplyer:
             core_dialogue_prompt=core_dialogue_prompt,
             reply_target_block=reply_target_block,
             message_txt=target,
-            config_expression_style=global_config.expression.expression_style,
+            reply_style=global_config.personality.reply_style,
             keywords_reaction_prompt=keywords_reaction_prompt,
             moderation_prompt=moderation_prompt_block,
         )
@@ -959,7 +961,7 @@ class DefaultReplyer:
             raw_reply=raw_reply,
             reason=reason,
             mood_state=mood_prompt,  # 添加情绪状态参数
-            config_expression_style=global_config.expression.expression_style,
+            reply_style=global_config.personality.reply_style,
             keywords_reaction_prompt=keywords_reaction_prompt,
             moderation_prompt=moderation_prompt_block,
         )
