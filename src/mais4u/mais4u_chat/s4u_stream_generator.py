@@ -1,7 +1,6 @@
-import os
 from typing import AsyncGenerator
 from src.mais4u.openai_client import AsyncOpenAIClient
-from src.config.config import global_config, model_config
+from src.config.config import model_config
 from src.chat.message_receive.message import MessageRecvS4U
 from src.mais4u.mais4u_chat.s4u_prompt import prompt_builder
 from src.common.logger import get_logger

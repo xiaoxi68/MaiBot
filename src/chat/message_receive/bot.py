@@ -146,7 +146,10 @@ class ChatBot:
 
     async def hanle_notice_message(self, message: MessageRecv):
         if message.message_info.message_id == "notice":
-            logger.info("收到notice消息，暂时不支持处理")
+            message.is_notify = True
+            logger.info("notice消息")
+            print(message)
+
             return True
 
     async def do_s4u(self, message_data: Dict[str, Any]):
@@ -207,7 +210,8 @@ class ChatBot:
             message = MessageRecv(message_data)
 
             if await self.hanle_notice_message(message):
-                return
+                # return
+                pass
 
             group_info = message.message_info.group_info
             user_info = message.message_info.user_info

@@ -109,6 +109,7 @@ class MessageRecv(Message):
         self.has_picid = False
         self.is_voice = False
         self.is_mentioned = None
+        self.is_notify = False
 
         self.is_command = False
 

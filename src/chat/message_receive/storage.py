@@ -43,6 +43,7 @@ class MessageStorage:
                 priority_info = {}
                 is_emoji = False
                 is_picid = False
+                is_notify = False
                 is_command = False
             else:
                 filtered_display_message = ""
@@ -53,6 +54,7 @@ class MessageStorage:
                 priority_info = message.priority_info
                 is_emoji = message.is_emoji
                 is_picid = message.is_picid
+                is_notify = message.is_notify
                 is_command = message.is_command
 
             chat_info_dict = chat_stream.to_dict()
@@ -98,6 +100,7 @@ class MessageStorage:
                 priority_info=priority_info,
                 is_emoji=is_emoji,
                 is_picid=is_picid,
+                is_notify=is_notify,
                 is_command=is_command,
             )
         except Exception:

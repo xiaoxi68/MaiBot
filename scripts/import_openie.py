@@ -15,7 +15,6 @@ from src.chat.knowledge.kg_manager import KGManager
 from src.common.logger import get_logger
 from src.chat.knowledge.utils.hash import get_sha256
 from src.manager.local_store_manager import local_storage
-from dotenv import load_dotenv
 
 
 # 添加项目根目录到 sys.path
