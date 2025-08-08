@@ -261,9 +261,9 @@ class ExpressionSelector:
         # 4. 调用LLM
         try:
             
-            start_time = time.time()
+            # start_time = time.time()
             content, (reasoning_content, model_name, _) = await self.llm_model.generate_response_async(prompt=prompt)
-            logger.info(f"LLM请求时间: {model_name}  {time.time() - start_time} \n{prompt}")
+            # logger.info(f"LLM请求时间: {model_name}  {time.time() - start_time} \n{prompt}")
 
             # logger.info(f"模型名称: {model_name}")
             # logger.info(f"LLM返回结果: {content}")

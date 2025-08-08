@@ -21,7 +21,6 @@ class ClassicalWillingManager(BaseWillingManager):
             self._decay_task = asyncio.create_task(self._decay_reply_willing())
 
     async def get_reply_probability(self, message_id):
-        # sourcery skip: inline-immediately-returned-variable
         willing_info = self.ongoing_messages[message_id]
         chat_id = willing_info.chat_id
         current_willing = self.chat_reply_willing.get(chat_id, 0)
@@ -32,8 +31,7 @@ class ClassicalWillingManager(BaseWillingManager):
         
         # print(f"[{chat_id}] 兴趣值: {interested_rate}")
 
-        if interested_rate > 0.2:
-            current_willing += interested_rate - 0.2
+        current_willing += interested_rate
 
         if willing_info.is_mentioned_bot and global_config.chat.mentioned_bot_inevitable_reply and current_willing < 2:
             current_willing += 1 if current_willing < 1.0 else 0.2

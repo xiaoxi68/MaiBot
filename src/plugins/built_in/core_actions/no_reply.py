@@ -106,10 +106,9 @@ class NoReplyAction(BaseAction):
         
         # 获取当前聊天频率和意愿系数
         talk_frequency = global_config.chat.get_current_talk_frequency(self.chat_id)
-        willing_amplifier = global_config.chat.willing_amplifier
-        
+    
         # 计算调整后的阈值
-        adjusted_threshold = self._interest_exit_threshold / talk_frequency / willing_amplifier
+        adjusted_threshold = self._interest_exit_threshold / talk_frequency
         
         logger.info(f"{self.log_prefix} 最近三次兴趣度总和: {total_recent_interest:.2f}, 调整后阈值: {adjusted_threshold:.2f}")
         
@@ -148,7 +147,7 @@ class NoReplyAction(BaseAction):
                 for msg_dict in recent_messages_dict:
                     interest_value = msg_dict.get("interest_value", 0.0)
                     if msg_dict.get("processed_plain_text", ""):
-                        total_interest += interest_value * global_config.chat.willing_amplifier
+                        total_interest += interest_value
 
                 # 记录到最近兴趣度列表
                 NoReplyAction._recent_interest_records.append(total_interest)
@@ -198,7 +197,7 @@ class NoReplyAction(BaseAction):
 
             # 检查消息数量是否达到阈值
             talk_frequency = global_config.chat.get_current_talk_frequency(self.chat_id)
-            modified_exit_count_threshold = (exit_message_count_threshold / talk_frequency) / global_config.chat.willing_amplifier
+            modified_exit_count_threshold = exit_message_count_threshold / talk_frequency
             
             if new_message_count >= modified_exit_count_threshold:
                 # 记录兴趣度到列表
@@ -206,7 +205,7 @@ class NoReplyAction(BaseAction):
                 for msg_dict in recent_messages_dict:
                     interest_value = msg_dict.get("interest_value", 0.0)
                     if msg_dict.get("processed_plain_text", ""):
-                        total_interest += interest_value * global_config.chat.willing_amplifier
+                        total_interest += interest_value
                 
                 NoReplyAction._recent_interest_records.append(total_interest)
                 
@@ -228,7 +227,7 @@ class NoReplyAction(BaseAction):
                     text = msg_dict.get("processed_plain_text", "")
                     interest_value = msg_dict.get("interest_value", 0.0)
                     if text:
-                        accumulated_interest += interest_value * global_config.chat.willing_amplifier
+                        accumulated_interest += interest_value
                 
                 # 只在兴趣值变化时输出log
                 if not hasattr(self, "_last_accumulated_interest") or accumulated_interest != self._last_accumulated_interest:

@@ -69,7 +69,6 @@ class ChatConfig(ConfigBase):
     max_context_size: int = 18
     """上下文长度"""
     
-    willing_amplifier: float = 1.0
 
     replyer_random_probability: float = 0.5
     """
@@ -89,26 +88,27 @@ class ChatConfig(ConfigBase):
     at_bot_inevitable_reply: bool = False
     """@bot 必然回复"""
 
-    # 修改：基于时段的回复频率配置，改为数组格式
-    time_based_talk_frequency: list[str] = field(default_factory=lambda: [])
-    """
-    基于时段的回复频率配置（全局）
-    格式：["HH:MM,frequency", "HH:MM,frequency", ...]
-    示例：["8:00,1", "12:00,2", "18:00,1.5", "00:00,0.5"]
-    表示从该时间开始使用该频率，直到下一个时间点
-    """
-
-    # 新增：基于聊天流的个性化时段频率配置
+    # 合并后的时段频率配置
     talk_frequency_adjust: list[list[str]] = field(default_factory=lambda: [])
     """
-    基于聊天流的个性化时段频率配置
+    统一的时段频率配置
     格式：[["platform:chat_id:type", "HH:MM,frequency", "HH:MM,frequency", ...], ...]
-    示例：[
-        ["qq:1026294844:group", "12:20,1", "16:10,2", "20:10,1", "00:10,0.3"],
-        ["qq:729957033:group", "8:20,1", "12:10,2", "20:10,1.5", "00:10,0.2"]
+    
+    全局配置示例：
+    [["", "8:00,1", "12:00,2", "18:00,1.5", "00:00,0.5"]]
+    
+    特定聊天流配置示例：
+    [
+        ["", "8:00,1", "12:00,1.2", "18:00,1.5", "01:00,0.6"],  # 全局默认配置
+        ["qq:1026294844:group", "12:20,1", "16:10,2", "20:10,1", "00:10,0.3"],  # 特定群聊配置
+        ["qq:729957033:private", "8:20,1", "12:10,2", "20:10,1.5", "00:10,0.2"]  # 特定私聊配置
     ]
-    每个子列表的第一个元素是聊天流标识符，后续元素是"时间,频率"格式
-    表示从该时间开始使用该频率，直到下一个时间点
+    
+    说明：
+    - 当第一个元素为空字符串""时，表示全局默认配置
+    - 当第一个元素为"platform:id:type"格式时，表示特定聊天流配置
+    - 后续元素是"时间,频率"格式，表示从该时间开始使用该频率，直到下一个时间点
+    - 优先级：特定聊天流配置 > 全局配置 > 默认 talk_frequency
     """
 
     focus_value: float = 1.0
@@ -124,17 +124,19 @@ class ChatConfig(ConfigBase):
         Returns:
             float: 对应的频率值
         """
+        if not self.talk_frequency_adjust:
+            return self.talk_frequency
+            
         # 优先检查聊天流特定的配置
-        if chat_stream_id and self.talk_frequency_adjust:
+        if chat_stream_id:
             stream_frequency = self._get_stream_specific_frequency(chat_stream_id)
             if stream_frequency is not None:
                 return stream_frequency
 
-        # 如果没有聊天流特定配置，检查全局时段配置
-        if self.time_based_talk_frequency:
-            global_frequency = self._get_time_based_frequency(self.time_based_talk_frequency)
-            if global_frequency is not None:
-                return global_frequency
+        # 检查全局时段配置（第一个元素为空字符串的配置）
+        global_frequency = self._get_global_frequency()
+        if global_frequency is not None:
+            return global_frequency
 
         # 如果都没有匹配，返回默认值
         return self.talk_frequency
@@ -252,6 +254,23 @@ class ChatConfig(ConfigBase):
 
         except (ValueError, IndexError):
             return None
+
+    def _get_global_frequency(self) -> Optional[float]:
+        """
+        获取全局默认频率配置
+
+        Returns:
+            float: 频率值，如果没有配置则返回 None
+        """
+        for config_item in self.talk_frequency_adjust:
+            if not config_item or len(config_item) < 2:
+                continue
+
+            # 检查是否为全局默认配置（第一个元素为空字符串）
+            if config_item[0] == "":
+                return self._get_time_based_frequency(config_item[1:])
+
+        return None
 
 
 @dataclass
