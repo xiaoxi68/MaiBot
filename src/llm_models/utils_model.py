@@ -1,5 +1,4 @@
 import re
-import copy
 import asyncio
 import time
 
@@ -249,7 +248,7 @@ class LLMRequest:
         )
         model_info = model_config.get_model_info(least_used_model_name)
         api_provider = model_config.get_provider(model_info.api_provider)
-        client = client_registry.get_client_class(api_provider.client_type)(copy.deepcopy(api_provider))
+        client = client_registry.get_client_class_instance(api_provider)
         logger.debug(f"选择请求模型: {model_info.name}")
         total_tokens, penalty, usage_penalty = self.model_usage[model_info.name]
         self.model_usage[model_info.name] = (total_tokens, penalty, usage_penalty + 1)  # 增加使用惩罚值防止连续使用

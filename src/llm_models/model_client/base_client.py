@@ -140,6 +140,9 @@ class BaseClient(ABC):
 class ClientRegistry:
     def __init__(self) -> None:
         self.client_registry: dict[str, type[BaseClient]] = {}
+        """APIProvider.type -> BaseClient的映射表"""
+        self.client_instance_cache: dict[str, BaseClient] = {}
+        """APIProvider.name -> BaseClient的映射表"""
 
     def register_client_class(self, client_type: str):
         """
@@ -156,17 +159,20 @@ class ClientRegistry:
 
         return decorator
 
-    def get_client_class(self, client_type: str) -> type[BaseClient]:
+    def get_client_class_instance(self, api_provider: APIProvider) -> BaseClient:
         """
-        获取注册的API客户端类
+        获取注册的API客户端实例
         Args:
-            client_type: 客户端类型
+            api_provider: APIProvider实例
         Returns:
-            type[BaseClient]: 注册的API客户端类
+            BaseClient: 注册的API客户端实例
         """
-        if client_type not in self.client_registry:
-            raise KeyError(f"'{client_type}' 类型的 Client 未注册")
-        return self.client_registry[client_type]
+        if api_provider.name not in self.client_instance_cache:
+            if client_class := self.client_registry.get(api_provider.client_type):
+                self.client_instance_cache[api_provider.name] = client_class(api_provider)
+            else:
+                raise KeyError(f"'{api_provider.client_type}' 类型的 Client 未注册")
+        return self.client_instance_cache[api_provider.name]
 
 
 client_registry = ClientRegistry()
