@@ -92,6 +92,18 @@ class ImageManager:
                 desc_obj.save()
         except Exception as e:
             logger.error(f"保存描述到数据库失败 (Peewee): {str(e)}")
+            
+    async def get_emoji_tag(self, image_base64: str) -> str:
+        from src.chat.emoji_system.emoji_manager import get_emoji_manager
+        emoji_manager = get_emoji_manager()
+        if isinstance(image_base64, str):
+            image_base64 = image_base64.encode("ascii", errors="ignore").decode("ascii")
+        image_bytes = base64.b64decode(image_base64)
+        image_hash = hashlib.md5(image_bytes).hexdigest()
+        emoji = await emoji_manager.get_emoji_from_manager(image_hash)
+        emotion_list = emoji.emotion
+        tag_str = ",".join(emotion_list)
+        return f"[表情包：{tag_str}]"
 
     async def get_emoji_description(self, image_base64: str) -> str:
         """获取表情包描述，优先使用Emoji表中的缓存数据"""
@@ -107,7 +119,6 @@ class ImageManager:
             # 优先使用EmojiManager查询已注册表情包的描述
             try:
                 from src.chat.emoji_system.emoji_manager import get_emoji_manager
-
                 emoji_manager = get_emoji_manager()
                 cached_emoji_description = await emoji_manager.get_emoji_description_by_hash(image_hash)
                 if cached_emoji_description:

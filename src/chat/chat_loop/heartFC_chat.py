@@ -308,7 +308,6 @@ class HeartFChatting:
         return loop_info, reply_text, cycle_timers
 
     async def _observe(self, message_data: Optional[Dict[str, Any]] = None) -> bool:
-        # sourcery skip: hoist-statement-from-if, merge-comparisons, reintroduce-else
         if not message_data:
             message_data = {}
         action_type = "no_action"

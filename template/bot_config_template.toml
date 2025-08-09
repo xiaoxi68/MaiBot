@@ -53,11 +53,6 @@ expression_groups = [
 ]
 
 
-[relationship]
-enable_relationship = true # 是否启用关系系统
-relation_frequency = 1 # 关系频率，麦麦构建关系的频率
-
-
 [chat] #麦麦的聊天通用设置
 focus_value = 1 
 # 麦麦的专注思考能力，越高越容易专注，可能消耗更多token
@@ -95,6 +90,12 @@ talk_frequency_adjust = [
 # - 当第一个元素为"platform:id:type"格式时，表示特定聊天流配置
 # - 后续元素是"时间,频率"格式，表示从该时间开始使用该活跃度，直到下一个时间点
 # - 优先级：特定聊天流配置 > 全局配置 > 默认 talk_frequency
+
+
+[relationship]
+enable_relationship = true # 是否启用关系系统
+relation_frequency = 1 # 关系频率，麦麦构建关系的频率
+
 
 [message_receive]
 # 以下是消息过滤，可以根据规则过滤特定消息，将不会读取这些消息
