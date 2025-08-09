@@ -389,7 +389,10 @@ class HeartFChatting:
                     chat_target_info=planner_info[1],
                     current_available_actions=planner_info[2],
                 )
-                await events_manager.handle_mai_events(EventType.ON_PLAN, None, prompt_info[0], None, self.chat_stream.stream_id)
+                if not await events_manager.handle_mai_events(
+                    EventType.ON_PLAN, None, prompt_info[0], None, self.chat_stream.stream_id
+                ):
+                    return False
                 with Timer("规划器", cycle_timers):
                     plan_result, target_message = await self.action_planner.plan(mode=self.loop_mode)
 
@@ -761,6 +764,7 @@ class HeartFChatting:
                 available_actions=available_actions,
                 enable_tool=global_config.tool.enable_tool,
                 request_type=request_type,
+                from_plugin=False,
             )
 
             if not success or not reply_set:

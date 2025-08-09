@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from maim_message import Seg
 
 from src.llm_models.payload_content.tool_option import ToolParamType as ToolParamType
+from src.llm_models.payload_content.tool_option import ToolCall as ToolCall
 
 # 组件类型枚举
 class ComponentType(Enum):
@@ -259,8 +260,20 @@ class MaiMessages:
     llm_prompt: Optional[str] = None
     """LLM提示词"""
 
-    llm_response: Optional[str] = None
+    llm_response_content: Optional[str] = None
     """LLM响应内容"""
+    
+    llm_response_reasoning: Optional[str] = None
+    """LLM响应推理内容"""
+    
+    llm_response_model: Optional[str] = None
+    """LLM响应模型名称"""
+    
+    llm_response_tool_call: Optional[List[ToolCall]] = None
+    """LLM使用的工具调用"""
+    
+    action_usage: Optional[List[str]] = None
+    """使用的Action"""
 
     additional_data: Dict[Any, Any] = field(default_factory=dict)
     """附加数据，可以存储额外信息"""

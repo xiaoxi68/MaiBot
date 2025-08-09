@@ -29,8 +29,9 @@ from src.chat.memory_system.instant_memory import InstantMemory
 from src.mood.mood_manager import mood_manager
 from src.person_info.relationship_fetcher import relationship_fetcher_manager
 from src.person_info.person_info import get_person_info_manager
-from src.plugin_system.base.component_types import ActionInfo
+from src.plugin_system.base.component_types import ActionInfo, EventType
 from src.plugin_system.apis import llm_api
+
 
 logger = get_logger("replyer")
 
@@ -179,7 +180,10 @@ class DefaultReplyer:
         extra_info: str = "",
         available_actions: Optional[Dict[str, ActionInfo]] = None,
         enable_tool: bool = True,
-    ) -> Tuple[bool, Optional[str], Optional[str]]:
+        from_plugin: bool = True,
+        stream_id: Optional[str] = None,
+    ) -> Tuple[bool, Optional[Dict[str, Any]], Optional[str]]:
+        # sourcery skip: merge-nested-ifs
         """
         回复器 (Replier): 负责生成回复文本的核心逻辑。
 
@@ -188,9 +192,10 @@ class DefaultReplyer:
             extra_info: 额外信息，用于补充上下文
             available_actions: 可用的动作信息字典
             enable_tool: 是否启用工具调用
+            from_plugin: 是否来自插件
 
         Returns:
-            Tuple[bool, Optional[str], Optional[str]]: (是否成功, 生成的回复内容, 使用的prompt)
+            Tuple[bool, Optional[Dict[str, Any]], Optional[str]]: (是否成功, 生成的回复, 使用的prompt)
         """
         prompt = None
         if available_actions is None:
@@ -208,6 +213,13 @@ class DefaultReplyer:
             if not prompt:
                 logger.warning("构建prompt失败，跳过回复生成")
                 return False, None, None
+            from src.plugin_system.core.events_manager import events_manager
+
+            if not from_plugin:
+                if not await events_manager.handle_mai_events(
+                    EventType.POST_LLM, None, prompt, None, stream_id=stream_id
+                ):
+                    raise UserWarning("插件于请求前中断了内容生成")
 
             # 4. 调用 LLM 生成回复
             content = None
@@ -215,16 +227,29 @@ class DefaultReplyer:
             model_name = "unknown_model"
 
             try:
-                content, reasoning_content, model_name, _ = await self.llm_generate_content(prompt)
+                content, reasoning_content, model_name, tool_call = await self.llm_generate_content(prompt)
                 logger.debug(f"replyer生成内容: {content}")
-
+                llm_response = {
+                    "content": content,
+                    "reasoning": reasoning_content,
+                    "model": model_name,
+                    "tool_calls": tool_call,
+                }
+                if not from_plugin and not await events_manager.handle_mai_events(
+                    EventType.AFTER_LLM, None, prompt, llm_response, stream_id=stream_id
+                ):
+                    raise UserWarning("插件于请求后取消了内容生成")
+            except UserWarning as e:
+                raise e
             except Exception as llm_e:
                 # 精简报错信息
                 logger.error(f"LLM 生成失败: {llm_e}")
                 return False, None, prompt  # LLM 调用失败则无法生成回复
 
-            return True, content, prompt
+            return True, llm_response, prompt
 
+        except UserWarning as uw:
+            raise uw
         except Exception as e:
             logger.error(f"回复生成意外失败: {e}")
             traceback.print_exc()
@@ -1022,6 +1047,7 @@ class DefaultReplyer:
         related_info = ""
         start_time = time.time()
         from src.plugins.built_in.knowledge.lpmm_get_knowledge import SearchKnowledgeFromLPMMTool
+
         if not reply_to:
             logger.debug("没有回复对象，跳过获取知识库内容")
             return ""

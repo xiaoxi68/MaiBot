@@ -53,9 +53,6 @@ class LLMRequest:
         }
         """模型使用量记录，用于进行负载均衡，对应为(total_tokens, penalty, usage_penalty)，惩罚值是为了能在某个模型请求不给力或正在被使用的时候进行调整"""
 
-        self.pri_in = 0
-        self.pri_out = 0
-
     async def generate_response_for_image(
         self,
         prompt: str,

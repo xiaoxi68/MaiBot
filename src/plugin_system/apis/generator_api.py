@@ -86,6 +86,7 @@ async def generate_reply(
     return_prompt: bool = False,
     model_set_with_weight: Optional[List[Tuple[TaskConfig, float]]] = None,
     request_type: str = "generator_api",
+    from_plugin: bool = True,
 ) -> Tuple[bool, List[Tuple[str, Any]], Optional[str]]:
     """生成回复
 
@@ -102,12 +103,15 @@ async def generate_reply(
         return_prompt: 是否返回提示词
         model_set_with_weight: 模型配置列表，每个元素为 (TaskConfig, weight) 元组
         request_type: 请求类型（可选，记录LLM使用）
+        from_plugin: 是否来自插件
     Returns:
         Tuple[bool, List[Tuple[str, Any]], Optional[str]]: (是否成功, 回复集合, 提示词)
     """
     try:
         # 获取回复器
-        replyer = get_replyer(chat_stream, chat_id, model_set_with_weight=model_set_with_weight, request_type=request_type)
+        replyer = get_replyer(
+            chat_stream, chat_id, model_set_with_weight=model_set_with_weight, request_type=request_type
+        )
         if not replyer:
             logger.error("[GeneratorAPI] 无法获取回复器")
             return False, [], None
@@ -120,20 +124,23 @@ async def generate_reply(
             extra_info = action_data.get("extra_info", "")
 
         # 调用回复器生成回复
-        success, content, prompt = await replyer.generate_reply_with_context(
+        success, llm_response_dict, prompt = await replyer.generate_reply_with_context(
             reply_to=reply_to,
             extra_info=extra_info,
             available_actions=available_actions,
             enable_tool=enable_tool,
+            from_plugin=from_plugin,
+            stream_id=chat_stream.stream_id if chat_stream else chat_id,
         )
-        reply_set = []
-        if content:
-            reply_set = await process_human_text(content, enable_splitter, enable_chinese_typo)
-
-        if success:
-            logger.debug(f"[GeneratorAPI] 回复生成成功，生成了 {len(reply_set)} 个回复项")
-        else:
+        if not success:
             logger.warning("[GeneratorAPI] 回复生成失败")
+            return False, [], None
+        assert llm_response_dict is not None, "llm_response_dict不应为None"  # 虽然说不会出现llm_response为空的情况
+        if content := llm_response_dict.get("content", ""):
+            reply_set = process_human_text(content, enable_splitter, enable_chinese_typo)
+        else:
+            reply_set = []
+        logger.debug(f"[GeneratorAPI] 回复生成成功，生成了 {len(reply_set)} 个回复项")
 
         if return_prompt:
             return success, reply_set, prompt
@@ -142,6 +149,10 @@ async def generate_reply(
 
     except ValueError as ve:
         raise ve
+
+    except UserWarning as uw:
+        logger.warning(f"[GeneratorAPI] 中断了生成: {uw}")
+        return False, [], None
 
     except Exception as e:
         logger.error(f"[GeneratorAPI] 生成回复时出错: {e}")
@@ -202,7 +213,7 @@ async def rewrite_reply(
         )
         reply_set = []
         if content:
-            reply_set = await process_human_text(content, enable_splitter, enable_chinese_typo)
+            reply_set = process_human_text(content, enable_splitter, enable_chinese_typo)
 
         if success:
             logger.info(f"[GeneratorAPI] 重写回复成功，生成了 {len(reply_set)} 个回复项")
@@ -219,7 +230,7 @@ async def rewrite_reply(
         return False, [], None
 
 
-async def process_human_text(content: str, enable_splitter: bool, enable_chinese_typo: bool) -> List[Tuple[str, Any]]:
+def process_human_text(content: str, enable_splitter: bool, enable_chinese_typo: bool) -> List[Tuple[str, Any]]:
     """将文本处理为更拟人化的文本
 
     Args:
@@ -242,6 +253,7 @@ async def process_human_text(content: str, enable_splitter: bool, enable_chinese
     except Exception as e:
         logger.error(f"[GeneratorAPI] 处理人形文本时出错: {e}")
         return []
+
 
 async def generate_response_custom(
     chat_stream: Optional[ChatStream] = None,
