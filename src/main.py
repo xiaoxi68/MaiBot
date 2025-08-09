@@ -52,12 +52,20 @@ class MainSystem:
 
     async def initialize(self):
         """初始化系统组件"""
-        logger.debug(f"正在唤醒{global_config.bot.nickname}......")
+        logger.info(f"正在唤醒{global_config.bot.nickname}......")
 
         # 其他初始化任务
         await asyncio.gather(self._init_components())
 
-        logger.debug("系统初始化完成")
+        logger.info(f"""
+--------------------------------
+全部系统初始化完成，{global_config.bot.nickname}已成功唤醒
+--------------------------------
+如果想要自定义{global_config.bot.nickname}的功能,请查阅：https://docs.mai-mai.org/manual/usage/
+或者遇到了问题，请访问我们的文档:https://docs.mai-mai.org/
+--------------------------------
+如果你想要编写或了解插件相关内容，请访问开发文档https://docs.mai-mai.org/develop/
+--------------------------------""")
 
     async def _init_components(self):
         """初始化其他组件"""
