@@ -296,7 +296,7 @@ class ActionPlanner:
                 by_what = "聊天内容"
                 target_prompt = '\n    "target_message_id":"触发action的消息id"'
                 no_action_block = f"""重要说明：
-- 'no_reply' 表示只进行不进行回复，等待合适的回复时机
+- 'no_reply' 表示只进行不进行回复，等待合适的回复时机（由系统直接处理）
 - 当你刚刚发送了消息，没有人回复时，选择no_reply
 - 当你一次发送了太多消息，为了避免打扰聊天节奏，选择no_reply
 

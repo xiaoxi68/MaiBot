@@ -1,21 +1,21 @@
 {
   "manifest_version": 1,
-  "name": "核心动作插件 (Core Actions)",
+  "name": "Emoji插件 (Emoji Actions)",
   "version": "1.0.0",
-  "description": "系统核心动作插件，提供基础聊天交互功能，包括回复、不回复、表情包发送和聊天模式切换等核心功能。",
+  "description": "可以发送和管理Emoji",
   "author": {
-    "name": "MaiBot团队",
+    "name": "SengokuCola",
     "url": "https://github.com/MaiM-with-u"
   },
   "license": "GPL-v3.0-or-later",
   
   "host_application": {
-    "min_version": "0.8.0"
+    "min_version": "0.10.0"
   },
   "homepage_url": "https://github.com/MaiM-with-u/maibot",
   "repository_url": "https://github.com/MaiM-with-u/maibot",
-  "keywords": ["core", "chat", "reply", "emoji", "action", "built-in"],
-  "categories": ["Core System", "Chat Management"],
+  "keywords": ["emoji", "action", "built-in"],
+  "categories": ["Emoji"],
   
   "default_locale": "zh-CN",
   "locales_path": "_locales",
@@ -24,11 +24,6 @@
     "is_built_in": true,
     "plugin_type": "action_provider",
     "components": [
-      {
-        "type": "action", 
-        "name": "no_reply",
-        "description": "暂时不回复消息，等待新消息或超时"
-      },
       {
         "type": "action",
         "name": "emoji", 

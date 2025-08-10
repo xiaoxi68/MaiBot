@@ -15,7 +15,7 @@ from src.plugin_system.base.config_types import ConfigField
 from src.common.logger import get_logger
 
 # 导入API模块 - 标准Python包方式
-from src.plugins.built_in.core_actions.no_reply import NoReplyAction
+# NoReplyAction已集成到heartFC_chat.py中，不再需要导入
 from src.plugins.built_in.core_actions.emoji import EmojiAction
 
 logger = get_logger("core_actions")
@@ -50,10 +50,9 @@ class CoreActionsPlugin(BasePlugin):
     config_schema: dict = {
         "plugin": {
             "enabled": ConfigField(type=bool, default=True, description="是否启用插件"),
-            "config_version": ConfigField(type=str, default="0.5.0", description="配置文件版本"),
+            "config_version": ConfigField(type=str, default="0.6.0", description="配置文件版本"),
         },
         "components": {
-            "enable_no_reply": ConfigField(type=bool, default=True, description="是否启用不回复动作"),
             "enable_emoji": ConfigField(type=bool, default=True, description="是否启用发送表情/图片动作"),
         },
     }
@@ -63,8 +62,6 @@ class CoreActionsPlugin(BasePlugin):
 
         # --- 根据配置注册组件 ---
         components = []
-        if self.get_config("components.enable_no_reply", True):
-            components.append((NoReplyAction.get_action_info(), NoReplyAction))
         if self.get_config("components.enable_emoji", True):
             components.append((EmojiAction.get_action_info(), EmojiAction))
 

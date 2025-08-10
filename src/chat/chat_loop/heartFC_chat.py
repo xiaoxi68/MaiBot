@@ -25,7 +25,7 @@ from src.plugin_system.apis import generator_api, send_api, message_api, databas
 from src.chat.willing.willing_manager import get_willing_manager
 from src.mais4u.mai_think import mai_thinking_manager
 from src.mais4u.constant_s4u import ENABLE_S4U
-from src.plugins.built_in.core_actions.no_reply import NoReplyAction
+# no_reply逻辑已集成到heartFC_chat.py中，不再需要导入
 from src.chat.chat_loop.hfc_utils import send_typing, stop_typing
 
 ERROR_LOOP_INFO = {
@@ -427,7 +427,6 @@ class HeartFChatting:
             message_data = {}
         action_type = "no_action"
         reply_text = ""  # 初始化reply_text变量，避免UnboundLocalError
-        gen_task = None  # 初始化gen_task变量，避免UnboundLocalError
         reply_to_str = ""  # 初始化reply_to_str变量
 
         # 创建新的循环信息
@@ -484,18 +483,6 @@ class HeartFChatting:
                     }
                     target_message = message_data
 
-                # 如果normal模式且不跳过规划器，开始一个回复生成进程，先准备好回复（其实是和planer同时进行的）
-                if not skip_planner:
-                    reply_to_str = await self.build_reply_to_str(message_data)
-                    gen_task = asyncio.create_task(
-                        self._generate_response(
-                            message_data=message_data,
-                            available_actions=available_actions,
-                            reply_to=reply_to_str,
-                            request_type="chat.replyer.normal",
-                        )
-                    )
-
             if not skip_planner:
                 planner_info = self.action_planner.get_necessary_info()
                 prompt_info = await self.action_planner.build_planner_prompt(
@@ -520,193 +507,198 @@ class HeartFChatting:
 
                 action_data["loop_start_time"] = loop_start_time
 
-            if action_type == "reply":
-                logger.info(f"{self.log_prefix}{global_config.bot.nickname} 决定进行回复")
-            elif is_parallel:
-                logger.info(f"{self.log_prefix}{global_config.bot.nickname} 决定进行回复, 同时执行{action_type}动作")
-            else:
-                # 只有在gen_task存在时才进行相关操作
-                if gen_task:
-                    if not gen_task.done():
-                        gen_task.cancel()
-                        logger.debug(f"{self.log_prefix} 已取消预生成的回复任务")
-                        logger.info(
-                            f"{self.log_prefix}{global_config.bot.nickname} 原本想要回复，但选择执行{action_type}，不发表回复"
-                        )
-                    elif generation_result := gen_task.result():
-                        content = " ".join([item[1] for item in generation_result if item[0] == "text"])
-                        logger.debug(f"{self.log_prefix} 预生成的回复任务已完成")
-                        logger.info(
-                            f"{self.log_prefix}{global_config.bot.nickname} 原本想要回复：{content}，但选择执行{action_type}，不发表回复"
-                        )
-                    else:
-                        logger.warning(f"{self.log_prefix} 预生成的回复任务未生成有效内容")
-
             action_message = message_data or target_message
-            if action_type == "reply":
-                # 等待回复生成完毕
-                if self.loop_mode == ChatMode.NORMAL:
-                    # 只有在gen_task存在时才等待
-                    if not gen_task:
-                        reply_to_str = await self.build_reply_to_str(message_data)
-                        gen_task = asyncio.create_task(
-                            self._generate_response(
-                                message_data=message_data,
-                                available_actions=available_actions,
-                                reply_to=reply_to_str,
-                                request_type="chat.replyer.normal",
+            
+            # 重构后的动作处理逻辑：先汇总所有动作，然后并行执行
+            actions = []
+            
+            # 1. 添加Planner取得的动作
+            actions.append({
+                "action_type": action_type,
+                "reasoning": reasoning,
+                "action_data": action_data,
+                "action_message": action_message,
+                "available_actions": available_actions  # 添加这个字段
+            })
+            
+            # 2. 如果不是reply动作且需要并行执行，额外添加reply动作
+            if action_type != "reply" and is_parallel:
+                actions.append({
+                    "action_type": "reply",
+                    "action_message": action_message,
+                    "available_actions": available_actions
+                })
+            
+            # 3. 并行执行所有动作
+            async def execute_action(action_info):
+                """执行单个动作的通用函数"""
+                try:
+                    if action_info["action_type"] == "no_reply":
+                        # 直接处理no_reply逻辑，不再通过动作系统
+                        reason = action_info.get("reasoning", "选择不回复")
+                        logger.info(f"{self.log_prefix} 选择不回复，原因: {reason}")
+                        
+                        # 存储no_reply信息到数据库
+                        await database_api.store_action_info(
+                            chat_stream=self.chat_stream,
+                            action_build_into_prompt=False,
+                            action_prompt_display=reason,
+                            action_done=True,
+                            thinking_id=thinking_id,
+                            action_data={"reason": reason},
+                            action_name="no_reply",
+                        )
+                        
+                        return {
+                            "action_type": "no_reply",
+                            "success": True,
+                            "reply_text": "",
+                            "command": ""
+                        }
+                    elif action_info["action_type"] != "reply":
+                        # 执行普通动作
+                        with Timer("动作执行", cycle_timers):
+                            success, reply_text, command = await self._handle_action(
+                                action_info["action_type"],
+                                action_info["reasoning"],
+                                action_info["action_data"],
+                                cycle_timers,
+                                thinking_id,
+                                action_info["action_message"]
                             )
-                        )
-
-                    gather_timeout = global_config.chat.thinking_timeout
-                    try:
-                        response_set = await asyncio.wait_for(gen_task, timeout=gather_timeout)
-                    except asyncio.TimeoutError:
-                        logger.warning(f"{self.log_prefix} 回复生成超时>{global_config.chat.thinking_timeout}s，已跳过")
-                        response_set = None
-
-                    # 模型炸了或超时，没有回复内容生成
-                    if not response_set:
-                        logger.warning(f"{self.log_prefix}模型未生成回复内容")
-                        return False
-                else:
-                    logger.info(f"{self.log_prefix}{global_config.bot.nickname} 决定进行回复 (focus模式)")
-
-                    # 构建reply_to字符串
-                    reply_to_str = await self.build_reply_to_str(action_message)
-
-                    # 生成回复
-                    with Timer("回复生成", cycle_timers):
-                        response_set = await self._generate_response(
-                            message_data=action_message,
-                            available_actions=available_actions,
-                            reply_to=reply_to_str,
-                            request_type="chat.replyer.focus",
-                        )
-
-                    if not response_set:
-                        logger.warning(f"{self.log_prefix}模型未生成回复内容")
-                        return False
-
-                loop_info, reply_text, cycle_timers = await self._send_and_store_reply(
-                    response_set, reply_to_str, loop_start_time, action_message, cycle_timers, thinking_id, plan_result
-                )
-
-                return True
-
-            else:
-                # 并行执行：同时进行回复发送和动作执行
-                # 先置空防止未定义错误
-                background_reply_task = None
-                background_action_task = None
-                # 如果是并行执行且在normal模式下，需要等待预生成的回复任务完成并发送回复
-                if self.loop_mode == ChatMode.NORMAL and is_parallel and gen_task:
-
-                    async def handle_reply_task() -> Tuple[Optional[Dict[str, Any]], str, Dict[str, float]]:
-                        # 等待预生成的回复任务完成
+                        return {
+                            "action_type": action_info["action_type"],
+                            "success": success,
+                            "reply_text": reply_text,
+                            "command": command
+                        }
+                    else:
+                        # 执行回复动作
+                        reply_to_str = await self.build_reply_to_str(action_info["action_message"])
+                        request_type = "chat.replyer"
+                        
+                        # 生成回复
                         gather_timeout = global_config.chat.thinking_timeout
                         try:
-                            response_set = await asyncio.wait_for(gen_task, timeout=gather_timeout)
-
+                            response_set = await asyncio.wait_for(
+                                self._generate_response(
+                                    message_data=action_info["action_message"],
+                                    available_actions=action_info["available_actions"],
+                                    reply_to=reply_to_str,
+                                    request_type=request_type,
+                                ),
+                                timeout=gather_timeout
+                            )
                         except asyncio.TimeoutError:
                             logger.warning(
                                 f"{self.log_prefix} 并行执行：回复生成超时>{global_config.chat.thinking_timeout}s，已跳过"
                             )
-                            return None, "", {}
+                            return {
+                                "action_type": "reply",
+                                "success": False,
+                                "reply_text": "",
+                                "loop_info": None
+                            }
                         except asyncio.CancelledError:
                             logger.debug(f"{self.log_prefix} 并行执行：回复生成任务已被取消")
-                            return None, "", {}
+                            return {
+                                "action_type": "reply",
+                                "success": False,
+                                "reply_text": "",
+                                "loop_info": None
+                            }
 
                         if not response_set:
                             logger.warning(f"{self.log_prefix} 模型超时或生成回复内容为空")
-                            return None, "", {}
+                            return {
+                                "action_type": "reply",
+                                "success": False,
+                                "reply_text": "",
+                                "loop_info": None
+                            }
 
-                        reply_to_str = await self.build_reply_to_str(action_message)
                         loop_info, reply_text, cycle_timers_reply = await self._send_and_store_reply(
                             response_set,
                             reply_to_str,
                             loop_start_time,
-                            action_message,
+                            action_info["action_message"],
                             cycle_timers,
                             thinking_id,
                             plan_result,
                         )
-                        return loop_info, reply_text, cycle_timers_reply
-
-                    # 执行回复任务并赋值到变量
-                    background_reply_task = asyncio.create_task(handle_reply_task())
-
-                # 动作执行任务
-                async def handle_action_task():
-                    with Timer("动作执行", cycle_timers):
-                        success, reply_text, command = await self._handle_action(
-                            action_type, reasoning, action_data, cycle_timers, thinking_id, action_message
-                        )
-                    return success, reply_text, command
-
-                # 执行动作任务并赋值到变量
-                background_action_task = asyncio.create_task(handle_action_task())
-
-                reply_loop_info = None
-                reply_text_from_reply = ""
-                action_success = False
-                action_reply_text = ""
-                action_command = ""
-
-                # 并行执行所有任务
-                if background_reply_task:
-                    results = await asyncio.gather(
-                        background_reply_task, background_action_task, return_exceptions=True
-                    )
-                    # 处理回复任务结果
-                    reply_result = results[0]
-                    if isinstance(reply_result, BaseException):
-                        logger.error(f"{self.log_prefix} 回复任务执行异常: {reply_result}")
-                    elif reply_result and reply_result[0] is not None:
-                        reply_loop_info, reply_text_from_reply, _ = reply_result
-
-                    # 处理动作任务结果
-                    action_task_result = results[1]
-                    if isinstance(action_task_result, BaseException):
-                        logger.error(f"{self.log_prefix} 动作任务执行异常: {action_task_result}")
-                    else:
-                        action_success, action_reply_text, action_command = action_task_result
-                else:
-                    results = await asyncio.gather(background_action_task, return_exceptions=True)
-                    # 只有动作任务
-                    action_task_result = results[0]
-                    if isinstance(action_task_result, BaseException):
-                        logger.error(f"{self.log_prefix} 动作任务执行异常: {action_task_result}")
-                    else:
-                        action_success, action_reply_text, action_command = action_task_result
-
-                # 构建最终的循环信息
-                if reply_loop_info:
-                    # 如果有回复信息，使用回复的loop_info作为基础
-                    loop_info = reply_loop_info
-                    # 更新动作执行信息
-                    loop_info["loop_action_info"].update(
-                        {
-                            "action_taken": action_success,
-                            "command": action_command,
-                            "taken_time": time.time(),
+                        return {
+                            "action_type": "reply",
+                            "success": True,
+                            "reply_text": reply_text,
+                            "loop_info": loop_info
                         }
-                    )
-                    reply_text = reply_text_from_reply
-                else:
-                    # 没有回复信息，构建纯动作的loop_info
-                    loop_info = {
-                        "loop_plan_info": {
-                            "action_result": plan_result.get("action_result", {}),
-                        },
-                        "loop_action_info": {
-                            "action_taken": action_success,
-                            "reply_text": action_reply_text,
-                            "command": action_command,
-                            "taken_time": time.time(),
-                        },
+                except Exception as e:
+                    logger.error(f"{self.log_prefix} 执行动作时出错: {e}")
+                    return {
+                        "action_type": action_info["action_type"],
+                        "success": False,
+                        "reply_text": "",
+                        "loop_info": None,
+                        "error": str(e)
                     }
-                    reply_text = action_reply_text
+            
+            # 创建所有动作的后台任务
+            action_tasks = [asyncio.create_task(execute_action(action)) for action in actions]
+            
+            # 并行执行所有任务
+            results = await asyncio.gather(*action_tasks, return_exceptions=True)
+            
+            # 处理执行结果
+            reply_loop_info = None
+            reply_text_from_reply = ""
+            action_success = False
+            action_reply_text = ""
+            action_command = ""
+            
+            for i, result in enumerate(results):
+                if isinstance(result, BaseException):
+                    logger.error(f"{self.log_prefix} 动作执行异常: {result}")
+                    continue
+                
+                action_info = actions[i]
+                if result["action_type"] != "reply":
+                    action_success = result["success"]
+                    action_reply_text = result["reply_text"]
+                    action_command = result.get("command", "")
+                elif result["action_type"] == "reply":
+                    if result["success"]:
+                        reply_loop_info = result["loop_info"]
+                        reply_text_from_reply = result["reply_text"]
+                    else:
+                        logger.warning(f"{self.log_prefix} 回复动作执行失败")
+
+            # 构建最终的循环信息
+            if reply_loop_info:
+                # 如果有回复信息，使用回复的loop_info作为基础
+                loop_info = reply_loop_info
+                # 更新动作执行信息
+                loop_info["loop_action_info"].update(
+                    {
+                        "action_taken": action_success,
+                        "command": action_command,
+                        "taken_time": time.time(),
+                    }
+                )
+                reply_text = reply_text_from_reply
+            else:
+                # 没有回复信息，构建纯动作的loop_info
+                loop_info = {
+                    "loop_plan_info": {
+                        "action_result": plan_result.get("action_result", {}),
+                    },
+                    "loop_action_info": {
+                        "action_taken": action_success,
+                        "reply_text": action_reply_text,
+                        "command": action_command,
+                        "taken_time": time.time(),
+                    },
+                }
+                reply_text = action_reply_text
                     
         self.last_action = action_type
 
@@ -722,7 +714,7 @@ class HeartFChatting:
 
         # 管理no_reply计数器：当执行了非no_reply动作时，重置计数器
         if action_type != "no_reply" and action_type != "no_action":
-            # 导入NoReplyAction并重置计数器
+            # no_reply逻辑已集成到heartFC_chat.py中，直接重置计数器
             self.recent_interest_records.clear()
             self.no_reply_consecutive = 0
             logger.info(f"{self.log_prefix} 执行了{action_type}动作，重置no_reply计数器")
