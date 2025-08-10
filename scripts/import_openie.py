@@ -14,7 +14,6 @@ from src.chat.knowledge.open_ie import OpenIE
 from src.chat.knowledge.kg_manager import KGManager
 from src.common.logger import get_logger
 from src.chat.knowledge.utils.hash import get_sha256
-from src.manager.local_store_manager import local_storage
 
 
 # 添加项目根目录到 sys.path
@@ -60,7 +59,9 @@ def hash_deduplicate(
     ):
         # 段落hash
         paragraph_hash = get_sha256(raw_paragraph)
-        if f"{local_storage['pg_namespace']}-{paragraph_hash}" in stored_pg_hashes and paragraph_hash in stored_paragraph_hashes:
+        # 使用与EmbeddingStore中一致的命名空间格式：namespace-hash
+        paragraph_key = f"paragraph-{paragraph_hash}"
+        if paragraph_key in stored_pg_hashes and paragraph_hash in stored_paragraph_hashes:
             continue
         new_raw_paragraphs[paragraph_hash] = raw_paragraph
         new_triple_list_data[paragraph_hash] = triple_list
@@ -221,7 +222,8 @@ def main():  # sourcery skip: dict-comprehension
 
     # 数据比对：Embedding库与KG的段落hash集合
     for pg_hash in kg_manager.stored_paragraph_hashes:
-        key = f"{local_storage['pg_namespace']}-{pg_hash}"
+        # 使用与EmbeddingStore中一致的命名空间格式：namespace-hash
+        key = f"paragraph-{pg_hash}"
         if key not in embed_manager.stored_pg_hashes:
             logger.warning(f"KG中存在Embedding库中不存在的段落：{key}")
 

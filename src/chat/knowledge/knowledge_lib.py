@@ -59,6 +59,7 @@ if global_config.lpmm_knowledge.enable:
 
     # 数据比对：Embedding库与KG的段落hash集合
     for pg_hash in kg_manager.stored_paragraph_hashes:
+        # 使用与EmbeddingStore中一致的命名空间格式
         key = f"paragraph-{pg_hash}"
         if key not in embed_manager.stored_pg_hashes:
             logger.warning(f"KG中存在Embedding库中不存在的段落：{key}")
