@@ -251,21 +251,23 @@ class HeartFChatting:
         new_message_count = len(new_message)
         
 
-        talk_frequency = global_config.chat.get_current_talk_frequency(self.stream_id)
-        modified_exit_count_threshold = self.focus_energy / talk_frequency
+        # talk_frequency = global_config.chat.get_current_talk_frequency(self.stream_id)
+        modified_exit_count_threshold = self.focus_energy / global_config.chat.focus_value
+        
+        total_interest = 0.0
+        for msg_dict in new_message:
+            interest_value = msg_dict.get("interest_value", 0.0)
+            if msg_dict.get("processed_plain_text", ""):
+                total_interest += interest_value
         
         if new_message_count >= modified_exit_count_threshold:
             # 记录兴趣度到列表
-            total_interest = 0.0
-            for msg_dict in new_message:
-                interest_value = msg_dict.get("interest_value", 0.0)
-                if msg_dict.get("processed_plain_text", ""):
-                    total_interest += interest_value
+            
             
             self.recent_interest_records.append(total_interest)
             
             logger.info(
-                f"{self.log_prefix} 累计消息数量达到{new_message_count}条(>{modified_exit_count_threshold})，结束等待"
+                f"{self.log_prefix} 累计消息数量达到{new_message_count}条(>{modified_exit_count_threshold:.1f})，结束等待"
             )
             logger.info(self.last_read_time)
             logger.info(new_message)
@@ -273,31 +275,24 @@ class HeartFChatting:
 
         # 检查累计兴趣值
         if new_message_count > 0:
-            accumulated_interest = 0.0
-            for msg_dict in new_message:
-                text = msg_dict.get("processed_plain_text", "")
-                interest_value = msg_dict.get("interest_value", 0.0)
-                if text:
-                    accumulated_interest += interest_value
-            
             # 只在兴趣值变化时输出log
-            if not hasattr(self, "_last_accumulated_interest") or accumulated_interest != self._last_accumulated_interest:
-                logger.info(f"{self.log_prefix} breaking形式当前累计兴趣值: {accumulated_interest:.2f}, 当前聊天频率: {talk_frequency:.2f}")
-                self._last_accumulated_interest = accumulated_interest
+            if not hasattr(self, "_last_accumulated_interest") or total_interest != self._last_accumulated_interest:
+                logger.info(f"{self.log_prefix} breaking形式当前累计兴趣值: {total_interest:.2f}, 专注度: {global_config.chat.focus_value:.1f}")
+                self._last_accumulated_interest = total_interest
             
-            if accumulated_interest >= 3 / talk_frequency:
+            if total_interest >= 3 / global_config.chat.focus_value:
                 # 记录兴趣度到列表
-                self.recent_interest_records.append(accumulated_interest)
+                self.recent_interest_records.append(total_interest)
                 
                 logger.info(
-                    f"{self.log_prefix} 累计兴趣值达到{accumulated_interest:.2f}(>{5 / talk_frequency})，结束等待"
+                    f"{self.log_prefix} 累计兴趣值达到{total_interest:.2f}(>{3 / global_config.chat.focus_value})，结束等待"
                 )
-                return True,accumulated_interest/new_message_count
+                return True,total_interest/new_message_count
 
         # 每10秒输出一次等待状态
         if int(time.time() - self.last_read_time) > 0 and int(time.time() - self.last_read_time) % 10 == 0:
             logger.info(
-                f"{self.log_prefix} 已等待{time.time() - self.last_read_time:.0f}秒，累计{new_message_count}条消息，继续等待..."
+                f"{self.log_prefix} 已等待{time.time() - self.last_read_time:.0f}秒，累计{new_message_count}条消息，累计兴趣{total_interest:.1f}，继续等待..."
             )
             await asyncio.sleep(0.5)
         
@@ -423,7 +418,7 @@ class HeartFChatting:
             x0 = 1.0  # 控制曲线中心点
             return 1.0 / (1.0 + math.exp(-k * (interest_val - x0)))
         
-        normal_mode_probability = calculate_normal_mode_probability(interest_value)
+        normal_mode_probability = calculate_normal_mode_probability(interest_value) / global_config.chat.get_current_talk_frequency(self.stream_id)
         
         # 根据概率决定使用哪种模式
         if random.random() < normal_mode_probability:
