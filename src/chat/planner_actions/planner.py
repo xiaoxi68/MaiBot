@@ -139,6 +139,7 @@ class ActionPlanner:
                 chat_target_info=chat_target_info,  # <-- 传递获取到的聊天目标信息
                 current_available_actions=current_available_actions,  # <-- Pass determined actions
                 mode=mode,
+                refresh_time=True,
             )
 
             # --- 调用 LLM (普通文本生成) ---
@@ -266,6 +267,7 @@ class ActionPlanner:
         is_group_chat: bool,  # Now passed as argument
         chat_target_info: Optional[dict],  # Now passed as argument
         current_available_actions: Dict[str, ActionInfo],
+        refresh_time :bool = False,
         mode: ChatMode = ChatMode.FOCUS,
     ) -> tuple[str, list]:  # sourcery skip: use-join
         """构建 Planner LLM 的提示词 (获取模板并填充数据)"""
@@ -296,8 +298,9 @@ class ActionPlanner:
             )
 
             actions_before_now_block = f"你刚刚选择并执行过的action是：\n{actions_before_now_block}"
-
-            self.last_obs_time_mark = time.time()
+            if refresh_time:
+                self.last_obs_time_mark = time.time()
+            # logger.info(f"{self.log_prefix}当前时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
             
             mentioned_bonus = ""
             if global_config.chat.mentioned_bot_inevitable_reply:

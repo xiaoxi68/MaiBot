@@ -595,7 +595,7 @@ class HeartFChatting:
                     }
             
             # 创建所有动作的后台任务
-            print(actions)
+            # print(actions)
             
             action_tasks = [asyncio.create_task(execute_action(action)) for action in actions]
             
