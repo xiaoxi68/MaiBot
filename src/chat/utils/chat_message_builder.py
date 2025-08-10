@@ -1098,6 +1098,10 @@ async def get_person_id_list(messages: List[Dict[str, Any]]) -> List[str]:
         if not all([platform, user_id]) or user_id == global_config.bot.qq_account:
             continue
 
+        # 添加空值检查，防止 platform 为 None 时出错
+        if platform is None:
+            platform = "unknown"
+
         if person_id := PersonInfoManager.get_person_id(platform, user_id):
             person_ids_set.add(person_id)
 

@@ -81,7 +81,10 @@ class PersonInfoManager:
     @staticmethod
     def get_person_id(platform: str, user_id: Union[int, str]) -> str:
         """获取唯一id"""
-        if "-" in platform:
+        # 添加空值检查，防止 platform 为 None 时出错
+        if platform is None:
+            platform = "unknown"
+        elif "-" in platform:
             platform = platform.split("-")[1]
 
         components = [platform, str(user_id)]

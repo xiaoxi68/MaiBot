@@ -75,20 +75,14 @@ def init_prompt():
 {relation_info_block}
 {extra_info_block}
 
-
 {identity}
 
 {action_descriptions}
-你现在的主要任务是和 {sender_name} 聊天。同时，也有其他用户会参与聊天，你可以参考他们的回复内容，但是你主要还是关注你和{sender_name}的聊天内容。
 
 {time_block}
-这是所有聊天内容：
+你现在的主要任务是和 {sender_name} 聊天。同时，也有其他用户会参与聊天，你可以参考他们的回复内容，但是你现在想回复{sender_name}的发言。
+
 {background_dialogue_prompt}
---------------------------------
-
-{time_block}
-这是你和{sender_name}的对话，你们正在交流中：
-
 {core_dialogue_prompt}
 
 {reply_target_block}
@@ -555,7 +549,7 @@ class DefaultReplyer:
         return name, result, duration
 
     def build_s4u_chat_history_prompts(
-        self, message_list_before_now: List[Dict[str, Any]], target_user_id: str
+        self, message_list_before_now: List[Dict[str, Any]], target_user_id: str, sender: str
     ) -> Tuple[str, str]:
         """
         构建 s4u 风格的分离对话 prompt
@@ -568,7 +562,6 @@ class DefaultReplyer:
             Tuple[str, str]: (核心对话prompt, 背景对话prompt)
         """
         core_dialogue_list = []
-        background_dialogue_list = []
         bot_id = str(global_config.bot.qq_account)
 
         # 过滤消息：分离bot和目标用户的对话 vs 其他用户的对话
@@ -580,41 +573,53 @@ class DefaultReplyer:
                 if (msg_user_id == bot_id and reply_to_user_id == target_user_id) or msg_user_id == target_user_id:
                     # bot 和目标用户的对话
                     core_dialogue_list.append(msg_dict)
-                else:
-                    # 其他用户的对话
-                    background_dialogue_list.append(msg_dict)
             except Exception as e:
                 logger.error(f"处理消息记录时出错: {msg_dict}, 错误: {e}")
 
         # 构建背景对话 prompt
-        background_dialogue_prompt = ""
+        all_dialogue_prompt = ""
         if message_list_before_now:
-            latest_25_msgs = message_list_before_now[-int(global_config.chat.max_context_size * 0.5) :]
-            background_dialogue_prompt_str = build_readable_messages(
+            latest_25_msgs = message_list_before_now[-int(global_config.chat.max_context_size) :]
+            all_dialogue_prompt_str = build_readable_messages(
                 latest_25_msgs,
                 replace_bot_name=True,
                 timestamp_mode="normal_no_YMD",
                 truncate=True,
             )
-            background_dialogue_prompt = f"这是其他用户的发言：\n{background_dialogue_prompt_str}"
+            all_dialogue_prompt = f"所有用户的发言：\n{all_dialogue_prompt_str}"
 
         # 构建核心对话 prompt
         core_dialogue_prompt = ""
         if core_dialogue_list:
-            core_dialogue_list = core_dialogue_list[-int(global_config.chat.max_context_size * 2) :]  # 限制消息数量
+            # 检查最新五条消息中是否包含bot自己说的消息
+            latest_5_messages = core_dialogue_list[-5:] if len(core_dialogue_list) >= 5 else core_dialogue_list
+            has_bot_message = any(str(msg.get("user_id")) == bot_id for msg in latest_5_messages)
+            
+            # logger.info(f"最新五条消息：{latest_5_messages}")
+            # logger.info(f"最新五条消息中是否包含bot自己说的消息：{has_bot_message}")
+            
+            # 如果最新五条消息中不包含bot的消息，则返回空字符串
+            if not has_bot_message:
+                core_dialogue_prompt = ""
+            else:
+                core_dialogue_list = core_dialogue_list[-int(global_config.chat.max_context_size * 2) :]  # 限制消息数量
+                
+                core_dialogue_prompt_str = build_readable_messages(
+                    core_dialogue_list,
+                    replace_bot_name=True,
+                    merge_messages=False,
+                    timestamp_mode="normal_no_YMD",
+                    read_mark=0.0,
+                    truncate=True,
+                    show_actions=True,
+                )
+                core_dialogue_prompt = f"""--------------------------------
+这是你和{sender}的对话，你们正在交流中：
+{core_dialogue_prompt_str}
+--------------------------------
+"""
 
-            core_dialogue_prompt_str = build_readable_messages(
-                core_dialogue_list,
-                replace_bot_name=True,
-                merge_messages=False,
-                timestamp_mode="normal_no_YMD",
-                read_mark=0.0,
-                truncate=True,
-                show_actions=True,
-            )
-            core_dialogue_prompt = core_dialogue_prompt_str
-
-        return core_dialogue_prompt, background_dialogue_prompt
+        return core_dialogue_prompt, all_dialogue_prompt
 
     def build_mai_think_context(
         self,
@@ -842,7 +847,7 @@ class DefaultReplyer:
 
         # 构建分离的对话 prompt
         core_dialogue_prompt, background_dialogue_prompt = self.build_s4u_chat_history_prompts(
-            message_list_before_now_long, target_user_id
+            message_list_before_now_long, target_user_id, sender
         )
 
         self.build_mai_think_context(

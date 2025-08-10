@@ -301,31 +301,6 @@ class Expression(BaseModel):
     class Meta:
         table_name = "expression"
 
-
-class ThinkingLog(BaseModel):
-    chat_id = TextField(index=True)
-    trigger_text = TextField(null=True)
-    response_text = TextField(null=True)
-
-    # Store complex dicts/lists as JSON strings
-    trigger_info_json = TextField(null=True)
-    response_info_json = TextField(null=True)
-    timing_results_json = TextField(null=True)
-    chat_history_json = TextField(null=True)
-    chat_history_in_thinking_json = TextField(null=True)
-    chat_history_after_response_json = TextField(null=True)
-    heartflow_data_json = TextField(null=True)
-    reasoning_data_json = TextField(null=True)
-
-    # Add a timestamp for the log entry itself
-    # Ensure you have: from peewee import DateTimeField
-    # And: import datetime
-    created_at = DateTimeField(default=datetime.datetime.now)
-
-    class Meta:
-        table_name = "thinking_logs"
-
-
 class GraphNodes(BaseModel):
     """
     用于存储记忆图节点的模型
@@ -373,7 +348,6 @@ def create_tables():
                 OnlineTime,
                 PersonInfo,
                 Expression,
-                ThinkingLog,
                 GraphNodes,  # 添加图节点表
                 GraphEdges,  # 添加图边表
                 Memory,
@@ -403,7 +377,6 @@ def initialize_database(sync_constraints=False):
         PersonInfo,
         Expression,
         Memory,
-        ThinkingLog,
         GraphNodes,
         GraphEdges,
         ActionRecords,  # 添加 ActionRecords 到初始化列表
@@ -502,7 +475,6 @@ def sync_field_constraints():
         PersonInfo,
         Expression,
         Memory,
-        ThinkingLog,
         GraphNodes,
         GraphEdges,
         ActionRecords,
@@ -682,7 +654,6 @@ def check_field_constraints():
         PersonInfo,
         Expression,
         Memory,
-        ThinkingLog,
         GraphNodes,
         GraphEdges,
         ActionRecords,

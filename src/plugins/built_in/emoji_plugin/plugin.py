@@ -14,9 +14,7 @@ from src.plugin_system.base.config_types import ConfigField
 # 导入依赖的系统组件
 from src.common.logger import get_logger
 
-# 导入API模块 - 标准Python包方式
-# NoReplyAction已集成到heartFC_chat.py中，不再需要导入
-from src.plugins.built_in.core_actions.emoji import EmojiAction
+from src.plugins.built_in.emoji_plugin.emoji import EmojiAction
 
 logger = get_logger("core_actions")
 
