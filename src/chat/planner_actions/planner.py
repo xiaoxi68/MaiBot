@@ -1,7 +1,7 @@
 import json
 import time
 import traceback
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, List
 from rich.traceback import install
 from datetime import datetime
 from json_repair import repair_json
@@ -113,8 +113,11 @@ class ActionPlanner:
         return message_id_list[-1].get("message")
 
     async def plan(
-        self, mode: ChatMode = ChatMode.FOCUS
-    ) -> Tuple[Dict[str, Dict[str, Any] | str], Optional[Dict[str, Any]]]:
+        self,
+        mode: ChatMode = ChatMode.FOCUS,
+        loop_start_time:float = 0.0,
+        available_actions: Optional[Dict[str, ActionInfo]] = None,
+    ) -> Tuple[List[Dict[str, Any]], Optional[Dict[str, Any]]]:
         """
         规划器 (Planner): 使用LLM根据上下文决定做出什么动作。
         """
@@ -183,7 +186,7 @@ class ActionPlanner:
                             action_data[key] = value
 
                     # 在FOCUS模式下，非no_reply动作需要target_message_id
-                    if mode == ChatMode.FOCUS and action != "no_reply":
+                    if action != "no_reply":
                         if target_message_id := parsed_json.get("target_message_id"):
                             # 根据target_message_id查找原始消息
                             target_message = self.find_message_by_id(target_message_id, message_id_list)
@@ -205,8 +208,9 @@ class ActionPlanner:
                                 # 成功获取到target_message，重置计数器
                                 self.plan_retry_count = 0
                         else:
-                            logger.warning(f"{self.log_prefix}FOCUS模式下动作'{action}'缺少target_message_id")
-
+                            logger.warning(f"{self.log_prefix}动作'{action}'缺少target_message_id")
+                    
+                    
                     if action == "no_action":
                         reasoning = "normal决定不使用额外动作"
                     elif action != "no_reply" and action != "reply" and action not in current_available_actions:
@@ -231,22 +235,31 @@ class ActionPlanner:
         is_parallel = False
         if mode == ChatMode.NORMAL and action in current_available_actions:
             is_parallel = current_available_actions[action].parallel_action
-
-        action_result = {
+            
+            
+        action_data["loop_start_time"] = loop_start_time
+        
+        actions = []
+            
+        # 1. 添加Planner取得的动作
+        actions.append({
             "action_type": action,
-            "action_data": action_data,
             "reasoning": reasoning,
-            "timestamp": time.time(),
-            "is_parallel": is_parallel,
-        }
-
-        return (
-            {
-                "action_result": action_result,
-                "action_prompt": prompt,
-            },
-            target_message,
-        )
+            "action_data": action_data,
+            "action_message": target_message,
+            "available_actions": available_actions  # 添加这个字段
+        })
+        
+        if action != "reply" and is_parallel:
+            actions.append({
+                "action_type": "reply",
+                "action_message": target_message,
+                "available_actions": available_actions
+            })
+            
+        return actions,target_message
+    
+    
 
     async def build_planner_prompt(
         self,
@@ -285,25 +298,30 @@ class ActionPlanner:
             actions_before_now_block = f"你刚刚选择并执行过的action是：\n{actions_before_now_block}"
 
             self.last_obs_time_mark = time.time()
+            
+            mentioned_bonus = ""
+            if global_config.chat.mentioned_bot_inevitable_reply:
+                mentioned_bonus = "\n- 有人提到你"
+            if global_config.chat.at_bot_inevitable_reply:
+                mentioned_bonus = "\n- 有人提到你，或者at你"
+            
 
             if mode == ChatMode.FOCUS:
-                mentioned_bonus = ""
-                if global_config.chat.mentioned_bot_inevitable_reply:
-                    mentioned_bonus = "\n- 有人提到你"
-                if global_config.chat.at_bot_inevitable_reply:
-                    mentioned_bonus = "\n- 有人提到你，或者at你"
+                
 
                 by_what = "聊天内容"
                 target_prompt = '\n    "target_message_id":"触发action的消息id"'
                 no_action_block = f"""重要说明：
-- 'no_reply' 表示只进行不进行回复，等待合适的回复时机（由系统直接处理）
+- 'no_reply' 表示只进行不进行回复，等待合适的回复时机
 - 当你刚刚发送了消息，没有人回复时，选择no_reply
 - 当你一次发送了太多消息，为了避免打扰聊天节奏，选择no_reply
 
 动作：reply
 动作描述：参与聊天回复，发送文本进行表达
-- 你想要闲聊或者随便附和{mentioned_bonus}
+- 你想要闲聊或者随便附
+- {mentioned_bonus}
 - 如果你刚刚进行了回复，不要对同一个话题重复回应
+- 不要回复自己发送的消息
 {{
     "action": "reply",
     "target_message_id":"触发action的消息id",
@@ -314,9 +332,21 @@ class ActionPlanner:
             else:
                 by_what = "聊天内容和用户的最新消息"
                 target_prompt = ""
-                no_action_block = """重要说明：
+                no_action_block = f"""重要说明：
 - 'reply' 表示只进行普通聊天回复，不执行任何额外动作
-- 其他action表示在普通回复的基础上，执行相应的额外动作"""
+- 其他action表示在普通回复的基础上，执行相应的额外动作
+
+动作：reply
+动作描述：参与聊天回复，发送文本进行表达
+- 你想要闲聊或者随便附
+- {mentioned_bonus}
+- 如果你刚刚进行了回复，不要对同一个话题重复回应
+- 不要回复自己发送的消息
+{{
+    "action": "reply",
+    "target_message_id":"触发action的消息id",
+    "reason":"回复的原因"
+}}"""
 
             chat_context_description = "你现在正在一个群聊中"
             chat_target_name = None  # Only relevant for private
