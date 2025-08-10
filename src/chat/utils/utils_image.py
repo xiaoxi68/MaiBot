@@ -120,10 +120,11 @@ class ImageManager:
             try:
                 from src.chat.emoji_system.emoji_manager import get_emoji_manager
                 emoji_manager = get_emoji_manager()
-                cached_emoji_description = await emoji_manager.get_emoji_description_by_hash(image_hash)
-                if cached_emoji_description:
-                    logger.info(f"[缓存命中] 使用已注册表情包描述: {cached_emoji_description[:50]}...")
-                    return cached_emoji_description
+                tags = await emoji_manager.get_emoji_tag_by_hash(image_hash)
+                if tags:
+                    tag_str = ",".join(tags)
+                    logger.info(f"[缓存命中] 使用已注册表情包描述: {tag_str}...")
+                    return f"[表情包：{tag_str}]"
             except Exception as e:
                 logger.debug(f"查询EmojiManager时出错: {e}")
 

@@ -267,6 +267,8 @@ class HeartFChatting:
             logger.info(
                 f"{self.log_prefix} 累计消息数量达到{new_message_count}条(>{modified_exit_count_threshold})，结束等待"
             )
+            logger.info(self.last_read_time)
+            logger.info(new_message)
             return True,total_interest/new_message_count
 
         # 检查累计兴趣值
@@ -317,8 +319,9 @@ class HeartFChatting:
         should_process,interest_value = await self._should_process_messages(recent_messages_dict)
         
         if should_process:
-            earliest_message_data = recent_messages_dict[0]
-            self.last_read_time = earliest_message_data.get("time")
+            # earliest_message_data = recent_messages_dict[0]
+            # self.last_read_time = earliest_message_data.get("time")
+            self.last_read_time = time.time()
             await self._observe(interest_value = interest_value)
 
         else:

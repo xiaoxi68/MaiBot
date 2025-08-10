@@ -38,7 +38,7 @@ def init_prompt():
 
 {moderation_prompt}
 
-现在请你根据{by_what}选择合适的action和触发action的消息:
+现在请你根据聊天内容和用户的最新消息选择合适的action和触发action的消息:
 {actions_before_now_block}
 
 {no_action_block}
@@ -57,7 +57,8 @@ def init_prompt():
 动作描述：{action_description}
 {action_require}
 {{
-    "action": "{action_name}",{action_parameters}{target_prompt}
+    "action": "{action_name}",{action_parameters},
+    "target_message_id":"触发action的消息id",
     "reason":"触发action的原因"
 }}
 """,
@@ -310,10 +311,6 @@ class ActionPlanner:
             
 
             if mode == ChatMode.FOCUS:
-                
-
-                by_what = "聊天内容"
-                target_prompt = '\n    "target_message_id":"触发action的消息id"'
                 no_action_block = f"""重要说明：
 - 'no_reply' 表示只进行不进行回复，等待合适的回复时机
 - 当你刚刚发送了消息，没有人回复时，选择no_reply
@@ -333,8 +330,6 @@ class ActionPlanner:
 
 """
             else:
-                by_what = "聊天内容和用户的最新消息"
-                target_prompt = ""
                 no_action_block = f"""重要说明：
 - 'reply' 表示只进行普通聊天回复，不执行任何额外动作
 - 其他action表示在普通回复的基础上，执行相应的额外动作
@@ -381,7 +376,6 @@ class ActionPlanner:
                     action_description=using_actions_info.description,
                     action_parameters=param_text,
                     action_require=require_text,
-                    target_prompt=target_prompt,
                 )
 
                 action_options_block += using_action_prompt
@@ -401,7 +395,6 @@ class ActionPlanner:
             planner_prompt_template = await global_prompt_manager.get_prompt_async("planner_prompt")
             prompt = planner_prompt_template.format(
                 time_block=time_block,
-                by_what=by_what,
                 chat_context_description=chat_context_description,
                 chat_content_block=chat_content_block,
                 actions_before_now_block=actions_before_now_block,
