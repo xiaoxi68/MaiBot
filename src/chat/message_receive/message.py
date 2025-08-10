@@ -116,6 +116,9 @@ class MessageRecv(Message):
         self.priority_mode = "interest"
         self.priority_info = None
         self.interest_value: float = None  # type: ignore
+        
+        self.key_words = []
+        self.key_words_lite = []
 
     def update_chat_stream(self, chat_stream: "ChatStream"):
         self.chat_stream = chat_stream

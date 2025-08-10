@@ -32,8 +32,7 @@ class NoReplyAction(BaseAction):
     action_name = "no_reply"
     action_description = "暂时不回复消息"
     
-    # 最近三次no_reply的新消息兴趣度记录
-    _recent_interest_records: deque = deque(maxlen=3)
+
 
     # 兴趣值退出阈值
     _interest_exit_threshold = 3.0
@@ -75,15 +74,3 @@ class NoReplyAction(BaseAction):
                 action_done=True,
             )
             return False, f"不回复动作执行失败: {e}"
-
-    @classmethod
-    def reset_consecutive_count(cls):
-        """重置连续计数器和兴趣度记录"""
-        cls._recent_interest_records.clear()
-        logger.debug("NoReplyAction连续计数器和兴趣度记录已重置")
-
-    @classmethod
-    def get_recent_interest_records(cls) -> List[float]:
-        """获取最近的兴趣度记录"""
-        return list(cls._recent_interest_records)
-

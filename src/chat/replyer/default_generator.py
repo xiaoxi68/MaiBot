@@ -79,10 +79,13 @@ def init_prompt():
 {identity}
 
 {action_descriptions}
-你现在的主要任务是和 {sender_name} 聊天。同时，也有其他用户会参与你们的聊天，你可以参考他们的回复内容，但是你主要还是关注你和{sender_name}的聊天内容。
+你现在的主要任务是和 {sender_name} 聊天。同时，也有其他用户会参与聊天，你可以参考他们的回复内容，但是你主要还是关注你和{sender_name}的聊天内容。
 
+{time_block}
+这是所有聊天内容：
 {background_dialogue_prompt}
 --------------------------------
+
 {time_block}
 这是你和{sender_name}的对话，你们正在交流中：
 
@@ -585,8 +588,8 @@ class DefaultReplyer:
 
         # 构建背景对话 prompt
         background_dialogue_prompt = ""
-        if background_dialogue_list:
-            latest_25_msgs = background_dialogue_list[-int(global_config.chat.max_context_size * 0.5) :]
+        if message_list_before_now:
+            latest_25_msgs = message_list_before_now[-int(global_config.chat.max_context_size * 0.5) :]
             background_dialogue_prompt_str = build_readable_messages(
                 latest_25_msgs,
                 replace_bot_name=True,

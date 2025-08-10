@@ -322,14 +322,14 @@ class Hippocampus:
         # 使用LLM提取关键词 - 根据详细文本长度分布优化topic_num计算
         text_length = len(text)
         topic_num: int | list[int] = 0
-        if text_length <= 5:
+        if text_length <= 6:
             words = jieba.cut(text)
             keywords = [word for word in words if len(word) > 1]
             keywords = list(set(keywords))[:3]  # 限制最多3个关键词
             if keywords:
                 logger.debug(f"提取关键词: {keywords}")
             return keywords
-        elif text_length <= 10:
+        elif text_length <= 12:
             topic_num = [1, 3]  # 6-10字符: 1个关键词 (27.18%的文本)
         elif text_length <= 20:
             topic_num = [2, 4]  # 11-20字符: 2个关键词 (22.76%的文本)
@@ -776,7 +776,7 @@ class Hippocampus:
         total_nodes = len(self.memory_graph.G.nodes())
         # activated_nodes = len(activate_map)
         activation_ratio = total_activation / total_nodes if total_nodes > 0 else 0
-        activation_ratio = activation_ratio * 60
+        activation_ratio = activation_ratio * 50
         logger.debug(f"总激活值: {total_activation:.2f}, 总节点数: {total_nodes}, 激活: {activation_ratio}")
 
         return activation_ratio, keywords

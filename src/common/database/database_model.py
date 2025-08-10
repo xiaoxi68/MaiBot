@@ -130,6 +130,9 @@ class Messages(BaseModel):
     reply_to = TextField(null=True)
 
     interest_value = DoubleField(null=True)
+    key_words = TextField(null=True)
+    key_words_lite = TextField(null=True)
+    
     is_mentioned = BooleanField(null=True)
 
     # 从 chat_info 扁平化而来的字段
