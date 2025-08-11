@@ -175,14 +175,6 @@ temperature = 0.2
 max_tokens = 800
 ```
 
-### replyer_2 - 次要回复模型
-```toml
-[model_task_config.replyer_2]
-model_list = ["siliconflow-deepseek-v3"]
-temperature = 0.7
-max_tokens = 800
-```
-
 ### planner - 决策模型
 负责决定MaiBot该做什么：
 ```toml
