@@ -60,7 +60,7 @@ class MaiThinking:
         self.sender = ""
         self.target = ""
 
-        self.thinking_model = LLMRequest(model_set=model_config.model_task_config.replyer_1, request_type="thinking")
+        self.thinking_model = LLMRequest(model_set=model_config.model_task_config.replyer, request_type="thinking")
 
     async def do_think_before_response(self):
         pass

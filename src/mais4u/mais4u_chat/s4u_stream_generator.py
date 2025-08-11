@@ -13,8 +13,8 @@ logger = get_logger("s4u_stream_generator")
 
 class S4UStreamGenerator:
     def __init__(self):
-        replyer_1_config = model_config.model_task_config.replyer_1
-        model_to_use = replyer_1_config.model_list[0]
+        replyer_config = model_config.model_task_config.replyer
+        model_to_use = replyer_config.model_list[0]
         model_info = model_config.get_model_info(model_to_use)
         if not model_info:
             logger.error(f"模型 {model_to_use} 在配置中未找到")
@@ -22,8 +22,8 @@ class S4UStreamGenerator:
         provider_name = model_info.api_provider
         provider_info = model_config.get_provider(provider_name)
         if not provider_info:
-            logger.error("`replyer_1` 找不到对应的Provider")
-            raise ValueError("`replyer_1` 找不到对应的Provider")
+            logger.error("`replyer` 找不到对应的Provider")
+            raise ValueError("`replyer` 找不到对应的Provider")
 
         api_key = provider_info.api_key
         base_url = provider_info.base_url
@@ -34,7 +34,7 @@ class S4UStreamGenerator:
 
         self.client_1 = AsyncOpenAIClient(api_key=api_key, base_url=base_url)
         self.model_1_name = model_to_use
-        self.replyer_1_config = replyer_1_config
+        self.replyer_config = replyer_config
 
         self.current_model_name = "unknown model"
         self.partial_response = ""
@@ -104,10 +104,10 @@ class S4UStreamGenerator:
         self.current_model_name = self.model_1_name
 
         extra_kwargs = {}
-        if self.replyer_1_config.get("enable_thinking") is not None:
-            extra_kwargs["enable_thinking"] = self.replyer_1_config.get("enable_thinking")
-        if self.replyer_1_config.get("thinking_budget") is not None:
-            extra_kwargs["thinking_budget"] = self.replyer_1_config.get("thinking_budget")
+        if self.replyer_config.get("enable_thinking") is not None:
+            extra_kwargs["enable_thinking"] = self.replyer_config.get("enable_thinking")
+        if self.replyer_config.get("thinking_budget") is not None:
+            extra_kwargs["thinking_budget"] = self.replyer_config.get("thinking_budget")
 
         async for chunk in self._generate_response_with_model(
             prompt, current_client, self.current_model_name, **extra_kwargs
