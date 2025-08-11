@@ -327,10 +327,7 @@ class DefaultReplyer:
         use_expression, _, _ = global_config.expression.get_expression_config_for_chat(self.chat_stream.stream_id)
         if not use_expression:
             return ""
-
         style_habits = []
-        grammar_habits = []
-
         # 使用从处理器传来的选中表达方式
         # LLM模式：调用LLM选择5-10个，然后随机选5个
         selected_expressions = await expression_selector.select_suitable_expressions_llm(
@@ -341,17 +338,12 @@ class DefaultReplyer:
             logger.debug(f"使用处理器选中的{len(selected_expressions)}个表达方式")
             for expr in selected_expressions:
                 if isinstance(expr, dict) and "situation" in expr and "style" in expr:
-                    expr_type = expr.get("type", "style")
-                    if expr_type == "grammar":
-                        grammar_habits.append(f"当{expr['situation']}时，使用 {expr['style']}")
-                    else:
-                        style_habits.append(f"当{expr['situation']}时，使用 {expr['style']}")
+                    style_habits.append(f"当{expr['situation']}时，使用 {expr['style']}")
         else:
             logger.debug("没有从处理器获得表达方式，将使用空的表达方式")
             # 不再在replyer中进行随机选择，全部交给处理器处理
 
         style_habits_str = "\n".join(style_habits)
-        grammar_habits_str = "\n".join(grammar_habits)
 
         # 动态构建expression habits块
         expression_habits_block = ""
@@ -361,14 +353,6 @@ class DefaultReplyer:
                 "你可以参考以下的语言习惯，当情景合适就使用，但不要生硬使用，以合理的方式结合到你的回复中："
             )
             expression_habits_block += f"{style_habits_str}\n"
-        if grammar_habits_str.strip():
-            expression_habits_title = (
-                "你可以选择下面的句法进行回复，如果情景合适就使用，不要盲目使用,不要生硬使用，以合理的方式使用："
-            )
-            expression_habits_block += f"{grammar_habits_str}\n"
-
-        if style_habits_str.strip() and grammar_habits_str.strip():
-            expression_habits_title = "你可以参考以下的语言习惯和句法，如果情景合适就使用，不要盲目使用,不要生硬使用，以合理的方式结合到你的回复中："
 
         return f"{expression_habits_title}\n{expression_habits_block}"
 

@@ -124,8 +124,8 @@ class ExpressionSelector:
         return [chat_id]
 
     def get_random_expressions(
-        self, chat_id: str, total_num: int, style_percentage: float, grammar_percentage: float
-    ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        self, chat_id: str, total_num: int
+    ) -> List[Dict[str, Any]]:
         # sourcery skip: extract-duplicate-method, move-assign
         # 支持多chat_id合并抽选
         related_chat_ids = self.get_related_chat_ids(chat_id)
@@ -133,9 +133,6 @@ class ExpressionSelector:
         # 优化：一次性查询所有相关chat_id的表达方式
         style_query = Expression.select().where(
             (Expression.chat_id.in_(related_chat_ids)) & (Expression.type == "style")
-        )
-        grammar_query = Expression.select().where(
-            (Expression.chat_id.in_(related_chat_ids)) & (Expression.type == "grammar")
         )
 
         style_exprs = [
@@ -151,33 +148,13 @@ class ExpressionSelector:
             for expr in style_query
         ]
 
-        grammar_exprs = [
-            {
-                "situation": expr.situation,
-                "style": expr.style,
-                "count": expr.count,
-                "last_active_time": expr.last_active_time,
-                "source_id": expr.chat_id,
-                "type": "grammar",
-                "create_date": expr.create_date if expr.create_date is not None else expr.last_active_time,
-            }
-            for expr in grammar_query
-        ]
-
-        style_num = int(total_num * style_percentage)
-        grammar_num = int(total_num * grammar_percentage)
         # 按权重抽样（使用count作为权重）
         if style_exprs:
             style_weights = [expr.get("count", 1) for expr in style_exprs]
-            selected_style = weighted_sample(style_exprs, style_weights, style_num)
+            selected_style = weighted_sample(style_exprs, style_weights, total_num)
         else:
             selected_style = []
-        if grammar_exprs:
-            grammar_weights = [expr.get("count", 1) for expr in grammar_exprs]
-            selected_grammar = weighted_sample(grammar_exprs, grammar_weights, grammar_num)
-        else:
-            selected_grammar = []
-        return selected_style, selected_grammar
+        return selected_style
 
     def update_expressions_count_batch(self, expressions_to_update: List[Dict[str, Any]], increment: float = 0.1):
         """对一批表达方式更新count值，按chat_id+type分组后一次性写入数据库"""
@@ -230,7 +207,7 @@ class ExpressionSelector:
             return []
 
         # 1. 获取35个随机表达方式（现在按权重抽取）
-        style_exprs, grammar_exprs = self.get_random_expressions(chat_id, 30, 0.5, 0.5)
+        style_exprs = self.get_random_expressions(chat_id, 30)
 
         # 2. 构建所有表达方式的索引和情境列表
         all_expressions = []
@@ -241,14 +218,6 @@ class ExpressionSelector:
             if isinstance(expr, dict) and "situation" in expr and "style" in expr:
                 expr_with_type = expr.copy()
                 expr_with_type["type"] = "style"
-                all_expressions.append(expr_with_type)
-                all_situations.append(f"{len(all_expressions)}.{expr['situation']}")
-
-        # 添加grammar表达方式
-        for expr in grammar_exprs:
-            if isinstance(expr, dict) and "situation" in expr and "style" in expr:
-                expr_with_type = expr.copy()
-                expr_with_type["type"] = "grammar"
                 all_expressions.append(expr_with_type)
                 all_situations.append(f"{len(all_expressions)}.{expr['situation']}")
 
