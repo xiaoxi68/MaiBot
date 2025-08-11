@@ -278,7 +278,7 @@ class RelationshipManager:
         current_time = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
         # 解析当前态度值
         attitude_parts = current_attitude.split(',')
-        current_attitude_score = int(attitude_parts[0]) if len(attitude_parts) > 0 else 0
+        current_attitude_score = float(attitude_parts[0]) if len(attitude_parts) > 0 else 0.0
         total_confidence = float(attitude_parts[1]) if len(attitude_parts) > 1 else 1.0
         
         prompt = await global_prompt_manager.format_prompt(
@@ -316,7 +316,7 @@ class RelationshipManager:
         current_time = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
         # 解析当前态度值
         neuroticism_parts = current_neuroticism.split(',')
-        current_neuroticism_score = int(neuroticism_parts[0]) if len(neuroticism_parts) > 0 else 0
+        current_neuroticism_score = float(neuroticism_parts[0]) if len(neuroticism_parts) > 0 else 0.0
         total_confidence = float(neuroticism_parts[1]) if len(neuroticism_parts) > 1 else 1.0
         
         prompt = await global_prompt_manager.format_prompt(

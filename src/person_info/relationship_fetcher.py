@@ -137,29 +137,37 @@ class RelationshipFetcher:
             nickname_str = f"(ta在{platform}上的昵称是{nickname_str})"
 
         relation_info = ""
-
+        
+        attitude_info = ""
+        attitude_parts = attitude_to_me.split(',')
+        current_attitude_score = float(attitude_parts[0]) if len(attitude_parts) > 0 else 0.0
+        total_confidence = float(attitude_parts[1]) if len(attitude_parts) > 1 else 1.0
         if attitude_to_me:
-            if attitude_to_me > 8:
+            if current_attitude_score > 8:
                 attitude_info = f"{person_name}对你的态度十分好,"
-            elif attitude_to_me > 5:
+            elif current_attitude_score > 5:
                 attitude_info = f"{person_name}对你的态度较好,"
                 
             
-            if attitude_to_me < -8:
+            if current_attitude_score < -8:
                 attitude_info = f"{person_name}对你的态度十分恶劣,"
-            elif attitude_to_me < -4:
+            elif current_attitude_score < -4:
                 attitude_info = f"{person_name}对你的态度不好,"
-            elif attitude_to_me < 0:
+            elif current_attitude_score < 0:
                 attitude_info = f"{person_name}对你的态度一般,"
                 
+        neuroticism_info = ""
+        neuroticism_parts = neuroticism.split(',')
+        current_neuroticism_score = float(neuroticism_parts[0]) if len(neuroticism_parts) > 0 else 0.0
+        total_confidence = float(neuroticism_parts[1]) if len(neuroticism_parts) > 1 else 1.0
         if neuroticism:
-            if neuroticism > 8:
+            if current_neuroticism_score > 8:
                 neuroticism_info = f"{person_name}的情绪十分活跃，容易情绪化,"
-            elif neuroticism > 6:
+            elif current_neuroticism_score > 6:
                 neuroticism_info = f"{person_name}的情绪比较活跃,"
-            elif neuroticism > 4:
+            elif current_neuroticism_score > 4:
                 neuroticism_info = ""
-            elif neuroticism > 2:
+            elif current_neuroticism_score > 2:
                 neuroticism_info = f"{person_name}的情绪比较稳定,"
             else:
                 neuroticism_info = f"{person_name}的情绪非常稳定,毫无波动"
