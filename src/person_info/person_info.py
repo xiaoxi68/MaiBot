@@ -492,7 +492,8 @@ class PersonInfoManager:
         if field_name in JSON_SERIALIZED_FIELDS and default_value_for_field is None:
             default_value_for_field = []
 
-        if record := PersonInfo.get_or_none(PersonInfo.person_id == person_id):
+        record = PersonInfo.get_or_none(PersonInfo.person_id == person_id)
+        if record:
             val = getattr(record, field_name, None)
             if field_name in JSON_SERIALIZED_FIELDS:
                 if isinstance(val, str):

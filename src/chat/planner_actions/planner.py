@@ -320,9 +320,6 @@ class ActionPlanner:
 
             if mode == ChatMode.FOCUS:
                 no_action_block = """
-- 'no_reply' 表示不进行回复，等待合适的回复时机
-- 当你刚刚发送了消息，没有人回复时，选择no_reply
-- 当你一次发送了太多消息，为了避免打扰聊天节奏，选择no_reply
 动作：no_reply
 动作描述：不进行回复，等待合适的回复时机
 - 当你刚刚发送了消息，没有人回复时，选择no_reply

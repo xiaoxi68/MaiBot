@@ -100,7 +100,6 @@ class PromptBuilder:
     async def build_expression_habits(self, chat_stream: ChatStream, chat_history, target):
 
         style_habits = []
-        grammar_habits = []
 
         # 使用从处理器传来的选中表达方式
         # LLM模式：调用LLM选择5-10个，然后随机选5个
@@ -112,24 +111,18 @@ class PromptBuilder:
             logger.debug(f" 使用处理器选中的{len(selected_expressions)}个表达方式")
             for expr in selected_expressions:
                 if isinstance(expr, dict) and "situation" in expr and "style" in expr:
-                    expr_type = expr.get("type", "style")
-                    if expr_type == "grammar":
-                        grammar_habits.append(f"当{expr['situation']}时，使用 {expr['style']}")
-                    else:
-                        style_habits.append(f"当{expr['situation']}时，使用 {expr['style']}")
+                    style_habits.append(f"当{expr['situation']}时，使用 {expr['style']}")
         else:
             logger.debug("没有从处理器获得表达方式，将使用空的表达方式")
             # 不再在replyer中进行随机选择，全部交给处理器处理
 
         style_habits_str = "\n".join(style_habits)
-        grammar_habits_str = "\n".join(grammar_habits)
 
         # 动态构建expression habits块
         expression_habits_block = ""
         if style_habits_str.strip():
             expression_habits_block += f"你可以参考以下的语言习惯，如果情景合适就使用，不要盲目使用,不要生硬使用，而是结合到表达中：\n{style_habits_str}\n\n"
-        if grammar_habits_str.strip():
-            expression_habits_block += f"请你根据情景使用以下句法：\n{grammar_habits_str}\n"
+
 
         return expression_habits_block
 

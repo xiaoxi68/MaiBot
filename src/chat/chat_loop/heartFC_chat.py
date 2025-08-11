@@ -18,7 +18,8 @@ from src.chat.chat_loop.hfc_utils import CycleDetail
 from src.person_info.relationship_builder_manager import relationship_builder_manager
 from src.chat.express.expression_learner import expression_learner_manager
 from src.person_info.person_info import get_person_info_manager
-from src.plugin_system.base.component_types import ActionInfo, ChatMode, EventType
+from src.person_info.group_relationship_manager import get_group_relationship_manager
+from src.plugin_system.base.component_types import ChatMode, EventType
 from src.plugin_system.core import events_manager
 from src.plugin_system.apis import generator_api, send_api, message_api, database_api
 from src.mais4u.mai_think import mai_thinking_manager
@@ -89,6 +90,7 @@ class HeartFChatting:
 
         self.relationship_builder = relationship_builder_manager.get_or_create_builder(self.stream_id)
         self.expression_learner = expression_learner_manager.get_expression_learner(self.stream_id)
+        self.group_relationship_manager = get_group_relationship_manager()
         
 
         self.action_manager = ActionManager()
@@ -386,6 +388,14 @@ class HeartFChatting:
             await self.relationship_builder.build_relation()
             await self.expression_learner.trigger_learning_for_chat()
 
+            # 群印象构建：仅在群聊中触发
+            if self.chat_stream.group_info and getattr(self.chat_stream.group_info, "group_id", None):
+                await self.group_relationship_manager.build_relation(
+                    chat_id=self.stream_id,
+                    platform=self.chat_stream.platform,
+                    group_number=self.chat_stream.group_info.group_id
+                )
+
 
             if random.random() > global_config.chat.focus_value and mode == ChatMode.FOCUS:
                 #如果激活度没有激活，并且聊天活跃度低，有可能不进行plan，相当于不在电脑前
@@ -543,7 +553,7 @@ class HeartFChatting:
                     logger.error(f"{self.log_prefix} 动作执行异常: {result}")
                     continue
                 
-                action_info = actions[i]
+                _cur_action = actions[i]
                 if result["action_type"] != "reply":
                     action_success = result["success"]
                     action_reply_text = result["reply_text"]
