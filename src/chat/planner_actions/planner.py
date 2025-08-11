@@ -42,9 +42,21 @@ def init_prompt():
 {actions_before_now_block}
 
 {no_action_block}
+
+动作：reply
+动作描述：参与聊天回复，发送文本进行表达
+- 你想要闲聊或者随便附
+- {mentioned_bonus}
+- 如果你刚刚进行了回复，不要对同一个话题重复回应
+{{
+    "action": "reply",
+    "target_message_id":"想要回复的消息id",
+    "reason":"回复的原因"
+}}
+
 {action_options_text}
 
-你必须从上面列出的可用action中选择一个，并说明触发action的消息id（不是消息原文）和选择该action的原因。
+你必须从上面列出的可用action中选择一个，并说明触发action的消息id（不是消息原文）和选择该action的原因。消息id格式:m+数字
 
 请根据动作示例，以严格的 JSON 格式输出，且仅包含 JSON 内容：
 """,
@@ -82,7 +94,6 @@ class ActionPlanner:
         self.max_plan_retries = 3
 
     def find_message_by_id(self, message_id: str, message_id_list: list) -> Optional[Dict[str, Any]]:
-        # sourcery skip: use-next
         """
         根据message_id从message_id_list中查找对应的原始消息
 
@@ -180,19 +191,18 @@ class ActionPlanner:
                         parsed_json = {}
 
                     action = parsed_json.get("action", "no_reply")
-                    reasoning = parsed_json.get("reasoning", "未提供原因")
+                    reasoning = parsed_json.get("reason", "未提供原因")
 
                     # 将所有其他属性添加到action_data
                     for key, value in parsed_json.items():
                         if key not in ["action", "reasoning"]:
                             action_data[key] = value
 
-                    # 在FOCUS模式下，非no_reply动作需要target_message_id
+                    # 非no_reply动作需要target_message_id
                     if action != "no_reply":
                         if target_message_id := parsed_json.get("target_message_id"):
                             # 根据target_message_id查找原始消息
                             target_message = self.find_message_by_id(target_message_id, message_id_list)
-                            # target_message = None
                             # 如果获取的target_message为None，输出warning并重新plan
                             if target_message is None:
                                 self.plan_retry_count += 1
@@ -205,7 +215,7 @@ class ActionPlanner:
                                     self.plan_retry_count = 0  # 重置计数器
                                 else:
                                     # 递归重新plan
-                                    return await self.plan(mode)
+                                    return await self.plan(mode, loop_start_time, available_actions)
                             else:
                                 # 成功获取到target_message，重置计数器
                                 self.plan_retry_count = 0
@@ -213,9 +223,8 @@ class ActionPlanner:
                             logger.warning(f"{self.log_prefix}动作'{action}'缺少target_message_id")
                     
                     
-                    if action == "no_action":
-                        reasoning = "normal决定不使用额外动作"
-                    elif action != "no_reply" and action != "reply" and action not in current_available_actions:
+
+                    if action != "no_reply" and action != "reply" and action not in current_available_actions:
                         logger.warning(
                             f"{self.log_prefix}LLM 返回了当前不可用或无效的动作: '{action}' (可用: {list(current_available_actions.keys())})，将强制使用 'no_reply'"
                         )
@@ -301,7 +310,6 @@ class ActionPlanner:
             actions_before_now_block = f"你刚刚选择并执行过的action是：\n{actions_before_now_block}"
             if refresh_time:
                 self.last_obs_time_mark = time.time()
-            # logger.info(f"{self.log_prefix}当前时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
             
             mentioned_bonus = ""
             if global_config.chat.mentioned_bot_inevitable_reply:
@@ -311,43 +319,27 @@ class ActionPlanner:
             
 
             if mode == ChatMode.FOCUS:
-                no_action_block = f"""重要说明：
-- 'no_reply' 表示只进行不进行回复，等待合适的回复时机
+                no_action_block = """
+- 'no_reply' 表示不进行回复，等待合适的回复时机
 - 当你刚刚发送了消息，没有人回复时，选择no_reply
 - 当你一次发送了太多消息，为了避免打扰聊天节奏，选择no_reply
-
-动作：reply
-动作描述：参与聊天回复，发送文本进行表达
-- 你想要闲聊或者随便附
-- {mentioned_bonus}
-- 如果你刚刚进行了回复，不要对同一个话题重复回应
-- 不要回复自己发送的消息
+动作：no_reply
+动作描述：不进行回复，等待合适的回复时机
+- 当你刚刚发送了消息，没有人回复时，选择no_reply
+- 当你一次发送了太多消息，为了避免打扰聊天节奏，选择no_reply
 {{
-    "action": "reply",
-    "target_message_id":"触发action的消息id",
-    "reason":"回复的原因"
+    "action": "no_reply",
+    "reason":"不回复的原因"
 }}
-
 """
             else:
-                no_action_block = f"""重要说明：
+                no_action_block = """重要说明：
 - 'reply' 表示只进行普通聊天回复，不执行任何额外动作
 - 其他action表示在普通回复的基础上，执行相应的额外动作
-
-动作：reply
-动作描述：参与聊天回复，发送文本进行表达
-- 你想要闲聊或者随便附
-- {mentioned_bonus}
-- 如果你刚刚进行了回复，不要对同一个话题重复回应
-- 不要回复自己发送的消息
-{{
-    "action": "reply",
-    "target_message_id":"触发action的消息id",
-    "reason":"回复的原因"
-}}"""
+"""
 
             chat_context_description = "你现在正在一个群聊中"
-            chat_target_name = None  # Only relevant for private
+            chat_target_name = None 
             if not is_group_chat and chat_target_info:
                 chat_target_name = (
                     chat_target_info.get("person_name") or chat_target_info.get("user_nickname") or "对方"
@@ -399,6 +391,7 @@ class ActionPlanner:
                 chat_content_block=chat_content_block,
                 actions_before_now_block=actions_before_now_block,
                 no_action_block=no_action_block,
+                mentioned_bonus=mentioned_bonus,
                 action_options_text=action_options_block,
                 moderation_prompt=moderation_prompt_block,
                 identity_block=identity_block,

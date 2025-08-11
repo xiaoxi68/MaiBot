@@ -32,7 +32,6 @@ logger = get_logger("generator_api")
 def get_replyer(
     chat_stream: Optional[ChatStream] = None,
     chat_id: Optional[str] = None,
-    model_set_with_weight: Optional[List[Tuple[TaskConfig, float]]] = None,
     request_type: str = "replyer",
 ) -> Optional[DefaultReplyer]:
     """获取回复器对象
@@ -43,7 +42,6 @@ def get_replyer(
     Args:
         chat_stream: 聊天流对象（优先）
         chat_id: 聊天ID（实际上就是stream_id）
-        model_set_with_weight: 模型配置列表，每个元素为 (TaskConfig, weight) 元组
         request_type: 请求类型
 
     Returns:
@@ -59,7 +57,6 @@ def get_replyer(
         return replyer_manager.get_replyer(
             chat_stream=chat_stream,
             chat_id=chat_id,
-            model_set_with_weight=model_set_with_weight,
             request_type=request_type,
         )
     except Exception as e:
@@ -78,13 +75,14 @@ async def generate_reply(
     chat_id: Optional[str] = None,
     action_data: Optional[Dict[str, Any]] = None,
     reply_to: str = "",
+    reply_message: Optional[Dict[str, Any]] = None,
     extra_info: str = "",
+    reply_reason: str = "",
     available_actions: Optional[Dict[str, ActionInfo]] = None,
     enable_tool: bool = False,
     enable_splitter: bool = True,
     enable_chinese_typo: bool = True,
     return_prompt: bool = False,
-    model_set_with_weight: Optional[List[Tuple[TaskConfig, float]]] = None,
     request_type: str = "generator_api",
     from_plugin: bool = True,
 ) -> Tuple[bool, List[Tuple[str, Any]], Optional[str]]:
@@ -95,7 +93,9 @@ async def generate_reply(
         chat_id: 聊天ID（备用）
         action_data: 动作数据（向下兼容，包含reply_to和extra_info）
         reply_to: 回复对象，格式为 "发送者:消息内容"
+        reply_message: 回复消息
         extra_info: 额外信息，用于补充上下文
+        reply_reason: 回复原因
         available_actions: 可用动作
         enable_tool: 是否启用工具调用
         enable_splitter: 是否启用消息分割器
@@ -110,25 +110,30 @@ async def generate_reply(
     try:
         # 获取回复器
         replyer = get_replyer(
-            chat_stream, chat_id, model_set_with_weight=model_set_with_weight, request_type=request_type
+            chat_stream, chat_id, request_type=request_type
         )
         if not replyer:
             logger.error("[GeneratorAPI] 无法获取回复器")
             return False, [], None
 
         logger.debug("[GeneratorAPI] 开始生成回复")
+        
+        if reply_to:
+            logger.warning("[GeneratorAPI] 在0.10.0, reply_to 参数已弃用，请使用 reply_message 参数")
 
-        if not reply_to and action_data:
-            reply_to = action_data.get("reply_to", "")
         if not extra_info and action_data:
             extra_info = action_data.get("extra_info", "")
+            
+        if not reply_reason and action_data:
+            reply_reason = action_data.get("reason", "")
 
         # 调用回复器生成回复
         success, llm_response_dict, prompt = await replyer.generate_reply_with_context(
-            reply_to=reply_to,
             extra_info=extra_info,
             available_actions=available_actions,
             enable_tool=enable_tool,
+            reply_message=reply_message,
+            reply_reason=reply_reason,
             from_plugin=from_plugin,
             stream_id=chat_stream.stream_id if chat_stream else chat_id,
         )
@@ -166,11 +171,11 @@ async def rewrite_reply(
     chat_id: Optional[str] = None,
     enable_splitter: bool = True,
     enable_chinese_typo: bool = True,
-    model_set_with_weight: Optional[List[Tuple[TaskConfig, float]]] = None,
     raw_reply: str = "",
     reason: str = "",
     reply_to: str = "",
     return_prompt: bool = False,
+    request_type: str = "generator_api",
 ) -> Tuple[bool, List[Tuple[str, Any]], Optional[str]]:
     """重写回复
 
@@ -191,7 +196,7 @@ async def rewrite_reply(
     """
     try:
         # 获取回复器
-        replyer = get_replyer(chat_stream, chat_id, model_set_with_weight=model_set_with_weight)
+        replyer = get_replyer(chat_stream, chat_id, request_type=request_type)
         if not replyer:
             logger.error("[GeneratorAPI] 无法获取回复器")
             return False, [], None
@@ -258,10 +263,10 @@ def process_human_text(content: str, enable_splitter: bool, enable_chinese_typo:
 async def generate_response_custom(
     chat_stream: Optional[ChatStream] = None,
     chat_id: Optional[str] = None,
-    model_set_with_weight: Optional[List[Tuple[TaskConfig, float]]] = None,
+    request_type: str = "generator_api",
     prompt: str = "",
 ) -> Optional[str]:
-    replyer = get_replyer(chat_stream, chat_id, model_set_with_weight=model_set_with_weight)
+    replyer = get_replyer(chat_stream, chat_id, request_type=request_type)
     if not replyer:
         logger.error("[GeneratorAPI] 无法获取回复器")
         return None

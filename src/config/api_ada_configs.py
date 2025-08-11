@@ -99,11 +99,8 @@ class ModelTaskConfig(ConfigBase):
     utils_small: TaskConfig
     """组件小模型配置"""
 
-    replyer_1: TaskConfig
+    replyer: TaskConfig
     """normal_chat首要回复模型模型配置"""
-
-    replyer_2: TaskConfig
-    """normal_chat次要回复模型配置"""
 
     emotion: TaskConfig
     """情绪模型配置"""

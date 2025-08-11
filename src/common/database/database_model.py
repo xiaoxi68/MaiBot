@@ -273,6 +273,29 @@ class PersonInfo(BaseModel):
         table_name = "person_info"
 
 
+class GroupInfo(BaseModel):
+    """
+    用于存储群组信息数据的模型。
+    """
+
+    group_id = TextField(unique=True, index=True)  # 群组唯一ID
+    group_name = TextField(null=True)  # 群组名称 (允许为空)
+    platform = TextField()  # 平台
+    group_number = TextField(index=True)  # 群号
+    group_impression = TextField(null=True)  # 群组印象
+    short_impression = TextField(null=True)  # 群组印象的简短描述
+    member_list = TextField(null=True)  # 群成员列表 (JSON格式)
+    group_info = TextField(null=True)  # 群组基本信息
+
+    create_time = FloatField(null=True)  # 创建时间 (时间戳)
+    last_active = FloatField(null=True)  # 最后活跃时间
+    member_count = IntegerField(null=True, default=0)  # 成员数量
+
+    class Meta:
+        # database = db # 继承自 BaseModel
+        table_name = "group_info"
+
+
 class Memory(BaseModel):
     memory_id = TextField(index=True)
     chat_id = TextField(null=True)

@@ -6,7 +6,6 @@ from src.common.remote import TelemetryHeartBeatTask
 from src.manager.async_task_manager import async_task_manager
 from src.chat.utils.statistic import OnlineTimeRecordTask, StatisticOutputTask
 from src.chat.emoji_system.emoji_manager import get_emoji_manager
-from src.chat.willing.willing_manager import get_willing_manager
 from src.chat.message_receive.chat_stream import get_chat_manager
 from src.config.config import global_config
 from src.chat.message_receive.bot import chat_bot
@@ -30,8 +29,6 @@ if global_config.memory.enable_memory:
 # 插件系统现在使用统一的插件加载器
 
 install(extra_lines=3)
-
-willing_manager = get_willing_manager()
 
 logger = get_logger("main")
 
@@ -90,11 +87,6 @@ class MainSystem:
         # 初始化表情管理器
         get_emoji_manager().initialize()
         logger.info("表情包管理器初始化成功")
-
-        # 启动愿望管理器
-        await willing_manager.async_task_starter()
-
-        logger.info("willing管理器初始化成功")
 
         # 启动情绪管理器
         await mood_manager.start()
