@@ -570,7 +570,7 @@ class DefaultReplyer:
             if not has_bot_message:
                 core_dialogue_prompt = ""
             else:
-                core_dialogue_list = core_dialogue_list[-int(global_config.chat.max_context_size * 2) :]  # 限制消息数量
+                core_dialogue_list = core_dialogue_list[-int(global_config.chat.max_context_size * 0.6) :]  # 限制消息数量
                 
                 core_dialogue_prompt_str = build_readable_messages(
                     core_dialogue_list,
@@ -696,7 +696,7 @@ class DefaultReplyer:
         message_list_before_now_long = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_id,
             timestamp=time.time(),
-            limit=global_config.chat.max_context_size * 2,
+            limit=global_config.chat.max_context_size * 1,
         )
 
         message_list_before_short = get_raw_msg_before_timestamp_with_chat(

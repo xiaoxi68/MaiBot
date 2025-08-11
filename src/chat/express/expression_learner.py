@@ -38,10 +38,9 @@ def init_prompt() -> None:
 
 请从上面这段群聊中概括除了人名为"SELF"之外的人的语言风格
 1. 只考虑文字，不要考虑表情包和图片
-2. 不要涉及具体的人名，只考虑语言风格
-3. 语言风格包含特殊内容和情感
-4. 思考有没有特殊的梗，一并总结成语言风格
-5. 例子仅供参考，请严格根据群聊内容总结!!!
+2. 不要涉及具体的人名，只考虑语言风格，特殊的梗，不要总结自己
+3. 思考有没有特殊的梗，一并总结成语言风格
+4. 例子仅供参考，请严格根据群聊内容总结!!!
 注意：总结成如下格式的规律，总结的内容要详细，但具有概括性：
 例如：当"AAAAA"时，可以"BBBBB", AAAAA代表某个具体的场景，不超过20个字。BBBBB代表对应的语言风格，特定句式或表达方式，不超过20个字。
 
@@ -51,7 +50,7 @@ def init_prompt() -> None:
 当"想说明某个具体的事实观点，但懒得明说，或者不便明说，或表达一种默契"，使用"懂的都懂"
 当"当涉及游戏相关时，表示意外的夸赞，略带戏谑意味"时，使用"这么强！"
 
-请注意：不要总结你自己（SELF）的发言
+请注意：不要总结你自己（SELF）的发言，尽量保证总结内容的逻辑性
 现在请你概括
 """
     Prompt(learn_style_prompt, "learn_style_prompt")
@@ -153,7 +152,7 @@ class ExpressionLearner:
             logger.info(f"为聊天流 {self.chat_name} 触发表达学习")
             
             # 学习语言风格
-            learnt_style = await self.learn_and_store(type="style", num=25)
+            learnt_style = await self.learn_and_store(num=25)
             
             # 更新学习时间
             self.last_learning_time = time.time()
