@@ -74,7 +74,6 @@ async def generate_reply(
     chat_stream: Optional[ChatStream] = None,
     chat_id: Optional[str] = None,
     action_data: Optional[Dict[str, Any]] = None,
-    reply_to: str = "",
     reply_message: Optional[Dict[str, Any]] = None,
     extra_info: str = "",
     reply_reason: str = "",
@@ -92,8 +91,7 @@ async def generate_reply(
         chat_stream: 聊天流对象（优先）
         chat_id: 聊天ID（备用）
         action_data: 动作数据（向下兼容，包含reply_to和extra_info）
-        reply_to: 回复对象，格式为 "发送者:消息内容"
-        reply_message: 回复消息
+        reply_message: 回复的消息对象
         extra_info: 额外信息，用于补充上下文
         reply_reason: 回复原因
         available_actions: 可用动作
@@ -109,17 +107,13 @@ async def generate_reply(
     """
     try:
         # 获取回复器
+        logger.debug("[GeneratorAPI] 开始生成回复")
         replyer = get_replyer(
             chat_stream, chat_id, request_type=request_type
         )
         if not replyer:
             logger.error("[GeneratorAPI] 无法获取回复器")
             return False, [], None
-
-        logger.debug("[GeneratorAPI] 开始生成回复")
-        
-        if reply_to:
-            logger.warning("[GeneratorAPI] 在0.10.0, reply_to 参数已弃用，请使用 reply_message 参数")
 
         if not extra_info and action_data:
             extra_info = action_data.get("extra_info", "")

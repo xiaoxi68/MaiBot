@@ -392,8 +392,7 @@ class HeartFChatting:
             if self.chat_stream.group_info and getattr(self.chat_stream.group_info, "group_id", None):
                 await self.group_relationship_manager.build_relation(
                     chat_id=self.stream_id,
-                    platform=self.chat_stream.platform,
-                    group_number=self.chat_stream.group_info.group_id
+                    platform=self.chat_stream.platform
                 )
 
 
@@ -712,7 +711,7 @@ class HeartFChatting:
                 await send_api.text_to_stream(
                     text=data,
                     stream_id=self.chat_stream.stream_id,
-                    reply_to_message = message_data,
+                    reply_message = message_data,
                     set_reply=need_reply,
                     typing=False,
                 )
@@ -721,7 +720,7 @@ class HeartFChatting:
                 await send_api.text_to_stream(
                     text=data,
                     stream_id=self.chat_stream.stream_id,
-                    reply_to_message = message_data,
+                    reply_message = message_data,
                     set_reply=False,
                     typing=True,
                 )

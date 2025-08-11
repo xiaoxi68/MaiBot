@@ -12,7 +12,7 @@ from src.chat.utils.chat_message_builder import (
     build_readable_messages,
 )
 from src.person_info.group_info import get_group_info_manager
-from src.plugin_system.apis.message_api import get_message_api
+from src.plugin_system.apis import message_api
 from json_repair import repair_json
 
 
@@ -27,7 +27,7 @@ class GroupRelationshipManager:
         self.last_group_impression_time = 0.0
         self.last_group_impression_message_count = 0
 
-    async def build_relation(self, chat_id: str, platform: str, group_number: str | int) -> None:
+    async def build_relation(self, chat_id: str, platform: str) -> None:
         """构建群关系，类似 relationship_builder.build_relation() 的调用方式"""
         current_time = time.time()
         talk_frequency = global_config.chat.get_current_talk_frequency(chat_id)
@@ -36,14 +36,15 @@ class GroupRelationshipManager:
         interval_seconds = max(600, int(1800 / max(0.5, talk_frequency)))
 
         # 统计新消息数量
-        message_api = get_message_api()
-        new_messages_since_last_impression = message_api.count_new_messages(
+        # 先获取所有新消息，然后过滤掉麦麦的消息和命令消息
+        all_new_messages = message_api.get_messages_by_time_in_chat(
             chat_id=chat_id,
             start_time=self.last_group_impression_time,
             end_time=current_time,
             filter_mai=True,
             filter_command=True,
         )
+        new_messages_since_last_impression = len(all_new_messages)
 
         # 触发条件：时间间隔 OR 消息数量阈值
         if (current_time - self.last_group_impression_time >= interval_seconds) or \
@@ -55,7 +56,6 @@ class GroupRelationshipManager:
                 self.build_group_impression(
                     chat_id=chat_id,
                     platform=platform,
-                    group_number=group_number,
                     lookback_hours=12,
                     max_messages=300
                 )
@@ -72,7 +72,6 @@ class GroupRelationshipManager:
         self,
         chat_id: str,
         platform: str,
-        group_number: str | int,
         lookback_hours: int = 24,
         max_messages: int = 300,
     ) -> Optional[str]:
@@ -101,9 +100,9 @@ class GroupRelationshipManager:
 
         # 确保群存在
         group_info_manager = get_group_info_manager()
-        group_id = await group_info_manager.get_or_create_group(platform, group_number)
+        group_id = await group_info_manager.get_or_create_group(platform, chat_id)
 
-        group_name = await group_info_manager.get_value(group_id, "group_name") or str(group_number)
+        group_name = await group_info_manager.get_value(group_id, "group_name") or chat_id
         alias_str = ", ".join(global_config.bot.alias_names)
 
         prompt = f"""
@@ -118,8 +117,7 @@ class GroupRelationshipManager:
 - 请严格按照json格式输出，不要有其他多余内容：
 {{
   "impression": "不超过200字的群印象长描述，白话、自然",
-  "topic": "一句话概括群主要聊什么，白话",
-  "style": "一句话描述大家的说话风格，白话"
+  "topic": "一句话概括群主要聊什么，白话"
 }}
 
 群内聊天（节选）：
@@ -141,7 +139,6 @@ class GroupRelationshipManager:
 
         long_impression: str = ""
         topic_val: Any = ""
-        style_val: Any = ""
 
         # 参考关系模块：先repair_json再loads，兼容返回列表/字典/字符串
         try:
@@ -152,40 +149,27 @@ class GroupRelationshipManager:
             if isinstance(data, dict):
                 long_impression = str(data.get("impression") or "").strip()
                 topic_val = data.get("topic", "")
-                style_val = data.get("style", "")
             else:
                 # 不是字典，直接作为文本
                 text_fallback = str(data)
                 long_impression = text_fallback[:400].strip()
                 topic_val = ""
-                style_val = ""
         except Exception:
             long_impression = parsed_text[:400].strip()
             topic_val = ""
-            style_val = ""
 
         # 兜底
-        if not long_impression and not topic_val and not style_val:
+        if not long_impression and not topic_val:
             logger.info(f"[{chat_id}] LLM未产生有效群印象，跳过")
             return None
 
         # 写入数据库
         await group_info_manager.update_one_field(group_id, "group_impression", long_impression)
-        # 将 topic/style 写入 group_info JSON
-        try:
-            current_group_info = await group_info_manager.get_value(group_id, "group_info") or {}
-            if not isinstance(current_group_info, dict):
-                current_group_info = {}
-        except Exception:
-            current_group_info = {}
-        if topic_val != "":
-            current_group_info["topic"] = topic_val
-        if style_val != "":
-            current_group_info["style"] = style_val
-        await group_info_manager.update_one_field(group_id, "group_info", current_group_info)
+        if topic_val:
+            await group_info_manager.update_one_field(group_id, "topic", topic_val)
         await group_info_manager.update_one_field(group_id, "last_active", now)
 
-        logger.info(f"[{chat_id}] 群印象更新完成: topic={topic_val} style={style_val}")
+        logger.info(f"[{chat_id}] 群印象更新完成: topic={topic_val}")
         return str(topic_val) if topic_val else ""
 
 

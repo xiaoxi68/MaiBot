@@ -27,7 +27,7 @@ GroupInfoManager 类方法功能摘要：
 
 logger = get_logger("group_info")
 
-JSON_SERIALIZED_FIELDS = ["member_list", "group_info"]
+JSON_SERIALIZED_FIELDS = ["member_list", "topic"]
 
 group_info_default = {
     "group_id": None,
@@ -37,7 +37,7 @@ group_info_default = {
     "group_impression": None,
     "short_impression": None,
     "member_list": [],
-    "group_info": {},
+    "topic":[],
     "create_time": None,
     "last_active": None,
     "member_count": 0,
