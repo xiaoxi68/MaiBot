@@ -19,13 +19,8 @@ logger = get_logger("emoji")
 class EmojiAction(BaseAction):
     """表情动作 - 发送表情包"""
 
-    # 激活设置
-    if global_config.emoji.emoji_activate_type == "llm":
-        activation_type = ActionActivationType.LLM_JUDGE
-        random_activation_probability = 0
-    else:
-        activation_type = ActionActivationType.RANDOM
-        random_activation_probability = global_config.emoji.emoji_chance
+    activation_type = ActionActivationType.RANDOM
+    random_activation_probability = global_config.emoji.emoji_chance
     mode_enable = ChatMode.ALL
     parallel_action = True
 

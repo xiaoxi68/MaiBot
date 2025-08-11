@@ -260,16 +260,16 @@ class PersonInfo(BaseModel):
     platform = TextField()  # 平台
     user_id = TextField(index=True)  # 用户ID
     nickname = TextField(null=True)  # 用户昵称
-    impression = TextField(null=True)  # 个人印象
-    short_impression = TextField(null=True)  # 个人印象的简短描述
     points = TextField(null=True)  # 个人印象的点
-    forgotten_points = TextField(null=True)  # 被遗忘的点
-    info_list = TextField(null=True)  # 与Bot的互动
+    attitude_to_me = TextField(null=True)  # 对bot的态度
+    rudeness = TextField(null=True)  # 对bot的冒犯程度
+    neuroticism = TextField(null=True)  # 对bot的神经质程度
+    conscientiousness = TextField(null=True)  # 对bot的尽责程度
+    likeness = TextField(null=True)  # 对bot的相似程度
 
     know_times = FloatField(null=True)  # 认识时间 (时间戳)
     know_since = FloatField(null=True)  # 首次印象总结时间
     last_know = FloatField(null=True)  # 最后一次印象总结时间
-    attitude = IntegerField(null=True, default=50)  # 态度，0-100，从非常厌恶到十分喜欢
 
     class Meta:
         # database = db # 继承自 BaseModel

@@ -100,13 +100,13 @@ class RelationshipFetcher:
 
         person_info_manager = get_person_info_manager()
         person_name = await person_info_manager.get_value(person_id, "person_name")
-        short_impression = await person_info_manager.get_value(person_id, "short_impression")
+        attitude_to_me = await person_info_manager.get_value(person_id, "attitude_to_me")
+        neuroticism = await person_info_manager.get_value(person_id, "neuroticism")
+        conscientiousness = await person_info_manager.get_value(person_id, "conscientiousness")
+        likeness = await person_info_manager.get_value(person_id, "likeness")
 
         nickname_str = await person_info_manager.get_value(person_id, "nickname")
         platform = await person_info_manager.get_value(person_id, "platform")
-
-        if person_name == nickname_str and not short_impression:
-            return ""
 
         current_points = await person_info_manager.get_value(person_id, "points") or []
 
@@ -138,31 +138,39 @@ class RelationshipFetcher:
 
         relation_info = ""
 
-        if short_impression and relation_info:
-            if points_text:
-                relation_info = f"你对{person_name}的印象是{nickname_str}：{short_impression}。具体来说：{relation_info}。你还记得ta最近做的事：{points_text}"
+        if attitude_to_me:
+            if attitude_to_me > 8:
+                attitude_info = f"{person_name}对你的态度十分好,"
+            elif attitude_to_me > 5:
+                attitude_info = f"{person_name}对你的态度较好,"
+                
+            
+            if attitude_to_me < -8:
+                attitude_info = f"{person_name}对你的态度十分恶劣,"
+            elif attitude_to_me < -4:
+                attitude_info = f"{person_name}对你的态度不好,"
+            elif attitude_to_me < 0:
+                attitude_info = f"{person_name}对你的态度一般,"
+                
+        if neuroticism:
+            if neuroticism > 8:
+                neuroticism_info = f"{person_name}的情绪十分活跃，容易情绪化,"
+            elif neuroticism > 6:
+                neuroticism_info = f"{person_name}的情绪比较活跃,"
+            elif neuroticism > 4:
+                neuroticism_info = ""
+            elif neuroticism > 2:
+                neuroticism_info = f"{person_name}的情绪比较稳定,"
             else:
-                relation_info = (
-                    f"你对{person_name}的印象是{nickname_str}：{short_impression}。具体来说：{relation_info}"
-                )
-        elif short_impression:
-            if points_text:
-                relation_info = (
-                    f"你对{person_name}的印象是{nickname_str}：{short_impression}。你还记得ta最近做的事：{points_text}"
-                )
-            else:
-                relation_info = f"你对{person_name}的印象是{nickname_str}：{short_impression}"
-        elif relation_info:
-            if points_text:
-                relation_info = (
-                    f"你对{person_name}的了解{nickname_str}：{relation_info}。你还记得ta最近做的事：{points_text}"
-                )
-            else:
-                relation_info = f"你对{person_name}的了解{nickname_str}：{relation_info}"
-        elif points_text:
-            relation_info = f"你记得{person_name}{nickname_str}最近做的事：{points_text}"
-        else:
-            relation_info = ""
+                neuroticism_info = f"{person_name}的情绪非常稳定,毫无波动"
+            
+        if points_text:
+            points_info = f"你还记得ta最近做的事：{points_text}"
+                
+        
+        
+        relation_info = f"{person_name}:{nickname_str}{attitude_info}{neuroticism_info}{points_info}"
+
 
         return relation_info
 

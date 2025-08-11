@@ -574,9 +574,6 @@ class EmojiConfig(ConfigBase):
     emoji_chance: float = 0.6
     """发送表情包的基础概率"""
 
-    emoji_activate_type: str = "random"
-    """表情包激活类型，可选：random，llm，random下，表情包动作随机启用，llm下，表情包动作根据llm判断是否启用"""
-
     max_reg_num: int = 200
     """表情包最大注册数量"""
 

@@ -313,7 +313,7 @@ class DefaultReplyer:
 
         return await relationship_fetcher.build_relation_info(person_id, points_num=5)
 
-    async def build_expression_habits(self, chat_history: str, target: str) -> str:
+    async def build_expression_habits(self, chat_history: str, target: str) -> Tuple[str, str]:
         """构建表达习惯块
 
         Args:
@@ -330,7 +330,7 @@ class DefaultReplyer:
         style_habits = []
         # 使用从处理器传来的选中表达方式
         # LLM模式：调用LLM选择5-10个，然后随机选5个
-        selected_expressions = await expression_selector.select_suitable_expressions_llm(
+        reply_style_guide, selected_expressions = await expression_selector.select_suitable_expressions_llm(
             self.chat_stream.stream_id, chat_history, max_num=8, target_message=target
         )
 
@@ -354,7 +354,7 @@ class DefaultReplyer:
             )
             expression_habits_block += f"{style_habits_str}\n"
 
-        return f"{expression_habits_title}\n{expression_habits_block}"
+        return (f"{expression_habits_title}\n{expression_habits_block}", reply_style_guide)
 
     async def build_memory_block(self, chat_history: str, target: str) -> str:
         """构建记忆块
@@ -746,7 +746,7 @@ class DefaultReplyer:
                 logger.warning(f"回复生成前信息获取耗时过长: {chinese_name} 耗时: {duration:.1f}s，请使用更快的模型")
         logger.info(f"在回复前的步骤耗时: {'; '.join(timing_logs)}")
 
-        expression_habits_block = results_dict["expression_habits"]
+        (expression_habits_block, reply_style_guide) = results_dict["expression_habits"]
         relation_info = results_dict["relation_info"]
         memory_block = results_dict["memory_block"]
         tool_info = results_dict["tool_info"]
@@ -802,7 +802,7 @@ class DefaultReplyer:
         if global_config.bot.qq_account == user_id and platform == global_config.bot.platform:
             return await global_prompt_manager.format_prompt(
                 "replyer_self_prompt",
-                expression_habits_block=expression_habits_block,
+                expression_habits_block=reply_style_guide,
                 tool_info_block=tool_info,
                 knowledge_prompt=prompt_info,
                 memory_block=memory_block,
@@ -813,7 +813,8 @@ class DefaultReplyer:
                 mood_state=mood_prompt,
                 background_dialogue_prompt=background_dialogue_prompt,
                 time_block=time_block,
-                target = target,
+                target=target,
+                reason=reply_reason,
                 reply_style=global_config.personality.reply_style,
                 keywords_reaction_prompt=keywords_reaction_prompt,
                 moderation_prompt=moderation_prompt_block,
@@ -821,7 +822,7 @@ class DefaultReplyer:
         else:
             return await global_prompt_manager.format_prompt(
                 "replyer_prompt",
-                expression_habits_block=expression_habits_block,
+                expression_habits_block=reply_style_guide,
                 tool_info_block=tool_info,
                 knowledge_prompt=prompt_info,
                 memory_block=memory_block,
@@ -883,6 +884,8 @@ class DefaultReplyer:
             self.build_expression_habits(chat_talking_prompt_half, target),
             self.build_relation_info(sender, target),
         )
+        
+        expression_habits_block, reply_style_guide = expression_habits_block
 
         keywords_reaction_prompt = await self.build_keywords_reaction_prompt(target)
 

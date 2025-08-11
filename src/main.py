@@ -62,7 +62,9 @@ class MainSystem:
 或者遇到了问题，请访问我们的文档:https://docs.mai-mai.org/
 --------------------------------
 如果你想要编写或了解插件相关内容，请访问开发文档https://docs.mai-mai.org/develop/
---------------------------------""")
+--------------------------------
+如果你需要查阅模型的消耗以及麦麦的统计数据，请访问根目录的maibot_statistics.html文件
+""")
 
     async def _init_components(self):
         """初始化其他组件"""
