@@ -371,10 +371,9 @@ class HeartFChatting:
         # 根据概率决定使用哪种模式
         if random.random() < normal_mode_probability:
             mode = ChatMode.NORMAL
-            logger.info(f"{self.log_prefix} 基于兴趣值 {interest_value:.2f}，概率 {normal_mode_probability:.2f}，选择Normal planner模式")
+            logger.info(f"{self.log_prefix} 有兴趣({interest_value:.2f})，在{normal_mode_probability*100:.0f}%概率下选择回复")
         else:
             mode = ChatMode.FOCUS
-            logger.info(f"{self.log_prefix} 基于兴趣值 {interest_value:.2f}，概率 {normal_mode_probability:.2f}，选择Focus planner模式")
 
         # 创建新的循环信息
         cycle_timers, thinking_id = self.start_cycle()
@@ -389,15 +388,15 @@ class HeartFChatting:
             await self.expression_learner.trigger_learning_for_chat()
 
             # 群印象构建：仅在群聊中触发
-            if self.chat_stream.group_info and getattr(self.chat_stream.group_info, "group_id", None):
-                await self.group_relationship_manager.build_relation(
-                    chat_id=self.stream_id,
-                    platform=self.chat_stream.platform
-                )
+            # if self.chat_stream.group_info and getattr(self.chat_stream.group_info, "group_id", None):
+            #     await self.group_relationship_manager.build_relation(
+            #         chat_id=self.stream_id,
+            #         platform=self.chat_stream.platform
+            #     )
 
 
             if random.random() > global_config.chat.focus_value and mode == ChatMode.FOCUS:
-                #如果激活度没有激活，并且聊天活跃度低，有可能不进行plan，相当于不在电脑前
+                #如果激活度没有激活，并且聊天活跃度低，有可能不进行plan，相当于不在电脑前，不进行认真思考
                 actions = [
                     {
                         "action_type": "no_reply",

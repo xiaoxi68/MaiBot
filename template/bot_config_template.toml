@@ -1,5 +1,5 @@
 [inner]
-version = "6.3.1"
+version = "6.3.2"
 
 #----以下是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 #如果你想要修改配置文件，请递增version的值
@@ -57,7 +57,7 @@ expression_groups = [
 talk_frequency = 0.5
 # 麦麦活跃度，越高，麦麦回复越多，范围0-1
 focus_value = 0.5 
-# 麦麦的专注度，越高越容易持续连续对话，范围0-1
+# 麦麦的专注度，越高越容易持续连续对话，可能消耗更多token, 范围0-1
 
 max_context_size = 20 # 上下文长度
 
@@ -98,7 +98,6 @@ talk_frequency_adjust = [
 [relationship]
 enable_relationship = true # 是否启用关系系统
 relation_frequency = 1 # 关系频率，麦麦构建关系的频率
-
 
 [message_receive]
 # 以下是消息过滤，可以根据规则过滤特定消息，将不会读取这些消息
