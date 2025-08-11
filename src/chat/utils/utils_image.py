@@ -101,6 +101,8 @@ class ImageManager:
         image_bytes = base64.b64decode(image_base64)
         image_hash = hashlib.md5(image_bytes).hexdigest()
         emoji = await emoji_manager.get_emoji_from_manager(image_hash)
+        if not emoji:
+            return "[表情包：未知]"
         emotion_list = emoji.emotion
         tag_str = ",".join(emotion_list)
         return f"[表情包：{tag_str}]"
