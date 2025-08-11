@@ -1,5 +1,5 @@
 [inner]
-version = "6.3.0"
+version = "6.3.1"
 
 #----以下是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 #如果你想要修改配置文件，请递增version的值
@@ -53,26 +53,29 @@ expression_groups = [
 ]
 
 
-[chat] #麦麦的聊天通用设置
-talk_frequency = 1 
-# 麦麦活跃度，越高，麦麦回复越多
+[chat] #麦麦的聊天设置
+talk_frequency = 0.5
+# 麦麦活跃度，越高，麦麦回复越多，范围0-1
+focus_value = 0.5 
+# 麦麦的专注度，越高越容易持续连续对话，范围0-1
 
-focus_value = 1 
-# 麦麦的专注思考能力，越高越容易持续连续对话
-
-max_context_size = 25 # 上下文长度
-thinking_timeout = 40 # 麦麦一次回复最长思考规划时间，超过这个时间的思考会放弃（往往是api反应太慢）
-replyer_random_probability = 0.5 # 首要replyer模型被选择的概率
+max_context_size = 20 # 上下文长度
 
 mentioned_bot_inevitable_reply = true # 提及 bot 大概率回复
 at_bot_inevitable_reply = true # @bot 或 提及bot 大概率回复
 
-talk_frequency_adjust = [
-    ["", "8:00,1", "12:00,1.2", "18:00,1.5", "01:00,0.6"],
-    ["qq:114514:group", "12:20,1", "16:10,2", "20:10,1", "00:10,0.3"],
-    ["qq:1919810:private", "8:20,1", "12:10,2", "20:10,1.5", "00:10,0.2"]
+focus_value_adjust = [
+    ["", "8:00,1", "12:00,0.8", "18:00,1", "01:00,0.3"],
+    ["qq:114514:group", "12:20,0.6", "16:10,0.5", "20:10,0.8", "00:10,0.3"],
+    ["qq:1919810:private", "8:20,0.5", "12:10,0.8", "20:10,1", "00:10,0.2"]
 ]
-# 基于聊天流的个性化活跃度配置
+
+talk_frequency_adjust = [
+    ["", "8:00,0.5", "12:00,0.6", "18:00,0.8", "01:00,0.3"],
+    ["qq:114514:group", "12:20,0.3", "16:10,0.5", "20:10,0.4", "00:10,0.1"],
+    ["qq:1919810:private", "8:20,0.3", "12:10,0.4", "20:10,0.5", "00:10,0.1"]
+]
+# 基于聊天流的个性化活跃度和专注度配置
 # 格式：[["platform:chat_id:type", "HH:MM,frequency", "HH:MM,frequency", ...], ...]
 
 # 全局配置示例：
@@ -108,9 +111,6 @@ ban_msgs_regex = [
     #"https?://[^\\s]+", # 匹配https链接
     #"\\d{4}-\\d{2}-\\d{2}", # 匹配日期
 ]
-
-[normal_chat] #普通聊天
-willing_mode = "classical" # 回复意愿模式 —— 经典模式：classical，mxp模式：mxp，自定义模式：custom（需要你自己实现）
 
 [tool]
 enable_tool = false # 是否在普通聊天中启用工具

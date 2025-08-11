@@ -145,8 +145,6 @@ class HeartFCMessageReceiver:
 
             # 3. 日志记录
             mes_name = chat.group_info.group_name if chat.group_info else "私聊"
-            # current_time = time.strftime("%H:%M:%S", time.localtime(message.message_info.time))
-            current_talk_frequency = global_config.chat.get_current_talk_frequency(chat.stream_id)
 
             # 如果消息中包含图片标识，则将 [picid:...] 替换为 [图片]
             picid_pattern = r"\[picid:([^\]]+)\]"
@@ -164,7 +162,6 @@ class HeartFCMessageReceiver:
             else:
                 logger.info(f"[{mes_name}]{userinfo.user_nickname}:{processed_plain_text}[兴趣度：{interested_rate:.2f}]")  # type: ignore
 
-            logger.debug(f"[{mes_name}][当前时段回复频率: {current_talk_frequency}]")
 
             # 4. 关系处理
             if global_config.relationship.enable_relationship:

@@ -201,16 +201,16 @@ class HeartFChatting:
             total_recent_interest = sum(self.recent_interest_records)
     
             # 计算调整后的阈值
-            adjusted_threshold = 3 / global_config.chat.get_current_talk_frequency(self.stream_id)
+            adjusted_threshold = 1 / global_config.chat.get_current_talk_frequency(self.stream_id)
             
             logger.info(f"{self.log_prefix} 最近三次兴趣度总和: {total_recent_interest:.2f}, 调整后阈值: {adjusted_threshold:.2f}")
         
             # 如果兴趣度总和小于阈值，进入breaking形式
             if total_recent_interest < adjusted_threshold:
-                logger.info(f"{self.log_prefix} 兴趣度不足，进入breaking形式")
+                logger.info(f"{self.log_prefix} 兴趣度不足，进入休息")
                 self.focus_energy = random.randint(3, 6)
             else:
-                logger.info(f"{self.log_prefix} 兴趣度充足")
+                logger.info(f"{self.log_prefix} 兴趣度充足，等待新消息")
                 self.focus_energy = 1      
             
     async def _should_process_messages(self, new_message: List[Dict[str, Any]]) -> tuple[bool,float]:
@@ -225,9 +225,10 @@ class HeartFChatting:
             bool: 是否应该处理消息
         """
         new_message_count = len(new_message)
+        talk_frequency = global_config.chat.get_current_talk_frequency(self.stream_id)
         
-        modified_exit_count_threshold = self.focus_energy / global_config.chat.focus_value
-        modified_exit_interest_threshold = 3 / global_config.chat.focus_value
+        modified_exit_count_threshold = self.focus_energy * 0.5 / talk_frequency
+        modified_exit_interest_threshold = 1.5 / talk_frequency
         total_interest = 0.0
         for msg_dict in new_message:
             interest_value = msg_dict.get("interest_value", 0.0)
@@ -247,7 +248,7 @@ class HeartFChatting:
         if new_message_count > 0:
             # 只在兴趣值变化时输出log
             if not hasattr(self, "_last_accumulated_interest") or total_interest != self._last_accumulated_interest:
-                logger.info(f"{self.log_prefix} breaking形式当前累计兴趣值: {total_interest:.2f}, 专注度: {global_config.chat.focus_value:.1f}")
+                logger.info(f"{self.log_prefix} 休息中，累计兴趣值: {total_interest:.2f}, 活跃度: {talk_frequency:.1f}")
                 self._last_accumulated_interest = total_interest
             
             if total_interest >= modified_exit_interest_threshold:
@@ -363,7 +364,7 @@ class HeartFChatting:
             x0 = 1.0  # 控制曲线中心点
             return 1.0 / (1.0 + math.exp(-k * (interest_val - x0)))
         
-        normal_mode_probability = calculate_normal_mode_probability(interest_value) / global_config.chat.get_current_talk_frequency(self.stream_id)
+        normal_mode_probability = calculate_normal_mode_probability(interest_value) * 0.5 / global_config.chat.get_current_talk_frequency(self.stream_id)
         
         # 根据概率决定使用哪种模式
         if random.random() < normal_mode_probability:
@@ -385,33 +386,43 @@ class HeartFChatting:
             await self.relationship_builder.build_relation()
             await self.expression_learner.trigger_learning_for_chat()
 
-            available_actions = {}
 
-            # 第一步：动作修改
-            with Timer("动作修改", cycle_timers):
-                try:
-                    await self.action_modifier.modify_actions()
-                    available_actions = self.action_manager.get_using_actions()
-                except Exception as e:
-                    logger.error(f"{self.log_prefix} 动作修改失败: {e}")
+            if random.random() > global_config.chat.focus_value and mode == ChatMode.FOCUS:
+                #如果激活度没有激活，并且聊天活跃度低，有可能不进行plan，相当于不在电脑前
+                actions = [
+                    {
+                        "action_type": "no_reply",
+                        "reasoning": "选择不回复",
+                        "action_data": {},
+                    }
+                ]
+            else:
+                available_actions = {}
+                # 第一步：动作修改
+                with Timer("动作修改", cycle_timers):
+                    try:
+                        await self.action_modifier.modify_actions()
+                        available_actions = self.action_manager.get_using_actions()
+                    except Exception as e:
+                        logger.error(f"{self.log_prefix} 动作修改失败: {e}")
 
-            # 执行planner
-            planner_info = self.action_planner.get_necessary_info()
-            prompt_info = await self.action_planner.build_planner_prompt(
-                is_group_chat=planner_info[0],
-                chat_target_info=planner_info[1],
-                current_available_actions=planner_info[2],
-            )
-            if not await events_manager.handle_mai_events(
-                EventType.ON_PLAN, None, prompt_info[0], None, self.chat_stream.stream_id
-            ):
-                return False
-            with Timer("规划器", cycle_timers):
-                actions, _= await self.action_planner.plan(
-                    mode=mode,
-                    loop_start_time=self.last_read_time,
-                    available_actions=available_actions,
+                # 执行planner
+                planner_info = self.action_planner.get_necessary_info()
+                prompt_info = await self.action_planner.build_planner_prompt(
+                    is_group_chat=planner_info[0],
+                    chat_target_info=planner_info[1],
+                    current_available_actions=planner_info[2],
                 )
+                if not await events_manager.handle_mai_events(
+                    EventType.ON_PLAN, None, prompt_info[0], None, self.chat_stream.stream_id
+                ):
+                    return False
+                with Timer("规划器", cycle_timers):
+                    actions, _= await self.action_planner.plan(
+                        mode=mode,
+                        loop_start_time=self.last_read_time,
+                        available_actions=available_actions,
+                    )
 
 
             
@@ -663,19 +674,10 @@ class HeartFChatting:
 
             # 处理动作并获取结果
             result = await action_handler.handle_action()
-            success, reply_text = result
+            success, action_text = result
             command = ""
 
-            if reply_text == "timeout":
-                self.reply_timeout_count += 1
-                if self.reply_timeout_count > 5:
-                    logger.warning(
-                        f"[{self.log_prefix} ] 连续回复超时次数过多，{global_config.chat.thinking_timeout}秒 内大模型没有返回有效内容，请检查你的api是否速度过慢或配置错误。建议不要使用推理模型，推理模型生成速度过慢。或者尝试拉高thinking_timeout参数，这可能导致回复时间过长。"
-                    )
-                logger.warning(f"{self.log_prefix} 回复生成超时{global_config.chat.thinking_timeout}s，已跳过")
-                return False, "", ""
-
-            return success, reply_text, command
+            return success, action_text, command
 
         except Exception as e:
             logger.error(f"{self.log_prefix} 处理{action}时出错: {e}")

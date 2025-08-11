@@ -17,7 +17,6 @@ from src.config.official_configs import (
     PersonalityConfig,
     ExpressionConfig,
     ChatConfig,
-    NormalChatConfig,
     EmojiConfig,
     MemoryConfig,
     MoodConfig,
@@ -331,7 +330,6 @@ class Config(ConfigBase):
     relationship: RelationshipConfig
     chat: ChatConfig
     message_receive: MessageReceiveConfig
-    normal_chat: NormalChatConfig
     emoji: EmojiConfig
     expression: ExpressionConfig
     memory: MemoryConfig
