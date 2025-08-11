@@ -228,6 +228,7 @@ class BaseAction(ABC):
             stream_id=self.chat_id,
             reply_to=reply_to,
             typing=typing,
+            reply_to_message=self.action_message,
         )
 
     async def send_emoji(self, emoji_base64: str) -> bool:
@@ -243,7 +244,7 @@ class BaseAction(ABC):
             logger.error(f"{self.log_prefix} 缺少聊天ID")
             return False
 
-        return await send_api.emoji_to_stream(emoji_base64, self.chat_id)
+        return await send_api.emoji_to_stream(emoji_base64, self.chat_id,reply_to_message=self.action_message)
 
     async def send_image(self, image_base64: str) -> bool:
         """发送图片
@@ -258,7 +259,7 @@ class BaseAction(ABC):
             logger.error(f"{self.log_prefix} 缺少聊天ID")
             return False
 
-        return await send_api.image_to_stream(image_base64, self.chat_id)
+        return await send_api.image_to_stream(image_base64, self.chat_id,reply_to_message=self.action_message)
 
     async def send_custom(self, message_type: str, content: str, typing: bool = False, reply_to: str = "") -> bool:
         """发送自定义类型消息
@@ -282,6 +283,7 @@ class BaseAction(ABC):
             stream_id=self.chat_id,
             typing=typing,
             reply_to=reply_to,
+            reply_to_message=self.action_message,
         )
 
     async def store_action_info(
@@ -336,6 +338,7 @@ class BaseAction(ABC):
                 stream_id=self.chat_id,
                 storage_message=storage_message,
                 display_message=display_message,
+                reply_to_message=self.action_message,
             )
 
             if success:

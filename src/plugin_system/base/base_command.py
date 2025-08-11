@@ -100,7 +100,7 @@ class BaseCommand(ABC):
             logger.error(f"{self.log_prefix} 缺少聊天流或stream_id")
             return False
 
-        return await send_api.text_to_stream(text=content, stream_id=chat_stream.stream_id, reply_to=reply_to)
+        return await send_api.text_to_stream(text=content, stream_id=chat_stream.stream_id, reply_to=reply_to,reply_to_message=self.message)
 
     async def send_type(
         self, message_type: str, content: str, display_message: str = "", typing: bool = False, reply_to: str = ""
@@ -130,6 +130,7 @@ class BaseCommand(ABC):
             display_message=display_message,
             typing=typing,
             reply_to=reply_to,
+            reply_to_message=self.message,
         )
 
     async def send_command(
@@ -161,6 +162,7 @@ class BaseCommand(ABC):
                 stream_id=chat_stream.stream_id,
                 storage_message=storage_message,
                 display_message=display_message,
+                reply_to_message=self.message,
             )
 
             if success:
@@ -188,7 +190,7 @@ class BaseCommand(ABC):
             logger.error(f"{self.log_prefix} 缺少聊天流或stream_id")
             return False
 
-        return await send_api.emoji_to_stream(emoji_base64, chat_stream.stream_id)
+        return await send_api.emoji_to_stream(emoji_base64, chat_stream.stream_id,reply_to_message=self.message)
 
     async def send_image(self, image_base64: str) -> bool:
         """发送图片
@@ -204,7 +206,7 @@ class BaseCommand(ABC):
             logger.error(f"{self.log_prefix} 缺少聊天流或stream_id")
             return False
 
-        return await send_api.image_to_stream(image_base64, chat_stream.stream_id)
+        return await send_api.image_to_stream(image_base64, chat_stream.stream_id,reply_to_message=self.message)
 
     @classmethod
     def get_command_info(cls) -> "CommandInfo":
