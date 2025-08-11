@@ -24,7 +24,9 @@ class QAManager:
         self.kg_manager = kg_manager
         self.qa_model = LLMRequest(model_set=model_config.model_task_config.lpmm_qa, request_type="lpmm.qa")
 
-    async def process_query(self, question: str) -> Optional[Tuple[List[Tuple[str, float, float]], Optional[Dict[str, float]]]]:
+    async def process_query(
+        self, question: str
+    ) -> Optional[Tuple[List[Tuple[str, float, float]], Optional[Dict[str, float]]]]:
         """处理查询"""
 
         # 生成问题的Embedding
@@ -56,7 +58,8 @@ class QAManager:
         logger.debug(f"关系检索用时：{part_end_time - part_start_time:.5f}s")
 
         for res in relation_search_res:
-            rel_str = self.embed_manager.relation_embedding_store.store.get(res[0]).str
+            if store_item := self.embed_manager.relation_embedding_store.store.get(res[0]):
+                rel_str = store_item.str
             print(f"找到相关关系，相似度：{(res[1] * 100):.2f}%  -  {rel_str}")
 
         # TODO: 使用LLM过滤三元组结果
@@ -105,7 +108,7 @@ class QAManager:
             if not query_res:
                 logger.debug("知识库查询结果为空，可能是知识库中没有相关内容")
                 return None
-                
+
             knowledge = [
                 (
                     self.embed_manager.paragraphs_embedding_store.store[res[0]].str,
