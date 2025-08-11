@@ -38,7 +38,7 @@ def init_prompt() -> None:
 
 请从上面这段群聊中概括除了人名为"SELF"之外的人的语言风格
 1. 只考虑文字，不要考虑表情包和图片
-2. 不要涉及具体的人名，只考虑语言风格，特殊的梗，不要总结自己
+2. 不要涉及具体的人名，但是可以涉及具体名词
 3. 思考有没有特殊的梗，一并总结成语言风格
 4. 例子仅供参考，请严格根据群聊内容总结!!!
 注意：总结成如下格式的规律，总结的内容要详细，但具有概括性：
@@ -59,7 +59,7 @@ def init_prompt() -> None:
 class ExpressionLearner:
     def __init__(self, chat_id: str) -> None:
         self.express_learn_model: LLMRequest = LLMRequest(
-            model_set=model_config.model_task_config.replyer, request_type="expressor.learner"
+            model_set=model_config.model_task_config.replyer, request_type="expression.learner"
         )
         self.chat_id = chat_id
         self.chat_name = get_chat_manager().get_stream_name(chat_id) or chat_id

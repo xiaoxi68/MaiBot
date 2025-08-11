@@ -71,6 +71,7 @@ class LLMRequest:
             (Tuple[str, str, str, Optional[List[ToolCall]]]): 响应内容、推理内容、模型名称、工具调用列表
         """
         # 模型选择
+        start_time = time.time()
         model_info, api_provider, client = self._select_model()
 
         # 请求体构建
@@ -105,6 +106,7 @@ class LLMRequest:
                 user_id="system",
                 request_type=self.request_type,
                 endpoint="/chat/completions",
+                time_cost=time.time() - start_time,
             )
         return content, (reasoning_content, model_info.name, tool_calls)
 
@@ -149,8 +151,6 @@ class LLMRequest:
         # 请求体构建
         start_time = time.time()
         
-        
-        
         message_builder = MessageBuilder()
         message_builder.add_text_content(prompt)
         messages = [message_builder.build()]
@@ -190,6 +190,7 @@ class LLMRequest:
                 user_id="system",
                 request_type=self.request_type,
                 endpoint="/chat/completions",
+                time_cost=time.time() - start_time,
             )
         
         if not content:
@@ -208,6 +209,7 @@ class LLMRequest:
             (Tuple[List[float], str]): (嵌入向量，使用的模型名称)
         """
         # 无需构建消息体，直接使用输入文本
+        start_time = time.time()
         model_info, api_provider, client = self._select_model()
 
         # 请求并处理返回值
@@ -228,6 +230,7 @@ class LLMRequest:
                 user_id="system",
                 request_type=self.request_type,
                 endpoint="/embeddings",
+                time_cost=time.time() - start_time,
             )
 
         if not embedding:

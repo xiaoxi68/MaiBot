@@ -20,7 +20,7 @@ logger = get_logger("relation")
 class RelationshipManager:
     def __init__(self):
         self.relationship_llm = LLMRequest(
-            model_set=model_config.model_task_config.utils, request_type="relationship"
+            model_set=model_config.model_task_config.utils, request_type="relationship.person"
         )  # 用于动作规划
 
     @staticmethod

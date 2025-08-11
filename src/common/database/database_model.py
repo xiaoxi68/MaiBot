@@ -79,6 +79,8 @@ class LLMUsage(BaseModel):
     """
 
     model_name = TextField(index=True)  # 添加索引
+    model_assign_name = TextField(null=True)  # 添加索引
+    model_api_provider = TextField(null=True)  # 添加索引
     user_id = TextField(index=True)  # 添加索引
     request_type = TextField(index=True)  # 添加索引
     endpoint = TextField()
@@ -86,6 +88,7 @@ class LLMUsage(BaseModel):
     completion_tokens = IntegerField()
     total_tokens = IntegerField()
     cost = DoubleField()
+    time_cost = DoubleField(null=True)
     status = TextField()
     timestamp = DateTimeField(index=True)  # 更改为 DateTimeField 并添加索引
 

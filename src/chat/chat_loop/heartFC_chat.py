@@ -487,7 +487,7 @@ class HeartFChatting:
                                 available_actions=available_actions,
                                 reply_reason=action_info.get("reasoning", ""),
                                 enable_tool=global_config.tool.enable_tool,
-                                request_type="chat.replyer",
+                                request_type="replyer",
                                 from_plugin=False,
                             )
 

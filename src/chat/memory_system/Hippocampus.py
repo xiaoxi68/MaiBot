@@ -200,7 +200,7 @@ class Hippocampus:
         self.parahippocampal_gyrus = ParahippocampalGyrus(self)
         # 从数据库加载记忆图
         self.entorhinal_cortex.sync_memory_from_db()
-        self.model_small = LLMRequest(model_set=model_config.model_task_config.utils_small, request_type="memory.small")
+        self.model_small = LLMRequest(model_set=model_config.model_task_config.utils_small, request_type="memory.modify")
 
     def get_all_node_names(self) -> list:
         """获取记忆图中所有节点的名字列表"""

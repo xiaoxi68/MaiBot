@@ -117,8 +117,8 @@ def init_prompt():
 你现在正在一个QQ群里聊天，以下是正在进行的聊天内容：
 {background_dialogue_prompt}
 
-你现在想补充说明你刚刚自己的发言内容：{target}
-请你根据聊天内容，组织一条新回复。
+你现在想补充说明你刚刚自己的发言内容：{target}，原因是{reason}
+请你根据聊天内容，组织一条新回复。注意，{target} 是刚刚你自己的发言，你要在这基础上进一步发言，请按照你自己的角度来继续进行回复。
 你现在的心情是：{mood_state}
 {reply_style}
 {keywords_reaction_prompt}
@@ -331,7 +331,7 @@ class DefaultReplyer:
         # 使用从处理器传来的选中表达方式
         # LLM模式：调用LLM选择5-10个，然后随机选5个
         selected_expressions = await expression_selector.select_suitable_expressions_llm(
-            self.chat_stream.stream_id, chat_history, max_num=8, min_num=2, target_message=target
+            self.chat_stream.stream_id, chat_history, max_num=8, target_message=target
         )
 
         if selected_expressions:

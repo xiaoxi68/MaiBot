@@ -22,7 +22,7 @@ logger = get_logger("group_relationship_manager")
 class GroupRelationshipManager:
     def __init__(self):
         self.group_llm = LLMRequest(
-            model_set=model_config.model_task_config.utils, request_type="group.relationship"
+            model_set=model_config.model_task_config.utils, request_type="relationship.group"
         )
         self.last_group_impression_time = 0.0
         self.last_group_impression_message_count = 0

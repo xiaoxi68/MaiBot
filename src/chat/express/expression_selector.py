@@ -25,7 +25,7 @@ def init_prompt():
 以下是可选的表达情境：
 {all_situations}
 
-请你分析聊天内容的语境、情绪、话题类型，从上述情境中选择最适合当前聊天情境的{min_num}-{max_num}个情境。
+请你分析聊天内容的语境、情绪、话题类型，从上述情境中选择最适合当前聊天情境的，最多{max_num}个情境。
 考虑因素包括：
 1. 聊天的情绪氛围（轻松、严肃、幽默等）
 2. 话题类型（日常、技术、游戏、情感等）
@@ -35,7 +35,7 @@ def init_prompt():
 请以JSON格式输出，只需要输出选中的情境编号：
 例如：
 {{
-    "selected_situations": [2, 3, 5, 7, 19, 22, 25, 38, 39, 45, 48, 64]
+    "selected_situations": [2, 3, 5, 7, 19]
 }}
 
 请严格按照JSON格式输出，不要包含其他内容：
@@ -195,7 +195,6 @@ class ExpressionSelector:
         chat_id: str,
         chat_info: str,
         max_num: int = 10,
-        min_num: int = 5,
         target_message: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         # sourcery skip: inline-variable, list-comprehension
@@ -206,8 +205,8 @@ class ExpressionSelector:
             logger.debug(f"聊天流 {chat_id} 不允许使用表达，返回空列表")
             return []
 
-        # 1. 获取35个随机表达方式（现在按权重抽取）
-        style_exprs = self.get_random_expressions(chat_id, 30)
+        # 1. 获取20个随机表达方式（现在按权重抽取）
+        style_exprs = self.get_random_expressions(chat_id, 10)
 
         # 2. 构建所有表达方式的索引和情境列表
         all_expressions = []
@@ -219,7 +218,7 @@ class ExpressionSelector:
                 expr_with_type = expr.copy()
                 expr_with_type["type"] = "style"
                 all_expressions.append(expr_with_type)
-                all_situations.append(f"{len(all_expressions)}.{expr['situation']}")
+                all_situations.append(f"{len(all_expressions)}.当 {expr['situation']} 时，使用 {expr['style']}")
 
         if not all_expressions:
             logger.warning("没有找到可用的表达方式")
@@ -239,13 +238,12 @@ class ExpressionSelector:
             bot_name=global_config.bot.nickname,
             chat_observe_info=chat_info,
             all_situations=all_situations_str,
-            min_num=min_num,
             max_num=max_num,
             target_message=target_message_str,
             target_message_extra_block=target_message_extra_block,
         )
 
-        # print(prompt)
+        print(prompt)
 
         # 4. 调用LLM
         try:
@@ -255,7 +253,7 @@ class ExpressionSelector:
             # logger.info(f"LLM请求时间: {model_name}  {time.time() - start_time} \n{prompt}")
 
             # logger.info(f"模型名称: {model_name}")
-            # logger.info(f"LLM返回结果: {content}")
+            logger.info(f"LLM返回结果: {content}")
             # if reasoning_content:
             #     logger.info(f"LLM推理: {reasoning_content}")
             # else:
