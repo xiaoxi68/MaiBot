@@ -48,16 +48,15 @@ def init_prompt():
 - 你想要闲聊或者随便附
 - {mentioned_bonus}
 - 如果你刚刚进行了回复，不要对同一个话题重复回应
-- 不要回复自己发送的消息
 {{
     "action": "reply",
-    "target_message_id":"触发action的消息id",
+    "target_message_id":"想要回复的消息id",
     "reason":"回复的原因"
 }}
 
 {action_options_text}
 
-你必须从上面列出的可用action中选择一个，并说明触发action的消息id（不是消息原文）和选择该action的原因。
+你必须从上面列出的可用action中选择一个，并说明触发action的消息id（不是消息原文）和选择该action的原因。消息id格式:m+数字
 
 请根据动作示例，以严格的 JSON 格式输出，且仅包含 JSON 内容：
 """,
@@ -192,7 +191,7 @@ class ActionPlanner:
                         parsed_json = {}
 
                     action = parsed_json.get("action", "no_reply")
-                    reasoning = parsed_json.get("reasoning", "未提供原因")
+                    reasoning = parsed_json.get("reason", "未提供原因")
 
                     # 将所有其他属性添加到action_data
                     for key, value in parsed_json.items():
@@ -320,10 +319,18 @@ class ActionPlanner:
             
 
             if mode == ChatMode.FOCUS:
-                no_action_block = """重要说明：
+                no_action_block = """
 - 'no_reply' 表示不进行回复，等待合适的回复时机
 - 当你刚刚发送了消息，没有人回复时，选择no_reply
 - 当你一次发送了太多消息，为了避免打扰聊天节奏，选择no_reply
+动作：no_reply
+动作描述：不进行回复，等待合适的回复时机
+- 当你刚刚发送了消息，没有人回复时，选择no_reply
+- 当你一次发送了太多消息，为了避免打扰聊天节奏，选择no_reply
+{{
+    "action": "no_reply",
+    "reason":"不回复的原因"
+}}
 """
             else:
                 no_action_block = """重要说明：

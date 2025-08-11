@@ -77,6 +77,7 @@ async def generate_reply(
     reply_to: str = "",
     reply_message: Optional[Dict[str, Any]] = None,
     extra_info: str = "",
+    reply_reason: str = "",
     available_actions: Optional[Dict[str, ActionInfo]] = None,
     enable_tool: bool = False,
     enable_splitter: bool = True,
@@ -92,8 +93,9 @@ async def generate_reply(
         chat_id: 聊天ID（备用）
         action_data: 动作数据（向下兼容，包含reply_to和extra_info）
         reply_to: 回复对象，格式为 "发送者:消息内容"
-        reply_message: 回复的原始消息
+        reply_message: 回复消息
         extra_info: 额外信息，用于补充上下文
+        reply_reason: 回复原因
         available_actions: 可用动作
         enable_tool: 是否启用工具调用
         enable_splitter: 是否启用消息分割器
@@ -115,21 +117,25 @@ async def generate_reply(
             return False, [], None
 
         logger.debug("[GeneratorAPI] 开始生成回复")
+        
+        if reply_to:
+            logger.warning("[GeneratorAPI] 在0.10.0, reply_to 参数已弃用，请使用 reply_message 参数")
 
-        if not reply_to and action_data:
-            reply_to = action_data.get("reply_to", "")
         if not extra_info and action_data:
             extra_info = action_data.get("extra_info", "")
+            
+        if not reply_reason and action_data:
+            reply_reason = action_data.get("reason", "")
 
         # 调用回复器生成回复
         success, llm_response_dict, prompt = await replyer.generate_reply_with_context(
-            reply_to=reply_to,
             extra_info=extra_info,
             available_actions=available_actions,
             enable_tool=enable_tool,
+            reply_message=reply_message,
+            reply_reason=reply_reason,
             from_plugin=from_plugin,
             stream_id=chat_stream.stream_id if chat_stream else chat_id,
-            reply_message=reply_message,
         )
         if not success:
             logger.warning("[GeneratorAPI] 回复生成失败")

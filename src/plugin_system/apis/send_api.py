@@ -100,7 +100,7 @@ async def _send_to_target(
         message_segment = Seg(type=message_type, data=content)  # type: ignore
 
         if reply_to_message:
-            anchor_message = MessageRecv(message_dict=reply_to_message)
+            anchor_message = message_dict_to_message_recv(reply_to_message)
             anchor_message.update_chat_stream(target_stream)
             reply_to_platform_id = (
                 f"{anchor_message.message_info.platform}:{anchor_message.message_info.user_info.user_id}"
@@ -145,111 +145,56 @@ async def _send_to_target(
         return False
 
 
-async def _find_reply_message(target_stream, reply_to: str) -> Optional[MessageRecv]:
-    # sourcery skip: inline-variable, use-named-expression
+def message_dict_to_message_recv(message_dict: Dict[str, Any]) -> Optional[MessageRecv]:
     """查找要回复的消息
 
     Args:
-        target_stream: 目标聊天流
-        reply_to: 回复格式，如"发送者:消息内容"或"发送者：消息内容"
+        message_dict: 消息字典
 
     Returns:
         Optional[MessageRecv]: 找到的消息，如果没找到则返回None
     """
-    try:
-        # 解析reply_to参数
-        if ":" in reply_to:
-            parts = reply_to.split(":", 1)
-        elif "：" in reply_to:
-            parts = reply_to.split("：", 1)
-        else:
-            logger.warning(f"[SendAPI] reply_to格式不正确: {reply_to}")
-            return None
+    # 构建MessageRecv对象
+    user_info = {
+        "platform": message_dict.get("user_platform", ""),
+        "user_id": message_dict.get("user_id", ""),
+        "user_nickname": message_dict.get("user_nickname", ""),
+        "user_cardname": message_dict.get("user_cardname", ""),
+    }
 
-        if len(parts) != 2:
-            logger.warning(f"[SendAPI] reply_to格式不正确: {reply_to}")
-            return None
-
-        sender = parts[0].strip()
-        text = parts[1].strip()
-
-        # 获取聊天流的最新20条消息
-        reverse_talking_message = get_raw_msg_before_timestamp_with_chat(
-            target_stream.stream_id,
-            time.time(),  # 当前时间之前的消息
-            20,  # 最新的20条消息
-        )
-
-        # 反转列表，使最新的消息在前面
-        reverse_talking_message = list(reversed(reverse_talking_message))
-
-        find_msg = None
-        for message in reverse_talking_message:
-            user_id = message["user_id"]
-            platform = message["chat_info_platform"]
-            person_id = get_person_info_manager().get_person_id(platform, user_id)
-            person_name = await get_person_info_manager().get_value(person_id, "person_name")
-            if person_name == sender:
-                translate_text = message["processed_plain_text"]
-
-                # 使用独立函数处理用户引用格式
-                translate_text = await replace_user_references_async(translate_text, platform)
-
-                similarity = difflib.SequenceMatcher(None, text, translate_text).ratio()
-                if similarity >= 0.9:
-                    find_msg = message
-                    break
-
-        if not find_msg:
-            logger.info("[SendAPI] 未找到匹配的回复消息")
-            return None
-
-        # 构建MessageRecv对象
-        user_info = {
-            "platform": find_msg.get("user_platform", ""),
-            "user_id": find_msg.get("user_id", ""),
-            "user_nickname": find_msg.get("user_nickname", ""),
-            "user_cardname": find_msg.get("user_cardname", ""),
+    group_info = {}
+    if message_dict.get("chat_info_group_id"):
+        group_info = {
+            "platform": message_dict.get("chat_info_group_platform", ""),
+            "group_id": message_dict.get("chat_info_group_id", ""),
+            "group_name": message_dict.get("chat_info_group_name", ""),
         }
 
-        group_info = {}
-        if find_msg.get("chat_info_group_id"):
-            group_info = {
-                "platform": find_msg.get("chat_info_group_platform", ""),
-                "group_id": find_msg.get("chat_info_group_id", ""),
-                "group_name": find_msg.get("chat_info_group_name", ""),
-            }
+    format_info = {"content_format": "", "accept_format": ""}
+    template_info = {"template_items": {}}
 
-        format_info = {"content_format": "", "accept_format": ""}
-        template_info = {"template_items": {}}
+    message_info = {
+        "platform": message_dict.get("chat_info_platform", ""),
+        "message_id": message_dict.get("message_id"),
+        "time": message_dict.get("time"),
+        "group_info": group_info,
+        "user_info": user_info,
+        "additional_config": message_dict.get("additional_config"),
+        "format_info": format_info,
+        "template_info": template_info,
+    }
 
-        message_info = {
-            "platform": target_stream.platform,
-            "message_id": find_msg.get("message_id"),
-            "time": find_msg.get("time"),
-            "group_info": group_info,
-            "user_info": user_info,
-            "additional_config": find_msg.get("additional_config"),
-            "format_info": format_info,
-            "template_info": template_info,
-        }
+    message_dict = {
+        "message_info": message_info,
+        "raw_message": message_dict.get("processed_plain_text"),
+        "processed_plain_text": message_dict.get("processed_plain_text"),
+    }
 
-        message_dict = {
-            "message_info": message_info,
-            "raw_message": find_msg.get("processed_plain_text"),
-            "processed_plain_text": find_msg.get("processed_plain_text"),
-        }
+    message_recv = MessageRecv(message_dict)
+    
+    logger.info(f"[SendAPI] 找到匹配的回复消息，发送者: {message_dict.get('user_nickname', '')}")
+    return message_recv
 
-        find_rec_msg = MessageRecv(message_dict)
-        find_rec_msg.update_chat_stream(target_stream)
-
-        logger.info(f"[SendAPI] 找到匹配的回复消息，发送者: {sender}")
-        return find_rec_msg
-
-    except Exception as e:
-        logger.error(f"[SendAPI] 查找回复消息时出错: {e}")
-        traceback.print_exc()
-        return None
 
 
 # =============================================================================

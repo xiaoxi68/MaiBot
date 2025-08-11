@@ -295,7 +295,6 @@ class HeartFChatting:
     async def _send_and_store_reply(
         self,
         response_set,
-        loop_start_time,
         action_message,
         cycle_timers: Dict[str, float],
         thinking_id,
@@ -303,7 +302,7 @@ class HeartFChatting:
     ) -> Tuple[Dict[str, Any], str, Dict[str, float]]:
         
         with Timer("回复发送", cycle_timers):
-            reply_text = await self._send_response(response_set, loop_start_time, action_message)
+            reply_text = await self._send_response(response_set, action_message)
 
         # 存储reply action信息
         person_info_manager = get_person_info_manager()
@@ -383,7 +382,6 @@ class HeartFChatting:
             await send_typing()
 
         async with global_prompt_manager.async_message_scope(self.chat_stream.context.get_template_name()):
-            loop_start_time = time.time()
             await self.relationship_builder.build_relation()
             await self.expression_learner.trigger_learning_for_chat()
 
@@ -411,7 +409,7 @@ class HeartFChatting:
             with Timer("规划器", cycle_timers):
                 actions, _= await self.action_planner.plan(
                     mode=mode,
-                    loop_start_time=loop_start_time,
+                    loop_start_time=self.last_read_time,
                     available_actions=available_actions,
                 )
 
@@ -467,6 +465,7 @@ class HeartFChatting:
                                 chat_stream=self.chat_stream,
                                 reply_message = action_info["action_message"],
                                 available_actions=available_actions,
+                                reply_reason=action_info.get("reasoning", ""),
                                 enable_tool=global_config.tool.enable_tool,
                                 request_type="chat.replyer",
                                 from_plugin=False,
@@ -492,7 +491,6 @@ class HeartFChatting:
 
                         loop_info, reply_text, cycle_timers_reply = await self._send_and_store_reply(
                             response_set,
-                            loop_start_time,
                             action_info["action_message"],
                             cycle_timers,
                             thinking_id,
@@ -684,10 +682,9 @@ class HeartFChatting:
             traceback.print_exc()
             return False, "", ""
 
-    async def _send_response(self, reply_set, thinking_start_time, message_data) -> str:
-        current_time = time.time()
+    async def _send_response(self, reply_set, message_data) -> str:
         new_message_count = message_api.count_new_messages(
-            chat_id=self.chat_stream.stream_id, start_time=thinking_start_time, end_time=current_time
+            chat_id=self.chat_stream.stream_id, start_time=self.last_read_time, end_time=time.time()
         )
 
         need_reply = new_message_count >= random.randint(2, 4)
@@ -713,7 +710,7 @@ class HeartFChatting:
                     text=data,
                     stream_id=self.chat_stream.stream_id,
                     reply_to_message = message_data,
-                    set_reply=need_reply,
+                    set_reply=False,
                     typing=True,
                 )
             reply_text += data
