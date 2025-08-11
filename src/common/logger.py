@@ -194,8 +194,20 @@ def load_log_config():  # sourcery skip: use-contextlib-suppress
         "log_level": "INFO",  # 全局日志级别（向下兼容）
         "console_log_level": "INFO",  # 控制台日志级别
         "file_log_level": "DEBUG",  # 文件日志级别
-        "suppress_libraries": ["faiss","httpx", "urllib3", "asyncio", "websockets", "httpcore", "requests", "peewee", "openai","uvicorn","jieba"],
-        "library_log_levels": { "aiohttp": "WARNING"},
+        "suppress_libraries": [
+            "faiss",
+            "httpx",
+            "urllib3",
+            "asyncio",
+            "websockets",
+            "httpcore",
+            "requests",
+            "peewee",
+            "openai",
+            "uvicorn",
+            "jieba",
+        ],
+        "library_log_levels": {"aiohttp": "WARNING"},
     }
 
     try:
@@ -205,8 +217,6 @@ def load_log_config():  # sourcery skip: use-contextlib-suppress
                 return config.get("log", default_config)
     except Exception as e:
         print(f"[日志系统] 加载日志配置失败: {e}")
-        pass
-
     return default_config
 
 
@@ -404,8 +414,7 @@ MODULE_COLORS = {
     "model_utils": "\033[38;5;164m",  # 紫红色
     "relationship_fetcher": "\033[38;5;170m",  # 浅紫色
     "relationship_builder": "\033[38;5;93m",  # 浅蓝色
-    
-    #s4u
+    # s4u
     "context_web_api": "\033[38;5;240m",  # 深灰色
     "S4U_chat": "\033[92m",  # 深灰色
 }
@@ -439,6 +448,37 @@ MODULE_ALIASES = {
 }
 
 RESET_COLOR = "\033[0m"
+
+
+def convert_pathname_to_module(logger, method_name, event_dict):
+    # sourcery skip: extract-method, use-string-remove-affix
+    """将 pathname 转换为模块风格的路径"""
+    if "pathname" in event_dict:
+        pathname = event_dict["pathname"]
+        try:
+            # 获取项目根目录 - 使用绝对路径确保准确性
+            logger_file = Path(__file__).resolve()
+            project_root = logger_file.parent.parent.parent
+            pathname_path = Path(pathname).resolve()
+            rel_path = pathname_path.relative_to(project_root)
+
+            # 转换为模块风格：移除 .py 扩展名，将路径分隔符替换为点
+            module_path = str(rel_path).replace("\\", ".").replace("/", ".")
+            if module_path.endswith(".py"):
+                module_path = module_path[:-3]
+
+            # 使用转换后的模块路径替换 module 字段
+            event_dict["module"] = module_path
+            # 移除原始的 pathname 字段
+            del event_dict["pathname"]
+        except Exception:
+            # 如果转换失败，删除 pathname 但保留原始的 module（如果有的话）
+            del event_dict["pathname"]
+            # 如果没有 module 字段，使用文件名作为备选
+            if "module" not in event_dict:
+                event_dict["module"] = Path(pathname).stem
+
+    return event_dict
 
 
 class ModuleColoredConsoleRenderer:
@@ -530,7 +570,7 @@ class ModuleColoredConsoleRenderer:
         if logger_name:
             # 获取别名，如果没有别名则使用原名称
             display_name = MODULE_ALIASES.get(logger_name, logger_name)
-            
+
             if self._colors and self._enable_module_colors:
                 if module_color:
                     module_part = f"{module_color}[{display_name}]{RESET_COLOR}"
@@ -563,7 +603,7 @@ class ModuleColoredConsoleRenderer:
         # 处理其他字段
         extras = []
         for key, value in event_dict.items():
-            if key not in ("timestamp", "level", "logger_name", "event"):
+            if key not in ("timestamp", "level", "logger_name", "event", "module", "lineno", "pathname"):
                 # 确保值也转换为字符串
                 if isinstance(value, (dict, list)):
                     try:
@@ -604,6 +644,13 @@ def configure_structlog():
         processors=[
             structlog.contextvars.merge_contextvars,
             structlog.processors.add_log_level,
+            structlog.processors.CallsiteParameterAdder(
+                parameters=[
+                    structlog.processors.CallsiteParameter.MODULE,
+                    structlog.processors.CallsiteParameter.LINENO,
+                ]
+            ),
+            convert_pathname_to_module,
             structlog.processors.StackInfoRenderer(),
             structlog.dev.set_exc_info,
             structlog.processors.TimeStamper(fmt=get_timestamp_format(), utc=False),
@@ -628,6 +675,10 @@ file_formatter = structlog.stdlib.ProcessorFormatter(
         structlog.stdlib.add_log_level,
         structlog.stdlib.PositionalArgumentsFormatter(),
         structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.CallsiteParameterAdder(
+            parameters=[structlog.processors.CallsiteParameter.MODULE, structlog.processors.CallsiteParameter.LINENO]
+        ),
+        convert_pathname_to_module,
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
     ],
@@ -767,8 +818,8 @@ def start_log_cleanup_task():
 
     def cleanup_task():
         while True:
-            time.sleep(24 * 60 * 60)  # 每24小时执行一次
             cleanup_old_logs()
+            time.sleep(24 * 60 * 60)  # 每24小时执行一次
 
     cleanup_thread = threading.Thread(target=cleanup_task, daemon=True)
     cleanup_thread.start()
