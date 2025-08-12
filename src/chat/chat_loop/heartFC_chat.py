@@ -429,7 +429,7 @@ class HeartFChatting:
 
             
             # 3. 并行执行所有动作
-            async def execute_action(action_info):
+            async def execute_action(action_info,actions):
                 """执行单个动作的通用函数"""
                 try:
                     if action_info["action_type"] == "no_reply":
@@ -478,6 +478,7 @@ class HeartFChatting:
                                 chat_stream=self.chat_stream,
                                 reply_message = action_info["action_message"],
                                 available_actions=available_actions,
+                                choosen_actions=actions,
                                 reply_reason=action_info.get("reasoning", ""),
                                 enable_tool=global_config.tool.enable_tool,
                                 request_type="replyer",
@@ -525,10 +526,8 @@ class HeartFChatting:
                         "loop_info": None,
                         "error": str(e)
                     }
-            
-
-            
-            action_tasks = [asyncio.create_task(execute_action(action)) for action in actions]
+                  
+            action_tasks = [asyncio.create_task(execute_action(action,actions)) for action in actions]
             
             # 并行执行所有任务
             results = await asyncio.gather(*action_tasks, return_exceptions=True)

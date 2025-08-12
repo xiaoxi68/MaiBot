@@ -157,6 +157,7 @@ class DefaultReplyer:
         extra_info: str = "",
         reply_reason: str = "",
         available_actions: Optional[Dict[str, ActionInfo]] = None,
+        choosen_actions: Optional[List[Dict[str, Any]]] = None,
         enable_tool: bool = True,
         from_plugin: bool = True,
         stream_id: Optional[str] = None,
@@ -171,12 +172,14 @@ class DefaultReplyer:
             extra_info: 额外信息，用于补充上下文
             reply_reason: 回复原因
             available_actions: 可用的动作信息字典
+            choosen_actions: 已选动作
             enable_tool: 是否启用工具调用
             from_plugin: 是否来自插件
 
         Returns:
             Tuple[bool, Optional[Dict[str, Any]], Optional[str]]: (是否成功, 生成的回复, 使用的prompt)
         """
+        
         prompt = None
         if available_actions is None:
             available_actions = {}
@@ -186,6 +189,7 @@ class DefaultReplyer:
                 prompt = await self.build_prompt_reply_context(
                     extra_info=extra_info,
                     available_actions=available_actions,
+                    choosen_actions=choosen_actions,
                     enable_tool=enable_tool,
                     reply_message=reply_message,
                     reply_reason=reply_reason,
@@ -618,12 +622,43 @@ class DefaultReplyer:
         mai_think.sender = sender
         mai_think.target = target
         return mai_think
+    
+    
+    async def build_actions_prompt(self, available_actions, choosen_actions: Optional[List[Dict[str, Any]]] = None) -> str:
+        """构建动作提示
+        """
+        
+        action_descriptions = ""
+        if available_actions:
+            action_descriptions = "你可以做以下这些动作：\n"
+            for action_name, action_info in available_actions.items():
+                action_description = action_info.description
+                action_descriptions += f"- {action_name}: {action_description}\n"
+            action_descriptions += "\n"
+        
+        if choosen_actions:
+            action_descriptions += "根据聊天情况，你决定在回复的同时做以下这些动作：\n"
+        
+            for action in choosen_actions:
+                action_name = action.get('action_type', 'unknown_action')
+                if action_name =="reply":
+                    continue
+                action_description = action.get('reason', '无描述')
+                reasoning = action.get('reasoning', '无原因')
 
+                
+                action_descriptions += f"- {action_name}: {action_description}，原因：{reasoning}\n"
+        
+
+        return action_descriptions
+        
+        
     async def build_prompt_reply_context(
         self,
         extra_info: str = "",
         reply_reason: str = "",
         available_actions: Optional[Dict[str, ActionInfo]] = None,
+        choosen_actions: Optional[List[Dict[str, Any]]] = None,
         enable_tool: bool = True,
         reply_message: Optional[Dict[str, Any]] = None,
     ) -> str:
@@ -634,6 +669,7 @@ class DefaultReplyer:
             extra_info: 额外信息，用于补充上下文
             reply_reason: 回复原因
             available_actions: 可用动作
+            choosen_actions: 已选动作
             enable_timeout: 是否启用超时处理
             enable_tool: 是否启用工具调用
             reply_message: 回复的原始消息
@@ -667,14 +703,6 @@ class DefaultReplyer:
             
         target = replace_user_references_sync(target, chat_stream.platform, replace_bot_name=True)
 
-        # 构建action描述 (如果启用planner)
-        action_descriptions = ""
-        if available_actions:
-            action_descriptions = "你有以下的动作能力，但执行这些动作不由你决定，由另外一个模型同步决定，因此你只需要知道有如下能力即可：\n"
-            for action_name, action_info in available_actions.items():
-                action_description = action_info.description
-                action_descriptions += f"- {action_name}: {action_description}\n"
-            action_descriptions += "\n"
 
         message_list_before_now_long = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_id,
@@ -707,6 +735,7 @@ class DefaultReplyer:
                 self.build_tool_info(chat_talking_prompt_short, sender, target, enable_tool=enable_tool), "tool_info"
             ),
             self._time_and_run_task(self.get_prompt_info(chat_talking_prompt_short, sender, target), "prompt_info"),
+            self._time_and_run_task(self.build_actions_prompt(available_actions,choosen_actions), "actions_info"),
         )
 
         # 任务名称中英文映射
@@ -716,6 +745,7 @@ class DefaultReplyer:
             "memory_block": "回忆",
             "tool_info": "使用工具",
             "prompt_info": "获取知识",
+            "actions_info": "动作信息",
         }
 
         # 处理结果
@@ -734,7 +764,7 @@ class DefaultReplyer:
         memory_block = results_dict["memory_block"]
         tool_info = results_dict["tool_info"]
         prompt_info = results_dict["prompt_info"]  # 直接使用格式化后的结果
-
+        actions_info = results_dict["actions_info"]
         keywords_reaction_prompt = await self.build_keywords_reaction_prompt(target)
 
         if extra_info:
@@ -792,7 +822,7 @@ class DefaultReplyer:
                 relation_info_block=relation_info,
                 extra_info_block=extra_info_block,
                 identity=identity_block,
-                action_descriptions=action_descriptions,
+                action_descriptions=actions_info,
                 mood_state=mood_prompt,
                 background_dialogue_prompt=background_dialogue_prompt,
                 time_block=time_block,
@@ -812,7 +842,7 @@ class DefaultReplyer:
                 relation_info_block=relation_info,
                 extra_info_block=extra_info_block,
                 identity=identity_block,
-                action_descriptions=action_descriptions,
+                action_descriptions=actions_info,
                 sender_name=sender,
                 mood_state=mood_prompt,
                 background_dialogue_prompt=background_dialogue_prompt,

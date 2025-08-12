@@ -362,8 +362,7 @@ class RelationshipManager:
                 user_id = msg.get("user_id")
                 platform = msg.get("chat_info_platform")
                 assert isinstance(user_id, str) and isinstance(platform, str)
-                if is_person_known(user_id=user_id, platform=platform):
-                    msg_person = Person(user_id=user_id, platform=platform)
+                msg_person = Person(user_id=user_id, platform=platform)
 
             except Exception as e:
                 logger.error(f"初始化Person失败: {msg}, 出现错误: {e}")
