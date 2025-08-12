@@ -125,8 +125,6 @@ class RelationshipManager:
         ) 
         
     async def get_points(self,
-                        person_name: str,
-                        nickname: str,
                         readable_messages: str,
                         name_mapping: Dict[str, str],
                         timestamp: float,
@@ -138,8 +136,8 @@ class RelationshipManager:
             "relation_points",
             bot_name = global_config.bot.nickname,
             alias_str = alias_str,
-            person_name = person_name,
-            nickname = nickname,
+            person_name = person.person_name,
+            nickname = person.nickname,
             current_time = current_time,
             readable_messages = readable_messages)
 
@@ -156,7 +154,7 @@ class RelationshipManager:
         logger.info(f"points: {points}")
 
         if not points:
-            logger.info(f"对 {person_name} 没啥新印象")
+            logger.info(f"对 {person.person_name} 没啥新印象")
             return
 
         # 解析JSON并转换为元组列表
@@ -190,7 +188,7 @@ class RelationshipManager:
                         points_list.append(point)
 
                 if points_list or discarded_count > 0:
-                    logger_str = f"了解了有关{person_name}的新印象：\n"
+                    logger_str = f"了解了有关{person.person_name}的新印象：\n"
                     for point in points_list:
                         logger_str += f"{point[0]},重要性：{point[1]}\n"
                     if discarded_count > 0:
@@ -238,7 +236,7 @@ class RelationshipManager:
             person.points = remaining_points
         return person
     
-    async def get_attitude_to_me(self, person_name, nickname, readable_messages, timestamp, person: Person):
+    async def get_attitude_to_me(self, readable_messages, timestamp, person: Person):
         alias_str = ", ".join(global_config.bot.alias_names)
         current_time = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
         # 解析当前态度值
@@ -249,8 +247,8 @@ class RelationshipManager:
             "attitude_to_me_prompt",
             bot_name = global_config.bot.nickname,
             alias_str = alias_str,
-            person_name = person_name,
-            nickname = nickname,
+            person_name = person.person_name,
+            nickname = person.nickname,
             readable_messages = readable_messages,
             current_time = current_time,
         )
@@ -284,7 +282,7 @@ class RelationshipManager:
         
         return person
     
-    async def get_neuroticism(self, person_name, nickname, readable_messages, timestamp, person: Person):
+    async def get_neuroticism(self, readable_messages, timestamp, person: Person):
         alias_str = ", ".join(global_config.bot.alias_names)
         current_time = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
         # 解析当前态度值
@@ -295,8 +293,8 @@ class RelationshipManager:
             "neuroticism_prompt",
             bot_name = global_config.bot.nickname,
             alias_str = alias_str,
-            person_name = person_name,
-            nickname = nickname,
+            person_name = person.person_name,
+            nickname = person.nickname,
             readable_messages = readable_messages,
             current_time = current_time,
         )
@@ -364,12 +362,12 @@ class RelationshipManager:
                 continue
 
             # 跳过目标用户
-            if msg_person.person_name == person_name:
+            if msg_person.person_name == person_name and msg_person.person_name is not None:
                 name_mapping[msg_person.person_name] = f"{person_name}"
                 continue
 
             # 其他用户映射
-            if msg_person.person_name not in name_mapping:
+            if msg_person.person_name not in name_mapping and msg_person.person_name is not None:
                 if current_user > "Z":
                     current_user = "A"
                     user_count += 1
@@ -382,13 +380,16 @@ class RelationshipManager:
 
         for original_name, mapped_name in name_mapping.items():
             # print(f"original_name: {original_name}, mapped_name: {mapped_name}")
-            readable_messages = readable_messages.replace(f"{original_name}", f"{mapped_name}")
+            # 确保 original_name 和 mapped_name 都不为 None
+            if original_name is not None and mapped_name is not None:
+                readable_messages = readable_messages.replace(f"{original_name}", f"{mapped_name}")
             
         print(name_mapping)
         
-        person = await self.get_points(person_name, nickname, readable_messages, name_mapping, timestamp, person)
-        person = await self.get_attitude_to_me(person_name, nickname, readable_messages, timestamp, person)
-        person = await self.get_neuroticism(person_name, nickname, readable_messages, timestamp, person)
+        person = await self.get_points(
+            readable_messages=readable_messages, name_mapping=name_mapping, timestamp=timestamp, person=person)
+        person = await self.get_attitude_to_me(readable_messages=readable_messages, timestamp=timestamp, person=person)
+        person = await self.get_neuroticism(readable_messages=readable_messages, timestamp=timestamp, person=person)
 
         person.know_times = know_times + 1
         person.last_know = timestamp

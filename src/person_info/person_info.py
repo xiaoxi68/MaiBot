@@ -154,7 +154,7 @@ class Person:
                     if record.likeness_confidence is not None:
                         self.likeness_confidence = float(record.likeness_confidence)
                     
-                    logger.info(f"已从数据库加载用户 {self.person_id} 的信息")
+                    logger.debug(f"已从数据库加载用户 {self.person_id} 的信息")
             else:
                 self.sync_to_database()
                 logger.info(f"用户 {self.person_id} 在数据库中不存在，使用默认值并创建")
@@ -308,10 +308,7 @@ class PersonInfoManager:
             logger.debug(f"已加载 {len(self.person_name_list)} 个用户名称 (Peewee)")
         except Exception as e:
             logger.error(f"从 Peewee 加载 person_name_list 失败: {e}")
-            
-    def get_person(self, platform: str, user_id: Union[int, str]) -> Person:
-        person = Person(platform, user_id)
-        return person
+        
 
 
     @staticmethod
