@@ -82,9 +82,7 @@ def _convert_messages(
             content: List[Part] = []
             for item in message.content:
                 if isinstance(item, tuple):
-                    image_format = item[0].lower()
-                    if image_format == "jpg":
-                        image_format = "jpeg"
+                    image_format = "jpeg" if item[0].lower() == "jpg" else item[0].lower()
                     content.append(
                         Part.from_bytes(data=base64.b64decode(item[1]), mime_type=f"image/{image_format}")
                     )
