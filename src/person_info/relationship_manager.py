@@ -342,7 +342,7 @@ class RelationshipManager:
         """
         person = Person(person_id=person_id)
         person_name = person.person_name
-        nickname = person.nickname
+        # nickname = person.nickname
         know_times: float = person.know_times
 
         user_messages = bot_engaged_messages
@@ -358,11 +358,13 @@ class RelationshipManager:
             if msg.get("user_id") == "system":
                 continue
             try:
-                if not is_person_known(user_id=msg.get("user_id"), platform=msg.get("chat_info_platform")):
-                    continue
-                msg_person = Person(user_id=msg.get("user_id"), platform=msg.get("chat_info_platform"))
+                user_id = msg.get("user_id")
+                platform = msg.get("chat_info_platform")
+                assert isinstance(user_id, str) and isinstance(platform, str)
+                if is_person_known(user_id=user_id, platform=platform):
+                    msg_person = Person(user_id=user_id, platform=platform)
             except Exception as e:
-                logger.error(f"初始化Person失败: {msg}")
+                logger.error(f"初始化Person失败: {msg}, 出现错误: {e}")
                 traceback.print_exc()
                 continue
             # 跳过机器人自己
