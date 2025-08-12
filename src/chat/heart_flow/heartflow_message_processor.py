@@ -145,7 +145,7 @@ class HeartFCMessageReceiver:
 
             # 4. 关系处理
             if global_config.relationship.enable_relationship:
-                person = Person(platform=message.message_info.platform, user_id=message.message_info.user_info.user_id,nickname=userinfo.user_nickname)
+                person = Person.register_person(platform=message.message_info.platform, user_id=message.message_info.user_info.user_id,nickname=userinfo.user_nickname)
 
         except Exception as e:
             logger.error(f"消息处理失败: {e}")

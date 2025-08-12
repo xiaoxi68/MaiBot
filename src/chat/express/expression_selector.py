@@ -207,6 +207,10 @@ class ExpressionSelector:
 
         # 1. 获取20个随机表达方式（现在按权重抽取）
         style_exprs = self.get_random_expressions(chat_id, 10)
+        
+        if len(style_exprs) < 20:
+            logger.info(f"聊天流 {chat_id} 表达方式正在积累中")
+            return []
 
         # 2. 构建所有表达方式的索引和情境列表
         all_expressions = []
