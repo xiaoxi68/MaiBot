@@ -389,6 +389,8 @@ class RelationshipBuilder:
         for person_id, segments in self.person_engaged_cache.items():
             total_message_count = self._get_total_message_count(person_id)
             person = Person(person_id=person_id)
+            if not person.is_known:
+                continue
             person_name = person.person_name or person_id
             
             if total_message_count >= max_build_threshold or (total_message_count >= 5 and (immediate_build == person_id or immediate_build == "all")):

@@ -149,6 +149,7 @@ class Person:
         if not is_person_known(person_id=self.person_id):
             self.is_known = False
             logger.warning(f"用户 {platform}:{user_id}:{person_name}:{person_id} 尚未认识")
+            self.person_name = f"未知用户{self.person_id[:4]}"
             return
         
         self.is_known = False
