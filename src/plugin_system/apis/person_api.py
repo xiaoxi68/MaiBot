@@ -19,7 +19,7 @@ logger = get_logger("person_api")
 # =============================================================================
 
 
-def get_person_id(platform: str, user_id: int) -> str:
+def get_person_id(platform: str, user_id: int | str) -> str:
     """根据平台和用户ID获取person_id
 
     Args:
@@ -33,7 +33,7 @@ def get_person_id(platform: str, user_id: int) -> str:
         person_id = person_api.get_person_id("qq", 123456)
     """
     try:
-        return Person(platform=platform, user_id=user_id).person_id
+        return Person(platform=platform, user_id=str(user_id)).person_id
     except Exception as e:
         logger.error(f"[PersonAPI] 获取person_id失败: platform={platform}, user_id={user_id}, error={e}")
         return ""

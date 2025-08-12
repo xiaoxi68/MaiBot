@@ -98,10 +98,12 @@ async def _send_to_target(
 
         if reply_message:
             anchor_message = message_dict_to_message_recv(reply_message)
-            anchor_message.update_chat_stream(target_stream)
-            reply_to_platform_id = (
-                f"{anchor_message.message_info.platform}:{anchor_message.message_info.user_info.user_id}"
-            )            
+            if anchor_message:
+                anchor_message.update_chat_stream(target_stream)
+                assert anchor_message.message_info.user_info, "用户信息缺失"
+                reply_to_platform_id = (
+                    f"{anchor_message.message_info.platform}:{anchor_message.message_info.user_info.user_id}"
+                )            
         else:
             reply_to_platform_id = ""
             anchor_message = None
