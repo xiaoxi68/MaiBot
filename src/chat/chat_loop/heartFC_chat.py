@@ -250,7 +250,7 @@ class HeartFChatting:
         if new_message_count > 0:
             # 只在兴趣值变化时输出log
             if not hasattr(self, "_last_accumulated_interest") or total_interest != self._last_accumulated_interest:
-                logger.info(f"{self.log_prefix} 休息中，累计兴趣值: {total_interest:.2f}, 活跃度: {talk_frequency:.1f}")
+                logger.info(f"{self.log_prefix} 休息中，新消息：{new_message_count}条，累计兴趣值: {total_interest:.2f}, 活跃度: {talk_frequency:.1f}")
                 self._last_accumulated_interest = total_interest
             
             if total_interest >= modified_exit_interest_threshold:
@@ -262,8 +262,8 @@ class HeartFChatting:
                 return True,total_interest/new_message_count
 
         # 每10秒输出一次等待状态
-        if int(time.time() - self.last_read_time) > 0 and int(time.time() - self.last_read_time) % 10 == 0:
-            logger.info(
+        if int(time.time() - self.last_read_time) > 0 and int(time.time() - self.last_read_time) % 15 == 0:
+            logger.debug(
                 f"{self.log_prefix} 已等待{time.time() - self.last_read_time:.0f}秒，累计{new_message_count}条消息，累计兴趣{total_interest:.1f}，继续等待..."
             )
             await asyncio.sleep(0.5)
