@@ -35,7 +35,7 @@ def get_person_id_by_person_name(person_name: str) -> str:
 
 def is_person_known(person_id: str = None,user_id: str = None,platform: str = None,person_name: str = None) -> bool:
     if person_id:
-        person = PersonInfo.get_or_none(PersonInfo.person_id == person_id) is not None
+        person = PersonInfo.get_or_none(PersonInfo.person_id == person_id)
         return person.is_known if person else False
     elif user_id and platform:
         person_id = get_person_id(platform, user_id)
@@ -119,8 +119,13 @@ class Person:
         return person
     
     def __init__(self, platform: str = "", user_id: str = "",person_id: str = "",person_name: str = ""):
-        if not is_person_known(person_id=person_id):
-            logger.warning(f"用户 {person_name} 尚未认识")
+        if platform == global_config.bot.platform and user_id == global_config.bot.qq_account:
+            self.is_known = True
+            self.person_id = get_person_id(platform, user_id)
+            self.user_id = user_id
+            self.platform = platform
+            self.nickname = global_config.bot.nickname
+            self.person_name = global_config.bot.nickname
             return
         
         
@@ -136,6 +141,11 @@ class Person:
         else:
             logger.error("Person 初始化失败，缺少必要参数")
             return 
+        
+        if not is_person_known(person_id=self.person_id):
+            self.is_known = False
+            logger.warning(f"用户 {platform}:{user_id}:{person_name}:{person_id} 尚未认识")
+            return
         
         self.is_known = False
         self.platform = platform

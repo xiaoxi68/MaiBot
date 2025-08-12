@@ -640,6 +640,9 @@ def get_chat_type_and_target_info(chat_id: str) -> Tuple[bool, Optional[Dict]]:
                 try:
                     # Assume get_person_id is sync (as per original code), keep using to_thread
                     person = Person(platform=platform, user_id=user_id)
+                    if not person.is_known:
+                        logger.warning(f"用户 {user_info.user_nickname} 尚未认识")
+                        return False, None  
                     person_id = person.person_id
                     person_name = None
                     if person_id:

@@ -355,6 +355,8 @@ class RelationshipManager:
 
         # 遍历消息，构建映射
         for msg in user_messages:
+            if msg.get("user_id") == "system":
+                continue
             msg_person = Person(user_id=msg.get("user_id"), platform=msg.get("chat_info_platform"))
             # 跳过机器人自己
             if msg_person.user_id == global_config.bot.qq_account:
@@ -386,10 +388,10 @@ class RelationshipManager:
             
         print(name_mapping)
         
-        person = await self.get_points(
+        await self.get_points(
             readable_messages=readable_messages, name_mapping=name_mapping, timestamp=timestamp, person=person)
-        person = await self.get_attitude_to_me(readable_messages=readable_messages, timestamp=timestamp, person=person)
-        person = await self.get_neuroticism(readable_messages=readable_messages, timestamp=timestamp, person=person)
+        await self.get_attitude_to_me(readable_messages=readable_messages, timestamp=timestamp, person=person)
+        await self.get_neuroticism(readable_messages=readable_messages, timestamp=timestamp, person=person)
 
         person.know_times = know_times + 1
         person.last_know = timestamp
