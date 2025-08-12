@@ -3,7 +3,7 @@ import time
 import random
 import hashlib
 
-from typing import List, Dict, Tuple, Optional, Any
+from typing import List, Dict, Optional, Any
 from json_repair import repair_json
 
 from src.llm_models.utils_model import LLMRequest
@@ -22,16 +22,22 @@ def init_prompt():
 
 你的名字是{bot_name}{target_message}
 
-你知道以下这些表达方式，梗和说话方式：
+以下是可选的表达情境：
 {all_situations}
 
-现在，请你根据聊天记录从中挑选合适的表达方式，梗和说话方式，组织一条回复风格指导，指导的目的是在组织回复的时候提供一些语言风格和梗上的参考。
-请在reply_style_guide中以平文本输出指导，不要浮夸，并在selected_expressions中说明在指导中你挑选了哪些表达方式，梗和说话方式，以json格式输出：
-例子：
+请你分析聊天内容的语境、情绪、话题类型，从上述情境中选择最适合当前聊天情境的，最多{max_num}个情境。
+考虑因素包括：
+1. 聊天的情绪氛围（轻松、严肃、幽默等）
+2. 话题类型（日常、技术、游戏、情感等）
+3. 情境与当前语境的匹配度
+{target_message_extra_block}
+
+请以JSON格式输出，只需要输出选中的情境编号：
+例如：
 {{
-    "reply_style_guide": "...",
-    "selected_expressions": [2, 3, 4, 7]
+    "selected_situations": [2, 3, 5, 7, 19]
 }}
+
 请严格按照JSON格式输出，不要包含其他内容：
 """
     Prompt(expression_evaluation_prompt, "expression_evaluation_prompt")
@@ -190,14 +196,14 @@ class ExpressionSelector:
         chat_info: str,
         max_num: int = 10,
         target_message: Optional[str] = None,
-    ) -> Tuple[str, List[Dict[str, Any]]]:
+    ) -> List[Dict[str, Any]]:
         # sourcery skip: inline-variable, list-comprehension
         """使用LLM选择适合的表达方式"""
         
         # 检查是否允许在此聊天流中使用表达
         if not self.can_use_expression_for_chat(chat_id):
             logger.debug(f"聊天流 {chat_id} 不允许使用表达，返回空列表")
-            return "", []
+            return []
 
         # 1. 获取20个随机表达方式（现在按权重抽取）
         style_exprs = self.get_random_expressions(chat_id, 10)
@@ -216,7 +222,7 @@ class ExpressionSelector:
 
         if not all_expressions:
             logger.warning("没有找到可用的表达方式")
-            return "", []
+            return []
 
         all_situations_str = "\n".join(all_situations)
 
@@ -255,24 +261,23 @@ class ExpressionSelector:
 
             if not content:
                 logger.warning("LLM返回空结果")
-                return "", []
+                return []
 
             # 5. 解析结果
             result = repair_json(content)
             if isinstance(result, str):
                 result = json.loads(result)
 
-            if not isinstance(result, dict) or "reply_style_guide" not in result or "selected_expressions" not in result:
+            if not isinstance(result, dict) or "selected_situations" not in result:
                 logger.error("LLM返回格式错误")
                 logger.info(f"LLM返回结果: \n{content}")
-                return "", []
-            
-            reply_style_guide = result["reply_style_guide"]
-            selected_expressions = result["selected_expressions"]
+                return []
+
+            selected_indices = result["selected_situations"]
 
             # 根据索引获取完整的表达方式
             valid_expressions = []
-            for idx in selected_expressions:
+            for idx in selected_indices:
                 if isinstance(idx, int) and 1 <= idx <= len(all_expressions):
                     expression = all_expressions[idx - 1]  # 索引从1开始
                     valid_expressions.append(expression)
@@ -282,11 +287,11 @@ class ExpressionSelector:
                 self.update_expressions_count_batch(valid_expressions, 0.006)
 
             # logger.info(f"LLM从{len(all_expressions)}个情境中选择了{len(valid_expressions)}个")
-            return reply_style_guide, valid_expressions
+            return valid_expressions
 
         except Exception as e:
             logger.error(f"LLM处理表达方式选择时出错: {e}")
-            return "", []
+            return []
     
 
 

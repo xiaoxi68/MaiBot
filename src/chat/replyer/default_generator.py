@@ -9,7 +9,6 @@ from datetime import datetime
 from src.mais4u.mai_think import mai_thinking_manager
 from src.common.logger import get_logger
 from src.config.config import global_config, model_config
-from src.config.api_ada_configs import TaskConfig
 from src.individuality.individuality import get_individuality
 from src.llm_models.utils_model import LLMRequest
 from src.chat.message_receive.message import UserInfo, Seg, MessageRecv, MessageSending
@@ -27,8 +26,7 @@ from src.chat.express.expression_selector import expression_selector
 from src.chat.memory_system.memory_activator import MemoryActivator
 from src.chat.memory_system.instant_memory import InstantMemory
 from src.mood.mood_manager import mood_manager
-from src.person_info.relationship_fetcher import relationship_fetcher_manager
-from src.person_info.person_info import get_person_info_manager
+from src.person_info.person_info import Person
 from src.plugin_system.base.component_types import ActionInfo, EventType
 from src.plugin_system.apis import llm_api
 
@@ -302,16 +300,14 @@ class DefaultReplyer:
         if not global_config.relationship.enable_relationship:
             return ""
 
-        relationship_fetcher = relationship_fetcher_manager.get_fetcher(self.chat_stream.stream_id)
-
         # 获取用户ID
-        person_info_manager = get_person_info_manager()
-        person_id = person_info_manager.get_person_id_by_person_name(sender)
+        person = Person(platform=self.chat_stream.platform, user_id=sender)
+        person_id = person.person_id
         if not person_id:
             logger.warning(f"未找到用户 {sender} 的ID，跳过信息提取")
             return f"你完全不认识{sender}，不理解ta的相关信息。"
 
-        return await relationship_fetcher.build_relation_info(person_id, points_num=5)
+        return person.build_relationship(points_num=5)
 
     async def build_expression_habits(self, chat_history: str, target: str) -> Tuple[str, str]:
         """构建表达习惯块
@@ -330,7 +326,7 @@ class DefaultReplyer:
         style_habits = []
         # 使用从处理器传来的选中表达方式
         # LLM模式：调用LLM选择5-10个，然后随机选5个
-        reply_style_guide, selected_expressions = await expression_selector.select_suitable_expressions_llm(
+        selected_expressions = await expression_selector.select_suitable_expressions_llm(
             self.chat_stream.stream_id, chat_history, max_num=8, target_message=target
         )
 
@@ -354,7 +350,7 @@ class DefaultReplyer:
             )
             expression_habits_block += f"{style_habits_str}\n"
 
-        return (f"{expression_habits_title}\n{expression_habits_block}", reply_style_guide)
+        return f"{expression_habits_title}\n{expression_habits_block}"
 
     async def build_memory_block(self, chat_history: str, target: str) -> str:
         """构建记忆块
@@ -659,18 +655,16 @@ class DefaultReplyer:
             available_actions = {}
         chat_stream = self.chat_stream
         chat_id = chat_stream.stream_id
-        person_info_manager = get_person_info_manager()
         is_group_chat = bool(chat_stream.group_info)
         platform = chat_stream.platform
         user_id = reply_message.get("user_id","")
         
         if user_id:
-            person_id = person_info_manager.get_person_id(platform,user_id)
-            person_name = await person_info_manager.get_value(person_id, "person_name")
+            person = Person(platform=platform, user_id=user_id)
+            person_name = person.person_name or user_id
             sender = person_name
             target = reply_message.get('processed_plain_text')
         else:
-            person_id = ""
             person_name = "用户"
             sender = "用户"
             target = "消息"
@@ -746,7 +740,7 @@ class DefaultReplyer:
                 logger.warning(f"回复生成前信息获取耗时过长: {chinese_name} 耗时: {duration:.1f}s，请使用更快的模型")
         logger.info(f"在回复前的步骤耗时: {'; '.join(timing_logs)}")
 
-        (expression_habits_block, reply_style_guide) = results_dict["expression_habits"]
+        expression_habits_block = results_dict["expression_habits"]
         relation_info = results_dict["relation_info"]
         memory_block = results_dict["memory_block"]
         tool_info = results_dict["tool_info"]
@@ -802,7 +796,7 @@ class DefaultReplyer:
         if global_config.bot.qq_account == user_id and platform == global_config.bot.platform:
             return await global_prompt_manager.format_prompt(
                 "replyer_self_prompt",
-                expression_habits_block=reply_style_guide,
+                expression_habits_block=expression_habits_block,
                 tool_info_block=tool_info,
                 knowledge_prompt=prompt_info,
                 memory_block=memory_block,
@@ -822,7 +816,7 @@ class DefaultReplyer:
         else:
             return await global_prompt_manager.format_prompt(
                 "replyer_prompt",
-                expression_habits_block=reply_style_guide,
+                expression_habits_block=expression_habits_block,
                 tool_info_block=tool_info,
                 knowledge_prompt=prompt_info,
                 memory_block=memory_block,
@@ -885,7 +879,6 @@ class DefaultReplyer:
             self.build_relation_info(sender, target),
         )
         
-        expression_habits_block, reply_style_guide = expression_habits_block
 
         keywords_reaction_prompt = await self.build_keywords_reaction_prompt(target)
 

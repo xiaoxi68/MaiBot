@@ -281,7 +281,7 @@ class ExpressionLearner:
         logger.info(f"在 {group_name} 学习到表达风格:\n{learnt_expressions_str}")
 
         if not learnt_expressions:
-            logger.info(f"没有学习到表达风格")
+            logger.info("没有学习到表达风格")
             return []
 
         # 按chat_id分组

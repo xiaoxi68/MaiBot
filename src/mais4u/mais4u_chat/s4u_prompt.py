@@ -10,8 +10,7 @@ from datetime import datetime
 import asyncio
 from src.mais4u.s4u_config import s4u_config
 from src.chat.message_receive.message import MessageRecvS4U
-from src.person_info.relationship_fetcher import relationship_fetcher_manager
-from src.person_info.person_info import PersonInfoManager, get_person_info_manager
+from src.person_info.person_info import Person, get_person_id
 from src.chat.message_receive.chat_stream import ChatStream
 from src.mais4u.mais4u_chat.super_chat_manager import get_super_chat_manager
 from src.mais4u.mais4u_chat.screen_manager import screen_manager
@@ -103,7 +102,7 @@ class PromptBuilder:
 
         # 使用从处理器传来的选中表达方式
         # LLM模式：调用LLM选择5-10个，然后随机选5个
-        _,selected_expressions = await expression_selector.select_suitable_expressions_llm(
+        selected_expressions = await expression_selector.select_suitable_expressions_llm(
             chat_stream.stream_id, chat_history, max_num=12, target_message=target
         )
 
@@ -142,18 +141,16 @@ class PromptBuilder:
 
         relation_prompt = ""
         if global_config.relationship.enable_relationship and who_chat_in_group:
-            relationship_fetcher = relationship_fetcher_manager.get_fetcher(chat_stream.stream_id)
-
             # 将 (platform, user_id, nickname) 转换为 person_id
             person_ids = []
             for person in who_chat_in_group:
-                person_id = PersonInfoManager.get_person_id(person[0], person[1])
+                person_id = get_person_id(person[0], person[1])
                 person_ids.append(person_id)
 
-            # 使用 RelationshipFetcher 的 build_relation_info 方法，设置 points_num=3 保持与原来相同的行为
-            relation_info_list = await asyncio.gather(
-                *[relationship_fetcher.build_relation_info(person_id, points_num=3) for person_id in person_ids]
-            )
+            # 使用 Person 的 build_relationship 方法，设置 points_num=3 保持与原来相同的行为
+            relation_info_list = [
+                Person(person_id=person_id).build_relationship(points_num=3) for person_id in person_ids
+            ]
             if relation_info := "".join(relation_info_list):
                 relation_prompt = await global_prompt_manager.format_prompt(
                     "relation_prompt", relation_info=relation_info
@@ -288,11 +285,8 @@ class PromptBuilder:
         
         chat_stream = message.chat_stream
         
-        person_id = PersonInfoManager.get_person_id(
-            message.chat_stream.user_info.platform, message.chat_stream.user_info.user_id
-        )
-        person_info_manager = get_person_info_manager()
-        person_name = await person_info_manager.get_value(person_id, "person_name")
+        person = Person(platform=message.chat_stream.user_info.platform, user_id=message.chat_stream.user_info.user_id)
+        person_name = person.person_name
 
         if message.chat_stream.user_info.user_nickname:
             if person_name:

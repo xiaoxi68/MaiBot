@@ -16,7 +16,7 @@ import json
 from .s4u_mood_manager import mood_manager
 from src.person_info.relationship_builder_manager import relationship_builder_manager
 from src.mais4u.s4u_config import s4u_config
-from src.person_info.person_info import PersonInfoManager
+from src.person_info.person_info import get_person_id
 from .super_chat_manager import get_super_chat_manager
 from .yes_or_no import yes_or_no_head
 from src.mais4u.constant_s4u import ENABLE_S4U
@@ -262,7 +262,7 @@ class S4UChat:
         """根据VIP状态和中断逻辑将消息放入相应队列。"""
         user_id = message.message_info.user_info.user_id
         platform = message.message_info.platform
-        person_id = PersonInfoManager.get_person_id(platform, user_id)
+        person_id = get_person_id(platform, user_id)
         
         try:
             is_gift = message.is_gift

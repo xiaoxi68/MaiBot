@@ -15,7 +15,7 @@ from src.config.config import global_config, model_config
 from src.chat.message_receive.message import MessageRecv
 from src.chat.message_receive.chat_stream import get_chat_manager
 from src.llm_models.utils_model import LLMRequest
-from src.person_info.person_info import PersonInfoManager, get_person_info_manager
+from src.person_info.person_info import Person
 from .typo_generator import ChineseTypoGenerator
 
 logger = get_logger("chat_utils")
@@ -639,12 +639,12 @@ def get_chat_type_and_target_info(chat_id: str) -> Tuple[bool, Optional[Dict]]:
                 # Try to fetch person info
                 try:
                     # Assume get_person_id is sync (as per original code), keep using to_thread
-                    person_id = PersonInfoManager.get_person_id(platform, user_id)
+                    person = Person(platform=platform, user_id=user_id)
+                    person_id = person.person_id
                     person_name = None
                     if person_id:
                         # get_value is async, so await it directly
-                        person_info_manager = get_person_info_manager()
-                        person_name = person_info_manager.get_value_sync(person_id, "person_name")
+                        person_name = person.person_name
 
                     target_info["person_id"] = person_id
                     target_info["person_name"] = person_name

@@ -7,7 +7,7 @@ from typing import List, Dict, Any
 from src.config.config import global_config
 from src.common.logger import get_logger
 from src.person_info.relationship_manager import get_relationship_manager
-from src.person_info.person_info import get_person_info_manager, PersonInfoManager
+from src.person_info.person_info import Person,get_person_id
 from src.chat.message_receive.chat_stream import get_chat_manager
 from src.chat.utils.chat_message_builder import (
     get_raw_msg_by_timestamp_with_chat,
@@ -15,6 +15,7 @@ from src.chat.utils.chat_message_builder import (
     get_raw_msg_before_timestamp_with_chat,
     num_new_messages_since,
 )
+import asyncio
 
 logger = get_logger("relationship_builder")
 
@@ -142,7 +143,8 @@ class RelationshipBuilder:
             }
             segments.append(new_segment)
 
-            person_name = get_person_info_manager().get_value_sync(person_id, "person_name") or person_id
+            person = Person(person_id=person_id)
+            person_name = person.person_name or person_id
             logger.debug(
                 f"{self.log_prefix} 眼熟用户 {person_name} 在 {time.strftime('%H:%M:%S', time.localtime(potential_start_time))} - {time.strftime('%H:%M:%S', time.localtime(message_time))} 之间有 {new_segment['message_count']} 条消息"
             )
@@ -188,8 +190,8 @@ class RelationshipBuilder:
                 "message_count": self._count_messages_in_timerange(potential_start_time, message_time),
             }
             segments.append(new_segment)
-            person_info_manager = get_person_info_manager()
-            person_name = person_info_manager.get_value_sync(person_id, "person_name") or person_id
+            person = Person(person_id=person_id)
+            person_name = person.person_name or person_id
             logger.debug(
                 f"{self.log_prefix} 重新眼熟用户 {person_name} 创建新消息段（超过10条消息间隔）: {new_segment}"
             )
@@ -375,7 +377,7 @@ class RelationshipBuilder:
                     and user_id != global_config.bot.qq_account
                     and msg_time > self.last_processed_message_time
                 ):
-                    person_id = PersonInfoManager.get_person_id(platform, user_id)
+                    person_id = get_person_id(platform, user_id)
                     self._update_message_segments(person_id, msg_time)
                     logger.debug(
                         f"{self.log_prefix} 更新用户 {person_id} 的消息段，消息时间：{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(msg_time))}"
@@ -386,7 +388,8 @@ class RelationshipBuilder:
         users_to_build_relationship = []
         for person_id, segments in self.person_engaged_cache.items():
             total_message_count = self._get_total_message_count(person_id)
-            person_name = get_person_info_manager().get_value_sync(person_id, "person_name") or person_id
+            person = Person(person_id=person_id)
+            person_name = person.person_name or person_id
             
             if total_message_count >= max_build_threshold or (total_message_count >= 5 and (immediate_build == person_id or immediate_build == "all")):
                 users_to_build_relationship.append(person_id)
@@ -403,9 +406,9 @@ class RelationshipBuilder:
         for person_id in users_to_build_relationship:
             segments = self.person_engaged_cache[person_id]
             # 异步执行关系构建
-            import asyncio
-
-            asyncio.create_task(self.update_impression_on_segments(person_id, self.chat_id, segments))
+            person = Person(person_id=person_id)
+            if person.is_known: 
+                asyncio.create_task(self.update_impression_on_segments(person_id, self.chat_id, segments))
             # 移除已处理的用户缓存
             del self.person_engaged_cache[person_id]
             self._save_cache()

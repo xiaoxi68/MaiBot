@@ -6,7 +6,6 @@ import time
 from src.common.logger import get_logger
 from src.config.config import global_config, model_config
 from src.llm_models.utils_model import LLMRequest
-from src.person_info.person_info import get_person_info_manager
 from rich.traceback import install
 
 install(extra_lines=3)
@@ -19,7 +18,6 @@ class Individuality:
 
     def __init__(self):
         self.name = ""
-        self.bot_person_id = ""
         self.meta_info_file_path = "data/personality/meta.json"
         self.personality_data_file_path = "data/personality/personality_data.json"
 
@@ -32,8 +30,6 @@ class Individuality:
         personality_side = global_config.personality.personality_side
         identity = global_config.personality.identity
 
-        person_info_manager = get_person_info_manager()
-        self.bot_person_id = person_info_manager.get_person_id("system", "bot_id")
         self.name = bot_nickname
 
         # 检查配置变化，如果变化则清空
@@ -64,16 +60,6 @@ class Individuality:
         else:
             logger.error("人设构建失败")
 
-        # 如果任何一个发生变化，都需要清空数据库中的info_list（因为这影响整体人设）
-        if personality_changed or identity_changed:
-            logger.info("将清空数据库中原有的关键词缓存")
-            update_data = {
-                "platform": "system",
-                "user_id": "bot_id",
-                "person_name": self.name,
-                "nickname": self.name,
-            }
-            await person_info_manager.update_one_field(self.bot_person_id, "info_list", [], data=update_data)
 
     async def get_personality_block(self) -> str:
         bot_name = global_config.bot.nickname
@@ -130,7 +116,6 @@ class Individuality:
         Returns:
             tuple: (personality_changed, identity_changed)
         """
-        person_info_manager = get_person_info_manager()
         current_personality_hash, current_identity_hash = self._get_config_hash(
             bot_nickname, personality_core, personality_side, identity
         )
@@ -147,17 +132,6 @@ class Individuality:
 
         if identity_changed:
             logger.info("检测到身份配置发生变化")
-
-        # 如果任何一个发生变化，都需要清空info_list（因为这影响整体人设）
-        if personality_changed or identity_changed:
-            logger.info("将清空原有的关键词缓存")
-            update_data = {
-                "platform": "system",
-                "user_id": "bot_id",
-                "person_name": self.name,
-                "nickname": self.name,
-            }
-            await person_info_manager.update_one_field(self.bot_person_id, "info_list", [], data=update_data)
 
         # 更新元信息文件
         new_meta_info = {

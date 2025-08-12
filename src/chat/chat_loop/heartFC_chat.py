@@ -17,7 +17,7 @@ from src.chat.planner_actions.action_manager import ActionManager
 from src.chat.chat_loop.hfc_utils import CycleDetail
 from src.person_info.relationship_builder_manager import relationship_builder_manager
 from src.chat.express.expression_learner import expression_learner_manager
-from src.person_info.person_info import get_person_info_manager
+from src.person_info.person_info import Person
 from src.person_info.group_relationship_manager import get_group_relationship_manager
 from src.plugin_system.base.component_types import ChatMode, EventType
 from src.plugin_system.core import events_manager
@@ -306,20 +306,14 @@ class HeartFChatting:
         
         with Timer("回复发送", cycle_timers):
             reply_text = await self._send_response(response_set, action_message)
-
-        # 存储reply action信息
-        person_info_manager = get_person_info_manager()
         
         # 获取 platform，如果不存在则从 chat_stream 获取，如果还是 None 则使用默认值
         platform = action_message.get("chat_info_platform")
         if platform is None:
             platform = getattr(self.chat_stream, "platform", "unknown")
         
-        person_id = person_info_manager.get_person_id(
-            platform,
-            action_message.get("user_id", ""),
-        )
-        person_name = await person_info_manager.get_value(person_id, "person_name")
+        person = Person(platform = platform ,user_id = action_message.get("user_id", ""))
+        person_name = person.person_name
         action_prompt_display = f"你对{person_name}进行了回复：{reply_text}"
 
         await database_api.store_action_info(

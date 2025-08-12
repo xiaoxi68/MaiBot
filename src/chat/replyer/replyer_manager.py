@@ -1,7 +1,6 @@
-from typing import Dict, Optional, List, Tuple
+from typing import Dict, Optional
 
 from src.common.logger import get_logger
-from src.config.api_ada_configs import TaskConfig
 from src.chat.message_receive.chat_stream import ChatStream, get_chat_manager
 from src.chat.replyer.default_generator import DefaultReplyer
 
