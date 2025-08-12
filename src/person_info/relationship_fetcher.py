@@ -171,7 +171,8 @@ class RelationshipFetcher:
                 neuroticism_info = f"{person_name}的情绪比较稳定,"
             else:
                 neuroticism_info = f"{person_name}的情绪非常稳定,毫无波动"
-            
+        
+        points_info = ""
         if points_text:
             points_info = f"你还记得ta最近做的事：{points_text}"
                 
