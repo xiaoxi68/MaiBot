@@ -307,7 +307,7 @@ class Person:
             logger.error(f"同步用户 {self.person_id} 信息到数据库时出错: {e}")
             
     def build_relationship(self,points_num=3):
-        print(self.person_name,self.nickname,self.platform,self.is_known)
+        # print(self.person_name,self.nickname,self.platform,self.is_known)
         
         
         if not self.is_known:
@@ -374,6 +374,8 @@ class Person:
         if points_text:
             points_info = f"你还记得ta最近做的事：{points_text}"
                 
+        if not (nickname_str or attitude_info or neuroticism_info or points_info):
+            return ""
         relation_info = f"{self.person_name}:{nickname_str}{attitude_info}{neuroticism_info}{points_info}"
         
         return relation_info

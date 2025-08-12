@@ -358,8 +358,6 @@ class RelationshipManager:
             if msg.get("user_id") == "system":
                 continue
             try:
-                if not is_person_known(user_id=msg.get("user_id"), platform=msg.get("chat_info_platform")):
-                    continue
                 msg_person = Person(user_id=msg.get("user_id"), platform=msg.get("chat_info_platform"))
             except Exception as e:
                 logger.error(f"初始化Person失败: {msg}")
@@ -392,8 +390,6 @@ class RelationshipManager:
             # 确保 original_name 和 mapped_name 都不为 None
             if original_name is not None and mapped_name is not None:
                 readable_messages = readable_messages.replace(f"{original_name}", f"{mapped_name}")
-            
-        print(name_mapping)
         
         await self.get_points(
             readable_messages=readable_messages, name_mapping=name_mapping, timestamp=timestamp, person=person)

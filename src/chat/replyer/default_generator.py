@@ -656,9 +656,9 @@ class DefaultReplyer:
         chat_id = chat_stream.stream_id
         is_group_chat = bool(chat_stream.group_info)
         platform = chat_stream.platform
-        user_id = reply_message.get("user_id","")
         
-        if user_id:
+        if reply_message:
+            user_id = reply_message.get("user_id","")
             person = Person(platform=platform, user_id=user_id)
             person_name = person.person_name or user_id
             sender = person_name
