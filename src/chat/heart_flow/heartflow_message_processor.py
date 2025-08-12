@@ -14,33 +14,13 @@ from src.chat.utils.utils import is_mentioned_bot_in_message
 from src.chat.utils.timer_calculator import Timer
 from src.chat.utils.chat_message_builder import replace_user_references_sync
 from src.common.logger import get_logger
-from src.person_info.relationship_manager import get_relationship_manager
 from src.mood.mood_manager import mood_manager
+from src.person_info.person_info import Person
 
 if TYPE_CHECKING:
     from src.chat.heart_flow.sub_heartflow import SubHeartflow
 
 logger = get_logger("chat")
-
-
-async def _process_relationship(message: MessageRecv) -> None:
-    """处理用户关系逻辑
-
-    Args:
-        message: 消息对象，包含用户信息
-    """
-    platform = message.message_info.platform
-    user_id = message.message_info.user_info.user_id  # type: ignore
-    nickname = message.message_info.user_info.user_nickname  # type: ignore
-    cardname = message.message_info.user_info.user_cardname or nickname  # type: ignore
-
-    relationship_manager = get_relationship_manager()
-    is_known = await relationship_manager.is_known_some_one(platform, user_id)
-
-    if not is_known:
-        logger.info(f"首次认识用户: {nickname}")
-        await relationship_manager.first_knowing_some_one(platform, user_id, nickname, cardname)  # type: ignore
-
 
 async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool, list[str]]:
     """计算消息的兴趣度
@@ -162,10 +142,7 @@ class HeartFCMessageReceiver:
             else:
                 logger.info(f"[{mes_name}]{userinfo.user_nickname}:{processed_plain_text}[兴趣度：{interested_rate:.2f}]")  # type: ignore
 
-
-            # 4. 关系处理
-            if global_config.relationship.enable_relationship:
-                await _process_relationship(message)
+            _ = Person.register_person(platform=message.message_info.platform, user_id=message.message_info.user_info.user_id,nickname=userinfo.user_nickname) # type: ignore
 
         except Exception as e:
             logger.error(f"消息处理失败: {e}")

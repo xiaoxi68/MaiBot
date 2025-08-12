@@ -1,6 +1,5 @@
 from src.common.logger import get_logger
-from .person_info import PersonInfoManager, get_person_info_manager
-import time
+from .person_info import Person,is_person_known
 import random
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config, model_config
@@ -8,11 +7,7 @@ from src.chat.utils.chat_message_builder import build_readable_messages
 import json
 from json_repair import repair_json
 from datetime import datetime
-from difflib import SequenceMatcher
-import jieba
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 import traceback
 
@@ -52,8 +47,7 @@ def init_prompt():
     }}
 ]
 
-如果没有，就输出none,或返回空数组：
-[]
+如果没有，就只输出空数组：[]
 """,
         "relation_points",
     )
@@ -83,7 +77,9 @@ def init_prompt():
     "attitude": 0,
     "confidence": 0.5
 }}
-现在，请你输出json:
+如果无法看出对方对你的态度，就只输出空数组：[]
+
+现在，请你输出:
 """,
         "attitude_to_me_prompt",
     )
@@ -115,7 +111,9 @@ def init_prompt():
     "neuroticism": 0,
     "confidence": 0.5
 }}
-现在，请你输出json:
+如果无法看出对方的神经质程度，就只输出空数组：[]
+
+现在，请你输出:
 """,
         "neuroticism_prompt",
     )
@@ -124,46 +122,13 @@ class RelationshipManager:
     def __init__(self):
         self.relationship_llm = LLMRequest(
             model_set=model_config.model_task_config.utils, request_type="relationship.person"
-        )  # 用于动作规划
-
-    @staticmethod
-    async def is_known_some_one(platform, user_id):
-        """判断是否认识某人"""
-        person_info_manager = get_person_info_manager()
-        return await person_info_manager.is_person_known(platform, user_id)
-
-    @staticmethod
-    async def first_knowing_some_one(platform: str, user_id: str, user_nickname: str, user_cardname: str):
-        """判断是否认识某人"""
-        person_id = PersonInfoManager.get_person_id(platform, user_id)
-        # 生成唯一的 person_name
-        person_info_manager = get_person_info_manager()
-        unique_nickname = await person_info_manager._generate_unique_person_name(user_nickname)
-        data = {
-            "platform": platform,
-            "user_id": user_id,
-            "nickname": user_nickname,
-            "konw_time": int(time.time()),
-            "person_name": unique_nickname,  # 使用唯一的 person_name
-        }
-        # 先创建用户基本信息，使用安全创建方法避免竞态条件
-        await person_info_manager._safe_create_person_info(person_id=person_id, data=data)
-        # 更新昵称
-        await person_info_manager.update_one_field(
-            person_id=person_id, field_name="nickname", value=user_nickname, data=data
-        )
-        # 尝试生成更好的名字
-        # await person_info_manager.qv_person_name(
-        # person_id=person_id, user_nickname=user_nickname, user_cardname=user_cardname, user_avatar=user_avatar
-        # )
+        ) 
         
     async def get_points(self,
-                         person_name: str,
-                         nickname: str,
-                         readable_messages: str,
-                         name_mapping: Dict[str, str],
-                         timestamp: float,
-                         current_points: List[Tuple[str, float, str]]):
+                        readable_messages: str,
+                        name_mapping: Dict[str, str],
+                        timestamp: float,
+                        person: Person):
         alias_str = ", ".join(global_config.bot.alias_names)
         current_time = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
         
@@ -171,8 +136,8 @@ class RelationshipManager:
             "relation_points",
             bot_name = global_config.bot.nickname,
             alias_str = alias_str,
-            person_name = person_name,
-            nickname = nickname,
+            person_name = person.person_name,
+            nickname = person.nickname,
             current_time = current_time,
             readable_messages = readable_messages)
 
@@ -189,7 +154,7 @@ class RelationshipManager:
         logger.info(f"points: {points}")
 
         if not points:
-            logger.info(f"对 {person_name} 没啥新印象")
+            logger.info(f"对 {person.person_name} 没啥新印象")
             return
 
         # 解析JSON并转换为元组列表
@@ -198,9 +163,7 @@ class RelationshipManager:
             points_data = json.loads(points)
 
             # 只处理正确的格式，错误格式直接跳过
-            if points_data == "none" or not points_data:
-                points_list = []
-            elif isinstance(points_data, str) and points_data.lower() == "none":
+            if points_data == "none" or not points_data or (isinstance(points_data, str) and points_data.lower() == "none") or (isinstance(points_data, list) and len(points_data) == 0):
                 points_list = []
             elif isinstance(points_data, list):
                 points_list = [(item["point"], float(item["weight"]), current_time) for item in points_data]
@@ -225,7 +188,7 @@ class RelationshipManager:
                         points_list.append(point)
 
                 if points_list or discarded_count > 0:
-                    logger_str = f"了解了有关{person_name}的新印象：\n"
+                    logger_str = f"了解了有关{person.person_name}的新印象：\n"
                     for point in points_list:
                         logger_str += f"{point[0]},重要性：{point[1]}\n"
                     if discarded_count > 0:
@@ -238,15 +201,15 @@ class RelationshipManager:
             return
 
                     
-        current_points.extend(points_list)
+        person.points.extend(points_list)
         # 如果points超过10条，按权重随机选择多余的条目移动到forgotten_points
-        if len(current_points) > 20:
+        if len(person.points) > 20:
             # 计算当前时间
             current_time = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
 
             # 计算每个点的最终权重（原始权重 * 时间权重）
             weighted_points = []
-            for point in current_points:
+            for point in person.points:
                 time_weight = self.calculate_time_weight(point[2], current_time)
                 final_weight = point[1] * time_weight
                 weighted_points.append((point, final_weight))
@@ -270,23 +233,22 @@ class RelationshipManager:
                     idx_to_remove = random.randrange(len(remaining_points))
                     remaining_points[idx_to_remove] = point
                     
-            return remaining_points
-        return current_points
+            person.points = remaining_points
+        return person
     
-    async def get_attitude_to_me(self, person_name, nickname, readable_messages, timestamp, current_attitude):
+    async def get_attitude_to_me(self, readable_messages, timestamp, person: Person):
         alias_str = ", ".join(global_config.bot.alias_names)
         current_time = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
         # 解析当前态度值
-        attitude_parts = current_attitude.split(',')
-        current_attitude_score = float(attitude_parts[0]) if len(attitude_parts) > 0 else 0.0
-        total_confidence = float(attitude_parts[1]) if len(attitude_parts) > 1 else 1.0
+        current_attitude_score = person.attitude_to_me
+        total_confidence = person.attitude_to_me_confidence
         
         prompt = await global_prompt_manager.format_prompt(
             "attitude_to_me_prompt",
             bot_name = global_config.bot.nickname,
             alias_str = alias_str,
-            person_name = person_name,
-            nickname = nickname,
+            person_name = person.person_name,
+            nickname = person.nickname,
             readable_messages = readable_messages,
             current_time = current_time,
         )
@@ -301,30 +263,38 @@ class RelationshipManager:
         attitude = repair_json(attitude)
         attitude_data = json.loads(attitude)
         
+        if attitude_data == "none" or not attitude_data or (isinstance(attitude_data, str) and attitude_data.lower() == "none") or (isinstance(attitude_data, list) and len(attitude_data) == 0):
+            return ""
+        
+        # 确保 attitude_data 是字典格式
+        if not isinstance(attitude_data, dict):
+            logger.warning(f"LLM返回了错误的JSON格式，跳过解析: {type(attitude_data)}, 内容: {attitude_data}")
+            return ""
+        
         attitude_score = attitude_data["attitude"]
         confidence = attitude_data["confidence"]
         
         new_confidence = total_confidence + confidence
-        
         new_attitude_score = (current_attitude_score * total_confidence + attitude_score * confidence)/new_confidence
         
+        person.attitude_to_me = new_attitude_score
+        person.attitude_to_me_confidence = new_confidence
         
-        return f"{new_attitude_score:.3f},{new_confidence:.3f}"
+        return person
     
-    async def get_neuroticism(self, person_name, nickname, readable_messages, timestamp, current_neuroticism):
+    async def get_neuroticism(self, readable_messages, timestamp, person: Person):
         alias_str = ", ".join(global_config.bot.alias_names)
         current_time = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
         # 解析当前态度值
-        neuroticism_parts = current_neuroticism.split(',')
-        current_neuroticism_score = float(neuroticism_parts[0]) if len(neuroticism_parts) > 0 else 0.0
-        total_confidence = float(neuroticism_parts[1]) if len(neuroticism_parts) > 1 else 1.0
+        current_neuroticism_score = person.neuroticism
+        total_confidence = person.neuroticism_confidence
         
         prompt = await global_prompt_manager.format_prompt(
             "neuroticism_prompt",
             bot_name = global_config.bot.nickname,
             alias_str = alias_str,
-            person_name = person_name,
-            nickname = nickname,
+            person_name = person.person_name,
+            nickname = person.nickname,
             readable_messages = readable_messages,
             current_time = current_time,
         )
@@ -339,6 +309,14 @@ class RelationshipManager:
         neuroticism = repair_json(neuroticism)
         neuroticism_data = json.loads(neuroticism)
         
+        if neuroticism_data == "none" or not neuroticism_data or (isinstance(neuroticism_data, str) and neuroticism_data.lower() == "none") or (isinstance(neuroticism_data, list) and len(neuroticism_data) == 0):
+            return ""
+        
+        # 确保 neuroticism_data 是字典格式
+        if not isinstance(neuroticism_data, dict):
+            logger.warning(f"LLM返回了错误的JSON格式，跳过解析: {type(neuroticism_data)}, 内容: {neuroticism_data}")
+            return ""
+        
         neuroticism_score = neuroticism_data["neuroticism"]
         confidence = neuroticism_data["confidence"]
         
@@ -346,8 +324,10 @@ class RelationshipManager:
         
         new_neuroticism_score = (current_neuroticism_score * total_confidence + neuroticism_score * confidence)/new_confidence
         
+        person.neuroticism = new_neuroticism_score
+        person.neuroticism_confidence = new_confidence
         
-        return f"{new_neuroticism_score:.3f},{new_confidence:.3f}"
+        return person
         
 
     async def update_person_impression(self, person_id, timestamp, bot_engaged_messages: List[Dict[str, Any]]):
@@ -360,20 +340,12 @@ class RelationshipManager:
             timestamp: 时间戳 (用于记录交互时间)
             bot_engaged_messages: bot参与的消息列表
         """
-        person_info_manager = get_person_info_manager()
-        person_name = await person_info_manager.get_value(person_id, "person_name")
-        nickname = await person_info_manager.get_value(person_id, "nickname")
-        know_times: float = await person_info_manager.get_value(person_id, "know_times") or 0  # type: ignore
-        current_points = await person_info_manager.get_value(person_id, "points") or []
-        attitude_to_me = await person_info_manager.get_value(person_id, "attitude_to_me") or "0,1"
-        neuroticism = await person_info_manager.get_value(person_id, "neuroticism") or "5,1"
-        
-        # personality_block =get_individuality().get_personality_prompt(x_person=2, level=2)
-        # identity_block =get_individuality().get_identity_prompt(x_person=2, level=2)
+        person = Person(person_id=person_id)
+        person_name = person.person_name
+        # nickname = person.nickname
+        know_times: float = person.know_times
 
         user_messages = bot_engaged_messages
-
-        current_time = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
 
         # 匿名化消息
         # 创建用户名称映射
@@ -383,33 +355,35 @@ class RelationshipManager:
 
         # 遍历消息，构建映射
         for msg in user_messages:
-            await person_info_manager.get_or_create_person(
-                platform=msg.get("chat_info_platform"),  # type: ignore
-                user_id=msg.get("user_id"),  # type: ignore
-                nickname=msg.get("user_nickname"),  # type: ignore
-                user_cardname=msg.get("user_cardname"),  # type: ignore
-            )
-            replace_user_id: str = msg.get("user_id")  # type: ignore
-            replace_platform: str = msg.get("chat_info_platform")  # type: ignore
-            replace_person_id = PersonInfoManager.get_person_id(replace_platform, replace_user_id)
-            replace_person_name = await person_info_manager.get_value(replace_person_id, "person_name")
+            if msg.get("user_id") == "system":
+                continue
+            try:
 
+                user_id = msg.get("user_id")
+                platform = msg.get("chat_info_platform")
+                assert isinstance(user_id, str) and isinstance(platform, str)
+                msg_person = Person(user_id=user_id, platform=platform)
+
+            except Exception as e:
+                logger.error(f"初始化Person失败: {msg}, 出现错误: {e}")
+                traceback.print_exc()
+                continue
             # 跳过机器人自己
-            if replace_user_id == global_config.bot.qq_account:
+            if msg_person.user_id == global_config.bot.qq_account:
                 name_mapping[f"{global_config.bot.nickname}"] = f"{global_config.bot.nickname}"
                 continue
 
             # 跳过目标用户
-            if replace_person_name == person_name:
-                name_mapping[replace_person_name] = f"{person_name}"
+            if msg_person.person_name == person_name and msg_person.person_name is not None:
+                name_mapping[msg_person.person_name] = f"{person_name}"
                 continue
 
             # 其他用户映射
-            if replace_person_name not in name_mapping:
+            if msg_person.person_name not in name_mapping and msg_person.person_name is not None:
                 if current_user > "Z":
                     current_user = "A"
                     user_count += 1
-                name_mapping[replace_person_name] = f"用户{current_user}{user_count if user_count > 1 else ''}"
+                name_mapping[msg_person.person_name] = f"用户{current_user}{user_count if user_count > 1 else ''}"
                 current_user = chr(ord(current_user) + 1)
 
         readable_messages = build_readable_messages(
@@ -418,25 +392,19 @@ class RelationshipManager:
 
         for original_name, mapped_name in name_mapping.items():
             # print(f"original_name: {original_name}, mapped_name: {mapped_name}")
-            readable_messages = readable_messages.replace(f"{original_name}", f"{mapped_name}")
-            
-
+            # 确保 original_name 和 mapped_name 都不为 None
+            if original_name is not None and mapped_name is not None:
+                readable_messages = readable_messages.replace(f"{original_name}", f"{mapped_name}")
         
-        remaining_points = await self.get_points(person_name, nickname, readable_messages, name_mapping, timestamp, current_points)
-        attitude_to_me = await self.get_attitude_to_me(person_name, nickname, readable_messages, timestamp, attitude_to_me)
-        neuroticism = await self.get_neuroticism(person_name, nickname, readable_messages, timestamp, neuroticism)
+        await self.get_points(
+            readable_messages=readable_messages, name_mapping=name_mapping, timestamp=timestamp, person=person)
+        await self.get_attitude_to_me(readable_messages=readable_messages, timestamp=timestamp, person=person)
+        await self.get_neuroticism(readable_messages=readable_messages, timestamp=timestamp, person=person)
 
-        # 更新数据库
-        await person_info_manager.update_one_field(
-            person_id, "points", json.dumps(remaining_points, ensure_ascii=False, indent=None)
-        )
-        await person_info_manager.update_one_field(person_id, "neuroticism", neuroticism)
-        await person_info_manager.update_one_field(person_id, "attitude_to_me", attitude_to_me)
-        await person_info_manager.update_one_field(person_id, "know_times", know_times + 1)
-        await person_info_manager.update_one_field(person_id, "last_know", timestamp)
-        know_since = await person_info_manager.get_value(person_id, "know_since") or 0
-        if know_since == 0:
-            await person_info_manager.update_one_field(person_id, "know_since", timestamp)
+        person.know_times = know_times + 1
+        person.last_know = timestamp
+            
+        person.sync_to_database()
         
         
 

@@ -254,6 +254,7 @@ class PersonInfo(BaseModel):
     用于存储个人信息数据的模型。
     """
 
+    is_known = BooleanField(default=False)  # 是否已认识
     person_id = TextField(unique=True, index=True)  # 个人唯一ID
     person_name = TextField(null=True)  # 个人名称 (允许为空)
     name_reason = TextField(null=True)  # 名称设定的原因
@@ -261,15 +262,25 @@ class PersonInfo(BaseModel):
     user_id = TextField(index=True)  # 用户ID
     nickname = TextField(null=True)  # 用户昵称
     points = TextField(null=True)  # 个人印象的点
-    attitude_to_me = TextField(null=True)  # 对bot的态度
-    rudeness = TextField(null=True)  # 对bot的冒犯程度
-    neuroticism = TextField(null=True)  # 对bot的神经质程度
-    conscientiousness = TextField(null=True)  # 对bot的尽责程度
-    likeness = TextField(null=True)  # 对bot的相似程度
-
     know_times = FloatField(null=True)  # 认识时间 (时间戳)
     know_since = FloatField(null=True)  # 首次印象总结时间
     last_know = FloatField(null=True)  # 最后一次印象总结时间
+    
+    
+    attitude_to_me = TextField(null=True)  # 对bot的态度
+    attitude_to_me_confidence = FloatField(null=True)  # 对bot的态度置信度
+    friendly_value = FloatField(null=True)  # 对bot的友好程度
+    friendly_value_confidence = FloatField(null=True)  # 对bot的友好程度置信度
+    rudeness = TextField(null=True)  # 对bot的冒犯程度
+    rudeness_confidence = FloatField(null=True)  # 对bot的冒犯程度置信度
+    neuroticism = TextField(null=True)  # 对bot的神经质程度
+    neuroticism_confidence = FloatField(null=True)  # 对bot的神经质程度置信度
+    conscientiousness = TextField(null=True)  # 对bot的尽责程度
+    conscientiousness_confidence = FloatField(null=True)  # 对bot的尽责程度置信度
+    likeness = TextField(null=True)  # 对bot的相似程度
+    likeness_confidence = FloatField(null=True)  # 对bot的相似程度置信度
+
+
 
     class Meta:
         # database = db # 继承自 BaseModel

@@ -9,7 +9,6 @@ from datetime import datetime
 from src.mais4u.mai_think import mai_thinking_manager
 from src.common.logger import get_logger
 from src.config.config import global_config, model_config
-from src.config.api_ada_configs import TaskConfig
 from src.individuality.individuality import get_individuality
 from src.llm_models.utils_model import LLMRequest
 from src.chat.message_receive.message import UserInfo, Seg, MessageRecv, MessageSending
@@ -27,8 +26,7 @@ from src.chat.express.expression_selector import expression_selector
 from src.chat.memory_system.memory_activator import MemoryActivator
 from src.chat.memory_system.instant_memory import InstantMemory
 from src.mood.mood_manager import mood_manager
-from src.person_info.relationship_fetcher import relationship_fetcher_manager
-from src.person_info.person_info import get_person_info_manager
+from src.person_info.person_info import Person, is_person_known
 from src.plugin_system.base.component_types import ActionInfo, EventType
 from src.plugin_system.apis import llm_api
 
@@ -59,7 +57,7 @@ def init_prompt():
 {reply_style}，你可以完全重组回复，保留最基本的表达含义就好，但重组后保持语意通顺。
 {keywords_reaction_prompt}
 {moderation_prompt}
-不要浮夸，不要夸张修辞，平淡且不要输出多余内容(包括前后缀，冒号和引号，括号，表情包，at或 @等 )，只输出一条回复就好。
+不要输出多余内容(包括前后缀，冒号和引号，括号，表情包，at或 @等 )，只输出一条回复就好。
 现在，你说：
 """,
         "default_expressor_prompt",
@@ -68,17 +66,11 @@ def init_prompt():
     # s4u 风格的 prompt 模板
     Prompt(
         """
-{expression_habits_block}
-{tool_info_block}
-{knowledge_prompt}
-{memory_block}
-{relation_info_block}
+{expression_habits_block}{tool_info_block}
+{knowledge_prompt}{memory_block}{relation_info_block}
 {extra_info_block}
-
 {identity}
-
 {action_descriptions}
-
 {time_block}
 你现在的主要任务是和 {sender_name} 聊天。同时，也有其他用户会参与聊天，你可以参考他们的回复内容，但是你现在想回复{sender_name}的发言。
 
@@ -94,7 +86,7 @@ def init_prompt():
 {keywords_reaction_prompt}
 请注意不要输出多余内容(包括前后缀，冒号和引号，at或 @等 )。只输出回复内容。
 {moderation_prompt}
-不要浮夸，不要夸张修辞，不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出一条回复内容就好
+不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出一条回复就好
 现在，你说：
 """,
         "replyer_prompt",
@@ -102,29 +94,24 @@ def init_prompt():
     
     Prompt(
         """
-{expression_habits_block}
-{tool_info_block}
-{knowledge_prompt}
-{memory_block}
-{relation_info_block}
+{expression_habits_block}{tool_info_block}
+{knowledge_prompt}{memory_block}{relation_info_block}
 {extra_info_block}
-
 {identity}
-
 {action_descriptions}
-
 {time_block}
 你现在正在一个QQ群里聊天，以下是正在进行的聊天内容：
 {background_dialogue_prompt}
 
 你现在想补充说明你刚刚自己的发言内容：{target}，原因是{reason}
 请你根据聊天内容，组织一条新回复。注意，{target} 是刚刚你自己的发言，你要在这基础上进一步发言，请按照你自己的角度来继续进行回复。
+注意保持上下文的连贯性。
 你现在的心情是：{mood_state}
 {reply_style}
 {keywords_reaction_prompt}
 请注意不要输出多余内容(包括前后缀，冒号和引号，at或 @等 )。只输出回复内容。
 {moderation_prompt}
-不要浮夸，不要夸张修辞，不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出一条回复内容就好
+不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出一条回复就好
 现在，你说：
 """,
         "replyer_self_prompt",
@@ -170,11 +157,13 @@ class DefaultReplyer:
         extra_info: str = "",
         reply_reason: str = "",
         available_actions: Optional[Dict[str, ActionInfo]] = None,
+        choosen_actions: Optional[List[Dict[str, Any]]] = None,
         enable_tool: bool = True,
         from_plugin: bool = True,
         stream_id: Optional[str] = None,
         reply_message: Optional[Dict[str, Any]] = None,
     ) -> Tuple[bool, Optional[Dict[str, Any]], Optional[str]]:
+        # sourcery skip: merge-nested-ifs
         """
         回复器 (Replier): 负责生成回复文本的核心逻辑。
 
@@ -183,12 +172,14 @@ class DefaultReplyer:
             extra_info: 额外信息，用于补充上下文
             reply_reason: 回复原因
             available_actions: 可用的动作信息字典
+            choosen_actions: 已选动作
             enable_tool: 是否启用工具调用
             from_plugin: 是否来自插件
 
         Returns:
             Tuple[bool, Optional[Dict[str, Any]], Optional[str]]: (是否成功, 生成的回复, 使用的prompt)
         """
+        
         prompt = None
         if available_actions is None:
             available_actions = {}
@@ -198,6 +189,7 @@ class DefaultReplyer:
                 prompt = await self.build_prompt_reply_context(
                     extra_info=extra_info,
                     available_actions=available_actions,
+                    choosen_actions=choosen_actions,
                     enable_tool=enable_tool,
                     reply_message=reply_message,
                     reply_reason=reply_reason,
@@ -302,18 +294,15 @@ class DefaultReplyer:
         if not global_config.relationship.enable_relationship:
             return ""
 
-        relationship_fetcher = relationship_fetcher_manager.get_fetcher(self.chat_stream.stream_id)
-
         # 获取用户ID
-        person_info_manager = get_person_info_manager()
-        person_id = person_info_manager.get_person_id_by_person_name(sender)
-        if not person_id:
+        person = Person(person_name = sender)
+        if not is_person_known(person_name=sender):
             logger.warning(f"未找到用户 {sender} 的ID，跳过信息提取")
             return f"你完全不认识{sender}，不理解ta的相关信息。"
 
-        return await relationship_fetcher.build_relation_info(person_id, points_num=5)
+        return person.build_relationship(points_num=5)
 
-    async def build_expression_habits(self, chat_history: str, target: str) -> Tuple[str, str]:
+    async def build_expression_habits(self, chat_history: str, target: str) -> str:
         """构建表达习惯块
 
         Args:
@@ -330,7 +319,7 @@ class DefaultReplyer:
         style_habits = []
         # 使用从处理器传来的选中表达方式
         # LLM模式：调用LLM选择5-10个，然后随机选5个
-        reply_style_guide, selected_expressions = await expression_selector.select_suitable_expressions_llm(
+        selected_expressions = await expression_selector.select_suitable_expressions_llm(
             self.chat_stream.stream_id, chat_history, max_num=8, target_message=target
         )
 
@@ -354,7 +343,7 @@ class DefaultReplyer:
             )
             expression_habits_block += f"{style_habits_str}\n"
 
-        return (f"{expression_habits_title}\n{expression_habits_block}", reply_style_guide)
+        return f"{expression_habits_title}\n{expression_habits_block}"
 
     async def build_memory_block(self, chat_history: str, target: str) -> str:
         """构建记忆块
@@ -633,12 +622,43 @@ class DefaultReplyer:
         mai_think.sender = sender
         mai_think.target = target
         return mai_think
+    
+    
+    async def build_actions_prompt(self, available_actions, choosen_actions: Optional[List[Dict[str, Any]]] = None) -> str:
+        """构建动作提示
+        """
+        
+        action_descriptions = ""
+        if available_actions:
+            action_descriptions = "你可以做以下这些动作：\n"
+            for action_name, action_info in available_actions.items():
+                action_description = action_info.description
+                action_descriptions += f"- {action_name}: {action_description}\n"
+            action_descriptions += "\n"
+        
+        if choosen_actions:
+            action_descriptions += "根据聊天情况，你决定在回复的同时做以下这些动作：\n"
+        
+            for action in choosen_actions:
+                action_name = action.get('action_type', 'unknown_action')
+                if action_name =="reply":
+                    continue
+                action_description = action.get('reason', '无描述')
+                reasoning = action.get('reasoning', '无原因')
 
+                
+                action_descriptions += f"- {action_name}: {action_description}，原因：{reasoning}\n"
+        
+
+        return action_descriptions
+        
+        
     async def build_prompt_reply_context(
         self,
         extra_info: str = "",
         reply_reason: str = "",
         available_actions: Optional[Dict[str, ActionInfo]] = None,
+        choosen_actions: Optional[List[Dict[str, Any]]] = None,
         enable_tool: bool = True,
         reply_message: Optional[Dict[str, Any]] = None,
     ) -> str:
@@ -649,6 +669,7 @@ class DefaultReplyer:
             extra_info: 额外信息，用于补充上下文
             reply_reason: 回复原因
             available_actions: 可用动作
+            choosen_actions: 已选动作
             enable_timeout: 是否启用超时处理
             enable_tool: 是否启用工具调用
             reply_message: 回复的原始消息
@@ -659,18 +680,16 @@ class DefaultReplyer:
             available_actions = {}
         chat_stream = self.chat_stream
         chat_id = chat_stream.stream_id
-        person_info_manager = get_person_info_manager()
         is_group_chat = bool(chat_stream.group_info)
         platform = chat_stream.platform
-        user_id = reply_message.get("user_id","")
         
-        if user_id:
-            person_id = person_info_manager.get_person_id(platform,user_id)
-            person_name = await person_info_manager.get_value(person_id, "person_name")
+        if reply_message:
+            user_id = reply_message.get("user_id","")
+            person = Person(platform=platform, user_id=user_id)
+            person_name = person.person_name or user_id
             sender = person_name
             target = reply_message.get('processed_plain_text')
         else:
-            person_id = ""
             person_name = "用户"
             sender = "用户"
             target = "消息"
@@ -684,14 +703,6 @@ class DefaultReplyer:
             
         target = replace_user_references_sync(target, chat_stream.platform, replace_bot_name=True)
 
-        # 构建action描述 (如果启用planner)
-        action_descriptions = ""
-        if available_actions:
-            action_descriptions = "你有以下的动作能力，但执行这些动作不由你决定，由另外一个模型同步决定，因此你只需要知道有如下能力即可：\n"
-            for action_name, action_info in available_actions.items():
-                action_description = action_info.description
-                action_descriptions += f"- {action_name}: {action_description}\n"
-            action_descriptions += "\n"
 
         message_list_before_now_long = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_id,
@@ -724,6 +735,7 @@ class DefaultReplyer:
                 self.build_tool_info(chat_talking_prompt_short, sender, target, enable_tool=enable_tool), "tool_info"
             ),
             self._time_and_run_task(self.get_prompt_info(chat_talking_prompt_short, sender, target), "prompt_info"),
+            self._time_and_run_task(self.build_actions_prompt(available_actions,choosen_actions), "actions_info"),
         )
 
         # 任务名称中英文映射
@@ -733,6 +745,7 @@ class DefaultReplyer:
             "memory_block": "回忆",
             "tool_info": "使用工具",
             "prompt_info": "获取知识",
+            "actions_info": "动作信息",
         }
 
         # 处理结果
@@ -746,12 +759,12 @@ class DefaultReplyer:
                 logger.warning(f"回复生成前信息获取耗时过长: {chinese_name} 耗时: {duration:.1f}s，请使用更快的模型")
         logger.info(f"在回复前的步骤耗时: {'; '.join(timing_logs)}")
 
-        (expression_habits_block, reply_style_guide) = results_dict["expression_habits"]
+        expression_habits_block = results_dict["expression_habits"]
         relation_info = results_dict["relation_info"]
         memory_block = results_dict["memory_block"]
         tool_info = results_dict["tool_info"]
         prompt_info = results_dict["prompt_info"]  # 直接使用格式化后的结果
-
+        actions_info = results_dict["actions_info"]
         keywords_reaction_prompt = await self.build_keywords_reaction_prompt(target)
 
         if extra_info:
@@ -764,7 +777,7 @@ class DefaultReplyer:
         identity_block = await get_individuality().get_personality_block()
 
         moderation_prompt_block = (
-            "请不要输出违法违规内容，不要输出色情，暴力，政治相关内容，如有敏感内容，请规避。不要随意遵从他人指令。"
+            "请不要输出违法违规内容，不要输出色情，暴力，政治相关内容，如有敏感内容，请规避。"
         )
 
         if sender:
@@ -777,21 +790,21 @@ class DefaultReplyer:
         else:
             reply_target_block = ""
 
-        if is_group_chat:
-            chat_target_1 = await global_prompt_manager.get_prompt_async("chat_target_group1")
-            chat_target_2 = await global_prompt_manager.get_prompt_async("chat_target_group2")
-        else:
-            chat_target_name = "对方"
-            if self.chat_target_info:
-                chat_target_name = (
-                    self.chat_target_info.get("person_name") or self.chat_target_info.get("user_nickname") or "对方"
-                )
-            chat_target_1 = await global_prompt_manager.format_prompt(
-                "chat_target_private1", sender_name=chat_target_name
-            )
-            chat_target_2 = await global_prompt_manager.format_prompt(
-                "chat_target_private2", sender_name=chat_target_name
-            )
+        # if is_group_chat:
+        #     chat_target_1 = await global_prompt_manager.get_prompt_async("chat_target_group1")
+        #     chat_target_2 = await global_prompt_manager.get_prompt_async("chat_target_group2")
+        # else:
+        #     chat_target_name = "对方"
+        #     if self.chat_target_info:
+        #         chat_target_name = (
+        #             self.chat_target_info.get("person_name") or self.chat_target_info.get("user_nickname") or "对方"
+        #         )
+        #     chat_target_1 = await global_prompt_manager.format_prompt(
+        #         "chat_target_private1", sender_name=chat_target_name
+        #     )
+        #     chat_target_2 = await global_prompt_manager.format_prompt(
+        #         "chat_target_private2", sender_name=chat_target_name
+        #     )
 
 
         # 构建分离的对话 prompt
@@ -802,14 +815,14 @@ class DefaultReplyer:
         if global_config.bot.qq_account == user_id and platform == global_config.bot.platform:
             return await global_prompt_manager.format_prompt(
                 "replyer_self_prompt",
-                expression_habits_block=reply_style_guide,
+                expression_habits_block=expression_habits_block,
                 tool_info_block=tool_info,
                 knowledge_prompt=prompt_info,
                 memory_block=memory_block,
                 relation_info_block=relation_info,
                 extra_info_block=extra_info_block,
                 identity=identity_block,
-                action_descriptions=action_descriptions,
+                action_descriptions=actions_info,
                 mood_state=mood_prompt,
                 background_dialogue_prompt=background_dialogue_prompt,
                 time_block=time_block,
@@ -822,14 +835,14 @@ class DefaultReplyer:
         else:
             return await global_prompt_manager.format_prompt(
                 "replyer_prompt",
-                expression_habits_block=reply_style_guide,
+                expression_habits_block=expression_habits_block,
                 tool_info_block=tool_info,
                 knowledge_prompt=prompt_info,
                 memory_block=memory_block,
                 relation_info_block=relation_info,
                 extra_info_block=extra_info_block,
                 identity=identity_block,
-                action_descriptions=action_descriptions,
+                action_descriptions=actions_info,
                 sender_name=sender,
                 mood_state=mood_prompt,
                 background_dialogue_prompt=background_dialogue_prompt,
@@ -853,8 +866,8 @@ class DefaultReplyer:
         is_group_chat = bool(chat_stream.group_info)
 
         if reply_message:
-            sender = reply_message.get("sender")
-            target = reply_message.get("target")
+            sender = reply_message.get("sender", "")
+            target = reply_message.get("target", "")
         else:
             sender, target = self._parse_reply_target(reply_to)
 
@@ -885,7 +898,6 @@ class DefaultReplyer:
             self.build_relation_info(sender, target),
         )
         
-        expression_habits_block, reply_style_guide = expression_habits_block
 
         keywords_reaction_prompt = await self.build_keywords_reaction_prompt(target)
 

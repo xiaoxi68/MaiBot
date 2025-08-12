@@ -270,7 +270,15 @@ async def _default_stream_response_handler(
             # 如果中断量被设置，则抛出ReqAbortException
             _insure_buffer_closed()
             raise ReqAbortException("请求被外部信号中断")
-
+        # 空 choices / usage-only 帧的防御
+        if not hasattr(event, "choices") or not event.choices:
+            if hasattr(event, "usage") and event.usage:
+                _usage_record = (
+                    event.usage.prompt_tokens or 0,
+                    event.usage.completion_tokens or 0,
+                    event.usage.total_tokens or 0,
+                )
+            continue  # 跳过本帧，避免访问 choices[0]
         delta = event.choices[0].delta  # 获取当前块的delta内容
 
         if hasattr(delta, "reasoning_content") and delta.reasoning_content:  # type: ignore
@@ -471,7 +479,7 @@ class OpenaiClient(BaseClient):
                         req_task.cancel()
                         raise ReqAbortException("请求被外部信号中断")
                     await asyncio.sleep(0.1)  # 等待0.5秒后再次检查任务&中断信号量状态
-                
+
                 # logger.info(f"OpenAI请求时间: {model_info.model_identifier}  {time.time() - start_time} \n{messages}")
 
                 resp, usage_record = async_response_parser(req_task.result())

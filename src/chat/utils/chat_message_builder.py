@@ -9,7 +9,7 @@ from src.config.config import global_config
 from src.common.message_repository import find_messages, count_messages
 from src.common.database.database_model import ActionRecords
 from src.common.database.database_model import Images
-from src.person_info.person_info import PersonInfoManager, get_person_info_manager
+from src.person_info.person_info import Person,get_person_id
 from src.chat.utils.utils import translate_timestamp_to_human_readable, assign_message_ids
 
 install(extra_lines=3)
@@ -35,14 +35,12 @@ def replace_user_references_sync(
         str: 处理后的内容字符串
     """
     if name_resolver is None:
-        person_info_manager = get_person_info_manager()
-
         def default_resolver(platform: str, user_id: str) -> str:
             # 检查是否是机器人自己
             if replace_bot_name and user_id == global_config.bot.qq_account:
                 return f"{global_config.bot.nickname}(你)"
-            person_id = PersonInfoManager.get_person_id(platform, user_id)
-            return person_info_manager.get_value_sync(person_id, "person_name") or user_id  # type: ignore
+            person = Person(platform=platform, user_id=user_id)
+            return person.person_name or user_id  # type: ignore
 
         name_resolver = default_resolver
 
@@ -110,14 +108,12 @@ async def replace_user_references_async(
         str: 处理后的内容字符串
     """
     if name_resolver is None:
-        person_info_manager = get_person_info_manager()
-
         async def default_resolver(platform: str, user_id: str) -> str:
             # 检查是否是机器人自己
             if replace_bot_name and user_id == global_config.bot.qq_account:
                 return f"{global_config.bot.nickname}(你)"
-            person_id = PersonInfoManager.get_person_id(platform, user_id)
-            return await person_info_manager.get_value(person_id, "person_name") or user_id  # type: ignore
+            person = Person(platform=platform, user_id=user_id)
+            return person.person_name or user_id  # type: ignore
 
         name_resolver = default_resolver
 
@@ -506,14 +502,13 @@ def _build_readable_messages_internal(
         if not all([platform, user_id, timestamp is not None]):
             continue
 
-        person_id = PersonInfoManager.get_person_id(platform, user_id)
-        person_info_manager = get_person_info_manager()
+        person = Person(platform=platform, user_id=user_id)
         # 根据 replace_bot_name 参数决定是否替换机器人名称
         person_name: str
         if replace_bot_name and user_id == global_config.bot.qq_account:
             person_name = f"{global_config.bot.nickname}(你)"
         else:
-            person_name = person_info_manager.get_value_sync(person_id, "person_name")  # type: ignore
+            person_name = person.person_name or user_id  # type: ignore
 
         # 如果 person_name 未设置，则使用消息中的 nickname 或默认名称
         if not person_name:
@@ -1009,7 +1004,7 @@ async def build_anonymous_messages(messages: List[Dict[str, Any]]) -> str:
             # print("SELF11111111111111")
             return "SELF"
         try:
-            person_id = PersonInfoManager.get_person_id(platform, user_id)
+            person_id = get_person_id(platform, user_id)
         except Exception as _e:
             person_id = None
         if not person_id:
@@ -1102,7 +1097,7 @@ async def get_person_id_list(messages: List[Dict[str, Any]]) -> List[str]:
         if platform is None:
             platform = "unknown"
 
-        if person_id := PersonInfoManager.get_person_id(platform, user_id):
+        if person_id := get_person_id(platform, user_id):
             person_ids_set.add(person_id)
 
     return list(person_ids_set)  # 将集合转换为列表返回

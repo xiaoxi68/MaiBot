@@ -106,7 +106,7 @@ class ExpressionLearner:
 
         # 获取该聊天流的学习强度
         try:
-            use_expression, enable_learning, learning_intensity = global_config.expression.get_expression_config_for_chat(self.chat_id)
+            _, enable_learning, learning_intensity = global_config.expression.get_expression_config_for_chat(self.chat_id)
         except Exception as e:
             logger.error(f"获取聊天流 {self.chat_id} 的学习配置失败: {e}")
             return False
@@ -129,7 +129,7 @@ class ExpressionLearner:
             timestamp_start=self.last_learning_time,
             timestamp_end=time.time(),
         )
-        
+
         if not recent_messages or len(recent_messages) < self.min_messages_for_learning:
             return False
             
@@ -168,30 +168,30 @@ class ExpressionLearner:
             logger.error(f"为聊天流 {self.chat_name} 触发学习失败: {e}")
             return False
 
-    def get_expression_by_chat_id(self) -> Tuple[List[Dict[str, float]], List[Dict[str, float]]]:
-        """
-        获取指定chat_id的style表达方式（已禁用grammar的获取）
-        返回的每个表达方式字典中都包含了source_id, 用于后续的更新操作
-        """
-        learnt_style_expressions = []
+    # def get_expression_by_chat_id(self) -> Tuple[List[Dict[str, float]], List[Dict[str, float]]]:
+    #     """
+    #     获取指定chat_id的style表达方式（已禁用grammar的获取）
+    #     返回的每个表达方式字典中都包含了source_id, 用于后续的更新操作
+    #     """
+    #     learnt_style_expressions = []
 
-        # 直接从数据库查询
-        style_query = Expression.select().where((Expression.chat_id == self.chat_id) & (Expression.type == "style"))
-        for expr in style_query:
-            # 确保create_date存在，如果不存在则使用last_active_time
-            create_date = expr.create_date if expr.create_date is not None else expr.last_active_time
-            learnt_style_expressions.append(
-                {
-                    "situation": expr.situation,
-                    "style": expr.style,
-                    "count": expr.count,
-                    "last_active_time": expr.last_active_time,
-                    "source_id": self.chat_id,
-                    "type": "style",
-                    "create_date": create_date,
-                }
-            )
-        return learnt_style_expressions
+    #     # 直接从数据库查询
+    #     style_query = Expression.select().where((Expression.chat_id == self.chat_id) & (Expression.type == "style"))
+    #     for expr in style_query:
+    #         # 确保create_date存在，如果不存在则使用last_active_time
+    #         create_date = expr.create_date if expr.create_date is not None else expr.last_active_time
+    #         learnt_style_expressions.append(
+    #             {
+    #                 "situation": expr.situation,
+    #                 "style": expr.style,
+    #                 "count": expr.count,
+    #                 "last_active_time": expr.last_active_time,
+    #                 "source_id": self.chat_id,
+    #                 "type": "style",
+    #                 "create_date": create_date,
+    #             }
+    #         )
+    #     return learnt_style_expressions
 
 
 
@@ -281,7 +281,7 @@ class ExpressionLearner:
         logger.info(f"在 {group_name} 学习到表达风格:\n{learnt_expressions_str}")
 
         if not learnt_expressions:
-            logger.info(f"没有学习到表达风格")
+            logger.info("没有学习到表达风格")
             return []
 
         # 按chat_id分组

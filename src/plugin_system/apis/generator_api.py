@@ -12,7 +12,6 @@ import traceback
 from typing import Tuple, Any, Dict, List, Optional
 from rich.traceback import install
 from src.common.logger import get_logger
-from src.config.api_ada_configs import TaskConfig
 from src.chat.replyer.default_generator import DefaultReplyer
 from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.utils.utils import process_llm_response
@@ -78,6 +77,7 @@ async def generate_reply(
     extra_info: str = "",
     reply_reason: str = "",
     available_actions: Optional[Dict[str, ActionInfo]] = None,
+            choosen_actions: Optional[List[Dict[str, Any]]] = None,
     enable_tool: bool = False,
     enable_splitter: bool = True,
     enable_chinese_typo: bool = True,
@@ -95,6 +95,7 @@ async def generate_reply(
         extra_info: 额外信息，用于补充上下文
         reply_reason: 回复原因
         available_actions: 可用动作
+        choosen_actions: 已选动作
         enable_tool: 是否启用工具调用
         enable_splitter: 是否启用消息分割器
         enable_chinese_typo: 是否启用错字生成器
@@ -125,6 +126,7 @@ async def generate_reply(
         success, llm_response_dict, prompt = await replyer.generate_reply_with_context(
             extra_info=extra_info,
             available_actions=available_actions,
+            choosen_actions=choosen_actions,
             enable_tool=enable_tool,
             reply_message=reply_message,
             reply_reason=reply_reason,

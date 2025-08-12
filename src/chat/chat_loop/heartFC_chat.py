@@ -17,7 +17,7 @@ from src.chat.planner_actions.action_manager import ActionManager
 from src.chat.chat_loop.hfc_utils import CycleDetail
 from src.person_info.relationship_builder_manager import relationship_builder_manager
 from src.chat.express.expression_learner import expression_learner_manager
-from src.person_info.person_info import get_person_info_manager
+from src.person_info.person_info import Person
 from src.person_info.group_relationship_manager import get_group_relationship_manager
 from src.plugin_system.base.component_types import ChatMode, EventType
 from src.plugin_system.core import events_manager
@@ -250,7 +250,7 @@ class HeartFChatting:
         if new_message_count > 0:
             # 只在兴趣值变化时输出log
             if not hasattr(self, "_last_accumulated_interest") or total_interest != self._last_accumulated_interest:
-                logger.info(f"{self.log_prefix} 休息中，累计兴趣值: {total_interest:.2f}, 活跃度: {talk_frequency:.1f}")
+                logger.info(f"{self.log_prefix} 休息中，新消息：{new_message_count}条，累计兴趣值: {total_interest:.2f}, 活跃度: {talk_frequency:.1f}")
                 self._last_accumulated_interest = total_interest
             
             if total_interest >= modified_exit_interest_threshold:
@@ -262,8 +262,8 @@ class HeartFChatting:
                 return True,total_interest/new_message_count
 
         # 每10秒输出一次等待状态
-        if int(time.time() - self.last_read_time) > 0 and int(time.time() - self.last_read_time) % 10 == 0:
-            logger.info(
+        if int(time.time() - self.last_read_time) > 0 and int(time.time() - self.last_read_time) % 15 == 0:
+            logger.debug(
                 f"{self.log_prefix} 已等待{time.time() - self.last_read_time:.0f}秒，累计{new_message_count}条消息，累计兴趣{total_interest:.1f}，继续等待..."
             )
             await asyncio.sleep(0.5)
@@ -306,20 +306,14 @@ class HeartFChatting:
         
         with Timer("回复发送", cycle_timers):
             reply_text = await self._send_response(response_set, action_message)
-
-        # 存储reply action信息
-        person_info_manager = get_person_info_manager()
         
         # 获取 platform，如果不存在则从 chat_stream 获取，如果还是 None 则使用默认值
         platform = action_message.get("chat_info_platform")
         if platform is None:
             platform = getattr(self.chat_stream, "platform", "unknown")
         
-        person_id = person_info_manager.get_person_id(
-            platform,
-            action_message.get("user_id", ""),
-        )
-        person_name = await person_info_manager.get_value(person_id, "person_name")
+        person = Person(platform = platform ,user_id = action_message.get("user_id", ""))
+        person_name = person.person_name
         action_prompt_display = f"你对{person_name}进行了回复：{reply_text}"
 
         await database_api.store_action_info(
@@ -435,7 +429,7 @@ class HeartFChatting:
 
             
             # 3. 并行执行所有动作
-            async def execute_action(action_info):
+            async def execute_action(action_info,actions):
                 """执行单个动作的通用函数"""
                 try:
                     if action_info["action_type"] == "no_reply":
@@ -484,6 +478,7 @@ class HeartFChatting:
                                 chat_stream=self.chat_stream,
                                 reply_message = action_info["action_message"],
                                 available_actions=available_actions,
+                                choosen_actions=actions,
                                 reply_reason=action_info.get("reasoning", ""),
                                 enable_tool=global_config.tool.enable_tool,
                                 request_type="replyer",
@@ -531,10 +526,8 @@ class HeartFChatting:
                         "loop_info": None,
                         "error": str(e)
                     }
-            
-
-            
-            action_tasks = [asyncio.create_task(execute_action(action)) for action in actions]
+                  
+            action_tasks = [asyncio.create_task(execute_action(action,actions)) for action in actions]
             
             # 并行执行所有任务
             results = await asyncio.gather(*action_tasks, return_exceptions=True)

@@ -16,6 +16,7 @@ from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.plugin_system.core import component_registry, events_manager, global_announcement_manager
 from src.plugin_system.base import BaseCommand, EventType
 from src.mais4u.mais4u_chat.s4u_msg_processor import S4UMessageProcessor
+from src.person_info.person_info import Person
 
 # 定义日志配置
 
@@ -168,6 +169,8 @@ class ChatBot:
 
         # 处理消息内容
         await message.process()
+        
+        person = Person.register_person(platform=message.message_info.platform, user_id=message.message_info.user_info.user_id,nickname=user_info.user_nickname)
 
         await self.s4u_message_processor.process_message(message)
 
