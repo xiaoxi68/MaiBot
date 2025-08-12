@@ -144,7 +144,7 @@ class Person:
             self.platform = platform
         else:
             logger.error("Person 初始化失败，缺少必要参数")
-            return 
+            raise ValueError("Person 初始化失败，缺少必要参数")
         
         if not is_person_known(person_id=self.person_id):
             self.is_known = False
@@ -257,6 +257,8 @@ class Person:
     
     def sync_to_database(self):
         """将所有属性同步回数据库"""
+        if not self.is_known:
+            return
         try:
             # 准备数据
             data = {

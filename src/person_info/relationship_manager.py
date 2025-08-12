@@ -1,5 +1,5 @@
 from src.common.logger import get_logger
-from .person_info import Person
+from .person_info import Person,is_person_known
 import random
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config, model_config
@@ -357,7 +357,14 @@ class RelationshipManager:
         for msg in user_messages:
             if msg.get("user_id") == "system":
                 continue
-            msg_person = Person(user_id=msg.get("user_id"), platform=msg.get("chat_info_platform"))
+            try:
+                if not is_person_known(user_id=msg.get("user_id"), platform=msg.get("chat_info_platform")):
+                    continue
+                msg_person = Person(user_id=msg.get("user_id"), platform=msg.get("chat_info_platform"))
+            except Exception as e:
+                logger.error(f"初始化Person失败: {msg}")
+                traceback.print_exc()
+                continue
             # 跳过机器人自己
             if msg_person.user_id == global_config.bot.qq_account:
                 name_mapping[f"{global_config.bot.nickname}"] = f"{global_config.bot.nickname}"
