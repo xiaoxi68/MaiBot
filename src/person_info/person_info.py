@@ -128,6 +128,8 @@ class Person:
             self.person_name = global_config.bot.nickname
             return
         
+        self.user_id = ""
+        self.platform = ""
         
         if person_id:
             self.person_id = person_id
@@ -138,6 +140,8 @@ class Person:
                 return 
         elif platform and user_id:
             self.person_id = get_person_id(platform, user_id)
+            self.user_id = user_id
+            self.platform = platform
         else:
             logger.error("Person 初始化失败，缺少必要参数")
             return 
@@ -148,8 +152,6 @@ class Person:
             return
         
         self.is_known = False
-        self.platform = platform
-        self.user_id = user_id
         
         # 初始化默认值
         self.nickname = ""
@@ -189,6 +191,8 @@ class Person:
             record = PersonInfo.get_or_none(PersonInfo.person_id == self.person_id)
             
             if record:
+                self.user_id = record.user_id if record.user_id else ""
+                self.platform = record.platform if record.platform else "" 
                 self.is_known = record.is_known if record.is_known else False
                 self.nickname = record.nickname if record.nickname else ""
                 self.person_name = record.person_name if record.person_name else self.nickname
@@ -300,6 +304,9 @@ class Person:
             logger.error(f"同步用户 {self.person_id} 信息到数据库时出错: {e}")
             
     def build_relationship(self,points_num=3):
+        print(self.person_name,self.nickname,self.platform,self.is_known)
+        
+        
         if not self.is_known:
             return ""
         
@@ -327,8 +334,8 @@ class Person:
         points_text = "\n".join([f"{point[2]}：{point[0]}" for point in points])
 
         nickname_str = ""
-        if self.person_name != nickname_str:
-            nickname_str = f"(ta在{self.platform}上的昵称是{nickname_str})"
+        if self.person_name != self.nickname:
+            nickname_str = f"(ta在{self.platform}上的昵称是{self.nickname})"
 
         relation_info = ""
         

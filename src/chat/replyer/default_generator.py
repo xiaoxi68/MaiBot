@@ -26,7 +26,7 @@ from src.chat.express.expression_selector import expression_selector
 from src.chat.memory_system.memory_activator import MemoryActivator
 from src.chat.memory_system.instant_memory import InstantMemory
 from src.mood.mood_manager import mood_manager
-from src.person_info.person_info import Person, get_person_id_by_person_name
+from src.person_info.person_info import Person, get_person_id_by_person_name,is_person_known
 from src.plugin_system.base.component_types import ActionInfo, EventType
 from src.plugin_system.apis import llm_api
 
@@ -301,9 +301,8 @@ class DefaultReplyer:
             return ""
 
         # 获取用户ID
-        person_id = get_person_id_by_person_name(sender)
-        person = Person(person_id=person_id)
-        if not person_id:
+        person = Person(person_name = sender)
+        if not is_person_known(person_name=sender):
             logger.warning(f"未找到用户 {sender} 的ID，跳过信息提取")
             return f"你完全不认识{sender}，不理解ta的相关信息。"
 
