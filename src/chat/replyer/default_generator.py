@@ -26,7 +26,7 @@ from src.chat.express.expression_selector import expression_selector
 from src.chat.memory_system.memory_activator import MemoryActivator
 from src.chat.memory_system.instant_memory import InstantMemory
 from src.mood.mood_manager import mood_manager
-from src.person_info.person_info import Person, get_person_id_by_person_name,is_person_known
+from src.person_info.person_info import Person, is_person_known
 from src.plugin_system.base.component_types import ActionInfo, EventType
 from src.plugin_system.apis import llm_api
 
@@ -173,6 +173,7 @@ class DefaultReplyer:
         stream_id: Optional[str] = None,
         reply_message: Optional[Dict[str, Any]] = None,
     ) -> Tuple[bool, Optional[Dict[str, Any]], Optional[str]]:
+        # sourcery skip: merge-nested-ifs
         """
         回复器 (Replier): 负责生成回复文本的核心逻辑。
 
@@ -308,7 +309,7 @@ class DefaultReplyer:
 
         return person.build_relationship(points_num=5)
 
-    async def build_expression_habits(self, chat_history: str, target: str) -> Tuple[str, str]:
+    async def build_expression_habits(self, chat_history: str, target: str) -> str:
         """构建表达习惯块
 
         Args:
@@ -770,21 +771,21 @@ class DefaultReplyer:
         else:
             reply_target_block = ""
 
-        if is_group_chat:
-            chat_target_1 = await global_prompt_manager.get_prompt_async("chat_target_group1")
-            chat_target_2 = await global_prompt_manager.get_prompt_async("chat_target_group2")
-        else:
-            chat_target_name = "对方"
-            if self.chat_target_info:
-                chat_target_name = (
-                    self.chat_target_info.get("person_name") or self.chat_target_info.get("user_nickname") or "对方"
-                )
-            chat_target_1 = await global_prompt_manager.format_prompt(
-                "chat_target_private1", sender_name=chat_target_name
-            )
-            chat_target_2 = await global_prompt_manager.format_prompt(
-                "chat_target_private2", sender_name=chat_target_name
-            )
+        # if is_group_chat:
+        #     chat_target_1 = await global_prompt_manager.get_prompt_async("chat_target_group1")
+        #     chat_target_2 = await global_prompt_manager.get_prompt_async("chat_target_group2")
+        # else:
+        #     chat_target_name = "对方"
+        #     if self.chat_target_info:
+        #         chat_target_name = (
+        #             self.chat_target_info.get("person_name") or self.chat_target_info.get("user_nickname") or "对方"
+        #         )
+        #     chat_target_1 = await global_prompt_manager.format_prompt(
+        #         "chat_target_private1", sender_name=chat_target_name
+        #     )
+        #     chat_target_2 = await global_prompt_manager.format_prompt(
+        #         "chat_target_private2", sender_name=chat_target_name
+        #     )
 
 
         # 构建分离的对话 prompt
@@ -846,8 +847,8 @@ class DefaultReplyer:
         is_group_chat = bool(chat_stream.group_info)
 
         if reply_message:
-            sender = reply_message.get("sender")
-            target = reply_message.get("target")
+            sender = reply_message.get("sender", "")
+            target = reply_message.get("target", "")
         else:
             sender, target = self._parse_reply_target(reply_to)
 
