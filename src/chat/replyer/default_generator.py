@@ -162,7 +162,7 @@ class DefaultReplyer:
         from_plugin: bool = True,
         stream_id: Optional[str] = None,
         reply_message: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[bool, Optional[Dict[str, Any]], Optional[str]]:
+    ) -> Tuple[bool, Optional[Dict[str, Any]], Optional[str], List[Dict[str, Any]]]:
         # sourcery skip: merge-nested-ifs
         """
         回复器 (Replier): 负责生成回复文本的核心逻辑。
@@ -186,7 +186,7 @@ class DefaultReplyer:
         try:
             # 3. 构建 Prompt
             with Timer("构建Prompt", {}):  # 内部计时器，可选保留
-                prompt = await self.build_prompt_reply_context(
+                prompt,selected_expressions = await self.build_prompt_reply_context(
                     extra_info=extra_info,
                     available_actions=available_actions,
                     choosen_actions=choosen_actions,
@@ -197,7 +197,7 @@ class DefaultReplyer:
 
             if not prompt:
                 logger.warning("构建prompt失败，跳过回复生成")
-                return False, None, None
+                return False, None, None, []
             from src.plugin_system.core.events_manager import events_manager
 
             if not from_plugin:
@@ -229,16 +229,16 @@ class DefaultReplyer:
             except Exception as llm_e:
                 # 精简报错信息
                 logger.error(f"LLM 生成失败: {llm_e}")
-                return False, None, prompt  # LLM 调用失败则无法生成回复
+                return False, None, prompt, selected_expressions  # LLM 调用失败则无法生成回复
 
-            return True, llm_response, prompt
+            return True, llm_response, prompt, selected_expressions
 
         except UserWarning as uw:
             raise uw
         except Exception as e:
             logger.error(f"回复生成意外失败: {e}")
             traceback.print_exc()
-            return False, None, prompt
+            return False, None, prompt, selected_expressions
 
     async def rewrite_reply_with_context(
         self,
@@ -302,7 +302,7 @@ class DefaultReplyer:
 
         return person.build_relationship(points_num=5)
 
-    async def build_expression_habits(self, chat_history: str, target: str) -> str:
+    async def build_expression_habits(self, chat_history: str, target: str) -> Tuple[str, List[int]]:
         """构建表达习惯块
 
         Args:
@@ -315,11 +315,11 @@ class DefaultReplyer:
         # 检查是否允许在此聊天流中使用表达
         use_expression, _, _ = global_config.expression.get_expression_config_for_chat(self.chat_stream.stream_id)
         if not use_expression:
-            return ""
+            return "", []
         style_habits = []
         # 使用从处理器传来的选中表达方式
         # LLM模式：调用LLM选择5-10个，然后随机选5个
-        selected_expressions = await expression_selector.select_suitable_expressions_llm(
+        selected_expressions, selected_ids = await expression_selector.select_suitable_expressions_llm(
             self.chat_stream.stream_id, chat_history, max_num=8, target_message=target
         )
 
@@ -343,7 +343,7 @@ class DefaultReplyer:
             )
             expression_habits_block += f"{style_habits_str}\n"
 
-        return f"{expression_habits_title}\n{expression_habits_block}"
+        return f"{expression_habits_title}\n{expression_habits_block}", selected_ids
 
     async def build_memory_block(self, chat_history: str, target: str) -> str:
         """构建记忆块
@@ -636,9 +636,8 @@ class DefaultReplyer:
                 action_descriptions += f"- {action_name}: {action_description}\n"
             action_descriptions += "\n"
         
+        choosen_action_descriptions = ""
         if choosen_actions:
-            action_descriptions += "根据聊天情况，你决定在回复的同时做以下这些动作：\n"
-        
             for action in choosen_actions:
                 action_name = action.get('action_type', 'unknown_action')
                 if action_name =="reply":
@@ -646,9 +645,11 @@ class DefaultReplyer:
                 action_description = action.get('reason', '无描述')
                 reasoning = action.get('reasoning', '无原因')
 
-                
-                action_descriptions += f"- {action_name}: {action_description}，原因：{reasoning}\n"
+                choosen_action_descriptions += f"- {action_name}: {action_description}，原因：{reasoning}\n"
         
+        if choosen_action_descriptions:
+            action_descriptions += "根据聊天情况，你决定在回复的同时做以下这些动作：\n"
+            action_descriptions += choosen_action_descriptions
 
         return action_descriptions
         
@@ -661,7 +662,7 @@ class DefaultReplyer:
         choosen_actions: Optional[List[Dict[str, Any]]] = None,
         enable_tool: bool = True,
         reply_message: Optional[Dict[str, Any]] = None,
-    ) -> str:
+    ) -> Tuple[str, List[int]]:
         """
         构建回复器上下文
 
@@ -759,7 +760,7 @@ class DefaultReplyer:
                 logger.warning(f"回复生成前信息获取耗时过长: {chinese_name} 耗时: {duration:.1f}s，请使用更快的模型")
         logger.info(f"在回复前的步骤耗时: {'; '.join(timing_logs)}")
 
-        expression_habits_block = results_dict["expression_habits"]
+        expression_habits_block, selected_expressions = results_dict["expression_habits"]
         relation_info = results_dict["relation_info"]
         memory_block = results_dict["memory_block"]
         tool_info = results_dict["tool_info"]
@@ -831,7 +832,7 @@ class DefaultReplyer:
                 reply_style=global_config.personality.reply_style,
                 keywords_reaction_prompt=keywords_reaction_prompt,
                 moderation_prompt=moderation_prompt_block,
-            )
+            ),selected_expressions
         else:
             return await global_prompt_manager.format_prompt(
                 "replyer_prompt",
@@ -852,7 +853,7 @@ class DefaultReplyer:
                 reply_style=global_config.personality.reply_style,
                 keywords_reaction_prompt=keywords_reaction_prompt,
                 moderation_prompt=moderation_prompt_block,
-            )
+            ),selected_expressions
 
     async def build_prompt_rewrite_context(
         self,
@@ -860,7 +861,7 @@ class DefaultReplyer:
         reason: str,
         reply_to: str,
         reply_message: Optional[Dict[str, Any]] = None,
-    ) -> str:  # sourcery skip: merge-else-if-into-elif, remove-redundant-if
+    ) -> Tuple[str, List[int]]:  # sourcery skip: merge-else-if-into-elif, remove-redundant-if
         chat_stream = self.chat_stream
         chat_id = chat_stream.stream_id
         is_group_chat = bool(chat_stream.group_info)
@@ -893,7 +894,7 @@ class DefaultReplyer:
         )
 
         # 并行执行2个构建任务
-        expression_habits_block, relation_info = await asyncio.gather(
+        (expression_habits_block, selected_expressions), relation_info = await asyncio.gather(
             self.build_expression_habits(chat_talking_prompt_half, target),
             self.build_relation_info(sender, target),
         )
