@@ -93,7 +93,7 @@ class MemoryActivator:
             return []
         
         related_memory = await hippocampus_manager.get_memory_from_topic(
-            valid_keywords=list(keywords_list), max_memory_num=10, max_memory_length=3, max_depth=3
+            valid_keywords=list(keywords_list), max_memory_num=5, max_memory_length=3, max_depth=3
         )
         
 
