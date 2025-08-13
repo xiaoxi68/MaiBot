@@ -1,5 +1,5 @@
 [inner]
-version = "1.1.0"
+version = "1.2.0"
 
 #----以下是S4U聊天系统配置文件----
 # S4U (Smart 4 U) 聊天系统是MaiBot的核心对话模块
@@ -12,6 +12,7 @@ version = "1.1.0"
 #----S4U配置说明结束----
 
 [s4u]
+enable_s4u = false
 # 消息管理配置
 message_timeout_seconds = 120  # 普通消息存活时间（秒），超过此时间的消息将被丢弃
 recent_message_keep_count = 6  # 保留最近N条消息，超出范围的普通消息将被移除

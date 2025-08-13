@@ -10,7 +10,7 @@ from src.config.config import global_config, model_config
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.manager.async_task_manager import AsyncTask, async_task_manager
 from src.plugin_system.apis import send_api
-from src.mais4u.constant_s4u import ENABLE_S4U
+from src.mais4u.s4u_config import s4u_config
 
 """
 情绪管理系统使用说明：
@@ -447,7 +447,7 @@ class MoodManager:
         asyncio.create_task(new_mood.send_emotion_update(new_mood.mood_values))
 
 
-if ENABLE_S4U:
+if s4u_config.enable_s4u:
     init_prompt()
     mood_manager = MoodManager()
 else:

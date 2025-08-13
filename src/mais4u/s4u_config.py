@@ -191,6 +191,9 @@ class S4UModelConfig(S4UConfigBase):
 @dataclass
 class S4UConfig(S4UConfigBase):
     """S4U聊天系统配置类"""
+    
+    enable_s4u: bool = False
+    """是否启用S4U聊天系统"""
 
     message_timeout_seconds: int = 120
     """普通消息存活时间（秒），超过此时间的消息将被丢弃"""
@@ -353,16 +356,12 @@ def load_s4u_config(config_path: str) -> S4UGlobalConfig:
         raise e
 
 
-if not ENABLE_S4U:
-    s4u_config = None
-    s4u_config_main = None
-else:
+
     # 初始化S4U配置
-    logger.info(f"S4U当前版本: {S4U_VERSION}")
-    update_s4u_config()
+logger.info(f"S4U当前版本: {S4U_VERSION}")
+update_s4u_config()
 
-    logger.info("正在加载S4U配置文件...")
-    s4u_config_main = load_s4u_config(config_path=CONFIG_PATH)
-    logger.info("S4U配置文件加载完成！")
+s4u_config_main = load_s4u_config(config_path=CONFIG_PATH)
+logger.info("S4U配置文件加载完成！")
 
-    s4u_config: S4UConfig = s4u_config_main.s4u
+s4u_config: S4UConfig = s4u_config_main.s4u

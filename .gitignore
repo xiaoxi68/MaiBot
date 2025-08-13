@@ -41,6 +41,7 @@ config/bot_config.toml
 config/bot_config.toml.bak
 config/lpmm_config.toml
 config/lpmm_config.toml.bak
+src/mais4u/config/s4u_config.toml
 template/compare/bot_config_template.toml
 template/compare/model_config_template.toml
 （测试版）麦麦生成人格.bat

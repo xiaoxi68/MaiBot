@@ -23,8 +23,8 @@ from src.plugin_system.base.component_types import ChatMode, EventType
 from src.plugin_system.core import events_manager
 from src.plugin_system.apis import generator_api, send_api, message_api, database_api
 from src.mais4u.mai_think import mai_thinking_manager
-from src.mais4u.constant_s4u import ENABLE_S4U
 import math
+from src.mais4u.s4u_config import s4u_config
 # no_reply逻辑已集成到heartFC_chat.py中，不再需要导入
 from src.chat.chat_loop.hfc_utils import send_typing, stop_typing
 
@@ -379,7 +379,7 @@ class HeartFChatting:
 
         logger.info(f"{self.log_prefix} 开始第{self._cycle_counter}次思考")
 
-        if ENABLE_S4U:
+        if s4u_config.enable_s4u:
             await send_typing()
 
         async with global_prompt_manager.async_message_scope(self.chat_stream.context.get_template_name()):
@@ -597,7 +597,7 @@ class HeartFChatting:
                 reply_text = action_reply_text
                     
 
-        if ENABLE_S4U:
+        if s4u_config.enable_s4u:
             await stop_typing()
             await mai_thinking_manager.get_mai_think(self.stream_id).do_think_after_response(reply_text)
 
