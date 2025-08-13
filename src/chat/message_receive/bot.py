@@ -170,7 +170,7 @@ class ChatBot:
         # 处理消息内容
         await message.process()
         
-        person = Person.register_person(platform=message.message_info.platform, user_id=message.message_info.user_info.user_id,nickname=user_info.user_nickname)
+        _ = Person.register_person(platform=message.message_info.platform, user_id=message.message_info.user_info.user_id,nickname=user_info.user_nickname) # type: ignore
 
         await self.s4u_message_processor.process_message(message)
 
