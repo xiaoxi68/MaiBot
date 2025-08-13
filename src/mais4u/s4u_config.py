@@ -6,7 +6,6 @@ from tomlkit import TOMLDocument
 from tomlkit.items import Table
 from dataclasses import dataclass, fields, MISSING, field
 from typing import TypeVar, Type, Any, get_origin, get_args, Literal
-from src.mais4u.constant_s4u import ENABLE_S4U
 from src.common.logger import get_logger
 
 logger = get_logger("s4u_config")
