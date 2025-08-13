@@ -1,5 +1,5 @@
 [inner]
-version = "6.3.3"
+version = "6.4.0"
 
 #----以下是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 #如果你想要修改配置文件，请递增version的值
@@ -139,10 +139,6 @@ memory_compress_rate = 0.1 # 记忆压缩率 控制记忆精简程度 建议保�
 forget_memory_interval = 3000 # 记忆遗忘间隔 单位秒   间隔越低，麦麦遗忘越频繁，记忆更精简，但更难学习
 memory_forget_time = 48 #多长时间后的记忆会被遗忘 单位小时
 memory_forget_percentage = 0.008 # 记忆遗忘比例 控制记忆遗忘程度 越大遗忘越多 建议保持默认
-
-consolidate_memory_interval = 1000 # 记忆整合间隔 单位秒   间隔越低，麦麦整合越频繁，记忆更精简
-consolidation_similarity_threshold = 0.7 # 相似度阈值
-consolidation_check_percentage = 0.05 # 检查节点比例
 
 enable_instant_memory = false # 是否启用即时记忆，测试功能，可能存在未知问题
 

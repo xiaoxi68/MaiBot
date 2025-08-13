@@ -642,7 +642,7 @@ def get_chat_type_and_target_info(chat_id: str) -> Tuple[bool, Optional[Dict]]:
                     person = Person(platform=platform, user_id=user_id)
                     if not person.is_known:
                         logger.warning(f"用户 {user_info.user_nickname} 尚未认识")
-                        return False, None  
+                        return False, None
                     person_id = person.person_id
                     person_name = None
                     if person_id:
@@ -768,3 +768,68 @@ def assign_message_ids_flexible(
 # # 增强版本 - 使用时间戳
 # result3 = assign_message_ids_flexible(messages, prefix="ts", use_timestamp=True)
 # # 结果: [{'id': 'ts123a1b', 'message': 'Hello'}, {'id': 'ts123c2d', 'message': 'World'}, {'id': 'ts123e3f', 'message': 'Test message'}]
+
+def parse_keywords_string(keywords_input) -> list[str]:
+    """
+    统一的关键词解析函数，支持多种格式的关键词字符串解析
+    
+    支持的格式：
+    1. 字符串列表格式：'["utils.py", "修改", "代码", "动作"]'
+    2. 斜杠分隔格式：'utils.py/修改/代码/动作'
+    3. 逗号分隔格式：'utils.py,修改,代码,动作'
+    4. 空格分隔格式：'utils.py 修改 代码 动作'
+    5. 已经是列表的情况：["utils.py", "修改", "代码", "动作"]
+    6. JSON格式字符串：'{"keywords": ["utils.py", "修改", "代码", "动作"]}'
+    
+    Args:
+        keywords_input: 关键词输入，可以是字符串或列表
+        
+    Returns:
+        list[str]: 解析后的关键词列表，去除空白项
+    """
+    if not keywords_input:
+        return []
+    
+    # 如果已经是列表，直接处理
+    if isinstance(keywords_input, list):
+        return [str(k).strip() for k in keywords_input if str(k).strip()]
+    
+    # 转换为字符串处理
+    keywords_str = str(keywords_input).strip()
+    if not keywords_str:
+        return []
+    
+    try:
+        # 尝试作为JSON对象解析（支持 {"keywords": [...]} 格式）
+        import json
+        json_data = json.loads(keywords_str)
+        if isinstance(json_data, dict) and "keywords" in json_data:
+            keywords_list = json_data["keywords"]
+            if isinstance(keywords_list, list):
+                return [str(k).strip() for k in keywords_list if str(k).strip()]
+        elif isinstance(json_data, list):
+            # 直接是JSON数组格式
+            return [str(k).strip() for k in json_data if str(k).strip()]
+    except (json.JSONDecodeError, ValueError):
+        pass
+    
+    try:
+        # 尝试使用 ast.literal_eval 解析（支持Python字面量格式）
+        import ast
+        parsed = ast.literal_eval(keywords_str)
+        if isinstance(parsed, list):
+            return [str(k).strip() for k in parsed if str(k).strip()]
+    except (ValueError, SyntaxError):
+        pass
+    
+    # 尝试不同的分隔符
+    separators = ['/', ',', ' ', '|', ';']
+    
+    for separator in separators:
+        if separator in keywords_str:
+            keywords_list = [k.strip() for k in keywords_str.split(separator) if k.strip()]
+            if len(keywords_list) > 1:  # 确保分割有效
+                return keywords_list
+    
+    # 如果没有分隔符，返回单个关键词
+    return [keywords_str] if keywords_str else []

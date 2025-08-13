@@ -302,8 +302,8 @@ class RelationshipManager:
         neuroticism, _ = await self.relationship_llm.generate_response_async(prompt=prompt)
 
 
-        logger.info(f"prompt: {prompt}")
-        logger.info(f"neuroticism: {neuroticism}")
+        # logger.info(f"prompt: {prompt}")
+        # logger.info(f"neuroticism: {neuroticism}")
 
 
         neuroticism = repair_json(neuroticism)

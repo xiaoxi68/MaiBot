@@ -181,6 +181,7 @@ class DefaultReplyer:
         """
         
         prompt = None
+        selected_expressions = None
         if available_actions is None:
             available_actions = {}
         try:
@@ -345,7 +346,7 @@ class DefaultReplyer:
 
         return f"{expression_habits_title}\n{expression_habits_block}", selected_ids
 
-    async def build_memory_block(self, chat_history: str, target: str) -> str:
+    async def build_memory_block(self, chat_history: List[Dict[str, Any]], target: str) -> str:
         """构建记忆块
 
         Args:
@@ -355,6 +356,16 @@ class DefaultReplyer:
         Returns:
             str: 记忆信息字符串
         """
+        chat_talking_prompt_short = build_readable_messages(
+            chat_history,
+            replace_bot_name=True,
+            merge_messages=False,
+            timestamp_mode="relative",
+            read_mark=0.0,
+            show_actions=True,
+        )
+        
+        
         if not global_config.memory.enable_memory:
             return ""
 
@@ -363,6 +374,7 @@ class DefaultReplyer:
         running_memories = await self.memory_activator.activate_memory_with_chat_history(
             target_message=target, chat_history_prompt=chat_history
         )
+        
 
         if global_config.memory.enable_instant_memory:
             asyncio.create_task(self.instant_memory.create_and_store_memory(chat_history))
@@ -373,9 +385,11 @@ class DefaultReplyer:
         if not running_memories:
             return ""
 
+
         memory_str = "以下是当前在聊天中，你回忆起的记忆：\n"
         for running_memory in running_memories:
-            memory_str += f"- {running_memory['content']}\n"
+            keywords,content = running_memory
+            memory_str += f"- {keywords}：{content}\n"
 
         if instant_memory:
             memory_str += f"- {instant_memory}\n"
@@ -731,7 +745,7 @@ class DefaultReplyer:
                 self.build_expression_habits(chat_talking_prompt_short, target), "expression_habits"
             ),
             self._time_and_run_task(self.build_relation_info(sender, target), "relation_info"),
-            self._time_and_run_task(self.build_memory_block(chat_talking_prompt_short, target), "memory_block"),
+            self._time_and_run_task(self.build_memory_block(message_list_before_short, target), "memory_block"),
             self._time_and_run_task(
                 self.build_tool_info(chat_talking_prompt_short, sender, target, enable_tool=enable_tool), "tool_info"
             ),

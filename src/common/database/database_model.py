@@ -345,6 +345,7 @@ class GraphNodes(BaseModel):
 
     concept = TextField(unique=True, index=True)  # 节点概念
     memory_items = TextField()  # JSON格式存储的记忆列表
+    weight = FloatField(default=0.0)  # 节点权重
     hash = TextField()  # 节点哈希值
     created_time = FloatField()  # 创建时间戳
     last_modified = FloatField()  # 最后修改时间戳
@@ -749,3 +750,7 @@ def check_field_constraints():
 
 # 模块加载时调用初始化函数
 initialize_database(sync_constraints=True)
+
+
+
+

@@ -14,6 +14,7 @@ from src.individuality.individuality import get_individuality, Individuality
 from src.common.server import get_global_server, Server
 from src.mood.mood_manager import mood_manager
 from rich.traceback import install
+from src.migrate_helper.migrate import check_and_run_migrations
 # from src.api.main import start_api_server
 
 # 导入新的插件管理器
@@ -116,6 +117,9 @@ class MainSystem:
 
         # 初始化个体特征
         await self.individuality.initialize()
+        
+        await check_and_run_migrations()
+        
 
         try:
             init_time = int(1000 * (time.time() - init_start_time))
@@ -139,7 +143,6 @@ class MainSystem:
                     [
                         self.build_memory_task(),
                         self.forget_memory_task(),
-                        self.consolidate_memory_task(),
                     ]
                 )
 
@@ -160,13 +163,7 @@ class MainSystem:
             await self.hippocampus_manager.forget_memory(percentage=global_config.memory.memory_forget_percentage)  # type: ignore
             logger.info("[记忆遗忘] 记忆遗忘完成")
 
-    async def consolidate_memory_task(self):
-        """记忆整合任务"""
-        while True:
-            await asyncio.sleep(global_config.memory.consolidate_memory_interval)
-            logger.info("[记忆整合] 开始整合记忆...")
-            await self.hippocampus_manager.consolidate_memory()  # type: ignore
-            logger.info("[记忆整合] 记忆整合完成")
+
 
 
 async def main():
@@ -180,3 +177,5 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+    
