@@ -193,7 +193,7 @@ class HeartFChatting:
             + (f"\n详情: {'; '.join(timer_strings)}" if timer_strings else "")
         )
         
-    def _determine_form_type(self) -> str:
+    def _determine_form_type(self) -> None:
         """判断使用哪种形式的no_reply"""
         # 如果连续no_reply次数少于3次，使用waiting形式
         if self.no_reply_consecutive <= 3:
