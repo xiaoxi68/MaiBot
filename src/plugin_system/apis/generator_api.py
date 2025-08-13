@@ -84,7 +84,8 @@ async def generate_reply(
     return_prompt: bool = False,
     request_type: str = "generator_api",
     from_plugin: bool = True,
-) -> Tuple[bool, List[Tuple[str, Any]], Optional[str]]:
+    return_expressions: bool = False,
+) -> Tuple[bool, List[Tuple[str, Any]], Optional[Tuple[str, List[Dict[str, Any]]]]]:
     """生成回复
 
     Args:
@@ -123,7 +124,7 @@ async def generate_reply(
             reply_reason = action_data.get("reason", "")
 
         # 调用回复器生成回复
-        success, llm_response_dict, prompt = await replyer.generate_reply_with_context(
+        success, llm_response_dict, prompt, selected_expressions = await replyer.generate_reply_with_context(
             extra_info=extra_info,
             available_actions=available_actions,
             choosen_actions=choosen_actions,
@@ -144,10 +145,16 @@ async def generate_reply(
         logger.debug(f"[GeneratorAPI] 回复生成成功，生成了 {len(reply_set)} 个回复项")
 
         if return_prompt:
-            return success, reply_set, prompt
+            if return_expressions:
+                return success, reply_set, (prompt, selected_expressions)
+            else:
+                return success, reply_set, prompt
         else:
-            return success, reply_set, None
-
+            if return_expressions:
+                return success, reply_set, (None, selected_expressions)
+            else:
+                return success, reply_set, None
+    
     except ValueError as ve:
         raise ve
 

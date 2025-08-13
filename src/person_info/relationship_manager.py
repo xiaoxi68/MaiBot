@@ -47,7 +47,7 @@ def init_prompt():
     }}
 ]
 
-如果没有，就只输出空数组：[]
+如果没有，就只输出空json：{{}}
 """,
         "relation_points",
     )
@@ -77,7 +77,7 @@ def init_prompt():
     "attitude": 0,
     "confidence": 0.5
 }}
-如果无法看出对方对你的态度，就只输出空数组：[]
+如果无法看出对方对你的态度，就只输出空数组：{{}}
 
 现在，请你输出:
 """,
@@ -111,7 +111,7 @@ def init_prompt():
     "neuroticism": 0,
     "confidence": 0.5
 }}
-如果无法看出对方的神经质程度，就只输出空数组：[]
+如果无法看出对方的神经质程度，就只输出空数组：{{}}
 
 现在，请你输出:
 """,
@@ -163,7 +163,7 @@ class RelationshipManager:
             points_data = json.loads(points)
 
             # 只处理正确的格式，错误格式直接跳过
-            if points_data == "none" or not points_data or (isinstance(points_data, str) and points_data.lower() == "none") or (isinstance(points_data, list) and len(points_data) == 0):
+            if not points_data  or (isinstance(points_data, list) and len(points_data) == 0):
                 points_list = []
             elif isinstance(points_data, list):
                 points_list = [(item["point"], float(item["weight"]), current_time) for item in points_data]
@@ -263,7 +263,7 @@ class RelationshipManager:
         attitude = repair_json(attitude)
         attitude_data = json.loads(attitude)
         
-        if attitude_data == "none" or not attitude_data or (isinstance(attitude_data, str) and attitude_data.lower() == "none") or (isinstance(attitude_data, list) and len(attitude_data) == 0):
+        if not attitude_data or (isinstance(attitude_data, list) and len(attitude_data) == 0):
             return ""
         
         # 确保 attitude_data 是字典格式
@@ -309,7 +309,7 @@ class RelationshipManager:
         neuroticism = repair_json(neuroticism)
         neuroticism_data = json.loads(neuroticism)
         
-        if neuroticism_data == "none" or not neuroticism_data or (isinstance(neuroticism_data, str) and neuroticism_data.lower() == "none") or (isinstance(neuroticism_data, list) and len(neuroticism_data) == 0):
+        if not neuroticism_data or (isinstance(neuroticism_data, list) and len(neuroticism_data) == 0):
             return ""
         
         # 确保 neuroticism_data 是字典格式

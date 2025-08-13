@@ -137,6 +137,7 @@ class ExpressionSelector:
 
         style_exprs = [
             {
+                "id": expr.id,
                 "situation": expr.situation,
                 "style": expr.style,
                 "count": expr.count,
@@ -203,14 +204,14 @@ class ExpressionSelector:
         # 检查是否允许在此聊天流中使用表达
         if not self.can_use_expression_for_chat(chat_id):
             logger.debug(f"聊天流 {chat_id} 不允许使用表达，返回空列表")
-            return []
+            return [], []
 
         # 1. 获取20个随机表达方式（现在按权重抽取）
         style_exprs = self.get_random_expressions(chat_id, 10)
         
-        if len(style_exprs) < 20:
+        if len(style_exprs) < 10:
             logger.info(f"聊天流 {chat_id} 表达方式正在积累中")
-            return []
+            return [], []
 
         # 2. 构建所有表达方式的索引和情境列表
         all_expressions = []
@@ -218,15 +219,13 @@ class ExpressionSelector:
 
         # 添加style表达方式
         for expr in style_exprs:
-            if isinstance(expr, dict) and "situation" in expr and "style" in expr:
-                expr_with_type = expr.copy()
-                expr_with_type["type"] = "style"
-                all_expressions.append(expr_with_type)
-                all_situations.append(f"{len(all_expressions)}.当 {expr['situation']} 时，使用 {expr['style']}")
+            expr = expr.copy()
+            all_expressions.append(expr)
+            all_situations.append(f"{len(all_expressions)}.当 {expr['situation']} 时，使用 {expr['style']}")
 
         if not all_expressions:
             logger.warning("没有找到可用的表达方式")
-            return []
+            return [], []
 
         all_situations_str = "\n".join(all_situations)
 
@@ -247,8 +246,6 @@ class ExpressionSelector:
             target_message_extra_block=target_message_extra_block,
         )
 
-        print(prompt)
-
         # 4. 调用LLM
         try:
             
@@ -265,7 +262,7 @@ class ExpressionSelector:
 
             if not content:
                 logger.warning("LLM返回空结果")
-                return []
+                return [], []
 
             # 5. 解析结果
             result = repair_json(content)
@@ -275,15 +272,17 @@ class ExpressionSelector:
             if not isinstance(result, dict) or "selected_situations" not in result:
                 logger.error("LLM返回格式错误")
                 logger.info(f"LLM返回结果: \n{content}")
-                return []
+                return [], []
 
             selected_indices = result["selected_situations"]
 
             # 根据索引获取完整的表达方式
             valid_expressions = []
+            selected_ids = []
             for idx in selected_indices:
                 if isinstance(idx, int) and 1 <= idx <= len(all_expressions):
                     expression = all_expressions[idx - 1]  # 索引从1开始
+                    selected_ids.append(expression["id"])
                     valid_expressions.append(expression)
 
             # 对选中的所有表达方式，一次性更新count数
@@ -291,11 +290,11 @@ class ExpressionSelector:
                 self.update_expressions_count_batch(valid_expressions, 0.006)
 
             # logger.info(f"LLM从{len(all_expressions)}个情境中选择了{len(valid_expressions)}个")
-            return valid_expressions
+            return valid_expressions , selected_ids
 
         except Exception as e:
             logger.error(f"LLM处理表达方式选择时出错: {e}")
-            return []
+            return [], []
     
 
 

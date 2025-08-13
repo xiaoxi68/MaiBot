@@ -21,7 +21,7 @@
 
 import traceback
 import time
-from typing import Optional, Union, Dict, Any
+from typing import Optional, Union, Dict, Any, List
 from src.common.logger import get_logger
 
 # 导入依赖
@@ -49,6 +49,7 @@ async def _send_to_target(
     reply_message: Optional[Dict[str, Any]] = None,
     storage_message: bool = True,
     show_log: bool = True,
+    selected_expressions:List[int] = None,
 ) -> bool:
     """向指定目标发送消息的内部实现
 
@@ -121,6 +122,7 @@ async def _send_to_target(
             is_emoji=(message_type == "emoji"),
             thinking_start_time=current_time,
             reply_to=reply_to_platform_id,
+            selected_expressions=selected_expressions,
         )
 
         # 发送消息
@@ -208,6 +210,7 @@ async def text_to_stream(
     set_reply: bool = False,
     reply_message: Optional[Dict[str, Any]] = None,
     storage_message: bool = True,
+    selected_expressions:List[int] = None,
 ) -> bool:
     """向指定流发送文本消息
 
@@ -230,6 +233,7 @@ async def text_to_stream(
         set_reply=set_reply,
         reply_message=reply_message,
         storage_message=storage_message,
+        selected_expressions=selected_expressions,
     )
 
 

@@ -233,9 +233,9 @@ class HeartFChatting:
         modified_exit_interest_threshold = 1.5 / talk_frequency
         total_interest = 0.0
         for msg_dict in new_message:
-            interest_value = msg_dict.get("interest_value", 0.0)
-            if msg_dict.get("processed_plain_text", ""):
-                total_interest += interest_value
+            interest_value = msg_dict.get("interest_value")
+            if interest_value is not None and msg_dict.get("processed_plain_text", ""):
+                total_interest += float(interest_value)
         
         if new_message_count >= modified_exit_count_threshold:
             self.recent_interest_records.append(total_interest)
@@ -244,7 +244,7 @@ class HeartFChatting:
             )
             # logger.info(self.last_read_time)
             # logger.info(new_message)
-            return True,total_interest/new_message_count
+            return True, total_interest / new_message_count if new_message_count > 0 else 0.0
 
         # 检查累计兴趣值
         if new_message_count > 0:
@@ -259,7 +259,7 @@ class HeartFChatting:
                 logger.info(
                     f"{self.log_prefix} 累计兴趣值达到{total_interest:.2f}(>{modified_exit_interest_threshold:.1f})，结束等待"
                 )
-                return True,total_interest/new_message_count
+                return True, total_interest / new_message_count if new_message_count > 0 else 0.0
 
         # 每10秒输出一次等待状态
         if int(time.time() - self.last_read_time) > 0 and int(time.time() - self.last_read_time) % 15 == 0:
@@ -302,10 +302,15 @@ class HeartFChatting:
         cycle_timers: Dict[str, float],
         thinking_id,
         actions,
+        selected_expressions:List[int] = None,
     ) -> Tuple[Dict[str, Any], str, Dict[str, float]]:
         
         with Timer("回复发送", cycle_timers):
-            reply_text = await self._send_response(response_set, action_message)
+            reply_text = await self._send_response(
+                reply_set=response_set,
+                message_data=action_message,
+                selected_expressions=selected_expressions,
+            )
         
         # 获取 platform，如果不存在则从 chat_stream 获取，如果还是 None 则使用默认值
         platform = action_message.get("chat_info_platform")
@@ -474,7 +479,7 @@ class HeartFChatting:
                     else:
                         
                         try:
-                            success, response_set, _ = await generator_api.generate_reply(
+                            success, response_set, prompt_selected_expressions = await generator_api.generate_reply(
                                 chat_stream=self.chat_stream,
                                 reply_message = action_info["action_message"],
                                 available_actions=available_actions,
@@ -483,7 +488,13 @@ class HeartFChatting:
                                 enable_tool=global_config.tool.enable_tool,
                                 request_type="replyer",
                                 from_plugin=False,
+                                return_expressions=True,
                             )
+                            
+                            if prompt_selected_expressions and len(prompt_selected_expressions) > 1:
+                                _,selected_expressions = prompt_selected_expressions
+                            else:
+                                selected_expressions = []
 
                             if not success or not response_set:
                                 logger.info(f"对 {action_info['action_message'].get('processed_plain_text')} 的回复生成失败")
@@ -504,11 +515,12 @@ class HeartFChatting:
                             }
 
                         loop_info, reply_text, cycle_timers_reply = await self._send_and_store_reply(
-                            response_set,
-                            action_info["action_message"],
-                            cycle_timers,
-                            thinking_id,
-                            actions,
+                            response_set=response_set,
+                            action_message=action_info["action_message"],
+                            cycle_timers=cycle_timers,
+                            thinking_id=thinking_id,
+                            actions=actions,
+                            selected_expressions=selected_expressions,
                         )
                         return {
                             "action_type": "reply",
@@ -685,7 +697,11 @@ class HeartFChatting:
             traceback.print_exc()
             return False, "", ""
 
-    async def _send_response(self, reply_set, message_data) -> str:
+    async def _send_response(self, 
+                             reply_set, 
+                             message_data,
+                             selected_expressions:List[int] = None,
+                             ) -> str:
         new_message_count = message_api.count_new_messages(
             chat_id=self.chat_stream.stream_id, start_time=self.last_read_time, end_time=time.time()
         )
@@ -706,6 +722,7 @@ class HeartFChatting:
                     reply_message = message_data,
                     set_reply=need_reply,
                     typing=False,
+                    selected_expressions=selected_expressions,
                 )
                 first_replied = True
             else:
@@ -715,6 +732,7 @@ class HeartFChatting:
                     reply_message = message_data,
                     set_reply=False,
                     typing=True,
+                    selected_expressions=selected_expressions,
                 )
             reply_text += data
 

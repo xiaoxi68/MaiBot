@@ -4,7 +4,7 @@ import urllib3
 from abc import abstractmethod
 from dataclasses import dataclass
 from rich.traceback import install
-from typing import Optional, Any
+from typing import Optional, Any, List
 from maim_message import Seg, UserInfo, BaseMessageInfo, MessageBase
 
 from src.common.logger import get_logger
@@ -421,6 +421,7 @@ class MessageSending(MessageProcessBase):
         thinking_start_time: float = 0,
         apply_set_reply_logic: bool = False,
         reply_to: Optional[str] = None,
+        selected_expressions:List[int] = None,
     ):
         # 调用父类初始化
         super().__init__(
@@ -445,6 +446,8 @@ class MessageSending(MessageProcessBase):
         self.display_message = display_message
 
         self.interest_value = 0.0
+        
+        self.selected_expressions = selected_expressions
 
     def build_reply(self):
         """设置回复消息"""

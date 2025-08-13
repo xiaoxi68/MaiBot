@@ -65,6 +65,7 @@ class MessageStorage:
                 is_command = False
                 key_words = ""
                 key_words_lite = ""
+                selected_expressions = message.selected_expressions
             else:
                 filtered_display_message = ""
                 interest_value = message.interest_value
@@ -79,6 +80,7 @@ class MessageStorage:
                 # 序列化关键词列表为JSON字符串
                 key_words = MessageStorage._serialize_keywords(message.key_words)
                 key_words_lite = MessageStorage._serialize_keywords(message.key_words_lite)
+                selected_expressions = ""
                 
             chat_info_dict = chat_stream.to_dict()
             user_info_dict = message.message_info.user_info.to_dict()  # type: ignore
@@ -127,6 +129,7 @@ class MessageStorage:
                 is_command=is_command,
                 key_words=key_words,
                 key_words_lite=key_words_lite,
+                selected_expressions=selected_expressions,
             )
         except Exception:
             logger.exception("存储消息失败")
