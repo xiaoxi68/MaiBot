@@ -356,15 +356,6 @@ class DefaultReplyer:
         Returns:
             str: 记忆信息字符串
         """
-        chat_talking_prompt_short = build_readable_messages(
-            chat_history,
-            replace_bot_name=True,
-            merge_messages=False,
-            timestamp_mode="relative",
-            read_mark=0.0,
-            show_actions=True,
-        )
-        
         
         if not global_config.memory.enable_memory:
             return ""

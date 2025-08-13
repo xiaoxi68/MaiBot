@@ -399,7 +399,7 @@ class MessageReceiveConfig(ConfigBase):
 class ExpressionConfig(ConfigBase):
     """表达配置类"""
 
-    expression_learning: list[list] = field(default_factory=lambda: [])
+    learning_list: list[list] = field(default_factory=lambda: [])
     """
     表达学习配置列表，支持按聊天流配置
     格式: [["chat_stream_id", "use_expression", "enable_learning", learning_intensity], ...]
@@ -469,7 +469,7 @@ class ExpressionConfig(ConfigBase):
         Returns:
             tuple: (是否使用表达, 是否学习表达, 学习间隔)
         """
-        if not self.expression_learning:
+        if not self.learning_list:
             # 如果没有配置，使用默认值：启用表达，启用学习，300秒间隔
             return True, True, 300
 
@@ -497,7 +497,7 @@ class ExpressionConfig(ConfigBase):
         Returns:
             tuple: (是否使用表达, 是否学习表达, 学习间隔)，如果没有配置则返回 None
         """
-        for config_item in self.expression_learning:
+        for config_item in self.learning_list:
             if not config_item or len(config_item) < 4:
                 continue
 
@@ -534,7 +534,7 @@ class ExpressionConfig(ConfigBase):
         Returns:
             tuple: (是否使用表达, 是否学习表达, 学习间隔)，如果没有配置则返回 None
         """
-        for config_item in self.expression_learning:
+        for config_item in self.learning_list:
             if not config_item or len(config_item) < 4:
                 continue
 
