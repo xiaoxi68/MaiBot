@@ -84,7 +84,7 @@ class BaseCommand(ABC):
 
         return current
 
-    async def send_text(self, content: str, set_reply: bool = False,reply_message: Optional[Dict[str, Any]] = None) -> bool:
+    async def send_text(self, content: str, set_reply: bool = False,reply_message: Optional[Dict[str, Any]] = None,storage_message: bool = True) -> bool:
         """发送回复消息
 
         Args:
@@ -100,7 +100,7 @@ class BaseCommand(ABC):
             logger.error(f"{self.log_prefix} 缺少聊天流或stream_id")
             return False
 
-        return await send_api.text_to_stream(text=content, stream_id=chat_stream.stream_id, set_reply=set_reply,reply_message=reply_message)
+        return await send_api.text_to_stream(text=content, stream_id=chat_stream.stream_id, set_reply=set_reply,reply_message=reply_message,storage_message=storage_message)
 
     async def send_type(
         self, message_type: str, content: str, display_message: str = "", typing: bool = False, set_reply: bool = False,reply_message: Optional[Dict[str, Any]] = None
@@ -193,7 +193,7 @@ class BaseCommand(ABC):
 
         return await send_api.emoji_to_stream(emoji_base64, chat_stream.stream_id,set_reply=set_reply,reply_message=reply_message)
 
-    async def send_image(self, image_base64: str, set_reply: bool = False,reply_message: Optional[Dict[str, Any]] = None) -> bool:
+    async def send_image(self, image_base64: str, set_reply: bool = False,reply_message: Optional[Dict[str, Any]] = None,storage_message: bool = True) -> bool:
         """发送图片
 
         Args:
@@ -207,7 +207,7 @@ class BaseCommand(ABC):
             logger.error(f"{self.log_prefix} 缺少聊天流或stream_id")
             return False
 
-        return await send_api.image_to_stream(image_base64, chat_stream.stream_id,set_reply=set_reply,reply_message=reply_message)
+        return await send_api.image_to_stream(image_base64, chat_stream.stream_id,set_reply=set_reply,reply_message=reply_message,storage_message=storage_message)
 
     @classmethod
     def get_command_info(cls) -> "CommandInfo":

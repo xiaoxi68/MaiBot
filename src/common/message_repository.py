@@ -73,6 +73,9 @@ def find_messages(
             if conditions:
                 query = query.where(*conditions)
 
+        # 排除 id 为 "notice" 的消息
+        query = query.where(Messages.message_id != "notice")
+
         if filter_bot:
             query = query.where(Messages.user_id != global_config.bot.qq_account)
 
@@ -166,6 +169,9 @@ def count_messages(message_filter: dict[str, Any]) -> int:
                     logger.warning(f"计数时，过滤器键 '{key}' 在 Messages 模型中未找到。将跳过此条件。")
             if conditions:
                 query = query.where(*conditions)
+
+        # 排除 id 为 "notice" 的消息
+        query = query.where(Messages.message_id != "notice")
 
         count = query.count()
         return count
