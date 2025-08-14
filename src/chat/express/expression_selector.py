@@ -254,7 +254,7 @@ class ExpressionSelector:
             # logger.info(f"LLM请求时间: {model_name}  {time.time() - start_time} \n{prompt}")
 
             # logger.info(f"模型名称: {model_name}")
-            logger.info(f"LLM返回结果: {content}")
+            # logger.info(f"LLM返回结果: {content}")
             # if reasoning_content:
             #     logger.info(f"LLM推理: {reasoning_content}")
             # else:

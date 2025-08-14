@@ -159,7 +159,6 @@ class Messages(BaseModel):
 
     processed_plain_text = TextField(null=True)  # 处理后的纯文本消息
     display_message = TextField(null=True)  # 显示的消息
-    memorized_times = IntegerField(default=0)  # 被记忆的次数
 
     priority_mode = TextField(null=True)
     priority_info = TextField(null=True)

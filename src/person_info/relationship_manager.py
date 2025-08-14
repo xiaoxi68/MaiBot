@@ -1,5 +1,5 @@
 from src.common.logger import get_logger
-from .person_info import Person,is_person_known
+from .person_info import Person
 import random
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config, model_config
@@ -272,7 +272,7 @@ class RelationshipManager:
             return ""
         
         attitude_score = attitude_data["attitude"]
-        confidence = attitude_data["confidence"]
+        confidence = pow(attitude_data["confidence"],2)
         
         new_confidence = total_confidence + confidence
         new_attitude_score = (current_attitude_score * total_confidence + attitude_score * confidence)/new_confidence
@@ -318,7 +318,7 @@ class RelationshipManager:
             return ""
         
         neuroticism_score = neuroticism_data["neuroticism"]
-        confidence = neuroticism_data["confidence"]
+        confidence = pow(neuroticism_data["confidence"],2)
         
         new_confidence = total_confidence + confidence
         

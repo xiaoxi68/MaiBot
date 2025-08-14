@@ -141,19 +141,13 @@ class MainSystem:
             if global_config.memory.enable_memory and self.hippocampus_manager:
                 tasks.extend(
                     [
-                        self.build_memory_task(),
+                        # 移除记忆构建的定期调用，改为在heartFC_chat.py中调用
+                        # self.build_memory_task(),
                         self.forget_memory_task(),
                     ]
                 )
 
             await asyncio.gather(*tasks)
-
-    async def build_memory_task(self):
-        """记忆构建任务"""
-        while True:
-            await asyncio.sleep(global_config.memory.memory_build_interval)
-            logger.info("正在进行记忆构建")
-            await self.hippocampus_manager.build_memory()  # type: ignore
 
     async def forget_memory_task(self):
         """记忆遗忘任务"""

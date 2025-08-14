@@ -598,25 +598,10 @@ class MemoryConfig(ConfigBase):
     """记忆配置类"""
 
     enable_memory: bool = True
-
-    memory_build_interval: int = 600
-    """记忆构建间隔（秒）"""
-
-    memory_build_distribution: tuple[
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-    ] = field(default_factory=lambda: (6.0, 3.0, 0.6, 32.0, 12.0, 0.4))
-    """记忆构建分布，参数：分布1均值，标准差，权重，分布2均值，标准差，权重"""
-
-    memory_build_sample_num: int = 8
-    """记忆构建采样数量"""
-
-    memory_build_sample_length: int = 40
-    """记忆构建采样长度"""
+    """是否启用记忆系统"""
+    
+    memory_build_frequency: int = 1
+    """记忆构建频率（秒）"""
 
     memory_compress_rate: float = 0.1
     """记忆压缩率"""
@@ -629,15 +614,6 @@ class MemoryConfig(ConfigBase):
 
     memory_forget_percentage: float = 0.01
     """记忆遗忘比例"""
-
-    consolidate_memory_interval: int = 1000
-    """记忆整合间隔（秒）"""
-
-    consolidation_similarity_threshold: float = 0.7
-    """整合相似度阈值"""
-
-    consolidate_memory_percentage: float = 0.01
-    """整合检查节点比例"""
 
     memory_ban_words: list[str] = field(default_factory=lambda: ["表情包", "图片", "回复", "聊天记录"])
     """不允许记忆的词列表"""

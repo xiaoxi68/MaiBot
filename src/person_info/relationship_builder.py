@@ -300,15 +300,6 @@ class RelationshipBuilder:
 
         return cleanup_stats["segments_removed"] > 0 or len(users_to_remove) > 0
 
-    def force_cleanup_user_segments(self, person_id: str) -> bool:
-        """强制清理指定用户的所有消息段"""
-        if person_id in self.person_engaged_cache:
-            segments_count = len(self.person_engaged_cache[person_id])
-            del self.person_engaged_cache[person_id]
-            self._save_cache()
-            logger.info(f"{self.log_prefix} 强制清理用户 {person_id} 的 {segments_count} 个消息段")
-            return True
-        return False
 
     def get_cache_status(self) -> str:
         # sourcery skip: merge-list-append, merge-list-appends-into-extend

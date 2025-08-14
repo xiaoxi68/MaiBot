@@ -119,7 +119,6 @@ class MessageStorage:
                 # Text content
                 processed_plain_text=filtered_processed_plain_text,
                 display_message=filtered_display_message,
-                memorized_times=message.memorized_times,
                 interest_value=interest_value,
                 priority_mode=priority_mode,
                 priority_info=priority_info,

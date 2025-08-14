@@ -105,8 +105,8 @@ class MemoryActivator:
             valid_keywords=list(keywords_list), max_memory_num=5, max_memory_length=3, max_depth=3
         )
         
-        logger.info(f"当前记忆关键词: {keywords_list}")
-        logger.info(f"获取到的记忆: {related_memory}")
+        # logger.info(f"当前记忆关键词: {keywords_list}")
+        logger.debug(f"获取到的记忆: {related_memory}")
         
         if not related_memory:
             logger.debug("海马体没有返回相关记忆")
@@ -141,7 +141,7 @@ class MemoryActivator:
         
         # 如果只有少量记忆，直接返回
         if len(candidate_memories) <= 2:
-            logger.info(f"候选记忆较少({len(candidate_memories)}个)，直接返回")
+            logger.debug(f"候选记忆较少({len(candidate_memories)}个)，直接返回")
             # 转换为 (keyword, content) 格式
             return [(mem["keyword"], mem["content"]) for mem in candidate_memories]
         

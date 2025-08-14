@@ -71,7 +71,7 @@ class Person:
         person_id = get_person_id(platform, user_id)
         
         if is_person_known(person_id=person_id):
-            logger.info(f"用户 {nickname} 已存在")
+            logger.debug(f"用户 {nickname} 已存在")
             return Person(person_id=person_id)
         
         # 创建Person实例
@@ -148,9 +148,13 @@ class Person:
         
         if not is_person_known(person_id=self.person_id):
             self.is_known = False
-            logger.warning(f"用户 {platform}:{user_id}:{person_name}:{person_id} 尚未认识")
+            logger.debug(f"用户 {platform}:{user_id}:{person_name}:{person_id} 尚未认识")
             self.person_name = f"未知用户{self.person_id[:4]}"
             return
+            # raise ValueError(f"用户 {platform}:{user_id}:{person_name}:{person_id} 尚未认识")
+            
+            
+            
         
         self.is_known = False
         

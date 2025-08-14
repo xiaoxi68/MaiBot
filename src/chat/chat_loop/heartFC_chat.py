@@ -18,7 +18,6 @@ from src.chat.chat_loop.hfc_utils import CycleDetail
 from src.person_info.relationship_builder_manager import relationship_builder_manager
 from src.chat.express.expression_learner import expression_learner_manager
 from src.person_info.person_info import Person
-from src.person_info.group_relationship_manager import get_group_relationship_manager
 from src.plugin_system.base.component_types import ChatMode, EventType
 from src.plugin_system.core import events_manager
 from src.plugin_system.apis import generator_api, send_api, message_api, database_api
@@ -27,6 +26,8 @@ import math
 from src.mais4u.s4u_config import s4u_config
 # no_reply逻辑已集成到heartFC_chat.py中，不再需要导入
 from src.chat.chat_loop.hfc_utils import send_typing, stop_typing
+# 导入记忆系统
+from src.chat.memory_system.Hippocampus import hippocampus_manager
 
 ERROR_LOOP_INFO = {
     "loop_plan_info": {
@@ -90,7 +91,6 @@ class HeartFChatting:
 
         self.relationship_builder = relationship_builder_manager.get_or_create_builder(self.stream_id)
         self.expression_learner = expression_learner_manager.get_expression_learner(self.stream_id)
-        self.group_relationship_manager = get_group_relationship_manager()
         
 
         self.action_manager = ActionManager()
@@ -386,20 +386,19 @@ class HeartFChatting:
             await self.relationship_builder.build_relation()
             await self.expression_learner.trigger_learning_for_chat()
 
-            # 群印象构建：仅在群聊中触发
-            # if self.chat_stream.group_info and getattr(self.chat_stream.group_info, "group_id", None):
-            #     await self.group_relationship_manager.build_relation(
-            #         chat_id=self.stream_id,
-            #         platform=self.chat_stream.platform
-            #     )
-
+            # 记忆构建：为当前chat_id构建记忆
+            try:
+                await hippocampus_manager.build_memory_for_chat(self.stream_id)
+            except Exception as e:
+                logger.error(f"{self.log_prefix} 记忆构建失败: {e}")
+                
 
             if random.random() > global_config.chat.focus_value and mode == ChatMode.FOCUS:
                 #如果激活度没有激活，并且聊天活跃度低，有可能不进行plan，相当于不在电脑前，不进行认真思考
                 actions = [
                     {
                         "action_type": "no_reply",
-                        "reasoning": "选择不回复",
+                        "reasoning": "专注不足",
                         "action_data": {},
                     }
                 ]

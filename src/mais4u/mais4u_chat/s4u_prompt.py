@@ -158,6 +158,9 @@ class PromptBuilder:
         return relation_prompt
 
     async def build_memory_block(self, text: str) -> str:
+        # 待更新记忆系统
+        return ""
+        
         related_memory = await hippocampus_manager.get_memory_from_text(
             text=text, max_memory_num=2, max_memory_length=2, max_depth=3, fast_retrieval=False
         )

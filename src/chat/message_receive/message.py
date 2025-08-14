@@ -29,7 +29,6 @@ class Message(MessageBase):
     chat_stream: "ChatStream" = None  # type: ignore
     reply: Optional["Message"] = None
     processed_plain_text: str = ""
-    memorized_times: int = 0
 
     def __init__(
         self,
