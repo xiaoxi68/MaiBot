@@ -140,3 +140,5 @@ def get_global_frequency() -> Optional[float]:
             return get_time_based_frequency(config_item[1:])
 
     return None
+
+talk_frequency_control = TalkFrequencyControlManager()

@@ -28,8 +28,8 @@ from src.mais4u.s4u_config import s4u_config
 from src.chat.chat_loop.hfc_utils import send_typing, stop_typing
 # 导入记忆系统
 from src.chat.memory_system.Hippocampus import hippocampus_manager
-from src.chat.frequency_control.talk_frequency_control import TalkFrequencyControlManager
-from src.chat.frequency_control.focus_value_control import FocusValueControlManager
+from src.chat.frequency_control.talk_frequency_control import talk_frequency_control
+from src.chat.frequency_control.focus_value_control import focus_value_control
 
 ERROR_LOOP_INFO = {
     "loop_plan_info": {
@@ -94,8 +94,8 @@ class HeartFChatting:
         self.relationship_builder = relationship_builder_manager.get_or_create_builder(self.stream_id)
         self.expression_learner = expression_learner_manager.get_expression_learner(self.stream_id)
         
-        self.talk_frequency_control = TalkFrequencyControlManager().get_talk_frequency_control(self.stream_id)
-        self.focus_value_control = FocusValueControlManager().get_focus_value_control(self.stream_id)
+        self.talk_frequency_control = talk_frequency_control.get_talk_frequency_control(self.stream_id)
+        self.focus_value_control = focus_value_control.get_focus_value_control(self.stream_id)
 
         self.action_manager = ActionManager()
         self.action_planner = ActionPlanner(chat_id=self.stream_id, action_manager=self.action_manager)
