@@ -28,6 +28,8 @@ from src.mais4u.s4u_config import s4u_config
 from src.chat.chat_loop.hfc_utils import send_typing, stop_typing
 # 导入记忆系统
 from src.chat.memory_system.Hippocampus import hippocampus_manager
+from src.chat.frequency_control.talk_frequency_control import TalkFrequencyControlManager
+from src.chat.frequency_control.focus_value_control import FocusValueControlManager
 
 ERROR_LOOP_INFO = {
     "loop_plan_info": {
@@ -92,6 +94,8 @@ class HeartFChatting:
         self.relationship_builder = relationship_builder_manager.get_or_create_builder(self.stream_id)
         self.expression_learner = expression_learner_manager.get_expression_learner(self.stream_id)
         
+        self.talk_frequency_control = TalkFrequencyControlManager().get_talk_frequency_control(self.stream_id)
+        self.focus_value_control = FocusValueControlManager().get_focus_value_control(self.stream_id)
 
         self.action_manager = ActionManager()
         self.action_planner = ActionPlanner(chat_id=self.stream_id, action_manager=self.action_manager)
@@ -203,7 +207,7 @@ class HeartFChatting:
             total_recent_interest = sum(self.recent_interest_records)
     
             # 计算调整后的阈值
-            adjusted_threshold = 1 / global_config.chat.get_current_talk_frequency(self.stream_id)
+            adjusted_threshold = 1 / self.talk_frequency_control.get_current_talk_frequency()
             
             logger.info(f"{self.log_prefix} 最近三次兴趣度总和: {total_recent_interest:.2f}, 调整后阈值: {adjusted_threshold:.2f}")
         
@@ -227,7 +231,7 @@ class HeartFChatting:
             bool: 是否应该处理消息
         """
         new_message_count = len(new_message)
-        talk_frequency = global_config.chat.get_current_talk_frequency(self.stream_id)
+        talk_frequency = self.talk_frequency_control.get_current_talk_frequency()
         
         modified_exit_count_threshold = self.focus_energy * 0.5 / talk_frequency
         modified_exit_interest_threshold = 1.5 / talk_frequency
@@ -365,7 +369,7 @@ class HeartFChatting:
             x0 = 1.0  # 控制曲线中心点
             return 1.0 / (1.0 + math.exp(-k * (interest_val - x0)))
         
-        normal_mode_probability = calculate_normal_mode_probability(interest_value) * 0.5 / global_config.chat.get_current_talk_frequency(self.stream_id)
+        normal_mode_probability = calculate_normal_mode_probability(interest_value) * 0.5 / self.talk_frequency_control.get_current_talk_frequency()
         
         # 根据概率决定使用哪种模式
         if random.random() < normal_mode_probability:
@@ -393,7 +397,7 @@ class HeartFChatting:
                 logger.error(f"{self.log_prefix} 记忆构建失败: {e}")
                 
 
-            if random.random() > global_config.chat.focus_value and mode == ChatMode.FOCUS:
+            if random.random() > self.focus_value_control.get_current_focus_value() and mode == ChatMode.FOCUS:
                 #如果激活度没有激活，并且聊天活跃度低，有可能不进行plan，相当于不在电脑前，不进行认真思考
                 actions = [
                     {
