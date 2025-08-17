@@ -7,9 +7,10 @@ from rich.traceback import install
 
 from src.config.config import global_config
 from src.common.message_repository import find_messages, count_messages
+from src.common.data_models.database_data_model import DatabaseMessages
 from src.common.database.database_model import ActionRecords
 from src.common.database.database_model import Images
-from src.person_info.person_info import Person,get_person_id
+from src.person_info.person_info import Person, get_person_id
 from src.chat.utils.utils import translate_timestamp_to_human_readable, assign_message_ids
 
 install(extra_lines=3)
@@ -35,6 +36,7 @@ def replace_user_references_sync(
         str: 处理后的内容字符串
     """
     if name_resolver is None:
+
         def default_resolver(platform: str, user_id: str) -> str:
             # 检查是否是机器人自己
             if replace_bot_name and user_id == global_config.bot.qq_account:
@@ -108,6 +110,7 @@ async def replace_user_references_async(
         str: 处理后的内容字符串
     """
     if name_resolver is None:
+
         async def default_resolver(platform: str, user_id: str) -> str:
             # 检查是否是机器人自己
             if replace_bot_name and user_id == global_config.bot.qq_account:
@@ -161,9 +164,7 @@ async def replace_user_references_async(
     return content
 
 
-def get_raw_msg_by_timestamp(
-    timestamp_start: float, timestamp_end: float, limit: int = 0, limit_mode: str = "latest"
-) -> List[Dict[str, Any]]:
+def get_raw_msg_by_timestamp(timestamp_start: float, timestamp_end: float, limit: int = 0, limit_mode: str = "latest"):
     """
     获取从指定时间戳到指定时间戳的消息，按时间升序排序，返回消息列表
     limit: 限制返回的消息数量，0为不限制
@@ -183,7 +184,7 @@ def get_raw_msg_by_timestamp_with_chat(
     limit_mode: str = "latest",
     filter_bot=False,
     filter_command=False,
-) -> List[Dict[str, Any]]:
+) -> List[DatabaseMessages]:
     """获取在特定聊天从指定时间戳到指定时间戳的消息，按时间升序排序，返回消息列表
     limit: 限制返回的消息数量，0为不限制
     limit_mode: 当 limit > 0 时生效。 'earliest' 表示获取最早的记录， 'latest' 表示获取最新的记录。默认为 'latest'。
@@ -209,7 +210,7 @@ def get_raw_msg_by_timestamp_with_chat_inclusive(
     limit: int = 0,
     limit_mode: str = "latest",
     filter_bot=False,
-) -> List[Dict[str, Any]]:
+) -> List[DatabaseMessages]:
     """获取在特定聊天从指定时间戳到指定时间戳的消息（包含边界），按时间升序排序，返回消息列表
     limit: 限制返回的消息数量，0为不限制
     limit_mode: 当 limit > 0 时生效。 'earliest' 表示获取最早的记录， 'latest' 表示获取最新的记录。默认为 'latest'。
@@ -218,7 +219,6 @@ def get_raw_msg_by_timestamp_with_chat_inclusive(
     # 只有当 limit 为 0 时才应用外部 sort
     sort_order = [("time", 1)] if limit == 0 else None
     # 直接将 limit_mode 传递给 find_messages
-
     return find_messages(
         message_filter=filter_query, sort=sort_order, limit=limit, limit_mode=limit_mode, filter_bot=filter_bot
     )
@@ -231,7 +231,7 @@ def get_raw_msg_by_timestamp_with_chat_users(
     person_ids: List[str],
     limit: int = 0,
     limit_mode: str = "latest",
-) -> List[Dict[str, Any]]:
+) -> List[DatabaseMessages]:
     """获取某些特定用户在特定聊天从指定时间戳到指定时间戳的消息，按时间升序排序，返回消息列表
     limit: 限制返回的消息数量，0为不限制
     limit_mode: 当 limit > 0 时生效。 'earliest' 表示获取最早的记录， 'latest' 表示获取最新的记录。默认为 'latest'。
@@ -302,7 +302,7 @@ def get_actions_by_timestamp_with_chat_inclusive(
 
 def get_raw_msg_by_timestamp_random(
     timestamp_start: float, timestamp_end: float, limit: int = 0, limit_mode: str = "latest"
-) -> List[Dict[str, Any]]:
+) -> List[DatabaseMessages]:
     """
     先在范围时间戳内随机选择一条消息，取得消息的chat_id，然后根据chat_id获取该聊天在指定时间戳范围内的消息
     """
@@ -312,15 +312,15 @@ def get_raw_msg_by_timestamp_random(
         return []
     # 随机选一条
     msg = random.choice(all_msgs)
-    chat_id = msg["chat_id"]
-    timestamp_start = msg["time"]
+    chat_id = msg.chat_id
+    timestamp_start = msg.time
     # 用 chat_id 获取该聊天在指定时间戳范围内的消息
     return get_raw_msg_by_timestamp_with_chat(chat_id, timestamp_start, timestamp_end, limit, "earliest")
 
 
 def get_raw_msg_by_timestamp_with_users(
     timestamp_start: float, timestamp_end: float, person_ids: list, limit: int = 0, limit_mode: str = "latest"
-) -> List[Dict[str, Any]]:
+) -> List[DatabaseMessages]:
     """获取某些特定用户在 *所有聊天* 中从指定时间戳到指定时间戳的消息，按时间升序排序，返回消息列表
     limit: 限制返回的消息数量，0为不限制
     limit_mode: 当 limit > 0 时生效。 'earliest' 表示获取最早的记录， 'latest' 表示获取最新的记录。默认为 'latest'。
@@ -331,7 +331,7 @@ def get_raw_msg_by_timestamp_with_users(
     return find_messages(message_filter=filter_query, sort=sort_order, limit=limit, limit_mode=limit_mode)
 
 
-def get_raw_msg_before_timestamp(timestamp: float, limit: int = 0) -> List[Dict[str, Any]]:
+def get_raw_msg_before_timestamp(timestamp: float, limit: int = 0) -> List[DatabaseMessages]:
     """获取指定时间戳之前的消息，按时间升序排序，返回消息列表
     limit: 限制返回的消息数量，0为不限制
     """
@@ -340,7 +340,7 @@ def get_raw_msg_before_timestamp(timestamp: float, limit: int = 0) -> List[Dict[
     return find_messages(message_filter=filter_query, sort=sort_order, limit=limit)
 
 
-def get_raw_msg_before_timestamp_with_chat(chat_id: str, timestamp: float, limit: int = 0) -> List[Dict[str, Any]]:
+def get_raw_msg_before_timestamp_with_chat(chat_id: str, timestamp: float, limit: int = 0) -> List[DatabaseMessages]:
     """获取指定时间戳之前的消息，按时间升序排序，返回消息列表
     limit: 限制返回的消息数量，0为不限制
     """
@@ -349,7 +349,7 @@ def get_raw_msg_before_timestamp_with_chat(chat_id: str, timestamp: float, limit
     return find_messages(message_filter=filter_query, sort=sort_order, limit=limit)
 
 
-def get_raw_msg_before_timestamp_with_users(timestamp: float, person_ids: list, limit: int = 0) -> List[Dict[str, Any]]:
+def get_raw_msg_before_timestamp_with_users(timestamp: float, person_ids: list, limit: int = 0) -> List[DatabaseMessages]:
     """获取指定时间戳之前的消息，按时间升序排序，返回消息列表
     limit: 限制返回的消息数量，0为不限制
     """

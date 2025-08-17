@@ -163,8 +163,10 @@ class ChatAction:
             limit=15,
             limit_mode="last",
         )
+        # TODO: 修复！
+        tmp_msgs = [msg.__dict__ for msg in message_list_before_now]
         chat_talking_prompt = build_readable_messages(
-            message_list_before_now,
+            tmp_msgs,
             replace_bot_name=True,
             merge_messages=False,
             timestamp_mode="normal_no_YMD",
@@ -227,8 +229,10 @@ class ChatAction:
             limit=10,
             limit_mode="last",
         )
+        # TODO: 修复！
+        tmp_msgs = [msg.__dict__ for msg in message_list_before_now]
         chat_talking_prompt = build_readable_messages(
-            message_list_before_now,
+            tmp_msgs,
             replace_bot_name=True,
             merge_messages=False,
             timestamp_mode="normal_no_YMD",

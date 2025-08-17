@@ -7,7 +7,7 @@ from typing import List, Dict, Any
 from src.config.config import global_config
 from src.common.logger import get_logger
 from src.person_info.relationship_manager import get_relationship_manager
-from src.person_info.person_info import Person,get_person_id
+from src.person_info.person_info import Person, get_person_id
 from src.chat.message_receive.chat_stream import get_chat_manager
 from src.chat.utils.chat_message_builder import (
     get_raw_msg_by_timestamp_with_chat,
@@ -129,7 +129,7 @@ class RelationshipBuilder:
         # 获取该消息前5条消息的时间作为潜在的开始时间
         before_messages = get_raw_msg_before_timestamp_with_chat(self.chat_id, message_time, limit=5)
         if before_messages:
-            potential_start_time = before_messages[0]["time"]
+            potential_start_time = before_messages[0].time
         else:
             potential_start_time = message_time
 
@@ -175,7 +175,7 @@ class RelationshipBuilder:
             )
             if after_messages and len(after_messages) >= 5:
                 # 如果有足够的后续消息，使用第5条消息的时间作为结束时间
-                last_segment["end_time"] = after_messages[4]["time"]
+                last_segment["end_time"] = after_messages[4].time
 
             # 重新计算当前消息段的消息数量
             last_segment["message_count"] = self._count_messages_in_timerange(
@@ -300,7 +300,6 @@ class RelationshipBuilder:
 
         return cleanup_stats["segments_removed"] > 0 or len(users_to_remove) > 0
 
-
     def get_cache_status(self) -> str:
         # sourcery skip: merge-list-append, merge-list-appends-into-extend
         """获取缓存状态信息，用于调试和监控"""
@@ -342,13 +341,12 @@ class RelationshipBuilder:
     # 统筹各模块协作、对外提供服务接口
     # ================================
 
-    async def build_relation(self,immediate_build: str = "",max_build_threshold: int = MAX_MESSAGE_COUNT):
+    async def build_relation(self, immediate_build: str = "", max_build_threshold: int = MAX_MESSAGE_COUNT):
         """构建关系
         immediate_build: 立即构建关系，可选值为"all"或person_id
         """
         self._cleanup_old_segments()
         current_time = time.time()
-            
 
         if latest_messages := get_raw_msg_by_timestamp_with_chat(
             self.chat_id,
@@ -358,9 +356,9 @@ class RelationshipBuilder:
         ):
             # 处理所有新的非bot消息
             for latest_msg in latest_messages:
-                user_id = latest_msg.get("user_id")
-                platform = latest_msg.get("user_platform") or latest_msg.get("chat_info_platform")
-                msg_time = latest_msg.get("time", 0)
+                user_id = latest_msg.user_info.user_id
+                platform = latest_msg.user_info.platform or latest_msg.chat_info.platform
+                msg_time = latest_msg.time
 
                 if (
                     user_id
@@ -383,8 +381,10 @@ class RelationshipBuilder:
             if not person.is_known:
                 continue
             person_name = person.person_name or person_id
-            
-            if total_message_count >= max_build_threshold or (total_message_count >= 5 and (immediate_build == person_id or immediate_build == "all")):
+
+            if total_message_count >= max_build_threshold or (
+                total_message_count >= 5 and immediate_build in [person_id, "all"]
+            ):
                 users_to_build_relationship.append(person_id)
                 logger.info(
                     f"{self.log_prefix} 用户 {person_name} 满足关系构建条件，总消息数：{total_message_count}，消息段数：{len(segments)}"
@@ -400,12 +400,11 @@ class RelationshipBuilder:
             segments = self.person_engaged_cache[person_id]
             # 异步执行关系构建
             person = Person(person_id=person_id)
-            if person.is_known: 
+            if person.is_known:
                 asyncio.create_task(self.update_impression_on_segments(person_id, self.chat_id, segments))
             # 移除已处理的用户缓存
             del self.person_engaged_cache[person_id]
             self._save_cache()
-            
 
     # ================================
     # 关系构建模块
@@ -458,7 +457,7 @@ class RelationshipBuilder:
                             "user_cardname": "",
                             "display_message": f"...（中间省略一些消息）{start_date} 之后的消息如下...",
                             "is_action_record": True,
-                            "chat_info_platform": segment_messages[0].get("chat_info_platform", ""),
+                            "chat_info_platform": segment_messages[0].chat_info.platform or "",
                             "chat_id": chat_id,
                         }
                         processed_messages.append(gap_message)

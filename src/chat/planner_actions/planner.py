@@ -95,6 +95,7 @@ class ActionPlanner:
         self.max_plan_retries = 3
 
     def find_message_by_id(self, message_id: str, message_id_list: list) -> Optional[Dict[str, Any]]:
+        # sourcery skip: use-next
         """
         根据message_id从message_id_list中查找对应的原始消息
 
@@ -120,10 +121,7 @@ class ActionPlanner:
         Returns:
             最新的消息字典，如果列表为空则返回None
         """
-        if not message_id_list:
-            return None
-        # 假设消息列表是按时间顺序排列的，最后一个是最新的
-        return message_id_list[-1].get("message")
+        return message_id_list[-1].get("message") if message_id_list else None
 
     async def plan(
         self,
@@ -208,22 +206,17 @@ class ActionPlanner:
                             if target_message is None:
                                 self.plan_retry_count += 1
                                 logger.warning(f"{self.log_prefix}无法找到target_message_id '{target_message_id}' 对应的消息，重试次数: {self.plan_retry_count}/{self.max_plan_retries}")
-                                
-                                # 如果连续三次plan均为None，输出error并选取最新消息
-                                if self.plan_retry_count >= self.max_plan_retries:
-                                    logger.error(f"{self.log_prefix}连续{self.max_plan_retries}次plan获取target_message失败，选择最新消息作为target_message")
-                                    target_message = self.get_latest_message(message_id_list)
-                                    self.plan_retry_count = 0  # 重置计数器
-                                else:
+                                # 仍有重试次数
+                                if self.plan_retry_count < self.max_plan_retries:
                                     # 递归重新plan
                                     return await self.plan(mode, loop_start_time, available_actions)
-                            else:
-                                # 成功获取到target_message，重置计数器
-                                self.plan_retry_count = 0
+                                logger.error(f"{self.log_prefix}连续{self.max_plan_retries}次plan获取target_message失败，选择最新消息作为target_message")
+                                target_message = self.get_latest_message(message_id_list)
+                            self.plan_retry_count = 0  # 重置计数器
                         else:
                             logger.warning(f"{self.log_prefix}动作'{action}'缺少target_message_id")
-                    
-                    
+
+
 
                     if action != "no_reply" and action != "reply" and action not in current_available_actions:
                         logger.warning(
@@ -247,28 +240,27 @@ class ActionPlanner:
         is_parallel = False
         if mode == ChatMode.NORMAL and action in current_available_actions:
             is_parallel = current_available_actions[action].parallel_action
-            
-            
+
+
         action_data["loop_start_time"] = loop_start_time
-        
-        actions = []
-            
-        # 1. 添加Planner取得的动作
-        actions.append({
-            "action_type": action,
-            "reasoning": reasoning,
-            "action_data": action_data,
-            "action_message": target_message,
-            "available_actions": available_actions  # 添加这个字段
-        })
-        
+
+        actions = [
+            {
+                "action_type": action,
+                "reasoning": reasoning,
+                "action_data": action_data,
+                "action_message": target_message,
+                "available_actions": available_actions,
+            }
+        ]
+
         if action != "reply" and is_parallel:
             actions.append({
                 "action_type": "reply",
                 "action_message": target_message,
                 "available_actions": available_actions
             })
-            
+
         return actions,target_message
     
     
@@ -288,9 +280,10 @@ class ActionPlanner:
                 timestamp=time.time(),
                 limit=int(global_config.chat.max_context_size * 0.6),
             )
-
+            # TODO: 修复！
+            temp_msg_list_before_now = [msg.__dict__ for msg in message_list_before_now]
             chat_content_block, message_id_list = build_readable_messages_with_id(
-                messages=message_list_before_now,
+                messages=temp_msg_list_before_now,
                 timestamp_mode="normal_no_YMD",
                 read_mark=self.last_obs_time_mark,
                 truncate=True,

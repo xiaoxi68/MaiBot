@@ -85,8 +85,10 @@ class EmojiAction(BaseAction):
                 messages_text = ""
                 if recent_messages:
                     # 使用message_api构建可读的消息字符串
+                    # TODO: 修复
+                    tmp_msgs = [msg.__dict__ for msg in recent_messages]
                     messages_text = message_api.build_readable_messages(
-                        messages=recent_messages,
+                        messages=tmp_msgs,
                         timestamp_mode="normal_no_YMD",
                         truncate=False,
                         show_actions=False,

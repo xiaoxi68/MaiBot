@@ -285,10 +285,11 @@ class HeartFChatting:
             filter_mai=True,
             filter_command=True,
         )   
-        
+        # TODO: 修复！
+        temp_recent_messages_dict = [msg.__dict__ for msg in recent_messages_dict]
         # 统一的消息处理逻辑
-        should_process,interest_value = await self._should_process_messages(recent_messages_dict)
-        
+        should_process,interest_value = await self._should_process_messages(temp_recent_messages_dict)
+
         if should_process:
             self.last_read_time = time.time()
             await self._observe(interest_value = interest_value)

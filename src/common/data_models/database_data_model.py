@@ -1,13 +1,10 @@
-from enum import Enum
-
-from typing import Optional, Union, Dict, Any, Tuple, List
-
+from typing import Optional
 from dataclasses import dataclass, field
 
 
 @dataclass
 class DatabaseUserInfo:
-    user_platform: str = field(default_factory=str)
+    platform: str = field(default_factory=str)
     user_id: str = field(default_factory=str)
     user_nickname: str = field(default_factory=str)
     user_cardname: Optional[str] = None
@@ -84,17 +81,21 @@ class DatabaseMessages:
             user_id=self.user_id,
             user_nickname=self.user_nickname,
             user_cardname=self.user_cardname,
-            user_platform=self.user_platform,
+            platform=self.user_platform,
         )
 
-        if not (self.chat_info_group_id and self.chat_info_group_name):
-            self.group_info = None
+        if self.chat_info_group_id and self.chat_info_group_name:
+            self.group_info = DatabaseGroupInfo(
+                group_id=self.chat_info_group_id,
+                group_name=self.chat_info_group_name,
+                group_platform=self.chat_info_group_platform,
+            )
 
         chat_user_info = DatabaseUserInfo(
             user_id=self.chat_info_user_id,
             user_nickname=self.chat_info_user_nickname,
             user_cardname=self.chat_info_user_cardname,
-            user_platform=self.chat_info_user_platform,
+            platform=self.chat_info_user_platform,
         )
         self.chat_info = DatabaseChatInfo(
             stream_id=self.chat_info_stream_id,

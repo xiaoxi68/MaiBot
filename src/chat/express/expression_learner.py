@@ -346,13 +346,15 @@ class ExpressionLearner:
         current_time = time.time()
         
         # 获取上次学习时间
-        random_msg: Optional[List[Dict[str, Any]]] = get_raw_msg_by_timestamp_with_chat_inclusive(
+        random_msg_temp = get_raw_msg_by_timestamp_with_chat_inclusive(
             chat_id=self.chat_id,
             timestamp_start=self.last_learning_time,
             timestamp_end=current_time,
             limit=num,
         )
-            
+        # TODO: 修复！
+        random_msg: Optional[List[Dict[str, Any]]] = [msg.__dict__ for msg in random_msg_temp] if random_msg_temp else None
+
         # print(random_msg)
         if not random_msg or random_msg == []:
             return None

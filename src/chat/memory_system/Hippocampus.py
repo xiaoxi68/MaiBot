@@ -16,6 +16,7 @@ from rich.traceback import install
 
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config, model_config
+from src.common.data_models.database_data_model import DatabaseMessages
 from src.common.database.database_model import GraphNodes, GraphEdges  # Peewee Models导入
 from src.common.logger import get_logger
 from src.chat.utils.chat_message_builder import (
@@ -1495,13 +1496,13 @@ class MemoryBuilder:
             timestamp_end=current_time,
             limit=threshold,
         )
-        
+        tmp_msg = [msg.__dict__ for msg in messages] if messages else []
         if messages:
             # 更新最后处理时间
             self.last_processed_time = current_time
             self.last_update_time = current_time
-            
-        return messages or []
+
+        return tmp_msg or []
 
 
 

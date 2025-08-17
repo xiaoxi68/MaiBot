@@ -187,22 +187,23 @@ class PromptBuilder:
         bot_id = str(global_config.bot.qq_account)
         target_user_id = str(message.chat_stream.user_info.user_id)
 
-        for msg_dict in message_list_before_now:
+        # TODO: 修复之！
+        for msg in message_list_before_now:
             try:
-                msg_user_id = str(msg_dict.get("user_id"))
+                msg_user_id = str(msg.user_info.user_id)
                 if msg_user_id == bot_id:
-                    if msg_dict.get("reply_to") and talk_type == msg_dict.get("reply_to"):
-                        core_dialogue_list.append(msg_dict)
-                    elif msg_dict.get("reply_to") and talk_type != msg_dict.get("reply_to"):
-                        background_dialogue_list.append(msg_dict)
+                    if msg.reply_to and talk_type == msg.reply_to:
+                        core_dialogue_list.append(msg.__dict__)
+                    elif msg.reply_to and talk_type != msg.reply_to:
+                        background_dialogue_list.append(msg.__dict__)
                     # else:
                         # background_dialogue_list.append(msg_dict)
                 elif msg_user_id == target_user_id:
-                    core_dialogue_list.append(msg_dict)
+                    core_dialogue_list.append(msg.__dict__)
                 else:
-                    background_dialogue_list.append(msg_dict)
+                    background_dialogue_list.append(msg.__dict__)
             except Exception as e:
-                logger.error(f"无法处理历史消息记录: {msg_dict}, 错误: {e}")
+                logger.error(f"无法处理历史消息记录: {msg.__dict__}, 错误: {e}")
 
         background_dialogue_prompt = ""
         if background_dialogue_list:
@@ -257,8 +258,10 @@ class PromptBuilder:
             timestamp=time.time(),
             limit=20,
         )
+        # TODO: 修复！
+        tmp_msgs = [msg.__dict__ for msg in all_dialogue_prompt]
         all_dialogue_prompt_str = build_readable_messages(
-            all_dialogue_prompt,
+            tmp_msgs,
             timestamp_mode="normal_no_YMD",
             show_pic=False,
         )
