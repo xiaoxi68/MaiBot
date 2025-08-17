@@ -14,7 +14,8 @@ from datetime import datetime, timedelta
 # 创建logs目录
 LOG_DIR = Path("logs")
 LOG_DIR.mkdir(exist_ok=True)
-
+logger_file = Path(__file__).resolve()
+PROJECT_ROOT = logger_file.parent.parent.parent.resolve()
 # 全局handler实例，避免重复创建
 _file_handler = None
 _console_handler = None
@@ -456,11 +457,9 @@ def convert_pathname_to_module(logger, method_name, event_dict):
     if "pathname" in event_dict:
         pathname = event_dict["pathname"]
         try:
-            # 获取项目根目录 - 使用绝对路径确保准确性
-            logger_file = Path(__file__).resolve()
-            project_root = logger_file.parent.parent.parent
+            # 使用绝对路径确保准确性
             pathname_path = Path(pathname).resolve()
-            rel_path = pathname_path.relative_to(project_root)
+            rel_path = pathname_path.relative_to(PROJECT_ROOT)
 
             # 转换为模块风格：移除 .py 扩展名，将路径分隔符替换为点
             module_path = str(rel_path).replace("\\", ".").replace("/", ".")
