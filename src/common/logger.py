@@ -646,7 +646,7 @@ def configure_structlog():
             structlog.processors.add_log_level,
             structlog.processors.CallsiteParameterAdder(
                 parameters=[
-                    structlog.processors.CallsiteParameter.MODULE,
+                    structlog.processors.CallsiteParameter.PATHNAME,
                     structlog.processors.CallsiteParameter.LINENO,
                 ]
             ),
@@ -676,7 +676,7 @@ file_formatter = structlog.stdlib.ProcessorFormatter(
         structlog.stdlib.PositionalArgumentsFormatter(),
         structlog.processors.TimeStamper(fmt="iso"),
         structlog.processors.CallsiteParameterAdder(
-            parameters=[structlog.processors.CallsiteParameter.MODULE, structlog.processors.CallsiteParameter.LINENO]
+            parameters=[structlog.processors.CallsiteParameter.PATHNAME, structlog.processors.CallsiteParameter.LINENO]
         ),
         convert_pathname_to_module,
         structlog.processors.StackInfoRenderer(),
