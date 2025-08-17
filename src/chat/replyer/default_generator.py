@@ -57,7 +57,7 @@ def init_prompt():
 {reply_style}，你可以完全重组回复，保留最基本的表达含义就好，但重组后保持语意通顺。
 {keywords_reaction_prompt}
 {moderation_prompt}
-不要输出多余内容(包括前后缀，冒号和引号，括号，表情包，at或 @等 )，只输出一条回复就好。
+不要输出多余内容(包括前后缀，冒号和引号，括号，表情包，emoji,at或 @等 )，只输出一条回复就好。
 现在，你说：
 """,
         "default_expressor_prompt",
@@ -86,7 +86,7 @@ def init_prompt():
 {keywords_reaction_prompt}
 请注意不要输出多余内容(包括前后缀，冒号和引号，at或 @等 )。只输出回复内容。
 {moderation_prompt}
-不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出一条回复就好
+不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，emoji,at或 @等 )。只输出一条回复就好
 现在，你说：
 """,
         "replyer_prompt",
@@ -111,7 +111,7 @@ def init_prompt():
 {keywords_reaction_prompt}
 请注意不要输出多余内容(包括前后缀，冒号和引号，at或 @等 )。只输出回复内容。
 {moderation_prompt}
-不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，at或 @等 )。只输出一条回复就好
+不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，emoji,at或 @等 )。只输出一条回复就好
 现在，你说：
 """,
         "replyer_self_prompt",
@@ -295,6 +295,9 @@ class DefaultReplyer:
         if not global_config.relationship.enable_relationship:
             return ""
         
+        if not sender:
+            return ""
+        
         if sender == global_config.bot.nickname:
             return ""
 
@@ -304,7 +307,7 @@ class DefaultReplyer:
             logger.warning(f"未找到用户 {sender} 的ID，跳过信息提取")
             return f"你完全不认识{sender}，不理解ta的相关信息。"
 
-        return person.build_relationship(points_num=5)
+        return person.build_relationship()
 
     async def build_expression_habits(self, chat_history: str, target: str) -> Tuple[str, List[int]]:
         """构建表达习惯块
