@@ -47,3 +47,4 @@ reportportal-client
 scikit-learn
 seaborn
 structlog
+google.geai
