@@ -454,6 +454,11 @@ RESET_COLOR = "\033[0m"
 def convert_pathname_to_module(logger, method_name, event_dict):
     # sourcery skip: extract-method, use-string-remove-affix
     """将 pathname 转换为模块风格的路径"""
+    if "logger_name" in event_dict and event_dict["logger_name"] == "maim_message":
+        if "pathname" in event_dict:
+            del event_dict["pathname"]
+            event_dict["module"] = "maim_message"
+        return event_dict
     if "pathname" in event_dict:
         pathname = event_dict["pathname"]
         try:

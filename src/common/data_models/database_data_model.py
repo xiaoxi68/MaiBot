@@ -1,24 +1,36 @@
-from typing import Optional
-from dataclasses import dataclass, field
+from typing import Optional, Dict, Any
+from dataclasses import dataclass, field, fields, MISSING
 
+from . import AbstractClassFlag
 
 @dataclass
-class DatabaseUserInfo:
+class DatabaseUserInfo(AbstractClassFlag):
     platform: str = field(default_factory=str)
     user_id: str = field(default_factory=str)
     user_nickname: str = field(default_factory=str)
     user_cardname: Optional[str] = None
+    
+    def __post_init__(self):
+        assert isinstance(self.platform, str), "platform must be a string"
+        assert isinstance(self.user_id, str), "user_id must be a string"
+        assert isinstance(self.user_nickname, str), "user_nickname must be a string"
+        assert isinstance(self.user_cardname, str) or self.user_cardname is None, "user_cardname must be a string or None"
 
 
 @dataclass
-class DatabaseGroupInfo:
+class DatabaseGroupInfo(AbstractClassFlag):
     group_id: str = field(default_factory=str)
     group_name: str = field(default_factory=str)
     group_platform: Optional[str] = None
+    
+    def __post_init__(self):
+        assert isinstance(self.group_id, str), "group_id must be a string"
+        assert isinstance(self.group_name, str), "group_name must be a string"
+        assert isinstance(self.group_platform, str) or self.group_platform is None, "group_platform must be a string or None"
 
 
 @dataclass
-class DatabaseChatInfo:
+class DatabaseChatInfo(AbstractClassFlag):
     stream_id: str = field(default_factory=str)
     platform: str = field(default_factory=str)
     create_time: float = field(default_factory=float)
@@ -26,12 +38,20 @@ class DatabaseChatInfo:
     user_info: DatabaseUserInfo = field(default_factory=DatabaseUserInfo)
     group_info: Optional[DatabaseGroupInfo] = None
 
+    def __post_init__(self):
+        assert isinstance(self.stream_id, str), "stream_id must be a string"
+        assert isinstance(self.platform, str), "platform must be a string"
+        assert isinstance(self.create_time, float), "create_time must be a float"
+        assert isinstance(self.last_active_time, float), "last_active_time must be a float"
+        assert isinstance(self.user_info, DatabaseUserInfo), "user_info must be a DatabaseUserInfo instance"
+        assert isinstance(self.group_info, DatabaseGroupInfo) or self.group_info is None, "group_info must be a DatabaseGroupInfo instance or None"
 
-@dataclass
-class DatabaseMessages:
-    chat_info: DatabaseChatInfo
-    user_info: DatabaseUserInfo
-    group_info: Optional[DatabaseGroupInfo] = None
+
+@dataclass(init=False)
+class DatabaseMessages(AbstractClassFlag):
+    # chat_info: DatabaseChatInfo
+    # user_info: DatabaseUserInfo
+    # group_info: Optional[DatabaseGroupInfo] = None
 
     message_id: str = field(default_factory=str)
     time: float = field(default_factory=float)
@@ -44,23 +64,23 @@ class DatabaseMessages:
     is_mentioned: Optional[bool] = None
 
     # 从 chat_info 扁平化而来的字段
-    chat_info_stream_id: str = field(default_factory=str)
-    chat_info_platform: str = field(default_factory=str)
-    chat_info_user_platform: str = field(default_factory=str)
-    chat_info_user_id: str = field(default_factory=str)
-    chat_info_user_nickname: str = field(default_factory=str)
-    chat_info_user_cardname: Optional[str] = None
-    chat_info_group_platform: Optional[str] = None
-    chat_info_group_id: Optional[str] = None
-    chat_info_group_name: Optional[str] = None
-    chat_info_create_time: float = field(default_factory=float)
-    chat_info_last_active_time: float = field(default_factory=float)
+    # chat_info_stream_id: str = field(default_factory=str)
+    # chat_info_platform: str = field(default_factory=str)
+    # chat_info_user_platform: str = field(default_factory=str)
+    # chat_info_user_id: str = field(default_factory=str)
+    # chat_info_user_nickname: str = field(default_factory=str)
+    # chat_info_user_cardname: Optional[str] = None
+    # chat_info_group_platform: Optional[str] = None
+    # chat_info_group_id: Optional[str] = None
+    # chat_info_group_name: Optional[str] = None
+    # chat_info_create_time: float = field(default_factory=float)
+    # chat_info_last_active_time: float = field(default_factory=float)
 
     # 从顶层 user_info 扁平化而来的字段 (消息发送者信息)
-    user_platform: str = field(default_factory=str)
-    user_id: str = field(default_factory=str)
-    user_nickname: str = field(default_factory=str)
-    user_cardname: Optional[str] = None
+    # user_platform: str = field(default_factory=str)
+    # user_id: str = field(default_factory=str)
+    # user_nickname: str = field(default_factory=str)
+    # user_cardname: Optional[str] = None
 
     processed_plain_text: Optional[str] = None  # 处理后的纯文本消息
     display_message: Optional[str] = None  # 显示的消息
@@ -76,32 +96,65 @@ class DatabaseMessages:
 
     selected_expressions: Optional[str] = None
 
-    def __post_init__(self):
-        self.user_info = DatabaseUserInfo(
-            user_id=self.user_id,
-            user_nickname=self.user_nickname,
-            user_cardname=self.user_cardname,
-            platform=self.user_platform,
-        )
+    # def __post_init__(self):
 
-        if self.chat_info_group_id and self.chat_info_group_name:
+    #     if self.chat_info_group_id and self.chat_info_group_name:
+    #         self.group_info = DatabaseGroupInfo(
+    #             group_id=self.chat_info_group_id,
+    #             group_name=self.chat_info_group_name,
+    #             group_platform=self.chat_info_group_platform,
+    #         )
+
+    #     chat_user_info = DatabaseUserInfo(
+    #         user_id=self.chat_info_user_id,
+    #         user_nickname=self.chat_info_user_nickname,
+    #         user_cardname=self.chat_info_user_cardname,
+    #         platform=self.chat_info_user_platform,
+    #     )
+    #     self.chat_info = DatabaseChatInfo(
+    #         stream_id=self.chat_info_stream_id,
+    #         platform=self.chat_info_platform,
+    #         create_time=self.chat_info_create_time,
+    #         last_active_time=self.chat_info_last_active_time,
+    #         user_info=chat_user_info,
+    #         group_info=self.group_info,
+    #     )
+    def __init__(self, **kwargs: Any):
+        defined = {f.name: f for f in fields(self.__class__)}
+        for name, f in defined.items():
+            if name in kwargs:
+                setattr(self, name, kwargs.pop(name))
+            elif f.default is not MISSING:
+                setattr(self, name, f.default)
+            else:
+                raise TypeError(f"缺失必需字段: {name}")
+
+        self.user_info = DatabaseUserInfo(
+            user_id=kwargs.get("user_id"),  # type: ignore
+            user_nickname=kwargs.get("user_nickname"),  # type: ignore
+            user_cardname=kwargs.get("user_cardname"),  # type: ignore
+            platform=kwargs.get("user_platform"),  # type: ignore
+        )
+        if kwargs.get("chat_info_group_id") and kwargs.get("chat_info_group_name"):
             self.group_info = DatabaseGroupInfo(
-                group_id=self.chat_info_group_id,
-                group_name=self.chat_info_group_name,
-                group_platform=self.chat_info_group_platform,
+                group_id=kwargs.get("chat_info_group_id"),  # type: ignore
+                group_name=kwargs.get("chat_info_group_name"),  # type: ignore
+                group_platform=kwargs.get("chat_info_group_platform"),  # type: ignore
             )
 
         chat_user_info = DatabaseUserInfo(
-            user_id=self.chat_info_user_id,
-            user_nickname=self.chat_info_user_nickname,
-            user_cardname=self.chat_info_user_cardname,
-            platform=self.chat_info_user_platform,
+            user_id=kwargs.get("chat_info_user_id"),  # type: ignore
+            user_nickname=kwargs.get("chat_info_user_nickname"),  # type: ignore
+            user_cardname=kwargs.get("chat_info_user_cardname"),  # type: ignore
+            platform=kwargs.get("chat_info_user_platform"),  # type: ignore
         )
+        
         self.chat_info = DatabaseChatInfo(
-            stream_id=self.chat_info_stream_id,
-            platform=self.chat_info_platform,
-            create_time=self.chat_info_create_time,
-            last_active_time=self.chat_info_last_active_time,
+            stream_id=kwargs.get("chat_info_stream_id"),  # type: ignore
+            platform=kwargs.get("chat_info_platform"),  # type: ignore
+            create_time=kwargs.get("chat_info_create_time"),  # type: ignore
+            last_active_time=kwargs.get("chat_info_last_active_time"),  # type: ignore
             user_info=chat_user_info,
             group_info=self.group_info,
         )
+        

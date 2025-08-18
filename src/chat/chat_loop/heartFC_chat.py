@@ -286,7 +286,8 @@ class HeartFChatting:
             filter_command=True,
         )   
         # TODO: 修复！
-        temp_recent_messages_dict = [msg.__dict__ for msg in recent_messages_dict]
+        from src.common.data_models import temporarily_transform_class_to_dict
+        temp_recent_messages_dict = [temporarily_transform_class_to_dict(msg) for msg in recent_messages_dict]
         # 统一的消息处理逻辑
         should_process,interest_value = await self._should_process_messages(temp_recent_messages_dict)
 

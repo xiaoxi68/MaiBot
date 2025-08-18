@@ -353,7 +353,8 @@ class ExpressionLearner:
             limit=num,
         )
         # TODO: 修复！
-        random_msg: Optional[List[Dict[str, Any]]] = [msg.__dict__ for msg in random_msg_temp] if random_msg_temp else None
+        from src.common.data_models import temporarily_transform_class_to_dict
+        random_msg: Optional[List[Dict[str, Any]]] = [temporarily_transform_class_to_dict(msg) for msg in random_msg_temp] if random_msg_temp else None
 
         # print(random_msg)
         if not random_msg or random_msg == []:

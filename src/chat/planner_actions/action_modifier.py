@@ -71,7 +71,8 @@ class ActionModifier:
             limit=min(int(global_config.chat.max_context_size * 0.33), 10),
         )
         # TODO: 修复！
-        temp_msg_list_before_now_half = [msg.__dict__ for msg in message_list_before_now_half]
+        from src.common.data_models import temporarily_transform_class_to_dict
+        temp_msg_list_before_now_half = [temporarily_transform_class_to_dict(msg) for msg in message_list_before_now_half]
         chat_content = build_readable_messages(
             temp_msg_list_before_now_half,
             replace_bot_name=True,

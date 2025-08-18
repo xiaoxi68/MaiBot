@@ -710,12 +710,13 @@ class DefaultReplyer:
         target = replace_user_references_sync(target, chat_stream.platform, replace_bot_name=True)
 
         # TODO: 修复！
+        from src.common.data_models import temporarily_transform_class_to_dict
         message_list_before_now_long = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_id,
             timestamp=time.time(),
             limit=global_config.chat.max_context_size * 1,
         )
-        temp_msg_list_before_long = [msg.__dict__ for msg in message_list_before_now_long]
+        temp_msg_list_before_long = [temporarily_transform_class_to_dict(msg) for msg in message_list_before_now_long]
 
         # TODO: 修复！
         message_list_before_short = get_raw_msg_before_timestamp_with_chat(
@@ -723,7 +724,7 @@ class DefaultReplyer:
             timestamp=time.time(),
             limit=int(global_config.chat.max_context_size * 0.33),
         )
-        temp_msg_list_before_short = [msg.__dict__ for msg in message_list_before_short]
+        temp_msg_list_before_short = [temporarily_transform_class_to_dict(msg) for msg in message_list_before_short]
 
         chat_talking_prompt_short = build_readable_messages(
             temp_msg_list_before_short,
@@ -899,7 +900,8 @@ class DefaultReplyer:
             limit=min(int(global_config.chat.max_context_size * 0.33), 15),
         )
         # TODO: 修复！
-        temp_msg_list_before_now_half = [msg.__dict__ for msg in message_list_before_now_half]
+        from src.common.data_models import temporarily_transform_class_to_dict
+        temp_msg_list_before_now_half = [temporarily_transform_class_to_dict(msg) for msg in message_list_before_now_half]
         chat_talking_prompt_half = build_readable_messages(
             temp_msg_list_before_now_half,
             replace_bot_name=True,

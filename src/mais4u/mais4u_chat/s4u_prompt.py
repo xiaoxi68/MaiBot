@@ -259,7 +259,8 @@ class PromptBuilder:
             limit=20,
         )
         # TODO: 修复！
-        tmp_msgs = [msg.__dict__ for msg in all_dialogue_prompt]
+        from src.common.data_models import temporarily_transform_class_to_dict
+        tmp_msgs = [temporarily_transform_class_to_dict(msg) for msg in all_dialogue_prompt]
         all_dialogue_prompt_str = build_readable_messages(
             tmp_msgs,
             timestamp_mode="normal_no_YMD",

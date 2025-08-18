@@ -281,7 +281,8 @@ class ActionPlanner:
                 limit=int(global_config.chat.max_context_size * 0.6),
             )
             # TODO: 修复！
-            temp_msg_list_before_now = [msg.__dict__ for msg in message_list_before_now]
+            from src.common.data_models import temporarily_transform_class_to_dict
+            temp_msg_list_before_now = [temporarily_transform_class_to_dict(msg) for msg in message_list_before_now]
             chat_content_block, message_id_list = build_readable_messages_with_id(
                 messages=temp_msg_list_before_now,
                 timestamp_mode="normal_no_YMD",
