@@ -56,69 +56,98 @@ class DatabaseChatInfo(AbstractClassFlag):
 
 @dataclass(init=False)
 class DatabaseMessages(AbstractClassFlag):
-    message_id: str = field(default_factory=str)
-    time: float = field(default_factory=float)
-    chat_id: str = field(default_factory=str)
-    reply_to: Optional[str] = None
-    interest_value: Optional[float] = None
+    def __init__(
+        self,
+        message_id: str = "",
+        time: float = 0.0,
+        chat_id: str = "",
+        reply_to: Optional[str] = None,
+        interest_value: Optional[float] = None,
+        key_words: Optional[str] = None,
+        key_words_lite: Optional[str] = None,
+        is_mentioned: Optional[bool] = None,
+        processed_plain_text: Optional[str] = None,
+        display_message: Optional[str] = None,
+        priority_mode: Optional[str] = None,
+        priority_info: Optional[str] = None,
+        additional_config: Optional[str] = None,
+        is_emoji: bool = False,
+        is_picid: bool = False,
+        is_command: bool = False,
+        is_notify: bool = False,
+        selected_expressions: Optional[str] = None,
+        user_id: str = "",
+        user_nickname: str = "",
+        user_cardname: Optional[str] = None,
+        user_platform: str = "",
+        chat_info_group_id: Optional[str] = None,
+        chat_info_group_name: Optional[str] = None,
+        chat_info_group_platform: Optional[str] = None,
+        chat_info_user_id: str = "",
+        chat_info_user_nickname: str = "",
+        chat_info_user_cardname: Optional[str] = None,
+        chat_info_user_platform: str = "",
+        chat_info_stream_id: str = "",
+        chat_info_platform: str = "",
+        chat_info_create_time: float = 0.0,
+        chat_info_last_active_time: float = 0.0,
+        **kwargs: Any,
+    ):
+        self.message_id = message_id
+        self.time = time
+        self.chat_id = chat_id
+        self.reply_to = reply_to
+        self.interest_value = interest_value
 
-    key_words: Optional[str] = None
-    key_words_lite: Optional[str] = None
-    is_mentioned: Optional[bool] = None
+        self.key_words = key_words
+        self.key_words_lite = key_words_lite
+        self.is_mentioned = is_mentioned
 
-    processed_plain_text: Optional[str] = None  # 处理后的纯文本消息
-    display_message: Optional[str] = None  # 显示的消息
+        self.processed_plain_text = processed_plain_text
+        self.display_message = display_message
 
-    priority_mode: Optional[str] = None
-    priority_info: Optional[str] = None
+        self.priority_mode = priority_mode
+        self.priority_info = priority_info
 
-    additional_config: Optional[str] = None
-    is_emoji: bool = False
-    is_picid: bool = False
-    is_command: bool = False
-    is_notify: bool = False
+        self.additional_config = additional_config
+        self.is_emoji = is_emoji
+        self.is_picid = is_picid
+        self.is_command = is_command
+        self.is_notify = is_notify
 
-    selected_expressions: Optional[str] = None
+        self.selected_expressions = selected_expressions
 
-    def __init__(self, **kwargs: Any):
-        defined = {f.name: f for f in fields(self.__class__)}
-        for name, f in defined.items():
-            if name in kwargs:
-                setattr(self, name, kwargs.pop(name))
-            elif f.default is not MISSING:
-                setattr(self, name, f.default)
-            else:
-                raise TypeError(f"缺失必需字段: {name}")
-
-        self.group_info = None
+        self.group_info: Optional[DatabaseGroupInfo] = None
         self.user_info = DatabaseUserInfo(
-            user_id=kwargs.get("user_id"),  # type: ignore
-            user_nickname=kwargs.get("user_nickname"),  # type: ignore
-            user_cardname=kwargs.get("user_cardname"),  # type: ignore
-            platform=kwargs.get("user_platform"),  # type: ignore
+            user_id=user_id,
+            user_nickname=user_nickname,
+            user_cardname=user_cardname,
+            platform=user_platform,
         )
-        if kwargs.get("chat_info_group_id") and kwargs.get("chat_info_group_name"):
+        if chat_info_group_id and chat_info_group_name:
             self.group_info = DatabaseGroupInfo(
-                group_id=kwargs.get("chat_info_group_id"),  # type: ignore
-                group_name=kwargs.get("chat_info_group_name"),  # type: ignore
-                group_platform=kwargs.get("chat_info_group_platform"),  # type: ignore
+                group_id=chat_info_group_id,
+                group_name=chat_info_group_name,
+                group_platform=chat_info_group_platform,
             )
 
-        chat_user_info = DatabaseUserInfo(
-            user_id=kwargs.get("chat_info_user_id"),  # type: ignore
-            user_nickname=kwargs.get("chat_info_user_nickname"),  # type: ignore
-            user_cardname=kwargs.get("chat_info_user_cardname"),  # type: ignore
-            platform=kwargs.get("chat_info_user_platform"),  # type: ignore
-        )
-
         self.chat_info = DatabaseChatInfo(
-            stream_id=kwargs.get("chat_info_stream_id"),  # type: ignore
-            platform=kwargs.get("chat_info_platform"),  # type: ignore
-            create_time=kwargs.get("chat_info_create_time"),  # type: ignore
-            last_active_time=kwargs.get("chat_info_last_active_time"),  # type: ignore
-            user_info=chat_user_info,
+            stream_id=chat_info_stream_id,
+            platform=chat_info_platform,
+            create_time=chat_info_create_time,
+            last_active_time=chat_info_last_active_time,
+            user_info=DatabaseUserInfo(
+                user_id=chat_info_user_id,
+                user_nickname=chat_info_user_nickname,
+                user_cardname=chat_info_user_cardname,
+                platform=chat_info_user_platform,
+            ),
             group_info=self.group_info,
         )
+
+        if kwargs:
+            for key, value in kwargs.items():
+                setattr(self, key, value)
 
     # def __post_init__(self):
     #     assert isinstance(self.message_id, str), "message_id must be a string"
