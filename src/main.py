@@ -2,12 +2,10 @@ import asyncio
 import time
 from maim_message import MessageServer
 
-from src.chat.express.expression_learner import get_expression_learner
 from src.common.remote import TelemetryHeartBeatTask
 from src.manager.async_task_manager import async_task_manager
 from src.chat.utils.statistic import OnlineTimeRecordTask, StatisticOutputTask
 from src.chat.emoji_system.emoji_manager import get_emoji_manager
-from src.chat.willing.willing_manager import get_willing_manager
 from src.chat.message_receive.chat_stream import get_chat_manager
 from src.config.config import global_config
 from src.chat.message_receive.bot import chat_bot
@@ -16,6 +14,7 @@ from src.individuality.individuality import get_individuality, Individuality
 from src.common.server import get_global_server, Server
 from src.mood.mood_manager import mood_manager
 from rich.traceback import install
+from src.migrate_helper.migrate import check_and_run_migrations
 # from src.api.main import start_api_server
 
 # 导入新的插件管理器
@@ -31,8 +30,6 @@ if global_config.memory.enable_memory:
 # 插件系统现在使用统一的插件加载器
 
 install(extra_lines=3)
-
-willing_manager = get_willing_manager()
 
 logger = get_logger("main")
 
@@ -53,12 +50,22 @@ class MainSystem:
 
     async def initialize(self):
         """初始化系统组件"""
-        logger.debug(f"正在唤醒{global_config.bot.nickname}......")
+        logger.info(f"正在唤醒{global_config.bot.nickname}......")
 
         # 其他初始化任务
         await asyncio.gather(self._init_components())
 
-        logger.debug("系统初始化完成")
+        logger.info(f"""
+--------------------------------
+全部系统初始化完成，{global_config.bot.nickname}已成功唤醒
+--------------------------------
+如果想要自定义{global_config.bot.nickname}的功能,请查阅：https://docs.mai-mai.org/manual/usage/
+或者遇到了问题，请访问我们的文档:https://docs.mai-mai.org/
+--------------------------------
+如果你想要编写或了解插件相关内容，请访问开发文档https://docs.mai-mai.org/develop/
+--------------------------------
+如果你需要查阅模型的消耗以及麦麦的统计数据，请访问根目录的maibot_statistics.html文件
+""")
 
     async def _init_components(self):
         """初始化其他组件"""
@@ -83,11 +90,6 @@ class MainSystem:
         # 初始化表情管理器
         get_emoji_manager().initialize()
         logger.info("表情包管理器初始化成功")
-
-        # 启动愿望管理器
-        await willing_manager.async_task_starter()
-
-        logger.info("willing管理器初始化成功")
 
         # 启动情绪管理器
         await mood_manager.start()
@@ -115,6 +117,9 @@ class MainSystem:
 
         # 初始化个体特征
         await self.individuality.initialize()
+        
+        await check_and_run_migrations()
+        
 
         try:
             init_time = int(1000 * (time.time() - init_start_time))
@@ -136,22 +141,13 @@ class MainSystem:
             if global_config.memory.enable_memory and self.hippocampus_manager:
                 tasks.extend(
                     [
-                        self.build_memory_task(),
+                        # 移除记忆构建的定期调用，改为在heartFC_chat.py中调用
+                        # self.build_memory_task(),
                         self.forget_memory_task(),
-                        self.consolidate_memory_task(),
                     ]
                 )
 
-            tasks.append(self.learn_and_store_expression_task())
-
             await asyncio.gather(*tasks)
-
-    async def build_memory_task(self):
-        """记忆构建任务"""
-        while True:
-            await asyncio.sleep(global_config.memory.memory_build_interval)
-            logger.info("正在进行记忆构建")
-            await self.hippocampus_manager.build_memory()  # type: ignore
 
     async def forget_memory_task(self):
         """记忆遗忘任务"""
@@ -161,24 +157,7 @@ class MainSystem:
             await self.hippocampus_manager.forget_memory(percentage=global_config.memory.memory_forget_percentage)  # type: ignore
             logger.info("[记忆遗忘] 记忆遗忘完成")
 
-    async def consolidate_memory_task(self):
-        """记忆整合任务"""
-        while True:
-            await asyncio.sleep(global_config.memory.consolidate_memory_interval)
-            logger.info("[记忆整合] 开始整合记忆...")
-            await self.hippocampus_manager.consolidate_memory()  # type: ignore
-            logger.info("[记忆整合] 记忆整合完成")
 
-    @staticmethod
-    async def learn_and_store_expression_task():
-        """学习并存储表达方式任务"""
-        expression_learner = get_expression_learner()
-        while True:
-            await asyncio.sleep(global_config.expression.learning_interval)
-            if global_config.expression.enable_expression_learning and global_config.expression.enable_expression:
-                logger.info("[表达方式学习] 开始学习表达方式...")
-                await expression_learner.learn_and_store_expression()
-                logger.info("[表达方式学习] 表达方式学习完成")
 
 
 async def main():
@@ -192,3 +171,5 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+    

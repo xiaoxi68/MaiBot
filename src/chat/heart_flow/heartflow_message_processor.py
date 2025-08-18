@@ -14,53 +14,35 @@ from src.chat.utils.utils import is_mentioned_bot_in_message
 from src.chat.utils.timer_calculator import Timer
 from src.chat.utils.chat_message_builder import replace_user_references_sync
 from src.common.logger import get_logger
-from src.person_info.relationship_manager import get_relationship_manager
 from src.mood.mood_manager import mood_manager
+from src.person_info.person_info import Person
 
 if TYPE_CHECKING:
     from src.chat.heart_flow.sub_heartflow import SubHeartflow
 
 logger = get_logger("chat")
 
-
-async def _process_relationship(message: MessageRecv) -> None:
-    """处理用户关系逻辑
-
-    Args:
-        message: 消息对象，包含用户信息
-    """
-    platform = message.message_info.platform
-    user_id = message.message_info.user_info.user_id  # type: ignore
-    nickname = message.message_info.user_info.user_nickname  # type: ignore
-    cardname = message.message_info.user_info.user_cardname or nickname  # type: ignore
-
-    relationship_manager = get_relationship_manager()
-    is_known = await relationship_manager.is_known_some_one(platform, user_id)
-
-    if not is_known:
-        logger.info(f"首次认识用户: {nickname}")
-        await relationship_manager.first_knowing_some_one(platform, user_id, nickname, cardname)  # type: ignore
-
-
-async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool]:
+async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool, list[str]]:
     """计算消息的兴趣度
 
     Args:
         message: 待处理的消息对象
 
     Returns:
-        Tuple[float, bool]: (兴趣度, 是否被提及)
+        Tuple[float, bool, list[str]]: (兴趣度, 是否被提及, 关键词)
     """
     is_mentioned, _ = is_mentioned_bot_in_message(message)
     interested_rate = 0.0
 
     with Timer("记忆激活"):
-        interested_rate = await hippocampus_manager.get_activate_from_text(
+        interested_rate, keywords,keywords_lite = await hippocampus_manager.get_activate_from_text(
             message.processed_plain_text,
-            max_depth= 5,
+            max_depth= 4,
             fast_retrieval=False,
         )
-        logger.debug(f"记忆激活率: {interested_rate:.2f}")
+        message.key_words = keywords
+        message.key_words_lite = keywords_lite
+        logger.debug(f"记忆激活率: {interested_rate:.2f}, 关键词: {keywords}")
 
     text_len = len(message.processed_plain_text)
     # 根据文本长度分布调整兴趣度，采用分段函数实现更精确的兴趣度计算
@@ -99,7 +81,7 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool]:
         interest_increase_on_mention = 1
         interested_rate += interest_increase_on_mention
 
-    return interested_rate, is_mentioned
+    return interested_rate, is_mentioned, keywords
 
 
 class HeartFCMessageReceiver:
@@ -128,7 +110,7 @@ class HeartFCMessageReceiver:
             chat = message.chat_stream
 
             # 2. 兴趣度计算与更新
-            interested_rate, is_mentioned = await _calculate_interest(message)
+            interested_rate, is_mentioned, keywords = await _calculate_interest(message)
             message.interest_value = interested_rate
             message.is_mentioned = is_mentioned
 
@@ -143,8 +125,6 @@ class HeartFCMessageReceiver:
 
             # 3. 日志记录
             mes_name = chat.group_info.group_name if chat.group_info else "私聊"
-            # current_time = time.strftime("%H:%M:%S", time.localtime(message.message_info.time))
-            current_talk_frequency = global_config.chat.get_current_talk_frequency(chat.stream_id)
 
             # 如果消息中包含图片标识，则将 [picid:...] 替换为 [图片]
             picid_pattern = r"\[picid:([^\]]+)\]"
@@ -157,13 +137,12 @@ class HeartFCMessageReceiver:
                 replace_bot_name=True
             )
 
-            logger.info(f"[{mes_name}]{userinfo.user_nickname}:{processed_plain_text}[兴趣度：{interested_rate:.2f}]")  # type: ignore
+            if keywords:
+                logger.info(f"[{mes_name}]{userinfo.user_nickname}:{processed_plain_text}[兴趣度：{interested_rate:.2f}][关键词：{keywords}]")  # type: ignore
+            else:
+                logger.info(f"[{mes_name}]{userinfo.user_nickname}:{processed_plain_text}[兴趣度：{interested_rate:.2f}]")  # type: ignore
 
-            logger.debug(f"[{mes_name}][当前时段回复频率: {current_talk_frequency}]")
-
-            # 4. 关系处理
-            if global_config.relationship.enable_relationship:
-                await _process_relationship(message)
+            _ = Person.register_person(platform=message.message_info.platform, user_id=message.message_info.user_info.user_id,nickname=userinfo.user_nickname) # type: ignore
 
         except Exception as e:
             logger.error(f"消息处理失败: {e}")

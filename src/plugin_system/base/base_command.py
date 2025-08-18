@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Tuple, Optional
+from typing import Dict, Tuple, Optional, Any
 from src.common.logger import get_logger
 from src.plugin_system.base.component_types import CommandInfo, ComponentType
 from src.chat.message_receive.message import MessageRecv
@@ -84,7 +84,7 @@ class BaseCommand(ABC):
 
         return current
 
-    async def send_text(self, content: str, reply_to: str = "") -> bool:
+    async def send_text(self, content: str, set_reply: bool = False,reply_message: Optional[Dict[str, Any]] = None,storage_message: bool = True) -> bool:
         """发送回复消息
 
         Args:
@@ -100,10 +100,10 @@ class BaseCommand(ABC):
             logger.error(f"{self.log_prefix} 缺少聊天流或stream_id")
             return False
 
-        return await send_api.text_to_stream(text=content, stream_id=chat_stream.stream_id, reply_to=reply_to)
+        return await send_api.text_to_stream(text=content, stream_id=chat_stream.stream_id, set_reply=set_reply,reply_message=reply_message,storage_message=storage_message)
 
     async def send_type(
-        self, message_type: str, content: str, display_message: str = "", typing: bool = False, reply_to: str = ""
+        self, message_type: str, content: str, display_message: str = "", typing: bool = False, set_reply: bool = False,reply_message: Optional[Dict[str, Any]] = None
     ) -> bool:
         """发送指定类型的回复消息到当前聊天环境
 
@@ -129,11 +129,12 @@ class BaseCommand(ABC):
             stream_id=chat_stream.stream_id,
             display_message=display_message,
             typing=typing,
-            reply_to=reply_to,
+            set_reply=set_reply,
+            reply_message=reply_message,
         )
 
     async def send_command(
-        self, command_name: str, args: Optional[dict] = None, display_message: str = "", storage_message: bool = True
+        self, command_name: str, args: Optional[dict] = None, display_message: str = "", storage_message: bool = True,set_reply: bool = False,reply_message: Optional[Dict[str, Any]] = None
     ) -> bool:
         """发送命令消息
 
@@ -161,6 +162,8 @@ class BaseCommand(ABC):
                 stream_id=chat_stream.stream_id,
                 storage_message=storage_message,
                 display_message=display_message,
+                set_reply=set_reply,
+                reply_message=reply_message,
             )
 
             if success:
@@ -174,7 +177,7 @@ class BaseCommand(ABC):
             logger.error(f"{self.log_prefix} 发送命令时出错: {e}")
             return False
 
-    async def send_emoji(self, emoji_base64: str) -> bool:
+    async def send_emoji(self, emoji_base64: str, set_reply: bool = False,reply_message: Optional[Dict[str, Any]] = None) -> bool:
         """发送表情包
 
         Args:
@@ -188,9 +191,9 @@ class BaseCommand(ABC):
             logger.error(f"{self.log_prefix} 缺少聊天流或stream_id")
             return False
 
-        return await send_api.emoji_to_stream(emoji_base64, chat_stream.stream_id)
+        return await send_api.emoji_to_stream(emoji_base64, chat_stream.stream_id,set_reply=set_reply,reply_message=reply_message)
 
-    async def send_image(self, image_base64: str) -> bool:
+    async def send_image(self, image_base64: str, set_reply: bool = False,reply_message: Optional[Dict[str, Any]] = None,storage_message: bool = True) -> bool:
         """发送图片
 
         Args:
@@ -204,7 +207,7 @@ class BaseCommand(ABC):
             logger.error(f"{self.log_prefix} 缺少聊天流或stream_id")
             return False
 
-        return await send_api.image_to_stream(image_base64, chat_stream.stream_id)
+        return await send_api.image_to_stream(image_base64, chat_stream.stream_id,set_reply=set_reply,reply_message=reply_message,storage_message=storage_message)
 
     @classmethod
     def get_command_info(cls) -> "CommandInfo":

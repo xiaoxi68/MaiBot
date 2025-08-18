@@ -3,13 +3,14 @@ import random
 import time
 
 from src.common.logger import get_logger
-from src.config.config import global_config
+from src.config.config import global_config, model_config
 from src.chat.message_receive.message import MessageRecv
+from src.chat.message_receive.chat_stream import get_chat_manager
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.utils.chat_message_builder import build_readable_messages, get_raw_msg_by_timestamp_with_chat_inclusive
 from src.llm_models.utils_model import LLMRequest
 from src.manager.async_task_manager import AsyncTask, async_task_manager
-from src.chat.message_receive.chat_stream import get_chat_manager
+
 
 logger = get_logger("mood")
 
@@ -49,7 +50,7 @@ class ChatMood:
 
         chat_manager = get_chat_manager()
         self.chat_stream = chat_manager.get_stream(self.chat_id)
-        
+
         if not self.chat_stream:
             raise ValueError(f"Chat stream for chat_id {chat_id} not found")
 
@@ -59,11 +60,7 @@ class ChatMood:
 
         self.regression_count: int = 0
 
-        self.mood_model = LLMRequest(
-            model=global_config.model.emotion,
-            temperature=0.7,
-            request_type="mood",
-        )
+        self.mood_model = LLMRequest(model_set=model_config.model_task_config.emotion, request_type="mood")
 
         self.last_change_time: float = 0
 
@@ -83,12 +80,16 @@ class ChatMood:
         logger.debug(
             f"base_probability: {base_probability}, time_multiplier: {time_multiplier}, interest_multiplier: {interest_multiplier}"
         )
-        update_probability = global_config.mood.mood_update_threshold * min(1.0, base_probability * time_multiplier * interest_multiplier)
+        update_probability = global_config.mood.mood_update_threshold * min(
+            1.0, base_probability * time_multiplier * interest_multiplier
+        )
 
         if random.random() > update_probability:
             return
 
-        logger.debug(f"{self.log_prefix} 更新情绪状态，感兴趣度: {interested_rate:.2f}, 更新概率: {update_probability:.2f}")
+        logger.debug(
+            f"{self.log_prefix} 更新情绪状态，感兴趣度: {interested_rate:.2f}, 更新概率: {update_probability:.2f}"
+        )
 
         message_time: float = message.message_info.time  # type: ignore
         message_list_before_now = get_raw_msg_by_timestamp_with_chat_inclusive(
@@ -124,7 +125,9 @@ class ChatMood:
             mood_state=self.mood_state,
         )
 
-        response, (reasoning_content, model_name) = await self.mood_model.generate_response_async(prompt=prompt)
+        response, (reasoning_content, _, _) = await self.mood_model.generate_response_async(
+            prompt=prompt, temperature=0.7
+        )
         if global_config.debug.show_prompt:
             logger.info(f"{self.log_prefix} prompt: {prompt}")
             logger.info(f"{self.log_prefix} response: {response}")
@@ -171,14 +174,16 @@ class ChatMood:
             mood_state=self.mood_state,
         )
 
-        response, (reasoning_content, model_name) = await self.mood_model.generate_response_async(prompt=prompt)
+        response, (reasoning_content, _, _) = await self.mood_model.generate_response_async(
+            prompt=prompt, temperature=0.7
+        )
 
         if global_config.debug.show_prompt:
             logger.info(f"{self.log_prefix} prompt: {prompt}")
             logger.info(f"{self.log_prefix} response: {response}")
             logger.info(f"{self.log_prefix} reasoning_content: {reasoning_content}")
 
-        logger.info(f"{self.log_prefix} 情绪状态回归为: {response}")
+        logger.info(f"{self.log_prefix} 情绪状态转变为: {response}")
 
         self.mood_state = response
 
@@ -187,21 +192,21 @@ class ChatMood:
 
 class MoodRegressionTask(AsyncTask):
     def __init__(self, mood_manager: "MoodManager"):
-        super().__init__(task_name="MoodRegressionTask", run_interval=30)
+        super().__init__(task_name="MoodRegressionTask", run_interval=45)
         self.mood_manager = mood_manager
 
     async def run(self):
-        logger.debug("Running mood regression task...")
+        logger.debug("开始情绪回归任务...")
         now = time.time()
         for mood in self.mood_manager.mood_list:
             if mood.last_change_time == 0:
                 continue
 
-            if now - mood.last_change_time > 180:
-                if mood.regression_count >= 3:
+            if now - mood.last_change_time > 200:
+                if mood.regression_count >= 2:
                     continue
 
-                logger.info(f"{mood.log_prefix} 开始情绪回归, 这是第 {mood.regression_count + 1} 次")
+                logger.debug(f"{mood.log_prefix} 开始情绪回归, 第 {mood.regression_count + 1} 次")
                 await mood.regress_mood()
 
 

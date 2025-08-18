@@ -1,8 +1,9 @@
 import asyncio
 import contextlib
-from typing import List, Dict, Optional, Type, Tuple
+from typing import List, Dict, Optional, Type, Tuple, Any
 
 from src.chat.message_receive.message import MessageRecv
+from src.chat.message_receive.chat_stream import get_chat_manager
 from src.common.logger import get_logger
 from src.plugin_system.base.component_types import EventType, EventHandlerInfo, MaiMessages
 from src.plugin_system.base.base_events_handler import BaseEventHandler
@@ -44,18 +45,30 @@ class EventsManager:
     async def handle_mai_events(
         self,
         event_type: EventType,
-        message: MessageRecv,
+        message: Optional[MessageRecv] = None,
         llm_prompt: Optional[str] = None,
-        llm_response: Optional[str] = None,
+        llm_response: Optional[Dict[str, Any]] = None,
+        stream_id: Optional[str] = None,
+        action_usage: Optional[List[str]] = None,
     ) -> bool:
         """处理 events"""
         from src.plugin_system.core import component_registry
 
         continue_flag = True
-        transformed_message = self._transform_event_message(message, llm_prompt, llm_response)
+        transformed_message: Optional[MaiMessages] = None
+        if not message:
+            assert stream_id, "如果没有消息，必须提供流ID"
+            if event_type in [EventType.ON_MESSAGE, EventType.ON_PLAN, EventType.POST_LLM, EventType.AFTER_LLM]:
+                transformed_message = self._build_message_from_stream(stream_id, llm_prompt, llm_response)
+            else:
+                transformed_message = self._transform_event_without_message(
+                    stream_id, llm_prompt, llm_response, action_usage
+                )
+        else:
+            transformed_message = self._transform_event_message(message, llm_prompt, llm_response)
         for handler in self._events_subscribers.get(event_type, []):
-            if message.chat_stream and message.chat_stream.stream_id:
-                stream_id = message.chat_stream.stream_id
+            if transformed_message.stream_id:
+                stream_id = transformed_message.stream_id
                 if handler.handler_name in global_announcement_manager.get_disabled_chat_event_handlers(stream_id):
                     continue
             handler.set_plugin_config(component_registry.get_plugin_config(handler.plugin_name) or {})
@@ -114,13 +127,16 @@ class EventsManager:
         return False
 
     def _transform_event_message(
-        self, message: MessageRecv, llm_prompt: Optional[str] = None, llm_response: Optional[str] = None
+        self, message: MessageRecv, llm_prompt: Optional[str] = None, llm_response: Optional[Dict[str, Any]] = None
     ) -> MaiMessages:
         """转换事件消息格式"""
         # 直接赋值部分内容
         transformed_message = MaiMessages(
             llm_prompt=llm_prompt,
-            llm_response=llm_response,
+            llm_response_content=llm_response.get("content") if llm_response else None,
+            llm_response_reasoning=llm_response.get("reasoning") if llm_response else None,
+            llm_response_model=llm_response.get("model") if llm_response else None,
+            llm_response_tool_call=llm_response.get("tool_calls") if llm_response else None,
             raw_message=message.raw_message,
             additional_data=message.message_info.additional_config or {},
         )
@@ -162,6 +178,38 @@ class EventsManager:
                 )
 
         return transformed_message
+
+    def _build_message_from_stream(
+        self, stream_id: str, llm_prompt: Optional[str] = None, llm_response: Optional[Dict[str, Any]] = None
+    ) -> MaiMessages:
+        """从流ID构建消息"""
+        chat_stream = get_chat_manager().get_stream(stream_id)
+        assert chat_stream, f"未找到流ID为 {stream_id} 的聊天流"
+        message = chat_stream.context.get_last_message()
+        return self._transform_event_message(message, llm_prompt, llm_response)
+
+    def _transform_event_without_message(
+        self,
+        stream_id: str,
+        llm_prompt: Optional[str] = None,
+        llm_response: Optional[Dict[str, Any]] = None,
+        action_usage: Optional[List[str]] = None,
+    ) -> MaiMessages:
+        """没有message对象时进行转换"""
+        chat_stream = get_chat_manager().get_stream(stream_id)
+        assert chat_stream, f"未找到流ID为 {stream_id} 的聊天流"
+        return MaiMessages(
+            stream_id=stream_id,
+            llm_prompt=llm_prompt,
+            llm_response_content=(llm_response.get("content") if llm_response else None),
+            llm_response_reasoning=(llm_response.get("reasoning") if llm_response else None),
+            llm_response_model=llm_response.get("model") if llm_response else None,
+            llm_response_tool_call=(llm_response.get("tool_calls") if llm_response else None),
+            is_group_message=(not (not chat_stream.group_info)),
+            is_private_message=(not chat_stream.group_info),
+            action_usage=action_usage,
+            additional_data={"response_is_processed": True},
+        )
 
     def _task_done_callback(self, task: asyncio.Task[Tuple[bool, bool, str | None]]):
         """任务完成回调"""

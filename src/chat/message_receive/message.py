@@ -4,7 +4,7 @@ import urllib3
 from abc import abstractmethod
 from dataclasses import dataclass
 from rich.traceback import install
-from typing import Optional, Any
+from typing import Optional, Any, List
 from maim_message import Seg, UserInfo, BaseMessageInfo, MessageBase
 
 from src.common.logger import get_logger
@@ -29,7 +29,6 @@ class Message(MessageBase):
     chat_stream: "ChatStream" = None  # type: ignore
     reply: Optional["Message"] = None
     processed_plain_text: str = ""
-    memorized_times: int = 0
 
     def __init__(
         self,
@@ -109,12 +108,16 @@ class MessageRecv(Message):
         self.has_picid = False
         self.is_voice = False
         self.is_mentioned = None
+        self.is_notify = False
 
         self.is_command = False
 
         self.priority_mode = "interest"
         self.priority_info = None
         self.interest_value: float = None  # type: ignore
+        
+        self.key_words = []
+        self.key_words_lite = []
 
     def update_chat_stream(self, chat_stream: "ChatStream"):
         self.chat_stream = chat_stream
@@ -203,7 +206,7 @@ class MessageRecvS4U(MessageRecv):
         self.is_superchat = False
         self.gift_info = None
         self.gift_name = None
-        self.gift_count = None
+        self.gift_count: Optional[str] = None
         self.superchat_info = None
         self.superchat_price = None
         self.superchat_message_text = None
@@ -369,7 +372,7 @@ class MessageProcessBase(Message):
                 return "[图片，网卡了加载不出来]"
             elif seg.type == "emoji":
                 if isinstance(seg.data, str):
-                    return await get_image_manager().get_emoji_description(seg.data)
+                    return await get_image_manager().get_emoji_tag(seg.data)
                 return "[表情，网卡了加载不出来]"
             elif seg.type == "voice":
                 if isinstance(seg.data, str):
@@ -400,34 +403,6 @@ class MessageProcessBase(Message):
 
 
 @dataclass
-class MessageThinking(MessageProcessBase):
-    """思考状态的消息类"""
-
-    def __init__(
-        self,
-        message_id: str,
-        chat_stream: "ChatStream",
-        bot_user_info: UserInfo,
-        reply: Optional["MessageRecv"] = None,
-        thinking_start_time: float = 0,
-        timestamp: Optional[float] = None,
-    ):
-        # 调用父类初始化，传递时间戳
-        super().__init__(
-            message_id=message_id,
-            chat_stream=chat_stream,
-            bot_user_info=bot_user_info,
-            message_segment=None,  # 思考状态不需要消息段
-            reply=reply,
-            thinking_start_time=thinking_start_time,
-            timestamp=timestamp,
-        )
-
-        # 思考状态特有属性
-        self.interrupt = False
-
-
-@dataclass
 class MessageSending(MessageProcessBase):
     """发送状态的消息类"""
 
@@ -444,7 +419,8 @@ class MessageSending(MessageProcessBase):
         is_emoji: bool = False,
         thinking_start_time: float = 0,
         apply_set_reply_logic: bool = False,
-        reply_to: str = None,  # type: ignore
+        reply_to: Optional[str] = None,
+        selected_expressions:List[int] = None,
     ):
         # 调用父类初始化
         super().__init__(
@@ -469,6 +445,8 @@ class MessageSending(MessageProcessBase):
         self.display_message = display_message
 
         self.interest_value = 0.0
+        
+        self.selected_expressions = selected_expressions
 
     def build_reply(self):
         """设置回复消息"""
@@ -486,26 +464,6 @@ class MessageSending(MessageProcessBase):
         """处理消息内容，生成纯文本和详细文本"""
         if self.message_segment:
             self.processed_plain_text = await self._process_message_segments(self.message_segment)
-
-    # @classmethod
-    # def from_thinking(
-    #     cls,
-    #     thinking: MessageThinking,
-    #     message_segment: Seg,
-    #     is_head: bool = False,
-    #     is_emoji: bool = False,
-    # ) -> "MessageSending":
-    #     """从思考状态消息创建发送状态消息"""
-    #     return cls(
-    #         message_id=thinking.message_info.message_id,
-    #         chat_stream=thinking.chat_stream,
-    #         message_segment=message_segment,
-    #         bot_user_info=thinking.message_info.user_info,
-    #         reply=thinking.reply,
-    #         is_head=is_head,
-    #         is_emoji=is_emoji,
-    #         sender_info=None,
-    #     )
 
     def to_dict(self):
         ret = super().to_dict()

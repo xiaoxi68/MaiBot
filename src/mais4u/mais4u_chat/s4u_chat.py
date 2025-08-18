@@ -16,10 +16,9 @@ import json
 from .s4u_mood_manager import mood_manager
 from src.person_info.relationship_builder_manager import relationship_builder_manager
 from src.mais4u.s4u_config import s4u_config
-from src.person_info.person_info import PersonInfoManager
+from src.person_info.person_info import get_person_id
 from .super_chat_manager import get_super_chat_manager
 from .yes_or_no import yes_or_no_head
-from src.mais4u.constant_s4u import ENABLE_S4U
 
 logger = get_logger("S4U_chat")
 
@@ -137,7 +136,7 @@ class MessageSenderContainer:
                 await self.storage.store_message(bot_message, self.chat_stream)
 
             except Exception as e:
-                logger.error(f"[{self.chat_stream.get_stream_name()}] 消息发送或存储时出现错误: {e}", exc_info=True)
+                logger.error(f"[消息流: {self.chat_stream.stream_id}] 消息发送或存储时出现错误: {e}", exc_info=True)
 
             finally:
                 # CRUCIAL: Always call task_done() for any item that was successfully retrieved.
@@ -166,7 +165,7 @@ class S4UChatManager:
         return self.s4u_chats[chat_stream.stream_id]
 
 
-if not ENABLE_S4U:
+if not s4u_config.enable_s4u:
     s4u_chat_manager = None
 else:
     s4u_chat_manager = S4UChatManager()
@@ -262,7 +261,7 @@ class S4UChat:
         """根据VIP状态和中断逻辑将消息放入相应队列。"""
         user_id = message.message_info.user_info.user_id
         platform = message.message_info.platform
-        person_id = PersonInfoManager.get_person_id(platform, user_id)
+        person_id = get_person_id(platform, user_id)
         
         try:
             is_gift = message.is_gift

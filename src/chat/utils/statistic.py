@@ -36,6 +36,18 @@ COST_BY_TYPE = "costs_by_type"
 COST_BY_USER = "costs_by_user"
 COST_BY_MODEL = "costs_by_model"
 COST_BY_MODULE = "costs_by_module"
+TIME_COST_BY_TYPE = "time_costs_by_type"
+TIME_COST_BY_USER = "time_costs_by_user"
+TIME_COST_BY_MODEL = "time_costs_by_model"
+TIME_COST_BY_MODULE = "time_costs_by_module"
+AVG_TIME_COST_BY_TYPE = "avg_time_costs_by_type"
+AVG_TIME_COST_BY_USER = "avg_time_costs_by_user"
+AVG_TIME_COST_BY_MODEL = "avg_time_costs_by_model"
+AVG_TIME_COST_BY_MODULE = "avg_time_costs_by_module"
+STD_TIME_COST_BY_TYPE = "std_time_costs_by_type"
+STD_TIME_COST_BY_USER = "std_time_costs_by_user"
+STD_TIME_COST_BY_MODEL = "std_time_costs_by_model"
+STD_TIME_COST_BY_MODULE = "std_time_costs_by_module"
 ONLINE_TIME = "online_time"
 TOTAL_MSG_CNT = "total_messages"
 MSG_CNT_BY_CHAT = "messages_by_chat"
@@ -293,6 +305,18 @@ class StatisticOutputTask(AsyncTask):
                 COST_BY_USER: defaultdict(float),
                 COST_BY_MODEL: defaultdict(float),
                 COST_BY_MODULE: defaultdict(float),
+                TIME_COST_BY_TYPE: defaultdict(list),
+                TIME_COST_BY_USER: defaultdict(list),
+                TIME_COST_BY_MODEL: defaultdict(list),
+                TIME_COST_BY_MODULE: defaultdict(list),
+                AVG_TIME_COST_BY_TYPE: defaultdict(float),
+                AVG_TIME_COST_BY_USER: defaultdict(float),
+                AVG_TIME_COST_BY_MODEL: defaultdict(float),
+                AVG_TIME_COST_BY_MODULE: defaultdict(float),
+                STD_TIME_COST_BY_TYPE: defaultdict(float),
+                STD_TIME_COST_BY_USER: defaultdict(float),
+                STD_TIME_COST_BY_MODEL: defaultdict(float),
+                STD_TIME_COST_BY_MODULE: defaultdict(float),
             }
             for period_key, _ in collect_period
         }
@@ -344,7 +368,41 @@ class StatisticOutputTask(AsyncTask):
                         stats[period_key][COST_BY_USER][user_id] += cost
                         stats[period_key][COST_BY_MODEL][model_name] += cost
                         stats[period_key][COST_BY_MODULE][module_name] += cost
+
+                        # 收集time_cost数据
+                        time_cost = record.time_cost or 0.0
+                        if time_cost > 0:  # 只记录有效的time_cost
+                            stats[period_key][TIME_COST_BY_TYPE][request_type].append(time_cost)
+                            stats[period_key][TIME_COST_BY_USER][user_id].append(time_cost)
+                            stats[period_key][TIME_COST_BY_MODEL][model_name].append(time_cost)
+                            stats[period_key][TIME_COST_BY_MODULE][module_name].append(time_cost)
                     break
+
+        # 计算平均耗时和标准差
+        for period_key in stats:
+            for category in [REQ_CNT_BY_TYPE, REQ_CNT_BY_USER, REQ_CNT_BY_MODEL, REQ_CNT_BY_MODULE]:
+                time_cost_key = f"time_costs_by_{category.split('_')[-1]}"
+                avg_key = f"avg_time_costs_by_{category.split('_')[-1]}"
+                std_key = f"std_time_costs_by_{category.split('_')[-1]}"
+                
+                for item_name in stats[period_key][category]:
+                    time_costs = stats[period_key][time_cost_key].get(item_name, [])
+                    if time_costs:
+                        # 计算平均耗时
+                        avg_time_cost = sum(time_costs) / len(time_costs)
+                        stats[period_key][avg_key][item_name] = round(avg_time_cost, 3)
+                        
+                        # 计算标准差
+                        if len(time_costs) > 1:
+                            variance = sum((x - avg_time_cost) ** 2 for x in time_costs) / len(time_costs)
+                            std_time_cost = variance ** 0.5
+                            stats[period_key][std_key][item_name] = round(std_time_cost, 3)
+                        else:
+                            stats[period_key][std_key][item_name] = 0.0
+                    else:
+                        stats[period_key][avg_key][item_name] = 0.0
+                        stats[period_key][std_key][item_name] = 0.0
+
         return stats
 
     @staticmethod
@@ -566,11 +624,11 @@ class StatisticOutputTask(AsyncTask):
         """
         if stats[TOTAL_REQ_CNT] <= 0:
             return ""
-        data_fmt = "{:<32}  {:>10}  {:>12}  {:>12}  {:>12}  {:>9.4f}¥"
+        data_fmt = "{:<32}  {:>10}  {:>12}  {:>12}  {:>12}  {:>9.4f}¥  {:>10}  {:>10}"
 
         output = [
             "按模型分类统计:",
-            " 模型名称                          调用次数    输入Token     输出Token     Token总量     累计花费",
+            " 模型名称                          调用次数    输入Token     输出Token     Token总量     累计花费    平均耗时(秒)  标准差(秒)",
         ]
         for model_name, count in sorted(stats[REQ_CNT_BY_MODEL].items()):
             name = f"{model_name[:29]}..." if len(model_name) > 32 else model_name
@@ -578,7 +636,9 @@ class StatisticOutputTask(AsyncTask):
             out_tokens = stats[OUT_TOK_BY_MODEL][model_name]
             tokens = stats[TOTAL_TOK_BY_MODEL][model_name]
             cost = stats[COST_BY_MODEL][model_name]
-            output.append(data_fmt.format(name, count, in_tokens, out_tokens, tokens, cost))
+            avg_time_cost = stats[AVG_TIME_COST_BY_MODEL][model_name]
+            std_time_cost = stats[STD_TIME_COST_BY_MODEL][model_name]
+            output.append(data_fmt.format(name, count, in_tokens, out_tokens, tokens, cost, avg_time_cost, std_time_cost))
 
         output.append("")
         return "\n".join(output)
@@ -663,6 +723,8 @@ class StatisticOutputTask(AsyncTask):
                     f"<td>{stat_data[OUT_TOK_BY_MODEL][model_name]}</td>"
                     f"<td>{stat_data[TOTAL_TOK_BY_MODEL][model_name]}</td>"
                     f"<td>{stat_data[COST_BY_MODEL][model_name]:.4f} ¥</td>"
+                    f"<td>{stat_data[AVG_TIME_COST_BY_MODEL][model_name]:.3f} 秒</td>"
+                    f"<td>{stat_data[STD_TIME_COST_BY_MODEL][model_name]:.3f} 秒</td>"
                     f"</tr>"
                     for model_name, count in sorted(stat_data[REQ_CNT_BY_MODEL].items())
                 ]
@@ -677,6 +739,8 @@ class StatisticOutputTask(AsyncTask):
                     f"<td>{stat_data[OUT_TOK_BY_TYPE][req_type]}</td>"
                     f"<td>{stat_data[TOTAL_TOK_BY_TYPE][req_type]}</td>"
                     f"<td>{stat_data[COST_BY_TYPE][req_type]:.4f} ¥</td>"
+                    f"<td>{stat_data[AVG_TIME_COST_BY_TYPE][req_type]:.3f} 秒</td>"
+                    f"<td>{stat_data[STD_TIME_COST_BY_TYPE][req_type]:.3f} 秒</td>"
                     f"</tr>"
                     for req_type, count in sorted(stat_data[REQ_CNT_BY_TYPE].items())
                 ]
@@ -691,6 +755,8 @@ class StatisticOutputTask(AsyncTask):
                     f"<td>{stat_data[OUT_TOK_BY_MODULE][module_name]}</td>"
                     f"<td>{stat_data[TOTAL_TOK_BY_MODULE][module_name]}</td>"
                     f"<td>{stat_data[COST_BY_MODULE][module_name]:.4f} ¥</td>"
+                    f"<td>{stat_data[AVG_TIME_COST_BY_MODULE][module_name]:.3f} 秒</td>"
+                    f"<td>{stat_data[STD_TIME_COST_BY_MODULE][module_name]:.3f} 秒</td>"
                     f"</tr>"
                     for module_name, count in sorted(stat_data[REQ_CNT_BY_MODULE].items())
                 ]
@@ -717,7 +783,7 @@ class StatisticOutputTask(AsyncTask):
                 
                 <h2>按模型分类统计</h2>
                 <table>
-                    <thead><tr><th>模型名称</th><th>调用次数</th><th>输入Token</th><th>输出Token</th><th>Token总量</th><th>累计花费</th></tr></thead>
+                    <thead><tr><th>模型名称</th><th>调用次数</th><th>输入Token</th><th>输出Token</th><th>Token总量</th><th>累计花费</th><th>平均耗时(秒)</th><th>标准差(秒)</th></tr></thead>
                     <tbody>
                         {model_rows}
                     </tbody>
@@ -726,7 +792,7 @@ class StatisticOutputTask(AsyncTask):
                 <h2>按模块分类统计</h2>
                 <table>
                     <thead>
-                        <tr><th>模块名称</th><th>调用次数</th><th>输入Token</th><th>输出Token</th><th>Token总量</th><th>累计花费</th></tr>
+                        <tr><th>模块名称</th><th>调用次数</th><th>输入Token</th><th>输出Token</th><th>Token总量</th><th>累计花费</th><th>平均耗时(秒)</th><th>标准差(秒)</th></tr>
                     </thead>
                     <tbody>
                     {module_rows}
@@ -736,7 +802,7 @@ class StatisticOutputTask(AsyncTask):
                 <h2>按请求类型分类统计</h2>
                 <table>
                     <thead>
-                        <tr><th>请求类型</th><th>调用次数</th><th>输入Token</th><th>输出Token</th><th>Token总量</th><th>累计花费</th></tr>
+                        <tr><th>请求类型</th><th>调用次数</th><th>输入Token</th><th>输出Token</th><th>Token总量</th><th>累计花费</th><th>平均耗时(秒)</th><th>标准差(秒)</th></tr>
                     </thead>
                     <tbody>
                     {type_rows}

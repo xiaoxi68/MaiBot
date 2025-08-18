@@ -1,8 +1,10 @@
 from enum import Enum
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 from dataclasses import dataclass, field
 from maim_message import Seg
 
+from src.llm_models.payload_content.tool_option import ToolParamType as ToolParamType
+from src.llm_models.payload_content.tool_option import ToolCall as ToolCall
 
 # 组件类型枚举
 class ComponentType(Enum):
@@ -10,6 +12,7 @@ class ComponentType(Enum):
 
     ACTION = "action"  # 动作组件
     COMMAND = "command"  # 命令组件
+    TOOL = "tool"  # 服务组件（预留）
     SCHEDULER = "scheduler"  # 定时任务组件（预留）
     EVENT_HANDLER = "event_handler"  # 事件处理组件（预留）
 
@@ -119,7 +122,6 @@ class ActionInfo(ComponentInfo):
     activation_keywords: List[str] = field(default_factory=list)  # 激活关键词列表
     keyword_case_sensitive: bool = False
     # 模式和并行设置
-    mode_enable: ChatMode = ChatMode.ALL
     parallel_action: bool = False
 
     def __post_init__(self):
@@ -144,6 +146,18 @@ class CommandInfo(ComponentInfo):
     def __post_init__(self):
         super().__post_init__()
         self.component_type = ComponentType.COMMAND
+
+
+@dataclass
+class ToolInfo(ComponentInfo):
+    """工具组件信息"""
+
+    tool_parameters: List[Tuple[str, ToolParamType, str, bool, List[str] | None]] = field(default_factory=list)  # 工具参数定义
+    tool_description: str = ""  # 工具描述
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.component_type = ComponentType.TOOL
 
 
 @dataclass
@@ -245,8 +259,20 @@ class MaiMessages:
     llm_prompt: Optional[str] = None
     """LLM提示词"""
 
-    llm_response: Optional[str] = None
+    llm_response_content: Optional[str] = None
     """LLM响应内容"""
+    
+    llm_response_reasoning: Optional[str] = None
+    """LLM响应推理内容"""
+    
+    llm_response_model: Optional[str] = None
+    """LLM响应模型名称"""
+    
+    llm_response_tool_call: Optional[List[ToolCall]] = None
+    """LLM使用的工具调用"""
+    
+    action_usage: Optional[List[str]] = None
+    """使用的Action"""
 
     additional_data: Dict[Any, Any] = field(default_factory=dict)
     """附加数据，可以存储额外信息"""

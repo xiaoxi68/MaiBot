@@ -2,7 +2,7 @@ import time
 import asyncio
 
 from abc import ABC, abstractmethod
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Dict, Any
 
 from src.common.logger import get_logger
 from src.chat.message_receive.chat_stream import ChatStream
@@ -23,7 +23,6 @@ class BaseAction(ABC):
     - normal_activation_type: 普通模式激活类型
     - activation_keywords: 激活关键词列表
     - keyword_case_sensitive: 关键词是否区分大小写
-    - mode_enable: 启用的聊天模式
     - parallel_action: 是否允许并行执行
     - random_activation_probability: 随机激活概率
     - llm_judge_prompt: LLM判断提示词
@@ -88,7 +87,6 @@ class BaseAction(ABC):
         self.activation_keywords: list[str] = getattr(self.__class__, "activation_keywords", []).copy()
         """激活类型为KEYWORD时的KEYWORDS列表"""
         self.keyword_case_sensitive: bool = getattr(self.__class__, "keyword_case_sensitive", False)
-        self.mode_enable: ChatMode = getattr(self.__class__, "mode_enable", ChatMode.ALL)
         self.parallel_action: bool = getattr(self.__class__, "parallel_action", True)
         self.associated_types: list[str] = getattr(self.__class__, "associated_types", []).copy()
 
@@ -118,7 +116,7 @@ class BaseAction(ABC):
             self.action_message = {}
 
         if self.has_action_message:
-            if self.action_name != "no_reply":
+            if self.action_name != "no_action":
                 self.group_id = str(self.action_message.get("chat_info_group_id", None))
                 self.group_name = self.action_message.get("chat_info_group_name", None)
 
@@ -208,7 +206,7 @@ class BaseAction(ABC):
             return False, f"等待新消息失败: {str(e)}"
 
     async def send_text(
-        self, content: str, reply_to: str = "", reply_to_platform_id: str = "", typing: bool = False
+        self, content: str, set_reply: bool = False,reply_message: Optional[Dict[str, Any]] = None, typing: bool = False
     ) -> bool:
         """发送文本消息
 
@@ -226,12 +224,12 @@ class BaseAction(ABC):
         return await send_api.text_to_stream(
             text=content,
             stream_id=self.chat_id,
-            reply_to=reply_to,
-            reply_to_platform_id=reply_to_platform_id,
+            set_reply=set_reply,
+            reply_message=reply_message,
             typing=typing,
         )
 
-    async def send_emoji(self, emoji_base64: str) -> bool:
+    async def send_emoji(self, emoji_base64: str, set_reply: bool = False,reply_message: Optional[Dict[str, Any]] = None) -> bool:
         """发送表情包
 
         Args:
@@ -244,9 +242,9 @@ class BaseAction(ABC):
             logger.error(f"{self.log_prefix} 缺少聊天ID")
             return False
 
-        return await send_api.emoji_to_stream(emoji_base64, self.chat_id)
+        return await send_api.emoji_to_stream(emoji_base64, self.chat_id,set_reply=set_reply,reply_message=reply_message)
 
-    async def send_image(self, image_base64: str) -> bool:
+    async def send_image(self, image_base64: str, set_reply: bool = False,reply_message: Optional[Dict[str, Any]] = None) -> bool:
         """发送图片
 
         Args:
@@ -259,9 +257,9 @@ class BaseAction(ABC):
             logger.error(f"{self.log_prefix} 缺少聊天ID")
             return False
 
-        return await send_api.image_to_stream(image_base64, self.chat_id)
+        return await send_api.image_to_stream(image_base64, self.chat_id,set_reply=set_reply,reply_message=reply_message)
 
-    async def send_custom(self, message_type: str, content: str, typing: bool = False, reply_to: str = "") -> bool:
+    async def send_custom(self, message_type: str, content: str, typing: bool = False, set_reply: bool = False,reply_message: Optional[Dict[str, Any]] = None) -> bool:
         """发送自定义类型消息
 
         Args:
@@ -282,7 +280,8 @@ class BaseAction(ABC):
             content=content,
             stream_id=self.chat_id,
             typing=typing,
-            reply_to=reply_to,
+            set_reply=set_reply,
+            reply_message=reply_message,
         )
 
     async def store_action_info(
@@ -309,7 +308,7 @@ class BaseAction(ABC):
         )
 
     async def send_command(
-        self, command_name: str, args: Optional[dict] = None, display_message: str = "", storage_message: bool = True
+        self, command_name: str, args: Optional[dict] = None, display_message: str = "", storage_message: bool = True,set_reply: bool = False,reply_message: Optional[Dict[str, Any]] = None
     ) -> bool:
         """发送命令消息
 
@@ -337,6 +336,8 @@ class BaseAction(ABC):
                 stream_id=self.chat_id,
                 storage_message=storage_message,
                 display_message=display_message,
+                set_reply=set_reply,
+                reply_message=reply_message,
             )
 
             if success:
@@ -382,7 +383,6 @@ class BaseAction(ABC):
             activation_type=activation_type,
             activation_keywords=getattr(cls, "activation_keywords", []).copy(),
             keyword_case_sensitive=getattr(cls, "keyword_case_sensitive", False),
-            mode_enable=getattr(cls, "mode_enable", ChatMode.ALL),
             parallel_action=getattr(cls, "parallel_action", True),
             random_activation_probability=getattr(cls, "random_activation_probability", 0.0),
             llm_judge_prompt=getattr(cls, "llm_judge_prompt", ""),

@@ -217,7 +217,8 @@ class ChatManager:
                 # 更新用户信息和群组信息
                 stream.update_active_time()
                 stream = copy.deepcopy(stream)  # 返回副本以避免外部修改影响缓存
-                stream.user_info = user_info
+                if user_info and user_info.platform and user_info.user_id:
+                    stream.user_info = user_info
                 if group_info:
                     stream.group_info = group_info
                 from .message import MessageRecv  # 延迟导入，避免循环引用

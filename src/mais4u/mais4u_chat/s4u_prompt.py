@@ -10,8 +10,7 @@ from datetime import datetime
 import asyncio
 from src.mais4u.s4u_config import s4u_config
 from src.chat.message_receive.message import MessageRecvS4U
-from src.person_info.relationship_fetcher import relationship_fetcher_manager
-from src.person_info.person_info import PersonInfoManager, get_person_info_manager
+from src.person_info.person_info import Person, get_person_id
 from src.chat.message_receive.chat_stream import ChatStream
 from src.mais4u.mais4u_chat.super_chat_manager import get_super_chat_manager
 from src.mais4u.mais4u_chat.screen_manager import screen_manager
@@ -100,36 +99,29 @@ class PromptBuilder:
     async def build_expression_habits(self, chat_stream: ChatStream, chat_history, target):
 
         style_habits = []
-        grammar_habits = []
 
         # 使用从处理器传来的选中表达方式
         # LLM模式：调用LLM选择5-10个，然后随机选5个
-        selected_expressions = await expression_selector.select_suitable_expressions_llm(
-            chat_stream.stream_id, chat_history, max_num=12, min_num=5, target_message=target
+        selected_expressions ,_ = await expression_selector.select_suitable_expressions_llm(
+            chat_stream.stream_id, chat_history, max_num=12, target_message=target
         )
 
         if selected_expressions:
             logger.debug(f" 使用处理器选中的{len(selected_expressions)}个表达方式")
             for expr in selected_expressions:
                 if isinstance(expr, dict) and "situation" in expr and "style" in expr:
-                    expr_type = expr.get("type", "style")
-                    if expr_type == "grammar":
-                        grammar_habits.append(f"当{expr['situation']}时，使用 {expr['style']}")
-                    else:
-                        style_habits.append(f"当{expr['situation']}时，使用 {expr['style']}")
+                    style_habits.append(f"当{expr['situation']}时，使用 {expr['style']}")
         else:
             logger.debug("没有从处理器获得表达方式，将使用空的表达方式")
             # 不再在replyer中进行随机选择，全部交给处理器处理
 
         style_habits_str = "\n".join(style_habits)
-        grammar_habits_str = "\n".join(grammar_habits)
 
         # 动态构建expression habits块
         expression_habits_block = ""
         if style_habits_str.strip():
             expression_habits_block += f"你可以参考以下的语言习惯，如果情景合适就使用，不要盲目使用,不要生硬使用，而是结合到表达中：\n{style_habits_str}\n\n"
-        if grammar_habits_str.strip():
-            expression_habits_block += f"请你根据情景使用以下句法：\n{grammar_habits_str}\n"
+
 
         return expression_habits_block
 
@@ -149,26 +141,26 @@ class PromptBuilder:
 
         relation_prompt = ""
         if global_config.relationship.enable_relationship and who_chat_in_group:
-            relationship_fetcher = relationship_fetcher_manager.get_fetcher(chat_stream.stream_id)
-            
             # 将 (platform, user_id, nickname) 转换为 person_id
             person_ids = []
             for person in who_chat_in_group:
-                person_id = PersonInfoManager.get_person_id(person[0], person[1])
+                person_id = get_person_id(person[0], person[1])
                 person_ids.append(person_id)
-            
-            # 使用 RelationshipFetcher 的 build_relation_info 方法，设置 points_num=3 保持与原来相同的行为
-            relation_info_list = await asyncio.gather(
-                *[relationship_fetcher.build_relation_info(person_id, points_num=3) for person_id in person_ids]
-            )
-            relation_info = "".join(relation_info_list)
-            if relation_info:
+
+            # 使用 Person 的 build_relationship 方法，设置 points_num=3 保持与原来相同的行为
+            relation_info_list = [
+                Person(person_id=person_id).build_relationship() for person_id in person_ids
+            ]
+            if relation_info := "".join(relation_info_list):
                 relation_prompt = await global_prompt_manager.format_prompt(
                     "relation_prompt", relation_info=relation_info
                 )
         return relation_prompt
 
     async def build_memory_block(self, text: str) -> str:
+        # 待更新记忆系统
+        return ""
+        
         related_memory = await hippocampus_manager.get_memory_from_text(
             text=text, max_memory_num=2, max_memory_length=2, max_depth=3, fast_retrieval=False
         )
@@ -186,9 +178,9 @@ class PromptBuilder:
             timestamp=time.time(),
             limit=300,
         )
-        
 
-        talk_type = message.message_info.platform + ":" + str(message.chat_stream.user_info.user_id)
+
+        talk_type = f"{message.message_info.platform}:{str(message.chat_stream.user_info.user_id)}"
 
         core_dialogue_list = []
         background_dialogue_list = []
@@ -258,19 +250,19 @@ class PromptBuilder:
             all_msg_seg_list.append(msg_seg_str)
             for msg in all_msg_seg_list:
                 core_msg_str += msg
-                
-                
+
+
         all_dialogue_prompt = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_stream.stream_id,
             timestamp=time.time(),
             limit=20,
-        )        
+        )
         all_dialogue_prompt_str = build_readable_messages(
             all_dialogue_prompt,
             timestamp_mode="normal_no_YMD",
             show_pic=False,
         )
-        
+
 
         return core_msg_str, background_dialogue_prompt,all_dialogue_prompt_str
 
@@ -296,11 +288,8 @@ class PromptBuilder:
         
         chat_stream = message.chat_stream
         
-        person_id = PersonInfoManager.get_person_id(
-            message.chat_stream.user_info.platform, message.chat_stream.user_info.user_id
-        )
-        person_info_manager = get_person_info_manager()
-        person_name = await person_info_manager.get_value(person_id, "person_name")
+        person = Person(platform=message.chat_stream.user_info.platform, user_id=message.chat_stream.user_info.user_id)
+        person_name = person.person_name
 
         if message.chat_stream.user_info.user_nickname:
             if person_name:

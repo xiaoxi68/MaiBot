@@ -1,4 +1,5 @@
 import re
+import json
 import traceback
 from typing import Union
 
@@ -11,6 +12,23 @@ logger = get_logger("message_storage")
 
 
 class MessageStorage:
+    @staticmethod
+    def _serialize_keywords(keywords) -> str:
+        """将关键词列表序列化为JSON字符串"""
+        if isinstance(keywords, list):
+            return json.dumps(keywords, ensure_ascii=False)
+        return "[]"
+    
+    @staticmethod
+    def _deserialize_keywords(keywords_str: str) -> list:
+        """将JSON字符串反序列化为关键词列表"""
+        if not keywords_str:
+            return []
+        try:
+            return json.loads(keywords_str)
+        except (json.JSONDecodeError, TypeError):
+            return []
+
     @staticmethod
     async def store_message(message: Union[MessageSending, MessageRecv], chat_stream: ChatStream) -> None:
         """存储消息到数据库"""
@@ -43,7 +61,11 @@ class MessageStorage:
                 priority_info = {}
                 is_emoji = False
                 is_picid = False
+                is_notify = False
                 is_command = False
+                key_words = ""
+                key_words_lite = ""
+                selected_expressions = message.selected_expressions
             else:
                 filtered_display_message = ""
                 interest_value = message.interest_value
@@ -53,8 +75,13 @@ class MessageStorage:
                 priority_info = message.priority_info
                 is_emoji = message.is_emoji
                 is_picid = message.is_picid
+                is_notify = message.is_notify
                 is_command = message.is_command
-
+                # 序列化关键词列表为JSON字符串
+                key_words = MessageStorage._serialize_keywords(message.key_words)
+                key_words_lite = MessageStorage._serialize_keywords(message.key_words_lite)
+                selected_expressions = ""
+                
             chat_info_dict = chat_stream.to_dict()
             user_info_dict = message.message_info.user_info.to_dict()  # type: ignore
 
@@ -92,13 +119,16 @@ class MessageStorage:
                 # Text content
                 processed_plain_text=filtered_processed_plain_text,
                 display_message=filtered_display_message,
-                memorized_times=message.memorized_times,
                 interest_value=interest_value,
                 priority_mode=priority_mode,
                 priority_info=priority_info,
                 is_emoji=is_emoji,
                 is_picid=is_picid,
+                is_notify=is_notify,
                 is_command=is_command,
+                key_words=key_words,
+                key_words_lite=key_words_lite,
+                selected_expressions=selected_expressions,
             )
         except Exception:
             logger.exception("存储消息失败")

@@ -3,7 +3,6 @@ from typing import Any, Optional, Dict
 
 from src.common.logger import get_logger
 from src.chat.heart_flow.sub_heartflow import SubHeartflow
-from src.chat.message_receive.chat_stream import get_chat_manager
 
 logger = get_logger("heartflow")
 
@@ -27,8 +26,6 @@ class Heartflow:
 
             # 注册子心流
             self.subheartflows[subheartflow_id] = new_subflow
-            heartflow_name = get_chat_manager().get_stream_name(subheartflow_id) or subheartflow_id
-            logger.info(f"[{heartflow_name}] 开始接收消息")
 
             return new_subflow
         except Exception as e:
