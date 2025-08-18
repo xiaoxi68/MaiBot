@@ -3,18 +3,21 @@ from dataclasses import dataclass, field, fields, MISSING
 
 from . import AbstractClassFlag
 
+
 @dataclass
 class DatabaseUserInfo(AbstractClassFlag):
     platform: str = field(default_factory=str)
     user_id: str = field(default_factory=str)
     user_nickname: str = field(default_factory=str)
     user_cardname: Optional[str] = None
-    
+
     def __post_init__(self):
         assert isinstance(self.platform, str), "platform must be a string"
         assert isinstance(self.user_id, str), "user_id must be a string"
         assert isinstance(self.user_nickname, str), "user_nickname must be a string"
-        assert isinstance(self.user_cardname, str) or self.user_cardname is None, "user_cardname must be a string or None"
+        assert isinstance(self.user_cardname, str) or self.user_cardname is None, (
+            "user_cardname must be a string or None"
+        )
 
 
 @dataclass
@@ -22,11 +25,13 @@ class DatabaseGroupInfo(AbstractClassFlag):
     group_id: str = field(default_factory=str)
     group_name: str = field(default_factory=str)
     group_platform: Optional[str] = None
-    
+
     def __post_init__(self):
         assert isinstance(self.group_id, str), "group_id must be a string"
         assert isinstance(self.group_name, str), "group_name must be a string"
-        assert isinstance(self.group_platform, str) or self.group_platform is None, "group_platform must be a string or None"
+        assert isinstance(self.group_platform, str) or self.group_platform is None, (
+            "group_platform must be a string or None"
+        )
 
 
 @dataclass
@@ -44,7 +49,9 @@ class DatabaseChatInfo(AbstractClassFlag):
         assert isinstance(self.create_time, float), "create_time must be a float"
         assert isinstance(self.last_active_time, float), "last_active_time must be a float"
         assert isinstance(self.user_info, DatabaseUserInfo), "user_info must be a DatabaseUserInfo instance"
-        assert isinstance(self.group_info, DatabaseGroupInfo) or self.group_info is None, "group_info must be a DatabaseGroupInfo instance or None"
+        assert isinstance(self.group_info, DatabaseGroupInfo) or self.group_info is None, (
+            "group_info must be a DatabaseGroupInfo instance or None"
+        )
 
 
 @dataclass(init=False)
@@ -128,7 +135,7 @@ class DatabaseMessages(AbstractClassFlag):
                 setattr(self, name, f.default)
             else:
                 raise TypeError(f"缺失必需字段: {name}")
-
+        self.group_info = None
         self.user_info = DatabaseUserInfo(
             user_id=kwargs.get("user_id"),  # type: ignore
             user_nickname=kwargs.get("user_nickname"),  # type: ignore
@@ -148,7 +155,7 @@ class DatabaseMessages(AbstractClassFlag):
             user_cardname=kwargs.get("chat_info_user_cardname"),  # type: ignore
             platform=kwargs.get("chat_info_user_platform"),  # type: ignore
         )
-        
+
         self.chat_info = DatabaseChatInfo(
             stream_id=kwargs.get("chat_info_stream_id"),  # type: ignore
             platform=kwargs.get("chat_info_platform"),  # type: ignore
@@ -157,4 +164,3 @@ class DatabaseMessages(AbstractClassFlag):
             user_info=chat_user_info,
             group_info=self.group_info,
         )
-        
