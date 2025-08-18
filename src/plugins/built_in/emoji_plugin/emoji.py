@@ -21,7 +21,6 @@ class EmojiAction(BaseAction):
 
     activation_type = ActionActivationType.RANDOM
     random_activation_probability = global_config.emoji.emoji_chance
-    mode_enable = ChatMode.ALL
     parallel_action = True
 
     # 动作基本信息
@@ -85,8 +84,11 @@ class EmojiAction(BaseAction):
                 messages_text = ""
                 if recent_messages:
                     # 使用message_api构建可读的消息字符串
+                    # TODO: 修复
+                    from src.common.data_models import temporarily_transform_class_to_dict
+                    tmp_msgs = [temporarily_transform_class_to_dict(msg) for msg in recent_messages]
                     messages_text = message_api.build_readable_messages(
-                        messages=recent_messages,
+                        messages=tmp_msgs,
                         timestamp_mode="normal_no_YMD",
                         truncate=False,
                         show_actions=False,
@@ -143,7 +145,7 @@ class EmojiAction(BaseAction):
                 logger.error(f"{self.log_prefix} 表情包发送失败")
                 return False, "表情包发送失败"
 
-            # no_reply计数器现在由heartFC_chat.py统一管理，无需在此重置
+            # no_action计数器现在由heartFC_chat.py统一管理，无需在此重置
 
             return True, f"发送表情包: {emoji_description}"
 

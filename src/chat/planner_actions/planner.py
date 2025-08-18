@@ -95,6 +95,7 @@ class ActionPlanner:
         self.max_plan_retries = 3
 
     def find_message_by_id(self, message_id: str, message_id_list: list) -> Optional[Dict[str, Any]]:
+        # sourcery skip: use-next
         """
         根据message_id从message_id_list中查找对应的原始消息
 
@@ -120,10 +121,7 @@ class ActionPlanner:
         Returns:
             最新的消息字典，如果列表为空则返回None
         """
-        if not message_id_list:
-            return None
-        # 假设消息列表是按时间顺序排列的，最后一个是最新的
-        return message_id_list[-1].get("message")
+        return message_id_list[-1].get("message") if message_id_list else None
 
     async def plan(
         self,
@@ -135,7 +133,7 @@ class ActionPlanner:
         规划器 (Planner): 使用LLM根据上下文决定做出什么动作。
         """
 
-        action = "no_reply"  # 默认动作
+        action = "no_action"  # 默认动作
         reasoning = "规划器初始化默认"
         action_data = {}
         current_available_actions: Dict[str, ActionInfo] = {}
@@ -174,7 +172,7 @@ class ActionPlanner:
             except Exception as req_e:
                 logger.error(f"{self.log_prefix}LLM 请求执行失败: {req_e}")
                 reasoning = f"LLM 请求失败，模型出现问题: {req_e}"
-                action = "no_reply"
+                action = "no_action"
 
             if llm_content:
                 try:
@@ -191,7 +189,7 @@ class ActionPlanner:
                         logger.error(f"{self.log_prefix}解析后的JSON不是字典类型: {type(parsed_json)}")
                         parsed_json = {}
 
-                    action = parsed_json.get("action", "no_reply")
+                    action = parsed_json.get("action", "no_action")
                     reasoning = parsed_json.get("reason", "未提供原因")
 
                     # 将所有其他属性添加到action_data
@@ -199,8 +197,8 @@ class ActionPlanner:
                         if key not in ["action", "reasoning"]:
                             action_data[key] = value
 
-                    # 非no_reply动作需要target_message_id
-                    if action != "no_reply":
+                    # 非no_action动作需要target_message_id
+                    if action != "no_action":
                         if target_message_id := parsed_json.get("target_message_id"):
                             # 根据target_message_id查找原始消息
                             target_message = self.find_message_by_id(target_message_id, message_id_list)
@@ -208,67 +206,61 @@ class ActionPlanner:
                             if target_message is None:
                                 self.plan_retry_count += 1
                                 logger.warning(f"{self.log_prefix}无法找到target_message_id '{target_message_id}' 对应的消息，重试次数: {self.plan_retry_count}/{self.max_plan_retries}")
-                                
-                                # 如果连续三次plan均为None，输出error并选取最新消息
-                                if self.plan_retry_count >= self.max_plan_retries:
-                                    logger.error(f"{self.log_prefix}连续{self.max_plan_retries}次plan获取target_message失败，选择最新消息作为target_message")
-                                    target_message = self.get_latest_message(message_id_list)
-                                    self.plan_retry_count = 0  # 重置计数器
-                                else:
+                                # 仍有重试次数
+                                if self.plan_retry_count < self.max_plan_retries:
                                     # 递归重新plan
                                     return await self.plan(mode, loop_start_time, available_actions)
-                            else:
-                                # 成功获取到target_message，重置计数器
-                                self.plan_retry_count = 0
+                                logger.error(f"{self.log_prefix}连续{self.max_plan_retries}次plan获取target_message失败，选择最新消息作为target_message")
+                                target_message = self.get_latest_message(message_id_list)
+                            self.plan_retry_count = 0  # 重置计数器
                         else:
                             logger.warning(f"{self.log_prefix}动作'{action}'缺少target_message_id")
-                    
-                    
 
-                    if action != "no_reply" and action != "reply" and action not in current_available_actions:
+
+
+                    if action != "no_action" and action != "reply" and action not in current_available_actions:
                         logger.warning(
-                            f"{self.log_prefix}LLM 返回了当前不可用或无效的动作: '{action}' (可用: {list(current_available_actions.keys())})，将强制使用 'no_reply'"
+                            f"{self.log_prefix}LLM 返回了当前不可用或无效的动作: '{action}' (可用: {list(current_available_actions.keys())})，将强制使用 'no_action'"
                         )
                         reasoning = f"LLM 返回了当前不可用的动作 '{action}' (可用: {list(current_available_actions.keys())})。原始理由: {reasoning}"
-                        action = "no_reply"
+                        action = "no_action"
 
                 except Exception as json_e:
                     logger.warning(f"{self.log_prefix}解析LLM响应JSON失败 {json_e}. LLM原始输出: '{llm_content}'")
                     traceback.print_exc()
-                    reasoning = f"解析LLM响应JSON失败: {json_e}. 将使用默认动作 'no_reply'."
-                    action = "no_reply"
+                    reasoning = f"解析LLM响应JSON失败: {json_e}. 将使用默认动作 'no_action'."
+                    action = "no_action"
 
         except Exception as outer_e:
-            logger.error(f"{self.log_prefix}Planner 处理过程中发生意外错误，规划失败，将执行 no_reply: {outer_e}")
+            logger.error(f"{self.log_prefix}Planner 处理过程中发生意外错误，规划失败，将执行 no_action: {outer_e}")
             traceback.print_exc()
-            action = "no_reply"
+            action = "no_action"
             reasoning = f"Planner 内部处理错误: {outer_e}"
 
         is_parallel = False
         if mode == ChatMode.NORMAL and action in current_available_actions:
             is_parallel = current_available_actions[action].parallel_action
-            
-            
+
+
         action_data["loop_start_time"] = loop_start_time
-        
-        actions = []
-            
-        # 1. 添加Planner取得的动作
-        actions.append({
-            "action_type": action,
-            "reasoning": reasoning,
-            "action_data": action_data,
-            "action_message": target_message,
-            "available_actions": available_actions  # 添加这个字段
-        })
-        
+
+        actions = [
+            {
+                "action_type": action,
+                "reasoning": reasoning,
+                "action_data": action_data,
+                "action_message": target_message,
+                "available_actions": available_actions,
+            }
+        ]
+
         if action != "reply" and is_parallel:
             actions.append({
                 "action_type": "reply",
                 "action_message": target_message,
                 "available_actions": available_actions
             })
-            
+
         return actions,target_message
     
     
@@ -288,9 +280,11 @@ class ActionPlanner:
                 timestamp=time.time(),
                 limit=int(global_config.chat.max_context_size * 0.6),
             )
-
+            # TODO: 修复！
+            from src.common.data_models import temporarily_transform_class_to_dict
+            temp_msg_list_before_now = [temporarily_transform_class_to_dict(msg) for msg in message_list_before_now]
             chat_content_block, message_id_list = build_readable_messages_with_id(
-                messages=message_list_before_now,
+                messages=temp_msg_list_before_now,
                 timestamp_mode="normal_no_YMD",
                 read_mark=self.last_obs_time_mark,
                 truncate=True,
@@ -321,14 +315,15 @@ class ActionPlanner:
 
             if mode == ChatMode.FOCUS:
                 no_action_block = """
-动作：no_reply
-动作描述：不进行回复，等待合适的回复时机
-- 当你刚刚发送了消息，没有人回复时，选择no_reply
-- 当你一次发送了太多消息，为了避免打扰聊天节奏，选择no_reply
-{{
-    "action": "no_reply",
-    "reason":"不回复的原因"
-}}
+动作：no_action
+动作描述：不进行动作，等待合适的时机
+- 当你刚刚发送了消息，没有人回复时，选择no_action
+- 如果有别的动作（非回复）满足条件，可以不用no_action
+- 当你一次发送了太多消息，为了避免打扰聊天节奏，选择no_action
+{
+    "action": "no_action",
+    "reason":"不动作的原因"
+}
 """
             else:
                 no_action_block = """重要说明：

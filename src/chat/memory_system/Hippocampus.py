@@ -16,6 +16,7 @@ from rich.traceback import install
 
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config, model_config
+from src.common.data_models.database_data_model import DatabaseMessages
 from src.common.database.database_model import GraphNodes, GraphEdges  # Peewee Models导入
 from src.common.logger import get_logger
 from src.chat.utils.chat_message_builder import (
@@ -1366,8 +1367,11 @@ class HippocampusManager:
             logger.info(f"为 {chat_id} 构建记忆")
             if memory_segment_manager.check_and_build_memory_for_chat(chat_id):
                 logger.info(f"为 {chat_id} 构建记忆，需要构建记忆")
-                messages = memory_segment_manager.get_messages_for_memory_build(chat_id, 30 / global_config.memory.memory_build_frequency)
-                if messages:
+                messages = memory_segment_manager.get_messages_for_memory_build(chat_id, 50)
+                
+                build_probability = 0.3 * global_config.memory.memory_build_frequency
+                
+                if messages and random.random() < build_probability:
                     logger.info(f"为 {chat_id} 构建记忆，消息数量: {len(messages)}")
                     
                     # 调用记忆压缩和构建
@@ -1495,13 +1499,13 @@ class MemoryBuilder:
             timestamp_end=current_time,
             limit=threshold,
         )
-        
+        tmp_msg = [msg.__dict__ for msg in messages] if messages else []
         if messages:
             # 更新最后处理时间
             self.last_processed_time = current_time
             self.last_update_time = current_time
-            
-        return messages or []
+
+        return tmp_msg or []
 
 
 

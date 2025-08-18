@@ -14,7 +14,8 @@ from datetime import datetime, timedelta
 # 创建logs目录
 LOG_DIR = Path("logs")
 LOG_DIR.mkdir(exist_ok=True)
-
+logger_file = Path(__file__).resolve()
+PROJECT_ROOT = logger_file.parent.parent.parent.resolve()
 # 全局handler实例，避免重复创建
 _file_handler = None
 _console_handler = None
@@ -401,7 +402,7 @@ MODULE_COLORS = {
     "tts_action": "\033[38;5;58m",  # 深黄色
     "doubao_pic_plugin": "\033[38;5;64m",  # 深绿色
     # Action组件
-    "no_reply_action": "\033[38;5;214m",  # 亮橙色，显眼但不像警告
+    "no_action_action": "\033[38;5;214m",  # 亮橙色，显眼但不像警告
     "reply_action": "\033[38;5;46m",  # 亮绿色
     "base_action": "\033[38;5;250m",  # 浅灰色
     # 数据库和消息
@@ -424,7 +425,7 @@ MODULE_ALIASES = {
     # 示例映射
     "individuality": "人格特质",
     "emoji": "表情包",
-    "no_reply_action": "摸鱼",
+    "no_action_action": "摸鱼",
     "reply_action": "回复",
     "action_manager": "动作",
     "memory_activator": "记忆",
@@ -453,14 +454,17 @@ RESET_COLOR = "\033[0m"
 def convert_pathname_to_module(logger, method_name, event_dict):
     # sourcery skip: extract-method, use-string-remove-affix
     """将 pathname 转换为模块风格的路径"""
+    if "logger_name" in event_dict and event_dict["logger_name"] == "maim_message":
+        if "pathname" in event_dict:
+            del event_dict["pathname"]
+            event_dict["module"] = "maim_message"
+        return event_dict
     if "pathname" in event_dict:
         pathname = event_dict["pathname"]
         try:
-            # 获取项目根目录 - 使用绝对路径确保准确性
-            logger_file = Path(__file__).resolve()
-            project_root = logger_file.parent.parent.parent
+            # 使用绝对路径确保准确性
             pathname_path = Path(pathname).resolve()
-            rel_path = pathname_path.relative_to(project_root)
+            rel_path = pathname_path.relative_to(PROJECT_ROOT)
 
             # 转换为模块风格：移除 .py 扩展名，将路径分隔符替换为点
             module_path = str(rel_path).replace("\\", ".").replace("/", ".")
@@ -646,7 +650,7 @@ def configure_structlog():
             structlog.processors.add_log_level,
             structlog.processors.CallsiteParameterAdder(
                 parameters=[
-                    structlog.processors.CallsiteParameter.MODULE,
+                    structlog.processors.CallsiteParameter.PATHNAME,
                     structlog.processors.CallsiteParameter.LINENO,
                 ]
             ),
@@ -676,7 +680,7 @@ file_formatter = structlog.stdlib.ProcessorFormatter(
         structlog.stdlib.PositionalArgumentsFormatter(),
         structlog.processors.TimeStamper(fmt="iso"),
         structlog.processors.CallsiteParameterAdder(
-            parameters=[structlog.processors.CallsiteParameter.MODULE, structlog.processors.CallsiteParameter.LINENO]
+            parameters=[structlog.processors.CallsiteParameter.PATHNAME, structlog.processors.CallsiteParameter.LINENO]
         ),
         convert_pathname_to_module,
         structlog.processors.StackInfoRenderer(),
