@@ -1083,7 +1083,6 @@ class ParahippocampalGyrus:
         # build_readable_messages 只返回一个字符串，不需要解包
         input_text = build_readable_messages(
             messages,
-            merge_messages=True,  # 合并连续消息
             timestamp_mode="normal_no_YMD",  # 使用 'YYYY-MM-DD HH:MM:SS' 格式
             replace_bot_name=False,  # 保留原始用户名
         )

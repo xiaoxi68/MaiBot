@@ -294,7 +294,9 @@ def get_messages_before_time_in_chat(
     return get_raw_msg_before_timestamp_with_chat(chat_id, timestamp, limit)
 
 
-def get_messages_before_time_for_users(timestamp: float, person_ids: List[str], limit: int = 0) -> List[DatabaseMessages]:
+def get_messages_before_time_for_users(
+    timestamp: float, person_ids: List[str], limit: int = 0
+) -> List[DatabaseMessages]:
     """
     获取指定用户在指定时间戳之前的消息
 
@@ -412,7 +414,6 @@ def count_new_messages_for_users(chat_id: str, start_time: float, end_time: floa
 def build_readable_messages_to_str(
     messages: List[Dict[str, Any]],
     replace_bot_name: bool = True,
-    merge_messages: bool = False,
     timestamp_mode: str = "relative",
     read_mark: float = 0.0,
     truncate: bool = False,
@@ -434,14 +435,13 @@ def build_readable_messages_to_str(
         格式化后的可读字符串
     """
     return build_readable_messages(
-        messages, replace_bot_name, merge_messages, timestamp_mode, read_mark, truncate, show_actions
+        messages, replace_bot_name, timestamp_mode, read_mark, truncate, show_actions
     )
 
 
 async def build_readable_messages_with_details(
     messages: List[Dict[str, Any]],
     replace_bot_name: bool = True,
-    merge_messages: bool = False,
     timestamp_mode: str = "relative",
     truncate: bool = False,
 ) -> Tuple[str, List[Tuple[float, str, str]]]:
@@ -458,7 +458,7 @@ async def build_readable_messages_with_details(
     Returns:
         格式化后的可读字符串和详细信息元组列表(时间戳, 昵称, 内容)
     """
-    return await build_readable_messages_with_list(messages, replace_bot_name, merge_messages, timestamp_mode, truncate)
+    return await build_readable_messages_with_list(messages, replace_bot_name, timestamp_mode, truncate)
 
 
 async def get_person_ids_from_messages(messages: List[Dict[str, Any]]) -> List[str]:

@@ -167,7 +167,6 @@ class MemoryActivator:
             obs_info_text = build_readable_messages(
                 chat_history_prompt,
                 replace_bot_name=True,
-                merge_messages=False,
                 timestamp_mode="relative",
                 read_mark=0.0,
                 show_actions=True,

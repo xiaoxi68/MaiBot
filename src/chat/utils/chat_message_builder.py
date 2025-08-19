@@ -397,7 +397,6 @@ def num_new_messages_since_with_users(
 def _build_readable_messages_internal(
     messages: List[MessageAndActionModel],
     replace_bot_name: bool = True,
-    merge_messages: bool = False,
     timestamp_mode: str = "relative",
     truncate: bool = False,
     pic_id_mapping: Optional[Dict[str, str]] = None,
@@ -405,6 +404,7 @@ def _build_readable_messages_internal(
     show_pic: bool = True,
     message_id_list: Optional[List[DatabaseMessages]] = None,
 ) -> Tuple[str, List[Tuple[float, str, str]], Dict[str, str], int]:
+    # sourcery skip: use-getitem-for-re-match-groups
     """
     内部辅助函数，构建可读消息字符串和原始消息详情列表。
 
@@ -423,7 +423,7 @@ def _build_readable_messages_internal(
     if not messages:
         return "", [], pic_id_mapping or {}, pic_counter
 
-    message_details_raw: List[Tuple[float, str, str, bool]] = []
+    detailed_messages_raw: List[Tuple[float, str, str, bool]] = []
 
     # 使用传入的映射字典，如果没有则创建新的
     if pic_id_mapping is None:
@@ -431,12 +431,12 @@ def _build_readable_messages_internal(
     current_pic_counter = pic_counter
 
     # 创建时间戳到消息ID的映射，用于在消息前添加[id]标识符
-    timestamp_to_id = {}
+    timestamp_to_id_mapping: Dict[float, str] = {}
     if message_id_list:
-        for item in message_id_list:
-            timestamp = item.time
+        for msg in message_id_list:
+            timestamp = msg.time
             if timestamp is not None:
-                timestamp_to_id[timestamp] = item.message_id
+                timestamp_to_id_mapping[timestamp] = msg.message_id
 
     def process_pic_ids(content: Optional[str]) -> str:
         """处理内容中的图片ID，将其替换为[图片x]格式"""
@@ -447,10 +447,10 @@ def _build_readable_messages_internal(
         # 匹配 [picid:xxxxx] 格式
         pic_pattern = r"\[picid:([^\]]+)\]"
 
-        def replace_pic_id(match):
+        def replace_pic_id(match: re.Match) -> str:
             nonlocal current_pic_counter
+            nonlocal pic_counter
             pic_id = match.group(1)
-
             if pic_id not in pic_id_mapping:
                 pic_id_mapping[pic_id] = f"图片{current_pic_counter}"
                 current_pic_counter += 1
@@ -459,27 +459,23 @@ def _build_readable_messages_internal(
 
         return re.sub(pic_pattern, replace_pic_id, content)
 
-    # 1 & 2: 获取发送者信息并提取消息组件
-    for msg in messages:
-        # 检查是否是动作记录
-        if msg.is_action_record:
-            is_action = True
-            timestamp: float = msg.time
-            content = msg.display_message
+    # 1: 获取发送者信息并提取消息组件
+    for message in messages:
+        if message.is_action_record:
             # 对于动作记录，也处理图片ID
-            content = process_pic_ids(content)
-            message_details_raw.append((timestamp, global_config.bot.nickname, content, is_action))
+            content = process_pic_ids(message.display_message)
+            detailed_messages_raw.append((message.time, message.user_nickname, content, True))
             continue
 
-        platform = msg.user_platform
-        user_id = msg.user_id
+        platform = message.user_platform
+        user_id = message.user_id
+        user_nickname = message.user_nickname
+        user_cardname = message.user_cardname
 
-        user_nickname = msg.user_nickname
-        user_cardname = msg.user_cardname
+        timestamp = message.time
+        content = message.display_message or message.processed_plain_text or ""
 
-        timestamp = msg.time
-        content = msg.display_message or msg.processed_plain_text or ""
-
+        # 向下兼容
         if "ᶠ" in content:
             content = content.replace("ᶠ", "")
         if "ⁿ" in content:
@@ -495,52 +491,32 @@ def _build_readable_messages_internal(
 
         person = Person(platform=platform, user_id=user_id)
         # 根据 replace_bot_name 参数决定是否替换机器人名称
-        person_name: str
+        person_name = (
+            person.person_name or f"{user_nickname}" or (f"昵称：{user_cardname}" if user_cardname else "某人")
+        )
         if replace_bot_name and user_id == global_config.bot.qq_account:
             person_name = f"{global_config.bot.nickname}(你)"
-        else:
-            person_name = person.person_name or user_id  # type: ignore
-
-        # 如果 person_name 未设置，则使用消息中的 nickname 或默认名称
-        if not person_name:
-            if user_cardname:
-                person_name = f"昵称：{user_cardname}"
-            elif user_nickname:
-                person_name = f"{user_nickname}"
-            else:
-                person_name = "某人"
 
         # 使用独立函数处理用户引用格式
-        content = replace_user_references_sync(content, platform, replace_bot_name=replace_bot_name)
+        if content := replace_user_references_sync(content, platform, replace_bot_name=replace_bot_name):
+            detailed_messages_raw.append((timestamp, person_name, content, False))
 
-        target_str = "这是QQ的一个功能，用于提及某人，但没那么明显"
-        if target_str in content and random.random() < 0.6:
-            content = content.replace(target_str, "")
-
-        if content != "":
-            message_details_raw.append((timestamp, person_name, content, False))
-
-    if not message_details_raw:
+    if not detailed_messages_raw:
         return "", [], pic_id_mapping, current_pic_counter
 
-    message_details_raw.sort(key=lambda x: x[0])  # 按时间戳(第一个元素)升序排序，越早的消息排在前面
+    detailed_messages_raw.sort(key=lambda x: x[0])  # 按时间戳(第一个元素)升序排序，越早的消息排在前面
+    detailed_message: List[Tuple[float, str, str, bool]] = []
 
-    # 为每条消息添加一个标记，指示它是否是动作记录
-    message_details_with_flags = []
-    for timestamp, name, content, is_action in message_details_raw:
-        message_details_with_flags.append((timestamp, name, content, is_action))
-
-    # 应用截断逻辑 (如果 truncate 为 True)
-    message_details: List[Tuple[float, str, str, bool]] = []
-    n_messages = len(message_details_with_flags)
-    if truncate and n_messages > 0:
-        for i, (timestamp, name, content, is_action) in enumerate(message_details_with_flags):
+    # 2. 应用消息截断逻辑
+    messages_count = len(detailed_messages_raw)
+    if truncate and messages_count > 0:
+        for i, (timestamp, name, content, is_action) in enumerate(detailed_messages_raw):
             # 对于动作记录，不进行截断
             if is_action:
-                message_details.append((timestamp, name, content, is_action))
+                detailed_message.append((timestamp, name, content, is_action))
                 continue
 
-            percentile = i / n_messages  # 计算消息在列表中的位置百分比 (0 <= percentile < 1)
+            percentile = i / messages_count  # 计算消息在列表中的位置百分比 (0 <= percentile < 1)
             original_len = len(content)
             limit = -1  # 默认不截断
 
@@ -553,116 +529,42 @@ def _build_readable_messages_internal(
             elif percentile < 0.7:  # 60% 到 80% 之前的消息 (即中间的 20%)
                 limit = 200
                 replace_content = "......（内容太长了）"
-            elif percentile < 1.0:  # 80% 到 100% 之前的消息 (即较新的 20%)
+            elif percentile <= 1.0:  # 80% 到 100% 之前的消息 (即较新的 20%)
                 limit = 400
-                replace_content = "......（太长了）"
+                replace_content = "......（内容太长了）"
 
             truncated_content = content
             if 0 < limit < original_len:
                 truncated_content = f"{content[:limit]}{replace_content}"
 
-            message_details.append((timestamp, name, truncated_content, is_action))
+            detailed_message.append((timestamp, name, truncated_content, is_action))
     else:
         # 如果不截断，直接使用原始列表
-        message_details = message_details_with_flags
+        detailed_message = detailed_messages_raw
 
-    # 3: 合并连续消息 (如果 merge_messages 为 True)
-    merged_messages = []
-    if merge_messages and message_details:
-        # 初始化第一个合并块
-        current_merge = {
-            "name": message_details[0][1],
-            "start_time": message_details[0][0],
-            "end_time": message_details[0][0],
-            "content": [message_details[0][2]],
-            "is_action": message_details[0][3],
-        }
+    # 3: 格式化为字符串
+    output_lines: List[str] = []
 
-        for i in range(1, len(message_details)):
-            timestamp, name, content, is_action = message_details[i]
+    for timestamp, name, content, is_action in detailed_message:
+        readable_time = translate_timestamp_to_human_readable(timestamp, mode=timestamp_mode)
 
-            # 对于动作记录，不进行合并
-            if is_action or current_merge["is_action"]:
-                # 保存当前的合并块
-                merged_messages.append(current_merge)
-                # 创建新的块
-                current_merge = {
-                    "name": name,
-                    "start_time": timestamp,
-                    "end_time": timestamp,
-                    "content": [content],
-                    "is_action": is_action,
-                }
-                continue
+        # 查找消息id（如果有）并构建id_prefix
+        message_id = timestamp_to_id_mapping.get(timestamp)
+        id_prefix = f"[{message_id}]" if message_id else ""
 
-            # 如果是同一个人发送的连续消息且时间间隔小于等于60秒
-            if name == current_merge["name"] and (timestamp - current_merge["end_time"] <= 60):
-                current_merge["content"].append(content)
-                current_merge["end_time"] = timestamp  # 更新最后消息时间
-            else:
-                # 保存上一个合并块
-                merged_messages.append(current_merge)
-                # 开始新的合并块
-                current_merge = {
-                    "name": name,
-                    "start_time": timestamp,
-                    "end_time": timestamp,
-                    "content": [content],
-                    "is_action": is_action,
-                }
-        # 添加最后一个合并块
-        merged_messages.append(current_merge)
-    elif message_details:  # 如果不合并消息，则每个消息都是一个独立的块
-        for timestamp, name, content, is_action in message_details:
-            merged_messages.append(
-                {
-                    "name": name,
-                    "start_time": timestamp,  # 起始和结束时间相同
-                    "end_time": timestamp,
-                    "content": [content],  # 内容只有一个元素
-                    "is_action": is_action,
-                }
-            )
-
-    # 4 & 5: 格式化为字符串
-    output_lines = []
-
-    for _i, merged in enumerate(merged_messages):
-        # 使用指定的 timestamp_mode 格式化时间
-        readable_time = translate_timestamp_to_human_readable(merged["start_time"], mode=timestamp_mode)
-
-        # 查找对应的消息ID
-        message_id = timestamp_to_id.get(merged["start_time"], "")
-        id_prefix = f"[{message_id}] " if message_id else ""
-
-        # 检查是否是动作记录
-        if merged["is_action"]:
+        if is_action:
             # 对于动作记录，使用特殊格式
-            output_lines.append(f"{id_prefix}{readable_time}, {merged['content'][0]}")
+            output_lines.append(f"{id_prefix}{readable_time}, {content}")
         else:
-            header = f"{id_prefix}{readable_time}, {merged['name']} :"
-            output_lines.append(header)
-            # 将内容合并，并添加缩进
-            for line in merged["content"]:
-                stripped_line = line.strip()
-                if stripped_line:  # 过滤空行
-                    # 移除末尾句号，添加分号 - 这个逻辑似乎有点奇怪，暂时保留
-                    if stripped_line.endswith("。"):
-                        stripped_line = stripped_line[:-1]
-                    # 如果内容被截断，结尾已经是 ...（内容太长），不再添加分号
-                    if not stripped_line.endswith("（内容太长）"):
-                        output_lines.append(f"{stripped_line}")
-                    else:
-                        output_lines.append(stripped_line)  # 直接添加截断后的内容
+            output_lines.append(f"{id_prefix}{readable_time}, {name}: {content}")
         output_lines.append("\n")  # 在每个消息块后添加换行，保持可读性
 
-    # 移除可能的多余换行，然后合并
     formatted_string = "".join(output_lines).strip()
 
     # 返回格式化后的字符串、消息详情列表、图片映射字典和更新后的计数器
     return (
         formatted_string,
-        [(t, n, c) for t, n, c, is_action in message_details if not is_action],
+        [(t, n, c) for t, n, c, is_action in detailed_message if not is_action],
         pic_id_mapping,
         current_pic_counter,
     )
@@ -748,7 +650,6 @@ def build_readable_actions(actions: List[Dict[str, Any]]) -> str:
 async def build_readable_messages_with_list(
     messages: List[Dict[str, Any]],
     replace_bot_name: bool = True,
-    merge_messages: bool = False,
     timestamp_mode: str = "relative",
     truncate: bool = False,
 ) -> Tuple[str, List[Tuple[float, str, str]]]:
@@ -757,7 +658,7 @@ async def build_readable_messages_with_list(
     允许通过参数控制格式化行为。
     """
     formatted_string, details_list, pic_id_mapping, _ = _build_readable_messages_internal(
-        messages, replace_bot_name, merge_messages, timestamp_mode, truncate
+        messages, replace_bot_name, timestamp_mode, truncate
     )
 
     if pic_mapping_info := build_pic_mapping_info(pic_id_mapping):
@@ -769,7 +670,6 @@ async def build_readable_messages_with_list(
 def build_readable_messages_with_id(
     messages: List[DatabaseMessages],
     replace_bot_name: bool = True,
-    merge_messages: bool = False,
     timestamp_mode: str = "relative",
     read_mark: float = 0.0,
     truncate: bool = False,
@@ -785,7 +685,6 @@ def build_readable_messages_with_id(
     formatted_string = build_readable_messages(
         messages=messages,
         replace_bot_name=replace_bot_name,
-        merge_messages=merge_messages,
         timestamp_mode=timestamp_mode,
         truncate=truncate,
         show_actions=show_actions,
@@ -800,7 +699,6 @@ def build_readable_messages_with_id(
 def build_readable_messages(
     messages: List[DatabaseMessages],
     replace_bot_name: bool = True,
-    merge_messages: bool = False,
     timestamp_mode: str = "relative",
     read_mark: float = 0.0,
     truncate: bool = False,
@@ -895,7 +793,6 @@ def build_readable_messages(
         formatted_string, _, pic_id_mapping, _ = _build_readable_messages_internal(
             copy_messages,
             replace_bot_name,
-            merge_messages,
             timestamp_mode,
             truncate,
             show_pic=show_pic,

@@ -5,7 +5,7 @@ import time
 import random
 
 from json_repair import repair_json
-from typing import Union
+from typing import Union, Optional
 
 from src.common.logger import get_logger
 from src.common.database.database import db
@@ -253,8 +253,8 @@ class Person:
         
         # 初始化默认值
         self.nickname = ""
-        self.person_name = None
-        self.name_reason = None
+        self.person_name: Optional[str] = None
+        self.name_reason: Optional[str] = None
         self.know_times = 0
         self.know_since = None
         self.last_know = None

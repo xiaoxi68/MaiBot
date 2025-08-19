@@ -74,7 +74,6 @@ class ActionModifier:
         chat_content = build_readable_messages(
             message_list_before_now_half,
             replace_bot_name=True,
-            merge_messages=False,
             timestamp_mode="relative",
             read_mark=0.0,
             show_actions=True,
