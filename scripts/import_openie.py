@@ -6,6 +6,7 @@
 
 import sys
 import os
+import asyncio
 from time import sleep
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -172,7 +173,7 @@ def handle_import_openie(openie_data: OpenIE, embed_manager: EmbeddingManager, k
     return True
 
 
-def main():  # sourcery skip: dict-comprehension
+async def main_async():  # sourcery skip: dict-comprehension
     # 新增确认提示
     print("=== 重要操作确认 ===")
     print("OpenIE导入时会大量发送请求，可能会撞到请求速度上限，请注意选用的模型")
@@ -237,6 +238,29 @@ def main():  # sourcery skip: dict-comprehension
         logger.error("处理OpenIE数据时发生错误")
         return False
     return None
+
+
+def main():
+    """主函数 - 设置新的事件循环并运行异步主函数"""
+    # 检查是否有现有的事件循环
+    try:
+        loop = asyncio.get_running_loop()
+        if loop.is_closed():
+            # 如果事件循环已关闭，创建新的
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+    except RuntimeError:
+        # 没有运行的事件循环，创建新的
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    
+    try:
+        # 在新的事件循环中运行异步主函数
+        loop.run_until_complete(main_async())
+    finally:
+        # 确保事件循环被正确关闭
+        if not loop.is_closed():
+            loop.close()
 
 
 if __name__ == "__main__":

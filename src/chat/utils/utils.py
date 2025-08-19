@@ -113,6 +113,7 @@ def is_mentioned_bot_in_message(message: MessageRecv) -> tuple[bool, float]:
 
 async def get_embedding(text, request_type="embedding") -> Optional[List[float]]:
     """获取文本的embedding向量"""
+    # 每次都创建新的LLMRequest实例以避免事件循环冲突
     llm = LLMRequest(model_set=model_config.model_task_config.embedding, request_type=request_type)
     try:
         embedding, _ = await llm.get_embedding(text)

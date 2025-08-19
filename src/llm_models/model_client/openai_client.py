@@ -388,6 +388,7 @@ class OpenaiClient(BaseClient):
             base_url=api_provider.base_url,
             api_key=api_provider.api_key,
             max_retries=0,
+            timeout=api_provider.timeout,
         )
 
     async def get_response(
@@ -520,6 +521,11 @@ class OpenaiClient(BaseClient):
                 extra_body=extra_params,
             )
         except APIConnectionError as e:
+            # 添加详细的错误信息以便调试
+            logger.error(f"OpenAI API连接错误（嵌入模型）: {str(e)}")
+            logger.error(f"错误类型: {type(e)}")
+            if hasattr(e, '__cause__') and e.__cause__:
+                logger.error(f"底层错误: {str(e.__cause__)}")
             raise NetworkConnectionError() from e
         except APIStatusError as e:
             # 重封装APIError为RespNotOkException

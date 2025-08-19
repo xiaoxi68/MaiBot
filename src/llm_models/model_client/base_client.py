@@ -159,14 +159,23 @@ class ClientRegistry:
 
         return decorator
 
-    def get_client_class_instance(self, api_provider: APIProvider) -> BaseClient:
+    def get_client_class_instance(self, api_provider: APIProvider, force_new=False) -> BaseClient:
         """
         获取注册的API客户端实例
         Args:
             api_provider: APIProvider实例
+            force_new: 是否强制创建新实例（用于解决事件循环问题）
         Returns:
             BaseClient: 注册的API客户端实例
         """
+        # 如果强制创建新实例，直接创建不使用缓存
+        if force_new:
+            if client_class := self.client_registry.get(api_provider.client_type):
+                return client_class(api_provider)
+            else:
+                raise KeyError(f"'{api_provider.client_type}' 类型的 Client 未注册")
+        
+        # 正常的缓存逻辑
         if api_provider.name not in self.client_instance_cache:
             if client_class := self.client_registry.get(api_provider.client_type):
                 self.client_instance_cache[api_provider.name] = client_class(api_provider)
