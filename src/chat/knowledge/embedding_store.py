@@ -117,30 +117,36 @@ class EmbeddingStore:
         self.idx2hash = None
 
     def _get_embedding(self, s: str) -> List[float]:
-        """获取字符串的嵌入向量，处理异步调用"""
+        """获取字符串的嵌入向量，使用完全同步的方式避免事件循环问题"""
+        # 创建新的事件循环并在完成后立即关闭
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
         try:
-            # 尝试获取当前事件循环
-            asyncio.get_running_loop()
-            # 如果在事件循环中，使用线程池执行
-            import concurrent.futures
-
-            def run_in_thread():
-                return asyncio.run(get_embedding(s))
-
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                future = executor.submit(run_in_thread)
-                result = future.result()
-                if result is None:
-                    logger.error(f"获取嵌入失败: {s}")
-                    return []
-                return result
-        except RuntimeError:
-            # 没有运行的事件循环，直接运行
-            result = asyncio.run(get_embedding(s))
-            if result is None:
+            # 创建新的LLMRequest实例
+            from src.llm_models.utils_model import LLMRequest
+            from src.config.config import model_config
+            
+            llm = LLMRequest(model_set=model_config.model_task_config.embedding, request_type="embedding")
+            
+            # 使用新的事件循环运行异步方法
+            embedding, _ = loop.run_until_complete(llm.get_embedding(s))
+            
+            if embedding and len(embedding) > 0:
+                return embedding
+            else:
                 logger.error(f"获取嵌入失败: {s}")
                 return []
-            return result
+                
+        except Exception as e:
+            logger.error(f"获取嵌入时发生异常: {s}, 错误: {e}")
+            return []
+        finally:
+            # 确保事件循环被正确关闭
+            try:
+                loop.close()
+            except Exception:
+                pass
 
     def _get_embeddings_batch_threaded(self, strs: List[str], chunk_size: int = 10, max_workers: int = 10, progress_callback=None) -> List[Tuple[str, List[float]]]:
         """使用多线程批量获取嵌入向量
@@ -181,8 +187,14 @@ class EmbeddingStore:
                 
                 for i, s in enumerate(chunk_strs):
                     try:
-                        # 直接使用异步函数
-                        embedding = asyncio.run(llm.get_embedding(s))
+                        # 在线程中创建独立的事件循环
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                        try:
+                            embedding = loop.run_until_complete(llm.get_embedding(s))
+                        finally:
+                            loop.close()
+                            
                         if embedding and len(embedding) > 0:
                             chunk_results.append((start_idx + i, s, embedding[0]))  # embedding[0] 是实际的向量
                         else:
