@@ -348,7 +348,7 @@ class GeminiClient(BaseClient):
         # 精确匹配或更精确的包含匹配
         limits = None
         matched_key = None
-    
+
         # 首先尝试精确匹配
         if model_id in THINKING_BUDGET_LIMITS:
             limits = THINKING_BUDGET_LIMITS[model_id]
