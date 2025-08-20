@@ -345,21 +345,19 @@ class GeminiClient(BaseClient):
         """
         按模型限制思考预算范围，仅支持指定的模型（支持带数字后缀的新版本）
         """
-        # 精确匹配或更精确的包含匹配
         limits = None
         matched_key = None
 
-        # 首先尝试精确匹配
+        # 优先尝试精确匹配
         if model_id in THINKING_BUDGET_LIMITS:
             limits = THINKING_BUDGET_LIMITS[model_id]
             matched_key = model_id
         else:
-            # 如果没有精确匹配，尝试更精确的包含匹配
-            # 按键的长度降序排序，优先匹配更长的键
+            # 按 key 长度倒序，保证更长的（更具体的，如 -lite）优先
             sorted_keys = sorted(THINKING_BUDGET_LIMITS.keys(), key=len, reverse=True)
             for key in sorted_keys:
-                # 使用更精确的匹配逻辑：键必须是模型ID的一部分，但不能是部分匹配
-                if key in model_id and (model_id == key or model_id.startswith(key + "-")):
+                # 必须满足：完全等于 或者 前缀匹配（带 "-" 边界）
+                if model_id == key or model_id.startswith(key + "-"):
                     limits = THINKING_BUDGET_LIMITS[key]
                     matched_key = key
                     break
