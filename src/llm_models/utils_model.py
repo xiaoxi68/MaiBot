@@ -195,7 +195,7 @@ class LLMRequest:
         
         if not content:
             if raise_when_empty:
-                logger.warning("生成的响应为空")
+                logger.warning(f"生成的响应为空, 请求类型: {self.request_type}")
                 raise RuntimeError("生成的响应为空")
             content = "生成的响应为空，请检查模型配置或输入内容是否正确"
 
