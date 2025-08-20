@@ -44,6 +44,11 @@ from ..payload_content.tool_option import ToolOption, ToolParam, ToolCall
 
 logger = get_logger("Gemini客户端")
 
+# gemini_thinking参数
+GEMINI_THINKING_BUDGET_MIN = 512
+GEMINI_THINKING_BUDGET_MAX = 24576
+DEFAULT_THINKING_BUDGET = 1024
+
 gemini_safe_settings = [
     SafetySetting(category=HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold=HarmBlockThreshold.BLOCK_NONE),
     SafetySetting(category=HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold=HarmBlockThreshold.BLOCK_NONE),
@@ -374,17 +379,25 @@ class GeminiClient(BaseClient):
         # 将tool_options转换为Gemini API所需的格式
         tools = _convert_tool_options(tool_options) if tool_options else None
         # 将response_format转换为Gemini API所需的格式
+        try:
+            if extra_params and "thinking_budget" in extra_params:
+                tb = extra_params["thinking_budget"]
+                tb = int(tb)  # 尝试转换为整数
+            else:
+                tb = int(max_tokens / 2)
+        except (TypeError, ValueError) as e:
+            logger.warning(f"无效的thinking_budget值 {extra_params.get('thinking_budget') if extra_params else None}，使用默认值 {DEFAULT_THINKING_BUDGET}: {e}")
+            tb = DEFAULT_THINKING_BUDGET
+
+        tb = max(GEMINI_THINKING_BUDGET_MIN, min(tb, GEMINI_THINKING_BUDGET_MAX))  # 限制在合法范围（512-24576）
+
         generation_config_dict = {
             "max_output_tokens": max_tokens,
             "temperature": temperature,
             "response_modalities": ["TEXT"],
             "thinking_config": ThinkingConfig(
                 include_thoughts=True,
-                thinking_budget=(
-                    extra_params["thinking_budget"]
-                    if extra_params and "thinking_budget" in extra_params
-                    else int(max_tokens / 2)  # 默认思考预算为最大token数的一半，防止空回复
-                ),
+                thinking_budget=tb,
             ),
             "safety_settings": gemini_safe_settings,  # 防止空回复问题
         }
