@@ -412,7 +412,7 @@ def count_new_messages_for_users(chat_id: str, start_time: float, end_time: floa
 
 
 def build_readable_messages_to_str(
-    messages: List[Dict[str, Any]],
+    messages: List[DatabaseMessages],
     replace_bot_name: bool = True,
     timestamp_mode: str = "relative",
     read_mark: float = 0.0,
@@ -440,7 +440,7 @@ def build_readable_messages_to_str(
 
 
 async def build_readable_messages_with_details(
-    messages: List[Dict[str, Any]],
+    messages: List[DatabaseMessages],
     replace_bot_name: bool = True,
     timestamp_mode: str = "relative",
     truncate: bool = False,

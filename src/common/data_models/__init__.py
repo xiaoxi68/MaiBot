@@ -1,5 +1,5 @@
 import copy
-from typing import Dict, Any
+from typing import Any
 
 
 class BaseDataModel:
@@ -7,6 +7,7 @@ class BaseDataModel:
         return copy.deepcopy(self)
 
 def temporarily_transform_class_to_dict(obj: Any) -> Any:
+    # sourcery skip: assign-if-exp, reintroduce-else
     """
     将对象或容器中的 BaseDataModel 子类（类对象）或 BaseDataModel 实例
     递归转换为普通 dict，不修改原对象。

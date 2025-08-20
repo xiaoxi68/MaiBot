@@ -2,13 +2,14 @@ import random
 from typing import Tuple
 
 # 导入新插件系统
-from src.plugin_system import BaseAction, ActionActivationType, ChatMode
+from src.plugin_system import BaseAction, ActionActivationType
 
 # 导入依赖的系统组件
 from src.common.logger import get_logger
 
 # 导入API模块 - 标准Python包方式
 from src.plugin_system.apis import emoji_api, llm_api, message_api
+
 # NoReplyAction已集成到heartFC_chat.py中，不再需要导入
 from src.config.config import global_config
 
@@ -84,11 +85,8 @@ class EmojiAction(BaseAction):
                 messages_text = ""
                 if recent_messages:
                     # 使用message_api构建可读的消息字符串
-                    # TODO: 修复
-                    from src.common.data_models import temporarily_transform_class_to_dict
-                    tmp_msgs = [temporarily_transform_class_to_dict(msg) for msg in recent_messages]
                     messages_text = message_api.build_readable_messages(
-                        messages=tmp_msgs,
+                        messages=recent_messages,
                         timestamp_mode="normal_no_YMD",
                         truncate=False,
                         show_actions=False,
