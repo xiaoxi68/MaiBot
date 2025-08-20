@@ -1,11 +1,11 @@
-from typing import Optional, Dict, Any
-from dataclasses import dataclass, field, fields, MISSING
+from typing import Optional, Any
+from dataclasses import dataclass, field
 
-from . import AbstractClassFlag
+from . import BaseDataModel
 
 
 @dataclass
-class DatabaseUserInfo(AbstractClassFlag):
+class DatabaseUserInfo(BaseDataModel):
     platform: str = field(default_factory=str)
     user_id: str = field(default_factory=str)
     user_nickname: str = field(default_factory=str)
@@ -21,7 +21,7 @@ class DatabaseUserInfo(AbstractClassFlag):
 
 
 @dataclass
-class DatabaseGroupInfo(AbstractClassFlag):
+class DatabaseGroupInfo(BaseDataModel):
     group_id: str = field(default_factory=str)
     group_name: str = field(default_factory=str)
     group_platform: Optional[str] = None
@@ -35,7 +35,7 @@ class DatabaseGroupInfo(AbstractClassFlag):
 
 
 @dataclass
-class DatabaseChatInfo(AbstractClassFlag):
+class DatabaseChatInfo(BaseDataModel):
     stream_id: str = field(default_factory=str)
     platform: str = field(default_factory=str)
     create_time: float = field(default_factory=float)
@@ -55,7 +55,7 @@ class DatabaseChatInfo(AbstractClassFlag):
 
 
 @dataclass(init=False)
-class DatabaseMessages(AbstractClassFlag):
+class DatabaseMessages(BaseDataModel):
     def __init__(
         self,
         message_id: str = "",

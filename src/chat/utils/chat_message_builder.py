@@ -1,8 +1,8 @@
-import time  # 导入 time 模块以获取当前时间
+import time
 import random
 import re
 
-from typing import List, Dict, Any, Tuple, Optional, Callable, Union
+from typing import List, Dict, Any, Tuple, Optional, Callable
 from rich.traceback import install
 
 from src.config.config import global_config
@@ -648,7 +648,7 @@ def build_readable_actions(actions: List[Dict[str, Any]]) -> str:
 
 
 async def build_readable_messages_with_list(
-    messages: List[Dict[str, Any]],
+    messages: List[DatabaseMessages],
     replace_bot_name: bool = True,
     timestamp_mode: str = "relative",
     truncate: bool = False,
@@ -658,7 +658,7 @@ async def build_readable_messages_with_list(
     允许通过参数控制格式化行为。
     """
     formatted_string, details_list, pic_id_mapping, _ = _build_readable_messages_internal(
-        messages, replace_bot_name, timestamp_mode, truncate
+        convert_DatabaseMessages_to_MessageAndActionModel(messages), replace_bot_name, timestamp_mode, truncate
     )
 
     if pic_mapping_info := build_pic_mapping_info(pic_id_mapping):
@@ -675,7 +675,7 @@ def build_readable_messages_with_id(
     truncate: bool = False,
     show_actions: bool = False,
     show_pic: bool = True,
-) -> Tuple[str, List[Dict[str, Any]]]:
+) -> Tuple[str, List[DatabaseMessages]]:
     """
     将消息列表转换为可读的文本格式，并返回原始(时间戳, 昵称, 内容)列表。
     允许通过参数控制格式化行为。
@@ -818,7 +818,6 @@ def build_readable_messages(
         formatted_before, _, pic_id_mapping, pic_counter = _build_readable_messages_internal(
             messages_before_mark,
             replace_bot_name,
-            merge_messages,
             timestamp_mode,
             truncate,
             pic_id_mapping,
@@ -829,7 +828,6 @@ def build_readable_messages(
         formatted_after, _, pic_id_mapping, _ = _build_readable_messages_internal(
             messages_after_mark,
             replace_bot_name,
-            merge_messages,
             timestamp_mode,
             False,
             pic_id_mapping,
@@ -998,3 +996,22 @@ async def get_person_id_list(messages: List[Dict[str, Any]]) -> List[str]:
             person_ids_set.add(person_id)
 
     return list(person_ids_set)  # 将集合转换为列表返回
+
+
+def convert_DatabaseMessages_to_MessageAndActionModel(message: List[DatabaseMessages]) -> List[MessageAndActionModel]:
+    """
+    将 DatabaseMessages 列表转换为 MessageAndActionModel 列表。
+    """
+    return [
+        MessageAndActionModel(
+            time=msg.time,
+            user_id=msg.user_info.user_id,
+            user_platform=msg.user_info.platform,
+            user_nickname=msg.user_info.user_nickname,
+            user_cardname=msg.user_info.user_cardname,
+            processed_plain_text=msg.processed_plain_text,
+            display_message=msg.display_message,
+            chat_info_platform=msg.chat_info.platform,
+        )
+        for msg in message
+    ]

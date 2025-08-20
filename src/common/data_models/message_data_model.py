@@ -1,9 +1,10 @@
 from typing import Optional
 from dataclasses import dataclass, field
 
+from . import BaseDataModel
 
 @dataclass
-class MessageAndActionModel:
+class MessageAndActionModel(BaseDataModel):
     time: float = field(default_factory=float)
     user_id: str = field(default_factory=str)
     user_platform: str = field(default_factory=str)
