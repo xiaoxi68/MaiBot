@@ -3,13 +3,13 @@ import time
 import traceback
 import math
 import random
-from typing import List, Optional, Dict, Any, Tuple
+from typing import List, Optional, Dict, Any, Tuple, TYPE_CHECKING
 from rich.traceback import install
 from collections import deque
 
 from src.config.config import global_config
 from src.common.logger import get_logger
-from src.common.data_models.database_data_model import DatabaseMessages
+from src.common.data_models.info_data_model import ActionPlannerInfo
 from src.chat.message_receive.chat_stream import ChatStream, get_chat_manager
 from src.chat.utils.prompt_builder import global_prompt_manager
 from src.chat.utils.timer_calculator import Timer
@@ -24,11 +24,14 @@ from src.chat.frequency_control.focus_value_control import focus_value_control
 from src.chat.express.expression_learner import expression_learner_manager
 from src.person_info.relationship_builder_manager import relationship_builder_manager
 from src.person_info.person_info import Person
-from src.plugin_system.base.component_types import ChatMode, EventType
+from src.plugin_system.base.component_types import ChatMode, EventType, ActionInfo
 from src.plugin_system.core import events_manager
 from src.plugin_system.apis import generator_api, send_api, message_api, database_api
 from src.mais4u.mai_think import mai_thinking_manager
 from src.mais4u.s4u_config import s4u_config
+
+if TYPE_CHECKING:
+    from src.common.data_models.database_data_model import DatabaseMessages
 
 
 ERROR_LOOP_INFO = {
@@ -141,7 +144,7 @@ class HeartFChatting:
         except asyncio.CancelledError:
             logger.info(f"{self.log_prefix} HeartFChatting: 结束了聊天")
 
-    def start_cycle(self):
+    def start_cycle(self) -> Tuple[Dict[str, float], str]:
         self._cycle_counter += 1
         self._current_cycle_detail = CycleDetail(self._cycle_counter)
         self._current_cycle_detail.thinking_id = f"tid{str(round(time.time(), 2))}"
@@ -172,7 +175,8 @@ class HeartFChatting:
                     action_type = action_result.get("action_type", "未知动作")
                 elif isinstance(action_result, list) and action_result:
                     # 新格式：action_result是actions列表
-                    action_type = action_result[0].get("action_type", "未知动作")
+                    # TODO: 把这里写明白
+                    action_type = action_result[0].action_type or "未知动作"
             elif isinstance(loop_plan_info, list) and loop_plan_info:
                 # 直接是actions列表的情况
                 action_type = loop_plan_info[0].get("action_type", "未知动作")
@@ -207,7 +211,7 @@ class HeartFChatting:
                 logger.info(f"{self.log_prefix} 兴趣度充足，等待新消息")
                 self.focus_energy = 1
 
-    async def _should_process_messages(self, new_message: List[DatabaseMessages]) -> tuple[bool, float]:
+    async def _should_process_messages(self, new_message: List["DatabaseMessages"]) -> tuple[bool, float]:
         """
         判断是否应该处理消息
 
@@ -290,11 +294,11 @@ class HeartFChatting:
     async def _send_and_store_reply(
         self,
         response_set,
-        action_message,
+        action_message: "DatabaseMessages",
         cycle_timers: Dict[str, float],
         thinking_id,
         actions,
-        selected_expressions: List[int] = None,
+        selected_expressions: Optional[List[int]] = None,
     ) -> Tuple[Dict[str, Any], str, Dict[str, float]]:
         with Timer("回复发送", cycle_timers):
             reply_text = await self._send_response(
@@ -304,11 +308,11 @@ class HeartFChatting:
             )
 
         # 获取 platform，如果不存在则从 chat_stream 获取，如果还是 None 则使用默认值
-        platform = action_message.get("chat_info_platform")
+        platform = action_message.chat_info.platform
         if platform is None:
             platform = getattr(self.chat_stream, "platform", "unknown")
 
-        person = Person(platform=platform, user_id=action_message.get("user_id", ""))
+        person = Person(platform=platform, user_id=action_message.user_info.user_id)
         person_name = person.person_name
         action_prompt_display = f"你对{person_name}进行了回复：{reply_text}"
 
@@ -353,9 +357,13 @@ class HeartFChatting:
             k = 2.0  # 控制曲线陡峭程度
             x0 = 1.0  # 控制曲线中心点
             return 1.0 / (1.0 + math.exp(-k * (interest_val - x0)))
-        
-        normal_mode_probability = calculate_normal_mode_probability(interest_value) * 2 *  self.talk_frequency_control.get_current_talk_frequency()
-        
+
+        normal_mode_probability = (
+            calculate_normal_mode_probability(interest_value)
+            * 2
+            * self.talk_frequency_control.get_current_talk_frequency()
+        )
+
         # 根据概率决定使用哪种模式
         if random.random() < normal_mode_probability:
             mode = ChatMode.NORMAL
@@ -383,17 +391,17 @@ class HeartFChatting:
             except Exception as e:
                 logger.error(f"{self.log_prefix} 记忆构建失败: {e}")
 
+            available_actions: Dict[str, ActionInfo] = {}
             if random.random() > self.focus_value_control.get_current_focus_value() and mode == ChatMode.FOCUS:
                 # 如果激活度没有激活，并且聊天活跃度低，有可能不进行plan，相当于不在电脑前，不进行认真思考
-                actions = [
-                    {
-                        "action_type": "no_action",
-                        "reasoning": "专注不足",
-                        "action_data": {},
-                    }
+                action_to_use_info = [
+                    ActionPlannerInfo(
+                        action_type="no_action",
+                        reasoning="专注不足",
+                        action_data={},
+                    )
                 ]
             else:
-                available_actions = {}
                 # 第一步：动作修改
                 with Timer("动作修改", cycle_timers):
                     try:
@@ -414,105 +422,19 @@ class HeartFChatting:
                 ):
                     return False
                 with Timer("规划器", cycle_timers):
-                    actions, _ = await self.action_planner.plan(
+                    action_to_use_info, _ = await self.action_planner.plan(
                         mode=mode,
                         loop_start_time=self.last_read_time,
                         available_actions=available_actions,
                     )
 
             # 3. 并行执行所有动作
-            async def execute_action(action_info, actions):
-                """执行单个动作的通用函数"""
-                try:
-                    if action_info["action_type"] == "no_action":
-                        # 直接处理no_action逻辑，不再通过动作系统
-                        reason = action_info.get("reasoning", "选择不回复")
-                        logger.info(f"{self.log_prefix} 选择不回复，原因: {reason}")
-
-                        # 存储no_action信息到数据库
-                        await database_api.store_action_info(
-                            chat_stream=self.chat_stream,
-                            action_build_into_prompt=False,
-                            action_prompt_display=reason,
-                            action_done=True,
-                            thinking_id=thinking_id,
-                            action_data={"reason": reason},
-                            action_name="no_action",
-                        )
-
-                        return {"action_type": "no_action", "success": True, "reply_text": "", "command": ""}
-                    elif action_info["action_type"] != "reply":
-                        # 执行普通动作
-                        with Timer("动作执行", cycle_timers):
-                            success, reply_text, command = await self._handle_action(
-                                action_info["action_type"],
-                                action_info["reasoning"],
-                                action_info["action_data"],
-                                cycle_timers,
-                                thinking_id,
-                                action_info["action_message"],
-                            )
-                        return {
-                            "action_type": action_info["action_type"],
-                            "success": success,
-                            "reply_text": reply_text,
-                            "command": command,
-                        }
-                    else:
-                        try:
-                            success, response_set, prompt_selected_expressions = await generator_api.generate_reply(
-                                chat_stream=self.chat_stream,
-                                reply_message=action_info["action_message"],
-                                available_actions=available_actions,
-                                choosen_actions=actions,
-                                reply_reason=action_info.get("reasoning", ""),
-                                enable_tool=global_config.tool.enable_tool,
-                                request_type="replyer",
-                                from_plugin=False,
-                                return_expressions=True,
-                            )
-
-                            if prompt_selected_expressions and len(prompt_selected_expressions) > 1:
-                                _, selected_expressions = prompt_selected_expressions
-                            else:
-                                selected_expressions = []
-
-                            if not success or not response_set:
-                                logger.info(
-                                    f"对 {action_info['action_message'].get('processed_plain_text')} 的回复生成失败"
-                                )
-                                return {"action_type": "reply", "success": False, "reply_text": "", "loop_info": None}
-
-                        except asyncio.CancelledError:
-                            logger.debug(f"{self.log_prefix} 并行执行：回复生成任务已被取消")
-                            return {"action_type": "reply", "success": False, "reply_text": "", "loop_info": None}
-
-                        loop_info, reply_text, cycle_timers_reply = await self._send_and_store_reply(
-                            response_set=response_set,
-                            action_message=action_info["action_message"],
-                            cycle_timers=cycle_timers,
-                            thinking_id=thinking_id,
-                            actions=actions,
-                            selected_expressions=selected_expressions,
-                        )
-                        return {
-                            "action_type": "reply",
-                            "success": True,
-                            "reply_text": reply_text,
-                            "loop_info": loop_info,
-                        }
-                except Exception as e:
-                    logger.error(f"{self.log_prefix} 执行动作时出错: {e}")
-                    logger.error(f"{self.log_prefix} 错误信息: {traceback.format_exc()}")
-                    return {
-                        "action_type": action_info["action_type"],
-                        "success": False,
-                        "reply_text": "",
-                        "loop_info": None,
-                        "error": str(e),
-                    }
-
-            action_tasks = [asyncio.create_task(execute_action(action, actions)) for action in actions]
+            action_tasks = [
+                asyncio.create_task(
+                    self._execute_action(action, action_to_use_info, thinking_id, available_actions, cycle_timers)
+                )
+                for action in action_to_use_info
+            ]
 
             # 并行执行所有任务
             results = await asyncio.gather(*action_tasks, return_exceptions=True)
@@ -529,7 +451,7 @@ class HeartFChatting:
                     logger.error(f"{self.log_prefix} 动作执行异常: {result}")
                     continue
 
-                _cur_action = actions[i]
+                _cur_action = action_to_use_info[i]
                 if result["action_type"] != "reply":
                     action_success = result["success"]
                     action_reply_text = result["reply_text"]
@@ -558,7 +480,7 @@ class HeartFChatting:
                 # 没有回复信息，构建纯动作的loop_info
                 loop_info = {
                     "loop_plan_info": {
-                        "action_result": actions,
+                        "action_result": action_to_use_info,
                     },
                     "loop_action_info": {
                         "action_taken": action_success,
@@ -578,7 +500,7 @@ class HeartFChatting:
 
         # await self.willing_manager.after_generate_reply_handle(message_data.get("message_id", ""))
 
-        action_type = actions[0]["action_type"] if actions else "no_action"
+        action_type = action_to_use_info[0].action_type if action_to_use_info else "no_action"
 
         # 管理no_action计数器：当执行了非no_action动作时，重置计数器
         if action_type != "no_action":
@@ -620,7 +542,7 @@ class HeartFChatting:
         action_data: dict,
         cycle_timers: Dict[str, float],
         thinking_id: str,
-        action_message: dict,
+        action_message: Optional["DatabaseMessages"] = None,
     ) -> tuple[bool, str, str]:
         """
         处理规划动作，使用动作工厂创建相应的动作处理器
@@ -672,8 +594,8 @@ class HeartFChatting:
     async def _send_response(
         self,
         reply_set,
-        message_data,
-        selected_expressions: List[int] = None,
+        message_data: "DatabaseMessages",
+        selected_expressions: Optional[List[int]] = None,
     ) -> str:
         new_message_count = message_api.count_new_messages(
             chat_id=self.chat_stream.stream_id, start_time=self.last_read_time, end_time=time.time()
@@ -710,3 +632,97 @@ class HeartFChatting:
             reply_text += data
 
         return reply_text
+
+    async def _execute_action(
+        self,
+        action_planner_info: ActionPlannerInfo,
+        chosen_action_plan_infos: List[ActionPlannerInfo],
+        thinking_id: str,
+        available_actions: Dict[str, ActionInfo],
+        cycle_timers: Dict[str, float],
+    ):
+        """执行单个动作的通用函数"""
+        try:
+            if action_planner_info.action_type == "no_action":
+                # 直接处理no_action逻辑，不再通过动作系统
+                reason = action_planner_info.reasoning or "选择不回复"
+                logger.info(f"{self.log_prefix} 选择不回复，原因: {reason}")
+
+                # 存储no_action信息到数据库
+                await database_api.store_action_info(
+                    chat_stream=self.chat_stream,
+                    action_build_into_prompt=False,
+                    action_prompt_display=reason,
+                    action_done=True,
+                    thinking_id=thinking_id,
+                    action_data={"reason": reason},
+                    action_name="no_action",
+                )
+
+                return {"action_type": "no_action", "success": True, "reply_text": "", "command": ""}
+            elif action_planner_info.action_type != "reply":
+                # 执行普通动作
+                with Timer("动作执行", cycle_timers):
+                    success, reply_text, command = await self._handle_action(
+                        action_planner_info.action_type,
+                        action_planner_info.reasoning or "",
+                        action_planner_info.action_data or {},
+                        cycle_timers,
+                        thinking_id,
+                        action_planner_info.action_message,
+                    )
+                return {
+                    "action_type": action_planner_info.action_type,
+                    "success": success,
+                    "reply_text": reply_text,
+                    "command": command,
+                }
+            else:
+                try:
+                    success, response_set, prompt, selected_expressions = await generator_api.generate_reply(
+                        chat_stream=self.chat_stream,
+                        reply_message=action_planner_info.action_message,
+                        available_actions=available_actions,
+                        chosen_actions=chosen_action_plan_infos,
+                        reply_reason=action_planner_info.reasoning or "",
+                        enable_tool=global_config.tool.enable_tool,
+                        request_type="replyer",
+                        from_plugin=False,
+                        return_expressions=True,
+                    )
+
+                    if not success or not response_set:
+                        if action_planner_info.action_message:
+                            logger.info(f"对 {action_planner_info.action_message.processed_plain_text} 的回复生成失败")
+                        else:
+                            logger.info("回复生成失败")
+                        return {"action_type": "reply", "success": False, "reply_text": "", "loop_info": None}
+
+                except asyncio.CancelledError:
+                    logger.debug(f"{self.log_prefix} 并行执行：回复生成任务已被取消")
+                    return {"action_type": "reply", "success": False, "reply_text": "", "loop_info": None}
+
+                loop_info, reply_text, _ = await self._send_and_store_reply(
+                    response_set=response_set,
+                    action_message=action_planner_info.action_message,  # type: ignore
+                    cycle_timers=cycle_timers,
+                    thinking_id=thinking_id,
+                    actions=chosen_action_plan_infos,
+                    selected_expressions=selected_expressions,
+                )
+                return {
+                    "action_type": "reply",
+                    "success": True,
+                    "reply_text": reply_text,
+                    "loop_info": loop_info,
+                }
+        except Exception as e:
+            logger.error(f"{self.log_prefix} 执行动作时出错: {e}")
+            logger.error(f"{self.log_prefix} 错误信息: {traceback.format_exc()}")
+            return {
+                "action_type": action_planner_info.action_type,
+                "success": False,
+                "reply_text": "",
+                "loop_info": None,
+                "error": str(e),
+            }

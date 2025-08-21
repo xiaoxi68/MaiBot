@@ -1,7 +1,7 @@
 import json
 import time
 import traceback
-from typing import Dict, Any, Optional, Tuple, List
+from typing import Dict, Optional, Tuple, List
 from rich.traceback import install
 from datetime import datetime
 from json_repair import repair_json
@@ -9,6 +9,8 @@ from json_repair import repair_json
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config, model_config
 from src.common.logger import get_logger
+from src.common.data_models.database_data_model import DatabaseMessages
+from src.common.data_models.info_data_model import ActionPlannerInfo
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.utils.chat_message_builder import (
     build_readable_actions,
@@ -97,7 +99,9 @@ class ActionPlanner:
         self.plan_retry_count = 0
         self.max_plan_retries = 3
 
-    def find_message_by_id(self, message_id: str, message_id_list: list) -> Optional[Dict[str, Any]]:
+    def find_message_by_id(
+        self, message_id: str, message_id_list: List[DatabaseMessages]
+    ) -> Optional[DatabaseMessages]:
         # sourcery skip: use-next
         """
         根据message_id从message_id_list中查找对应的原始消息
@@ -110,37 +114,37 @@ class ActionPlanner:
             找到的原始消息字典，如果未找到则返回None
         """
         for item in message_id_list:
-            if item.get("id") == message_id:
-                return item.get("message")
+            if item.message_id == message_id:
+                return item
         return None
 
-    def get_latest_message(self, message_id_list: list) -> Optional[Dict[str, Any]]:
+    def get_latest_message(self, message_id_list: List[DatabaseMessages]) -> Optional[DatabaseMessages]:
         """
         获取消息列表中的最新消息
-        
+
         Args:
             message_id_list: 消息ID列表，格式为[{'id': str, 'message': dict}, ...]
-            
+
         Returns:
             最新的消息字典，如果列表为空则返回None
         """
-        return message_id_list[-1].get("message") if message_id_list else None
+        return message_id_list[-1] if message_id_list else None
 
     async def plan(
         self,
         mode: ChatMode = ChatMode.FOCUS,
-        loop_start_time:float = 0.0,
+        loop_start_time: float = 0.0,
         available_actions: Optional[Dict[str, ActionInfo]] = None,
-    ) -> Tuple[List[Dict[str, Any]], Optional[Dict[str, Any]]]:
+    ) -> Tuple[List[ActionPlannerInfo], Optional[DatabaseMessages]]:
         """
         规划器 (Planner): 使用LLM根据上下文决定做出什么动作。
         """
 
-        action = "no_action"  # 默认动作
-        reasoning = "规划器初始化默认"
+        action: str = "no_action"  # 默认动作
+        reasoning: str = "规划器初始化默认"
         action_data = {}
         current_available_actions: Dict[str, ActionInfo] = {}
-        target_message: Optional[Dict[str, Any]] = None  # 初始化target_message变量
+        target_message: Optional[DatabaseMessages] = None  # 初始化target_message变量
         prompt: str = ""
         message_id_list: list = []
 
@@ -208,18 +212,20 @@ class ActionPlanner:
                             # 如果获取的target_message为None，输出warning并重新plan
                             if target_message is None:
                                 self.plan_retry_count += 1
-                                logger.warning(f"{self.log_prefix}无法找到target_message_id '{target_message_id}' 对应的消息，重试次数: {self.plan_retry_count}/{self.max_plan_retries}")
+                                logger.warning(
+                                    f"{self.log_prefix}无法找到target_message_id '{target_message_id}' 对应的消息，重试次数: {self.plan_retry_count}/{self.max_plan_retries}"
+                                )
                                 # 仍有重试次数
                                 if self.plan_retry_count < self.max_plan_retries:
                                     # 递归重新plan
                                     return await self.plan(mode, loop_start_time, available_actions)
-                                logger.error(f"{self.log_prefix}连续{self.max_plan_retries}次plan获取target_message失败，选择最新消息作为target_message")
+                                logger.error(
+                                    f"{self.log_prefix}连续{self.max_plan_retries}次plan获取target_message失败，选择最新消息作为target_message"
+                                )
                                 target_message = self.get_latest_message(message_id_list)
                             self.plan_retry_count = 0  # 重置计数器
                         else:
                             logger.warning(f"{self.log_prefix}动作'{action}'缺少target_message_id")
-
-
 
                     if action != "no_action" and action != "reply" and action not in current_available_actions:
                         logger.warning(
@@ -244,38 +250,37 @@ class ActionPlanner:
         if mode == ChatMode.NORMAL and action in current_available_actions:
             is_parallel = current_available_actions[action].parallel_action
 
-
         action_data["loop_start_time"] = loop_start_time
 
         actions = [
-            {
-                "action_type": action,
-                "reasoning": reasoning,
-                "action_data": action_data,
-                "action_message": target_message,
-                "available_actions": available_actions,
-            }
+            ActionPlannerInfo(
+                action_type=action,
+                reasoning=reasoning,
+                action_data=action_data,
+                action_message=target_message,
+                available_actions=available_actions,
+            )
         ]
 
         if action != "reply" and is_parallel:
-            actions.append({
-                "action_type": "reply",
-                "action_message": target_message,
-                "available_actions": available_actions
-            })
+            actions.append(
+                ActionPlannerInfo(
+                    action_type="reply",
+                    action_message=target_message,
+                    available_actions=available_actions,
+                )
+            )
 
-        return actions,target_message
-    
-    
+        return actions, target_message
 
     async def build_planner_prompt(
         self,
         is_group_chat: bool,  # Now passed as argument
         chat_target_info: Optional[dict],  # Now passed as argument
         current_available_actions: Dict[str, ActionInfo],
-        refresh_time :bool = False,
+        refresh_time: bool = False,
         mode: ChatMode = ChatMode.FOCUS,
-    ) -> tuple[str, list]:  # sourcery skip: use-join
+    ) -> tuple[str, List[DatabaseMessages]]:  # sourcery skip: use-join
         """构建 Planner LLM 的提示词 (获取模板并填充数据)"""
         try:
             message_list_before_now = get_raw_msg_before_timestamp_with_chat(
@@ -305,13 +310,12 @@ class ActionPlanner:
             actions_before_now_block = f"你刚刚选择并执行过的action是：\n{actions_before_now_block}"
             if refresh_time:
                 self.last_obs_time_mark = time.time()
-            
+
             mentioned_bonus = ""
             if global_config.chat.mentioned_bot_inevitable_reply:
                 mentioned_bonus = "\n- 有人提到你"
             if global_config.chat.at_bot_inevitable_reply:
                 mentioned_bonus = "\n- 有人提到你，或者at你"
-            
 
             if mode == ChatMode.FOCUS:
                 no_action_block = """
@@ -332,7 +336,7 @@ class ActionPlanner:
 """
 
             chat_context_description = "你现在正在一个群聊中"
-            chat_target_name = None 
+            chat_target_name = None
             if not is_group_chat and chat_target_info:
                 chat_target_name = (
                     chat_target_info.get("person_name") or chat_target_info.get("user_nickname") or "对方"
@@ -388,7 +392,7 @@ class ActionPlanner:
                 action_options_text=action_options_block,
                 moderation_prompt=moderation_prompt_block,
                 identity_block=identity_block,
-                plan_style = global_config.personality.plan_style
+                plan_style=global_config.personality.plan_style,
             )
             return prompt, message_id_list
         except Exception as e:

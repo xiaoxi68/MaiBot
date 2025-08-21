@@ -2,6 +2,7 @@ from typing import Dict, Optional, Type
 
 from src.chat.message_receive.chat_stream import ChatStream
 from src.common.logger import get_logger
+from src.common.data_models.database_data_model import DatabaseMessages
 from src.plugin_system.core.component_registry import component_registry
 from src.plugin_system.base.component_types import ComponentType, ActionInfo
 from src.plugin_system.base.base_action import BaseAction
@@ -37,7 +38,7 @@ class ActionManager:
         chat_stream: ChatStream,
         log_prefix: str,
         shutting_down: bool = False,
-        action_message: Optional[dict] = None,
+        action_message: Optional[DatabaseMessages] = None,
     ) -> Optional[BaseAction]:
         """
         创建动作处理器实例
@@ -83,7 +84,7 @@ class ActionManager:
                 log_prefix=log_prefix,
                 shutting_down=shutting_down,
                 plugin_config=plugin_config,
-                action_message=action_message,
+                action_message=action_message.flatten() if action_message else None,
             )
 
             logger.debug(f"创建Action实例成功: {action_name}")

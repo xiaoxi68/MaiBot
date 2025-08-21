@@ -1,4 +1,4 @@
-from typing import Optional, Any
+from typing import Optional, Any, Dict
 from dataclasses import dataclass, field
 
 from . import BaseDataModel
@@ -157,3 +157,42 @@ class DatabaseMessages(BaseDataModel):
     #     assert isinstance(self.interest_value, float) or self.interest_value is None, (
     #         "interest_value must be a float or None"
     #     )
+    def flatten(self) -> Dict[str, Any]:
+        """
+        将消息数据模型转换为字典格式，便于存储或传输
+        """
+        return {
+            "message_id": self.message_id,
+            "time": self.time,
+            "chat_id": self.chat_id,
+            "reply_to": self.reply_to,
+            "interest_value": self.interest_value,
+            "key_words": self.key_words,
+            "key_words_lite": self.key_words_lite,
+            "is_mentioned": self.is_mentioned,
+            "processed_plain_text": self.processed_plain_text,
+            "display_message": self.display_message,
+            "priority_mode": self.priority_mode,
+            "priority_info": self.priority_info,
+            "additional_config": self.additional_config,
+            "is_emoji": self.is_emoji,
+            "is_picid": self.is_picid,
+            "is_command": self.is_command,
+            "is_notify": self.is_notify,
+            "selected_expressions": self.selected_expressions,
+            "user_id": self.user_info.user_id,
+            "user_nickname": self.user_info.user_nickname,
+            "user_cardname": self.user_info.user_cardname,
+            "user_platform": self.user_info.platform,
+            "chat_info_group_id": self.group_info.group_id if self.group_info else None,
+            "chat_info_group_name": self.group_info.group_name if self.group_info else None,
+            "chat_info_group_platform": self.group_info.group_platform if self.group_info else None,
+            "chat_info_stream_id": self.chat_info.stream_id,
+            "chat_info_platform": self.chat_info.platform,
+            "chat_info_create_time": self.chat_info.create_time,
+            "chat_info_last_active_time": self.chat_info.last_active_time,
+            "chat_info_user_platform": self.chat_info.user_info.platform,
+            "chat_info_user_id": self.chat_info.user_info.user_id,
+            "chat_info_user_nickname": self.chat_info.user_info.user_nickname,
+            "chat_info_user_cardname": self.chat_info.user_info.user_cardname,
+        }
