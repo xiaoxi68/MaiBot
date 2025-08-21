@@ -42,15 +42,6 @@ class EventsManager:
         self._handler_mapping[handler_name] = handler_class
         return self._insert_event_handler(handler_class, handler_info)
 
-    def _task_done_callback(self, task: asyncio.Task):
-        """统一处理异步任务完成后的回调，例如记录异常。"""
-        try:
-            task.result()
-        except asyncio.CancelledError:
-            logger.warning(f"任务 {task.get_name()} 被取消。")
-        except Exception as e:
-            logger.error(f"异步事件处理器任务 {task.get_name()} 发生未捕获异常: {e}", exc_info=True)
-
     def _prepare_message(
         self,
         event_type: EventType,
