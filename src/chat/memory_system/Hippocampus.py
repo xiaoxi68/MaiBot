@@ -1438,6 +1438,7 @@ class HippocampusManager:
             response, keywords, keywords_lite = await self._hippocampus.get_activate_from_text(
                 text, max_depth, fast_retrieval
             )
+            return response, keywords, keywords_lite
         except Exception as e:
             logger.error(f"文本产生激活值失败: {e}")
             logger.error(traceback.format_exc())
