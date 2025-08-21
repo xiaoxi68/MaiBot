@@ -166,13 +166,10 @@ class ChatMood:
             limit=10,
             limit_mode="last",
         )
-        # TODO: 修复！
-        from src.common.data_models import temporarily_transform_class_to_dict
-        tmp_msgs = [temporarily_transform_class_to_dict(msg) for msg in message_list_before_now]
+
         chat_talking_prompt = build_readable_messages(
-            tmp_msgs,
+            message_list_before_now,
             replace_bot_name=True,
-            merge_messages=False,
             timestamp_mode="normal_no_YMD",
             read_mark=0.0,
             truncate=True,
@@ -248,13 +245,10 @@ class ChatMood:
             limit=5,
             limit_mode="last",
         )
-        # TODO: 修复！
-        from src.common.data_models import temporarily_transform_class_to_dict
-        tmp_msgs = [temporarily_transform_class_to_dict(msg) for msg in message_list_before_now]
+
         chat_talking_prompt = build_readable_messages(
-            tmp_msgs,
+            message_list_before_now,
             replace_bot_name=True,
-            merge_messages=False,
             timestamp_mode="normal_no_YMD",
             read_mark=0.0,
             truncate=True,

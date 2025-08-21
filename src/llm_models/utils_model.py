@@ -195,7 +195,7 @@ class LLMRequest:
         
         if not content:
             if raise_when_empty:
-                logger.warning("生成的响应为空")
+                logger.warning(f"生成的响应为空, 请求类型: {self.request_type}")
                 raise RuntimeError("生成的响应为空")
             content = "生成的响应为空，请检查模型配置或输入内容是否正确"
 
@@ -248,7 +248,11 @@ class LLMRequest:
         )
         model_info = model_config.get_model_info(least_used_model_name)
         api_provider = model_config.get_provider(model_info.api_provider)
-        client = client_registry.get_client_class_instance(api_provider)
+        
+        # 对于嵌入任务，强制创建新的客户端实例以避免事件循环问题
+        force_new_client = (self.request_type == "embedding")
+        client = client_registry.get_client_class_instance(api_provider, force_new=force_new_client)
+        
         logger.debug(f"选择请求模型: {model_info.name}")
         total_tokens, penalty, usage_penalty = self.model_usage[model_info.name]
         self.model_usage[model_info.name] = (total_tokens, penalty, usage_penalty + 1)  # 增加使用惩罚值防止连续使用
