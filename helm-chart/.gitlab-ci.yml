@@ -8,10 +8,7 @@ build-adapter-cm-generator:
   image: reg.mikumikumi.xyz/base/kaniko-builder:latest
   rules:
     - changes:
-        - helm-chart/files/**
-        - helm-chart/templates/**
-        - helm-chart/Chart.yaml
-        - helm-chart/values.yaml
+        - helm-chart/adapter-cm-generator/**
   variables:
     BUILD_CONTEXT: helm-chart/adapter-cm-generator
     BUILD_DESTINATION: reg.mikumikumi.xyz/maibot/adapter-cm-generator
@@ -28,7 +25,10 @@ package-helm-chart:
   image: reg.mikumikumi.xyz/mirror/helm:latest
   rules:
     - changes:
-        - helm-chart/adapter-cm-generator/**
+        - helm-chart/files/**
+        - helm-chart/templates/**
+        - helm-chart/Chart.yaml
+        - helm-chart/values.yaml
   script:
     - export CHART_VERSION=$(cat helm-chart/Chart.yaml | grep version | cut -d' ' -f2)
     - helm registry login reg.mikumikumi.xyz --username ${CI_REGISTRY_USER} --password ${CI_REGISTRY_PASSWORD}
