@@ -79,9 +79,7 @@ class EventsManager:
         message: Optional[MaiMessages]
     ) -> Coroutine[Any, Any, tuple[bool, bool, Any]]:
         """封装了调用 handler.execute 的逻辑。"""
-        if message:
-            return handler.execute(message)
-        return handler.execute() # 适用于 ON_START, ON_STOP
+        return handler.execute(message) if message else handler.execute()
         
     def _dispatch_handler_task(self, handler: BaseEventHandler, message: Optional[MaiMessages]):
         """分发一个非阻塞（异步）的事件处理任务。"""
