@@ -168,12 +168,12 @@ async def generate_reply(
 
     except UserWarning as uw:
         logger.warning(f"[GeneratorAPI] 中断了生成: {uw}")
-        return False, [], None
+        return False, [], None, None
 
     except Exception as e:
         logger.error(f"[GeneratorAPI] 生成回复时出错: {e}")
         logger.error(traceback.format_exc())
-        return False, [], None
+        return False, [], None, None
 
 
 async def rewrite_reply(
