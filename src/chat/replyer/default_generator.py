@@ -640,7 +640,7 @@ class DefaultReplyer:
 
         action_descriptions = ""
         if available_actions:
-            action_descriptions = "你可以做以下这些动作：\n"
+            action_descriptions = "除了进行回复之外，你可以做以下这些动作，不过这些动作由另一个模型决定，：\n"
             for action_name, action_info in available_actions.items():
                 action_description = action_info.description
                 action_descriptions += f"- {action_name}: {action_description}\n"
@@ -658,7 +658,7 @@ class DefaultReplyer:
                 choosen_action_descriptions += f"- {action_name}: {action_description}，原因：{reasoning}\n"
 
         if choosen_action_descriptions:
-            action_descriptions += "根据聊天情况，你决定在回复的同时做以下这些动作：\n"
+            action_descriptions += "根据聊天情况，另一个模型决定在回复的同时做以下这些动作：\n"
             action_descriptions += choosen_action_descriptions
 
         return action_descriptions

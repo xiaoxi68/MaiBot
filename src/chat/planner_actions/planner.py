@@ -33,6 +33,9 @@ def init_prompt():
 {time_block}
 {identity_block}
 你现在需要根据聊天内容，选择的合适的action来参与聊天。
+请你根据以下行事风格来决定action:
+{plan_style}
+
 {chat_context_description}，以下是具体的聊天内容
 {chat_content_block}
 
@@ -388,6 +391,7 @@ class ActionPlanner:
                 action_options_text=action_options_block,
                 moderation_prompt=moderation_prompt_block,
                 identity_block=identity_block,
+                plan_style = global_config.personality.plan_style
             )
             return prompt, message_id_list
         except Exception as e:
