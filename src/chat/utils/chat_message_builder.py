@@ -19,8 +19,8 @@ install(extra_lines=3)
 logger = get_logger("chat_message_builder")
 
 
-def replace_user_references_sync(
-    content: str,
+def replace_user_references(
+    content: Optional[str],
     platform: str,
     name_resolver: Optional[Callable[[str, str], str]] = None,
     replace_bot_name: bool = True,
@@ -38,6 +38,8 @@ def replace_user_references_sync(
     Returns:
         str: 处理后的内容字符串
     """
+    if not content:
+        return ""
     if name_resolver is None:
 
         def default_resolver(platform: str, user_id: str) -> str:
@@ -82,80 +84,6 @@ def replace_user_references_sync(
                     at_person_name = f"{global_config.bot.nickname}(你)"
                 else:
                     at_person_name = name_resolver(platform, bbb) or aaa
-                new_content += f"@{at_person_name}"
-            except Exception:
-                # 如果解析失败，使用原始昵称
-                new_content += f"@{aaa}"
-            last_end = m.end()
-        new_content += content[last_end:]
-        content = new_content
-
-    return content
-
-
-async def replace_user_references_async(
-    content: str,
-    platform: str,
-    name_resolver: Optional[Callable[[str, str], Any]] = None,
-    replace_bot_name: bool = True,
-) -> str:
-    """
-    替换内容中的用户引用格式，包括回复<aaa:bbb>和@<aaa:bbb>格式
-
-    Args:
-        content: 要处理的内容字符串
-        platform: 平台标识
-        name_resolver: 名称解析函数，接收(platform, user_id)参数，返回用户名称
-                       如果为None，则使用默认的person_info_manager
-        replace_bot_name: 是否将机器人的user_id替换为"机器人昵称(你)"
-
-    Returns:
-        str: 处理后的内容字符串
-    """
-    if name_resolver is None:
-
-        async def default_resolver(platform: str, user_id: str) -> str:
-            # 检查是否是机器人自己
-            if replace_bot_name and user_id == global_config.bot.qq_account:
-                return f"{global_config.bot.nickname}(你)"
-            person = Person(platform=platform, user_id=user_id)
-            return person.person_name or user_id  # type: ignore
-
-        name_resolver = default_resolver
-
-    # 处理回复<aaa:bbb>格式
-    reply_pattern = r"回复<([^:<>]+):([^:<>]+)>"
-    match = re.search(reply_pattern, content)
-    if match:
-        aaa = match.group(1)
-        bbb = match.group(2)
-        try:
-            # 检查是否是机器人自己
-            if replace_bot_name and bbb == global_config.bot.qq_account:
-                reply_person_name = f"{global_config.bot.nickname}(你)"
-            else:
-                reply_person_name = await name_resolver(platform, bbb) or aaa
-            content = re.sub(reply_pattern, f"回复 {reply_person_name}", content, count=1)
-        except Exception:
-            # 如果解析失败，使用原始昵称
-            content = re.sub(reply_pattern, f"回复 {aaa}", content, count=1)
-
-    # 处理@<aaa:bbb>格式
-    at_pattern = r"@<([^:<>]+):([^:<>]+)>"
-    at_matches = list(re.finditer(at_pattern, content))
-    if at_matches:
-        new_content = ""
-        last_end = 0
-        for m in at_matches:
-            new_content += content[last_end : m.start()]
-            aaa = m.group(1)
-            bbb = m.group(2)
-            try:
-                # 检查是否是机器人自己
-                if replace_bot_name and bbb == global_config.bot.qq_account:
-                    at_person_name = f"{global_config.bot.nickname}(你)"
-                else:
-                    at_person_name = await name_resolver(platform, bbb) or aaa
                 new_content += f"@{at_person_name}"
             except Exception:
                 # 如果解析失败，使用原始昵称
@@ -498,7 +426,7 @@ def _build_readable_messages_internal(
             person_name = f"{global_config.bot.nickname}(你)"
 
         # 使用独立函数处理用户引用格式
-        if content := replace_user_references_sync(content, platform, replace_bot_name=replace_bot_name):
+        if content := replace_user_references(content, platform, replace_bot_name=replace_bot_name):
             detailed_messages_raw.append((timestamp, person_name, content, False))
 
     if not detailed_messages_raw:
@@ -942,7 +870,7 @@ async def build_anonymous_messages(messages: List[DatabaseMessages]) -> str:
                 except Exception:
                     return "?"
 
-            content = replace_user_references_sync(content, platform, anon_name_resolver, replace_bot_name=False)
+            content = replace_user_references(content, platform, anon_name_resolver, replace_bot_name=False)
 
             header = f"{anon_name}说 "
             output_lines.append(header)

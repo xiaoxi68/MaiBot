@@ -22,7 +22,7 @@ from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.utils.chat_message_builder import (
     build_readable_messages,
     get_raw_msg_before_timestamp_with_chat,
-    replace_user_references_sync,
+    replace_user_references,
 )
 from src.chat.express.expression_selector import expression_selector
 from src.chat.memory_system.memory_activator import MemoryActivator
@@ -717,7 +717,7 @@ class DefaultReplyer:
         else:
             mood_prompt = ""
 
-        target = replace_user_references_sync(target, chat_stream.platform, replace_bot_name=True)
+        target = replace_user_references(target, chat_stream.platform, replace_bot_name=True)
 
         message_list_before_now_long = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_id,
