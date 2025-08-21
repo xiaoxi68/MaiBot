@@ -31,6 +31,6 @@ package-helm-chart:
         - helm-chart/adapter-cm-generator/**
   script:
     - export CHART_VERSION=$(cat helm-chart/Chart.yaml | grep version | cut -d' ' -f2)
-    - helm registry login reg.mikumikumi.xyz --username ${HARBOR_USERNAME} --password ${HARBOR_PASSWORD}
+    - helm registry login reg.mikumikumi.xyz --username ${CI_REGISTRY_USER} --password ${CI_REGISTRY_PASSWORD}
     - helm package helm-chart
     - helm push maibot-${CHART_VERSION}.tgz oci://reg.mikumikumi.xyz/maibot
