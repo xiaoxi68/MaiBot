@@ -103,7 +103,7 @@ class HeartFChatting:
         self.reply_timeout_count = 0
         self.plan_timeout_count = 0
 
-        self.last_read_time = time.time() - 1
+        self.last_read_time = time.time() - 10
 
         self.focus_energy = 1
         self.no_action_consecutive = 0
@@ -269,7 +269,7 @@ class HeartFChatting:
         return False, 0.0
 
     async def _loopbody(self):
-        recent_messages_dict = message_api.get_messages_by_time_in_chat(
+        recent_messages_list = message_api.get_messages_by_time_in_chat(
             chat_id=self.stream_id,
             start_time=self.last_read_time,
             end_time=time.time(),
@@ -279,7 +279,7 @@ class HeartFChatting:
             filter_command=True,
         )
         # 统一的消息处理逻辑
-        should_process, interest_value = await self._should_process_messages(recent_messages_dict)
+        should_process, interest_value = await self._should_process_messages(recent_messages_list)
 
         if should_process:
             self.last_read_time = time.time()
