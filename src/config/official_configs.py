@@ -46,6 +46,8 @@ class PersonalityConfig(ConfigBase):
 
     reply_style: str = ""
     """表达风格"""
+    
+    plan_style: str = ""
 
     compress_personality: bool = True
     """是否压缩人格，压缩后会精简人格信息，节省token消耗并提高回复性能，但是会丢失一些信息，如果人设不长，可以关闭"""

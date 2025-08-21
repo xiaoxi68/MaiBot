@@ -1,17 +1,20 @@
+import json
+import traceback
+
+from json_repair import repair_json
+from datetime import datetime
+from typing import List
+
 from src.common.logger import get_logger
-from .person_info import Person
-import random
+from src.common.data_models.database_data_model import DatabaseMessages
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config, model_config
 from src.chat.utils.chat_message_builder import build_readable_messages
-import json
-from json_repair import repair_json
-from datetime import datetime
-from typing import List, Dict, Any
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
-import traceback
+from .person_info import Person
 
 logger = get_logger("relation")
+
 
 def init_prompt():
     Prompt(
@@ -45,8 +48,7 @@ def init_prompt():
 """,
         "attitude_to_me_prompt",
     )
-    
-    
+
     Prompt(
         """
 你的名字是{bot_name}，{bot_name}的别名是{alias_str}。
@@ -80,104 +82,102 @@ def init_prompt():
         "neuroticism_prompt",
     )
 
+
 class RelationshipManager:
     def __init__(self):
         self.relationship_llm = LLMRequest(
             model_set=model_config.model_task_config.utils, request_type="relationship.person"
-        ) 
-    
+        )
+
     async def get_attitude_to_me(self, readable_messages, timestamp, person: Person):
         alias_str = ", ".join(global_config.bot.alias_names)
         current_time = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
         # 解析当前态度值
         current_attitude_score = person.attitude_to_me
         total_confidence = person.attitude_to_me_confidence
-        
+
         prompt = await global_prompt_manager.format_prompt(
             "attitude_to_me_prompt",
-            bot_name = global_config.bot.nickname,
-            alias_str = alias_str,
-            person_name = person.person_name,
-            nickname = person.nickname,
-            readable_messages = readable_messages,
-            current_time = current_time,
+            bot_name=global_config.bot.nickname,
+            alias_str=alias_str,
+            person_name=person.person_name,
+            nickname=person.nickname,
+            readable_messages=readable_messages,
+            current_time=current_time,
         )
-        
+
         attitude, _ = await self.relationship_llm.generate_response_async(prompt=prompt)
-
-
 
         attitude = repair_json(attitude)
         attitude_data = json.loads(attitude)
-        
+
         if not attitude_data or (isinstance(attitude_data, list) and len(attitude_data) == 0):
             return ""
-        
+
         # 确保 attitude_data 是字典格式
         if not isinstance(attitude_data, dict):
             logger.warning(f"LLM返回了错误的JSON格式，跳过解析: {type(attitude_data)}, 内容: {attitude_data}")
             return ""
-        
+
         attitude_score = attitude_data["attitude"]
-        confidence = pow(attitude_data["confidence"],2)
-        
+        confidence = pow(attitude_data["confidence"], 2)
+
         new_confidence = total_confidence + confidence
-        new_attitude_score = (current_attitude_score * total_confidence + attitude_score * confidence)/new_confidence
-        
+        new_attitude_score = (current_attitude_score * total_confidence + attitude_score * confidence) / new_confidence
+
         person.attitude_to_me = new_attitude_score
         person.attitude_to_me_confidence = new_confidence
-        
+
         return person
-    
+
     async def get_neuroticism(self, readable_messages, timestamp, person: Person):
         alias_str = ", ".join(global_config.bot.alias_names)
         current_time = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
         # 解析当前态度值
         current_neuroticism_score = person.neuroticism
         total_confidence = person.neuroticism_confidence
-        
+
         prompt = await global_prompt_manager.format_prompt(
             "neuroticism_prompt",
-            bot_name = global_config.bot.nickname,
-            alias_str = alias_str,
-            person_name = person.person_name,
-            nickname = person.nickname,
-            readable_messages = readable_messages,
-            current_time = current_time,
+            bot_name=global_config.bot.nickname,
+            alias_str=alias_str,
+            person_name=person.person_name,
+            nickname=person.nickname,
+            readable_messages=readable_messages,
+            current_time=current_time,
         )
-        
-        neuroticism, _ = await self.relationship_llm.generate_response_async(prompt=prompt)
 
+        neuroticism, _ = await self.relationship_llm.generate_response_async(prompt=prompt)
 
         # logger.info(f"prompt: {prompt}")
         # logger.info(f"neuroticism: {neuroticism}")
 
-
         neuroticism = repair_json(neuroticism)
         neuroticism_data = json.loads(neuroticism)
-        
+
         if not neuroticism_data or (isinstance(neuroticism_data, list) and len(neuroticism_data) == 0):
             return ""
-        
+
         # 确保 neuroticism_data 是字典格式
         if not isinstance(neuroticism_data, dict):
             logger.warning(f"LLM返回了错误的JSON格式，跳过解析: {type(neuroticism_data)}, 内容: {neuroticism_data}")
             return ""
-        
+
         neuroticism_score = neuroticism_data["neuroticism"]
-        confidence = pow(neuroticism_data["confidence"],2)
-        
+        confidence = pow(neuroticism_data["confidence"], 2)
+
         new_confidence = total_confidence + confidence
-        
-        new_neuroticism_score = (current_neuroticism_score * total_confidence + neuroticism_score * confidence)/new_confidence
-        
+
+        new_neuroticism_score = (
+            current_neuroticism_score * total_confidence + neuroticism_score * confidence
+        ) / new_confidence
+
         person.neuroticism = new_neuroticism_score
         person.neuroticism_confidence = new_confidence
-        
-        return person
-        
 
-    async def update_person_impression(self, person_id, timestamp, bot_engaged_messages: List[Dict[str, Any]]):
+        return person
+
+    async def update_person_impression(self, person_id, timestamp, bot_engaged_messages: List[DatabaseMessages]):
         """更新用户印象
 
         Args:
@@ -202,12 +202,11 @@ class RelationshipManager:
 
         # 遍历消息，构建映射
         for msg in user_messages:
-            if msg.get("user_id") == "system":
+            if msg.user_info.user_id == "system":
                 continue
             try:
-
-                user_id = msg.get("user_id")
-                platform = msg.get("chat_info_platform")
+                user_id = msg.user_info.user_id
+                platform = msg.chat_info.platform
                 assert isinstance(user_id, str) and isinstance(platform, str)
                 msg_person = Person(user_id=user_id, platform=platform)
 
@@ -242,19 +241,16 @@ class RelationshipManager:
             # 确保 original_name 和 mapped_name 都不为 None
             if original_name is not None and mapped_name is not None:
                 readable_messages = readable_messages.replace(f"{original_name}", f"{mapped_name}")
-        
+
         # await self.get_points(
-            # readable_messages=readable_messages, name_mapping=name_mapping, timestamp=timestamp, person=person)
+        # readable_messages=readable_messages, name_mapping=name_mapping, timestamp=timestamp, person=person)
         await self.get_attitude_to_me(readable_messages=readable_messages, timestamp=timestamp, person=person)
         await self.get_neuroticism(readable_messages=readable_messages, timestamp=timestamp, person=person)
 
         person.know_times = know_times + 1
         person.last_know = timestamp
-            
-        person.sync_to_database()
-        
-        
 
+        person.sync_to_database()
 
     def calculate_time_weight(self, point_time: str, current_time: str) -> float:
         """计算基于时间的权重系数"""
@@ -280,6 +276,7 @@ class RelationshipManager:
             logger.error(f"计算时间权重失败: {e}")
             return 0.5  # 发生错误时返回中等权重
 
+
 init_prompt()
 
 relationship_manager = None
@@ -290,4 +287,3 @@ def get_relationship_manager():
     if relationship_manager is None:
         relationship_manager = RelationshipManager()
     return relationship_manager
-
