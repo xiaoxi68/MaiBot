@@ -401,7 +401,7 @@ class Hippocampus:
         memories.sort(key=lambda x: x[2], reverse=True)
         return memories
 
-    async def get_keywords_from_text(self, text: str) -> list:
+    async def get_keywords_from_text(self, text: str) -> Tuple[List[str], List]:
         """从文本中提取关键词。
 
         Args:
@@ -1430,7 +1430,7 @@ class HippocampusManager:
 
     async def get_activate_from_text(
         self, text: str, max_depth: int = 3, fast_retrieval: bool = False
-    ) -> tuple[float, list[str]]:
+    ) -> tuple[float, list[str], list[str]]:
         """从文本中获取激活值的公共接口"""
         if not self._initialized:
             raise RuntimeError("HippocampusManager 尚未初始化，请先调用 initialize 方法")

@@ -127,7 +127,7 @@ async def generate_reply(
         success, llm_response_dict, prompt, selected_expressions = await replyer.generate_reply_with_context(
             extra_info=extra_info,
             available_actions=available_actions,
-            choosen_actions=choosen_actions,
+            chosen_actions=choosen_actions,
             enable_tool=enable_tool,
             reply_message=reply_message,
             reply_reason=reply_reason,

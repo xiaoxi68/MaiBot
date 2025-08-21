@@ -157,7 +157,7 @@ class DefaultReplyer:
         extra_info: str = "",
         reply_reason: str = "",
         available_actions: Optional[Dict[str, ActionInfo]] = None,
-        choosen_actions: Optional[List[Dict[str, Any]]] = None,
+        chosen_actions: Optional[List[Dict[str, Any]]] = None,
         enable_tool: bool = True,
         from_plugin: bool = True,
         stream_id: Optional[str] = None,
@@ -172,7 +172,7 @@ class DefaultReplyer:
             extra_info: 额外信息，用于补充上下文
             reply_reason: 回复原因
             available_actions: 可用的动作信息字典
-            choosen_actions: 已选动作
+            chosen_actions: 已选动作
             enable_tool: 是否启用工具调用
             from_plugin: 是否来自插件
 
@@ -190,7 +190,7 @@ class DefaultReplyer:
                 prompt, selected_expressions = await self.build_prompt_reply_context(
                     extra_info=extra_info,
                     available_actions=available_actions,
-                    choosen_actions=choosen_actions,
+                    chosen_actions=chosen_actions,
                     enable_tool=enable_tool,
                     reply_message=reply_message,
                     reply_reason=reply_reason,
@@ -668,7 +668,7 @@ class DefaultReplyer:
         extra_info: str = "",
         reply_reason: str = "",
         available_actions: Optional[Dict[str, ActionInfo]] = None,
-        choosen_actions: Optional[List[Dict[str, Any]]] = None,
+        chosen_actions: Optional[List[Dict[str, Any]]] = None,
         enable_tool: bool = True,
         reply_message: Optional[Dict[str, Any]] = None,
     ) -> Tuple[str, List[int]]:
@@ -679,7 +679,7 @@ class DefaultReplyer:
             extra_info: 额外信息，用于补充上下文
             reply_reason: 回复原因
             available_actions: 可用动作
-            choosen_actions: 已选动作
+            chosen_actions: 已选动作
             enable_timeout: 是否启用超时处理
             enable_tool: 是否启用工具调用
             reply_message: 回复的原始消息
@@ -743,7 +743,7 @@ class DefaultReplyer:
                 self.build_tool_info(chat_talking_prompt_short, sender, target, enable_tool=enable_tool), "tool_info"
             ),
             self._time_and_run_task(self.get_prompt_info(chat_talking_prompt_short, sender, target), "prompt_info"),
-            self._time_and_run_task(self.build_actions_prompt(available_actions, choosen_actions), "actions_info"),
+            self._time_and_run_task(self.build_actions_prompt(available_actions, chosen_actions), "actions_info"),
         )
 
         # 任务名称中英文映射
@@ -804,22 +804,6 @@ class DefaultReplyer:
         else:
             reply_target_block = ""
 
-        # if is_group_chat:
-        #     chat_target_1 = await global_prompt_manager.get_prompt_async("chat_target_group1")
-        #     chat_target_2 = await global_prompt_manager.get_prompt_async("chat_target_group2")
-        # else:
-        #     chat_target_name = "对方"
-        #     if self.chat_target_info:
-        #         chat_target_name = (
-        #             self.chat_target_info.get("person_name") or self.chat_target_info.get("user_nickname") or "对方"
-        #         )
-        #     chat_target_1 = await global_prompt_manager.format_prompt(
-        #         "chat_target_private1", sender_name=chat_target_name
-        #     )
-        #     chat_target_2 = await global_prompt_manager.format_prompt(
-        #         "chat_target_private2", sender_name=chat_target_name
-        #     )
-
         # 构建分离的对话 prompt
         core_dialogue_prompt, background_dialogue_prompt = self.build_s4u_chat_history_prompts(
             message_list_before_now_long, user_id, sender
@@ -873,7 +857,7 @@ class DefaultReplyer:
         reason: str,
         reply_to: str,
         reply_message: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[str, List[int]]:  # sourcery skip: merge-else-if-into-elif, remove-redundant-if
+    ) -> str:  # sourcery skip: merge-else-if-into-elif, remove-redundant-if
         chat_stream = self.chat_stream
         chat_id = chat_stream.stream_id
         is_group_chat = bool(chat_stream.group_info)
