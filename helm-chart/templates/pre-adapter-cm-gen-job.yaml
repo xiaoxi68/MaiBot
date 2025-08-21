@@ -14,13 +14,9 @@ spec:
       serviceAccountName: {{ .Release.Name }}-maibot-adapter-cm-generator
       restartPolicy: Never
       containers:
-        - name: python
-          image: python:slim
+        - name: adapter-cm-generator
+          image: {{ .Values.adapter.cm_generator.image.repository }}:{{ .Values.adapter.cm_generator.image.tag }}
           workingDir: /app
-          command:
-            - sh
-          args:
-            - adapter-pip-installer.sh
           env:
             - name: PYTHONUNBUFFERED
               value: "1"
@@ -32,21 +28,3 @@ spec:
               value: {{ .Release.Name }}
             - name: DATA_B64
               value: {{ .Values.config.adapter_config | b64enc }}  # 将配置文件编码为base64，从环境变量注入
-          volumeMounts:
-            - mountPath: /app/adapter-pip-installer.sh
-              name: scripts
-              readOnly: true
-              subPath: adapter-pip-installer.sh
-            - mountPath: /app/adapter-cm-generator.py
-              name: scripts
-              readOnly: true
-              subPath: adapter-cm-generator.py
-      volumes:
-        - name: scripts
-          configMap:
-            name: {{ .Release.Name }}-maibot-scripts
-            items:
-              - key: adapter-pip-installer.sh
-                path: adapter-pip-installer.sh
-              - key: adapter-cm-generator.py
-                path: adapter-cm-generator.py

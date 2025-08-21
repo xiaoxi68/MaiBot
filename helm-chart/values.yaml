@@ -34,6 +34,15 @@ adapter:
       - ReadWriteOnce
     size: 1Gi
 
+  # adapter的动态生成configmap的Job的配置
+  cm_generator:
+    image:
+      repository: reg.mikumikumi.xyz/maibot/adapter-cm-generator
+      tag: 0.10.0-alpha.0
+      pullPolicy: IfNotPresent
+      pullSecrets: [ ]
+
+
 # 麦麦本体的部署配置
 core:
 
