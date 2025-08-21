@@ -237,6 +237,12 @@ if __name__ == "__main__":
         logger.error(f"主程序发生异常: {str(e)} {str(traceback.format_exc())}")
         exit_code = 1  # 标记发生错误
     finally:
+        # 触发 ON_STOP 事件
+        from src.plugin_system.core.events_manager import events_manager
+        from src.plugin_system.base.component_types import EventType      
+        asyncio.run(events_manager.handle_mai_events(event_type=EventType.ON_STOP))     
+        # logger.info("已触发 ON_STOP 事件")
+
         # 确保 loop 在任何情况下都尝试关闭（如果存在且未关闭）
         if "loop" in locals() and loop and not loop.is_closed():
             loop.close()

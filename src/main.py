@@ -86,6 +86,14 @@ class MainSystem:
 
         # 加载所有actions，包括默认的和插件的
         plugin_manager.load_all_plugins()
+        
+        # 触发 ON_START 事件
+        from src.plugin_system.core.events_manager import events_manager
+        from src.plugin_system.base.component_types import EventType
+        await events_manager.handle_mai_events(
+            event_type=EventType.ON_START
+        )
+        # logger.info("已触发 ON_START 事件")
 
         # 初始化表情管理器
         get_emoji_manager().initialize()
