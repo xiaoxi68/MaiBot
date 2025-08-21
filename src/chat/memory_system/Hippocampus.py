@@ -30,9 +30,7 @@ def cosine_similarity(v1, v2):
     dot_product = np.dot(v1, v2)
     norm1 = np.linalg.norm(v1)
     norm2 = np.linalg.norm(v2)
-    if norm1 == 0 or norm2 == 0:
-        return 0
-    return dot_product / (norm1 * norm2)
+    return 0 if norm1 == 0 or norm2 == 0 else dot_product / (norm1 * norm2)
 
 
 install(extra_lines=3)
@@ -142,11 +140,10 @@ class MemoryGraph:
         # 获取当前节点的记忆项
         node_data = self.get_dot(topic)
         if node_data:
-            concept, data = node_data
+            _, data = node_data
             if "memory_items" in data:
-                memory_items = data["memory_items"]
                 # 直接使用完整的记忆内容
-                if memory_items:
+                if memory_items := data["memory_items"]:
                     first_layer_items.append(memory_items)
 
         # 只在depth=2时获取第二层记忆
@@ -154,11 +151,10 @@ class MemoryGraph:
             # 获取相邻节点的记忆项
             for neighbor in neighbors:
                 if node_data := self.get_dot(neighbor):
-                    concept, data = node_data
+                    _, data = node_data
                     if "memory_items" in data:
-                        memory_items = data["memory_items"]
                         # 直接使用完整的记忆内容
-                        if memory_items:
+                        if memory_items := data["memory_items"]:
                             second_layer_items.append(memory_items)
 
         return first_layer_items, second_layer_items
@@ -224,27 +220,17 @@ class MemoryGraph:
         # 获取话题节点数据
         node_data = self.G.nodes[topic]
 
+        # 删除整个节点
+        self.G.remove_node(topic)
         # 如果节点存在memory_items
         if "memory_items" in node_data:
-            memory_items = node_data["memory_items"]
-
-            # 既然每个节点现在是一个完整的记忆内容，直接删除整个节点
-            if memory_items:
-                # 删除整个节点
-                self.G.remove_node(topic)
+            if memory_items := node_data["memory_items"]:
                 return (
                     f"删除了节点 {topic} 的完整记忆: {memory_items[:50]}..."
                     if len(memory_items) > 50
                     else f"删除了节点 {topic} 的完整记忆: {memory_items}"
                 )
-            else:
-                # 如果没有记忆项，删除该节点
-                self.G.remove_node(topic)
-                return None
-        else:
-            # 如果没有memory_items字段，删除该节点
-            self.G.remove_node(topic)
-            return None
+        return None
 
 
 # 海马体
@@ -392,9 +378,8 @@ class Hippocampus:
             # 如果相似度超过阈值，获取该节点的记忆
             if similarity >= 0.3:  # 可以调整这个阈值
                 node_data = self.memory_graph.G.nodes[node]
-                memory_items = node_data.get("memory_items", "")
                 # 直接使用完整的记忆内容
-                if memory_items:
+                if memory_items := node_data.get("memory_items", ""):
                     memories.append((node, memory_items, similarity))
 
         # 按相似度降序排序
@@ -587,7 +572,7 @@ class Hippocampus:
         unique_memories = []
         for topic, memory_items, activation_value in all_memories:
             # memory_items现在是完整的字符串格式
-            memory = memory_items if memory_items else ""
+            memory = memory_items or ""
             if memory not in seen_memories:
                 seen_memories.add(memory)
                 unique_memories.append((topic, memory_items, activation_value))
@@ -599,7 +584,7 @@ class Hippocampus:
         result = []
         for topic, memory_items, _ in unique_memories:
             # memory_items现在是完整的字符串格式
-            memory = memory_items if memory_items else ""
+            memory = memory_items or ""
             result.append((topic, memory))
             logger.debug(f"选中记忆: {memory} (来自节点: {topic})")
 
@@ -1471,6 +1456,7 @@ class MemoryBuilder:
         self.last_processed_time: float = 0.0
 
     def should_trigger_memory_build(self) -> bool:
+        # sourcery skip: assign-if-exp, boolean-if-exp-identity, reintroduce-else
         """检查是否应该触发记忆构建"""
         current_time = time.time()
 
