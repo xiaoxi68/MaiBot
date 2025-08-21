@@ -411,7 +411,7 @@ class Hippocampus:
                 如果为False，使用LLM提取关键词，速度较慢但更准确。
         """
         if not text:
-            return []
+            return [], []
 
         # 使用LLM提取关键词 - 根据详细文本长度分布优化topic_num计算
         text_length = len(text)
@@ -1435,13 +1435,11 @@ class HippocampusManager:
         if not self._initialized:
             raise RuntimeError("HippocampusManager 尚未初始化，请先调用 initialize 方法")
         try:
-            response, keywords, keywords_lite = await self._hippocampus.get_activate_from_text(
-                text, max_depth, fast_retrieval
-            )
+            return await self._hippocampus.get_activate_from_text(text, max_depth, fast_retrieval)
         except Exception as e:
             logger.error(f"文本产生激活值失败: {e}")
             logger.error(traceback.format_exc())
-        return 0.0, [], []
+            return 0.0, [], []
 
     def get_memory_from_keyword(self, keyword: str, max_depth: int = 2) -> list:
         """从关键词获取相关记忆的公共接口"""
