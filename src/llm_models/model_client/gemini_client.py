@@ -337,8 +337,8 @@ class GeminiClient(BaseClient):
         )  # 这里和openai不一样，gemini会自己决定自己是否需要retry
 
     # 思维预算特殊值
-    TB_DYNAMIC_MODE = -1
-    TB_DISABLE_OR_MIN = 0
+    THINKING_BUDGET_AUTO = -1  # 自动调整思考预算，由模型决定
+    THINKING_BUDGET_DISABLED = 0  # 禁用思考预算（如果模型允许禁用）
 
     @staticmethod
     def clamp_thinking_budget(tb: int, model_id: str):
@@ -358,24 +358,25 @@ class GeminiClient(BaseClient):
             for key in sorted_keys:
                 # 必须满足：完全等于 或者 前缀匹配（带 "-" 边界）
                 if model_id == key or model_id.startswith(key + "-"):
-                    limits = THINKING_BUDGET_LIMITS[key]
-                    matched_key = key
-                    break
+                   limits = THINKING_BUDGET_LIMITS[key]
+                   matched_key = key
+                   break
 
-        if limits is None:
-            raise ValueError(f"模型 {model_id} 不支持 ThinkingConfig")
-        if tb == GeminiClient.TB_DYNAMIC_MODE:
-            return GeminiClient.TB_DYNAMIC_MODE  # 动态思考模式
-        if tb == GeminiClient.TB_DISABLE_OR_MIN:
-            if limits["can_disable"]:
-                # 允许禁用思考预算
-                return GeminiClient.TB_DISABLE_OR_MIN
-            else:
-                # 不允许禁用，返回最小值
-                return limits["min"]
+        # 特殊值处理
+        if tb == GeminiClient.THINKING_BUDGET_AUTO:
+            return GeminiClient.THINKING_BUDGET_AUTO
+        if tb == GeminiClient.THINKING_BUDGET_DISABLED:
+            if limits and limits.get("can_disable", False):
+                return GeminiClient.THINKING_BUDGET_DISABLED
+            return limits["min"] if limits else GeminiClient.THINKING_BUDGET_AUTO
 
-        # 正常范围裁剪
-        return max(limits["min"], min(tb, limits["max"]))
+        # 已知模型裁剪到范围
+        if limits:
+           return max(limits["min"], min(tb, limits["max"]))
+
+        # 未知模型，返回动态模式
+        logger.warning(f"模型 {model_id} 未在 THINKING_BUDGET_LIMITS 中定义，将使用动态模式 tb=-1 兼容。")
+        return GeminiClient.THINKING_BUDGET_AUTO
 
     async def get_response(
         self,
@@ -422,17 +423,20 @@ class GeminiClient(BaseClient):
         messages = _convert_messages(message_list)
         # 将tool_options转换为Gemini API所需的格式
         tools = _convert_tool_options(tool_options) if tool_options else None
-        # 将response_format转换为Gemini API所需的格式
-        tb = int(max_tokens / 2) # 默认值
+
+        tb = GeminiClient.THINKING_BUDGET_AUTO
+        #空处理
         if extra_params and "thinking_budget" in extra_params:
             try:
                 tb = int(extra_params["thinking_budget"])
             except (ValueError, TypeError):
-                logger.warning(f"无效的 thinking_budget 值 {extra_params['thinking_budget']}，将使用默认值")
-
+                logger.warning(
+                f"无效的 thinking_budget 值 {extra_params['thinking_budget']}，将使用默认动态模式 {tb}"
+            )
         # 裁剪到模型支持的范围
         tb = self.clamp_thinking_budget(tb, model_info.model_identifier)
 
+        # 将response_format转换为Gemini API所需的格式
         generation_config_dict = {
             "max_output_tokens": max_tokens,
             "temperature": temperature,
