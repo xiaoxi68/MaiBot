@@ -16,8 +16,8 @@ from src.chat.utils.timer_calculator import Timer
 from src.chat.planner_actions.planner import ActionPlanner
 from src.chat.planner_actions.action_modifier import ActionModifier
 from src.chat.planner_actions.action_manager import ActionManager
-from src.chat.chat_loop.hfc_utils import CycleDetail
-from src.chat.chat_loop.hfc_utils import send_typing, stop_typing
+from src.chat.heart_flow.hfc_utils import CycleDetail
+from src.chat.heart_flow.hfc_utils import send_typing, stop_typing
 from src.chat.memory_system.Hippocampus import hippocampus_manager
 from src.chat.frequency_control.talk_frequency_control import talk_frequency_control
 from src.chat.frequency_control.focus_value_control import focus_value_control
