@@ -120,7 +120,7 @@ class HeartFCMessageReceiver:
 
             # subheartflow.add_message_to_normal_chat_cache(message, interested_rate, is_mentioned)
             if global_config.mood.enable_mood:  
-                chat_mood = mood_manager.get_mood_by_chat_id(heartflow_chat.chat_id)
+                chat_mood = mood_manager.get_mood_by_chat_id(heartflow_chat.stream_id)
                 asyncio.create_task(chat_mood.update_mood_by_message(message, interested_rate))
 
             # 3. 日志记录
