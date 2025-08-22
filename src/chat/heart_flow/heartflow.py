@@ -17,7 +17,7 @@ class Heartflow:
             if chat_id in self.heartflow_chat_list:
                 if chat := self.heartflow_chat_list.get(chat_id):
                     return chat
-                
+            else:
                 new_chat = HeartFChatting(chat_id = chat_id)
                 await new_chat.start()
                 self.heartflow_chat_list[chat_id] = new_chat
