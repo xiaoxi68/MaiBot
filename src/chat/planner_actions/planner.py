@@ -228,7 +228,7 @@ class ActionPlanner:
     async def sub_plan(
         self,
         action_list: List[Tuple[str, ActionInfo]],
-        actions_before_now_block: str,
+        actions_before_now: List[ActionPlannerInfo],
         chat_content_block: str,
         message_id_list: List[Tuple[str, DatabaseMessages]],
         is_group_chat: bool = False,
@@ -237,8 +237,21 @@ class ActionPlanner:
     ) -> List[ActionPlannerInfo]:
         # 构建副planner并执行(单个副planner)
         try:
+            # 获取最近的actions
+            # 只保留action_type在action_list中的ActionPlannerInfo
+            action_names_in_list = [name for name, _ in action_list]
+            actions_before_now = [
+                action for action in actions_before_now
+                if action.action_type in action_names_in_list
+            ]
+
+            actions_before_now_block = build_readable_actions(
+                actions=actions_before_now,
+            )
+            
+            
             if actions_before_now_block:
-                actions_before_now_block = f"你刚刚选择并执行过的action是：\n{actions_before_now_block}"
+                actions_before_now_block = f"你刚刚选择并执行过的action是，请注意如果相同的内容已经被执行，请不要重复执行：\n{actions_before_now_block}"
             else:
                 actions_before_now_block = ""
 
@@ -306,7 +319,7 @@ class ActionPlanner:
         action_planner_infos = []  # 存储多个ActionPlannerInfo对象
         
         try:
-            llm_content, (reasoning_content, _, _) = await self.planner_llm.generate_response_async(prompt=prompt)
+            llm_content, (reasoning_content, _, _) = await self.planner_small_llm.generate_response_async(prompt=prompt)
 
             if global_config.debug.show_prompt:
                 logger.info(f"{self.log_prefix}副规划器原始提示词: {prompt}")
@@ -530,7 +543,7 @@ class ActionPlanner:
             async def execute_sub_plan(action_list):
                 return await self.sub_plan(
                     action_list=action_list,
-                    actions_before_now_block=actions_before_now_block,
+                    actions_before_now=actions_before_now,
                     chat_content_block=chat_content_block_short,
                     message_id_list=message_id_list_short,
                     is_group_chat=is_group_chat,

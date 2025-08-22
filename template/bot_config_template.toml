@@ -67,7 +67,7 @@ max_context_size = 20 # 上下文长度
 
 interest_rate_mode = "fast" #激活值计算模式，可选fast或者accurate
 
-planner_size = 1 # 副规划器大小，越小，麦麦的动作执行能力越精细，但是消耗更多token，调大可以缓解429类错误
+planner_size = 2 # 副规划器大小，越小，麦麦的动作执行能力越精细，但是消耗更多token，调大可以缓解429类错误
 
 mentioned_bot_inevitable_reply = true # 提及 bot 大概率回复
 at_bot_inevitable_reply = true # @bot 或 提及bot 大概率回复
