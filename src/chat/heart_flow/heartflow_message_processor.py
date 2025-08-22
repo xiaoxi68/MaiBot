@@ -18,7 +18,7 @@ from src.mood.mood_manager import mood_manager
 from src.person_info.person_info import Person
 
 if TYPE_CHECKING:
-    from src.chat.heart_flow.sub_heartflow import SubHeartflow
+    from src.chat.heart_flow.heartFC_chat import HeartFChatting
 
 logger = get_logger("chat")
 
@@ -116,11 +116,11 @@ class HeartFCMessageReceiver:
 
             await self.storage.store_message(message, chat)
 
-            subheartflow: SubHeartflow = await heartflow.get_or_create_subheartflow(chat.stream_id)  # type: ignore
+            heartflow_chat: HeartFChatting = await heartflow.get_or_create_heartflow_chat(chat.stream_id)  # type: ignore
 
             # subheartflow.add_message_to_normal_chat_cache(message, interested_rate, is_mentioned)
             if global_config.mood.enable_mood:  
-                chat_mood = mood_manager.get_mood_by_chat_id(subheartflow.chat_id)
+                chat_mood = mood_manager.get_mood_by_chat_id(heartflow_chat.stream_id)
                 asyncio.create_task(chat_mood.update_mood_by_message(message, interested_rate))
 
             # 3. 日志记录
