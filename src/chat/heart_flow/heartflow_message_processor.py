@@ -38,7 +38,7 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool, list[s
         interested_rate, keywords,keywords_lite = await hippocampus_manager.get_activate_from_text(
             message.processed_plain_text,
             max_depth= 4,
-            fast_retrieval=False,
+            fast_retrieval=global_config.chat.interest_rate_mode == "fast",
         )
         message.key_words = keywords
         message.key_words_lite = keywords_lite
@@ -85,7 +85,7 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool, list[s
     message.interest_value = interested_rate
     message.is_mentioned = is_mentioned
 
-    return interested_rate, is_mentioned, keywords
+    return interested_rate, keywords
 
 
 class HeartFCMessageReceiver:

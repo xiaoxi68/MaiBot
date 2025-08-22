@@ -65,6 +65,8 @@ focus_value = 0.5
 
 max_context_size = 20 # 上下文长度
 
+interest_rate_mode = "fast" #激活值计算模式，可选fast或者accurate
+
 mentioned_bot_inevitable_reply = true # 提及 bot 大概率回复
 at_bot_inevitable_reply = true # @bot 或 提及bot 大概率回复
 

@@ -70,6 +70,9 @@ class ChatConfig(ConfigBase):
 
     max_context_size: int = 18
     """上下文长度"""
+    
+    interest_rate_mode: Literal["fast", "accurate"] = "fast"
+    """兴趣值计算模式，fast为快速计算，accurate为精确计算"""
 
     mentioned_bot_inevitable_reply: bool = False
     """提及 bot 必然回复"""
