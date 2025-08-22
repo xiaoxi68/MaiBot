@@ -1065,7 +1065,7 @@ class DefaultReplyer:
 
                 return f"你有以下这些**知识**：\n{related_info}\n请你**记住上面的知识**，之后可能会用到。\n"
             else:
-                logger.debug("从LPMM知识库获取知识失败，可能是从未导入过知识，返回空知识...")
+                logger.debug("模型认为不需要使用LPMM知识库")
                 return ""
         except Exception as e:
             logger.error(f"获取知识库内容时发生异常: {str(e)}")
