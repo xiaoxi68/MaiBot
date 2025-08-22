@@ -1,0 +1,33 @@
+stages:
+  - build
+  - package
+
+# 将Helm Chart版本作为tag，构建并推送镜像
+build-adapter-cm-generator:
+  stage: build
+  image: reg.mikumikumi.xyz/base/kaniko-builder:latest
+  rules:
+    - changes:
+        - helm-chart/adapter-cm-generator/**
+  script:
+    - export BUILD_CONTEXT=helm-chart/adapter-cm-generator
+    - export TMP_DST=reg.mikumikumi.xyz/maibot/adapter-cm-generator
+    - export CHART_VERSION=$(cat helm-chart/Chart.yaml | grep '^version:' | cut -d' ' -f2)
+    - export BUILD_ARGS="--destination ${TMP_DST}:${CHART_VERSION} --destination ${TMP_DST}:latest"
+    - build
+
+# 打包并推送helm chart
+package-helm-chart:
+  stage: package
+  image: reg.mikumikumi.xyz/mirror/helm:latest
+  rules:
+    - changes:
+        - helm-chart/files/**
+        - helm-chart/templates/**
+        - helm-chart/Chart.yaml
+        - helm-chart/values.yaml
+  script:
+    - export CHART_VERSION=$(cat helm-chart/Chart.yaml | grep '^version:' | cut -d' ' -f2)
+    - helm registry login reg.mikumikumi.xyz --username ${CI_REGISTRY_USER} --password ${CI_REGISTRY_PASSWORD}
+    - helm package helm-chart
+    - helm push maibot-${CHART_VERSION}.tgz oci://reg.mikumikumi.xyz/maibot

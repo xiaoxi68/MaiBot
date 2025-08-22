@@ -1,0 +1,30 @@
+# 动态生成adapter配置文件的configmap的job，仅会在部署时运行一次
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-maibot-adapter-cm-generator
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 2
+  template:
+    spec:
+      serviceAccountName: {{ .Release.Name }}-maibot-adapter-cm-generator
+      restartPolicy: Never
+      containers:
+        - name: adapter-cm-generator
+          image: {{ .Values.adapter.cm_generator.image.repository }}:{{ .Values.adapter.cm_generator.image.tag }}
+          workingDir: /app
+          env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: RELEASE_NAME
+              value: {{ .Release.Name }}
+            - name: DATA_B64
+              value: {{ .Values.config.adapter_config | b64enc }}  # 将配置文件编码为base64，从环境变量注入
