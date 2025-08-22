@@ -1016,7 +1016,7 @@ class DefaultReplyer:
     async def llm_generate_content(self, prompt: str):
         with Timer("LLM生成", {}):  # 内部计时器，可选保留
             # 直接使用已初始化的模型实例
-            logger.info(f"使用模型集生成回复: {self.express_model.model_for_task}")
+            logger.info(f"使用模型集生成回复: {', '.join(map(str, self.express_model.model_for_task.model_list))}")
 
             if global_config.debug.show_prompt:
                 logger.info(f"\n{prompt}\n")

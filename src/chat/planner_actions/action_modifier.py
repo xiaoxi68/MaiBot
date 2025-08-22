@@ -60,7 +60,7 @@ class ActionModifier:
 
         removals_s1: List[Tuple[str, str]] = []
         removals_s2: List[Tuple[str, str]] = []
-        removals_s3: List[Tuple[str, str]] = []
+        # removals_s3: List[Tuple[str, str]] = []
 
         self.action_manager.restore_actions()
         all_actions = self.action_manager.get_using_actions()
@@ -103,26 +103,28 @@ class ActionModifier:
             self.action_manager.remove_action_from_using(action_name)
             logger.debug(f"{self.log_prefix}阶段二移除动作: {action_name}，原因: {reason}")
 
+
+
         # === 第三阶段：激活类型判定 ===
-        if chat_content is not None:
-            logger.debug(f"{self.log_prefix}开始激活类型判定阶段")
+        # if chat_content is not None:
+            # logger.debug(f"{self.log_prefix}开始激活类型判定阶段")
 
             # 获取当前使用的动作集（经过第一阶段处理）
-            current_using_actions = self.action_manager.get_using_actions()
+            # current_using_actions = self.action_manager.get_using_actions()
 
             # 获取因激活类型判定而需要移除的动作
-            removals_s3 = await self._get_deactivated_actions_by_type(
-                current_using_actions,
-                chat_content,
-            )
+            # removals_s3 = await self._get_deactivated_actions_by_type(
+                # current_using_actions,
+                # chat_content,
+            # )
 
             # 应用第三阶段的移除
-            for action_name, reason in removals_s3:
-                self.action_manager.remove_action_from_using(action_name)
-                logger.debug(f"{self.log_prefix}阶段三移除动作: {action_name}，原因: {reason}")
+            # for action_name, reason in removals_s3:
+                # self.action_manager.remove_action_from_using(action_name)
+                # logger.debug(f"{self.log_prefix}阶段三移除动作: {action_name}，原因: {reason}")
 
         # === 统一日志记录 ===
-        all_removals = removals_s1 + removals_s2 + removals_s3
+        all_removals = removals_s1 + removals_s2
         removals_summary: str = ""
         if all_removals:
             removals_summary = " | ".join([f"{name}({reason})" for name, reason in all_removals])
