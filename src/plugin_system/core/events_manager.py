@@ -1,6 +1,6 @@
 import asyncio
 import contextlib
-from typing import List, Dict, Optional, Type, Tuple, Any, Coroutine
+from typing import List, Dict, Optional, Type, Tuple, Any, TYPE_CHECKING
 
 from src.chat.message_receive.message import MessageRecv
 from src.chat.message_receive.chat_stream import get_chat_manager
@@ -8,6 +8,9 @@ from src.common.logger import get_logger
 from src.plugin_system.base.component_types import EventType, EventHandlerInfo, MaiMessages
 from src.plugin_system.base.base_events_handler import BaseEventHandler
 from .global_announcement_manager import global_announcement_manager
+
+if TYPE_CHECKING:
+    from src.common.data_models.llm_data_model import LLMGenerationDataModel
 
 logger = get_logger("events_manager")
 
@@ -47,7 +50,7 @@ class EventsManager:
         event_type: EventType,
         message: Optional[MessageRecv] = None,
         llm_prompt: Optional[str] = None,
-        llm_response: Optional[Dict[str, Any]] = None,
+        llm_response: Optional["LLMGenerationDataModel"] = None,
         stream_id: Optional[str] = None,
         action_usage: Optional[List[str]] = None,
     ) -> Optional[MaiMessages]:
@@ -97,7 +100,7 @@ class EventsManager:
         event_type: EventType,
         message: Optional[MessageRecv] = None,
         llm_prompt: Optional[str] = None,
-        llm_response: Optional[Dict[str, Any]] = None,
+        llm_response: Optional["LLMGenerationDataModel"] = None,
         stream_id: Optional[str] = None,
         action_usage: Optional[List[str]] = None,
     ) -> bool:
@@ -175,16 +178,16 @@ class EventsManager:
         return False
 
     def _transform_event_message(
-        self, message: MessageRecv, llm_prompt: Optional[str] = None, llm_response: Optional[Dict[str, Any]] = None
+        self, message: MessageRecv, llm_prompt: Optional[str] = None, llm_response: Optional["LLMGenerationDataModel"] = None
     ) -> MaiMessages:
         """转换事件消息格式"""
         # 直接赋值部分内容
         transformed_message = MaiMessages(
             llm_prompt=llm_prompt,
-            llm_response_content=llm_response.get("content") if llm_response else None,
-            llm_response_reasoning=llm_response.get("reasoning") if llm_response else None,
-            llm_response_model=llm_response.get("model") if llm_response else None,
-            llm_response_tool_call=llm_response.get("tool_calls") if llm_response else None,
+            llm_response_content=llm_response.content if llm_response else None,
+            llm_response_reasoning=llm_response.reasoning if llm_response else None,
+            llm_response_model=llm_response.model if llm_response else None,
+            llm_response_tool_call=llm_response.tool_calls if llm_response else None,
             raw_message=message.raw_message,
             additional_data=message.message_info.additional_config or {},
         )
@@ -228,7 +231,7 @@ class EventsManager:
         return transformed_message
 
     def _build_message_from_stream(
-        self, stream_id: str, llm_prompt: Optional[str] = None, llm_response: Optional[Dict[str, Any]] = None
+        self, stream_id: str, llm_prompt: Optional[str] = None, llm_response: Optional["LLMGenerationDataModel"] = None
     ) -> MaiMessages:
         """从流ID构建消息"""
         chat_stream = get_chat_manager().get_stream(stream_id)
@@ -240,7 +243,7 @@ class EventsManager:
         self,
         stream_id: str,
         llm_prompt: Optional[str] = None,
-        llm_response: Optional[Dict[str, Any]] = None,
+        llm_response: Optional["LLMGenerationDataModel"] = None,
         action_usage: Optional[List[str]] = None,
     ) -> MaiMessages:
         """没有message对象时进行转换"""
@@ -249,10 +252,10 @@ class EventsManager:
         return MaiMessages(
             stream_id=stream_id,
             llm_prompt=llm_prompt,
-            llm_response_content=(llm_response.get("content") if llm_response else None),
-            llm_response_reasoning=(llm_response.get("reasoning") if llm_response else None),
-            llm_response_model=llm_response.get("model") if llm_response else None,
-            llm_response_tool_call=(llm_response.get("tool_calls") if llm_response else None),
+            llm_response_content=(llm_response.content if llm_response else None),
+            llm_response_reasoning=(llm_response.reasoning if llm_response else None),
+            llm_response_model=(llm_response.model if llm_response else None),
+            llm_response_tool_call=(llm_response.tool_calls if llm_response else None),
             is_group_message=(not (not chat_stream.group_info)),
             is_private_message=(not chat_stream.group_info),
             action_usage=action_usage,

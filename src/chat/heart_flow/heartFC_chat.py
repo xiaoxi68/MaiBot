@@ -679,7 +679,7 @@ class HeartFChatting:
                 }
             else:
                 try:
-                    success, response_set, prompt, selected_expressions = await generator_api.generate_reply(
+                    success, llm_response = await generator_api.generate_reply(
                         chat_stream=self.chat_stream,
                         reply_message=action_planner_info.action_message,
                         available_actions=available_actions,
@@ -688,10 +688,9 @@ class HeartFChatting:
                         enable_tool=global_config.tool.enable_tool,
                         request_type="replyer",
                         from_plugin=False,
-                        return_expressions=True,
                     )
 
-                    if not success or not response_set:
+                    if not success or not llm_response or not llm_response.reply_set:
                         if action_planner_info.action_message:
                             logger.info(f"对 {action_planner_info.action_message.processed_plain_text} 的回复生成失败")
                         else:
@@ -701,7 +700,8 @@ class HeartFChatting:
                 except asyncio.CancelledError:
                     logger.debug(f"{self.log_prefix} 并行执行：回复生成任务已被取消")
                     return {"action_type": "reply", "success": False, "reply_text": "", "loop_info": None}
-
+                response_set = llm_response.reply_set
+                selected_expressions = llm_response.selected_expressions
                 loop_info, reply_text, _ = await self._send_and_store_reply(
                     response_set=response_set,
                     action_message=action_planner_info.action_message,  # type: ignore

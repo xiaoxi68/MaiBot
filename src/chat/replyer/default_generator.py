@@ -10,6 +10,7 @@ from src.mais4u.mai_think import mai_thinking_manager
 from src.common.logger import get_logger
 from src.common.data_models.database_data_model import DatabaseMessages
 from src.common.data_models.info_data_model import ActionPlannerInfo
+from src.common.data_models.llm_data_model import LLMGenerationDataModel
 from src.config.config import global_config, model_config
 from src.llm_models.utils_model import LLMRequest
 from src.chat.message_receive.message import UserInfo, Seg, MessageRecv, MessageSending
@@ -162,7 +163,7 @@ class DefaultReplyer:
         from_plugin: bool = True,
         stream_id: Optional[str] = None,
         reply_message: Optional[DatabaseMessages] = None,
-    ) -> Tuple[bool, Optional[Dict[str, Any]], Optional[str], Optional[List[int]]]:
+    ) -> Tuple[bool, LLMGenerationDataModel]:
         # sourcery skip: merge-nested-ifs
         """
         回复器 (Replier): 负责生成回复文本的核心逻辑。
@@ -182,6 +183,7 @@ class DefaultReplyer:
 
         prompt = None
         selected_expressions: Optional[List[int]] = None
+        llm_response = LLMGenerationDataModel()
         if available_actions is None:
             available_actions = {}
         try:
@@ -195,10 +197,12 @@ class DefaultReplyer:
                     reply_message=reply_message,
                     reply_reason=reply_reason,
                 )
+            llm_response.prompt = prompt
+            llm_response.selected_expressions = selected_expressions
 
             if not prompt:
                 logger.warning("构建prompt失败，跳过回复生成")
-                return False, None, None, []
+                return False, llm_response
             from src.plugin_system.core.events_manager import events_manager
 
             if not from_plugin:
@@ -215,12 +219,10 @@ class DefaultReplyer:
             try:
                 content, reasoning_content, model_name, tool_call = await self.llm_generate_content(prompt)
                 logger.debug(f"replyer生成内容: {content}")
-                llm_response = {
-                    "content": content,
-                    "reasoning": reasoning_content,
-                    "model": model_name,
-                    "tool_calls": tool_call,
-                }
+                llm_response.content = content
+                llm_response.reasoning = reasoning_content
+                llm_response.model = model_name
+                llm_response.tool_calls = tool_call
                 if not from_plugin and not await events_manager.handle_mai_events(
                     EventType.AFTER_LLM, None, prompt, llm_response, stream_id=stream_id
                 ):
@@ -230,24 +232,23 @@ class DefaultReplyer:
             except Exception as llm_e:
                 # 精简报错信息
                 logger.error(f"LLM 生成失败: {llm_e}")
-                return False, None, prompt, selected_expressions  # LLM 调用失败则无法生成回复
+                return False, llm_response  # LLM 调用失败则无法生成回复
 
-            return True, llm_response, prompt, selected_expressions
+            return True, llm_response
 
         except UserWarning as uw:
             raise uw
         except Exception as e:
             logger.error(f"回复生成意外失败: {e}")
             traceback.print_exc()
-            return False, None, prompt, selected_expressions
+            return False, llm_response
 
     async def rewrite_reply_with_context(
         self,
         raw_reply: str = "",
         reason: str = "",
         reply_to: str = "",
-        return_prompt: bool = False,
-    ) -> Tuple[bool, Optional[str], Optional[str]]:
+    ) -> Tuple[bool, LLMGenerationDataModel]:
         """
         表达器 (Expressor): 负责重写和优化回复文本。
 
@@ -260,6 +261,7 @@ class DefaultReplyer:
         Returns:
             Tuple[bool, Optional[str]]: (是否成功, 重写后的回复内容)
         """
+        llm_response = LLMGenerationDataModel()
         try:
             with Timer("构建Prompt", {}):  # 内部计时器，可选保留
                 prompt = await self.build_prompt_rewrite_context(
@@ -267,29 +269,33 @@ class DefaultReplyer:
                     reason=reason,
                     reply_to=reply_to,
                 )
+            llm_response.prompt = prompt
 
             content = None
             reasoning_content = None
             model_name = "unknown_model"
             if not prompt:
                 logger.error("Prompt 构建失败，无法生成回复。")
-                return False, None, None
+                return False, llm_response
 
             try:
                 content, reasoning_content, model_name, _ = await self.llm_generate_content(prompt)
                 logger.info(f"想要表达：{raw_reply}||理由：{reason}||生成回复: {content}\n")
+                llm_response.content = content
+                llm_response.reasoning = reasoning_content
+                llm_response.model = model_name
 
             except Exception as llm_e:
                 # 精简报错信息
                 logger.error(f"LLM 生成失败: {llm_e}")
-                return False, None, prompt if return_prompt else None  # LLM 调用失败则无法生成回复
+                return False, llm_response  # LLM 调用失败则无法生成回复
 
-            return True, content, prompt if return_prompt else None
+            return True, llm_response
 
         except Exception as e:
             logger.error(f"回复生成意外失败: {e}")
             traceback.print_exc()
-            return False, None, prompt if return_prompt else None
+            return False, llm_response
 
     async def build_relation_info(self, sender: str, target: str):
         if not global_config.relationship.enable_relationship:
@@ -375,9 +381,7 @@ class DefaultReplyer:
 
         if global_config.memory.enable_instant_memory:
             chat_history_str = build_readable_messages(
-                messages=chat_history,
-                replace_bot_name=True,
-                timestamp_mode="normal"
+                messages=chat_history, replace_bot_name=True, timestamp_mode="normal"
             )
             asyncio.create_task(self.instant_memory.create_and_store_memory(chat_history_str))
 
@@ -668,16 +672,18 @@ class DefaultReplyer:
             action_descriptions += chosen_action_descriptions
 
         return action_descriptions
-    
+
     async def build_personality_prompt(self) -> str:
         bot_name = global_config.bot.nickname
         if global_config.bot.alias_names:
             bot_nickname = f",也有人叫你{','.join(global_config.bot.alias_names)}"
         else:
             bot_nickname = ""
-        
-        prompt_personality = f"{global_config.personality.personality_core};{global_config.personality.personality_side}"
-        return f"你的名字是{bot_name}{bot_nickname}，你{prompt_personality}"  
+
+        prompt_personality = (
+            f"{global_config.personality.personality_core};{global_config.personality.personality_side}"
+        )
+        return f"你的名字是{bot_name}{bot_nickname}，你{prompt_personality}"
 
     async def build_prompt_reply_context(
         self,
@@ -875,17 +881,12 @@ class DefaultReplyer:
         raw_reply: str,
         reason: str,
         reply_to: str,
-        reply_message: Optional[Dict[str, Any]] = None,
     ) -> str:  # sourcery skip: merge-else-if-into-elif, remove-redundant-if
         chat_stream = self.chat_stream
         chat_id = chat_stream.stream_id
         is_group_chat = bool(chat_stream.group_info)
 
-        if reply_message:
-            sender = reply_message.get("sender", "")
-            target = reply_message.get("target", "")
-        else:
-            sender, target = self._parse_reply_target(reply_to)
+        sender, target = self._parse_reply_target(reply_to)
 
         # 添加情绪状态获取
         if global_config.mood.enable_mood:
@@ -908,7 +909,7 @@ class DefaultReplyer:
         )
 
         # 并行执行2个构建任务
-        (expression_habits_block, _), relation_info, personality_prompt  = await asyncio.gather(
+        (expression_habits_block, _), relation_info, personality_prompt = await asyncio.gather(
             self.build_expression_habits(chat_talking_prompt_half, target),
             self.build_relation_info(sender, target),
             self.build_personality_prompt(),
