@@ -1,7 +1,7 @@
 import json
 import time
 import traceback
-from typing import Dict, Optional, Tuple, List
+from typing import Dict, Optional, Tuple, List, Any
 from rich.traceback import install
 from datetime import datetime
 from json_repair import repair_json
@@ -228,7 +228,7 @@ class ActionPlanner:
     async def sub_plan(
         self,
         action_list: List[Tuple[str, ActionInfo]],
-        actions_before_now: List[ActionPlannerInfo],
+        actions_before_now: List[Dict[str, Any]],
         chat_content_block: str,
         message_id_list: List[Tuple[str, DatabaseMessages]],
         is_group_chat: bool = False,
@@ -242,7 +242,7 @@ class ActionPlanner:
             action_names_in_list = [name for name, _ in action_list]
             actions_before_now = [
                 action for action in actions_before_now
-                if action.action_type in action_names_in_list
+                if action["action_name"] in action_names_in_list
             ]
 
             actions_before_now_block = build_readable_actions(
