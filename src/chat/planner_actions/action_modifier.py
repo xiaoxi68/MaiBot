@@ -2,7 +2,7 @@ import random
 import asyncio
 import hashlib
 import time
-from typing import List, Any, Dict, TYPE_CHECKING, Tuple
+from typing import List, Dict, TYPE_CHECKING, Tuple
 
 from src.common.logger import get_logger
 from src.config.config import global_config, model_config
@@ -163,7 +163,7 @@ class ActionModifier:
         deactivated_actions = []
 
         # 分类处理不同激活类型的actions
-        llm_judge_actions = {}
+        llm_judge_actions: Dict[str, ActionInfo] = {}
 
         actions_to_check = list(actions_with_info.items())
         random.shuffle(actions_to_check)
@@ -220,7 +220,7 @@ class ActionModifier:
 
     async def _process_llm_judge_actions_parallel(
         self,
-        llm_judge_actions: Dict[str, Any],
+        llm_judge_actions: Dict[str, ActionInfo],
         chat_content: str = "",
     ) -> Dict[str, bool]:
         """
@@ -239,7 +239,7 @@ class ActionModifier:
         current_time = time.time()
 
         results = {}
-        tasks_to_run = {}
+        tasks_to_run: Dict[str, ActionInfo] = {}
 
         # 检查缓存
         for action_name, action_info in llm_judge_actions.items():
