@@ -78,8 +78,12 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool, list[s
     interested_rate += base_interest
 
     if is_mentioned:
-        interest_increase_on_mention = 1
+        interest_increase_on_mention = 2
         interested_rate += interest_increase_on_mention
+        
+        
+    message.interest_value = interested_rate
+    message.is_mentioned = is_mentioned
 
     return interested_rate, is_mentioned, keywords
 
@@ -110,9 +114,8 @@ class HeartFCMessageReceiver:
             chat = message.chat_stream
 
             # 2. 兴趣度计算与更新
-            interested_rate, is_mentioned, keywords = await _calculate_interest(message)
-            message.interest_value = interested_rate
-            message.is_mentioned = is_mentioned
+            interested_rate, keywords = await _calculate_interest(message)
+            
 
             await self.storage.store_message(message, chat)
 

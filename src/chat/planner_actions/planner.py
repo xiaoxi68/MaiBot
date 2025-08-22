@@ -33,7 +33,7 @@ def init_prompt():
     Prompt(
         """
 {time_block}
-{identity_block}
+{name_block}
 你现在需要根据聊天内容，选择的合适的action来参与聊天。
 请你根据以下行事风格来决定action:
 {plan_style}
@@ -298,7 +298,7 @@ class ActionPlanner:
 
             actions_before_now = get_actions_by_timestamp_with_chat(
                 chat_id=self.chat_id,
-                timestamp_start=time.time() - 3600,
+                timestamp_start=time.time() - 600,
                 timestamp_end=time.time(),
                 limit=5,
             )
@@ -306,8 +306,12 @@ class ActionPlanner:
             actions_before_now_block = build_readable_actions(
                 actions=actions_before_now,
             )
+            
+            if actions_before_now:
+                actions_before_now_block = f"你刚刚选择并执行过的action是：\n{actions_before_now_block}"
+            else:
+                actions_before_now_block = ""
 
-            actions_before_now_block = f"你刚刚选择并执行过的action是：\n{actions_before_now_block}"
             if refresh_time:
                 self.last_obs_time_mark = time.time()
 
@@ -322,8 +326,7 @@ class ActionPlanner:
 动作：no_action
 动作描述：不进行动作，等待合适的时机
 - 当你刚刚发送了消息，没有人回复时，选择no_action
-- 如果有别的动作（非回复）满足条件，可以不用no_action
-- 当你一次发送了太多消息，为了避免打扰聊天节奏，选择no_action
+- 当你一次发送了太多消息，为了避免过于烦人，可以不回复
 {
     "action": "no_action",
     "reason":"不动作的原因"
@@ -378,8 +381,7 @@ class ActionPlanner:
                 bot_nickname = f",也有人叫你{','.join(global_config.bot.alias_names)}"
             else:
                 bot_nickname = ""
-            bot_core_personality = global_config.personality.personality_core
-            identity_block = f"你的名字是{bot_name}{bot_nickname}，你{bot_core_personality}："
+            name_block = f"你的名字是{bot_name}{bot_nickname}，请注意哪些是你自己的发言。"
 
             planner_prompt_template = await global_prompt_manager.get_prompt_async("planner_prompt")
             prompt = planner_prompt_template.format(
@@ -391,7 +393,7 @@ class ActionPlanner:
                 mentioned_bonus=mentioned_bonus,
                 action_options_text=action_options_block,
                 moderation_prompt=moderation_prompt_block,
-                identity_block=identity_block,
+                name_block=name_block,
                 plan_style=global_config.personality.plan_style,
             )
             return prompt, message_id_list
