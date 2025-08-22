@@ -240,13 +240,20 @@ class ActionPlanner:
             # 获取最近的actions
             # 只保留action_type在action_list中的ActionPlannerInfo
             action_names_in_list = [name for name, _ in action_list]
-            actions_before_now = [
-                action for action in actions_before_now
-                if action["action_name"] in action_names_in_list
-            ]
+            # actions_before_now是List[Dict[str, Any]]格式，需要提取action_type字段
+            filtered_actions = []
+            # print(actions_before_now)
+            # print(action_names_in_list)
+            for action_record in actions_before_now:
+                if isinstance(action_record, dict) and 'action_name' in action_record:
+                    action_type = action_record['action_name']
+                    if action_type in action_names_in_list:
+                        filtered_actions.append(action_record)
+            
+
 
             actions_before_now_block = build_readable_actions(
-                actions=actions_before_now,
+                actions=filtered_actions,
             )
             
             
@@ -312,7 +319,14 @@ class ActionPlanner:
         except Exception as e:
             logger.error(f"构建 Planner 提示词时出错: {e}")
             logger.error(traceback.format_exc())
-            return "构建 Planner Prompt 时出错", []
+            # 返回一个默认的no_action而不是字符串
+            return [ActionPlannerInfo(
+                action_type="no_action",
+                reasoning=f"构建 Planner Prompt 时出错: {e}",
+                action_data={},
+                action_message=None,
+                available_actions=action_list,
+            )]
 
         # --- 调用 LLM (普通文本生成) ---
         llm_content = None
