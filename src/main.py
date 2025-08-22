@@ -89,7 +89,7 @@ class MainSystem:
         lpmm_start_up()
 
         # 加载所有actions，包括默认的和插件的
-        plugin_manager.load_all_plugins()
+        plugin_manager.load_all_plugins()       
 
         # 初始化表情管理器
         get_emoji_manager().initialize()
@@ -124,6 +124,13 @@ class MainSystem:
         await check_and_run_migrations()
         
 
+        # 触发 ON_START 事件
+        from src.plugin_system.core.events_manager import events_manager
+        from src.plugin_system.base.component_types import EventType
+        await events_manager.handle_mai_events(
+            event_type=EventType.ON_START
+        )
+        # logger.info("已触发 ON_START 事件")
         try:
             init_time = int(1000 * (time.time() - init_start_time))
             logger.info(f"初始化完成，神经元放电{init_time}次")

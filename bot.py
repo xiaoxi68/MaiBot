@@ -80,7 +80,11 @@ def easter_egg():
 async def graceful_shutdown():
     try:
         logger.info("正在优雅关闭麦麦...")
-
+        # 触发 ON_STOP 事件
+        from src.plugin_system.core.events_manager import events_manager
+        from src.plugin_system.base.component_types import EventType      
+        asyncio.run(events_manager.handle_mai_events(event_type=EventType.ON_STOP))     
+        # logger.info("已触发 ON_STOP 事件")
         # 停止所有异步任务
         await async_task_manager.stop_and_wait_all_tasks()
 
