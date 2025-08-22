@@ -127,20 +127,20 @@ class InstantMemory:
         from json_repair import repair_json
 
         prompt = f"""
-        请根据以下发言内容，判断是否需要提取记忆
-        {target}
-        请用json格式输出，包含以下字段：
-        其中，time的要求是：
-        可以选择具体日期时间，格式为YYYY-MM-DD HH:MM:SS，或者大致时间，格式为YYYY-MM-DD
-        可以选择相对时间，例如：今天，昨天，前天，5天前，1个月前
-        可以选择留空进行模糊搜索
-        {{
-            "need_memory": 1,
-            "keywords": "希望获取的记忆关键词，用/划分",
-            "time": "希望获取的记忆大致时间"
-        }}
-        请只输出json格式，不要输出其他多余内容
-        """
+请根据以下发言内容，判断是否需要提取记忆
+{target}
+请用json格式输出，包含以下字段：
+其中，time的要求是：
+可以选择具体日期时间，格式为YYYY-MM-DD HH:MM:SS，或者大致时间，格式为YYYY-MM-DD
+可以选择相对时间，例如：今天，昨天，前天，5天前，1个月前
+可以选择留空进行模糊搜索
+{{
+    "need_memory": 1,
+    "keywords": "希望获取的记忆关键词，用/划分",
+    "time": "希望获取的记忆大致时间"
+}}
+请只输出json格式，不要输出其他多余内容
+"""
         try:
             response, _ = await self.summary_model.generate_response_async(prompt, temperature=0.5)
             if global_config.debug.show_prompt:

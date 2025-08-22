@@ -586,7 +586,10 @@ async def build_readable_messages_with_list(
     允许通过参数控制格式化行为。
     """
     formatted_string, details_list, pic_id_mapping, _ = _build_readable_messages_internal(
-        convert_DatabaseMessages_to_MessageAndActionModel(messages), replace_bot_name, timestamp_mode, truncate
+        [MessageAndActionModel.from_DatabaseMessages(msg) for msg in messages],
+        replace_bot_name,
+        timestamp_mode,
+        truncate,
     )
 
     if pic_mapping_info := build_pic_mapping_info(pic_id_mapping):
@@ -653,19 +656,7 @@ def build_readable_messages(
     if not messages:
         return ""
 
-    copy_messages: List[MessageAndActionModel] = [
-        MessageAndActionModel(
-            msg.time,
-            msg.user_info.user_id,
-            msg.user_info.platform,
-            msg.user_info.user_nickname,
-            msg.user_info.user_cardname,
-            msg.processed_plain_text,
-            msg.display_message,
-            msg.chat_info.platform,
-        )
-        for msg in messages
-    ]
+    copy_messages: List[MessageAndActionModel] = [MessageAndActionModel.from_DatabaseMessages(msg) for msg in messages]
 
     if show_actions and copy_messages:
         # 获取所有消息的时间范围
@@ -924,22 +915,3 @@ async def get_person_id_list(messages: List[Dict[str, Any]]) -> List[str]:
             person_ids_set.add(person_id)
 
     return list(person_ids_set)  # 将集合转换为列表返回
-
-
-def convert_DatabaseMessages_to_MessageAndActionModel(message: List[DatabaseMessages]) -> List[MessageAndActionModel]:
-    """
-    将 DatabaseMessages 列表转换为 MessageAndActionModel 列表。
-    """
-    return [
-        MessageAndActionModel(
-            time=msg.time,
-            user_id=msg.user_info.user_id,
-            user_platform=msg.user_info.platform,
-            user_nickname=msg.user_info.user_nickname,
-            user_cardname=msg.user_info.user_cardname,
-            processed_plain_text=msg.processed_plain_text,
-            display_message=msg.display_message,
-            chat_info_platform=msg.chat_info.platform,
-        )
-        for msg in message
-    ]

@@ -3,15 +3,17 @@ import traceback
 
 from json_repair import repair_json
 from datetime import datetime
-from typing import List
+from typing import List, TYPE_CHECKING
 
 from src.common.logger import get_logger
-from src.common.data_models.database_data_model import DatabaseMessages
 from src.llm_models.utils_model import LLMRequest
 from src.config.config import global_config, model_config
 from src.chat.utils.chat_message_builder import build_readable_messages
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from .person_info import Person
+
+if TYPE_CHECKING:
+    from src.common.data_models.database_data_model import DatabaseMessages
 
 logger = get_logger("relation")
 
@@ -177,7 +179,7 @@ class RelationshipManager:
 
         return person
 
-    async def update_person_impression(self, person_id, timestamp, bot_engaged_messages: List[DatabaseMessages]):
+    async def update_person_impression(self, person_id, timestamp, bot_engaged_messages: List["DatabaseMessages"]):
         """更新用户印象
 
         Args:
@@ -192,8 +194,6 @@ class RelationshipManager:
         # nickname = person.nickname
         know_times: float = person.know_times
 
-        user_messages = bot_engaged_messages
-
         # 匿名化消息
         # 创建用户名称映射
         name_mapping = {}
@@ -201,7 +201,7 @@ class RelationshipManager:
         user_count = 1
 
         # 遍历消息，构建映射
-        for msg in user_messages:
+        for msg in bot_engaged_messages:
             if msg.user_info.user_id == "system":
                 continue
             try:
@@ -233,7 +233,7 @@ class RelationshipManager:
                 current_user = chr(ord(current_user) + 1)
 
         readable_messages = build_readable_messages(
-            messages=user_messages, replace_bot_name=True, timestamp_mode="normal_no_YMD", truncate=True
+            messages=bot_engaged_messages, replace_bot_name=True, timestamp_mode="normal_no_YMD", truncate=True
         )
 
         for original_name, mapped_name in name_mapping.items():
