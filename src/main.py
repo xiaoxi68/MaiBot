@@ -13,6 +13,7 @@ from src.common.logger import get_logger
 from src.individuality.individuality import get_individuality, Individuality
 from src.common.server import get_global_server, Server
 from src.mood.mood_manager import mood_manager
+from src.chat.knowledge import lpmm_start_up
 from rich.traceback import install
 from src.migrate_helper.migrate import check_and_run_migrations
 # from src.api.main import start_api_server
@@ -83,6 +84,9 @@ class MainSystem:
         # 启动API服务器
         # start_api_server()
         # logger.info("API服务器启动成功")
+        
+        # 启动LPMM
+        lpmm_start_up()
 
         # 加载所有actions，包括默认的和插件的
         plugin_manager.load_all_plugins()
@@ -96,7 +100,6 @@ class MainSystem:
         logger.info("情绪管理器初始化成功")
 
         # 初始化聊天管理器
-
         await get_chat_manager()._initialize()
         asyncio.create_task(get_chat_manager()._auto_save_task())
 

@@ -207,7 +207,8 @@ class RelationshipManager:
             try:
                 user_id = msg.user_info.user_id
                 platform = msg.chat_info.platform
-                assert isinstance(user_id, str) and isinstance(platform, str)
+                assert user_id, "用户ID不能为空"
+                assert platform, "平台不能为空"
                 msg_person = Person(user_id=user_id, platform=platform)
 
             except Exception as e:
