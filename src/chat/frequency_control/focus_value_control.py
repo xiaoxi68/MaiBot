@@ -4,24 +4,22 @@ from src.chat.frequency_control.utils import parse_stream_config_to_chat_id
 
 
 class FocusValueControl:
-    def __init__(self,chat_id:str):
+    def __init__(self, chat_id: str):
         self.chat_id = chat_id
-        self.focus_value_adjust = 1
-        
-        
+        self.focus_value_adjust: float = 1
+
     def get_current_focus_value(self) -> float:
         return get_current_focus_value(self.chat_id) * self.focus_value_adjust
-        
+
 
 class FocusValueControlManager:
     def __init__(self):
-        self.focus_value_controls = {}
-        
-    def get_focus_value_control(self,chat_id:str) -> FocusValueControl:
+        self.focus_value_controls: dict[str, FocusValueControl] = {}
+
+    def get_focus_value_control(self, chat_id: str) -> FocusValueControl:
         if chat_id not in self.focus_value_controls:
             self.focus_value_controls[chat_id] = FocusValueControl(chat_id)
         return self.focus_value_controls[chat_id]
-
 
 
 def get_current_focus_value(chat_id: Optional[str] = None) -> float:
@@ -30,17 +28,18 @@ def get_current_focus_value(chat_id: Optional[str] = None) -> float:
     """
     if not global_config.chat.focus_value_adjust:
         return global_config.chat.focus_value
-    
+
     if chat_id:
         stream_focus_value = get_stream_specific_focus_value(chat_id)
         if stream_focus_value is not None:
             return stream_focus_value
-        
+
     global_focus_value = get_global_focus_value()
     if global_focus_value is not None:
         return global_focus_value
-    
+
     return global_config.chat.focus_value
+
 
 def get_stream_specific_focus_value(chat_id: str) -> Optional[float]:
     """
@@ -139,5 +138,6 @@ def get_global_focus_value() -> Optional[float]:
             return get_time_based_focus_value(config_item[1:])
 
     return None
+
 
 focus_value_control = FocusValueControlManager()

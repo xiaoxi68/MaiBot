@@ -21,15 +21,17 @@
 
 import traceback
 import time
-from typing import Optional, Union, Dict, Any, List
-from src.common.logger import get_logger
+from typing import Optional, Union, Dict, Any, List, TYPE_CHECKING
 
-# 导入依赖
+from src.common.logger import get_logger
+from src.config.config import global_config
 from src.chat.message_receive.chat_stream import get_chat_manager
 from src.chat.message_receive.uni_message_sender import HeartFCSender
 from src.chat.message_receive.message import MessageSending, MessageRecv
 from maim_message import Seg, UserInfo
-from src.config.config import global_config
+
+if TYPE_CHECKING:
+    from src.common.data_models.database_data_model import DatabaseMessages
 
 logger = get_logger("send_api")
 
@@ -46,10 +48,10 @@ async def _send_to_target(
     display_message: str = "",
     typing: bool = False,
     set_reply: bool = False,
-    reply_message: Optional[Dict[str, Any]] = None,
+    reply_message: Optional["DatabaseMessages"] = None,
     storage_message: bool = True,
     show_log: bool = True,
-    selected_expressions:List[int] = None,
+    selected_expressions: Optional[List[int]] = None,
 ) -> bool:
     """向指定目标发送消息的内部实现
 
@@ -70,7 +72,7 @@ async def _send_to_target(
         if set_reply and not reply_message:
             logger.warning("[SendAPI] 使用引用回复，但未提供回复消息")
             return False
-        
+
         if show_log:
             logger.debug(f"[SendAPI] 发送{message_type}消息到 {stream_id}")
 
@@ -98,13 +100,13 @@ async def _send_to_target(
         message_segment = Seg(type=message_type, data=content)  # type: ignore
 
         if reply_message:
-            anchor_message = message_dict_to_message_recv(reply_message)
+            anchor_message = message_dict_to_message_recv(reply_message.flatten())
             if anchor_message:
                 anchor_message.update_chat_stream(target_stream)
                 assert anchor_message.message_info.user_info, "用户信息缺失"
                 reply_to_platform_id = (
                     f"{anchor_message.message_info.platform}:{anchor_message.message_info.user_info.user_id}"
-                )            
+                )
         else:
             reply_to_platform_id = ""
             anchor_message = None
@@ -192,10 +194,9 @@ def message_dict_to_message_recv(message_dict: Dict[str, Any]) -> Optional[Messa
     }
 
     message_recv = MessageRecv(message_dict_recv)
-    
+
     logger.info(f"[SendAPI] 找到匹配的回复消息，发送者: {message_dict.get('user_nickname', '')}")
     return message_recv
-
 
 
 # =============================================================================
@@ -208,9 +209,9 @@ async def text_to_stream(
     stream_id: str,
     typing: bool = False,
     set_reply: bool = False,
-    reply_message: Optional[Dict[str, Any]] = None,
+    reply_message: Optional["DatabaseMessages"] = None,
     storage_message: bool = True,
-    selected_expressions:List[int] = None,
+    selected_expressions: Optional[List[int]] = None,
 ) -> bool:
     """向指定流发送文本消息
 
@@ -237,7 +238,13 @@ async def text_to_stream(
     )
 
 
-async def emoji_to_stream(emoji_base64: str, stream_id: str, storage_message: bool = True, set_reply: bool = False,reply_message: Optional[Dict[str, Any]] = None) -> bool:
+async def emoji_to_stream(
+    emoji_base64: str,
+    stream_id: str,
+    storage_message: bool = True,
+    set_reply: bool = False,
+    reply_message: Optional["DatabaseMessages"] = None,
+) -> bool:
     """向指定流发送表情包
 
     Args:
@@ -248,10 +255,25 @@ async def emoji_to_stream(emoji_base64: str, stream_id: str, storage_message: bo
     Returns:
         bool: 是否发送成功
     """
-    return await _send_to_target("emoji", emoji_base64, stream_id, "", typing=False, storage_message=storage_message, set_reply=set_reply,reply_message=reply_message)
+    return await _send_to_target(
+        "emoji",
+        emoji_base64,
+        stream_id,
+        "",
+        typing=False,
+        storage_message=storage_message,
+        set_reply=set_reply,
+        reply_message=reply_message,
+    )
 
 
-async def image_to_stream(image_base64: str, stream_id: str, storage_message: bool = True, set_reply: bool = False,reply_message: Optional[Dict[str, Any]] = None) -> bool:
+async def image_to_stream(
+    image_base64: str,
+    stream_id: str,
+    storage_message: bool = True,
+    set_reply: bool = False,
+    reply_message: Optional["DatabaseMessages"] = None,
+) -> bool:
     """向指定流发送图片
 
     Args:
@@ -262,11 +284,25 @@ async def image_to_stream(image_base64: str, stream_id: str, storage_message: bo
     Returns:
         bool: 是否发送成功
     """
-    return await _send_to_target("image", image_base64, stream_id, "", typing=False, storage_message=storage_message, set_reply=set_reply,reply_message=reply_message)
+    return await _send_to_target(
+        "image",
+        image_base64,
+        stream_id,
+        "",
+        typing=False,
+        storage_message=storage_message,
+        set_reply=set_reply,
+        reply_message=reply_message,
+    )
 
 
 async def command_to_stream(
-    command: Union[str, dict], stream_id: str, storage_message: bool = True, display_message: str = "", set_reply: bool = False,reply_message: Optional[Dict[str, Any]] = None
+    command: Union[str, dict],
+    stream_id: str,
+    storage_message: bool = True,
+    display_message: str = "",
+    set_reply: bool = False,
+    reply_message: Optional["DatabaseMessages"] = None,
 ) -> bool:
     """向指定流发送命令
 
@@ -279,7 +315,14 @@ async def command_to_stream(
         bool: 是否发送成功
     """
     return await _send_to_target(
-        "command", command, stream_id, display_message, typing=False, storage_message=storage_message, set_reply=set_reply,reply_message=reply_message
+        "command",
+        command,
+        stream_id,
+        display_message,
+        typing=False,
+        storage_message=storage_message,
+        set_reply=set_reply,
+        reply_message=reply_message,
     )
 
 
@@ -289,7 +332,7 @@ async def custom_to_stream(
     stream_id: str,
     display_message: str = "",
     typing: bool = False,
-    reply_message: Optional[Dict[str, Any]] = None,
+    reply_message: Optional["DatabaseMessages"] = None,
     set_reply: bool = False,
     storage_message: bool = True,
     show_log: bool = True,

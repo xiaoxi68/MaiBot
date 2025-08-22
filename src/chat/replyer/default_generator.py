@@ -9,6 +9,7 @@ from datetime import datetime
 from src.mais4u.mai_think import mai_thinking_manager
 from src.common.logger import get_logger
 from src.common.data_models.database_data_model import DatabaseMessages
+from src.common.data_models.info_data_model import ActionPlannerInfo
 from src.config.config import global_config, model_config
 from src.individuality.individuality import get_individuality
 from src.llm_models.utils_model import LLMRequest
@@ -21,7 +22,7 @@ from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
 from src.chat.utils.chat_message_builder import (
     build_readable_messages,
     get_raw_msg_before_timestamp_with_chat,
-    replace_user_references_sync,
+    replace_user_references,
 )
 from src.chat.express.expression_selector import expression_selector
 from src.chat.memory_system.memory_activator import MemoryActivator
@@ -157,12 +158,12 @@ class DefaultReplyer:
         extra_info: str = "",
         reply_reason: str = "",
         available_actions: Optional[Dict[str, ActionInfo]] = None,
-        chosen_actions: Optional[List[Dict[str, Any]]] = None,
+        chosen_actions: Optional[List[ActionPlannerInfo]] = None,
         enable_tool: bool = True,
         from_plugin: bool = True,
         stream_id: Optional[str] = None,
-        reply_message: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[bool, Optional[Dict[str, Any]], Optional[str], List[Dict[str, Any]]]:
+        reply_message: Optional[DatabaseMessages] = None,
+    ) -> Tuple[bool, Optional[Dict[str, Any]], Optional[str], Optional[List[int]]]:
         # sourcery skip: merge-nested-ifs
         """
         回复器 (Replier): 负责生成回复文本的核心逻辑。
@@ -181,7 +182,7 @@ class DefaultReplyer:
         """
 
         prompt = None
-        selected_expressions = None
+        selected_expressions: Optional[List[int]] = None
         if available_actions is None:
             available_actions = {}
         try:
@@ -374,7 +375,12 @@ class DefaultReplyer:
         )
 
         if global_config.memory.enable_instant_memory:
-            asyncio.create_task(self.instant_memory.create_and_store_memory(chat_history))
+            chat_history_str = build_readable_messages(
+                messages=chat_history,
+                replace_bot_name=True,
+                timestamp_mode="normal"
+            )
+            asyncio.create_task(self.instant_memory.create_and_store_memory(chat_history_str))
 
             instant_memory = await self.instant_memory.get_memory(target)
             logger.info(f"即时记忆：{instant_memory}")
@@ -527,7 +533,7 @@ class DefaultReplyer:
         Returns:
             Tuple[str, str]: (核心对话prompt, 背景对话prompt)
         """
-        core_dialogue_list = []
+        core_dialogue_list: List[DatabaseMessages] = []
         bot_id = str(global_config.bot.qq_account)
 
         # 过滤消息：分离bot和目标用户的对话 vs 其他用户的对话
@@ -559,7 +565,7 @@ class DefaultReplyer:
         if core_dialogue_list:
             # 检查最新五条消息中是否包含bot自己说的消息
             latest_5_messages = core_dialogue_list[-5:] if len(core_dialogue_list) >= 5 else core_dialogue_list
-            has_bot_message = any(str(msg.get("user_id")) == bot_id for msg in latest_5_messages)
+            has_bot_message = any(str(msg.user_info.user_id) == bot_id for msg in latest_5_messages)
 
             # logger.info(f"最新五条消息：{latest_5_messages}")
             # logger.info(f"最新五条消息中是否包含bot自己说的消息：{has_bot_message}")
@@ -634,7 +640,7 @@ class DefaultReplyer:
         return mai_think
 
     async def build_actions_prompt(
-        self, available_actions, choosen_actions: Optional[List[Dict[str, Any]]] = None
+        self, available_actions: Dict[str, ActionInfo], chosen_actions_info: Optional[List[ActionPlannerInfo]] = None
     ) -> str:
         """构建动作提示"""
 
@@ -646,20 +652,21 @@ class DefaultReplyer:
                 action_descriptions += f"- {action_name}: {action_description}\n"
             action_descriptions += "\n"
 
-        choosen_action_descriptions = ""
-        if choosen_actions:
-            for action in choosen_actions:
-                action_name = action.get("action_type", "unknown_action")
+        chosen_action_descriptions = ""
+        if chosen_actions_info:
+            for action_plan_info in chosen_actions_info:
+                action_name = action_plan_info.action_type
                 if action_name == "reply":
                     continue
-                action_description = action.get("reason", "无描述")
-                reasoning = action.get("reasoning", "无原因")
+                if action := available_actions.get(action_name):
+                    action_description = action.description or "无描述"
+                    reasoning = action_plan_info.reasoning or "无原因"
 
-                choosen_action_descriptions += f"- {action_name}: {action_description}，原因：{reasoning}\n"
+                chosen_action_descriptions += f"- {action_name}: {action_description}，原因：{reasoning}\n"
 
-        if choosen_action_descriptions:
+        if chosen_action_descriptions:
             action_descriptions += "根据聊天情况，另一个模型决定在回复的同时做以下这些动作：\n"
-            action_descriptions += choosen_action_descriptions
+            action_descriptions += chosen_action_descriptions
 
         return action_descriptions
 
@@ -668,9 +675,9 @@ class DefaultReplyer:
         extra_info: str = "",
         reply_reason: str = "",
         available_actions: Optional[Dict[str, ActionInfo]] = None,
-        chosen_actions: Optional[List[Dict[str, Any]]] = None,
+        chosen_actions: Optional[List[ActionPlannerInfo]] = None,
         enable_tool: bool = True,
-        reply_message: Optional[Dict[str, Any]] = None,
+        reply_message: Optional[DatabaseMessages] = None,
     ) -> Tuple[str, List[int]]:
         """
         构建回复器上下文
@@ -694,11 +701,11 @@ class DefaultReplyer:
         platform = chat_stream.platform
 
         if reply_message:
-            user_id = reply_message.get("user_id", "")
+            user_id = reply_message.user_info.user_id
             person = Person(platform=platform, user_id=user_id)
             person_name = person.person_name or user_id
             sender = person_name
-            target = reply_message.get("processed_plain_text")
+            target = reply_message.processed_plain_text
         else:
             person_name = "用户"
             sender = "用户"
@@ -710,7 +717,7 @@ class DefaultReplyer:
         else:
             mood_prompt = ""
 
-        target = replace_user_references_sync(target, chat_stream.platform, replace_bot_name=True)
+        target = replace_user_references(target, chat_stream.platform, replace_bot_name=True)
 
         message_list_before_now_long = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_id,
@@ -774,11 +781,13 @@ class DefaultReplyer:
         logger.info(f"回复准备: {'; '.join(timing_logs)}; {almost_zero_str} <0.01s")
 
         expression_habits_block, selected_expressions = results_dict["expression_habits"]
-        relation_info = results_dict["relation_info"]
-        memory_block = results_dict["memory_block"]
-        tool_info = results_dict["tool_info"]
-        prompt_info = results_dict["prompt_info"]  # 直接使用格式化后的结果
-        actions_info = results_dict["actions_info"]
+        expression_habits_block: str
+        selected_expressions: List[int]
+        relation_info: str = results_dict["relation_info"]
+        memory_block: str = results_dict["memory_block"]
+        tool_info: str = results_dict["tool_info"]
+        prompt_info: str = results_dict["prompt_info"]  # 直接使用格式化后的结果
+        actions_info: str = results_dict["actions_info"]
         keywords_reaction_prompt = await self.build_keywords_reaction_prompt(target)
 
         if extra_info:

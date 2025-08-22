@@ -303,4 +303,4 @@ init_prompt()
 try:
     expression_selector = ExpressionSelector()
 except Exception as e:
-    print(f"ExpressionSelector初始化失败: {e}")
+    logger.error(f"ExpressionSelector初始化失败: {e}")

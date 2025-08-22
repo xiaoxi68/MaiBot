@@ -47,10 +47,13 @@ logger = get_logger("Gemini客户端")
 # gemini_thinking参数（默认范围）
 # 不同模型的思考预算范围配置
 THINKING_BUDGET_LIMITS = {
-    "gemini-2.5-flash":       {"min": 1,   "max": 24576, "can_disable": True},
-    "gemini-2.5-flash-lite":  {"min": 512, "max": 24576, "can_disable": True},
-    "gemini-2.5-pro":         {"min": 128, "max": 32768, "can_disable": False},
+    "gemini-2.5-flash": {"min": 1, "max": 24576, "can_disable": True},
+    "gemini-2.5-flash-lite": {"min": 512, "max": 24576, "can_disable": True},
+    "gemini-2.5-pro": {"min": 128, "max": 32768, "can_disable": False},
 }
+# 思维预算特殊值
+THINKING_BUDGET_AUTO = -1  # 自动调整思考预算，由模型决定
+THINKING_BUDGET_DISABLED = 0  # 禁用思考预算（如果模型允许禁用）
 
 gemini_safe_settings = [
     SafetySetting(category=HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold=HarmBlockThreshold.BLOCK_NONE),
@@ -91,9 +94,7 @@ def _convert_messages(
             for item in message.content:
                 if isinstance(item, tuple):
                     image_format = "jpeg" if item[0].lower() == "jpg" else item[0].lower()
-                    content.append(
-                        Part.from_bytes(data=base64.b64decode(item[1]), mime_type=f"image/{image_format}")
-                    )
+                    content.append(Part.from_bytes(data=base64.b64decode(item[1]), mime_type=f"image/{image_format}"))
                 elif isinstance(item, str):
                     content.append(Part.from_text(text=item))
         else:
@@ -336,47 +337,40 @@ class GeminiClient(BaseClient):
             api_key=api_provider.api_key,
         )  # 这里和openai不一样，gemini会自己决定自己是否需要retry
 
-    # 思维预算特殊值
-    THINKING_BUDGET_AUTO = -1  # 自动调整思考预算，由模型决定
-    THINKING_BUDGET_DISABLED = 0  # 禁用思考预算（如果模型允许禁用）
-
     @staticmethod
-    def clamp_thinking_budget(tb: int, model_id: str):
+    def clamp_thinking_budget(tb: int, model_id: str) -> int:
         """
         按模型限制思考预算范围，仅支持指定的模型（支持带数字后缀的新版本）
         """
         limits = None
-        matched_key = None
 
         # 优先尝试精确匹配
         if model_id in THINKING_BUDGET_LIMITS:
             limits = THINKING_BUDGET_LIMITS[model_id]
-            matched_key = model_id
         else:
             # 按 key 长度倒序，保证更长的（更具体的，如 -lite）优先
             sorted_keys = sorted(THINKING_BUDGET_LIMITS.keys(), key=len, reverse=True)
             for key in sorted_keys:
                 # 必须满足：完全等于 或者 前缀匹配（带 "-" 边界）
-                if model_id == key or model_id.startswith(key + "-"):
-                   limits = THINKING_BUDGET_LIMITS[key]
-                   matched_key = key
-                   break
+                if model_id == key or model_id.startswith(f"{key}-"):
+                    limits = THINKING_BUDGET_LIMITS[key]
+                    break
 
         # 特殊值处理
-        if tb == GeminiClient.THINKING_BUDGET_AUTO:
-            return GeminiClient.THINKING_BUDGET_AUTO
-        if tb == GeminiClient.THINKING_BUDGET_DISABLED:
+        if tb == THINKING_BUDGET_AUTO:
+            return THINKING_BUDGET_AUTO
+        if tb == THINKING_BUDGET_DISABLED:
             if limits and limits.get("can_disable", False):
-                return GeminiClient.THINKING_BUDGET_DISABLED
-            return limits["min"] if limits else GeminiClient.THINKING_BUDGET_AUTO
+                return THINKING_BUDGET_DISABLED
+            return limits["min"] if limits else THINKING_BUDGET_AUTO
 
         # 已知模型裁剪到范围
         if limits:
-           return max(limits["min"], min(tb, limits["max"]))
+            return max(limits["min"], min(tb, limits["max"]))
 
         # 未知模型，返回动态模式
         logger.warning(f"模型 {model_id} 未在 THINKING_BUDGET_LIMITS 中定义，将使用动态模式 tb=-1 兼容。")
-        return GeminiClient.THINKING_BUDGET_AUTO
+        return THINKING_BUDGET_AUTO
 
     async def get_response(
         self,
@@ -424,15 +418,13 @@ class GeminiClient(BaseClient):
         # 将tool_options转换为Gemini API所需的格式
         tools = _convert_tool_options(tool_options) if tool_options else None
 
-        tb = GeminiClient.THINKING_BUDGET_AUTO
-        #空处理
+        tb = THINKING_BUDGET_AUTO
+        # 空处理
         if extra_params and "thinking_budget" in extra_params:
             try:
                 tb = int(extra_params["thinking_budget"])
             except (ValueError, TypeError):
-                logger.warning(
-                f"无效的 thinking_budget 值 {extra_params['thinking_budget']}，将使用默认动态模式 {tb}"
-            )
+                logger.warning(f"无效的 thinking_budget 值 {extra_params['thinking_budget']}，将使用默认动态模式 {tb}")
         # 裁剪到模型支持的范围
         tb = self.clamp_thinking_budget(tb, model_info.model_identifier)
 

@@ -9,7 +9,7 @@
 """
 
 import traceback
-from typing import Tuple, Any, Dict, List, Optional
+from typing import Tuple, Any, Dict, List, Optional, TYPE_CHECKING
 from rich.traceback import install
 from src.common.logger import get_logger
 from src.chat.replyer.default_generator import DefaultReplyer
@@ -17,6 +17,10 @@ from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.utils.utils import process_llm_response
 from src.chat.replyer.replyer_manager import replyer_manager
 from src.plugin_system.base.component_types import ActionInfo
+
+if TYPE_CHECKING:
+    from src.common.data_models.info_data_model import ActionPlannerInfo
+    from src.common.data_models.database_data_model import DatabaseMessages
 
 install(extra_lines=3)
 
@@ -73,11 +77,11 @@ async def generate_reply(
     chat_stream: Optional[ChatStream] = None,
     chat_id: Optional[str] = None,
     action_data: Optional[Dict[str, Any]] = None,
-    reply_message: Optional[Dict[str, Any]] = None,
+    reply_message: Optional["DatabaseMessages"] = None,
     extra_info: str = "",
     reply_reason: str = "",
     available_actions: Optional[Dict[str, ActionInfo]] = None,
-            choosen_actions: Optional[List[Dict[str, Any]]] = None,
+    chosen_actions: Optional[List["ActionPlannerInfo"]] = None,
     enable_tool: bool = False,
     enable_splitter: bool = True,
     enable_chinese_typo: bool = True,
@@ -85,7 +89,7 @@ async def generate_reply(
     request_type: str = "generator_api",
     from_plugin: bool = True,
     return_expressions: bool = False,
-) -> Tuple[bool, List[Tuple[str, Any]], Optional[Tuple[str, List[Dict[str, Any]]]]]:
+) -> Tuple[bool, List[Tuple[str, Any]], Optional[str], Optional[List[int]]]:
     """生成回复
 
     Args:
@@ -96,7 +100,7 @@ async def generate_reply(
         extra_info: 额外信息，用于补充上下文
         reply_reason: 回复原因
         available_actions: 可用动作
-        choosen_actions: 已选动作
+        chosen_actions: 已选动作
         enable_tool: 是否启用工具调用
         enable_splitter: 是否启用消息分割器
         enable_chinese_typo: 是否启用错字生成器
@@ -110,16 +114,14 @@ async def generate_reply(
     try:
         # 获取回复器
         logger.debug("[GeneratorAPI] 开始生成回复")
-        replyer = get_replyer(
-            chat_stream, chat_id, request_type=request_type
-        )
+        replyer = get_replyer(chat_stream, chat_id, request_type=request_type)
         if not replyer:
             logger.error("[GeneratorAPI] 无法获取回复器")
-            return False, [], None
+            return False, [], None, None
 
         if not extra_info and action_data:
             extra_info = action_data.get("extra_info", "")
-            
+
         if not reply_reason and action_data:
             reply_reason = action_data.get("reason", "")
 
@@ -127,7 +129,7 @@ async def generate_reply(
         success, llm_response_dict, prompt, selected_expressions = await replyer.generate_reply_with_context(
             extra_info=extra_info,
             available_actions=available_actions,
-            chosen_actions=choosen_actions,
+            chosen_actions=chosen_actions,
             enable_tool=enable_tool,
             reply_message=reply_message,
             reply_reason=reply_reason,
@@ -136,7 +138,7 @@ async def generate_reply(
         )
         if not success:
             logger.warning("[GeneratorAPI] 回复生成失败")
-            return False, [], None
+            return False, [], None, None
         assert llm_response_dict is not None, "llm_response_dict不应为None"  # 虽然说不会出现llm_response为空的情况
         if content := llm_response_dict.get("content", ""):
             reply_set = process_human_text(content, enable_splitter, enable_chinese_typo)
@@ -144,28 +146,34 @@ async def generate_reply(
             reply_set = []
         logger.debug(f"[GeneratorAPI] 回复生成成功，生成了 {len(reply_set)} 个回复项")
 
-        if return_prompt:
-            if return_expressions:
-                return success, reply_set, (prompt, selected_expressions)
-            else:
-                return success, reply_set, prompt
-        else:
-            if return_expressions:
-                return success, reply_set, (None, selected_expressions)
-            else:
-                return success, reply_set, None
-    
+        # if return_prompt:
+        #     if return_expressions:
+        #         return success, reply_set, prompt, selected_expressions
+        #     else:
+        #         return success, reply_set, prompt, None
+        # else:
+        #     if return_expressions:
+        #         return success, reply_set, (None, selected_expressions)
+        #     else:
+        #         return success, reply_set, None
+        return (
+            success,
+            reply_set,
+            prompt if return_prompt else None,
+            selected_expressions if return_expressions else None,
+        )
+
     except ValueError as ve:
         raise ve
 
     except UserWarning as uw:
         logger.warning(f"[GeneratorAPI] 中断了生成: {uw}")
-        return False, [], None
+        return False, [], None, None
 
     except Exception as e:
         logger.error(f"[GeneratorAPI] 生成回复时出错: {e}")
         logger.error(traceback.format_exc())
-        return False, [], None
+        return False, [], None, None
 
 
 async def rewrite_reply(

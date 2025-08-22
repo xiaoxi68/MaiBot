@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from src.llm_models.utils_model import LLMRequest
 from src.common.logger import get_logger
 from src.common.database.database_model import Memory  # Peewee Models导入
-from src.config.config import model_config
+from src.config.config import model_config, global_config
 
 
 logger = get_logger(__name__)
@@ -42,7 +42,7 @@ class InstantMemory:
             request_type="memory.summary",
         )
 
-    async def if_need_build(self, text):
+    async def if_need_build(self, text: str):
         prompt = f"""
 请判断以下内容中是否有值得记忆的信息，如果有，请输出1，否则输出0
 {text}
@@ -51,8 +51,9 @@ class InstantMemory:
 
         try:
             response, _ = await self.summary_model.generate_response_async(prompt, temperature=0.5)
-            print(prompt)
-            print(response)
+            if global_config.debug.show_prompt:
+                print(prompt)
+                print(response)
 
             return "1" in response
         except Exception as e:
@@ -94,7 +95,7 @@ class InstantMemory:
             logger.error(f"构建记忆出现错误：{str(e)} {traceback.format_exc()}")
             return None
 
-    async def create_and_store_memory(self, text):
+    async def create_and_store_memory(self, text: str):
         if_need = await self.if_need_build(text)
         if if_need:
             logger.info(f"需要记忆：{text}")
@@ -126,24 +127,25 @@ class InstantMemory:
         from json_repair import repair_json
 
         prompt = f"""
-        请根据以下发言内容，判断是否需要提取记忆
-        {target}
-        请用json格式输出，包含以下字段：
-        其中，time的要求是：
-        可以选择具体日期时间，格式为YYYY-MM-DD HH:MM:SS，或者大致时间，格式为YYYY-MM-DD
-        可以选择相对时间，例如：今天，昨天，前天，5天前，1个月前
-        可以选择留空进行模糊搜索
-        {{
-            "need_memory": 1,
-            "keywords": "希望获取的记忆关键词，用/划分",
-            "time": "希望获取的记忆大致时间"
-        }}
-        请只输出json格式，不要输出其他多余内容
-        """
+请根据以下发言内容，判断是否需要提取记忆
+{target}
+请用json格式输出，包含以下字段：
+其中，time的要求是：
+可以选择具体日期时间，格式为YYYY-MM-DD HH:MM:SS，或者大致时间，格式为YYYY-MM-DD
+可以选择相对时间，例如：今天，昨天，前天，5天前，1个月前
+可以选择留空进行模糊搜索
+{{
+    "need_memory": 1,
+    "keywords": "希望获取的记忆关键词，用/划分",
+    "time": "希望获取的记忆大致时间"
+}}
+请只输出json格式，不要输出其他多余内容
+"""
         try:
             response, _ = await self.summary_model.generate_response_async(prompt, temperature=0.5)
-            print(prompt)
-            print(response)
+            if global_config.debug.show_prompt:
+                print(prompt)
+                print(response)
             if not response:
                 return None
             try:

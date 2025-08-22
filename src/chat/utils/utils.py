@@ -11,7 +11,6 @@ from collections import Counter
 from typing import Optional, Tuple, Dict, List, Any
 
 from src.common.logger import get_logger
-from src.common.data_models.info_data_model import TargetPersonInfo
 from src.common.data_models.database_data_model import DatabaseMessages
 from src.common.message_repository import find_messages, count_messages
 from src.config.config import global_config, model_config
@@ -640,6 +639,8 @@ def get_chat_type_and_target_info(chat_id: str) -> Tuple[bool, Optional[Dict]]:
                 user_info = chat_stream.user_info
                 platform: str = chat_stream.platform
                 user_id: str = user_info.user_id  # type: ignore
+
+                from src.common.data_models.info_data_model import TargetPersonInfo  # 解决循环导入问题
 
                 # Initialize target_info with basic info
                 target_info = TargetPersonInfo(

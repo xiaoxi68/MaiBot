@@ -1,20 +1,13 @@
-import random
+import json
+from json_repair import repair_json
 from typing import Tuple
 
-# 导入新插件系统
-from src.plugin_system import BaseAction, ActionActivationType, ChatMode
-
-# 导入依赖的系统组件
 from src.common.logger import get_logger
-
-# 导入API模块 - 标准Python包方式
-from src.plugin_system.apis import emoji_api, llm_api, message_api
-# NoReplyAction已集成到heartFC_chat.py中，不再需要导入
 from src.config.config import global_config
 from src.person_info.person_info import Person, get_memory_content_from_memory, get_weight_from_memory
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
-import json
-from json_repair import repair_json
+from src.plugin_system import BaseAction, ActionActivationType
+from src.plugin_system.apis import llm_api
 
 
 logger = get_logger("relation")
@@ -39,10 +32,9 @@ def init_prompt():
 {{
     "category": "分类名称"
 }} """,
-        "relation_category"
+        "relation_category",
     )
-    
-    
+
     Prompt(
         """
 以下是有关{category}的现有记忆：
@@ -73,7 +65,7 @@ def init_prompt():
 
 现在，请你根据情况选出合适的修改方式，并输出json，不要输出其他内容：
 """,
-        "relation_category_update"
+        "relation_category_update",
     )
 
 
@@ -98,17 +90,14 @@ class BuildRelationAction(BaseAction):
     """
 
     # 动作参数定义
-    action_parameters = {
-        "person_name":"需要了解或记忆的人的名称",
-        "impression":"需要了解的对某人的记忆或印象"
-    }
+    action_parameters = {"person_name": "需要了解或记忆的人的名称", "impression": "需要了解的对某人的记忆或印象"}
 
     # 动作使用场景
     action_require = [
         "了解对于某人的记忆，并添加到你对对方的印象中",
         "对方与有明确提到有关其自身的事件",
         "对方有提到其个人信息，包括喜好，身份，等等",
-        "对方希望你记住对方的信息"
+        "对方希望你记住对方的信息",
     ]
 
     # 关联类型
@@ -129,9 +118,7 @@ class BuildRelationAction(BaseAction):
             if not person.is_known:
                 logger.warning(f"{self.log_prefix} 用户 {person_name} 不存在，跳过添加记忆")
                 return False, f"用户 {person_name} 不存在，跳过添加记忆"
-            
 
-            
             category_list = person.get_all_category()
             if not category_list:
                 category_list_str = "无分类"
@@ -142,9 +129,8 @@ class BuildRelationAction(BaseAction):
                 "relation_category",
                 category_list=category_list_str,
                 memory_point=impression,
-                person_name=person.person_name
+                person_name=person.person_name,
             )
-            
 
             if global_config.debug.show_prompt:
                 logger.info(f"{self.log_prefix} 生成的LLM Prompt: {prompt}")
@@ -161,84 +147,76 @@ class BuildRelationAction(BaseAction):
             success, category, _, _ = await llm_api.generate_with_model(
                 prompt, model_config=chat_model_config, request_type="relation.category"
             )
-            
-            
 
             category_data = json.loads(repair_json(category))
             category = category_data.get("category", "")
             if not category:
                 logger.warning(f"{self.log_prefix} LLM未给出分类，跳过添加记忆")
                 return False, "LLM未给出分类，跳过添加记忆"
-            
-            
+
             # 第二部分：更新记忆
-            
+
             memory_list = person.get_memory_list_by_category(category)
             if not memory_list:
                 logger.info(f"{self.log_prefix} {person.person_name} 的  {category}  的记忆为空，进行创建")
                 person.memory_points.append(f"{category}:{impression}:1.0")
                 person.sync_to_database()
-                
+
                 return True, f"未找到分类为{category}的记忆点，进行添加"
-            
+
             memory_list_str = ""
             memory_list_id = {}
-            id = 1
-            for memory in memory_list:
+            for id, memory in enumerate(memory_list, start=1):
                 memory_content = get_memory_content_from_memory(memory)
                 memory_list_str += f"{id}. {memory_content}\n"
                 memory_list_id[id] = memory
-                id += 1
-            
             prompt = await global_prompt_manager.format_prompt(
                 "relation_category_update",
                 category=category,
                 memory_list=memory_list_str,
                 memory_point=impression,
-                person_name=person.person_name
+                person_name=person.person_name,
             )
-            
+
             if global_config.debug.show_prompt:
                 logger.info(f"{self.log_prefix} 生成的LLM Prompt: {prompt}")
             else:
                 logger.debug(f"{self.log_prefix} 生成的LLM Prompt: {prompt}")
 
-            chat_model_config = models.get("utils")            
+            chat_model_config = models.get("utils")
             success, update_memory, _, _ = await llm_api.generate_with_model(
-                prompt, model_config=chat_model_config, request_type="relation.category.update"
+                prompt, model_config=chat_model_config, request_type="relation.category.update" # type: ignore
             )
-            
+
             update_memory_data = json.loads(repair_json(update_memory))
             new_memory = update_memory_data.get("new_memory", "")
             memory_id = update_memory_data.get("memory_id", "")
             integrate_memory = update_memory_data.get("integrate_memory", "")
-            
+
             if new_memory:
                 # 新记忆
                 person.memory_points.append(f"{category}:{new_memory}:1.0")
                 person.sync_to_database()
-                
+
                 return True, f"为{person.person_name}新增记忆点: {new_memory}"
             elif memory_id and integrate_memory:
                 # 现存或冲突记忆
                 memory = memory_list_id[memory_id]
                 memory_content = get_memory_content_from_memory(memory)
-                del_count = person.del_memory(category,memory_content)
-                
+                del_count = person.del_memory(category, memory_content)
+
                 if del_count > 0:
                     logger.info(f"{self.log_prefix} 删除记忆点: {memory_content}")
 
                     memory_weight = get_weight_from_memory(memory)
                     person.memory_points.append(f"{category}:{integrate_memory}:{memory_weight + 1.0}")
                     person.sync_to_database()
-                    
+
                     return True, f"更新{person.person_name}的记忆点: {memory_content} -> {integrate_memory}"
-                    
+
                 else:
                     logger.warning(f"{self.log_prefix} 删除记忆点失败: {memory_content}")
                     return False, f"删除{person.person_name}的记忆点失败: {memory_content}"
-                
-                
 
             return True, "关系动作执行成功"
 

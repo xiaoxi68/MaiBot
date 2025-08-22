@@ -2,7 +2,7 @@ from typing import Dict, Any
 
 from src.common.logger import get_logger
 from src.config.config import global_config
-from src.chat.knowledge.knowledge_lib import qa_manager
+from src.chat.knowledge import qa_manager
 from src.plugin_system import BaseTool, ToolParamType
 
 logger = get_logger("lpmm_get_knowledge_tool")
