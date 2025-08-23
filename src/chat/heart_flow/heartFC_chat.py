@@ -448,7 +448,7 @@ class HeartFChatting:
                 prompt_info = await self.action_planner.build_planner_prompt(
                     is_group_chat=planner_info[0],
                     chat_target_info=planner_info[1],
-                    current_available_actions=planner_info[2],
+                    # current_available_actions=planner_info[2],
                     chat_content_block=chat_content_block,
                     actions_before_now_block=actions_before_now_block,
                     message_id_list=message_id_list,

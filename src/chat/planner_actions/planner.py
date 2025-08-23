@@ -47,7 +47,14 @@ def init_prompt():
 现在请你根据聊天内容和用户的最新消息选择合适的action和触发action的消息:
 {actions_before_now_block}
 
-{no_action_block}
+动作：no_action
+动作描述：不进行动作，等待合适的时机
+- 当你刚刚发送了消息，没有人回复时，选择no_action
+- 当你一次发送了太多消息，为了避免过于烦人，可以不回复
+{{
+    "action": "no_action",
+    "reason":"不动作的原因"
+}}
 
 动作：reply
 动作描述：参与聊天回复，发送文本进行表达
@@ -61,14 +68,42 @@ def init_prompt():
     "reason":"回复的原因"
 }}
 
-{action_options_text}
-
 你必须从上面列出的可用action中选择一个，并说明触发action的消息id（不是消息原文）和选择该action的原因。消息id格式:m+数字
 
 请根据动作示例，以严格的 JSON 格式输出，且仅包含 JSON 内容：
 """,
         "planner_prompt",
     )
+    
+    Prompt(
+        """
+{time_block}
+{name_block}
+
+{chat_context_description}，以下是具体的聊天内容
+{chat_content_block}
+
+{moderation_prompt}
+
+现在，最新的聊天消息引起了你的兴趣，你想要对其中的消息进行回复，回复标准如下：
+- 你想要闲聊或者随便附和
+- 有人提到了你，但是你还没有回应
+- {mentioned_bonus}
+- 如果你刚刚进行了回复，不要对同一个话题重复回应
+
+请你选中一条需要回复的消息并输出其id,输出格式如下：
+{{
+    "action": "reply",
+    "target_message_id":"想要回复的消息id，消息id格式:m+数字",
+    "reason":"回复的原因"
+}}
+
+请根据示例，以严格的 JSON 格式输出，且仅包含 JSON 内容：
+""",
+        "planner_reply_prompt",
+    )
+    
+    
 
     Prompt(
         """
@@ -87,15 +122,12 @@ def init_prompt():
     
     Prompt(
     """
-{time_block}
 {name_block}
-请你根据聊天内容，选择一个或多个action来参与聊天。如果没有合适的action，请选择no_action。
 
-{chat_context_description}，以下是具体的聊天内容
+{chat_context_description}，{time_block}，现在请你根据以下聊天内容，选择一个或多个action来参与聊天。如果没有合适的action，请选择no_action。,
 {chat_content_block}
 
 {moderation_prompt}
-
 现在请你根据聊天内容和用户的最新消息选择合适的action和触发action的消息:
 {actions_before_now_block}
 
@@ -108,7 +140,6 @@ no_action：不选择任何动作
 {action_options_text}
 
 请选择，并说明触发action的消息id和选择该action的原因。消息id格式:m+数字
-
 请根据动作示例，以严格的 JSON 格式输出，且仅包含 JSON 内容：
 """,
     "sub_planner_prompt",
@@ -151,18 +182,6 @@ class ActionPlanner:
             if item[0] == message_id:
                 return item[1]
         return None
-
-    def get_latest_message(self, message_id_list: List[DatabaseMessages]) -> Optional[DatabaseMessages]:
-        """
-        获取消息列表中的最新消息
-
-        Args:
-            message_id_list: 消息ID列表，格式为[{'id': str, 'message': dict}, ...]
-
-        Returns:
-            最新的消息字典，如果列表为空则返回None
-        """
-        return message_id_list[-1] if message_id_list else None
     
     def _parse_single_action(self, action_json: dict, message_id_list: List[Tuple[str, DatabaseMessages]], current_available_actions: List[Tuple[str, ActionInfo]]) -> List[ActionPlannerInfo]:
         """解析单个action JSON并返回ActionPlannerInfo列表"""
@@ -187,7 +206,7 @@ class ActionPlanner:
                     if target_message is None:
                         logger.warning(f"{self.log_prefix}无法找到target_message_id '{target_message_id}' 对应的消息")
                         # 选择最新消息作为target_message
-                        target_message = self.get_latest_message(message_id_list)
+                        target_message = message_id_list[-1]
                 else:
                     logger.warning(f"{self.log_prefix}动作'{action}'缺少target_message_id")
             
@@ -242,15 +261,14 @@ class ActionPlanner:
             action_names_in_list = [name for name, _ in action_list]
             # actions_before_now是List[Dict[str, Any]]格式，需要提取action_type字段
             filtered_actions = []
-            # print(actions_before_now)
-            # print(action_names_in_list)
             for action_record in actions_before_now:
-                if isinstance(action_record, dict) and 'action_name' in action_record:
-                    action_type = action_record['action_name']
-                    if action_type in action_names_in_list:
-                        filtered_actions.append(action_record)
-            
-
+                # print(action_record)
+                # print(action_record['action_name'])
+                # print(action_names_in_list)
+                action_type = action_record['action_name']
+                if action_type in action_names_in_list:
+                    filtered_actions.append(action_record)
+        
 
             actions_before_now_block = build_readable_actions(
                 actions=filtered_actions,
@@ -467,7 +485,7 @@ class ActionPlanner:
             chat_id=self.chat_id,
             timestamp_start=time.time() - 600,
             timestamp_end=time.time(),
-            limit=5,
+            limit=6,
         )
 
         actions_before_now_block = build_readable_actions(
@@ -475,7 +493,7 @@ class ActionPlanner:
         )
     
         
-        message_list_before_now_short = message_list_before_now[:5]
+        message_list_before_now_short = message_list_before_now[-int(global_config.chat.max_context_size * 0.3):]
         
         chat_content_block_short, message_id_list_short = build_readable_messages_with_id(
             messages=message_list_before_now_short,
@@ -582,7 +600,7 @@ class ActionPlanner:
             prompt, message_id_list = await self.build_planner_prompt(
                 is_group_chat=is_group_chat,  # <-- Pass HFC state
                 chat_target_info=chat_target_info,  # <-- 传递获取到的聊天目标信息
-                current_available_actions="",  # <-- Pass determined actions
+                # current_available_actions="",  # <-- Pass determined actions
                 mode=mode,
                 chat_content_block=chat_content_block,
                 actions_before_now_block=actions_before_now_block,
@@ -642,7 +660,7 @@ class ActionPlanner:
                             # 处理target_message为None的情况（保持原有的重试逻辑）
                             if target_message is None and action != "no_action":
                                 # 尝试获取最新消息作为target_message
-                                target_message = self.get_latest_message(message_id_list)
+                                target_message = message_id_list[-1]
                                 if target_message is None:
                                     logger.warning(f"{self.log_prefix}无法获取任何消息作为target_message")
                         else:
@@ -740,7 +758,7 @@ class ActionPlanner:
         self,
         is_group_chat: bool,  # Now passed as argument
         chat_target_info: Optional[dict],  # Now passed as argument
-        current_available_actions: Dict[str, ActionInfo],
+        # current_available_actions: Dict[str, ActionInfo],
         mode: ChatMode = ChatMode.FOCUS,
         actions_before_now_block :str = "",
         chat_content_block :str = "",
@@ -760,22 +778,6 @@ class ActionPlanner:
             if global_config.chat.at_bot_inevitable_reply:
                 mentioned_bonus = "\n- 有人提到你，或者at你"
 
-            if mode == ChatMode.FOCUS:
-                no_action_block = """
-动作：no_action
-动作描述：不进行动作，等待合适的时机
-- 当你刚刚发送了消息，没有人回复时，选择no_action
-- 当你一次发送了太多消息，为了避免过于烦人，可以不回复
-{
-    "action": "no_action",
-    "reason":"不动作的原因"
-}
-"""
-            else:
-                no_action_block = """重要说明：
-- 'reply' 表示只进行普通聊天回复，不执行任何额外动作
-- 其他action表示在普通回复的基础上，执行相应的额外动作
-"""
 
             chat_context_description = "你现在正在一个群聊中"
             chat_target_name = None
@@ -784,35 +786,38 @@ class ActionPlanner:
                     chat_target_info.get("person_name") or chat_target_info.get("user_nickname") or "对方"
                 )
                 chat_context_description = f"你正在和 {chat_target_name} 私聊"
+                
+                
+            # 别删，之后可能会允许主Planner扩展
 
-            action_options_block = ""
+            # action_options_block = ""
 
-            if current_available_actions:
-                for using_actions_name, using_actions_info in current_available_actions.items():
-                    if using_actions_info.action_parameters:
-                        param_text = "\n"
-                        for param_name, param_description in using_actions_info.action_parameters.items():
-                            param_text += f'    "{param_name}":"{param_description}"\n'
-                        param_text = param_text.rstrip("\n")
-                    else:
-                        param_text = ""
+            # if current_available_actions:
+            #     for using_actions_name, using_actions_info in current_available_actions.items():
+            #         if using_actions_info.action_parameters:
+            #             param_text = "\n"
+            #             for param_name, param_description in using_actions_info.action_parameters.items():
+            #                 param_text += f'    "{param_name}":"{param_description}"\n'
+            #             param_text = param_text.rstrip("\n")
+            #         else:
+            #             param_text = ""
 
-                    require_text = ""
-                    for require_item in using_actions_info.action_require:
-                        require_text += f"- {require_item}\n"
-                    require_text = require_text.rstrip("\n")
+            #         require_text = ""
+            #         for require_item in using_actions_info.action_require:
+            #             require_text += f"- {require_item}\n"
+            #         require_text = require_text.rstrip("\n")
 
-                    using_action_prompt = await global_prompt_manager.get_prompt_async("action_prompt")
-                    using_action_prompt = using_action_prompt.format(
-                        action_name=using_actions_name,
-                        action_description=using_actions_info.description,
-                        action_parameters=param_text,
-                        action_require=require_text,
-                    )
+            #         using_action_prompt = await global_prompt_manager.get_prompt_async("action_prompt")
+            #         using_action_prompt = using_action_prompt.format(
+            #             action_name=using_actions_name,
+            #             action_description=using_actions_info.description,
+            #             action_parameters=param_text,
+            #             action_require=require_text,
+            #         )
 
-                    action_options_block += using_action_prompt
-            else:
-                action_options_block = ""
+            #         action_options_block += using_action_prompt
+            # else:
+            #     action_options_block = ""
 
             moderation_prompt_block = "请不要输出违法违规内容，不要输出色情，暴力，政治相关内容，如有敏感内容，请规避。"
 
@@ -825,20 +830,31 @@ class ActionPlanner:
                 bot_nickname = ""
             name_block = f"你的名字是{bot_name}{bot_nickname}，请注意哪些是你自己的发言。"
 
-            planner_prompt_template = await global_prompt_manager.get_prompt_async("planner_prompt")
-            prompt = planner_prompt_template.format(
-                time_block=time_block,
-                chat_context_description=chat_context_description,
-                chat_content_block=chat_content_block,
-                actions_before_now_block=actions_before_now_block,
-                no_action_block=no_action_block,
-                mentioned_bonus=mentioned_bonus,
-                action_options_text=action_options_block,
-                moderation_prompt=moderation_prompt_block,
-                name_block=name_block,
-                plan_style=global_config.personality.plan_style,
-            )
-            return prompt, message_id_list
+            if mode == ChatMode.FOCUS:
+                planner_prompt_template = await global_prompt_manager.get_prompt_async("planner_prompt")
+                prompt = planner_prompt_template.format(
+                    time_block=time_block,
+                    chat_context_description=chat_context_description,
+                    chat_content_block=chat_content_block,
+                    actions_before_now_block=actions_before_now_block,
+                    mentioned_bonus=mentioned_bonus,
+                    # action_options_text=action_options_block,
+                    moderation_prompt=moderation_prompt_block,
+                    name_block=name_block,
+                    plan_style=global_config.personality.plan_style,
+                )
+                return prompt, message_id_list
+            else:
+                planner_prompt_template = await global_prompt_manager.get_prompt_async("planner_reply_prompt")
+                prompt = planner_prompt_template.format(
+                    time_block=time_block,
+                    chat_context_description=chat_context_description,
+                    chat_content_block=chat_content_block,
+                    mentioned_bonus=mentioned_bonus,
+                    moderation_prompt=moderation_prompt_block,
+                    name_block=name_block,
+                )
+                return prompt, message_id_list
         except Exception as e:
             logger.error(f"构建 Planner 提示词时出错: {e}")
             logger.error(traceback.format_exc())
