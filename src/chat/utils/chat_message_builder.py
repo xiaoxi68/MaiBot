@@ -570,7 +570,10 @@ def build_readable_actions(actions: List[Dict[str, Any]],mode:str="relative") ->
                 time_diff_minutes = round(time_diff_seconds / 60)
                 time_ago_str = f"在{int(time_diff_minutes)}分钟前"
         elif mode == "absolute":
-            time_ago_str = f"在{action_time}时"
+            # 转化为可读时间（仅保留时分秒，不包含日期）
+            action_time_struct = time.localtime(action_time)
+            time_str = time.strftime("%H:%M:%S", action_time_struct)
+            time_ago_str = f"在{time_str}"
 
         line = f"{time_ago_str}，你使用了“{action_name}”，具体内容是：“{action_prompt_display}”"
         output_lines.append(line)
