@@ -414,9 +414,7 @@ class HeartFChatting:
                 # 执行planner
                 planner_info = self.action_planner.get_necessary_info()
                 
-                
-                
-                
+
                 
                 message_list_before_now = get_raw_msg_before_timestamp_with_chat(
                     chat_id=self.stream_id,
@@ -429,20 +427,7 @@ class HeartFChatting:
                     read_mark=self.action_planner.last_obs_time_mark,
                     truncate=True,
                     show_actions=True,
-                )
-
-                actions_before_now = get_actions_by_timestamp_with_chat(
-                    chat_id=self.stream_id,
-                    timestamp_start=time.time() - 600,
-                    timestamp_end=time.time(),
-                    limit=5,
-                )
-
-                actions_before_now_block = build_readable_actions(
-                    actions=actions_before_now,
-                )
-                                
-                
+                )               
                 
                 
                 prompt_info = await self.action_planner.build_planner_prompt(
@@ -450,7 +435,7 @@ class HeartFChatting:
                     chat_target_info=planner_info[1],
                     # current_available_actions=planner_info[2],
                     chat_content_block=chat_content_block,
-                    actions_before_now_block=actions_before_now_block,
+                    # actions_before_now_block=actions_before_now_block,
                     message_id_list=message_id_list,
                 )
                 if not await events_manager.handle_mai_events(

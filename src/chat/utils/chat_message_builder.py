@@ -533,7 +533,7 @@ def build_pic_mapping_info(pic_id_mapping: Dict[str, str]) -> str:
     return "\n".join(mapping_lines)
 
 
-def build_readable_actions(actions: List[Dict[str, Any]]) -> str:
+def build_readable_actions(actions: List[Dict[str, Any]],mode:str="relative") -> str:
     """
     将动作列表转换为可读的文本格式。
     格式: 在（）分钟前，你使用了(action_name)，具体内容是：（action_prompt_display）
@@ -556,18 +556,21 @@ def build_readable_actions(actions: List[Dict[str, Any]]) -> str:
     for action in actions:
         action_time = action.get("time", current_time)
         action_name = action.get("action_name", "未知动作")
+        # action_reason = action.get(action_data")
         if action_name in ["no_action", "no_action"]:
             continue
 
         action_prompt_display = action.get("action_prompt_display", "无具体内容")
 
         time_diff_seconds = current_time - action_time
-
-        if time_diff_seconds < 60:
-            time_ago_str = f"在{int(time_diff_seconds)}秒前"
-        else:
-            time_diff_minutes = round(time_diff_seconds / 60)
-            time_ago_str = f"在{int(time_diff_minutes)}分钟前"
+        if mode == "relative":
+            if time_diff_seconds < 60:
+                time_ago_str = f"在{int(time_diff_seconds)}秒前"
+            else:
+                time_diff_minutes = round(time_diff_seconds / 60)
+                time_ago_str = f"在{int(time_diff_minutes)}分钟前"
+        elif mode == "absolute":
+            time_ago_str = f"在{action_time}时"
 
         line = f"{time_ago_str}，你使用了“{action_name}”，具体内容是：“{action_prompt_display}”"
         output_lines.append(line)

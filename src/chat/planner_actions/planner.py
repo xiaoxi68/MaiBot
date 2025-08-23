@@ -129,7 +129,7 @@ def init_prompt():
 
 {moderation_prompt}
 现在请你根据聊天内容和用户的最新消息选择合适的action和触发action的消息:
-{actions_before_now_block}
+
 
 no_action：不选择任何动作
 {{
@@ -138,6 +138,9 @@ no_action：不选择任何动作
 }}
 
 {action_options_text}
+
+这是你最近执行过的动作，请注意如果相同的内容已经被执行，请不要重复执行：
+{actions_before_now_block}
 
 请选择，并说明触发action的消息id和选择该action的原因。消息id格式:m+数字
 请根据动作示例，以严格的 JSON 格式输出，且仅包含 JSON 内容：
@@ -160,10 +163,7 @@ class ActionPlanner:
         )  # 用于动作规划
 
         self.last_obs_time_mark = 0.0
-        # 添加重试计数器
-        self.plan_retry_count = 0
-        self.max_plan_retries = 3
-
+    
     def find_message_by_id(
         self, message_id: str, message_id_list: List[Tuple[str, DatabaseMessages]]
     ) -> Optional[DatabaseMessages]:
@@ -247,7 +247,6 @@ class ActionPlanner:
     async def sub_plan(
         self,
         action_list: List[Tuple[str, ActionInfo]],
-        actions_before_now: List[Dict[str, Any]],
         chat_content_block: str,
         message_id_list: List[Tuple[str, DatabaseMessages]],
         is_group_chat: bool = False,
@@ -256,6 +255,13 @@ class ActionPlanner:
     ) -> List[ActionPlannerInfo]:
         # 构建副planner并执行(单个副planner)
         try:
+            actions_before_now = get_actions_by_timestamp_with_chat(
+                chat_id=self.chat_id,
+                timestamp_start=time.time() - 1200,
+                timestamp_end=time.time(),
+                limit=20,
+            )
+            
             # 获取最近的actions
             # 只保留action_type在action_list中的ActionPlannerInfo
             action_names_in_list = [name for name, _ in action_list]
@@ -272,13 +278,8 @@ class ActionPlanner:
 
             actions_before_now_block = build_readable_actions(
                 actions=filtered_actions,
+                mode="absolute",
             )
-            
-            
-            if actions_before_now_block:
-                actions_before_now_block = f"你刚刚选择并执行过的action是，请注意如果相同的内容已经被执行，请不要重复执行：\n{actions_before_now_block}"
-            else:
-                actions_before_now_block = ""
 
             chat_context_description = "你现在正在一个群聊中"
             chat_target_name = None
@@ -481,17 +482,6 @@ class ActionPlanner:
             show_actions=True,
         )
 
-        actions_before_now = get_actions_by_timestamp_with_chat(
-            chat_id=self.chat_id,
-            timestamp_start=time.time() - 600,
-            timestamp_end=time.time(),
-            limit=6,
-        )
-
-        actions_before_now_block = build_readable_actions(
-            actions=actions_before_now,
-        )
-    
         
         message_list_before_now_short = message_list_before_now[-int(global_config.chat.max_context_size * 0.3):]
         
@@ -575,7 +565,7 @@ class ActionPlanner:
             async def execute_sub_plan(action_list):
                 return await self.sub_plan(
                     action_list=action_list,
-                    actions_before_now=actions_before_now,
+                    # actions_before_now=actions_before_now,
                     chat_content_block=chat_content_block_short,
                     message_id_list=message_id_list_short,
                     is_group_chat=is_group_chat,
@@ -603,7 +593,7 @@ class ActionPlanner:
                 # current_available_actions="",  # <-- Pass determined actions
                 mode=mode,
                 chat_content_block=chat_content_block,
-                actions_before_now_block=actions_before_now_block,
+                # actions_before_now_block=actions_before_now_block,
                 message_id_list=message_id_list,
             )
 
@@ -760,12 +750,23 @@ class ActionPlanner:
         chat_target_info: Optional[dict],  # Now passed as argument
         # current_available_actions: Dict[str, ActionInfo],
         mode: ChatMode = ChatMode.FOCUS,
-        actions_before_now_block :str = "",
+        # actions_before_now_block :str = "",
         chat_content_block :str = "",
         message_id_list :List[Tuple[str, DatabaseMessages]] = None,
     ) -> tuple[str, List[DatabaseMessages]]:  # sourcery skip: use-join
         """构建 Planner LLM 的提示词 (获取模板并填充数据)"""
         try:
+            actions_before_now = get_actions_by_timestamp_with_chat(
+                chat_id=self.chat_id,
+                timestamp_start=time.time() - 600,
+                timestamp_end=time.time(),
+                limit=6,
+            )
+
+            actions_before_now_block = build_readable_actions(
+                actions=actions_before_now,
+            )
+            
         
             if actions_before_now_block:
                 actions_before_now_block = f"你刚刚选择并执行过的action是：\n{actions_before_now_block}"
