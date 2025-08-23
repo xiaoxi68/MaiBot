@@ -386,11 +386,11 @@ class HeartFChatting:
             await self.relationship_builder.build_relation()
             await self.expression_learner.trigger_learning_for_chat()
 
-            # 记忆构建：为当前chat_id构建记忆
-            try:
-                await hippocampus_manager.build_memory_for_chat(self.stream_id)
-            except Exception as e:
-                logger.error(f"{self.log_prefix} 记忆构建失败: {e}")
+            # # 记忆构建：为当前chat_id构建记忆
+            # try:
+            #     await hippocampus_manager.build_memory_for_chat(self.stream_id)
+            # except Exception as e:
+            #     logger.error(f"{self.log_prefix} 记忆构建失败: {e}")
 
             available_actions: Dict[str, ActionInfo] = {}
             if random.random() > self.focus_value_control.get_current_focus_value() and mode == ChatMode.FOCUS:
