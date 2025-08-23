@@ -28,7 +28,7 @@ from src.plugin_system.core.component_registry import component_registry
 
 if TYPE_CHECKING:
     from src.common.data_models.info_data_model import TargetPersonInfo
-    from src.common.data_models.database_data_model import DatabaseMessages
+    from src.common.data_models.database_data_model import DatabaseMessages, DatabaseActionRecords
 
 logger = get_logger("planner")
 
@@ -272,12 +272,12 @@ class ActionPlanner:
             # 只保留action_type在action_list中的ActionPlannerInfo
             action_names_in_list = [name for name, _ in action_list]
             # actions_before_now是List[Dict[str, Any]]格式，需要提取action_type字段
-            filtered_actions = []
+            filtered_actions: List["DatabaseActionRecords"] = []
             for action_record in actions_before_now:
                 # print(action_record)
                 # print(action_record['action_name'])
                 # print(action_names_in_list)
-                action_type = action_record["action_name"]
+                action_type = action_record.action_name
                 if action_type in action_names_in_list:
                     filtered_actions.append(action_record)
 
