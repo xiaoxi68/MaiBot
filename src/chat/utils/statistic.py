@@ -166,6 +166,7 @@ class StatisticOutputTask(AsyncTask):
         self.stat_period: List[Tuple[str, timedelta, str]] = [
             ("all_time", now - deploy_time, "自部署以来"),  # 必须保留"all_time"
             ("last_7_days", timedelta(days=7), "最近7天"),
+            ("last_3_days", timedelta(days=3), "最近3天"),
             ("last_24_hours", timedelta(days=1), "最近24小时"),
             ("last_3_hours", timedelta(hours=3), "最近3小时"),
             ("last_hour", timedelta(hours=1), "最近1小时"),
@@ -781,45 +782,216 @@ class StatisticOutputTask(AsyncTask):
                 <p class=\"info-item\"><strong>总请求数: </strong>{stat_data[TOTAL_REQ_CNT]}</p>
                 <p class=\"info-item\"><strong>总花费: </strong>{stat_data[TOTAL_COST]:.4f} ¥</p>
                 
-                <h2>按模型分类统计</h2>
-                <table>
-                    <thead><tr><th>模型名称</th><th>调用次数</th><th>输入Token</th><th>输出Token</th><th>Token总量</th><th>累计花费</th><th>平均耗时(秒)</th><th>标准差(秒)</th></tr></thead>
-                    <tbody>
-                        {model_rows}
-                    </tbody>
-                </table>
+                <div style="display: flex; flex-wrap: wrap; gap: 20px; margin: 20px 0;">
+                    <div style="flex: 1; min-width: 300px;">
+                        <h2>按模型分类统计</h2>
+                        <table>
+                            <thead><tr><th>模型名称</th><th>调用次数</th><th>输入Token</th><th>输出Token</th><th>Token总量</th><th>累计花费</th><th>平均耗时(秒)</th><th>标准差(秒)</th></tr></thead>
+                            <tbody>
+                                {model_rows}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="flex: 1; min-width: 300px;">
+                        <h3>模型调用次数分布</h3>
+                        <canvas id="modelPieChart_{div_id}" width="300" height="300"></canvas>
+                    </div>
+                </div>
                 
-                <h2>按模块分类统计</h2>
-                <table>
-                    <thead>
-                        <tr><th>模块名称</th><th>调用次数</th><th>输入Token</th><th>输出Token</th><th>Token总量</th><th>累计花费</th><th>平均耗时(秒)</th><th>标准差(秒)</th></tr>
-                    </thead>
-                    <tbody>
-                    {module_rows}
-                    </tbody>
-                </table>
+                <div style="display: flex; flex-wrap: wrap; gap: 20px; margin: 20px 0;">
+                    <div style="flex: 1; min-width: 300px;">
+                        <h2>按模块分类统计</h2>
+                        <table>
+                            <thead>
+                                <tr><th>模块名称</th><th>调用次数</th><th>输入Token</th><th>输出Token</th><th>Token总量</th><th>累计花费</th><th>平均耗时(秒)</th><th>标准差(秒)</th></tr>
+                            </thead>
+                            <tbody>
+                            {module_rows}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="flex: 1; min-width: 300px;">
+                        <h3>模块调用次数分布</h3>
+                        <canvas id="modulePieChart_{div_id}" width="300" height="300"></canvas>
+                    </div>
+                </div>
     
-                <h2>按请求类型分类统计</h2>
-                <table>
-                    <thead>
-                        <tr><th>请求类型</th><th>调用次数</th><th>输入Token</th><th>输出Token</th><th>Token总量</th><th>累计花费</th><th>平均耗时(秒)</th><th>标准差(秒)</th></tr>
-                    </thead>
-                    <tbody>
-                    {type_rows}
-                    </tbody>
-                </table>
+                <div style="display: flex; flex-wrap: wrap; gap: 20px; margin: 20px 0;">
+                    <div style="flex: 1; min-width: 300px;">
+                        <h2>按请求类型分类统计</h2>
+                        <table>
+                            <thead>
+                                <tr><th>请求类型</th><th>调用次数</th><th>输入Token</th><th>输出Token</th><th>Token总量</th><th>累计花费</th><th>平均耗时(秒)</th><th>标准差(秒)</th></tr>
+                            </thead>
+                            <tbody>
+                            {type_rows}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="flex: 1; min-width: 300px;">
+                        <h3>请求类型分布</h3>
+                        <canvas id="typePieChart_{div_id}" width="300" height="300"></canvas>
+                    </div>
+                </div>
     
-                <h2>聊天消息统计</h2>
-                <table>
-                    <thead>
-                        <tr><th>联系人/群组名称</th><th>消息数量</th></tr>
-                    </thead>
-                    <tbody>
-                    {chat_rows}
-                    </tbody>
-                </table>
+                <div style="display: flex; flex-wrap: wrap; gap: 20px; margin: 20px 0;">
+                    <div style="flex: 1; min-width: 300px;">
+                        <h2>聊天消息统计</h2>
+                        <table>
+                            <thead>
+                                <tr><th>联系人/群组名称</th><th>消息数量</th></tr>
+                            </thead>
+                            <tbody>
+                            {chat_rows}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="flex: 1; min-width: 300px;">
+                        <h3>消息分布</h3>
+                        <canvas id="chatPieChart_{div_id}" width="300" height="300"></canvas>
+                    </div>
+                </div>
                 
-
+                <script>
+                    // 为当前统计卡片创建饼图
+                    createPieCharts_{div_id}();
+                    
+                    function createPieCharts_{div_id}() {{
+                        const colors = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#34495e', '#e67e22', '#95a5a6', '#f1c40f'];
+                        
+                        // 模型调用次数饼图
+                        const modelData = {{
+                            labels: {[f'"{model_name}"' for model_name in sorted(stat_data[REQ_CNT_BY_MODEL].keys())]},
+                            datasets: [{{
+                                data: {[stat_data[REQ_CNT_BY_MODEL][model_name] for model_name in sorted(stat_data[REQ_CNT_BY_MODEL].keys())]},
+                                backgroundColor: colors[:len(stat_data[REQ_CNT_BY_MODEL])],
+                                borderColor: colors[:len(stat_data[REQ_CNT_BY_MODEL])],
+                                borderWidth: 2
+                            }}]
+                        }};
+                        
+                        new Chart(document.getElementById('modelPieChart_{div_id}'), {{
+                            type: 'pie',
+                            data: modelData,
+                            options: {{
+                                responsive: true,
+                                plugins: {{
+                                    legend: {{
+                                        position: 'bottom'
+                                    }},
+                                    tooltip: {{
+                                        callbacks: {{
+                                            label: function(context) {{
+                                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                                const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                                return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
+                                            }}
+                                        }}
+                                    }}
+                                }}
+                            }}
+                        }});
+                        
+                        // 模块调用次数饼图
+                        const moduleData = {{
+                            labels: {[f'"{module_name}"' for module_name in sorted(stat_data[REQ_CNT_BY_MODULE].keys())]},
+                            datasets: [{{
+                                data: {[stat_data[REQ_CNT_BY_MODULE][module_name] for module_name in sorted(stat_data[REQ_CNT_BY_MODULE].keys())]},
+                                backgroundColor: colors[:len(stat_data[REQ_CNT_BY_MODULE])],
+                                borderColor: colors[:len(stat_data[REQ_CNT_BY_MODULE])],
+                                borderWidth: 2
+                            }}]
+                        }};
+                        
+                        new Chart(document.getElementById('modulePieChart_{div_id}'), {{
+                            type: 'pie',
+                            data: moduleData,
+                            options: {{
+                                responsive: true,
+                                plugins: {{
+                                    legend: {{
+                                        position: 'bottom'
+                                    }},
+                                    tooltip: {{
+                                        callbacks: {{
+                                            label: function(context) {{
+                                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                                const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                                return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
+                                            }}
+                                        }}
+                                    }}
+                                }}
+                            }}
+                        }});
+                        
+                        // 请求类型分布饼图
+                        const typeData = {{
+                            labels: {[f'"{req_type}"' for req_type in sorted(stat_data[REQ_CNT_BY_TYPE].keys())]},
+                            datasets: [{{
+                                data: {[stat_data[REQ_CNT_BY_TYPE][req_type] for req_type in sorted(stat_data[REQ_CNT_BY_TYPE].keys())]},
+                                backgroundColor: colors[:len(stat_data[REQ_CNT_BY_TYPE])],
+                                borderColor: colors[:len(stat_data[REQ_CNT_BY_TYPE])],
+                                borderWidth: 2
+                            }}]
+                        }};
+                        
+                        new Chart(document.getElementById('typePieChart_{div_id}'), {{
+                            type: 'pie',
+                            data: typeData,
+                            options: {{
+                                responsive: true,
+                                plugins: {{
+                                    legend: {{
+                                        position: 'bottom'
+                                    }},
+                                    tooltip: {{
+                                        callbacks: {{
+                                            label: function(context) {{
+                                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                                const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                                return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
+                                            }}
+                                        }}
+                                    }}
+                                }}
+                            }}
+                        }});
+                        
+                        // 聊天消息分布饼图
+                        const chatData = {{
+                            labels: {[f'"{self.name_mapping[chat_id][0]}"' for chat_id in sorted(stat_data[MSG_CNT_BY_CHAT].keys())]},
+                            datasets: [{{
+                                data: {[stat_data[MSG_CNT_BY_CHAT][chat_id] for chat_id in sorted(stat_data[MSG_CNT_BY_CHAT].keys())]},
+                                backgroundColor: colors[:len(stat_data[MSG_CNT_BY_CHAT])],
+                                borderColor: colors[:len(stat_data[MSG_CNT_BY_CHAT])],
+                                borderWidth: 2
+                            }}]
+                        }};
+                        
+                        new Chart(document.getElementById('chatPieChart_{div_id}'), {{
+                            type: 'pie',
+                            data: chatData,
+                            options: {{
+                                responsive: true,
+                                plugins: {{
+                                    legend: {{
+                                        position: 'bottom'
+                                    }},
+                                    tooltip: {{
+                                        callbacks: {{
+                                            label: function(context) {{
+                                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                                const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                                return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
+                                            }}
+                                        }}
+                                    }}
+                                }}
+                            }}
+                        }});
+                    }}
+                </script>
             </div>
             """
 

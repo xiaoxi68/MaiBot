@@ -190,21 +190,6 @@ class Person:
         person.attitude_to_me = 0
         person.attitude_to_me_confidence = 1
 
-        person.neuroticism = 5
-        person.neuroticism_confidence = 1
-
-        person.friendly_value = 50
-        person.friendly_value_confidence = 1
-
-        person.rudeness = 50
-        person.rudeness_confidence = 1
-
-        person.conscientiousness = 50
-        person.conscientiousness_confidence = 1
-
-        person.likeness = 50
-        person.likeness_confidence = 1
-
         # 同步到数据库
         person.sync_to_database()
 
@@ -262,21 +247,6 @@ class Person:
         # 初始化性格特征相关字段
         self.attitude_to_me: float = 0
         self.attitude_to_me_confidence: float = 1
-
-        self.neuroticism: float = 5
-        self.neuroticism_confidence: float = 1
-
-        self.friendly_value: float = 50
-        self.friendly_value_confidence: float = 1
-
-        self.rudeness: float = 50
-        self.rudeness_confidence: float = 1
-
-        self.conscientiousness: float = 50
-        self.conscientiousness_confidence: float = 1
-
-        self.likeness: float = 50
-        self.likeness_confidence: float = 1
 
         # 从数据库加载数据
         self.load_from_database()
@@ -401,36 +371,6 @@ class Person:
                 if record.attitude_to_me_confidence is not None:
                     self.attitude_to_me_confidence = float(record.attitude_to_me_confidence)
 
-                if record.friendly_value is not None:
-                    self.friendly_value = float(record.friendly_value)
-
-                if record.friendly_value_confidence is not None:
-                    self.friendly_value_confidence = float(record.friendly_value_confidence)
-
-                if record.rudeness is not None:
-                    self.rudeness = float(record.rudeness)
-
-                if record.rudeness_confidence is not None:
-                    self.rudeness_confidence = float(record.rudeness_confidence)
-
-                if record.neuroticism and not isinstance(record.neuroticism, str):
-                    self.neuroticism = float(record.neuroticism)
-
-                if record.neuroticism_confidence is not None:
-                    self.neuroticism_confidence = float(record.neuroticism_confidence)
-
-                if record.conscientiousness is not None:
-                    self.conscientiousness = float(record.conscientiousness)
-
-                if record.conscientiousness_confidence is not None:
-                    self.conscientiousness_confidence = float(record.conscientiousness_confidence)
-
-                if record.likeness is not None:
-                    self.likeness = float(record.likeness)
-
-                if record.likeness_confidence is not None:
-                    self.likeness_confidence = float(record.likeness_confidence)
-
                 logger.debug(f"已从数据库加载用户 {self.person_id} 的信息")
             else:
                 self.sync_to_database()
@@ -464,16 +404,6 @@ class Person:
                 else json.dumps([], ensure_ascii=False),
                 "attitude_to_me": self.attitude_to_me,
                 "attitude_to_me_confidence": self.attitude_to_me_confidence,
-                "friendly_value": self.friendly_value,
-                "friendly_value_confidence": self.friendly_value_confidence,
-                "rudeness": self.rudeness,
-                "rudeness_confidence": self.rudeness_confidence,
-                "neuroticism": self.neuroticism,
-                "neuroticism_confidence": self.neuroticism_confidence,
-                "conscientiousness": self.conscientiousness,
-                "conscientiousness_confidence": self.conscientiousness_confidence,
-                "likeness": self.likeness,
-                "likeness_confidence": self.likeness_confidence,
             }
 
             # 检查记录是否存在
@@ -519,19 +449,6 @@ class Person:
             elif self.attitude_to_me < 0:
                 attitude_info = f"{self.person_name}对你的态度一般,"
 
-        neuroticism_info = ""
-        if self.neuroticism:
-            if self.neuroticism > 8:
-                neuroticism_info = f"{self.person_name}的情绪十分活跃，容易情绪化,"
-            elif self.neuroticism > 6:
-                neuroticism_info = f"{self.person_name}的情绪比较活跃,"
-            elif self.neuroticism > 4:
-                neuroticism_info = ""
-            elif self.neuroticism > 2:
-                neuroticism_info = f"{self.person_name}的情绪比较稳定,"
-            else:
-                neuroticism_info = f"{self.person_name}的情绪非常稳定,毫无波动"
-
         points_text = ""
         category_list = self.get_all_category()
         for category in category_list:
@@ -544,9 +461,9 @@ class Person:
         if points_text:
             points_info = f"你还记得有关{self.person_name}的最近记忆：{points_text}"
 
-        if not (nickname_str or attitude_info or neuroticism_info or points_info):
+        if not (nickname_str or attitude_info or points_info):
             return ""
-        relation_info = f"{self.person_name}:{nickname_str}{attitude_info}{neuroticism_info}{points_info}"
+        relation_info = f"{self.person_name}:{nickname_str}{attitude_info}{points_info}"
 
         return relation_info
 

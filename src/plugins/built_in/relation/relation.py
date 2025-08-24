@@ -217,6 +217,7 @@ class BuildRelationAction(BaseAction):
                 else:
                     logger.warning(f"{self.log_prefix} 删除记忆点失败: {memory_content}")
                     return False, f"删除{person.person_name}的记忆点失败: {memory_content}"
+                
 
             return True, "关系动作执行成功"
 

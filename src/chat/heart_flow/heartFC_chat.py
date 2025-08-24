@@ -21,7 +21,6 @@ from src.chat.heart_flow.hfc_utils import send_typing, stop_typing
 from src.chat.frequency_control.talk_frequency_control import talk_frequency_control
 from src.chat.frequency_control.focus_value_control import focus_value_control
 from src.chat.express.expression_learner import expression_learner_manager
-from src.person_info.relationship_builder_manager import relationship_builder_manager
 from src.person_info.person_info import Person
 from src.plugin_system.base.component_types import ChatMode, EventType, ActionInfo
 from src.plugin_system.core import events_manager
@@ -84,7 +83,6 @@ class HeartFChatting:
             raise ValueError(f"无法找到聊天流: {self.stream_id}")
         self.log_prefix = f"[{get_chat_manager().get_stream_name(self.stream_id) or self.stream_id}]"
 
-        self.relationship_builder = relationship_builder_manager.get_or_create_builder(self.stream_id)
         self.expression_learner = expression_learner_manager.get_expression_learner(self.stream_id)
 
         self.talk_frequency_control = talk_frequency_control.get_talk_frequency_control(self.stream_id)
@@ -385,7 +383,6 @@ class HeartFChatting:
             await send_typing()
 
         async with global_prompt_manager.async_message_scope(self.chat_stream.context.get_template_name()):
-            await self.relationship_builder.build_relation()
             await self.expression_learner.trigger_learning_for_chat()
 
             # # 记忆构建：为当前chat_id构建记忆

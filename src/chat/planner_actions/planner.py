@@ -96,7 +96,10 @@ def init_prompt():
 - {mentioned_bonus}
 - 如果你刚刚进行了回复，不要对同一个话题重复回应
 
-请你选中一条需要回复的消息并输出其id,输出格式如下：
+你之前的动作记录：
+{actions_before_now_block}
+
+请你从新消息中选出一条需要回复的消息并输出其id,输出格式如下：
 {{
     "action": "reply",
     "target_message_id":"想要回复的消息id，消息id格式:m+数字",
@@ -845,6 +848,7 @@ class ActionPlanner:
                     mentioned_bonus=mentioned_bonus,
                     moderation_prompt=moderation_prompt_block,
                     name_block=name_block,
+                    actions_before_now_block=actions_before_now_block,
                 )
             return prompt, message_id_list
         except Exception as e:
