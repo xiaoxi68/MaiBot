@@ -166,6 +166,7 @@ class StatisticOutputTask(AsyncTask):
         self.stat_period: List[Tuple[str, timedelta, str]] = [
             ("all_time", now - deploy_time, "自部署以来"),  # 必须保留"all_time"
             ("last_7_days", timedelta(days=7), "最近7天"),
+            ("last_3_days", timedelta(days=3), "最近3天"),
             ("last_24_hours", timedelta(days=1), "最近24小时"),
             ("last_3_hours", timedelta(hours=3), "最近3小时"),
             ("last_hour", timedelta(hours=1), "最近1小时"),
@@ -611,7 +612,7 @@ class StatisticOutputTask(AsyncTask):
             f"总在线时间: {_format_online_time(stats[ONLINE_TIME])}",
             f"总消息数: {stats[TOTAL_MSG_CNT]}",
             f"总请求数: {stats[TOTAL_REQ_CNT]}",
-            f"总花费: {stats[TOTAL_COST]:.4f}¥",
+            f"总花费: {stats[TOTAL_COST]:.2f}¥",
             "",
         ]
 
@@ -624,7 +625,7 @@ class StatisticOutputTask(AsyncTask):
         """
         if stats[TOTAL_REQ_CNT] <= 0:
             return ""
-        data_fmt = "{:<32}  {:>10}  {:>12}  {:>12}  {:>12}  {:>9.4f}¥  {:>10}  {:>10}"
+        data_fmt = "{:<32}  {:>10}  {:>12}  {:>12}  {:>12}  {:>9.2f}¥  {:>10.1f}  {:>10.1f}"
 
         output = [
             "按模型分类统计:",
@@ -722,9 +723,9 @@ class StatisticOutputTask(AsyncTask):
                     f"<td>{stat_data[IN_TOK_BY_MODEL][model_name]}</td>"
                     f"<td>{stat_data[OUT_TOK_BY_MODEL][model_name]}</td>"
                     f"<td>{stat_data[TOTAL_TOK_BY_MODEL][model_name]}</td>"
-                    f"<td>{stat_data[COST_BY_MODEL][model_name]:.4f} ¥</td>"
-                    f"<td>{stat_data[AVG_TIME_COST_BY_MODEL][model_name]:.3f} 秒</td>"
-                    f"<td>{stat_data[STD_TIME_COST_BY_MODEL][model_name]:.3f} 秒</td>"
+                    f"<td>{stat_data[COST_BY_MODEL][model_name]:.2f} ¥</td>"
+                    f"<td>{stat_data[AVG_TIME_COST_BY_MODEL][model_name]:.1f} 秒</td>"
+                    f"<td>{stat_data[STD_TIME_COST_BY_MODEL][model_name]:.1f} 秒</td>"
                     f"</tr>"
                     for model_name, count in sorted(stat_data[REQ_CNT_BY_MODEL].items())
                 ]
@@ -738,9 +739,9 @@ class StatisticOutputTask(AsyncTask):
                     f"<td>{stat_data[IN_TOK_BY_TYPE][req_type]}</td>"
                     f"<td>{stat_data[OUT_TOK_BY_TYPE][req_type]}</td>"
                     f"<td>{stat_data[TOTAL_TOK_BY_TYPE][req_type]}</td>"
-                    f"<td>{stat_data[COST_BY_TYPE][req_type]:.4f} ¥</td>"
-                    f"<td>{stat_data[AVG_TIME_COST_BY_TYPE][req_type]:.3f} 秒</td>"
-                    f"<td>{stat_data[STD_TIME_COST_BY_TYPE][req_type]:.3f} 秒</td>"
+                    f"<td>{stat_data[COST_BY_TYPE][req_type]:.2f} ¥</td>"
+                    f"<td>{stat_data[AVG_TIME_COST_BY_TYPE][req_type]:.1f} 秒</td>"
+                    f"<td>{stat_data[STD_TIME_COST_BY_TYPE][req_type]:.1f} 秒</td>"
                     f"</tr>"
                     for req_type, count in sorted(stat_data[REQ_CNT_BY_TYPE].items())
                 ]
@@ -754,9 +755,9 @@ class StatisticOutputTask(AsyncTask):
                     f"<td>{stat_data[IN_TOK_BY_MODULE][module_name]}</td>"
                     f"<td>{stat_data[OUT_TOK_BY_MODULE][module_name]}</td>"
                     f"<td>{stat_data[TOTAL_TOK_BY_MODULE][module_name]}</td>"
-                    f"<td>{stat_data[COST_BY_MODULE][module_name]:.4f} ¥</td>"
-                    f"<td>{stat_data[AVG_TIME_COST_BY_MODULE][module_name]:.3f} 秒</td>"
-                    f"<td>{stat_data[STD_TIME_COST_BY_MODULE][module_name]:.3f} 秒</td>"
+                    f"<td>{stat_data[COST_BY_MODULE][module_name]:.2f} ¥</td>"
+                    f"<td>{stat_data[AVG_TIME_COST_BY_MODULE][module_name]:.1f} 秒</td>"
+                    f"<td>{stat_data[STD_TIME_COST_BY_MODULE][module_name]:.1f} 秒</td>"
                     f"</tr>"
                     for module_name, count in sorted(stat_data[REQ_CNT_BY_MODULE].items())
                 ]
@@ -779,7 +780,7 @@ class StatisticOutputTask(AsyncTask):
                 <p class=\"info-item\"><strong>总在线时间: </strong>{_format_online_time(stat_data[ONLINE_TIME])}</p>
                 <p class=\"info-item\"><strong>总消息数: </strong>{stat_data[TOTAL_MSG_CNT]}</p>
                 <p class=\"info-item\"><strong>总请求数: </strong>{stat_data[TOTAL_REQ_CNT]}</p>
-                <p class=\"info-item\"><strong>总花费: </strong>{stat_data[TOTAL_COST]:.4f} ¥</p>
+                <p class=\"info-item\"><strong>总花费: </strong>{stat_data[TOTAL_COST]:.2f} ¥</p>
                 
                 <h2>按模型分类统计</h2>
                 <table>
@@ -819,6 +820,145 @@ class StatisticOutputTask(AsyncTask):
                     </tbody>
                 </table>
                 
+
+                    // 为当前统计卡片创建饼图
+                    createPieCharts_{div_id}();
+                    
+                    function createPieCharts_{div_id}() {{
+                        const colors = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#34495e', '#e67e22', '#95a5a6', '#f1c40f'];
+                        
+                        // 模型调用次数饼图
+                        const modelData = {{
+                            labels: {[f'"{model_name}"' for model_name in sorted(stat_data[REQ_CNT_BY_MODEL].keys())]},
+                            datasets: [{{
+                                data: {[stat_data[REQ_CNT_BY_MODEL][model_name] for model_name in sorted(stat_data[REQ_CNT_BY_MODEL].keys())]},
+                                backgroundColor: colors[:len(stat_data[REQ_CNT_BY_MODEL])],
+                                borderColor: colors[:len(stat_data[REQ_CNT_BY_MODEL])],
+                                borderWidth: 2
+                            }}]
+                        }};
+                        
+                        new Chart(document.getElementById('modelPieChart_{div_id}'), {{
+                            type: 'pie',
+                            data: modelData,
+                            options: {{
+                                responsive: true,
+                                plugins: {{
+                                    legend: {{
+                                        position: 'bottom'
+                                    }},
+                                    tooltip: {{
+                                        callbacks: {{
+                                            label: function(context) {{
+                                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                                const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                                return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
+                                            }}
+                                        }}
+                                    }}
+                                }}
+                            }}
+                        }});
+                        
+                        // 模块调用次数饼图
+                        const moduleData = {{
+                            labels: {[f'"{module_name}"' for module_name in sorted(stat_data[REQ_CNT_BY_MODULE].keys())]},
+                            datasets: [{{
+                                data: {[stat_data[REQ_CNT_BY_MODULE][module_name] for module_name in sorted(stat_data[REQ_CNT_BY_MODULE].keys())]},
+                                backgroundColor: colors[:len(stat_data[REQ_CNT_BY_MODULE])],
+                                borderColor: colors[:len(stat_data[REQ_CNT_BY_MODULE])],
+                                borderWidth: 2
+                            }}]
+                        }};
+                        
+                        new Chart(document.getElementById('modulePieChart_{div_id}'), {{
+                            type: 'pie',
+                            data: moduleData,
+                            options: {{
+                                responsive: true,
+                                plugins: {{
+                                    legend: {{
+                                        position: 'bottom'
+                                    }},
+                                    tooltip: {{
+                                        callbacks: {{
+                                            label: function(context) {{
+                                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                                const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                                return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
+                                            }}
+                                        }}
+                                    }}
+                                }}
+                            }}
+                        }});
+                        
+                        // 请求类型分布饼图
+                        const typeData = {{
+                            labels: {[f'"{req_type}"' for req_type in sorted(stat_data[REQ_CNT_BY_TYPE].keys())]},
+                            datasets: [{{
+                                data: {[stat_data[REQ_CNT_BY_TYPE][req_type] for req_type in sorted(stat_data[REQ_CNT_BY_TYPE].keys())]},
+                                backgroundColor: colors[:len(stat_data[REQ_CNT_BY_TYPE])],
+                                borderColor: colors[:len(stat_data[REQ_CNT_BY_TYPE])],
+                                borderWidth: 2
+                            }}]
+                        }};
+                        
+                        new Chart(document.getElementById('typePieChart_{div_id}'), {{
+                            type: 'pie',
+                            data: typeData,
+                            options: {{
+                                responsive: true,
+                                plugins: {{
+                                    legend: {{
+                                        position: 'bottom'
+                                    }},
+                                    tooltip: {{
+                                        callbacks: {{
+                                            label: function(context) {{
+                                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                                const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                                return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
+                                            }}
+                                        }}
+                                    }}
+                                }}
+                            }}
+                        }});
+                        
+                        // 聊天消息分布饼图
+                        const chatData = {{
+                            labels: {[f'"{self.name_mapping[chat_id][0]}"' for chat_id in sorted(stat_data[MSG_CNT_BY_CHAT].keys())]},
+                            datasets: [{{
+                                data: {[stat_data[MSG_CNT_BY_CHAT][chat_id] for chat_id in sorted(stat_data[MSG_CNT_BY_CHAT].keys())]},
+                                backgroundColor: colors[:len(stat_data[MSG_CNT_BY_CHAT])],
+                                borderColor: colors[:len(stat_data[MSG_CNT_BY_CHAT])],
+                                borderWidth: 2
+                            }}]
+                        }};
+                        
+                        new Chart(document.getElementById('chatPieChart_{div_id}'), {{
+                            type: 'pie',
+                            data: chatData,
+                            options: {{
+                                responsive: true,
+                                plugins: {{
+                                    legend: {{
+                                        position: 'bottom'
+                                    }},
+                                    tooltip: {{
+                                        callbacks: {{
+                                            label: function(context) {{
+                                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                                const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                                return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
+                                            }}
+                                        }}
+                                    }}
+                                }}
+                            }}
+                        }});
+                    }}
 
             </div>
             """

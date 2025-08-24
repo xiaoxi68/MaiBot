@@ -16,6 +16,7 @@ from src.chat.utils.chat_message_builder import replace_user_references
 from src.common.logger import get_logger
 from src.mood.mood_manager import mood_manager
 from src.person_info.person_info import Person
+from src.common.database.database_model import Images
 
 if TYPE_CHECKING:
     from src.chat.heart_flow.heartFC_chat import HeartFChatting
@@ -31,6 +32,9 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, list[str]]:
     Returns:
         Tuple[float, bool, list[str]]: (兴趣度, 是否被提及, 关键词)
     """
+    if message.is_picid:
+        return 0.0, []
+    
     is_mentioned, _ = is_mentioned_bot_in_message(message)
     interested_rate = 0.0
 
@@ -129,21 +133,32 @@ class HeartFCMessageReceiver:
             # 3. 日志记录
             mes_name = chat.group_info.group_name if chat.group_info else "私聊"
 
-            # 如果消息中包含图片标识，则将 [picid:...] 替换为 [图片]
+            # 用这个pattern截取出id部分，picid是一个list，并替换成对应的图片描述
             picid_pattern = r"\[picid:([^\]]+)\]"
-            processed_plain_text = re.sub(picid_pattern, "[图片]", message.processed_plain_text)
+            picid_list = re.findall(picid_pattern, message.processed_plain_text)
+            
+            # 创建替换后的文本
+            processed_text = message.processed_plain_text
+            if picid_list:
+                for picid in picid_list:
+                    image = Images.get_or_none(Images.image_id == picid)
+                    if image and image.description:
+                        # 将[picid:xxxx]替换成图片描述
+                        processed_text = processed_text.replace(f"[picid:{picid}]", f"[图片：{image.description}]")
+                    else:
+                        # 如果没有找到图片描述，则移除[picid:xxxx]标记
+                        processed_text = processed_text.replace(f"[picid:{picid}]", "[图片：网络不好，图片无法加载]")
+
             
             # 应用用户引用格式替换，将回复<aaa:bbb>和@<aaa:bbb>格式转换为可读格式
             processed_plain_text = replace_user_references(
-                processed_plain_text,
+                processed_text,
                 message.message_info.platform, # type: ignore
                 replace_bot_name=True
             )
 
-            if keywords:
-                logger.info(f"[{mes_name}]{userinfo.user_nickname}:{processed_plain_text}[兴趣度：{interested_rate:.2f}][关键词：{keywords}]")  # type: ignore
-            else:
-                logger.info(f"[{mes_name}]{userinfo.user_nickname}:{processed_plain_text}[兴趣度：{interested_rate:.2f}]")  # type: ignore
+
+            logger.info(f"[{mes_name}]{userinfo.user_nickname}:{processed_plain_text}[{interested_rate:.2f}]")  # type: ignore
 
             _ = Person.register_person(platform=message.message_info.platform, user_id=message.message_info.user_info.user_id,nickname=userinfo.user_nickname) # type: ignore
 

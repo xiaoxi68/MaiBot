@@ -96,7 +96,10 @@ def init_prompt():
 - {mentioned_bonus}
 - 如果你刚刚进行了回复，不要对同一个话题重复回应
 
-请你选中一条需要回复的消息并输出其id,输出格式如下：
+你之前的动作记录：
+{actions_before_now_block}
+
+请你从新消息中选出一条需要回复的消息并输出其id,输出格式如下：
 {{
     "action": "reply",
     "target_message_id":"想要回复的消息id，消息id格式:m+数字",
@@ -354,7 +357,7 @@ class ActionPlanner:
 
         # --- 调用 LLM (普通文本生成) ---
         llm_content = None
-        action_planner_infos = []  # 存储多个ActionPlannerInfo对象
+        action_planner_infos: List[ActionPlannerInfo] = []  # 存储多个ActionPlannerInfo对象
 
         try:
             llm_content, (reasoning_content, _, _) = await self.planner_small_llm.generate_response_async(prompt=prompt)
@@ -509,7 +512,6 @@ class ActionPlanner:
         self.last_obs_time_mark = time.time()
 
         try:
-            logger.info(f"{self.log_prefix}开始构建副Planner")
             sub_planner_actions: Dict[str, ActionInfo] = {}
 
             for action_name, action_info in available_actions.items():
@@ -534,7 +536,7 @@ class ActionPlanner:
                 sub_planner_size = int(global_config.chat.planner_size) + 1
             sub_planner_num = math.ceil(sub_planner_actions_num / sub_planner_size)
 
-            logger.info(f"{self.log_prefix}副规划器数量: {sub_planner_num}, 副规划器大小: {sub_planner_size}")
+            logger.info(f"{self.log_prefix}使用{sub_planner_num}个小脑进行思考（尺寸:{sub_planner_size}）")
 
             # 将sub_planner_actions随机分配到sub_planner_num个List中
             sub_planner_lists: List[List[Tuple[str, ActionInfo]]] = []
@@ -579,7 +581,7 @@ class ActionPlanner:
             sub_plan_results = await asyncio.gather(*sub_plan_tasks)
 
             # 收集所有结果
-            all_sub_planner_results = []
+            all_sub_planner_results: List[ActionPlannerInfo] = []
             for sub_result in sub_plan_results:
                 all_sub_planner_results.extend(sub_result)
 
@@ -677,9 +679,12 @@ class ActionPlanner:
             reasoning = f"Planner 内部处理错误: {outer_e}"
 
         is_parallel = True
-        if mode == ChatMode.NORMAL and action in current_available_actions:
-            if is_parallel:
-                is_parallel = current_available_actions[action].parallel_action
+        for action_planner_info in all_sub_planner_results:
+            if action_planner_info.action_type == "no_action":
+                continue
+            if not current_available_actions[action_planner_info.action_type].parallel_action:
+                is_parallel = False
+                break
 
         action_data["loop_start_time"] = loop_start_time
 
@@ -718,8 +723,11 @@ class ActionPlanner:
                     )
                 ]
 
+            action_str = ""
+            for action in actions:
+                action_str += f"{action.action_type} "
             logger.info(
-                f"{self.log_prefix}并行模式：返回主规划器{len(main_actions)}个action + 副规划器{len(all_sub_planner_results)}个action，过滤后总计{len(actions)}个action"
+                f"{self.log_prefix}大脑小脑决定执行{len(actions)}个动作: {action_str}"
             )
         else:
             # 如果为假，只返回副规划器的结果
@@ -737,7 +745,7 @@ class ActionPlanner:
                     )
                 ]
 
-            logger.info(f"{self.log_prefix}非并行模式：返回副规划器的{len(actions)}个action（已过滤no_action）")
+            logger.info(f"{self.log_prefix}跳过大脑，执行小脑的{len(actions)}个动作")
 
         return actions, target_message
 
@@ -845,6 +853,7 @@ class ActionPlanner:
                     mentioned_bonus=mentioned_bonus,
                     moderation_prompt=moderation_prompt_block,
                     name_block=name_block,
+                    actions_before_now_block=actions_before_now_block,
                 )
             return prompt, message_id_list
         except Exception as e:

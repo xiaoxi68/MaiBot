@@ -17,7 +17,7 @@ logger = get_logger("sender")
 
 async def send_message(message: MessageSending, show_log=True) -> bool:
     """合并后的消息发送函数，包含WS发送和日志记录"""
-    message_preview = truncate_message(message.processed_plain_text, max_length=120)
+    message_preview = truncate_message(message.processed_plain_text, max_length=200)
 
     try:
         # 直接调用API发送消息

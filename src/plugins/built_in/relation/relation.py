@@ -104,9 +104,7 @@ class BuildRelationAction(BaseAction):
     associated_types = ["text"]
 
     async def execute(self) -> Tuple[bool, str]:
-        # sourcery skip: assign-if-exp, introduce-default-else, swap-if-else-branches, use-named-expression
         """执行关系动作"""
-        logger.info(f"{self.log_prefix} 决定添加记忆")
 
         try:
             # 1. 获取构建关系的原因
@@ -217,6 +215,7 @@ class BuildRelationAction(BaseAction):
                 else:
                     logger.warning(f"{self.log_prefix} 删除记忆点失败: {memory_content}")
                     return False, f"删除{person.person_name}的记忆点失败: {memory_content}"
+                
 
             return True, "关系动作执行成功"
 

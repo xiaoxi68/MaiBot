@@ -14,7 +14,6 @@ from src.chat.message_receive.storage import MessageStorage
 from .s4u_watching_manager import watching_manager
 import json
 from .s4u_mood_manager import mood_manager
-from src.person_info.relationship_builder_manager import relationship_builder_manager
 from src.mais4u.s4u_config import s4u_config
 from src.person_info.person_info import get_person_id
 from .super_chat_manager import get_super_chat_manager
@@ -182,7 +181,6 @@ class S4UChat:
         self.chat_stream = chat_stream
         self.stream_id = chat_stream.stream_id
         self.stream_name = get_chat_manager().get_stream_name(self.stream_id) or self.stream_id
-        self.relationship_builder = relationship_builder_manager.get_or_create_builder(self.stream_id)
 
         # 两个消息队列
         self._vip_queue = asyncio.PriorityQueue()
@@ -263,29 +261,29 @@ class S4UChat:
         platform = message.message_info.platform
         person_id = get_person_id(platform, user_id)
         
-        try:
-            is_gift = message.is_gift
-            is_superchat = message.is_superchat
-            # print(is_gift)
-            # print(is_superchat)
-            if is_gift:
-                await self.relationship_builder.build_relation(immediate_build=person_id)
-                # 安全地增加兴趣分，如果person_id不存在则先初始化为1.0
-                current_score = self.interest_dict.get(person_id, 1.0)
-                self.interest_dict[person_id] = current_score + 0.1 * message.gift_count
-            elif is_superchat:
-                await self.relationship_builder.build_relation(immediate_build=person_id)
-                # 安全地增加兴趣分，如果person_id不存在则先初始化为1.0
-                current_score = self.interest_dict.get(person_id, 1.0)
-                self.interest_dict[person_id] = current_score + 0.1 * float(message.superchat_price)
+        # try:
+        #     is_gift = message.is_gift
+        #     is_superchat = message.is_superchat
+        #     # print(is_gift)
+        #     # print(is_superchat)
+        #     if is_gift:
+        #         await self.relationship_builder.build_relation(immediate_build=person_id)
+        #         # 安全地增加兴趣分，如果person_id不存在则先初始化为1.0
+        #         current_score = self.interest_dict.get(person_id, 1.0)
+        #         self.interest_dict[person_id] = current_score + 0.1 * message.gift_count
+        #     elif is_superchat:
+        #         await self.relationship_builder.build_relation(immediate_build=person_id)
+        #         # 安全地增加兴趣分，如果person_id不存在则先初始化为1.0
+        #         current_score = self.interest_dict.get(person_id, 1.0)
+        #         self.interest_dict[person_id] = current_score + 0.1 * float(message.superchat_price)
                 
-                # 添加SuperChat到管理器
-                super_chat_manager = get_super_chat_manager()
-                await super_chat_manager.add_superchat(message)
-            else:
-                await self.relationship_builder.build_relation(20)
-        except Exception:
-            traceback.print_exc()
+        #         # 添加SuperChat到管理器
+        #         super_chat_manager = get_super_chat_manager()
+        #         await super_chat_manager.add_superchat(message)
+        #     else:
+        #         await self.relationship_builder.build_relation(20)
+        # except Exception:
+        #     traceback.print_exc()
             
         logger.info(f"[{self.stream_name}] 消息处理完毕，消息内容：{message.processed_plain_text}")
         

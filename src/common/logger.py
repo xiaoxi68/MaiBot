@@ -330,11 +330,32 @@ def reconfigure_existing_loggers():
 
 # 定义模块颜色映射
 MODULE_COLORS = {
+    # 发送
+    # "\033[38;5;67m" 这个颜色代码的含义如下：
+    # \033         ：转义序列的起始，表示后面是控制字符（ESC）
+    # [38;5;67m    ：
+    #   38         ：设置前景色（字体颜色），如果是背景色则用 48
+    #   5          ：表示使用8位（256色）模式
+    #   67         ：具体的颜色编号（0-255），这里是较暗的蓝色
+    "sender": "\033[38;5;24m",  # 67号色，较暗的蓝色，适合不显眼的日志
+    "send_api": "\033[38;5;24m",  # 208号色，橙色，适合突出显示
+    
+    # 生成
+    "replyer": "\033[38;5;208m",  # 橙色
+    "llm_api": "\033[38;5;208m",  # 橙色
+    
+    # 消息处理
+    "chat": "\033[38;5;82m",  # 亮蓝色
+    "chat_image": "\033[38;5;68m",  # 浅蓝色
+    
+    #emoji
+    "emoji": "\033[38;5;214m",  # 橙黄色，偏向橙色
+    "emoji_api": "\033[38;5;214m",  # 橙黄色，偏向橙色
+    
     # 核心模块
     "main": "\033[1;97m",  # 亮白色+粗体 (主程序)
-    "api": "\033[92m",  # 亮绿色
-    "emoji": "\033[38;5;214m",  # 橙黄色，偏向橙色但与replyer和action_manager不同
-    "chat": "\033[92m",  # 亮蓝色
+
+    
     "config": "\033[93m",  # 亮黄色
     "common": "\033[95m",  # 亮紫色
     "tools": "\033[96m",  # 亮青色
@@ -358,18 +379,17 @@ MODULE_COLORS = {
     "background_tasks": "\033[38;5;240m",  # 灰色
     "chat_message": "\033[38;5;45m",  # 青色
     "chat_stream": "\033[38;5;51m",  # 亮青色
-    "sender": "\033[38;5;67m",  # 稍微暗一些的蓝色，不显眼
+
     "message_storage": "\033[38;5;33m",  # 深蓝色
     "expressor": "\033[38;5;166m",  # 橙色
     # 专注聊天模块
-    "replyer": "\033[38;5;166m",  # 橙色
+    
     "memory_activator": "\033[38;5;117m",  # 天蓝色
     # 插件系统
     "plugins": "\033[31m",  # 红色
     "plugin_api": "\033[33m",  # 黄色
     "plugin_manager": "\033[38;5;208m",  # 红色
     "base_plugin": "\033[38;5;202m",  # 橙红色
-    "send_api": "\033[38;5;208m",  # 橙色
     "base_command": "\033[38;5;208m",  # 橙色
     "component_registry": "\033[38;5;214m",  # 橙黄色
     "stream_api": "\033[38;5;220m",  # 黄色
@@ -377,7 +397,6 @@ MODULE_COLORS = {
     "heartflow_api": "\033[38;5;154m",  # 黄绿色
     "action_apis": "\033[38;5;118m",  # 绿色
     "independent_apis": "\033[38;5;82m",  # 绿色
-    "llm_api": "\033[38;5;46m",  # 亮绿色
     "database_api": "\033[38;5;10m",  # 绿色
     "utils_api": "\033[38;5;14m",  # 青色
     "message_api": "\033[38;5;6m",  # 青色
@@ -393,7 +412,7 @@ MODULE_COLORS = {
     # 工具和实用模块
     "prompt_build": "\033[38;5;105m",  # 紫色
     "chat_utils": "\033[38;5;111m",  # 蓝色
-    "chat_image": "\033[38;5;117m",  # 浅蓝色
+    
     "maibot_statistic": "\033[38;5;129m",  # 紫色
     # 特殊功能插件
     "mute_plugin": "\033[38;5;240m",  # 灰色
@@ -422,9 +441,16 @@ MODULE_COLORS = {
 # 定义模块别名映射 - 将真实的logger名称映射到显示的别名
 MODULE_ALIASES = {
     # 示例映射
+    "sender": "消息发送",
+    "send_api": "消息发送API",
+    "replyer": "言语",
+    "llm_api": "生成API",
     "emoji": "表情包",
-    "no_action_action": "摸鱼",
-    "reply_action": "回复",
+    "emoji_api": "表情包API",
+    
+    "chat": "所见",
+    "chat_image": "识图",
+    
     "action_manager": "动作",
     "memory_activator": "记忆",
     "tool_use": "工具",
@@ -434,14 +460,13 @@ MODULE_ALIASES = {
     "memory": "记忆",
     "tool_executor": "工具",
     "hfc": "聊天节奏",
-    "chat": "所见",
+    
     "plugin_manager": "插件",
     "relationship_builder": "关系",
     "llm_models": "模型",
     "person_info": "人物",
     "chat_stream": "聊天流",
     "planner": "规划器",
-    "replyer": "言语",
     "config": "配置",
     "main": "主程序",
 }

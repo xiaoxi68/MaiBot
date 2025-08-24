@@ -267,19 +267,9 @@ class PersonInfo(BaseModel):
     know_since = FloatField(null=True)  # 首次印象总结时间
     last_know = FloatField(null=True)  # 最后一次印象总结时间
     
-    
     attitude_to_me = TextField(null=True)  # 对bot的态度
     attitude_to_me_confidence = FloatField(null=True)  # 对bot的态度置信度
-    friendly_value = FloatField(null=True)  # 对bot的友好程度
-    friendly_value_confidence = FloatField(null=True)  # 对bot的友好程度置信度
-    rudeness = TextField(null=True)  # 对bot的冒犯程度
-    rudeness_confidence = FloatField(null=True)  # 对bot的冒犯程度置信度
-    neuroticism = TextField(null=True)  # 对bot的神经质程度
-    neuroticism_confidence = FloatField(null=True)  # 对bot的神经质程度置信度
-    conscientiousness = TextField(null=True)  # 对bot的尽责程度
-    conscientiousness_confidence = FloatField(null=True)  # 对bot的尽责程度置信度
-    likeness = TextField(null=True)  # 对bot的相似程度
-    likeness_confidence = FloatField(null=True)  # 对bot的相似程度置信度
+
 
 
 
