@@ -724,8 +724,8 @@ class ActionPlanner:
                 ]
 
             action_str = ""
-            for action in actions:
-                action_str += f"{action.action_type} "
+            for action_planner_info in actions:
+                action_str += f"{action_planner_info.action_type} "
             logger.info(
                 f"{self.log_prefix}大脑小脑决定执行{len(actions)}个动作: {action_str}"
             )
