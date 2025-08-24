@@ -514,7 +514,7 @@ class ImageManager:
             )
 
             # 启动异步VLM处理
-            asyncio.create_task(self._process_image_with_vlm(image_id, image_base64))
+            await self._process_image_with_vlm(image_id, image_base64)
 
             return image_id, f"[picid:{image_id}]"
 
@@ -568,17 +568,16 @@ class ImageManager:
             prompt = global_config.custom_prompt.image_prompt
 
             # 获取VLM描述
-            logger.info(f"[VLM异步调用] 为图片生成描述 (ID: {image_id}, Hash: {image_hash[:8]}...)")
             description, _ = await self.vlm.generate_response_for_image(
                 prompt, image_base64, image_format, temperature=0.4, max_tokens=300
             )
 
             if description is None:
                 logger.warning("VLM未能生成图片描述")
-                description = "无法生成描述"
+                description = ""
 
             if cached_description := self._get_description_from_db(image_hash, "image"):
-                logger.warning(f"虽然生成了描述，但是找到缓存图片描述: {cached_description}")
+                logger.info(f"虽然生成了描述，但是找到缓存图片描述: {cached_description}")
                 description = cached_description
 
             # 更新数据库
@@ -588,8 +587,6 @@ class ImageManager:
 
             # 保存描述到ImageDescriptions表作为备用缓存
             self._save_description_to_db(image_hash, description, "image")
-
-            logger.info(f"[VLM异步完成] 图片描述生成: {description[:50]}...")
 
         except Exception as e:
             logger.error(f"VLM处理图片失败: {str(e)}")
