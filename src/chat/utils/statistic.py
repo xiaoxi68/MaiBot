@@ -612,7 +612,7 @@ class StatisticOutputTask(AsyncTask):
             f"总在线时间: {_format_online_time(stats[ONLINE_TIME])}",
             f"总消息数: {stats[TOTAL_MSG_CNT]}",
             f"总请求数: {stats[TOTAL_REQ_CNT]}",
-            f"总花费: {stats[TOTAL_COST]:.4f}¥",
+            f"总花费: {stats[TOTAL_COST]:.2f}¥",
             "",
         ]
 
@@ -625,7 +625,7 @@ class StatisticOutputTask(AsyncTask):
         """
         if stats[TOTAL_REQ_CNT] <= 0:
             return ""
-        data_fmt = "{:<32}  {:>10}  {:>12}  {:>12}  {:>12}  {:>9.4f}¥  {:>10}  {:>10}"
+        data_fmt = "{:<32}  {:>10}  {:>12}  {:>12}  {:>12}  {:>9.2f}¥  {:>10.1f}  {:>10.1f}"
 
         output = [
             "按模型分类统计:",
@@ -723,9 +723,9 @@ class StatisticOutputTask(AsyncTask):
                     f"<td>{stat_data[IN_TOK_BY_MODEL][model_name]}</td>"
                     f"<td>{stat_data[OUT_TOK_BY_MODEL][model_name]}</td>"
                     f"<td>{stat_data[TOTAL_TOK_BY_MODEL][model_name]}</td>"
-                    f"<td>{stat_data[COST_BY_MODEL][model_name]:.4f} ¥</td>"
-                    f"<td>{stat_data[AVG_TIME_COST_BY_MODEL][model_name]:.3f} 秒</td>"
-                    f"<td>{stat_data[STD_TIME_COST_BY_MODEL][model_name]:.3f} 秒</td>"
+                    f"<td>{stat_data[COST_BY_MODEL][model_name]:.2f} ¥</td>"
+                    f"<td>{stat_data[AVG_TIME_COST_BY_MODEL][model_name]:.1f} 秒</td>"
+                    f"<td>{stat_data[STD_TIME_COST_BY_MODEL][model_name]:.1f} 秒</td>"
                     f"</tr>"
                     for model_name, count in sorted(stat_data[REQ_CNT_BY_MODEL].items())
                 ]
@@ -739,9 +739,9 @@ class StatisticOutputTask(AsyncTask):
                     f"<td>{stat_data[IN_TOK_BY_TYPE][req_type]}</td>"
                     f"<td>{stat_data[OUT_TOK_BY_TYPE][req_type]}</td>"
                     f"<td>{stat_data[TOTAL_TOK_BY_TYPE][req_type]}</td>"
-                    f"<td>{stat_data[COST_BY_TYPE][req_type]:.4f} ¥</td>"
-                    f"<td>{stat_data[AVG_TIME_COST_BY_TYPE][req_type]:.3f} 秒</td>"
-                    f"<td>{stat_data[STD_TIME_COST_BY_TYPE][req_type]:.3f} 秒</td>"
+                    f"<td>{stat_data[COST_BY_TYPE][req_type]:.2f} ¥</td>"
+                    f"<td>{stat_data[AVG_TIME_COST_BY_TYPE][req_type]:.1f} 秒</td>"
+                    f"<td>{stat_data[STD_TIME_COST_BY_TYPE][req_type]:.1f} 秒</td>"
                     f"</tr>"
                     for req_type, count in sorted(stat_data[REQ_CNT_BY_TYPE].items())
                 ]
@@ -755,9 +755,9 @@ class StatisticOutputTask(AsyncTask):
                     f"<td>{stat_data[IN_TOK_BY_MODULE][module_name]}</td>"
                     f"<td>{stat_data[OUT_TOK_BY_MODULE][module_name]}</td>"
                     f"<td>{stat_data[TOTAL_TOK_BY_MODULE][module_name]}</td>"
-                    f"<td>{stat_data[COST_BY_MODULE][module_name]:.4f} ¥</td>"
-                    f"<td>{stat_data[AVG_TIME_COST_BY_MODULE][module_name]:.3f} 秒</td>"
-                    f"<td>{stat_data[STD_TIME_COST_BY_MODULE][module_name]:.3f} 秒</td>"
+                    f"<td>{stat_data[COST_BY_MODULE][module_name]:.2f} ¥</td>"
+                    f"<td>{stat_data[AVG_TIME_COST_BY_MODULE][module_name]:.1f} 秒</td>"
+                    f"<td>{stat_data[STD_TIME_COST_BY_MODULE][module_name]:.1f} 秒</td>"
                     f"</tr>"
                     for module_name, count in sorted(stat_data[REQ_CNT_BY_MODULE].items())
                 ]
@@ -780,79 +780,47 @@ class StatisticOutputTask(AsyncTask):
                 <p class=\"info-item\"><strong>总在线时间: </strong>{_format_online_time(stat_data[ONLINE_TIME])}</p>
                 <p class=\"info-item\"><strong>总消息数: </strong>{stat_data[TOTAL_MSG_CNT]}</p>
                 <p class=\"info-item\"><strong>总请求数: </strong>{stat_data[TOTAL_REQ_CNT]}</p>
-                <p class=\"info-item\"><strong>总花费: </strong>{stat_data[TOTAL_COST]:.4f} ¥</p>
+                <p class=\"info-item\"><strong>总花费: </strong>{stat_data[TOTAL_COST]:.2f} ¥</p>
                 
-                <div style="display: flex; flex-wrap: wrap; gap: 20px; margin: 20px 0;">
-                    <div style="flex: 1; min-width: 300px;">
-                        <h2>按模型分类统计</h2>
-                        <table>
-                            <thead><tr><th>模型名称</th><th>调用次数</th><th>输入Token</th><th>输出Token</th><th>Token总量</th><th>累计花费</th><th>平均耗时(秒)</th><th>标准差(秒)</th></tr></thead>
-                            <tbody>
-                                {model_rows}
-                            </tbody>
-                        </table>
-                    </div>
-                    <div style="flex: 1; min-width: 300px;">
-                        <h3>模型调用次数分布</h3>
-                        <canvas id="modelPieChart_{div_id}" width="300" height="300"></canvas>
-                    </div>
-                </div>
+                <h2>按模型分类统计</h2>
+                <table>
+                    <thead><tr><th>模型名称</th><th>调用次数</th><th>输入Token</th><th>输出Token</th><th>Token总量</th><th>累计花费</th><th>平均耗时(秒)</th><th>标准差(秒)</th></tr></thead>
+                    <tbody>
+                        {model_rows}
+                    </tbody>
+                </table>
                 
-                <div style="display: flex; flex-wrap: wrap; gap: 20px; margin: 20px 0;">
-                    <div style="flex: 1; min-width: 300px;">
-                        <h2>按模块分类统计</h2>
-                        <table>
-                            <thead>
-                                <tr><th>模块名称</th><th>调用次数</th><th>输入Token</th><th>输出Token</th><th>Token总量</th><th>累计花费</th><th>平均耗时(秒)</th><th>标准差(秒)</th></tr>
-                            </thead>
-                            <tbody>
-                            {module_rows}
-                            </tbody>
-                        </table>
-                    </div>
-                    <div style="flex: 1; min-width: 300px;">
-                        <h3>模块调用次数分布</h3>
-                        <canvas id="modulePieChart_{div_id}" width="300" height="300"></canvas>
-                    </div>
-                </div>
+                <h2>按模块分类统计</h2>
+                <table>
+                    <thead>
+                        <tr><th>模块名称</th><th>调用次数</th><th>输入Token</th><th>输出Token</th><th>Token总量</th><th>累计花费</th><th>平均耗时(秒)</th><th>标准差(秒)</th></tr>
+                    </thead>
+                    <tbody>
+                    {module_rows}
+                    </tbody>
+                </table>
     
-                <div style="display: flex; flex-wrap: wrap; gap: 20px; margin: 20px 0;">
-                    <div style="flex: 1; min-width: 300px;">
-                        <h2>按请求类型分类统计</h2>
-                        <table>
-                            <thead>
-                                <tr><th>请求类型</th><th>调用次数</th><th>输入Token</th><th>输出Token</th><th>Token总量</th><th>累计花费</th><th>平均耗时(秒)</th><th>标准差(秒)</th></tr>
-                            </thead>
-                            <tbody>
-                            {type_rows}
-                            </tbody>
-                        </table>
-                    </div>
-                    <div style="flex: 1; min-width: 300px;">
-                        <h3>请求类型分布</h3>
-                        <canvas id="typePieChart_{div_id}" width="300" height="300"></canvas>
-                    </div>
-                </div>
+                <h2>按请求类型分类统计</h2>
+                <table>
+                    <thead>
+                        <tr><th>请求类型</th><th>调用次数</th><th>输入Token</th><th>输出Token</th><th>Token总量</th><th>累计花费</th><th>平均耗时(秒)</th><th>标准差(秒)</th></tr>
+                    </thead>
+                    <tbody>
+                    {type_rows}
+                    </tbody>
+                </table>
     
-                <div style="display: flex; flex-wrap: wrap; gap: 20px; margin: 20px 0;">
-                    <div style="flex: 1; min-width: 300px;">
-                        <h2>聊天消息统计</h2>
-                        <table>
-                            <thead>
-                                <tr><th>联系人/群组名称</th><th>消息数量</th></tr>
-                            </thead>
-                            <tbody>
-                            {chat_rows}
-                            </tbody>
-                        </table>
-                    </div>
-                    <div style="flex: 1; min-width: 300px;">
-                        <h3>消息分布</h3>
-                        <canvas id="chatPieChart_{div_id}" width="300" height="300"></canvas>
-                    </div>
-                </div>
+                <h2>聊天消息统计</h2>
+                <table>
+                    <thead>
+                        <tr><th>联系人/群组名称</th><th>消息数量</th></tr>
+                    </thead>
+                    <tbody>
+                    {chat_rows}
+                    </tbody>
+                </table>
                 
-                <script>
+
                     // 为当前统计卡片创建饼图
                     createPieCharts_{div_id}();
                     
@@ -991,7 +959,7 @@ class StatisticOutputTask(AsyncTask):
                             }}
                         }});
                     }}
-                </script>
+
             </div>
             """
 

@@ -140,10 +140,8 @@ class HeartFCMessageReceiver:
                 replace_bot_name=True
             )
 
-            if keywords:
-                logger.info(f"[{mes_name}]{userinfo.user_nickname}:{processed_plain_text}[兴趣度：{interested_rate:.2f}][关键词：{keywords}]")  # type: ignore
-            else:
-                logger.info(f"[{mes_name}]{userinfo.user_nickname}:{processed_plain_text}[兴趣度：{interested_rate:.2f}]")  # type: ignore
+
+            logger.info(f"[{mes_name}]{userinfo.user_nickname}:{processed_plain_text}[{interested_rate:.2f}]")  # type: ignore
 
             _ = Person.register_person(platform=message.message_info.platform, user_id=message.message_info.user_info.user_id,nickname=userinfo.user_nickname) # type: ignore
 

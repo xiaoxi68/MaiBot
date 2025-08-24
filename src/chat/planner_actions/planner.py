@@ -512,7 +512,6 @@ class ActionPlanner:
         self.last_obs_time_mark = time.time()
 
         try:
-            logger.info(f"{self.log_prefix}开始构建副Planner")
             sub_planner_actions: Dict[str, ActionInfo] = {}
 
             for action_name, action_info in available_actions.items():
@@ -537,7 +536,7 @@ class ActionPlanner:
                 sub_planner_size = int(global_config.chat.planner_size) + 1
             sub_planner_num = math.ceil(sub_planner_actions_num / sub_planner_size)
 
-            logger.info(f"{self.log_prefix}副规划器数量: {sub_planner_num}, 副规划器大小: {sub_planner_size}")
+            logger.info(f"{self.log_prefix}使用{sub_planner_num}个小脑进行思考（尺寸:{sub_planner_size}）")
 
             # 将sub_planner_actions随机分配到sub_planner_num个List中
             sub_planner_lists: List[List[Tuple[str, ActionInfo]]] = []

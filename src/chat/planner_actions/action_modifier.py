@@ -131,7 +131,7 @@ class ActionModifier:
 
         available_actions = list(self.action_manager.get_using_actions().keys())
         available_actions_text = "、".join(available_actions) if available_actions else "无"
-        logger.info(
+        logger.debug(
             f"{self.log_prefix} 当前可用动作: {available_actions_text}||移除: {removals_summary}"
         )
 
