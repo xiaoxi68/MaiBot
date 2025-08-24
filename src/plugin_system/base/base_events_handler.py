@@ -13,7 +13,7 @@ class BaseEventHandler(ABC):
     所有事件处理器都应该继承这个基类，提供事件处理的基本接口
     """
 
-    event_type: EventType = EventType.UNKNOWN
+    event_type: EventType | str = EventType.UNKNOWN
     """事件类型，默认为未知"""
     handler_name: str = ""
     """处理器名称"""

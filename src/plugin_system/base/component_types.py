@@ -1,3 +1,4 @@
+import copy
 from enum import Enum
 from typing import Dict, Any, List, Optional, Tuple
 from dataclasses import dataclass, field
@@ -165,7 +166,7 @@ class ToolInfo(ComponentInfo):
 class EventHandlerInfo(ComponentInfo):
     """事件处理器组件信息"""
 
-    event_type: EventType = EventType.ON_MESSAGE  # 监听事件类型
+    event_type: EventType | str = EventType.ON_MESSAGE  # 监听事件类型
     intercept_message: bool = False  # 是否拦截消息处理（默认不拦截）
     weight: int = 0  # 事件处理器权重，决定执行顺序
 
@@ -281,3 +282,6 @@ class MaiMessages:
     def __post_init__(self):
         if self.message_segments is None:
             self.message_segments = []
+    
+    def deepcopy(self):
+        return copy.deepcopy(self)

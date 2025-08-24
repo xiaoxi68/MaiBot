@@ -1,6 +1,6 @@
 import asyncio
 import contextlib
-from typing import List, Dict, Optional, Type, Tuple, Any, TYPE_CHECKING
+from typing import List, Dict, Optional, Type, Tuple, TYPE_CHECKING
 
 from src.chat.message_receive.message import MessageRecv
 from src.chat.message_receive.chat_stream import get_chat_manager
@@ -18,7 +18,7 @@ logger = get_logger("events_manager")
 class EventsManager:
     def __init__(self):
         # 有权重的 events 订阅者注册表
-        self._events_subscribers: Dict[EventType, List[BaseEventHandler]] = {event: [] for event in EventType}
+        self._events_subscribers: Dict[EventType | str, List[BaseEventHandler]] = {event: [] for event in EventType}
         self._handler_mapping: Dict[str, Type[BaseEventHandler]] = {}  # 事件处理器映射表
         self._handler_tasks: Dict[str, List[asyncio.Task]] = {}  # 事件处理器正在处理的任务
 
@@ -152,7 +152,8 @@ class EventsManager:
         if handler_class.event_type == EventType.UNKNOWN:
             logger.error(f"事件处理器 {handler_class.__name__} 的事件类型未知，无法注册")
             return False
-
+        if handler_class.event_type not in self._events_subscribers:
+            self._events_subscribers[handler_class.event_type] = []
         handler_instance = handler_class()
         handler_instance.set_plugin_name(handler_info.plugin_name or "unknown")
         self._events_subscribers[handler_class.event_type].append(handler_instance)

@@ -1,0 +1,14 @@
+- [x] 自定义事件
+- [ ] <del>允许handler随时订阅</del>
+- [ ] 允许handler随时取消订阅
+- [ ] 允许其他组件给handler增加订阅
+- [ ] 允许其他组件给handler取消订阅
+- [ ] <del>允许一个handler订阅多个事件</del>
+- [ ] event激活时给handler传递参数
+- [ ] handler能拿到所有handlers的结果（按照处理权重）
+- [x] 随时注册
+- [ ] 删除event
+    - [ ] 必要性？
+- [ ] 能够更改prompt
+- [ ] 能够更改llm_response
+- [ ] 能够更改message
