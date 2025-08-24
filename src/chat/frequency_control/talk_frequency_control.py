@@ -2,20 +2,21 @@ from typing import Optional
 from src.config.config import global_config
 from src.chat.frequency_control.utils import parse_stream_config_to_chat_id
 
+
 class TalkFrequencyControl:
-    def __init__(self,chat_id:str):
+    def __init__(self, chat_id: str):
         self.chat_id = chat_id
-        self.talk_frequency_adjust = 1
-        
+        self.talk_frequency_adjust: float = 1
+
     def get_current_talk_frequency(self) -> float:
         return get_current_talk_frequency(self.chat_id) * self.talk_frequency_adjust
-        
+
 
 class TalkFrequencyControlManager:
     def __init__(self):
         self.talk_frequency_controls = {}
-        
-    def get_talk_frequency_control(self,chat_id:str) -> TalkFrequencyControl:
+
+    def get_talk_frequency_control(self, chat_id: str) -> TalkFrequencyControl:
         if chat_id not in self.talk_frequency_controls:
             self.talk_frequency_controls[chat_id] = TalkFrequencyControl(chat_id)
         return self.talk_frequency_controls[chat_id]
@@ -43,6 +44,7 @@ def get_current_talk_frequency(chat_id: Optional[str] = None) -> float:
     # 检查全局时段配置（第一个元素为空字符串的配置）
     global_frequency = get_global_frequency()
     return global_config.chat.talk_frequency if global_frequency is None else global_frequency
+
 
 def get_time_based_frequency(time_freq_list: list[str]) -> Optional[float]:
     """
@@ -124,6 +126,7 @@ def get_stream_specific_frequency(chat_stream_id: str):
 
     return None
 
+
 def get_global_frequency() -> Optional[float]:
     """
     获取全局默认频率配置
@@ -140,5 +143,6 @@ def get_global_frequency() -> Optional[float]:
             return get_time_based_frequency(config_item[1:])
 
     return None
+
 
 talk_frequency_control = TalkFrequencyControlManager()

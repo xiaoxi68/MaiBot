@@ -17,6 +17,10 @@ from src.mais4u.mais4u_chat.screen_manager import screen_manager
 from src.chat.express.expression_selector import expression_selector
 from .s4u_mood_manager import mood_manager
 from src.mais4u.mais4u_chat.internal_manager import internal_manager
+from src.common.data_models.database_data_model import DatabaseMessages
+
+from typing import List
+
 logger = get_logger("prompt")
 
 
@@ -58,7 +62,7 @@ def init_prompt():
 """,
         "s4u_prompt",  # New template for private CHAT chat
     )
-    
+
     Prompt(
         """
 你的名字是麦麦, 是千石可乐开发的程序，可以在QQ，微信等平台发言，你现在正在哔哩哔哩作为虚拟主播进行直播
@@ -95,14 +99,13 @@ class PromptBuilder:
     def __init__(self):
         self.prompt_built = ""
         self.activate_messages = ""
-    
-    async def build_expression_habits(self, chat_stream: ChatStream, chat_history, target):
 
+    async def build_expression_habits(self, chat_stream: ChatStream, chat_history, target):
         style_habits = []
 
         # 使用从处理器传来的选中表达方式
         # LLM模式：调用LLM选择5-10个，然后随机选5个
-        selected_expressions ,_ = await expression_selector.select_suitable_expressions_llm(
+        selected_expressions, _ = await expression_selector.select_suitable_expressions_llm(
             chat_stream.stream_id, chat_history, max_num=12, target_message=target
         )
 
@@ -121,7 +124,6 @@ class PromptBuilder:
         expression_habits_block = ""
         if style_habits_str.strip():
             expression_habits_block += f"你可以参考以下的语言习惯，如果情景合适就使用，不要盲目使用,不要生硬使用，而是结合到表达中：\n{style_habits_str}\n\n"
-
 
         return expression_habits_block
 
@@ -148,9 +150,7 @@ class PromptBuilder:
                 person_ids.append(person_id)
 
             # 使用 Person 的 build_relationship 方法，设置 points_num=3 保持与原来相同的行为
-            relation_info_list = [
-                Person(person_id=person_id).build_relationship() for person_id in person_ids
-            ]
+            relation_info_list = [Person(person_id=person_id).build_relationship() for person_id in person_ids]
             if relation_info := "".join(relation_info_list):
                 relation_prompt = await global_prompt_manager.format_prompt(
                     "relation_prompt", relation_info=relation_info
@@ -160,7 +160,7 @@ class PromptBuilder:
     async def build_memory_block(self, text: str) -> str:
         # 待更新记忆系统
         return ""
-        
+
         related_memory = await hippocampus_manager.get_memory_from_text(
             text=text, max_memory_num=2, max_memory_length=2, max_depth=3, fast_retrieval=False
         )
@@ -176,37 +176,37 @@ class PromptBuilder:
         message_list_before_now = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_stream.stream_id,
             timestamp=time.time(),
+        # sourcery skip: lift-duplicated-conditional, merge-duplicate-blocks, remove-redundant-if
             limit=300,
         )
 
-
         talk_type = f"{message.message_info.platform}:{str(message.chat_stream.user_info.user_id)}"
 
-        core_dialogue_list = []
-        background_dialogue_list = []
+        core_dialogue_list: List[DatabaseMessages] = []
+        background_dialogue_list: List[DatabaseMessages] = []
         bot_id = str(global_config.bot.qq_account)
         target_user_id = str(message.chat_stream.user_info.user_id)
 
-        for msg_dict in message_list_before_now:
+        for msg in message_list_before_now:
             try:
-                msg_user_id = str(msg_dict.get("user_id"))
+                msg_user_id = str(msg.user_info.user_id)
                 if msg_user_id == bot_id:
-                    if msg_dict.get("reply_to") and talk_type == msg_dict.get("reply_to"):
-                        core_dialogue_list.append(msg_dict)
-                    elif msg_dict.get("reply_to") and talk_type != msg_dict.get("reply_to"):
-                        background_dialogue_list.append(msg_dict)
+                    if msg.reply_to and talk_type == msg.reply_to:
+                        core_dialogue_list.append(msg)
+                    elif msg.reply_to and talk_type != msg.reply_to:
+                        background_dialogue_list.append(msg)
                     # else:
-                        # background_dialogue_list.append(msg_dict)
+                    # background_dialogue_list.append(msg_dict)
                 elif msg_user_id == target_user_id:
-                    core_dialogue_list.append(msg_dict)
+                    core_dialogue_list.append(msg)
                 else:
-                    background_dialogue_list.append(msg_dict)
+                    background_dialogue_list.append(msg)
             except Exception as e:
-                logger.error(f"无法处理历史消息记录: {msg_dict}, 错误: {e}")
+                logger.error(f"无法处理历史消息记录: {msg.__dict__}, 错误: {e}")
 
         background_dialogue_prompt = ""
         if background_dialogue_list:
-            context_msgs = background_dialogue_list[-s4u_config.max_context_message_length:]
+            context_msgs = background_dialogue_list[-s4u_config.max_context_message_length :]
             background_dialogue_prompt_str = build_readable_messages(
                 context_msgs,
                 timestamp_mode="normal_no_YMD",
@@ -216,10 +216,10 @@ class PromptBuilder:
 
         core_msg_str = ""
         if core_dialogue_list:
-            core_dialogue_list = core_dialogue_list[-s4u_config.max_core_message_length:]
+            core_dialogue_list = core_dialogue_list[-s4u_config.max_core_message_length :]
 
             first_msg = core_dialogue_list[0]
-            start_speaking_user_id = first_msg.get("user_id")
+            start_speaking_user_id = first_msg.user_info.user_id
             if start_speaking_user_id == bot_id:
                 last_speaking_user_id = bot_id
                 msg_seg_str = "你的发言：\n"
@@ -228,13 +228,13 @@ class PromptBuilder:
                 last_speaking_user_id = start_speaking_user_id
                 msg_seg_str = "对方的发言：\n"
 
-            msg_seg_str += f"{time.strftime('%H:%M:%S', time.localtime(first_msg.get('time')))}: {first_msg.get('processed_plain_text')}\n"
+            msg_seg_str += f"{time.strftime('%H:%M:%S', time.localtime(first_msg.time))}: {first_msg.processed_plain_text}\n"
 
             all_msg_seg_list = []
             for msg in core_dialogue_list[1:]:
-                speaker = msg.get("user_id")
+                speaker = msg.user_info.user_id
                 if speaker == last_speaking_user_id:
-                    msg_seg_str += f"{time.strftime('%H:%M:%S', time.localtime(msg.get('time')))}: {msg.get('processed_plain_text')}\n"
+                    msg_seg_str += f"{time.strftime('%H:%M:%S', time.localtime(msg.time))}: {msg.processed_plain_text}\n"
                 else:
                     msg_seg_str = f"{msg_seg_str}\n"
                     all_msg_seg_list.append(msg_seg_str)
@@ -251,43 +251,40 @@ class PromptBuilder:
             for msg in all_msg_seg_list:
                 core_msg_str += msg
 
-
-        all_dialogue_prompt = get_raw_msg_before_timestamp_with_chat(
+        all_dialogue_history = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_stream.stream_id,
             timestamp=time.time(),
             limit=20,
         )
+
         all_dialogue_prompt_str = build_readable_messages(
-            all_dialogue_prompt,
+            all_dialogue_history,
             timestamp_mode="normal_no_YMD",
             show_pic=False,
         )
 
-
-        return core_msg_str, background_dialogue_prompt,all_dialogue_prompt_str
+        return core_msg_str, background_dialogue_prompt, all_dialogue_prompt_str
 
     def build_gift_info(self, message: MessageRecvS4U):
         if message.is_gift:
-            return f"这是一条礼物信息，{message.gift_name} x{message.gift_count}，请注意这位用户"        
+            return f"这是一条礼物信息，{message.gift_name} x{message.gift_count}，请注意这位用户"
         else:
             if message.is_fake_gift:
                 return f"{message.processed_plain_text}（注意：这是一条普通弹幕信息，对方没有真的发送礼物，不是礼物信息，注意区分，如果对方在发假的礼物骗你，请反击）"
-        
+
         return ""
 
     def build_sc_info(self, message: MessageRecvS4U):
         super_chat_manager = get_super_chat_manager()
         return super_chat_manager.build_superchat_summary_string(message.chat_stream.stream_id)
 
-
     async def build_prompt_normal(
         self,
         message: MessageRecvS4U,
         message_txt: str,
     ) -> str:
-        
         chat_stream = message.chat_stream
-        
+
         person = Person(platform=message.chat_stream.user_info.platform, user_id=message.chat_stream.user_info.user_id)
         person_name = person.person_name
 
@@ -298,28 +295,31 @@ class PromptBuilder:
                 sender_name = f"[{message.chat_stream.user_info.user_nickname}]"
         else:
             sender_name = f"用户({message.chat_stream.user_info.user_id})"
-        
-        
+
         relation_info_block, memory_block, expression_habits_block = await asyncio.gather(
-            self.build_relation_info(chat_stream), self.build_memory_block(message_txt), self.build_expression_habits(chat_stream, message_txt, sender_name)
+            self.build_relation_info(chat_stream),
+            self.build_memory_block(message_txt),
+            self.build_expression_habits(chat_stream, message_txt, sender_name),
         )
 
-        core_dialogue_prompt, background_dialogue_prompt,all_dialogue_prompt = self.build_chat_history_prompts(chat_stream, message)
-        
+        core_dialogue_prompt, background_dialogue_prompt, all_dialogue_prompt = self.build_chat_history_prompts(
+            chat_stream, message
+        )
+
         gift_info = self.build_gift_info(message)
-        
+
         sc_info = self.build_sc_info(message)
-        
+
         screen_info = screen_manager.get_screen_str()
-        
+
         internal_state = internal_manager.get_internal_state_str()
 
         time_block = f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-        
+
         mood = mood_manager.get_mood_by_chat_id(chat_stream.stream_id)
 
         template_name = "s4u_prompt"
-        
+
         if not message.is_internal:
             prompt = await global_prompt_manager.format_prompt(
                 template_name,
@@ -352,7 +352,7 @@ class PromptBuilder:
                 mind=message.processed_plain_text,
                 mood_state=mood.mood_state,
             )
-            
+
         # print(prompt)
 
         return prompt

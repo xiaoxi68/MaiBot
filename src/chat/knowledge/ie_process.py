@@ -5,7 +5,7 @@ from typing import List, Union
 
 from .global_logger import logger
 from . import prompt_template
-from .knowledge_lib import INVALID_ENTITY
+from . import INVALID_ENTITY
 from src.llm_models.utils_model import LLMRequest
 from json_repair import repair_json
 

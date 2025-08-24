@@ -166,7 +166,6 @@ class ChatAction:
         chat_talking_prompt = build_readable_messages(
             message_list_before_now,
             replace_bot_name=True,
-            merge_messages=False,
             timestamp_mode="normal_no_YMD",
             read_mark=0.0,
             truncate=True,
@@ -230,7 +229,6 @@ class ChatAction:
         chat_talking_prompt = build_readable_messages(
             message_list_before_now,
             replace_bot_name=True,
-            merge_messages=False,
             timestamp_mode="normal_no_YMD",
             read_mark=0.0,
             truncate=True,

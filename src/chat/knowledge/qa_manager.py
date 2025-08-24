@@ -60,7 +60,7 @@ class QAManager:
         for res in relation_search_res:
             if store_item := self.embed_manager.relation_embedding_store.store.get(res[0]):
                 rel_str = store_item.str
-            print(f"找到相关关系，相似度：{(res[1] * 100):.2f}%  -  {rel_str}")
+            logger.info(f"找到相关关系，相似度：{(res[1] * 100):.2f}%  -  {rel_str}")
 
         # TODO: 使用LLM过滤三元组结果
         # logger.info(f"LLM过滤三元组用时：{time.time() - part_start_time:.2f}s")
@@ -94,7 +94,7 @@ class QAManager:
 
         for res in result:
             raw_paragraph = self.embed_manager.paragraphs_embedding_store.store[res[0]].str
-            print(f"找到相关文段，相关系数：{res[1]:.8f}\n{raw_paragraph}\n\n")
+            logger.info(f"找到相关文段，相关系数：{res[1]:.8f}\n{raw_paragraph}\n\n")
 
         return result, ppr_node_weights
 

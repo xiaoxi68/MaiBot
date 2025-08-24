@@ -2,13 +2,14 @@ import random
 from typing import Tuple
 
 # 导入新插件系统
-from src.plugin_system import BaseAction, ActionActivationType, ChatMode
+from src.plugin_system import BaseAction, ActionActivationType
 
 # 导入依赖的系统组件
 from src.common.logger import get_logger
 
 # 导入API模块 - 标准Python包方式
 from src.plugin_system.apis import emoji_api, llm_api, message_api
+
 # NoReplyAction已集成到heartFC_chat.py中，不再需要导入
 from src.config.config import global_config
 
@@ -53,12 +54,9 @@ class EmojiAction(BaseAction):
     async def execute(self) -> Tuple[bool, str]:
         # sourcery skip: assign-if-exp, introduce-default-else, swap-if-else-branches, use-named-expression
         """执行表情动作"""
-        logger.info(f"{self.log_prefix} 决定发送表情")
-
         try:
             # 1. 获取发送表情的原因
             reason = self.action_data.get("reason", "表达当前情绪")
-            logger.info(f"{self.log_prefix} 发送表情原因: {reason}")
 
             # 2. 随机获取20个表情包
             sampled_emojis = await emoji_api.get_random(30)
@@ -128,7 +126,7 @@ class EmojiAction(BaseAction):
                 # 6. 根据选择的情感匹配表情包
                 if chosen_emotion in emotion_map:
                     emoji_base64, emoji_description = random.choice(emotion_map[chosen_emotion])
-                    logger.info(f"{self.log_prefix} 找到匹配情感 '{chosen_emotion}' 的表情包: {emoji_description}")
+                    logger.info(f"{self.log_prefix} 发送表情包[{chosen_emotion}]，原因: {reason}")
                 else:
                     logger.warning(
                         f"{self.log_prefix} LLM选择的情感 '{chosen_emotion}' 不在可用列表中, 将随机选择一个表情包"
@@ -138,13 +136,20 @@ class EmojiAction(BaseAction):
             # 7. 发送表情包
             success = await self.send_emoji(emoji_base64)
 
-            if not success:
-                logger.error(f"{self.log_prefix} 表情包发送失败")
-                return False, "表情包发送失败"
+            if success:
+                # 存储动作信息
+                await self.store_action_info(
+                    action_build_into_prompt=True,
+                    action_prompt_display=f"发送了表情包，原因：{reason}",
+                    action_done=True,
+                )
+                return True, f"成功发送表情包:{emoji_description}"
+            else:
+                error_msg = "发送表情包失败"
+                logger.error(f"{self.log_prefix} {error_msg}")
 
-            # no_action计数器现在由heartFC_chat.py统一管理，无需在此重置
-
-            return True, f"发送表情包: {emoji_description}"
+                await self.send_text("执行表情包动作失败")
+                return False, error_msg
 
         except Exception as e:
             logger.error(f"{self.log_prefix} 表情动作执行失败: {e}", exc_info=True)

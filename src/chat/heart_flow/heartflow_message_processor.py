@@ -12,17 +12,18 @@ from src.chat.message_receive.storage import MessageStorage
 from src.chat.heart_flow.heartflow import heartflow
 from src.chat.utils.utils import is_mentioned_bot_in_message
 from src.chat.utils.timer_calculator import Timer
-from src.chat.utils.chat_message_builder import replace_user_references_sync
+from src.chat.utils.chat_message_builder import replace_user_references
 from src.common.logger import get_logger
 from src.mood.mood_manager import mood_manager
 from src.person_info.person_info import Person
+from src.common.database.database_model import Images
 
 if TYPE_CHECKING:
-    from src.chat.heart_flow.sub_heartflow import SubHeartflow
+    from src.chat.heart_flow.heartFC_chat import HeartFChatting
 
 logger = get_logger("chat")
 
-async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool, list[str]]:
+async def _calculate_interest(message: MessageRecv) -> Tuple[float, list[str]]:
     """计算消息的兴趣度
 
     Args:
@@ -31,6 +32,9 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool, list[s
     Returns:
         Tuple[float, bool, list[str]]: (兴趣度, 是否被提及, 关键词)
     """
+    if message.is_picid:
+        return 0.0, []
+    
     is_mentioned, _ = is_mentioned_bot_in_message(message)
     interested_rate = 0.0
 
@@ -38,7 +42,7 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool, list[s
         interested_rate, keywords,keywords_lite = await hippocampus_manager.get_activate_from_text(
             message.processed_plain_text,
             max_depth= 4,
-            fast_retrieval=False,
+            fast_retrieval=global_config.chat.interest_rate_mode == "fast",
         )
         message.key_words = keywords
         message.key_words_lite = keywords_lite
@@ -78,10 +82,14 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, bool, list[s
     interested_rate += base_interest
 
     if is_mentioned:
-        interest_increase_on_mention = 1
+        interest_increase_on_mention = 2
         interested_rate += interest_increase_on_mention
+        
+        
+    message.interest_value = interested_rate
+    message.is_mentioned = is_mentioned
 
-    return interested_rate, is_mentioned, keywords
+    return interested_rate, keywords
 
 
 class HeartFCMessageReceiver:
@@ -110,37 +118,47 @@ class HeartFCMessageReceiver:
             chat = message.chat_stream
 
             # 2. 兴趣度计算与更新
-            interested_rate, is_mentioned, keywords = await _calculate_interest(message)
-            message.interest_value = interested_rate
-            message.is_mentioned = is_mentioned
+            interested_rate, keywords = await _calculate_interest(message)
+            
 
             await self.storage.store_message(message, chat)
 
-            subheartflow: SubHeartflow = await heartflow.get_or_create_subheartflow(chat.stream_id)  # type: ignore
+            heartflow_chat: HeartFChatting = await heartflow.get_or_create_heartflow_chat(chat.stream_id)  # type: ignore
 
             # subheartflow.add_message_to_normal_chat_cache(message, interested_rate, is_mentioned)
             if global_config.mood.enable_mood:  
-                chat_mood = mood_manager.get_mood_by_chat_id(subheartflow.chat_id)
+                chat_mood = mood_manager.get_mood_by_chat_id(heartflow_chat.stream_id)
                 asyncio.create_task(chat_mood.update_mood_by_message(message, interested_rate))
 
             # 3. 日志记录
             mes_name = chat.group_info.group_name if chat.group_info else "私聊"
 
-            # 如果消息中包含图片标识，则将 [picid:...] 替换为 [图片]
+            # 用这个pattern截取出id部分，picid是一个list，并替换成对应的图片描述
             picid_pattern = r"\[picid:([^\]]+)\]"
-            processed_plain_text = re.sub(picid_pattern, "[图片]", message.processed_plain_text)
+            picid_list = re.findall(picid_pattern, message.processed_plain_text)
+            
+            # 创建替换后的文本
+            processed_text = message.processed_plain_text
+            if picid_list:
+                for picid in picid_list:
+                    image = Images.get_or_none(Images.image_id == picid)
+                    if image and image.description:
+                        # 将[picid:xxxx]替换成图片描述
+                        processed_text = processed_text.replace(f"[picid:{picid}]", f"[图片：{image.description}]")
+                    else:
+                        # 如果没有找到图片描述，则移除[picid:xxxx]标记
+                        processed_text = processed_text.replace(f"[picid:{picid}]", "[图片：网络不好，图片无法加载]")
+
             
             # 应用用户引用格式替换，将回复<aaa:bbb>和@<aaa:bbb>格式转换为可读格式
-            processed_plain_text = replace_user_references_sync(
-                processed_plain_text,
+            processed_plain_text = replace_user_references(
+                processed_text,
                 message.message_info.platform, # type: ignore
                 replace_bot_name=True
             )
 
-            if keywords:
-                logger.info(f"[{mes_name}]{userinfo.user_nickname}:{processed_plain_text}[兴趣度：{interested_rate:.2f}][关键词：{keywords}]")  # type: ignore
-            else:
-                logger.info(f"[{mes_name}]{userinfo.user_nickname}:{processed_plain_text}[兴趣度：{interested_rate:.2f}]")  # type: ignore
+
+            logger.info(f"[{mes_name}]{userinfo.user_nickname}:{processed_plain_text}[{interested_rate:.2f}]")  # type: ignore
 
             _ = Person.register_person(platform=message.message_info.platform, user_id=message.message_info.user_info.user_id,nickname=userinfo.user_nickname) # type: ignore
 

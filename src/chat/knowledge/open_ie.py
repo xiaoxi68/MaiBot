@@ -4,7 +4,7 @@ import glob
 from typing import Any, Dict, List
 
 
-from .knowledge_lib import INVALID_ENTITY, ROOT_PATH, DATA_PATH
+from . import INVALID_ENTITY, ROOT_PATH, DATA_PATH
 # from src.manager.local_store_manager import local_storage
 
 
