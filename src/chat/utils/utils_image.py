@@ -193,7 +193,7 @@ class ImageManager:
             if len(emotions) > 1 and emotions[1] != emotions[0]:
                 final_emotion = f"{emotions[0]}，{emotions[1]}"
 
-            logger.info(f"[emoji识别] 详细描述: {detailed_description[:50]}... -> 情感标签: {final_emotion}")
+            logger.debug(f"[emoji识别] 详细描述: {detailed_description[:50]}... -> 情感标签: {final_emotion}")
 
             if cached_description := self._get_description_from_db(image_hash, "emoji"):
                 logger.warning(f"虽然生成了描述，但是找到缓存表情包描述: {cached_description}")

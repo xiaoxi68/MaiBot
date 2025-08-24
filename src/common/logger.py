@@ -346,6 +346,7 @@ MODULE_COLORS = {
     
     # 消息处理
     "chat": "\033[38;5;82m",  # 亮蓝色
+    "chat_image": "\033[38;5;68m",  # 浅蓝色
     
     #emoji
     "emoji": "\033[38;5;214m",  # 橙黄色，偏向橙色
@@ -411,7 +412,7 @@ MODULE_COLORS = {
     # 工具和实用模块
     "prompt_build": "\033[38;5;105m",  # 紫色
     "chat_utils": "\033[38;5;111m",  # 蓝色
-    "chat_image": "\033[38;5;117m",  # 浅蓝色
+    
     "maibot_statistic": "\033[38;5;129m",  # 紫色
     # 特殊功能插件
     "mute_plugin": "\033[38;5;240m",  # 灰色
@@ -448,6 +449,7 @@ MODULE_ALIASES = {
     "emoji_api": "表情包API",
     
     "chat": "所见",
+    "chat_image": "识图",
     
     "action_manager": "动作",
     "memory_activator": "记忆",
