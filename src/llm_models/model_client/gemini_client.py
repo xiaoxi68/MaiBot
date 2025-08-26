@@ -290,7 +290,7 @@ def _default_normal_response_parser(
 
     # 解析思考内容
     try:
-        if (candidates := getattr(resp, "candidates", None)) and candidates:
+        if candidates := resp.candidates:
             if candidates[0].content and candidates[0].content.parts:
                 for part in candidates[0].content.parts:
                     if not part.text:
@@ -303,10 +303,10 @@ def _default_normal_response_parser(
         logger.warning(f"解析思考内容时发生错误: {e}，跳过解析")
 
     # 解析响应内容
-    api_response.content = getattr(resp, "text", None)
+    api_response.content = resp.text
 
     # 解析工具调用
-    if function_calls := getattr(resp, "function_calls", None):
+    if function_calls := resp.function_calls:
         api_response.tool_calls = []
         for call in function_calls:
             try:
@@ -319,7 +319,7 @@ def _default_normal_response_parser(
                 raise RespParseException(resp, "响应解析失败，无法解析工具调用参数") from e
 
     # 解析使用情况
-    if usage_metadata := getattr(resp, "usage_metadata", None):
+    if usage_metadata := resp.usage_metadata:
         _usage_record = (
             usage_metadata.prompt_token_count or 0,
             (usage_metadata.candidates_token_count or 0) + (usage_metadata.thoughts_token_count or 0),
