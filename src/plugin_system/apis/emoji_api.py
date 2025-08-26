@@ -87,8 +87,6 @@ async def get_random(count: Optional[int] = 1) -> List[Tuple[str, str, str]]:
         return []
 
     try:
-        logger.info(f"[EmojiAPI] 随机获取 {count} 个表情包")
-
         emoji_manager = get_emoji_manager()
         all_emojis = emoji_manager.emoji_objects
 
@@ -129,7 +127,7 @@ async def get_random(count: Optional[int] = 1) -> List[Tuple[str, str, str]]:
             logger.warning("[EmojiAPI] 随机获取表情包失败，没有一个可以成功处理")
             return []
 
-        logger.info(f"[EmojiAPI] 成功获取 {len(results)} 个随机表情包")
+        logger.debug(f"[EmojiAPI] 成功获取 {len(results)} 个随机表情包")
         return results
 
     except Exception as e:

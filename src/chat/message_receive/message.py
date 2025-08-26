@@ -29,7 +29,6 @@ class Message(MessageBase):
     chat_stream: "ChatStream" = None  # type: ignore
     reply: Optional["Message"] = None
     processed_plain_text: str = ""
-    memorized_times: int = 0
 
     def __init__(
         self,
@@ -116,7 +115,7 @@ class MessageRecv(Message):
         self.priority_mode = "interest"
         self.priority_info = None
         self.interest_value: float = None  # type: ignore
-        
+
         self.key_words = []
         self.key_words_lite = []
 
@@ -214,9 +213,9 @@ class MessageRecvS4U(MessageRecv):
         self.is_screen = False
         self.is_internal = False
         self.voice_done = None
-        
+
         self.chat_info = None
-    
+
     async def process(self) -> None:
         self.processed_plain_text = await self._process_message_segments(self.message_segment)
 
@@ -421,7 +420,7 @@ class MessageSending(MessageProcessBase):
         thinking_start_time: float = 0,
         apply_set_reply_logic: bool = False,
         reply_to: Optional[str] = None,
-        selected_expressions:List[int] = None,
+        selected_expressions: Optional[List[int]] = None,
     ):
         # 调用父类初始化
         super().__init__(
@@ -446,7 +445,7 @@ class MessageSending(MessageProcessBase):
         self.display_message = display_message
 
         self.interest_value = 0.0
-        
+
         self.selected_expressions = selected_expressions
 
     def build_reply(self):

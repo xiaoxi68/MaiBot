@@ -13,7 +13,7 @@ class BaseEventHandler(ABC):
     所有事件处理器都应该继承这个基类，提供事件处理的基本接口
     """
 
-    event_type: EventType = EventType.UNKNOWN
+    event_type: EventType | str = EventType.UNKNOWN
     """事件类型，默认为未知"""
     handler_name: str = ""
     """处理器名称"""
@@ -34,9 +34,10 @@ class BaseEventHandler(ABC):
             raise NotImplementedError("事件处理器必须指定 event_type")
 
     @abstractmethod
-    async def execute(self, message: MaiMessages) -> Tuple[bool, bool, Optional[str]]:
+    async def execute(self, message: MaiMessages | None) -> Tuple[bool, bool, Optional[str]]:
         """执行事件处理的抽象方法，子类必须实现
-
+        Args:
+            message (MaiMessages | None): 事件消息对象，当你注册的事件为ON_START和ON_STOP时message为None
         Returns:
             Tuple[bool, bool, Optional[str]]: (是否执行成功, 是否需要继续处理, 可选的返回消息)
         """

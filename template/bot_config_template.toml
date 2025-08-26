@@ -1,5 +1,5 @@
 [inner]
-version = "6.3.3"
+version = "6.7.1"
 
 #----以下是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 #如果你想要修改配置文件，请递增version的值
@@ -19,25 +19,29 @@ alias_names = ["麦叠", "牢麦"] # 麦麦的别名
 
 [personality]
 # 建议50字以内，描述人格的核心特质
-personality_core = "是一个积极向上的女大学生" 
+personality_core = "是一个女孩子" 
 # 人格的细节，描述人格的一些侧面
-personality_side = "用一句话或几句话描述人格的侧面特质"
+personality_side = "有时候说话不过脑子,喜欢开玩笑, 有时候会表现得无语,有时候会喜欢说一些奇怪的话"
+
 #アイデンティティがない 生まれないらららら
 # 可以描述外貌，性别，身高，职业，属性等等描述
 identity = "年龄为19岁,是女孩子,身高为160cm,有黑色的短发"
 
 # 描述麦麦说话的表达风格，表达习惯，如要修改，可以酌情新增内容
-reply_style = "回复可以简短一些。可以参考贴吧，知乎和微博的回复风格，回复不要浮夸，不要用夸张修辞，平淡一些。"
+reply_style = "回复可以简短一些。可以参考贴吧，知乎和微博的回复风格，回复不要浮夸，不要用夸张修辞，平淡一些。不要浮夸，不要夸张修辞。"
 
-compress_personality = false # 是否压缩人格，压缩后会精简人格信息，节省token消耗并提高回复性能，但是会丢失一些信息，如果人设不长，可以关闭
-compress_identity = true # 是否压缩身份，压缩后会精简身份信息，节省token消耗并提高回复性能，但是会丢失一些信息，如果不长，可以关闭
+# 描述麦麦的行为风格，会影响麦麦什么时候回复，什么时候使用动作，麦麦考虑的可就多了
+plan_style = "当你刚刚发送了消息，没有人回复时，不要选择action，如果有别的动作（非回复）满足条件，可以选择，当你一次发送了太多消息，为了避免打扰聊天节奏，不要选择动作"
+
+# 麦麦的兴趣，会影响麦麦对什么话题进行回复
+interest = "对技术相关话题，游戏和动漫相关话题感兴趣，也对日常话题感兴趣，不喜欢太过沉重严肃的话题"
 
 [expression]
 # 表达学习配置
-expression_learning = [ # 表达学习配置列表，支持按聊天流配置
-    ["", "enable", "enable", 1.0],  # 全局配置：使用表达，启用学习，学习强度1.0
-    ["qq:1919810:group", "enable", "enable", 1.5],  # 特定群聊配置：使用表达，启用学习，学习强度1.5
-    ["qq:114514:private", "enable", "disable", 0.5],  # 特定私聊配置：使用表达，禁用学习，学习强度0.5
+learning_list = [ # 表达学习配置列表，支持按聊天流配置
+    ["", "enable", "enable", "1.0"],  # 全局配置：使用表达，启用学习，学习强度1.0
+    ["qq:1919810:group", "enable", "enable", "1.5"],  # 特定群聊配置：使用表达，启用学习，学习强度1.5
+    ["qq:114514:private", "enable", "disable", "0.5"],  # 特定私聊配置：使用表达，禁用学习，学习强度0.5
     # 格式说明：
     # 第一位: chat_stream_id，空字符串表示全局配置
     # 第二位: 是否使用学到的表达 ("enable"/"disable")
@@ -60,6 +64,10 @@ focus_value = 0.5
 # 麦麦的专注度，越高越容易持续连续对话，可能消耗更多token, 范围0-1
 
 max_context_size = 20 # 上下文长度
+
+interest_rate_mode = "fast" #激活值计算模式，可选fast或者accurate
+
+planner_size = 2.5 # 副规划器大小，越小，麦麦的动作执行能力越精细，但是消耗更多token，调大可以缓解429类错误
 
 mentioned_bot_inevitable_reply = true # 提及 bot 大概率回复
 at_bot_inevitable_reply = true # @bot 或 提及bot 大概率回复
@@ -121,7 +129,7 @@ mood_update_threshold = 1 # 情绪更新阈值,越高，更新越慢
 [emoji]
 emoji_chance = 0.6 # 麦麦激活表情包动作的概率
 
-max_reg_num = 60 # 表情包最大注册数量
+max_reg_num = 100 # 表情包最大注册数量
 do_replace = true # 开启则在达到最大数量时删除（替换）表情包，关闭则达到最大数量时不会继续收集表情包
 check_interval = 10 # 检查表情包（注册，破损，删除）的时间间隔(分钟)
 steal_emoji = true # 是否偷取表情包，让麦麦可以将一些表情包据为己有
@@ -130,19 +138,12 @@ filtration_prompt = "符合公序良俗" # 表情包过滤要求，只有符合�
 
 [memory]
 enable_memory = true # 是否启用记忆系统
-memory_build_interval = 600 # 记忆构建间隔 单位秒   间隔越低，麦麦学习越多，但是冗余信息也会增多
-memory_build_distribution = [6.0, 3.0, 0.6, 32.0, 12.0, 0.4] # 记忆构建分布，参数：分布1均值，标准差，权重，分布2均值，标准差，权重
-memory_build_sample_num = 8 # 采样数量，数值越高记忆采样次数越多
-memory_build_sample_length = 30 # 采样长度，数值越高一段记忆内容越丰富
+memory_build_frequency = 1 # 记忆构建频率 越高，麦麦学习越多
 memory_compress_rate = 0.1 # 记忆压缩率 控制记忆精简程度 建议保持默认,调高可以获得更多信息，但是冗余信息也会增多
 
 forget_memory_interval = 3000 # 记忆遗忘间隔 单位秒   间隔越低，麦麦遗忘越频繁，记忆更精简，但更难学习
 memory_forget_time = 48 #多长时间后的记忆会被遗忘 单位小时
 memory_forget_percentage = 0.008 # 记忆遗忘比例 控制记忆遗忘程度 越大遗忘越多 建议保持默认
-
-consolidate_memory_interval = 1000 # 记忆整合间隔 单位秒   间隔越低，麦麦整合越频繁，记忆更精简
-consolidation_similarity_threshold = 0.7 # 相似度阈值
-consolidation_check_percentage = 0.05 # 检查节点比例
 
 enable_instant_memory = false # 是否启用即时记忆，测试功能，可能存在未知问题
 

@@ -1,3 +1,4 @@
+import copy
 from enum import Enum
 from typing import Dict, Any, List, Optional, Tuple
 from dataclasses import dataclass, field
@@ -54,6 +55,7 @@ class EventType(Enum):
     """
 
     ON_START = "on_start"  # 启动事件，用于调用按时任务
+    ON_STOP = "on_stop"  # 停止事件，用于调用按时任务
     ON_MESSAGE = "on_message"
     ON_PLAN = "on_plan"
     POST_LLM = "post_llm"
@@ -114,15 +116,14 @@ class ActionInfo(ComponentInfo):
     action_require: List[str] = field(default_factory=list)  # 动作需求说明
     associated_types: List[str] = field(default_factory=list)  # 关联的消息类型
     # 激活类型相关
-    focus_activation_type: ActionActivationType = ActionActivationType.ALWAYS
-    normal_activation_type: ActionActivationType = ActionActivationType.ALWAYS
-    activation_type: ActionActivationType = ActionActivationType.ALWAYS
+    focus_activation_type: ActionActivationType = ActionActivationType.ALWAYS #已弃用
+    normal_activation_type: ActionActivationType = ActionActivationType.ALWAYS #已弃用
+    activation_type: ActionActivationType = ActionActivationType.ALWAYS 
     random_activation_probability: float = 0.0
     llm_judge_prompt: str = ""
     activation_keywords: List[str] = field(default_factory=list)  # 激活关键词列表
     keyword_case_sensitive: bool = False
     # 模式和并行设置
-    mode_enable: ChatMode = ChatMode.ALL
     parallel_action: bool = False
 
     def __post_init__(self):
@@ -165,7 +166,7 @@ class ToolInfo(ComponentInfo):
 class EventHandlerInfo(ComponentInfo):
     """事件处理器组件信息"""
 
-    event_type: EventType = EventType.ON_MESSAGE  # 监听事件类型
+    event_type: EventType | str = EventType.ON_MESSAGE  # 监听事件类型
     intercept_message: bool = False  # 是否拦截消息处理（默认不拦截）
     weight: int = 0  # 事件处理器权重，决定执行顺序
 
@@ -281,3 +282,6 @@ class MaiMessages:
     def __post_init__(self):
         if self.message_segments is None:
             self.message_segments = []
+    
+    def deepcopy(self):
+        return copy.deepcopy(self)

@@ -2,19 +2,20 @@ import traceback
 
 from typing import List, Any, Optional
 from peewee import Model  # 添加 Peewee Model 导入
-from src.config.config import global_config
 
+from src.config.config import global_config
+from src.common.data_models.database_data_model import DatabaseMessages
 from src.common.database.database_model import Messages
 from src.common.logger import get_logger
 
 logger = get_logger(__name__)
 
 
-def _model_to_dict(model_instance: Model) -> dict[str, Any]:
+def _model_to_instance(model_instance: Model) -> DatabaseMessages:
     """
     将 Peewee 模型实例转换为字典。
     """
-    return model_instance.__data__
+    return DatabaseMessages(**model_instance.__data__)
 
 
 def find_messages(
@@ -24,7 +25,7 @@ def find_messages(
     limit_mode: str = "latest",
     filter_bot=False,
     filter_command=False,
-) -> List[dict[str, Any]]:
+) -> List[DatabaseMessages]:
     """
     根据提供的过滤器、排序和限制条件查找消息。
 
@@ -73,6 +74,9 @@ def find_messages(
             if conditions:
                 query = query.where(*conditions)
 
+        # 排除 id 为 "notice" 的消息
+        query = query.where(Messages.message_id != "notice")
+
         if filter_bot:
             query = query.where(Messages.user_id != global_config.bot.qq_account)
 
@@ -109,7 +113,7 @@ def find_messages(
                     query = query.order_by(*peewee_sort_terms)
             peewee_results = list(query)
 
-        return [_model_to_dict(msg) for msg in peewee_results]
+        return [_model_to_instance(msg) for msg in peewee_results]
     except Exception as e:
         log_message = (
             f"使用 Peewee 查找消息失败 (filter={message_filter}, sort={sort}, limit={limit}, limit_mode={limit_mode}): {e}\n"
@@ -166,6 +170,9 @@ def count_messages(message_filter: dict[str, Any]) -> int:
                     logger.warning(f"计数时，过滤器键 '{key}' 在 Messages 模型中未找到。将跳过此条件。")
             if conditions:
                 query = query.where(*conditions)
+
+        # 排除 id 为 "notice" 的消息
+        query = query.where(Messages.message_id != "notice")
 
         count = query.count()
         return count

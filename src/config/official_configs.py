@@ -46,13 +46,12 @@ class PersonalityConfig(ConfigBase):
 
     reply_style: str = ""
     """表达风格"""
+    
+    plan_style: str = ""
+    """行为风格"""
 
-    compress_personality: bool = True
-    """是否压缩人格，压缩后会精简人格信息，节省token消耗并提高回复性能，但是会丢失一些信息，如果人设不长，可以关闭"""
-
-    compress_identity: bool = True
-    """是否压缩身份，压缩后会精简身份信息，节省token消耗并提高回复性能，但是会丢失一些信息，如果不长，可以关闭"""
-
+    interest: str = ""
+    """兴趣"""
 
 @dataclass
 class RelationshipConfig(ConfigBase):
@@ -71,9 +70,15 @@ class ChatConfig(ConfigBase):
 
     max_context_size: int = 18
     """上下文长度"""
+    
+    interest_rate_mode: Literal["fast", "accurate"] = "fast"
+    """兴趣值计算模式，fast为快速计算，accurate为精确计算"""
 
     mentioned_bot_inevitable_reply: bool = False
     """提及 bot 必然回复"""
+    
+    planner_size: float = 1.5
+    """副规划器大小，越小，麦麦的动作执行能力越精细，但是消耗更多token，调大可以缓解429类错误"""
 
     at_bot_inevitable_reply: bool = False
     """@bot 必然回复"""
@@ -115,274 +120,6 @@ class ChatConfig(ConfigBase):
     - focus_value_adjust 控制专注思考能力，数值越低越容易专注，消耗token也越多
     """
     
-    
-    def get_current_focus_value(self, chat_stream_id: Optional[str] = None) -> float:
-        """
-        根据当前时间和聊天流获取对应的 focus_value
-        """
-        if not self.focus_value_adjust:
-            return self.focus_value
-        
-        if chat_stream_id:
-            stream_focus_value = self._get_stream_specific_focus_value(chat_stream_id)
-            if stream_focus_value is not None:
-                return stream_focus_value
-        
-        global_focus_value = self._get_global_focus_value()
-        if global_focus_value is not None:
-            return global_focus_value
-        
-        return self.focus_value
-
-    def get_current_talk_frequency(self, chat_stream_id: Optional[str] = None) -> float:
-        """
-        根据当前时间和聊天流获取对应的 talk_frequency
-
-        Args:
-            chat_stream_id: 聊天流ID，格式为 "platform:chat_id:type"
-
-        Returns:
-            float: 对应的频率值
-        """
-        if not self.talk_frequency_adjust:
-            return self.talk_frequency
-
-        # 优先检查聊天流特定的配置
-        if chat_stream_id:
-            stream_frequency = self._get_stream_specific_frequency(chat_stream_id)
-            if stream_frequency is not None:
-                return stream_frequency
-
-        # 检查全局时段配置（第一个元素为空字符串的配置）
-        global_frequency = self._get_global_frequency()
-        return self.talk_frequency if global_frequency is None else global_frequency
-    
-    def _get_global_focus_value(self) -> Optional[float]:
-        """
-        获取全局默认专注度配置
-
-        Returns:
-            float: 专注度值，如果没有配置则返回 None
-        """
-        for config_item in self.focus_value_adjust:
-            if not config_item or len(config_item) < 2:
-                continue
-
-            # 检查是否为全局默认配置（第一个元素为空字符串）
-            if config_item[0] == "":
-                return self._get_time_based_focus_value(config_item[1:])
-
-        return None
-
-    def _get_time_based_focus_value(self, time_focus_list: list[str]) -> Optional[float]:
-        """
-        根据时间配置列表获取当前时段的专注度
-
-        Args:
-            time_focus_list: 时间专注度配置列表，格式为 ["HH:MM,focus_value", ...]
-
-        Returns:
-            float: 专注度值，如果没有配置则返回 None
-        """
-        from datetime import datetime
-
-        current_time = datetime.now().strftime("%H:%M")
-        current_hour, current_minute = map(int, current_time.split(":"))
-        current_minutes = current_hour * 60 + current_minute
-
-        # 解析时间专注度配置
-        time_focus_pairs = []
-        for time_focus_str in time_focus_list:
-            try:
-                time_str, focus_str = time_focus_str.split(",")
-                hour, minute = map(int, time_str.split(":"))
-                focus_value = float(focus_str)
-                minutes = hour * 60 + minute
-                time_focus_pairs.append((minutes, focus_value))
-            except (ValueError, IndexError):
-                continue
-
-        if not time_focus_pairs:
-            return None
-
-        # 按时间排序
-        time_focus_pairs.sort(key=lambda x: x[0])
-
-        # 查找当前时间对应的专注度
-        current_focus_value = None
-        for minutes, focus_value in time_focus_pairs:
-            if current_minutes >= minutes:
-                current_focus_value = focus_value
-            else:
-                break
-
-        # 如果当前时间在所有配置时间之前，使用最后一个时间段的专注度（跨天逻辑）
-        if current_focus_value is None and time_focus_pairs:
-            current_focus_value = time_focus_pairs[-1][1]
-
-        return current_focus_value
-
-    def _get_time_based_frequency(self, time_freq_list: list[str]) -> Optional[float]:
-        """
-        根据时间配置列表获取当前时段的频率
-
-        Args:
-            time_freq_list: 时间频率配置列表，格式为 ["HH:MM,frequency", ...]
-
-        Returns:
-            float: 频率值，如果没有配置则返回 None
-        """
-        from datetime import datetime
-
-        current_time = datetime.now().strftime("%H:%M")
-        current_hour, current_minute = map(int, current_time.split(":"))
-        current_minutes = current_hour * 60 + current_minute
-
-        # 解析时间频率配置
-        time_freq_pairs = []
-        for time_freq_str in time_freq_list:
-            try:
-                time_str, freq_str = time_freq_str.split(",")
-                hour, minute = map(int, time_str.split(":"))
-                frequency = float(freq_str)
-                minutes = hour * 60 + minute
-                time_freq_pairs.append((minutes, frequency))
-            except (ValueError, IndexError):
-                continue
-
-        if not time_freq_pairs:
-            return None
-
-        # 按时间排序
-        time_freq_pairs.sort(key=lambda x: x[0])
-
-        # 查找当前时间对应的频率
-        current_frequency = None
-        for minutes, frequency in time_freq_pairs:
-            if current_minutes >= minutes:
-                current_frequency = frequency
-            else:
-                break
-
-        # 如果当前时间在所有配置时间之前，使用最后一个时间段的频率（跨天逻辑）
-        if current_frequency is None and time_freq_pairs:
-            current_frequency = time_freq_pairs[-1][1]
-
-        return current_frequency
-
-    def _get_stream_specific_focus_value(self, chat_stream_id: str) -> Optional[float]:
-        """
-        获取特定聊天流在当前时间的专注度
-
-        Args:
-            chat_stream_id: 聊天流ID（哈希值）
-
-        Returns:
-            float: 专注度值，如果没有配置则返回 None
-        """
-        # 查找匹配的聊天流配置
-        for config_item in self.focus_value_adjust:
-            if not config_item or len(config_item) < 2:
-                continue
-
-            stream_config_str = config_item[0]  # 例如 "qq:1026294844:group"
-
-            # 解析配置字符串并生成对应的 chat_id
-            config_chat_id = self._parse_stream_config_to_chat_id(stream_config_str)
-            if config_chat_id is None:
-                continue
-
-            # 比较生成的 chat_id
-            if config_chat_id != chat_stream_id:
-                continue
-
-            # 使用通用的时间专注度解析方法
-            return self._get_time_based_focus_value(config_item[1:])
-
-        return None
-
-    def _get_stream_specific_frequency(self, chat_stream_id: str):
-        """
-        获取特定聊天流在当前时间的频率
-
-        Args:
-            chat_stream_id: 聊天流ID（哈希值）
-
-        Returns:
-            float: 频率值，如果没有配置则返回 None
-        """
-        # 查找匹配的聊天流配置
-        for config_item in self.talk_frequency_adjust:
-            if not config_item or len(config_item) < 2:
-                continue
-
-            stream_config_str = config_item[0]  # 例如 "qq:1026294844:group"
-
-            # 解析配置字符串并生成对应的 chat_id
-            config_chat_id = self._parse_stream_config_to_chat_id(stream_config_str)
-            if config_chat_id is None:
-                continue
-
-            # 比较生成的 chat_id
-            if config_chat_id != chat_stream_id:
-                continue
-
-            # 使用通用的时间频率解析方法
-            return self._get_time_based_frequency(config_item[1:])
-
-        return None
-
-    def _parse_stream_config_to_chat_id(self, stream_config_str: str) -> Optional[str]:
-        """
-        解析流配置字符串并生成对应的 chat_id
-
-        Args:
-            stream_config_str: 格式为 "platform:id:type" 的字符串
-
-        Returns:
-            str: 生成的 chat_id，如果解析失败则返回 None
-        """
-        try:
-            parts = stream_config_str.split(":")
-            if len(parts) != 3:
-                return None
-
-            platform = parts[0]
-            id_str = parts[1]
-            stream_type = parts[2]
-
-            # 判断是否为群聊
-            is_group = stream_type == "group"
-
-            # 使用与 ChatStream.get_stream_id 相同的逻辑生成 chat_id
-            import hashlib
-
-            if is_group:
-                components = [platform, str(id_str)]
-            else:
-                components = [platform, str(id_str), "private"]
-            key = "_".join(components)
-            return hashlib.md5(key.encode()).hexdigest()
-
-        except (ValueError, IndexError):
-            return None
-
-    def _get_global_frequency(self) -> Optional[float]:
-        """
-        获取全局默认频率配置
-
-        Returns:
-            float: 频率值，如果没有配置则返回 None
-        """
-        for config_item in self.talk_frequency_adjust:
-            if not config_item or len(config_item) < 2:
-                continue
-
-            # 检查是否为全局默认配置（第一个元素为空字符串）
-            if config_item[0] == "":
-                return self._get_time_based_frequency(config_item[1:])
-
-        return None
 
 
 @dataclass
@@ -399,7 +136,7 @@ class MessageReceiveConfig(ConfigBase):
 class ExpressionConfig(ConfigBase):
     """表达配置类"""
 
-    expression_learning: list[list] = field(default_factory=lambda: [])
+    learning_list: list[list] = field(default_factory=lambda: [])
     """
     表达学习配置列表，支持按聊天流配置
     格式: [["chat_stream_id", "use_expression", "enable_learning", learning_intensity], ...]
@@ -469,7 +206,7 @@ class ExpressionConfig(ConfigBase):
         Returns:
             tuple: (是否使用表达, 是否学习表达, 学习间隔)
         """
-        if not self.expression_learning:
+        if not self.learning_list:
             # 如果没有配置，使用默认值：启用表达，启用学习，300秒间隔
             return True, True, 300
 
@@ -497,7 +234,7 @@ class ExpressionConfig(ConfigBase):
         Returns:
             tuple: (是否使用表达, 是否学习表达, 学习间隔)，如果没有配置则返回 None
         """
-        for config_item in self.expression_learning:
+        for config_item in self.learning_list:
             if not config_item or len(config_item) < 4:
                 continue
 
@@ -534,7 +271,7 @@ class ExpressionConfig(ConfigBase):
         Returns:
             tuple: (是否使用表达, 是否学习表达, 学习间隔)，如果没有配置则返回 None
         """
-        for config_item in self.expression_learning:
+        for config_item in self.learning_list:
             if not config_item or len(config_item) < 4:
                 continue
 
@@ -598,25 +335,10 @@ class MemoryConfig(ConfigBase):
     """记忆配置类"""
 
     enable_memory: bool = True
-
-    memory_build_interval: int = 600
-    """记忆构建间隔（秒）"""
-
-    memory_build_distribution: tuple[
-        float,
-        float,
-        float,
-        float,
-        float,
-        float,
-    ] = field(default_factory=lambda: (6.0, 3.0, 0.6, 32.0, 12.0, 0.4))
-    """记忆构建分布，参数：分布1均值，标准差，权重，分布2均值，标准差，权重"""
-
-    memory_build_sample_num: int = 8
-    """记忆构建采样数量"""
-
-    memory_build_sample_length: int = 40
-    """记忆构建采样长度"""
+    """是否启用记忆系统"""
+    
+    memory_build_frequency: int = 1
+    """记忆构建频率（秒）"""
 
     memory_compress_rate: float = 0.1
     """记忆压缩率"""
@@ -629,15 +351,6 @@ class MemoryConfig(ConfigBase):
 
     memory_forget_percentage: float = 0.01
     """记忆遗忘比例"""
-
-    consolidate_memory_interval: int = 1000
-    """记忆整合间隔（秒）"""
-
-    consolidation_similarity_threshold: float = 0.7
-    """整合相似度阈值"""
-
-    consolidate_memory_percentage: float = 0.01
-    """整合检查节点比例"""
 
     memory_ban_words: list[str] = field(default_factory=lambda: ["表情包", "图片", "回复", "聊天记录"])
     """不允许记忆的词列表"""

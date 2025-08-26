@@ -8,9 +8,10 @@
     readable_text = message_api.build_readable_messages(messages)
 """
 
-from typing import List, Dict, Any, Tuple, Optional
-from src.config.config import global_config
 import time
+from typing import List, Dict, Any, Tuple, Optional
+from src.common.data_models.database_data_model import DatabaseMessages
+from src.config.config import global_config
 from src.chat.utils.chat_message_builder import (
     get_raw_msg_by_timestamp,
     get_raw_msg_by_timestamp_with_chat,
@@ -36,7 +37,7 @@ from src.chat.utils.chat_message_builder import (
 
 def get_messages_by_time(
     start_time: float, end_time: float, limit: int = 0, limit_mode: str = "latest", filter_mai: bool = False
-) -> List[Dict[str, Any]]:
+) -> List[DatabaseMessages]:
     """
     获取指定时间范围内的消息
 
@@ -70,7 +71,7 @@ def get_messages_by_time_in_chat(
     limit_mode: str = "latest",
     filter_mai: bool = False,
     filter_command: bool = False,
-) -> List[Dict[str, Any]]:
+) -> List[DatabaseMessages]:
     """
     获取指定聊天中指定时间范围内的消息
 
@@ -97,7 +98,9 @@ def get_messages_by_time_in_chat(
     if not isinstance(chat_id, str):
         raise ValueError("chat_id 必须是字符串类型")
     if filter_mai:
-        return filter_mai_messages(get_raw_msg_by_timestamp_with_chat(chat_id, start_time, end_time, limit, limit_mode, filter_command))
+        return filter_mai_messages(
+            get_raw_msg_by_timestamp_with_chat(chat_id, start_time, end_time, limit, limit_mode, filter_command)
+        )
     return get_raw_msg_by_timestamp_with_chat(chat_id, start_time, end_time, limit, limit_mode, filter_command)
 
 
@@ -109,7 +112,7 @@ def get_messages_by_time_in_chat_inclusive(
     limit_mode: str = "latest",
     filter_mai: bool = False,
     filter_command: bool = False,
-) -> List[Dict[str, Any]]:
+) -> List[DatabaseMessages]:
     """
     获取指定聊天中指定时间范围内的消息（包含边界）
 
@@ -137,9 +140,13 @@ def get_messages_by_time_in_chat_inclusive(
         raise ValueError("chat_id 必须是字符串类型")
     if filter_mai:
         return filter_mai_messages(
-            get_raw_msg_by_timestamp_with_chat_inclusive(chat_id, start_time, end_time, limit, limit_mode, filter_command)
+            get_raw_msg_by_timestamp_with_chat_inclusive(
+                chat_id, start_time, end_time, limit, limit_mode, filter_command
+            )
         )
-    return get_raw_msg_by_timestamp_with_chat_inclusive(chat_id, start_time, end_time, limit, limit_mode, filter_command)
+    return get_raw_msg_by_timestamp_with_chat_inclusive(
+        chat_id, start_time, end_time, limit, limit_mode, filter_command
+    )
 
 
 def get_messages_by_time_in_chat_for_users(
@@ -149,7 +156,7 @@ def get_messages_by_time_in_chat_for_users(
     person_ids: List[str],
     limit: int = 0,
     limit_mode: str = "latest",
-) -> List[Dict[str, Any]]:
+) -> List[DatabaseMessages]:
     """
     获取指定聊天中指定用户在指定时间范围内的消息
 
@@ -180,7 +187,7 @@ def get_messages_by_time_in_chat_for_users(
 
 def get_random_chat_messages(
     start_time: float, end_time: float, limit: int = 0, limit_mode: str = "latest", filter_mai: bool = False
-) -> List[Dict[str, Any]]:
+) -> List[DatabaseMessages]:
     """
     随机选择一个聊天，返回该聊天在指定时间范围内的消息
 
@@ -208,7 +215,7 @@ def get_random_chat_messages(
 
 def get_messages_by_time_for_users(
     start_time: float, end_time: float, person_ids: List[str], limit: int = 0, limit_mode: str = "latest"
-) -> List[Dict[str, Any]]:
+) -> List[DatabaseMessages]:
     """
     获取指定用户在所有聊天中指定时间范围内的消息
 
@@ -232,7 +239,7 @@ def get_messages_by_time_for_users(
     return get_raw_msg_by_timestamp_with_users(start_time, end_time, person_ids, limit, limit_mode)
 
 
-def get_messages_before_time(timestamp: float, limit: int = 0, filter_mai: bool = False) -> List[Dict[str, Any]]:
+def get_messages_before_time(timestamp: float, limit: int = 0, filter_mai: bool = False) -> List[DatabaseMessages]:
     """
     获取指定时间戳之前的消息
 
@@ -258,7 +265,7 @@ def get_messages_before_time(timestamp: float, limit: int = 0, filter_mai: bool 
 
 def get_messages_before_time_in_chat(
     chat_id: str, timestamp: float, limit: int = 0, filter_mai: bool = False
-) -> List[Dict[str, Any]]:
+) -> List[DatabaseMessages]:
     """
     获取指定聊天中指定时间戳之前的消息
 
@@ -287,7 +294,9 @@ def get_messages_before_time_in_chat(
     return get_raw_msg_before_timestamp_with_chat(chat_id, timestamp, limit)
 
 
-def get_messages_before_time_for_users(timestamp: float, person_ids: List[str], limit: int = 0) -> List[Dict[str, Any]]:
+def get_messages_before_time_for_users(
+    timestamp: float, person_ids: List[str], limit: int = 0
+) -> List[DatabaseMessages]:
     """
     获取指定用户在指定时间戳之前的消息
 
@@ -311,7 +320,7 @@ def get_messages_before_time_for_users(timestamp: float, person_ids: List[str], 
 
 def get_recent_messages(
     chat_id: str, hours: float = 24.0, limit: int = 100, limit_mode: str = "latest", filter_mai: bool = False
-) -> List[Dict[str, Any]]:
+) -> List[DatabaseMessages]:
     """
     获取指定聊天中最近一段时间的消息
 
@@ -403,9 +412,8 @@ def count_new_messages_for_users(chat_id: str, start_time: float, end_time: floa
 
 
 def build_readable_messages_to_str(
-    messages: List[Dict[str, Any]],
+    messages: List[DatabaseMessages],
     replace_bot_name: bool = True,
-    merge_messages: bool = False,
     timestamp_mode: str = "relative",
     read_mark: float = 0.0,
     truncate: bool = False,
@@ -427,14 +435,13 @@ def build_readable_messages_to_str(
         格式化后的可读字符串
     """
     return build_readable_messages(
-        messages, replace_bot_name, merge_messages, timestamp_mode, read_mark, truncate, show_actions
+        messages, replace_bot_name, timestamp_mode, read_mark, truncate, show_actions
     )
 
 
 async def build_readable_messages_with_details(
-    messages: List[Dict[str, Any]],
+    messages: List[DatabaseMessages],
     replace_bot_name: bool = True,
-    merge_messages: bool = False,
     timestamp_mode: str = "relative",
     truncate: bool = False,
 ) -> Tuple[str, List[Tuple[float, str, str]]]:
@@ -451,7 +458,7 @@ async def build_readable_messages_with_details(
     Returns:
         格式化后的可读字符串和详细信息元组列表(时间戳, 昵称, 内容)
     """
-    return await build_readable_messages_with_list(messages, replace_bot_name, merge_messages, timestamp_mode, truncate)
+    return await build_readable_messages_with_list(messages, replace_bot_name, timestamp_mode, truncate)
 
 
 async def get_person_ids_from_messages(messages: List[Dict[str, Any]]) -> List[str]:
@@ -472,7 +479,7 @@ async def get_person_ids_from_messages(messages: List[Dict[str, Any]]) -> List[s
 # =============================================================================
 
 
-def filter_mai_messages(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def filter_mai_messages(messages: List[DatabaseMessages]) -> List[DatabaseMessages]:
     """
     从消息列表中移除麦麦的消息
     Args:
@@ -480,4 +487,4 @@ def filter_mai_messages(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     Returns:
         过滤后的消息列表
     """
-    return [msg for msg in messages if msg.get("user_id") != str(global_config.bot.qq_account)]
+    return [msg for msg in messages if msg.user_info.user_id != str(global_config.bot.qq_account)]

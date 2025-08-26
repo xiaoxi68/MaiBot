@@ -5,7 +5,7 @@ from typing import Dict, List, Optional
 from src.common.logger import get_logger
 from src.chat.message_receive.message import MessageRecvS4U
 # 全局SuperChat管理器实例
-from src.mais4u.constant_s4u import ENABLE_S4U
+from src.mais4u.s4u_config import s4u_config
 
 logger = get_logger("super_chat_manager")
 
@@ -299,7 +299,7 @@ class SuperChatManager:
 
 
 # sourcery skip: assign-if-exp
-if ENABLE_S4U:
+if s4u_config.enable_s4u:
     super_chat_manager = SuperChatManager()
 else:
     super_chat_manager = None

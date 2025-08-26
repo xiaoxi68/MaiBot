@@ -3,7 +3,7 @@ import time
 import random
 import hashlib
 
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, Tuple
 from json_repair import repair_json
 
 from src.llm_models.utils_model import LLMRequest
@@ -197,7 +197,7 @@ class ExpressionSelector:
         chat_info: str,
         max_num: int = 10,
         target_message: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> Tuple[List[Dict[str, Any]], List[int]]:
         # sourcery skip: inline-variable, list-comprehension
         """使用LLM选择适合的表达方式"""
         
@@ -214,8 +214,8 @@ class ExpressionSelector:
             return [], []
 
         # 2. 构建所有表达方式的索引和情境列表
-        all_expressions = []
-        all_situations = []
+        all_expressions: List[Dict[str, Any]] = []
+        all_situations: List[str] = []
 
         # 添加style表达方式
         for expr in style_exprs:
@@ -254,7 +254,7 @@ class ExpressionSelector:
             # logger.info(f"LLM请求时间: {model_name}  {time.time() - start_time} \n{prompt}")
 
             # logger.info(f"模型名称: {model_name}")
-            logger.info(f"LLM返回结果: {content}")
+            # logger.info(f"LLM返回结果: {content}")
             # if reasoning_content:
             #     logger.info(f"LLM推理: {reasoning_content}")
             # else:
@@ -277,7 +277,7 @@ class ExpressionSelector:
             selected_indices = result["selected_situations"]
 
             # 根据索引获取完整的表达方式
-            valid_expressions = []
+            valid_expressions: List[Dict[str, Any]] = []
             selected_ids = []
             for idx in selected_indices:
                 if isinstance(idx, int) and 1 <= idx <= len(all_expressions):
@@ -290,7 +290,7 @@ class ExpressionSelector:
                 self.update_expressions_count_batch(valid_expressions, 0.006)
 
             # logger.info(f"LLM从{len(all_expressions)}个情境中选择了{len(valid_expressions)}个")
-            return valid_expressions , selected_ids
+            return valid_expressions, selected_ids
 
         except Exception as e:
             logger.error(f"LLM处理表达方式选择时出错: {e}")
@@ -303,4 +303,4 @@ init_prompt()
 try:
     expression_selector = ExpressionSelector()
 except Exception as e:
-    print(f"ExpressionSelector初始化失败: {e}")
+    logger.error(f"ExpressionSelector初始化失败: {e}")

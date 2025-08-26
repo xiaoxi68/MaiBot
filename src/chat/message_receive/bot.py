@@ -145,7 +145,7 @@ class ChatBot:
             logger.error(f"处理命令时出错: {e}")
             return False, None, True  # 出错时继续处理消息
 
-    async def hanle_notice_message(self, message: MessageRecv):
+    async def handle_notice_message(self, message: MessageRecv):
         if message.message_info.message_id == "notice":
             message.is_notify = True
             logger.info("notice消息")
@@ -170,7 +170,7 @@ class ChatBot:
         # 处理消息内容
         await message.process()
         
-        person = Person.register_person(platform=message.message_info.platform, user_id=message.message_info.user_info.user_id,nickname=user_info.user_nickname)
+        _ = Person.register_person(platform=message.message_info.platform, user_id=message.message_info.user_info.user_id,nickname=user_info.user_nickname) # type: ignore
 
         await self.s4u_message_processor.process_message(message)
 
@@ -212,7 +212,7 @@ class ChatBot:
             # logger.debug(str(message_data))
             message = MessageRecv(message_data)
 
-            if await self.hanle_notice_message(message):
+            if await self.handle_notice_message(message):
                 # return
                 pass
 

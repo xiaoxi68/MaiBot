@@ -10,10 +10,11 @@ from src.chat.message_receive.chat_stream import get_chat_manager
 from src.config.config import global_config
 from src.chat.message_receive.bot import chat_bot
 from src.common.logger import get_logger
-from src.individuality.individuality import get_individuality, Individuality
 from src.common.server import get_global_server, Server
 from src.mood.mood_manager import mood_manager
+from src.chat.knowledge import lpmm_start_up
 from rich.traceback import install
+from src.migrate_helper.migrate import check_and_run_migrations
 # from src.api.main import start_api_server
 
 # 导入新的插件管理器
@@ -40,8 +41,6 @@ class MainSystem:
             self.hippocampus_manager = hippocampus_manager
         else:
             self.hippocampus_manager = None
-
-        self.individuality: Individuality = get_individuality()
 
         # 使用消息API替代直接的FastAPI实例
         self.app: MessageServer = get_global_api()
@@ -82,9 +81,12 @@ class MainSystem:
         # 启动API服务器
         # start_api_server()
         # logger.info("API服务器启动成功")
+        
+        # 启动LPMM
+        lpmm_start_up()
 
         # 加载所有actions，包括默认的和插件的
-        plugin_manager.load_all_plugins()
+        plugin_manager.load_all_plugins()       
 
         # 初始化表情管理器
         get_emoji_manager().initialize()
@@ -95,7 +97,6 @@ class MainSystem:
         logger.info("情绪管理器初始化成功")
 
         # 初始化聊天管理器
-
         await get_chat_manager()._initialize()
         asyncio.create_task(get_chat_manager()._auto_save_task())
 
@@ -113,10 +114,17 @@ class MainSystem:
 
         # 将bot.py中的chat_bot.message_process消息处理函数注册到api.py的消息处理基类中
         self.app.register_message_handler(chat_bot.message_process)
+        
+        await check_and_run_migrations()
+        
 
-        # 初始化个体特征
-        await self.individuality.initialize()
-
+        # 触发 ON_START 事件
+        from src.plugin_system.core.events_manager import events_manager
+        from src.plugin_system.base.component_types import EventType
+        await events_manager.handle_mai_events(
+            event_type=EventType.ON_START
+        )
+        # logger.info("已触发 ON_START 事件")
         try:
             init_time = int(1000 * (time.time() - init_start_time))
             logger.info(f"初始化完成，神经元放电{init_time}次")
@@ -137,20 +145,13 @@ class MainSystem:
             if global_config.memory.enable_memory and self.hippocampus_manager:
                 tasks.extend(
                     [
-                        self.build_memory_task(),
+                        # 移除记忆构建的定期调用，改为在heartFC_chat.py中调用
+                        # self.build_memory_task(),
                         self.forget_memory_task(),
-                        self.consolidate_memory_task(),
                     ]
                 )
 
             await asyncio.gather(*tasks)
-
-    async def build_memory_task(self):
-        """记忆构建任务"""
-        while True:
-            await asyncio.sleep(global_config.memory.memory_build_interval)
-            logger.info("正在进行记忆构建")
-            await self.hippocampus_manager.build_memory()  # type: ignore
 
     async def forget_memory_task(self):
         """记忆遗忘任务"""
@@ -160,13 +161,7 @@ class MainSystem:
             await self.hippocampus_manager.forget_memory(percentage=global_config.memory.memory_forget_percentage)  # type: ignore
             logger.info("[记忆遗忘] 记忆遗忘完成")
 
-    async def consolidate_memory_task(self):
-        """记忆整合任务"""
-        while True:
-            await asyncio.sleep(global_config.memory.consolidate_memory_interval)
-            logger.info("[记忆整合] 开始整合记忆...")
-            await self.hippocampus_manager.consolidate_memory()  # type: ignore
-            logger.info("[记忆整合] 记忆整合完成")
+
 
 
 async def main():
@@ -180,3 +175,5 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+    

@@ -1,15 +1,16 @@
 import random
 import re
-import string
 import time
 import jieba
+import json
+import ast
 import numpy as np
 
 from collections import Counter
-from maim_message import UserInfo
-from typing import Optional, Tuple, Dict, List, Any
+from typing import Optional, Tuple, List, TYPE_CHECKING
 
 from src.common.logger import get_logger
+from src.common.data_models.database_data_model import DatabaseMessages
 from src.common.message_repository import find_messages, count_messages
 from src.config.config import global_config, model_config
 from src.chat.message_receive.message import MessageRecv
@@ -17,6 +18,9 @@ from src.chat.message_receive.chat_stream import get_chat_manager
 from src.llm_models.utils_model import LLMRequest
 from src.person_info.person_info import Person
 from .typo_generator import ChineseTypoGenerator
+
+if TYPE_CHECKING:
+    from src.common.data_models.info_data_model import TargetPersonInfo
 
 logger = get_logger("chat_utils")
 
@@ -111,6 +115,7 @@ def is_mentioned_bot_in_message(message: MessageRecv) -> tuple[bool, float]:
 
 async def get_embedding(text, request_type="embedding") -> Optional[List[float]]:
     """获取文本的embedding向量"""
+    # 每次都创建新的LLMRequest实例以避免事件循环冲突
     llm = LLMRequest(model_set=model_config.model_task_config.embedding, request_type=request_type)
     try:
         embedding, _ = await llm.get_embedding(text)
@@ -130,22 +135,32 @@ def get_recent_group_speaker(chat_stream_id: str, sender, limit: int = 12) -> li
         return []
 
     who_chat_in_group = []
-    for msg_db_data in recent_messages:
-        user_info = UserInfo.from_dict(
-            {
-                "platform": msg_db_data["user_platform"],
-                "user_id": msg_db_data["user_id"],
-                "user_nickname": msg_db_data["user_nickname"],
-                "user_cardname": msg_db_data.get("user_cardname", ""),
-            }
-        )
+    for db_msg in recent_messages:
+        # user_info = UserInfo.from_dict(
+        #     {
+        #         "platform": msg_db_data["user_platform"],
+        #         "user_id": msg_db_data["user_id"],
+        #         "user_nickname": msg_db_data["user_nickname"],
+        #         "user_cardname": msg_db_data.get("user_cardname", ""),
+        #     }
+        # )
+        # if (
+        #     (user_info.platform, user_info.user_id) != sender
+        #     and user_info.user_id != global_config.bot.qq_account
+        #     and (user_info.platform, user_info.user_id, user_info.user_nickname) not in who_chat_in_group
+        #     and len(who_chat_in_group) < 5
+        # ):  # 排除重复，排除消息发送者，排除bot，限制加载的关系数目
+        #     who_chat_in_group.append((user_info.platform, user_info.user_id, user_info.user_nickname))
         if (
-            (user_info.platform, user_info.user_id) != sender
-            and user_info.user_id != global_config.bot.qq_account
-            and (user_info.platform, user_info.user_id, user_info.user_nickname) not in who_chat_in_group
+            (db_msg.user_info.platform, db_msg.user_info.user_id) != sender
+            and db_msg.user_info.user_id != global_config.bot.qq_account
+            and (db_msg.user_info.platform, db_msg.user_info.user_id, db_msg.user_info.user_nickname)
+            not in who_chat_in_group
             and len(who_chat_in_group) < 5
         ):  # 排除重复，排除消息发送者，排除bot，限制加载的关系数目
-            who_chat_in_group.append((user_info.platform, user_info.user_id, user_info.user_nickname))
+            who_chat_in_group.append(
+                (db_msg.user_info.platform, db_msg.user_info.user_id, db_msg.user_info.user_nickname)
+            )
 
     return who_chat_in_group
 
@@ -555,7 +570,7 @@ def count_messages_between(start_time: float, end_time: float, stream_id: str) -
 
         # 获取消息内容计算总长度
         messages = find_messages(message_filter=filter_query)
-        total_length = sum(len(msg.get("processed_plain_text", "")) for msg in messages)
+        total_length = sum(len(msg.processed_plain_text or "") for msg in messages)
 
         return count, total_length
 
@@ -600,7 +615,7 @@ def translate_timestamp_to_human_readable(timestamp: float, mode: str = "normal"
         return time.strftime("%H:%M:%S", time.localtime(timestamp))
 
 
-def get_chat_type_and_target_info(chat_id: str) -> Tuple[bool, Optional[Dict]]:
+def get_chat_type_and_target_info(chat_id: str) -> Tuple[bool, Optional["TargetPersonInfo"]]:
     """
     获取聊天类型（是否群聊）和私聊对象信息。
 
@@ -627,30 +642,27 @@ def get_chat_type_and_target_info(chat_id: str) -> Tuple[bool, Optional[Dict]]:
                 platform: str = chat_stream.platform
                 user_id: str = user_info.user_id  # type: ignore
 
+                from src.common.data_models.info_data_model import TargetPersonInfo  # 解决循环导入问题
+
                 # Initialize target_info with basic info
-                target_info = {
-                    "platform": platform,
-                    "user_id": user_id,
-                    "user_nickname": user_info.user_nickname,
-                    "person_id": None,
-                    "person_name": None,
-                }
+                target_info = TargetPersonInfo(
+                    platform=platform,
+                    user_id=user_id,
+                    user_nickname=user_info.user_nickname,  # type: ignore
+                    person_id=None,
+                    person_name=None,
+                )
 
                 # Try to fetch person info
                 try:
-                    # Assume get_person_id is sync (as per original code), keep using to_thread
                     person = Person(platform=platform, user_id=user_id)
                     if not person.is_known:
                         logger.warning(f"用户 {user_info.user_nickname} 尚未认识")
-                        return False, None  
-                    person_id = person.person_id
-                    person_name = None
-                    if person_id:
-                        # get_value is async, so await it directly
-                        person_name = person.person_name
-
-                    target_info["person_id"] = person_id
-                    target_info["person_name"] = person_name
+                        # 如果用户尚未认识，则返回False和None
+                        return False, None
+                    if person.person_id:
+                        target_info.person_id = person.person_id
+                        target_info.person_name = person.person_name
                 except Exception as person_e:
                     logger.warning(
                         f"获取 person_id 或 person_name 时出错 for {platform}:{user_id} in utils: {person_e}"
@@ -661,22 +673,21 @@ def get_chat_type_and_target_info(chat_id: str) -> Tuple[bool, Optional[Dict]]:
             logger.warning(f"无法获取 chat_stream for {chat_id} in utils")
     except Exception as e:
         logger.error(f"获取聊天类型和目标信息时出错 for {chat_id}: {e}", exc_info=True)
-        # Keep defaults on error
 
     return is_group_chat, chat_target_info
 
 
-def assign_message_ids(messages: List[Any]) -> List[Dict[str, Any]]:
+def assign_message_ids(messages: List[DatabaseMessages]) -> List[Tuple[str, DatabaseMessages]]:
     """
     为消息列表中的每个消息分配唯一的简短随机ID
-    
+
     Args:
         messages: 消息列表
-    
+
     Returns:
-        包含 {'id': str, 'message': any} 格式的字典列表
+        List[DatabaseMessages]: 分配了唯一ID的消息列表(写入message_id属性)
     """
-    result = []
+    result: List[Tuple[str, DatabaseMessages]] = []  # 复制原始消息列表
     used_ids = set()
     len_i = len(messages)
     if len_i > 100:
@@ -685,86 +696,141 @@ def assign_message_ids(messages: List[Any]) -> List[Dict[str, Any]]:
     else:
         a = 1
         b = 9
-    
+
     for i, message in enumerate(messages):
         # 生成唯一的简短ID
         while True:
             # 使用索引+随机数生成简短ID
             random_suffix = random.randint(a, b)
-            message_id = f"m{i+1}{random_suffix}"
-            
+            message_id = f"m{i + 1}{random_suffix}"
+
             if message_id not in used_ids:
                 used_ids.add(message_id)
                 break
-        
-        result.append({
-            'id': message_id,
-            'message': message
-        })
-    
+        result.append((message_id, message))
+
     return result
 
 
-def assign_message_ids_flexible(
-    messages: list, 
-    prefix: str = "msg", 
-    id_length: int = 6,
-    use_timestamp: bool = False
-) -> list:
-    """
-    为消息列表中的每个消息分配唯一的简短随机ID（增强版）
-    
-    Args:
-        messages: 消息列表
-        prefix: ID前缀，默认为"msg"
-        id_length: ID的总长度（不包括前缀），默认为6
-        use_timestamp: 是否在ID中包含时间戳，默认为False
-    
-    Returns:
-        包含 {'id': str, 'message': any} 格式的字典列表
-    """
-    result = []
-    used_ids = set()
-    
-    for i, message in enumerate(messages):
-        # 生成唯一的ID
-        while True:
-            if use_timestamp:
-                # 使用时间戳的后几位 + 随机字符
-                timestamp_suffix = str(int(time.time() * 1000))[-3:]
-                remaining_length = id_length - 3
-                random_chars = ''.join(random.choices(string.ascii_lowercase + string.digits, k=remaining_length))
-                message_id = f"{prefix}{timestamp_suffix}{random_chars}"
-            else:
-                # 使用索引 + 随机字符
-                index_str = str(i + 1)
-                remaining_length = max(1, id_length - len(index_str))
-                random_chars = ''.join(random.choices(string.ascii_lowercase + string.digits, k=remaining_length))
-                message_id = f"{prefix}{index_str}{random_chars}"
-            
-            if message_id not in used_ids:
-                used_ids.add(message_id)
-                break
-        
-        result.append({
-            'id': message_id,
-            'message': message
-        })
-    
-    return result
+# def assign_message_ids_flexible(
+#     messages: list, prefix: str = "msg", id_length: int = 6, use_timestamp: bool = False
+# ) -> list:
+#     """
+#     为消息列表中的每个消息分配唯一的简短随机ID（增强版）
+
+#     Args:
+#         messages: 消息列表
+#         prefix: ID前缀，默认为"msg"
+#         id_length: ID的总长度（不包括前缀），默认为6
+#         use_timestamp: 是否在ID中包含时间戳，默认为False
+
+#     Returns:
+#         包含 {'id': str, 'message': any} 格式的字典列表
+#     """
+#     result = []
+#     used_ids = set()
+
+#     for i, message in enumerate(messages):
+#         # 生成唯一的ID
+#         while True:
+#             if use_timestamp:
+#                 # 使用时间戳的后几位 + 随机字符
+#                 timestamp_suffix = str(int(time.time() * 1000))[-3:]
+#                 remaining_length = id_length - 3
+#                 random_chars = "".join(random.choices(string.ascii_lowercase + string.digits, k=remaining_length))
+#                 message_id = f"{prefix}{timestamp_suffix}{random_chars}"
+#             else:
+#                 # 使用索引 + 随机字符
+#                 index_str = str(i + 1)
+#                 remaining_length = max(1, id_length - len(index_str))
+#                 random_chars = "".join(random.choices(string.ascii_lowercase + string.digits, k=remaining_length))
+#                 message_id = f"{prefix}{index_str}{random_chars}"
+
+#             if message_id not in used_ids:
+#                 used_ids.add(message_id)
+#                 break
+
+#         result.append({"id": message_id, "message": message})
+
+#     return result
 
 
 # 使用示例:
 # messages = ["Hello", "World", "Test message"]
-# 
+#
 # # 基础版本
 # result1 = assign_message_ids(messages)
 # # 结果: [{'id': 'm1123', 'message': 'Hello'}, {'id': 'm2456', 'message': 'World'}, {'id': 'm3789', 'message': 'Test message'}]
-# 
+#
 # # 增强版本 - 自定义前缀和长度
 # result2 = assign_message_ids_flexible(messages, prefix="chat", id_length=8)
 # # 结果: [{'id': 'chat1abc2', 'message': 'Hello'}, {'id': 'chat2def3', 'message': 'World'}, {'id': 'chat3ghi4', 'message': 'Test message'}]
-# 
+#
 # # 增强版本 - 使用时间戳
 # result3 = assign_message_ids_flexible(messages, prefix="ts", use_timestamp=True)
 # # 结果: [{'id': 'ts123a1b', 'message': 'Hello'}, {'id': 'ts123c2d', 'message': 'World'}, {'id': 'ts123e3f', 'message': 'Test message'}]
+
+
+def parse_keywords_string(keywords_input) -> list[str]:
+    # sourcery skip: use-contextlib-suppress
+    """
+    统一的关键词解析函数，支持多种格式的关键词字符串解析
+
+    支持的格式：
+    1. 字符串列表格式：'["utils.py", "修改", "代码", "动作"]'
+    2. 斜杠分隔格式：'utils.py/修改/代码/动作'
+    3. 逗号分隔格式：'utils.py,修改,代码,动作'
+    4. 空格分隔格式：'utils.py 修改 代码 动作'
+    5. 已经是列表的情况：["utils.py", "修改", "代码", "动作"]
+    6. JSON格式字符串：'{"keywords": ["utils.py", "修改", "代码", "动作"]}'
+
+    Args:
+        keywords_input: 关键词输入，可以是字符串或列表
+
+    Returns:
+        list[str]: 解析后的关键词列表，去除空白项
+    """
+    if not keywords_input:
+        return []
+
+    # 如果已经是列表，直接处理
+    if isinstance(keywords_input, list):
+        return [str(k).strip() for k in keywords_input if str(k).strip()]
+
+    # 转换为字符串处理
+    keywords_str = str(keywords_input).strip()
+    if not keywords_str:
+        return []
+
+    try:
+        # 尝试作为JSON对象解析（支持 {"keywords": [...]} 格式）
+        json_data = json.loads(keywords_str)
+        if isinstance(json_data, dict) and "keywords" in json_data:
+            keywords_list = json_data["keywords"]
+            if isinstance(keywords_list, list):
+                return [str(k).strip() for k in keywords_list if str(k).strip()]
+        elif isinstance(json_data, list):
+            # 直接是JSON数组格式
+            return [str(k).strip() for k in json_data if str(k).strip()]
+    except (json.JSONDecodeError, ValueError):
+        pass
+
+    try:
+        # 尝试使用 ast.literal_eval 解析（支持Python字面量格式）
+        parsed = ast.literal_eval(keywords_str)
+        if isinstance(parsed, list):
+            return [str(k).strip() for k in parsed if str(k).strip()]
+    except (ValueError, SyntaxError):
+        pass
+
+    # 尝试不同的分隔符
+    separators = ["/", ",", " ", "|", ";"]
+
+    for separator in separators:
+        if separator in keywords_str:
+            keywords_list = [k.strip() for k in keywords_str.split(separator) if k.strip()]
+            if len(keywords_list) > 1:  # 确保分割有效
+                return keywords_list
+
+    # 如果没有分隔符，返回单个关键词
+    return [keywords_str] if keywords_str else []

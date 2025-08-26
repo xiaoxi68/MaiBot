@@ -159,7 +159,6 @@ class Messages(BaseModel):
 
     processed_plain_text = TextField(null=True)  # 处理后的纯文本消息
     display_message = TextField(null=True)  # 显示的消息
-    memorized_times = IntegerField(default=0)  # 被记忆的次数
 
     priority_mode = TextField(null=True)
     priority_info = TextField(null=True)
@@ -263,24 +262,14 @@ class PersonInfo(BaseModel):
     platform = TextField()  # 平台
     user_id = TextField(index=True)  # 用户ID
     nickname = TextField(null=True)  # 用户昵称
-    points = TextField(null=True)  # 个人印象的点
+    memory_points = TextField(null=True)  # 个人印象的点
     know_times = FloatField(null=True)  # 认识时间 (时间戳)
     know_since = FloatField(null=True)  # 首次印象总结时间
     last_know = FloatField(null=True)  # 最后一次印象总结时间
     
-    
     attitude_to_me = TextField(null=True)  # 对bot的态度
     attitude_to_me_confidence = FloatField(null=True)  # 对bot的态度置信度
-    friendly_value = FloatField(null=True)  # 对bot的友好程度
-    friendly_value_confidence = FloatField(null=True)  # 对bot的友好程度置信度
-    rudeness = TextField(null=True)  # 对bot的冒犯程度
-    rudeness_confidence = FloatField(null=True)  # 对bot的冒犯程度置信度
-    neuroticism = TextField(null=True)  # 对bot的神经质程度
-    neuroticism_confidence = FloatField(null=True)  # 对bot的神经质程度置信度
-    conscientiousness = TextField(null=True)  # 对bot的尽责程度
-    conscientiousness_confidence = FloatField(null=True)  # 对bot的尽责程度置信度
-    likeness = TextField(null=True)  # 对bot的相似程度
-    likeness_confidence = FloatField(null=True)  # 对bot的相似程度置信度
+
 
 
 
@@ -345,6 +334,7 @@ class GraphNodes(BaseModel):
 
     concept = TextField(unique=True, index=True)  # 节点概念
     memory_items = TextField()  # JSON格式存储的记忆列表
+    weight = FloatField(default=0.0)  # 节点权重
     hash = TextField()  # 节点哈希值
     created_time = FloatField()  # 创建时间戳
     last_modified = FloatField()  # 最后修改时间戳
@@ -749,3 +739,7 @@ def check_field_constraints():
 
 # 模块加载时调用初始化函数
 initialize_database(sync_constraints=True)
+
+
+
+

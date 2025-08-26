@@ -2,13 +2,15 @@ import time
 import asyncio
 
 from abc import ABC, abstractmethod
-from typing import Tuple, Optional, Dict, Any
+from typing import Tuple, Optional, TYPE_CHECKING
 
 from src.common.logger import get_logger
 from src.chat.message_receive.chat_stream import ChatStream
-from src.plugin_system.base.component_types import ActionActivationType, ChatMode, ActionInfo, ComponentType
+from src.plugin_system.base.component_types import ActionActivationType, ActionInfo, ComponentType
 from src.plugin_system.apis import send_api, database_api, message_api
 
+if TYPE_CHECKING:
+    from src.common.data_models.database_data_model import DatabaseMessages
 
 logger = get_logger("base_action")
 
@@ -23,7 +25,6 @@ class BaseAction(ABC):
     - normal_activation_type: 普通模式激活类型
     - activation_keywords: 激活关键词列表
     - keyword_case_sensitive: 关键词是否区分大小写
-    - mode_enable: 启用的聊天模式
     - parallel_action: 是否允许并行执行
     - random_activation_probability: 随机激活概率
     - llm_judge_prompt: LLM判断提示词
@@ -75,20 +76,19 @@ class BaseAction(ABC):
         self.action_require: list[str] = getattr(self.__class__, "action_require", []).copy()
 
         # 设置激活类型实例属性（从类属性复制，提供默认值）
-        self.focus_activation_type = getattr(self.__class__, "focus_activation_type", ActionActivationType.ALWAYS)
+        self.focus_activation_type = getattr(self.__class__, "focus_activation_type", ActionActivationType.ALWAYS) #已弃用
         """FOCUS模式下的激活类型"""
-        self.normal_activation_type = getattr(self.__class__, "normal_activation_type", ActionActivationType.ALWAYS)
+        self.normal_activation_type = getattr(self.__class__, "normal_activation_type", ActionActivationType.ALWAYS) #已弃用
         """NORMAL模式下的激活类型"""
         self.activation_type = getattr(self.__class__, "activation_type", self.focus_activation_type)
         """激活类型"""
         self.random_activation_probability: float = getattr(self.__class__, "random_activation_probability", 0.0)
         """当激活类型为RANDOM时的概率"""
-        self.llm_judge_prompt: str = getattr(self.__class__, "llm_judge_prompt", "")
+        self.llm_judge_prompt: str = getattr(self.__class__, "llm_judge_prompt", "") #已弃用
         """协助LLM进行判断的Prompt"""
         self.activation_keywords: list[str] = getattr(self.__class__, "activation_keywords", []).copy()
         """激活类型为KEYWORD时的KEYWORDS列表"""
         self.keyword_case_sensitive: bool = getattr(self.__class__, "keyword_case_sensitive", False)
-        self.mode_enable: ChatMode = getattr(self.__class__, "mode_enable", ChatMode.ALL)
         self.parallel_action: bool = getattr(self.__class__, "parallel_action", True)
         self.associated_types: list[str] = getattr(self.__class__, "associated_types", []).copy()
 
@@ -118,7 +118,7 @@ class BaseAction(ABC):
             self.action_message = {}
 
         if self.has_action_message:
-            if self.action_name != "no_reply":
+            if self.action_name != "no_action":
                 self.group_id = str(self.action_message.get("chat_info_group_id", None))
                 self.group_name = self.action_message.get("chat_info_group_name", None)
 
@@ -208,7 +208,11 @@ class BaseAction(ABC):
             return False, f"等待新消息失败: {str(e)}"
 
     async def send_text(
-        self, content: str, set_reply: bool = False,reply_message: Optional[Dict[str, Any]] = None, typing: bool = False
+        self,
+        content: str,
+        set_reply: bool = False,
+        reply_message: Optional["DatabaseMessages"] = None,
+        typing: bool = False,
     ) -> bool:
         """发送文本消息
 
@@ -231,7 +235,9 @@ class BaseAction(ABC):
             typing=typing,
         )
 
-    async def send_emoji(self, emoji_base64: str, set_reply: bool = False,reply_message: Optional[Dict[str, Any]] = None) -> bool:
+    async def send_emoji(
+        self, emoji_base64: str, set_reply: bool = False, reply_message: Optional["DatabaseMessages"] = None
+    ) -> bool:
         """发送表情包
 
         Args:
@@ -244,9 +250,13 @@ class BaseAction(ABC):
             logger.error(f"{self.log_prefix} 缺少聊天ID")
             return False
 
-        return await send_api.emoji_to_stream(emoji_base64, self.chat_id,set_reply=set_reply,reply_message=reply_message)
+        return await send_api.emoji_to_stream(
+            emoji_base64, self.chat_id, set_reply=set_reply, reply_message=reply_message
+        )
 
-    async def send_image(self, image_base64: str, set_reply: bool = False,reply_message: Optional[Dict[str, Any]] = None) -> bool:
+    async def send_image(
+        self, image_base64: str, set_reply: bool = False, reply_message: Optional["DatabaseMessages"] = None
+    ) -> bool:
         """发送图片
 
         Args:
@@ -259,9 +269,18 @@ class BaseAction(ABC):
             logger.error(f"{self.log_prefix} 缺少聊天ID")
             return False
 
-        return await send_api.image_to_stream(image_base64, self.chat_id,set_reply=set_reply,reply_message=reply_message)
+        return await send_api.image_to_stream(
+            image_base64, self.chat_id, set_reply=set_reply, reply_message=reply_message
+        )
 
-    async def send_custom(self, message_type: str, content: str, typing: bool = False, set_reply: bool = False,reply_message: Optional[Dict[str, Any]] = None) -> bool:
+    async def send_custom(
+        self,
+        message_type: str,
+        content: str,
+        typing: bool = False,
+        set_reply: bool = False,
+        reply_message: Optional["DatabaseMessages"] = None,
+    ) -> bool:
         """发送自定义类型消息
 
         Args:
@@ -310,7 +329,13 @@ class BaseAction(ABC):
         )
 
     async def send_command(
-        self, command_name: str, args: Optional[dict] = None, display_message: str = "", storage_message: bool = True,set_reply: bool = False,reply_message: Optional[Dict[str, Any]] = None
+        self,
+        command_name: str,
+        args: Optional[dict] = None,
+        display_message: str = "",
+        storage_message: bool = True,
+        set_reply: bool = False,
+        reply_message: Optional["DatabaseMessages"] = None,
     ) -> bool:
         """发送命令消息
 
@@ -385,7 +410,6 @@ class BaseAction(ABC):
             activation_type=activation_type,
             activation_keywords=getattr(cls, "activation_keywords", []).copy(),
             keyword_case_sensitive=getattr(cls, "keyword_case_sensitive", False),
-            mode_enable=getattr(cls, "mode_enable", ChatMode.ALL),
             parallel_action=getattr(cls, "parallel_action", True),
             random_activation_probability=getattr(cls, "random_activation_probability", 0.0),
             llm_judge_prompt=getattr(cls, "llm_judge_prompt", ""),
