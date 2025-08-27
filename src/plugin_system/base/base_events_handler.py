@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import Tuple, Optional, Dict
+from typing import Tuple, Optional, Dict, List
 
 from src.common.logger import get_logger
-from .component_types import MaiMessages, EventType, EventHandlerInfo, ComponentType
+from .component_types import MaiMessages, EventType, EventHandlerInfo, ComponentType, CustomEventHandlerResult
 
 logger = get_logger("base_event_handler")
 
@@ -30,16 +30,19 @@ class BaseEventHandler(ABC):
         """对应插件名"""
         self.plugin_config: Optional[Dict] = None
         """插件配置字典"""
+        self._events_subscribed: List[EventType | str] = []
         if self.event_type == EventType.UNKNOWN:
             raise NotImplementedError("事件处理器必须指定 event_type")
 
     @abstractmethod
-    async def execute(self, message: MaiMessages | None) -> Tuple[bool, bool, Optional[str]]:
+    async def execute(
+        self, message: MaiMessages | None
+    ) -> Tuple[bool, bool, Optional[str], Optional[CustomEventHandlerResult]]:
         """执行事件处理的抽象方法，子类必须实现
         Args:
             message (MaiMessages | None): 事件消息对象，当你注册的事件为ON_START和ON_STOP时message为None
         Returns:
-            Tuple[bool, bool, Optional[str]]: (是否执行成功, 是否需要继续处理, 可选的返回消息)
+            Tuple[bool, bool, Optional[str], Optional[CustomEventHandlerResult]]: (是否执行成功, 是否需要继续处理, 可选的返回消息, 可选的自定义结果)
         """
         raise NotImplementedError("子类必须实现 execute 方法")
 

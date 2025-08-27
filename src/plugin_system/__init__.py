@@ -25,6 +25,7 @@ from .base import (
     EventType,
     MaiMessages,
     ToolParamType,
+    CustomEventHandlerResult,
 )
 
 # 导入工具模块
@@ -37,7 +38,7 @@ from .utils import (
 
 from .apis import (
     chat_api,
-    tool_api,  
+    tool_api,
     component_manage_api,
     config_api,
     database_api,
@@ -92,6 +93,7 @@ __all__ = [
     "ToolParamType",
     # 消息
     "MaiMessages",
+    "CustomEventHandlerResult",
     # 装饰器
     "register_plugin",
     "ConfigField",
