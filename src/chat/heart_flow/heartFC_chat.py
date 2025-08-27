@@ -385,12 +385,6 @@ class HeartFChatting:
         async with global_prompt_manager.async_message_scope(self.chat_stream.context.get_template_name()):
             await self.expression_learner.trigger_learning_for_chat()
 
-            # # 记忆构建：为当前chat_id构建记忆
-            # try:
-            #     await hippocampus_manager.build_memory_for_chat(self.stream_id)
-            # except Exception as e:
-            #     logger.error(f"{self.log_prefix} 记忆构建失败: {e}")
-
             available_actions: Dict[str, ActionInfo] = {}
             if random.random() > self.focus_value_control.get_current_focus_value() and mode == ChatMode.FOCUS:
                 # 如果激活度没有激活，并且聊天活跃度低，有可能不进行plan，相当于不在电脑前，不进行认真思考
@@ -445,8 +439,8 @@ class HeartFChatting:
                         available_actions=available_actions,
                     )
 
-                    for action in action_to_use_info:
-                        print(action.action_type)
+                    # for action in action_to_use_info:
+                    #     print(action.action_type)
 
             # 3. 并行执行所有动作
             action_tasks = [

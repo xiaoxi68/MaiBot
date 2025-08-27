@@ -26,7 +26,6 @@ from src.chat.utils.chat_message_builder import (
 )
 from src.chat.express.expression_selector import expression_selector
 from src.chat.memory_system.memory_activator import MemoryActivator
-from src.chat.memory_system.instant_memory import InstantMemory
 from src.mood.mood_manager import mood_manager
 from src.person_info.person_info import Person, is_person_known
 from src.plugin_system.base.component_types import ActionInfo, EventType
@@ -147,7 +146,6 @@ class DefaultReplyer:
         self.is_group_chat, self.chat_target_info = get_chat_type_and_target_info(self.chat_stream.stream_id)
         self.heart_fc_sender = HeartFCSender()
         self.memory_activator = MemoryActivator()
-        self.instant_memory = InstantMemory(chat_id=self.chat_stream.stream_id)
 
         from src.plugin_system.core.tool_use import ToolExecutor  # 延迟导入ToolExecutor，不然会循环依赖
 
@@ -375,19 +373,10 @@ class DefaultReplyer:
 
         instant_memory = None
 
-        # running_memories = await self.memory_activator.activate_memory_with_chat_history(
-        #     target_message=target, chat_history=chat_history
-        # )
+        running_memories = await self.memory_activator.activate_memory_with_chat_history(
+            target_message=target, chat_history=chat_history
+        )
         running_memories = None
-
-        if global_config.memory.enable_instant_memory:
-            chat_history_str = build_readable_messages(
-                messages=chat_history, replace_bot_name=True, timestamp_mode="normal"
-            )
-            asyncio.create_task(self.instant_memory.create_and_store_memory(chat_history_str))
-
-            instant_memory = await self.instant_memory.get_memory(target)
-            logger.info(f"即时记忆：{instant_memory}")
 
         if not running_memories:
             return ""

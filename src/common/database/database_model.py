@@ -298,19 +298,6 @@ class GroupInfo(BaseModel):
         # database = db # 继承自 BaseModel
         table_name = "group_info"
 
-
-class Memory(BaseModel):
-    memory_id = TextField(index=True)
-    chat_id = TextField(null=True)
-    memory_text = TextField(null=True)
-    keywords = TextField(null=True)
-    create_time = FloatField(null=True)
-    last_view_time = FloatField(null=True)
-
-    class Meta:
-        table_name = "memory"
-
-
 class Expression(BaseModel):
     """
     用于存储表达风格的模型。
@@ -377,7 +364,6 @@ def create_tables():
                 Expression,
                 GraphNodes,  # 添加图节点表
                 GraphEdges,  # 添加图边表
-                Memory,
                 ActionRecords,  # 添加 ActionRecords 到初始化列表
             ]
         )
@@ -403,7 +389,6 @@ def initialize_database(sync_constraints=False):
         OnlineTime,
         PersonInfo,
         Expression,
-        Memory,
         GraphNodes,
         GraphEdges,
         ActionRecords,  # 添加 ActionRecords 到初始化列表
@@ -501,7 +486,6 @@ def sync_field_constraints():
         OnlineTime,
         PersonInfo,
         Expression,
-        Memory,
         GraphNodes,
         GraphEdges,
         ActionRecords,
@@ -680,7 +664,6 @@ def check_field_constraints():
         OnlineTime,
         PersonInfo,
         Expression,
-        Memory,
         GraphNodes,
         GraphEdges,
         ActionRecords,

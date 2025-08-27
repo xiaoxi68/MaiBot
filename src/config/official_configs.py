@@ -60,9 +60,6 @@ class RelationshipConfig(ConfigBase):
     enable_relationship: bool = True
     """是否启用关系系统"""
 
-    relation_frequency: int = 1
-    """关系频率，麦麦构建关系的速度"""
-
 
 @dataclass
 class ChatConfig(ConfigBase):
@@ -336,14 +333,8 @@ class MemoryConfig(ConfigBase):
 
     enable_memory: bool = True
     """是否启用记忆系统"""
-    
-    memory_build_frequency: int = 1
-    """记忆构建频率（秒）"""
 
-    memory_compress_rate: float = 0.1
-    """记忆压缩率"""
-
-    forget_memory_interval: int = 1000
+    forget_memory_interval: int = 1500
     """记忆遗忘间隔（秒）"""
 
     memory_forget_time: int = 24
@@ -354,9 +345,6 @@ class MemoryConfig(ConfigBase):
 
     memory_ban_words: list[str] = field(default_factory=lambda: ["表情包", "图片", "回复", "聊天记录"])
     """不允许记忆的词列表"""
-
-    enable_instant_memory: bool = True
-    """是否启用即时记忆"""
 
 
 @dataclass

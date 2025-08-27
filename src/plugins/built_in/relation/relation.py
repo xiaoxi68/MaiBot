@@ -1,6 +1,7 @@
 import json
 from json_repair import repair_json
 from typing import Tuple
+import time
 
 from src.common.logger import get_logger
 from src.config.config import global_config
@@ -79,16 +80,6 @@ class BuildRelationAction(BaseAction):
     action_name = "build_relation"
     action_description = "了解对于某人的记忆，并添加到你对对方的印象中"
 
-    # LLM判断提示词
-    llm_judge_prompt = """
-    判定是否需要使用关系动作，添加对于某人的记忆：
-    1. 对方与你的交互让你对其有新记忆
-    2. 对方有提到其个人信息，包括喜好，身份，等等
-    3. 对方希望你记住对方的信息
-    
-    请回答"是"或"否"。
-    """
-
     # 动作参数定义
     action_parameters = {"person_name": "需要了解或记忆的人的名称", "impression": "需要了解的对某人的记忆或印象"}
 
@@ -109,13 +100,17 @@ class BuildRelationAction(BaseAction):
         try:
             # 1. 获取构建关系的原因
             impression = self.action_data.get("impression", "")
-            logger.info(f"{self.log_prefix} 添加记忆原因: {self.reasoning}")
+            logger.info(f"{self.log_prefix} 添加关系印象原因: {self.reasoning}")
             person_name = self.action_data.get("person_name", "")
             # 2. 获取目标用户信息
             person = Person(person_name=person_name)
             if not person.is_known:
                 logger.warning(f"{self.log_prefix} 用户 {person_name} 不存在，跳过添加记忆")
                 return False, f"用户 {person_name} 不存在，跳过添加记忆"
+            
+            person.last_know = time.time()
+            person.know_times += 1
+            person.sync_to_database()
 
             category_list = person.get_all_category()
             if not category_list:
@@ -195,6 +190,8 @@ class BuildRelationAction(BaseAction):
                 # 新记忆
                 person.memory_points.append(f"{category}:{new_memory}:1.0")
                 person.sync_to_database()
+                
+                logger.info(f"{self.log_prefix} 为{person.person_name}新增记忆点: {new_memory}")
 
                 return True, f"为{person.person_name}新增记忆点: {new_memory}"
             elif memory_id and integrate_memory:
@@ -204,11 +201,13 @@ class BuildRelationAction(BaseAction):
                 del_count = person.del_memory(category, memory_content)
 
                 if del_count > 0:
-                    logger.info(f"{self.log_prefix} 删除记忆点: {memory_content}")
+                    # logger.info(f"{self.log_prefix} 删除记忆点: {memory_content}")
 
                     memory_weight = get_weight_from_memory(memory)
                     person.memory_points.append(f"{category}:{integrate_memory}:{memory_weight + 1.0}")
                     person.sync_to_database()
+
+                    logger.info(f"{self.log_prefix} 更新{person.person_name}的记忆点: {memory_content} -> {integrate_memory}")
 
                     return True, f"更新{person.person_name}的记忆点: {memory_content} -> {integrate_memory}"
 

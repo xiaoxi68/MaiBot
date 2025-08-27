@@ -1,5 +1,5 @@
 [inner]
-version = "6.7.1"
+version = "6.7.2"
 
 #----以下是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 #如果你想要修改配置文件，请递增version的值
@@ -65,8 +65,6 @@ focus_value = 0.5
 
 max_context_size = 20 # 上下文长度
 
-interest_rate_mode = "fast" #激活值计算模式，可选fast或者accurate
-
 planner_size = 2.5 # 副规划器大小，越小，麦麦的动作执行能力越精细，但是消耗更多token，调大可以缓解429类错误
 
 mentioned_bot_inevitable_reply = true # 提及 bot 大概率回复
@@ -102,22 +100,8 @@ talk_frequency_adjust = [
 # - 后续元素是"时间,频率"格式，表示从该时间开始使用该活跃度，直到下一个时间点
 # - 优先级：特定聊天流配置 > 全局配置 > 默认 talk_frequency
 
-
 [relationship]
 enable_relationship = true # 是否启用关系系统
-relation_frequency = 1 # 关系频率，麦麦构建关系的频率
-
-[message_receive]
-# 以下是消息过滤，可以根据规则过滤特定消息，将不会读取这些消息
-ban_words = [
-    # "403","张三"
-    ]
-
-ban_msgs_regex = [
-    # 需要过滤的消息（原始消息）匹配的正则表达式，匹配到的消息将被过滤，若不了解正则表达式请勿修改
-    #"https?://[^\\s]+", # 匹配https链接
-    #"\\d{4}-\\d{2}-\\d{2}", # 匹配日期
-]
 
 [tool]
 enable_tool = false # 是否在普通聊天中启用工具
@@ -138,20 +122,29 @@ filtration_prompt = "符合公序良俗" # 表情包过滤要求，只有符合�
 
 [memory]
 enable_memory = true # 是否启用记忆系统
-memory_build_frequency = 1 # 记忆构建频率 越高，麦麦学习越多
-memory_compress_rate = 0.1 # 记忆压缩率 控制记忆精简程度 建议保持默认,调高可以获得更多信息，但是冗余信息也会增多
 
-forget_memory_interval = 3000 # 记忆遗忘间隔 单位秒   间隔越低，麦麦遗忘越频繁，记忆更精简，但更难学习
+forget_memory_interval = 1500 # 记忆遗忘间隔 单位秒   间隔越低，麦麦遗忘越频繁，记忆更精简，但更难学习
 memory_forget_time = 48 #多长时间后的记忆会被遗忘 单位小时
 memory_forget_percentage = 0.008 # 记忆遗忘比例 控制记忆遗忘程度 越大遗忘越多 建议保持默认
-
-enable_instant_memory = false # 是否启用即时记忆，测试功能，可能存在未知问题
 
 #不希望记忆的词，已经记忆的不会受到影响，需要手动清理
 memory_ban_words = [ "表情包", "图片", "回复", "聊天记录" ]
 
 [voice]
 enable_asr = false # 是否启用语音识别，启用后麦麦可以识别语音消息，启用该功能需要配置语音识别模型[model.voice]s
+
+[message_receive]
+# 以下是消息过滤，可以根据规则过滤特定消息，将不会读取这些消息
+ban_words = [
+    # "403","张三"
+    ]
+
+ban_msgs_regex = [
+    # 需要过滤的消息（原始消息）匹配的正则表达式，匹配到的消息将被过滤，若不了解正则表达式请勿修改
+    #"https?://[^\\s]+", # 匹配https链接
+    #"\\d{4}-\\d{2}-\\d{2}", # 匹配日期
+]
+
 
 [lpmm_knowledge] # lpmm知识库配置
 enable = false # 是否启用lpmm知识库
