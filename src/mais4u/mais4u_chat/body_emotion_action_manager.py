@@ -43,9 +43,9 @@ DEFAULT_BODY_CODE = {
 }
 
 
-def get_head_code() -> dict:
+async def get_head_code() -> dict:
     """获取头部动作代码字典"""
-    head_code_str = global_prompt_manager.get_prompt("head_code_prompt")
+    head_code_str = await global_prompt_manager.format_prompt("head_code_prompt")
     if not head_code_str:
         return DEFAULT_HEAD_CODE
     try:
@@ -55,9 +55,9 @@ def get_head_code() -> dict:
         return DEFAULT_HEAD_CODE
 
 
-def get_body_code() -> dict:
+async def get_body_code() -> dict:
     """获取身体动作代码字典"""
-    body_code_str = global_prompt_manager.get_prompt("body_code_prompt")
+    body_code_str = await global_prompt_manager.format_prompt("body_code_prompt")
     if not body_code_str:
         return DEFAULT_BODY_CODE
     try:
@@ -143,7 +143,7 @@ class ChatAction:
     async def send_action_update(self):
         """发送动作更新到前端"""
 
-        body_code = get_body_code().get(self.body_action, "")
+        body_code = (await get_body_code()).get(self.body_action, "")
         await send_api.custom_to_stream(
             message_type="body_action",
             content=body_code,
@@ -184,7 +184,7 @@ class ChatAction:
         try:
             # 冷却池处理：过滤掉冷却中的动作
             self._update_body_action_cooldown()
-            available_actions = [k for k in get_body_code().keys() if k not in self.body_action_cooldown]
+            available_actions = [k for k in (await get_body_code()).keys() if k not in self.body_action_cooldown]
             all_actions = "\n".join(available_actions)
 
             prompt = await global_prompt_manager.format_prompt(
@@ -246,7 +246,7 @@ class ChatAction:
         try:
             # 冷却池处理：过滤掉冷却中的动作
             self._update_body_action_cooldown()
-            available_actions = [k for k in get_body_code().keys() if k not in self.body_action_cooldown]
+            available_actions = [k for k in (await get_body_code()).keys() if k not in self.body_action_cooldown]
             all_actions = "\n".join(available_actions)
 
             prompt = await global_prompt_manager.format_prompt(
