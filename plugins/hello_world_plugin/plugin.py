@@ -11,7 +11,7 @@ from src.plugin_system import (
     BaseEventHandler,
     EventType,
     MaiMessages,
-    ToolParamType
+    ToolParamType,
 )
 
 
@@ -136,12 +136,12 @@ class PrintMessage(BaseEventHandler):
     handler_name = "print_message_handler"
     handler_description = "打印接收到的消息"
 
-    async def execute(self, message: MaiMessages) -> Tuple[bool, bool, str | None]:
+    async def execute(self, message: MaiMessages | None) -> Tuple[bool, bool, str | None, None]:
         """执行打印消息事件处理"""
         # 打印接收到的消息
         if self.get_config("print_message.enabled", False):
-            print(f"接收到消息: {message.raw_message}")
-        return True, True, "消息已打印"
+            print(f"接收到消息: {message.raw_message if message else '无效消息'}")
+        return True, True, "消息已打印", None
 
 
 # ===== 插件注册 =====

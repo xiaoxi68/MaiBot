@@ -285,3 +285,9 @@ class MaiMessages:
     
     def deepcopy(self):
         return copy.deepcopy(self)
+
+@dataclass
+class CustomEventHandlerResult:
+    message: str = ""
+    timestamp: float = 0.0
+    extra_info: Optional[Dict] = None
