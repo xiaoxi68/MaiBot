@@ -4,7 +4,6 @@ import time
 import hashlib
 import uuid
 import io
-import asyncio
 import numpy as np
 
 from typing import Optional, Tuple
@@ -177,7 +176,7 @@ class ImageManager:
                 emotion_prompt, temperature=0.3, max_tokens=50
             )
 
-            if emotion_result is None:
+            if not emotion_result:
                 logger.warning("LLM未能生成情感标签，使用详细描述的前几个词")
                 # 降级处理：从详细描述中提取关键词
                 import jieba

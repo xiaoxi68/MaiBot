@@ -53,6 +53,15 @@ from .apis import (
     get_logger,
 )
 
+from src.common.data_models.database_data_model import (
+    DatabaseMessages,
+    DatabaseUserInfo,
+    DatabaseGroupInfo,
+    DatabaseChatInfo,
+)
+from src.common.data_models.info_data_model import TargetPersonInfo, ActionPlannerInfo
+from src.common.data_models.llm_data_model import LLMGenerationDataModel
+
 
 __version__ = "2.0.0"
 
@@ -103,4 +112,12 @@ __all__ = [
     # "ManifestGenerator",
     # "validate_plugin_manifest",
     # "generate_plugin_manifest",
+    # 数据模型
+    "DatabaseMessages",
+    "DatabaseUserInfo",
+    "DatabaseGroupInfo",
+    "DatabaseChatInfo",
+    "TargetPersonInfo",
+    "ActionPlannerInfo",
+    "LLMGenerationDataModel"
 ]

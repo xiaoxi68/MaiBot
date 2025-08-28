@@ -39,7 +39,7 @@ class BaseAction(ABC):
         chat_stream: ChatStream,
         log_prefix: str = "",
         plugin_config: Optional[dict] = None,
-        action_message: Optional[dict] = None,
+        action_message: Optional["DatabaseMessages"] = None,
         **kwargs,
     ):
         # sourcery skip: hoist-similar-statement-from-if, merge-else-if-into-elif, move-assign-in-block, swap-if-else-branches, swap-nested-ifs
@@ -114,16 +114,13 @@ class BaseAction(ABC):
 
         if self.action_message:
             self.has_action_message = True
-        else:
-            self.action_message = {}
 
-        if self.has_action_message:
             if self.action_name != "no_action":
-                self.group_id = str(self.action_message.get("chat_info_group_id", None))
-                self.group_name = self.action_message.get("chat_info_group_name", None)
+                self.group_id = str(self.action_message.chat_info.group_info.group_id if self.action_message.chat_info.group_info else None)
+                self.group_name = self.action_message.chat_info.group_info.group_name if self.action_message.chat_info.group_info else None
 
-                self.user_id = str(self.action_message.get("user_id", None))
-                self.user_nickname = self.action_message.get("user_nickname", None)
+                self.user_id = str(self.action_message.user_info.user_id)
+                self.user_nickname = self.action_message.user_info.user_nickname
                 if self.group_id:
                     self.is_group = True
                     self.target_id = self.group_id

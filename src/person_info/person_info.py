@@ -241,7 +241,7 @@ class Person:
         self.name_reason: Optional[str] = None
         self.know_times = 0
         self.know_since = None
-        self.last_know = None
+        self.last_know: Optional[float] = None
         self.memory_points = []
 
         # 初始化性格特征相关字段

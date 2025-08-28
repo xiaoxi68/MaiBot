@@ -156,19 +156,19 @@ class LLMRequest:
         """
         # 请求体构建
         start_time = time.time()
-        
+
         message_builder = MessageBuilder()
         message_builder.add_text_content(prompt)
         messages = [message_builder.build()]
-        
+
         tool_built = self._build_tool_options(tools)
-        
+
         # 模型选择
         model_info, api_provider, client = self._select_model()
-        
+
         # 请求并处理返回值
         logger.debug(f"LLM选择耗时: {model_info.name} {time.time() - start_time}")
-        
+
         response = await self._execute_request(
             api_provider=api_provider,
             client=client,
@@ -179,8 +179,7 @@ class LLMRequest:
             max_tokens=max_tokens,
             tool_options=tool_built,
         )
-        
-        
+
         content = response.content
         reasoning_content = response.reasoning_content or ""
         tool_calls = response.tool_calls
@@ -188,7 +187,7 @@ class LLMRequest:
         if not reasoning_content and content:
             content, extracted_reasoning = self._extract_reasoning(content)
             reasoning_content = extracted_reasoning
-            
+
         if usage := response.usage:
             llm_usage_recorder.record_usage_to_database(
                 model_info=model_info,
@@ -199,7 +198,7 @@ class LLMRequest:
                 time_cost=time.time() - start_time,
             )
 
-        return content, (reasoning_content, model_info.name, tool_calls)
+        return content or "", (reasoning_content, model_info.name, tool_calls)
 
     async def get_embedding(self, embedding_input: str) -> Tuple[List[float], str]:
         """获取嵌入向量
@@ -248,11 +247,11 @@ class LLMRequest:
         )
         model_info = model_config.get_model_info(least_used_model_name)
         api_provider = model_config.get_provider(model_info.api_provider)
-        
+
         # 对于嵌入任务，强制创建新的客户端实例以避免事件循环问题
-        force_new_client = (self.request_type == "embedding")
+        force_new_client = self.request_type == "embedding"
         client = client_registry.get_client_class_instance(api_provider, force_new=force_new_client)
-        
+
         logger.debug(f"选择请求模型: {model_info.name}")
         total_tokens, penalty, usage_penalty = self.model_usage[model_info.name]
         self.model_usage[model_info.name] = (total_tokens, penalty, usage_penalty + 1)  # 增加使用惩罚值防止连续使用
