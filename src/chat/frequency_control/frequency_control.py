@@ -21,6 +21,7 @@ class FrequencyControl:
     - 统一标准：两个调整都使用10分钟窗口，确保逻辑一致性和响应速度
     - 双向调整：根据活跃度高低，既能提高也能降低频率和专注度
     - 数据充足性检查：当历史数据不足50条时，不更新基准值；当基准值为默认值时，不进行动态调整
+    - 基准值更新：直接使用新计算的周均值，无平滑更新
     """
     
     def __init__(self, chat_id: str):
@@ -59,7 +60,7 @@ class FrequencyControl:
         
         # 历史数据相关参数
         self._last_historical_update = 0
-        self._historical_update_interval = 3600  # 每小时更新一次历史基准值
+        self._historical_update_interval = 600  # 每十分钟更新一次历史基准值
         self._historical_days = 7  # 使用最近7天的数据计算基准值
         
         # 按小时统计的历史基准值
@@ -70,8 +71,8 @@ class FrequencyControl:
         
         # 初始化24小时的默认基准值
         for hour in range(24):
-            self._hourly_baseline['messages'][hour] = 5.0
-            self._hourly_baseline['users'][hour] = 3.0
+            self._hourly_baseline['messages'][hour] = 0.0
+            self._hourly_baseline['users'][hour] = 0.0
 
     def _update_historical_baseline(self):
         """
@@ -117,27 +118,22 @@ class FrequencyControl:
                 for hour in range(24):
                     # 计算该小时的平均消息数（一周内该小时的总消息数 / 7天）
                     total_messages = len(hourly_stats[hour]['messages'])
-                    avg_messages = total_messages / self._historical_days
-                    
-                    # 计算该小时的平均用户数（一周内该小时的总用户数 / 7天）
                     total_users = len(hourly_stats[hour]['users'])
-                    avg_users = total_users / self._historical_days
                     
-                    # 使用平滑更新更新基准值
-                    self._hourly_baseline['messages'][hour] = (
-                        self._hourly_baseline['messages'][hour] * 0.7 + avg_messages * 0.3
-                    )
-                    self._hourly_baseline['users'][hour] = (
-                        self._hourly_baseline['users'][hour] * 0.7 + avg_users * 0.3
-                    )
-                    
-                    # 确保基准值不为0
-                    self._hourly_baseline['messages'][hour] = max(1.0, self._hourly_baseline['messages'][hour])
-                    self._hourly_baseline['users'][hour] = max(1.0, self._hourly_baseline['users'][hour])
+                    # 只计算有消息的时段，没有消息的时段设为0
+                    if total_messages > 0:
+                        avg_messages = total_messages / self._historical_days
+                        avg_users = total_users / self._historical_days
+                        self._hourly_baseline['messages'][hour] = avg_messages
+                        self._hourly_baseline['users'][hour] = avg_users
+                    else:
+                        # 没有消息的时段设为0，表示该时段不活跃
+                        self._hourly_baseline['messages'][hour] = 0.0
+                        self._hourly_baseline['users'][hour] = 0.0
                 
-                # 更新整体基准值（用于兼容性）
-                overall_avg_messages = sum(self._hourly_baseline['messages'].values()) / 24
-                overall_avg_users = sum(self._hourly_baseline['users'].values()) / 24
+                # 更新整体基准值（用于兼容性）- 基于原始数据计算，不受max(1.0)限制影响
+                overall_avg_messages = sum(len(hourly_stats[hour]['messages']) for hour in range(24)) / (24 * self._historical_days)
+                overall_avg_users = sum(len(hourly_stats[hour]['users']) for hour in range(24)) / (24 * self._historical_days)
                 
                 self.base_message_count = overall_avg_messages
                 self.base_user_count = overall_avg_users
@@ -249,8 +245,8 @@ class FrequencyControl:
             # 发言频率调整逻辑：根据活跃度双向调整
             # 检查是否有足够的数据进行分析
             if user_count > 0 and message_count >= 2:  # 至少需要2条消息才能进行有意义的分析
-                # 检查历史基准值是否有效（不是默认值）
-                if current_hour_base_messages > 5.0 or current_hour_base_users > 3.0:
+                # 检查历史基准值是否有效（该时段有活跃度）
+                if current_hour_base_messages > 0.0 and current_hour_base_users > 0.0:
                     # 计算人均消息数（10分钟窗口）
                     messages_per_user = message_count / user_count
                     # 使用当前小时每10分钟的基准人均消息数
@@ -288,18 +284,16 @@ class FrequencyControl:
             elif target_talk_adjust < 1.0:
                 adjust_direction = "降低"
             else:
-                if current_hour_base_messages <= 5.0 and current_hour_base_users <= 3.0:
-                    adjust_direction = "不调整(历史数据不足)"
+                if current_hour_base_messages <= 0.0 or current_hour_base_users <= 0.0:
+                    adjust_direction = "不调整(该时段无活跃度)"
                 else:
                     adjust_direction = "保持"
                 
             logger.info(
-                f"{self.log_prefix} 发言频率调整更新(10分钟窗口): "
-                f"消息数={message_count}, 用户数={user_count}, "
-                f"人均消息数={message_count/user_count if user_count > 0 else 0:.2f}, "
-                f"当前小时基准值(消息:{current_hour_base_messages:.2f}/小时, {current_hour_10min_messages:.2f}/10分钟, "
-                f"用户:{current_hour_base_users:.2f}/小时, {current_hour_10min_users:.2f}/10分钟), "
-                f"调整方向={adjust_direction}, 目标调整值={target_talk_adjust:.2f}, 最终调整值={self.talk_frequency_adjust:.2f}"
+                f"{self.log_prefix} 发言频率调整: "
+                f"当前: {message_count}消息/{user_count}用户, 人均: {message_count/user_count if user_count > 0 else 0:.2f}消息/用户, "
+                f"基准: {current_hour_10min_messages:.2f}消息/{current_hour_10min_users:.2f}用户,人均：{current_hour_10min_messages/current_hour_10min_users if current_hour_10min_users > 0 else 0:.2f}消息/用户, "
+                f"调整: {adjust_direction} → {target_talk_adjust:.2f} → {self.talk_frequency_adjust:.2f}"
             )
             
         except Exception as e:
@@ -344,8 +338,8 @@ class FrequencyControl:
             # 专注度调整逻辑：根据活跃度双向调整
             # 检查是否有足够的数据进行分析
             if user_count > 0 and current_hour_10min_users > 0 and message_count >= 2:
-                # 检查历史基准值是否有效（不是默认值）
-                if current_hour_base_messages > 5.0 or current_hour_base_users > 3.0:
+                # 检查历史基准值是否有效（该时段有活跃度）
+                if current_hour_base_messages > 0.0 and current_hour_base_users > 0.0:
                     # 计算用户活跃度比率（基于10分钟数据）
                     user_ratio = user_count / current_hour_10min_users
                     # 计算消息活跃度比率（基于10分钟数据）
@@ -390,19 +384,17 @@ class FrequencyControl:
             elif target_focus_adjust < 1.0:
                 adjust_direction = "降低"
             else:
-                if current_hour_base_messages <= 5.0 and current_hour_base_users <= 3.0:
-                    adjust_direction = "不调整(历史数据不足)"
+                if current_hour_base_messages <= 0.0 or current_hour_base_users <= 0.0:
+                    adjust_direction = "不调整(该时段无活跃度)"
                 else:
                     adjust_direction = "保持"
                 
             logger.info(
-                f"{self.log_prefix} 专注度调整更新(10分钟窗口): "
-                f"消息数={message_count}, 用户数={user_count}, "
-                f"用户比率={user_count/current_hour_10min_users if current_hour_10min_users > 0 else 0:.2f}, "
-                f"消息比率={message_count/current_hour_10min_messages if current_hour_10min_messages > 0 else 0:.2f}, "
-                f"当前小时基准值(消息:{current_hour_base_messages:.2f}/小时, {current_hour_10min_messages:.2f}/10分钟, "
-                f"用户:{current_hour_base_users:.2f}/小时, {current_hour_10min_users:.2f}/10分钟), "
-                f"调整方向={adjust_direction}, 目标调整值={target_focus_adjust:.2f}, 最终调整值={self.focus_value_adjust:.2f}"
+                f"{self.log_prefix} 专注度调整(10分钟): "
+                f"当前: {message_count}消息/{user_count}用户,人均：{message_count/user_count if user_count > 0 else 0:.2f}消息/用户, "
+                f"基准: {current_hour_10min_messages:.2f}消息/{current_hour_10min_users:.2f}用户,人均：{current_hour_10min_messages/current_hour_10min_users if current_hour_10min_users > 0 else 0:.2f}消息/用户, "
+                f"比率: 用户{user_count/current_hour_10min_users if current_hour_10min_users > 0 else 0:.2f}x, 消息{message_count/current_hour_10min_messages if current_hour_10min_messages > 0 else 0:.2f}x, "
+                f"调整: {adjust_direction} → {target_focus_adjust:.2f} → {self.focus_value_adjust:.2f}"
             )
             
         except Exception as e:
