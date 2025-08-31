@@ -1,5 +1,5 @@
 [inner]
-version = "6.7.2"
+version = "6.8.0"
 
 #----以下是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 #如果你想要修改配置文件，请递增version的值
@@ -59,16 +59,16 @@ expression_groups = [
 
 [chat] #麦麦的聊天设置
 talk_frequency = 0.5
-# 麦麦活跃度，越高，麦麦回复越多，范围0-1
+# 麦麦活跃度，越高，麦麦越容易回复，范围0-1
 focus_value = 0.5 
 # 麦麦的专注度，越高越容易持续连续对话，可能消耗更多token, 范围0-1
+
+mentioned_bot_reply = 1 # 提及时,回复概率增幅，1为100%回复，0为不额外增幅
+at_bot_inevitable_reply = 1 # at时,回复概率增幅，1为100%回复，0为不额外增幅
 
 max_context_size = 20 # 上下文长度
 
 planner_size = 2.5 # 副规划器大小，越小，麦麦的动作执行能力越精细，但是消耗更多token，调大可以缓解429类错误
-
-mentioned_bot_inevitable_reply = true # 提及 bot 大概率回复
-at_bot_inevitable_reply = true # @bot 或 提及bot 大概率回复
 
 focus_value_adjust = [
     ["", "8:00,1", "12:00,0.8", "18:00,1", "01:00,0.3"],

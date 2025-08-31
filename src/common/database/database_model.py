@@ -137,7 +137,8 @@ class Messages(BaseModel):
     key_words_lite = TextField(null=True)
     
     is_mentioned = BooleanField(null=True)
-
+    is_at = BooleanField(null=True)
+    reply_probability_boost = DoubleField(null=True)
     # 从 chat_info 扁平化而来的字段
     chat_info_stream_id = TextField()
     chat_info_platform = TextField()

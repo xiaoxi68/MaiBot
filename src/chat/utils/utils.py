@@ -43,15 +43,15 @@ def db_message_to_str(message_dict: dict) -> str:
     return result
 
 
-def is_mentioned_bot_in_message(message: MessageRecv) -> tuple[bool, float]:
+def is_mentioned_bot_in_message(message: MessageRecv) -> tuple[bool, bool, float]:
     """检查消息是否提到了机器人"""
-    keywords = [global_config.bot.nickname]
-    nicknames = global_config.bot.alias_names
+    keywords = [global_config.bot.nickname] + list(global_config.bot.alias_names)
     reply_probability = 0.0
     is_at = False
     is_mentioned = False
-    if message.is_mentioned is not None:
-        return bool(message.is_mentioned), message.is_mentioned
+    
+    # 这部分怎么处理啊啊啊啊
+    #我觉得可以给消息加一个 reply_probability_boost字段
     if (
         message.message_info.additional_config is not None
         and message.message_info.additional_config.get("is_mentioned") is not None
@@ -59,28 +59,21 @@ def is_mentioned_bot_in_message(message: MessageRecv) -> tuple[bool, float]:
         try:
             reply_probability = float(message.message_info.additional_config.get("is_mentioned"))  # type: ignore
             is_mentioned = True
-            return is_mentioned, reply_probability
+            return is_mentioned, is_at, reply_probability
         except Exception as e:
             logger.warning(str(e))
             logger.warning(
                 f"消息中包含不合理的设置 is_mentioned: {message.message_info.additional_config.get('is_mentioned')}"
             )
 
-    if global_config.bot.nickname in message.processed_plain_text:
-        is_mentioned = True
-
-    for alias_name in global_config.bot.alias_names:
-        if alias_name in message.processed_plain_text:
+    for keyword in keywords:
+        if keyword in message.processed_plain_text:
             is_mentioned = True
 
     # 判断是否被@
     if re.search(rf"@<(.+?):{global_config.bot.qq_account}>", message.processed_plain_text):
         is_at = True
         is_mentioned = True
-
-    # print(f"message.processed_plain_text: {message.processed_plain_text}")
-    # print(f"is_mentioned: {is_mentioned}")
-    # print(f"is_at: {is_at}")
 
     if is_at and global_config.chat.at_bot_inevitable_reply:
         reply_probability = 1.0
@@ -104,13 +97,10 @@ def is_mentioned_bot_in_message(message: MessageRecv) -> tuple[bool, float]:
                 for keyword in keywords:
                     if keyword in message_content:
                         is_mentioned = True
-                for nickname in nicknames:
-                    if nickname in message_content:
-                        is_mentioned = True
-        if is_mentioned and global_config.chat.mentioned_bot_inevitable_reply:
+        if is_mentioned and global_config.chat.mentioned_bot_reply:
             reply_probability = 1.0
             logger.debug("被提及，回复概率设置为100%")
-    return is_mentioned, reply_probability
+    return is_mentioned, is_at, reply_probability
 
 
 async def get_embedding(text, request_type="embedding") -> Optional[List[float]]:

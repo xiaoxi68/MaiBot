@@ -32,10 +32,10 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, list[str]]:
     Returns:
         Tuple[float, bool, list[str]]: (兴趣度, 是否被提及, 关键词)
     """
-    if message.is_picid:
+    if message.is_picid or message.is_emoji:
         return 0.0, []
     
-    is_mentioned, _ = is_mentioned_bot_in_message(message)
+    is_mentioned,is_at,reply_probability_boost = is_mentioned_bot_in_message(message)
     interested_rate = 0.0
 
     with Timer("记忆激活"):
@@ -79,17 +79,13 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, list[str]]:
     # 确保在范围内
     base_interest = min(max(base_interest, 0.01), 0.3)
 
-    interested_rate += base_interest
-
-    if is_mentioned:
-        interest_increase_on_mention = 2
-        interested_rate += interest_increase_on_mention
         
-        
-    message.interest_value = interested_rate
+    message.interest_value = base_interest
     message.is_mentioned = is_mentioned
-
-    return interested_rate, keywords
+    message.is_at = is_at
+    message.reply_probability_boost = reply_probability_boost
+    
+    return base_interest, keywords
 
 
 class HeartFCMessageReceiver:

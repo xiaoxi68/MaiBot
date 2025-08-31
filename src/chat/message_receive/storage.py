@@ -56,6 +56,8 @@ class MessageStorage:
                     filtered_display_message = ""
                 interest_value = 0
                 is_mentioned = False
+                is_at = False
+                reply_probability_boost = 0.0
                 reply_to = message.reply_to
                 priority_mode = ""
                 priority_info = {}
@@ -70,6 +72,8 @@ class MessageStorage:
                 filtered_display_message = ""
                 interest_value = message.interest_value
                 is_mentioned = message.is_mentioned
+                is_at = message.is_at
+                reply_probability_boost = message.reply_probability_boost
                 reply_to = ""
                 priority_mode = message.priority_mode
                 priority_info = message.priority_info
@@ -100,6 +104,8 @@ class MessageStorage:
                 # Flattened chat_info
                 reply_to=reply_to,
                 is_mentioned=is_mentioned,
+                is_at=is_at,
+                reply_probability_boost=reply_probability_boost,
                 chat_info_stream_id=chat_info_dict.get("stream_id"),
                 chat_info_platform=chat_info_dict.get("platform"),
                 chat_info_user_platform=user_info_from_chat.get("platform"),

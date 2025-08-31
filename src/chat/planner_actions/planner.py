@@ -65,7 +65,6 @@ def init_prompt():
 动作描述：参与聊天回复，发送文本进行表达
 - 你想要闲聊或者随便附和
 - 有人提到了你，但是你还没有回应
-- {mentioned_bonus}
 - 如果你刚刚进行了回复，不要对同一个话题重复回应
 {{
     "action": "reply",
@@ -93,7 +92,6 @@ def init_prompt():
 现在，最新的聊天消息引起了你的兴趣，你想要对其中的消息进行回复，回复标准如下：
 - 你想要闲聊或者随便附和
 - 有人提到了你，但是你还没有回应
-- {mentioned_bonus}
 - 如果你刚刚进行了回复，不要对同一个话题重复回应
 
 你之前的动作记录：
@@ -465,7 +463,7 @@ class ActionPlanner:
                 )
             )
 
-        logger.info(f"{self.log_prefix}副规划器返回了{len(action_planner_infos)}个action")
+        logger.debug(f"{self.log_prefix}副规划器返回了{len(action_planner_infos)}个action")
         return action_planner_infos
 
     async def plan(
@@ -553,7 +551,7 @@ class ActionPlanner:
                 for i, (action_name, action_info) in enumerate(action_items):
                     sub_planner_lists[i % sub_planner_num].append((action_name, action_info))
 
-                logger.info(
+                logger.debug(
                     f"{self.log_prefix}成功将{sub_planner_actions_num}个actions分配到{sub_planner_num}个子列表中"
                 )
                 for i, action_list in enumerate(sub_planner_lists):
@@ -585,7 +583,7 @@ class ActionPlanner:
             for sub_result in sub_plan_results:
                 all_sub_planner_results.extend(sub_result)
 
-            logger.info(f"{self.log_prefix}所有副规划器共返回了{len(all_sub_planner_results)}个action")
+            logger.info(f"{self.log_prefix}小脑决定执行{len(all_sub_planner_results)}个动作")
 
             # --- 构建提示词 (调用修改后的 PromptBuilder 方法) ---
             prompt, message_id_list = await self.build_planner_prompt(
@@ -777,12 +775,6 @@ class ActionPlanner:
             else:
                 actions_before_now_block = ""
 
-            mentioned_bonus = ""
-            if global_config.chat.mentioned_bot_inevitable_reply:
-                mentioned_bonus = "\n- 有人提到你"
-            if global_config.chat.at_bot_inevitable_reply:
-                mentioned_bonus = "\n- 有人提到你，或者at你"
-
             chat_context_description = "你现在正在一个群聊中"
             chat_target_name = None
             if not is_group_chat and chat_target_info:
@@ -838,7 +830,6 @@ class ActionPlanner:
                     chat_context_description=chat_context_description,
                     chat_content_block=chat_content_block,
                     actions_before_now_block=actions_before_now_block,
-                    mentioned_bonus=mentioned_bonus,
                     # action_options_text=action_options_block,
                     moderation_prompt=moderation_prompt_block,
                     name_block=name_block,
@@ -850,7 +841,6 @@ class ActionPlanner:
                     time_block=time_block,
                     chat_context_description=chat_context_description,
                     chat_content_block=chat_content_block,
-                    mentioned_bonus=mentioned_bonus,
                     moderation_prompt=moderation_prompt_block,
                     name_block=name_block,
                     actions_before_now_block=actions_before_now_block,
