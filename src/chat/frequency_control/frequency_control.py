@@ -17,8 +17,10 @@ class FrequencyControl:
     特点：
     - 发言频率调整：基于最近10分钟的数据，评估单位为"消息数/10分钟"
     - 专注度调整：基于最近10分钟的数据，评估单位为"消息数/10分钟"
-    - 历史基准值：基于最近一周的数据，按小时统计，每小时都有独立的基准值
+    - 历史基准值：基于最近一周的数据，按小时统计，每小时都有独立的基准值（需要至少50条历史消息）
     - 统一标准：两个调整都使用10分钟窗口，确保逻辑一致性和响应速度
+    - 双向调整：根据活跃度高低，既能提高也能降低频率和专注度
+    - 数据充足性检查：当历史数据不足50条时，不更新基准值；当基准值为默认值时，不进行动态调整
     """
     
     def __init__(self, chat_id: str):
@@ -95,7 +97,7 @@ class FrequencyControl:
                 filter_command=True
             )
             
-            if historical_messages:
+            if historical_messages and len(historical_messages) >= 50:
                 # 按小时统计消息数和用户数
                 hourly_stats = {hour: {'messages': [], 'users': set()} for hour in range(24)}
                 
@@ -159,9 +161,12 @@ class FrequencyControl:
                         f"({hourly_10min_users:.2f}/10分钟)"
                     )
                     
+            elif historical_messages and len(historical_messages) < 50:
+                # 历史数据不足50条，不更新基准值
+                logger.info(f"{self.log_prefix} 历史数据不足50条({len(historical_messages)}条)，不更新基准值")
             else:
-                # 如果没有历史数据，使用默认值
-                logger.info(f"{self.log_prefix} 无历史数据，使用默认基准值")
+                # 如果没有历史数据，不更新基准值
+                logger.info(f"{self.log_prefix} 无历史数据，不更新基准值")
                 
         except Exception as e:
             logger.error(f"{self.log_prefix} 更新历史基准值时出错: {e}")
@@ -241,21 +246,31 @@ class FrequencyControl:
             current_hour_10min_messages = current_hour_base_messages / 6  # 1小时 = 6个10分钟
             current_hour_10min_users = current_hour_base_users / 6
             
-            # 发言频率调整逻辑：人少话多时提高回复频率
-            if user_count > 0:
-                # 计算人均消息数（10分钟窗口）
-                messages_per_user = message_count / user_count
-                # 使用当前小时每10分钟的基准人均消息数
-                base_messages_per_user = current_hour_10min_messages / current_hour_10min_users if current_hour_10min_users > 0 else 1.0
-                
-                # 如果人均消息数高，说明活跃度高，提高回复频率
-                if messages_per_user > base_messages_per_user:
-                    # 人少话多：提高回复频率
-                    target_talk_adjust = min(self.max_adjust, messages_per_user / base_messages_per_user)
+            # 发言频率调整逻辑：根据活跃度双向调整
+            # 检查是否有足够的数据进行分析
+            if user_count > 0 and message_count >= 2:  # 至少需要2条消息才能进行有意义的分析
+                # 检查历史基准值是否有效（不是默认值）
+                if current_hour_base_messages > 5.0 or current_hour_base_users > 3.0:
+                    # 计算人均消息数（10分钟窗口）
+                    messages_per_user = message_count / user_count
+                    # 使用当前小时每10分钟的基准人均消息数
+                    base_messages_per_user = current_hour_10min_messages / current_hour_10min_users if current_hour_10min_users > 0 else 1.0
+                    
+                    # 双向调整逻辑
+                    if messages_per_user > base_messages_per_user * 1.2:
+                        # 活跃度很高：提高回复频率
+                        target_talk_adjust = min(self.max_adjust, messages_per_user / base_messages_per_user)
+                    elif messages_per_user < base_messages_per_user * 0.8:
+                        # 活跃度很低：降低回复频率
+                        target_talk_adjust = max(self.min_adjust, messages_per_user / base_messages_per_user)
+                    else:
+                        # 活跃度正常：保持正常
+                        target_talk_adjust = 1.0
                 else:
-                    # 活跃度一般：保持正常
+                    # 历史基准值不足，不调整
                     target_talk_adjust = 1.0
             else:
+                # 数据不足：不调整
                 target_talk_adjust = 1.0
             
             # 限制调整范围
@@ -267,13 +282,24 @@ class FrequencyControl:
                 target_talk_adjust * self.smoothing_factor
             )
             
+            # 判断调整方向
+            if target_talk_adjust > 1.0:
+                adjust_direction = "提高"
+            elif target_talk_adjust < 1.0:
+                adjust_direction = "降低"
+            else:
+                if current_hour_base_messages <= 5.0 and current_hour_base_users <= 3.0:
+                    adjust_direction = "不调整(历史数据不足)"
+                else:
+                    adjust_direction = "保持"
+                
             logger.info(
                 f"{self.log_prefix} 发言频率调整更新(10分钟窗口): "
                 f"消息数={message_count}, 用户数={user_count}, "
                 f"人均消息数={message_count/user_count if user_count > 0 else 0:.2f}, "
                 f"当前小时基准值(消息:{current_hour_base_messages:.2f}/小时, {current_hour_10min_messages:.2f}/10分钟, "
                 f"用户:{current_hour_base_users:.2f}/小时, {current_hour_10min_users:.2f}/10分钟), "
-                f"调整值={self.talk_frequency_adjust:.2f}"
+                f"调整方向={adjust_direction}, 目标调整值={target_talk_adjust:.2f}, 最终调整值={self.talk_frequency_adjust:.2f}"
             )
             
         except Exception as e:
@@ -315,24 +341,34 @@ class FrequencyControl:
             current_hour_10min_messages = current_hour_base_messages / 6  # 1小时 = 6个10分钟
             current_hour_10min_users = current_hour_base_users / 6
             
-            # 专注度调整逻辑：人多话多时提高专注度
-            if user_count > 0 and current_hour_10min_users > 0:
-                # 计算用户活跃度比率（基于10分钟数据）
-                user_ratio = user_count / current_hour_10min_users
-                # 计算消息活跃度比率（基于10分钟数据）
-                message_ratio = message_count / current_hour_10min_messages if current_hour_10min_messages > 0 else 1.0
-                
-                # 如果用户多且消息多，提高专注度
-                if user_ratio > 1.2 and message_ratio > 1.2:
-                    # 人多话多：提高专注度，消耗更多LLM资源但回复更精准
-                    target_focus_adjust = min(self.max_adjust, (user_ratio + message_ratio) / 2)
-                elif user_ratio > 1.5:
-                    # 用户特别多：适度提高专注度
-                    target_focus_adjust = min(self.max_adjust, 1.0 + (user_ratio - 1.0) * 0.3)
+            # 专注度调整逻辑：根据活跃度双向调整
+            # 检查是否有足够的数据进行分析
+            if user_count > 0 and current_hour_10min_users > 0 and message_count >= 2:
+                # 检查历史基准值是否有效（不是默认值）
+                if current_hour_base_messages > 5.0 or current_hour_base_users > 3.0:
+                    # 计算用户活跃度比率（基于10分钟数据）
+                    user_ratio = user_count / current_hour_10min_users
+                    # 计算消息活跃度比率（基于10分钟数据）
+                    message_ratio = message_count / current_hour_10min_messages if current_hour_10min_messages > 0 else 1.0
+                    
+                    # 双向调整逻辑
+                    if user_ratio > 1.3 and message_ratio > 1.3:
+                        # 活跃度很高：提高专注度，消耗更多LLM资源但回复更精准
+                        target_focus_adjust = min(self.max_adjust, (user_ratio + message_ratio) / 2)
+                    elif user_ratio > 1.1 and message_ratio > 1.1:
+                        # 活跃度较高：适度提高专注度
+                        target_focus_adjust = min(self.max_adjust, 1.0 + (user_ratio + message_ratio - 2.0) * 0.2)
+                    elif user_ratio < 0.7 or message_ratio < 0.7:
+                        # 活跃度很低：降低专注度，节省LLM资源
+                        target_focus_adjust = max(self.min_adjust, min(user_ratio, message_ratio))
+                    else:
+                        # 正常情况：保持默认专注度
+                        target_focus_adjust = 1.0
                 else:
-                    # 正常情况：保持默认专注度
+                    # 历史基准值不足，不调整
                     target_focus_adjust = 1.0
             else:
+                # 数据不足：不调整
                 target_focus_adjust = 1.0
             
             # 限制调整范围
@@ -348,6 +384,17 @@ class FrequencyControl:
             current_hour_10min_messages = current_hour_base_messages / 6  # 1小时 = 6个10分钟
             current_hour_10min_users = current_hour_base_users / 6
             
+            # 判断调整方向
+            if target_focus_adjust > 1.0:
+                adjust_direction = "提高"
+            elif target_focus_adjust < 1.0:
+                adjust_direction = "降低"
+            else:
+                if current_hour_base_messages <= 5.0 and current_hour_base_users <= 3.0:
+                    adjust_direction = "不调整(历史数据不足)"
+                else:
+                    adjust_direction = "保持"
+                
             logger.info(
                 f"{self.log_prefix} 专注度调整更新(10分钟窗口): "
                 f"消息数={message_count}, 用户数={user_count}, "
@@ -355,7 +402,7 @@ class FrequencyControl:
                 f"消息比率={message_count/current_hour_10min_messages if current_hour_10min_messages > 0 else 0:.2f}, "
                 f"当前小时基准值(消息:{current_hour_base_messages:.2f}/小时, {current_hour_10min_messages:.2f}/10分钟, "
                 f"用户:{current_hour_base_users:.2f}/小时, {current_hour_10min_users:.2f}/10分钟), "
-                f"调整值={self.focus_value_adjust:.2f}"
+                f"调整方向={adjust_direction}, 目标调整值={target_focus_adjust:.2f}, 最终调整值={self.focus_value_adjust:.2f}"
             )
             
         except Exception as e:
