@@ -86,6 +86,8 @@ def _convert_messages(
             role = "model"
         elif message.role == RoleType.User:
             role = "user"
+        else:
+            raise ValueError(f"Unsupported role: {message.role}")
 
         # 添加Content
         if isinstance(message.content, str):

@@ -37,10 +37,9 @@ logger = get_logger("main")
 class MainSystem:
     def __init__(self):
         # 根据配置条件性地初始化记忆系统
+        self.hippocampus_manager = None
         if global_config.memory.enable_memory:
             self.hippocampus_manager = hippocampus_manager
-        else:
-            self.hippocampus_manager = None
 
         # 使用消息API替代直接的FastAPI实例
         self.app: MessageServer = get_global_api()
@@ -81,12 +80,12 @@ class MainSystem:
         # 启动API服务器
         # start_api_server()
         # logger.info("API服务器启动成功")
-        
+
         # 启动LPMM
         lpmm_start_up()
 
         # 加载所有actions，包括默认的和插件的
-        plugin_manager.load_all_plugins()       
+        plugin_manager.load_all_plugins()
 
         # 初始化表情管理器
         get_emoji_manager().initialize()
@@ -114,16 +113,14 @@ class MainSystem:
 
         # 将bot.py中的chat_bot.message_process消息处理函数注册到api.py的消息处理基类中
         self.app.register_message_handler(chat_bot.message_process)
-        
+
         await check_and_run_migrations()
-        
 
         # 触发 ON_START 事件
         from src.plugin_system.core.events_manager import events_manager
         from src.plugin_system.base.component_types import EventType
-        await events_manager.handle_mai_events(
-            event_type=EventType.ON_START
-        )
+
+        await events_manager.handle_mai_events(event_type=EventType.ON_START)
         # logger.info("已触发 ON_START 事件")
         try:
             init_time = int(1000 * (time.time() - init_start_time))
@@ -162,8 +159,6 @@ class MainSystem:
             logger.info("[记忆遗忘] 记忆遗忘完成")
 
 
-
-
 async def main():
     """主函数"""
     system = MainSystem()
@@ -175,5 +170,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
-    
