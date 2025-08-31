@@ -124,6 +124,7 @@ class ComponentRegistry:
         self._components_classes[namespaced_name] = component_class
 
         # 根据组件类型进行特定注册（使用原始名称）
+        ret = False
         match component_type:
             case ComponentType.ACTION:
                 assert isinstance(component_info, ActionInfo)

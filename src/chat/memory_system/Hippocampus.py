@@ -1117,6 +1117,7 @@ class ParahippocampalGyrus:
 
         # 4. 创建所有话题的摘要生成任务
         tasks: List[Tuple[str, Coroutine[Any, Any, Tuple[str, Tuple[str, str, List | None]]]]] = []
+        topic_what_prompt: str = ""
         for topic in filtered_topics:
             # 调用修改后的 topic_what，不再需要 time_info
             topic_what_prompt = self.hippocampus.topic_what(input_text, topic)

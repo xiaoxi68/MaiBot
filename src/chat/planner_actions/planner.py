@@ -510,7 +510,7 @@ class ActionPlanner:
         )
 
         self.last_obs_time_mark = time.time()
-
+        all_sub_planner_results: List[ActionPlannerInfo] = []  # 防止Unbound
         try:
             sub_planner_actions: Dict[str, ActionInfo] = {}
 
@@ -581,7 +581,6 @@ class ActionPlanner:
             sub_plan_results = await asyncio.gather(*sub_plan_tasks)
 
             # 收集所有结果
-            all_sub_planner_results: List[ActionPlannerInfo] = []
             for sub_result in sub_plan_results:
                 all_sub_planner_results.extend(sub_result)
 
@@ -726,9 +725,7 @@ class ActionPlanner:
             action_str = ""
             for action_planner_info in actions:
                 action_str += f"{action_planner_info.action_type} "
-            logger.info(
-                f"{self.log_prefix}大脑小脑决定执行{len(actions)}个动作: {action_str}"
-            )
+            logger.info(f"{self.log_prefix}大脑小脑决定执行{len(actions)}个动作: {action_str}")
         else:
             # 如果为假，只返回副规划器的结果
             actions = self._filter_no_actions(all_sub_planner_results)
