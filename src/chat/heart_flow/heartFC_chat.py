@@ -322,12 +322,11 @@ class HeartFChatting:
                 logger.info(f"{self.log_prefix} 开始第{self._cycle_counter}次思考")
                 
                 # 第一步：动作检查
-                with Timer("动作检查", cycle_timers):
-                    try:
-                        await self.action_modifier.modify_actions()
-                        available_actions = self.action_manager.get_using_actions()
-                    except Exception as e:
-                        logger.error(f"{self.log_prefix} 动作修改失败: {e}")
+                try:
+                    await self.action_modifier.modify_actions()
+                    available_actions = self.action_manager.get_using_actions()
+                except Exception as e:
+                    logger.error(f"{self.log_prefix} 动作修改失败: {e}")
 
                 # 执行planner
                 is_group_chat, chat_target_info, _ = self.action_planner.get_necessary_info()

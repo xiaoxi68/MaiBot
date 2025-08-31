@@ -13,13 +13,19 @@ logger = get_logger("frequency_control")
 class FrequencyControl:
     """
     频率控制类，可以根据最近时间段的发言数量和发言人数动态调整频率
+    
+    特点：
+    - 发言频率调整：基于最近10分钟的数据，评估单位为"消息数/10分钟"
+    - 专注度调整：基于最近10分钟的数据，评估单位为"消息数/10分钟"
+    - 历史基准值：基于最近一周的数据，按小时统计，每小时都有独立的基准值
+    - 统一标准：两个调整都使用10分钟窗口，确保逻辑一致性和响应速度
     """
     
     def __init__(self, chat_id: str):
         self.chat_id = chat_id
         self.chat_stream: ChatStream = get_chat_manager().get_stream(self.chat_id)
         if not self.chat_stream:
-            raise ValueError(f"无法找到聊天流: {self.chat_id}")
+            raise ValueError(f"无法找到聊天流: {chat_id}")
         self.log_prefix = f"[{get_chat_manager().get_stream_name(self.chat_id) or self.chat_id}]"
         # 发言频率调整值
         self.talk_frequency_adjust: float = 1.0
@@ -42,13 +48,139 @@ class FrequencyControl:
         self.min_adjust = 0.3  # 最小调整值
         self.max_adjust = 2.0   # 最大调整值
         
-        # 基准值（可根据实际情况调整）
-        self.base_message_count = 5   # 基准消息数量
-        self.base_user_count = 3      # 基准用户数量
+        # 动态基准值（将根据历史数据计算）
+        self.base_message_count = 5   # 默认基准消息数量，将被动态更新
+        self.base_user_count = 3      # 默认基准用户数量，将被动态更新
         
         # 平滑因子
         self.smoothing_factor = 0.3
+        
+        # 历史数据相关参数
+        self._last_historical_update = 0
+        self._historical_update_interval = 3600  # 每小时更新一次历史基准值
+        self._historical_days = 7  # 使用最近7天的数据计算基准值
+        
+        # 按小时统计的历史基准值
+        self._hourly_baseline = {
+            'messages': {},  # {0-23: 平均消息数}
+            'users': {}      # {0-23: 平均用户数}
+        }
+        
+        # 初始化24小时的默认基准值
+        for hour in range(24):
+            self._hourly_baseline['messages'][hour] = 5.0
+            self._hourly_baseline['users'][hour] = 3.0
 
+    def _update_historical_baseline(self):
+        """
+        更新基于历史数据的基准值
+        使用最近一周的数据，按小时统计平均消息数量和用户数量
+        """
+        current_time = time.time()
+        
+        # 检查是否需要更新历史基准值
+        if current_time - self._last_historical_update < self._historical_update_interval:
+            return
+            
+        try:
+            # 计算一周前的时间戳
+            week_ago = current_time - (self._historical_days * 24 * 3600)
+            
+            # 获取最近一周的消息数据
+            historical_messages = message_api.get_messages_by_time_in_chat(
+                chat_id=self.chat_stream.stream_id,
+                start_time=week_ago,
+                end_time=current_time,
+                filter_mai=True,
+                filter_command=True
+            )
+            
+            if historical_messages:
+                # 按小时统计消息数和用户数
+                hourly_stats = {hour: {'messages': [], 'users': set()} for hour in range(24)}
+                
+                for msg in historical_messages:
+                    # 获取消息的小时（UTC时间）
+                    msg_time = time.localtime(msg.time)
+                    msg_hour = msg_time.tm_hour
+                    
+                    # 统计消息数
+                    hourly_stats[msg_hour]['messages'].append(msg)
+                    
+                    # 统计用户数
+                    if msg.user_info and msg.user_info.user_id:
+                        hourly_stats[msg_hour]['users'].add(msg.user_info.user_id)
+                
+                # 计算每个小时的平均值（基于一周的数据）
+                for hour in range(24):
+                    # 计算该小时的平均消息数（一周内该小时的总消息数 / 7天）
+                    total_messages = len(hourly_stats[hour]['messages'])
+                    avg_messages = total_messages / self._historical_days
+                    
+                    # 计算该小时的平均用户数（一周内该小时的总用户数 / 7天）
+                    total_users = len(hourly_stats[hour]['users'])
+                    avg_users = total_users / self._historical_days
+                    
+                    # 使用平滑更新更新基准值
+                    self._hourly_baseline['messages'][hour] = (
+                        self._hourly_baseline['messages'][hour] * 0.7 + avg_messages * 0.3
+                    )
+                    self._hourly_baseline['users'][hour] = (
+                        self._hourly_baseline['users'][hour] * 0.7 + avg_users * 0.3
+                    )
+                    
+                    # 确保基准值不为0
+                    self._hourly_baseline['messages'][hour] = max(1.0, self._hourly_baseline['messages'][hour])
+                    self._hourly_baseline['users'][hour] = max(1.0, self._hourly_baseline['users'][hour])
+                
+                # 更新整体基准值（用于兼容性）
+                overall_avg_messages = sum(self._hourly_baseline['messages'].values()) / 24
+                overall_avg_users = sum(self._hourly_baseline['users'].values()) / 24
+                
+                self.base_message_count = overall_avg_messages
+                self.base_user_count = overall_avg_users
+                
+                logger.info(
+                    f"{self.log_prefix} 历史基准值更新完成: "
+                    f"整体平均消息数={overall_avg_messages:.2f}, 整体平均用户数={overall_avg_users:.2f}"
+                )
+                
+                # 记录几个关键时段的基准值
+                key_hours = [8, 12, 18, 22]  # 早、中、晚、夜
+                for hour in key_hours:
+                    # 计算该小时平均每10分钟的消息数和用户数
+                    hourly_10min_messages = self._hourly_baseline['messages'][hour] / 6  # 1小时 = 6个10分钟
+                    hourly_10min_users = self._hourly_baseline['users'][hour] / 6
+                    logger.info(
+                        f"{self.log_prefix} {hour}时基准值: "
+                        f"消息数={self._hourly_baseline['messages'][hour]:.2f}/小时 "
+                        f"({hourly_10min_messages:.2f}/10分钟), "
+                        f"用户数={self._hourly_baseline['users'][hour]:.2f}/小时 "
+                        f"({hourly_10min_users:.2f}/10分钟)"
+                    )
+                    
+            else:
+                # 如果没有历史数据，使用默认值
+                logger.info(f"{self.log_prefix} 无历史数据，使用默认基准值")
+                
+        except Exception as e:
+            logger.error(f"{self.log_prefix} 更新历史基准值时出错: {e}")
+            # 出错时保持原有基准值不变
+        
+        self._last_historical_update = current_time
+
+    def _get_current_hour_baseline(self) -> tuple[float, float]:
+        """
+        获取当前小时的基准值
+        
+        Returns:
+            tuple: (基准消息数, 基准用户数)
+        """
+        current_hour = time.localtime().tm_hour
+        return (
+            self._hourly_baseline['messages'][current_hour],
+            self._hourly_baseline['users'][current_hour]
+        )
 
     def get_dynamic_talk_frequency_adjust(self) -> float:
         """
@@ -81,11 +213,14 @@ class FrequencyControl:
         if current_time - self.last_update_time < self.update_interval:
             return
             
+        # 先更新历史基准值
+        self._update_historical_baseline()
+        
         try:
-            # 获取最近30分钟的数据（发言频率更敏感）
+            # 获取最近10分钟的数据（发言频率更敏感）
             recent_messages = message_api.get_messages_by_time_in_chat(
                 chat_id=self.chat_stream.stream_id,
-                start_time=current_time - 1800,  # 30分钟前
+                start_time=current_time - 600,  # 10分钟前
                 end_time=current_time,
                 filter_mai=True,
                 filter_command=True
@@ -99,12 +234,19 @@ class FrequencyControl:
                     user_ids.add(msg.user_info.user_id)
             user_count = len(user_ids)
             
+            # 获取当前小时的基准值
+            current_hour_base_messages, current_hour_base_users = self._get_current_hour_baseline()
+            
+            # 计算当前小时平均每10分钟的基准值
+            current_hour_10min_messages = current_hour_base_messages / 6  # 1小时 = 6个10分钟
+            current_hour_10min_users = current_hour_base_users / 6
+            
             # 发言频率调整逻辑：人少话多时提高回复频率
             if user_count > 0:
-                # 计算人均消息数
+                # 计算人均消息数（10分钟窗口）
                 messages_per_user = message_count / user_count
-                # 基准人均消息数
-                base_messages_per_user = self.base_message_count / self.base_user_count if self.base_user_count > 0 else 1.0
+                # 使用当前小时每10分钟的基准人均消息数
+                base_messages_per_user = current_hour_10min_messages / current_hour_10min_users if current_hour_10min_users > 0 else 1.0
                 
                 # 如果人均消息数高，说明活跃度高，提高回复频率
                 if messages_per_user > base_messages_per_user:
@@ -126,9 +268,11 @@ class FrequencyControl:
             )
             
             logger.info(
-                f"{self.log_prefix} 发言频率调整更新: "
+                f"{self.log_prefix} 发言频率调整更新(10分钟窗口): "
                 f"消息数={message_count}, 用户数={user_count}, "
                 f"人均消息数={message_count/user_count if user_count > 0 else 0:.2f}, "
+                f"当前小时基准值(消息:{current_hour_base_messages:.2f}/小时, {current_hour_10min_messages:.2f}/10分钟, "
+                f"用户:{current_hour_base_users:.2f}/小时, {current_hour_10min_users:.2f}/10分钟), "
                 f"调整值={self.talk_frequency_adjust:.2f}"
             )
             
@@ -147,10 +291,10 @@ class FrequencyControl:
             return
             
         try:
-            # 获取最近1小时的数据
+            # 获取最近10分钟的数据（与发言频率保持一致）
             recent_messages = message_api.get_messages_by_time_in_chat(
                 chat_id=self.chat_stream.stream_id,
-                start_time=current_time - 3600,  # 1小时前
+                start_time=current_time - 600,  # 10分钟前
                 end_time=current_time,
                 filter_mai=True,
                 filter_command=True
@@ -164,12 +308,19 @@ class FrequencyControl:
                     user_ids.add(msg.user_info.user_id)
             user_count = len(user_ids)
             
+            # 获取当前小时的基准值
+            current_hour_base_messages, current_hour_base_users = self._get_current_hour_baseline()
+            
+            # 计算当前小时平均每10分钟的基准值
+            current_hour_10min_messages = current_hour_base_messages / 6  # 1小时 = 6个10分钟
+            current_hour_10min_users = current_hour_base_users / 6
+            
             # 专注度调整逻辑：人多话多时提高专注度
-            if user_count > 0 and self.base_user_count > 0:
-                # 计算用户活跃度比率
-                user_ratio = user_count / self.base_user_count
-                # 计算消息活跃度比率
-                message_ratio = message_count / self.base_message_count if self.base_message_count > 0 else 1.0
+            if user_count > 0 and current_hour_10min_users > 0:
+                # 计算用户活跃度比率（基于10分钟数据）
+                user_ratio = user_count / current_hour_10min_users
+                # 计算消息活跃度比率（基于10分钟数据）
+                message_ratio = message_count / current_hour_10min_messages if current_hour_10min_messages > 0 else 1.0
                 
                 # 如果用户多且消息多，提高专注度
                 if user_ratio > 1.2 and message_ratio > 1.2:
@@ -193,11 +344,17 @@ class FrequencyControl:
                 target_focus_adjust * self.smoothing_factor
             )
             
+            # 计算当前小时平均每10分钟的基准值
+            current_hour_10min_messages = current_hour_base_messages / 6  # 1小时 = 6个10分钟
+            current_hour_10min_users = current_hour_base_users / 6
+            
             logger.info(
-                f"{self.log_prefix} 专注度调整更新: "
+                f"{self.log_prefix} 专注度调整更新(10分钟窗口): "
                 f"消息数={message_count}, 用户数={user_count}, "
-                f"用户比率={user_count/self.base_user_count if self.base_user_count > 0 else 0:.2f}, "
-                f"消息比率={message_count/self.base_message_count if self.base_message_count > 0 else 0:.2f}, "
+                f"用户比率={user_count/current_hour_10min_users if current_hour_10min_users > 0 else 0:.2f}, "
+                f"消息比率={message_count/current_hour_10min_messages if current_hour_10min_messages > 0 else 0:.2f}, "
+                f"当前小时基准值(消息:{current_hour_base_messages:.2f}/小时, {current_hour_10min_messages:.2f}/10分钟, "
+                f"用户:{current_hour_base_users:.2f}/小时, {current_hour_10min_users:.2f}/10分钟), "
                 f"调整值={self.focus_value_adjust:.2f}"
             )
             
@@ -218,7 +375,9 @@ class FrequencyControl:
         base_message_count: Optional[int] = None,
         base_user_count: Optional[int] = None,
         smoothing_factor: Optional[float] = None,
-        update_interval: Optional[int] = None
+        update_interval: Optional[int] = None,
+        historical_update_interval: Optional[int] = None,
+        historical_days: Optional[int] = None
     ):
         """
         设置调整参数
@@ -243,6 +402,10 @@ class FrequencyControl:
             self.smoothing_factor = max(0.0, min(1.0, smoothing_factor))
         if update_interval is not None:
             self.update_interval = max(10, update_interval)
+        if historical_update_interval is not None:
+            self._historical_update_interval = max(300, historical_update_interval)  # 最少5分钟
+        if historical_days is not None:
+            self._historical_days = max(1, min(30, historical_days))  # 1-30天之间
 
 
 class FrequencyControlManager:
