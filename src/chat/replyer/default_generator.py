@@ -51,11 +51,14 @@ def init_prompt():
 {chat_info}
 {identity}
 
-你正在{chat_target_2},{reply_target_block}
-对这句话，你想表达，原句：{raw_reply},原因是：{reason}。你现在要思考怎么组织回复
 你现在的心情是：{mood_state}
+你正在{chat_target_2},{reply_target_block}
+你想要对上述的发言进行回复，回复的具体内容（原句）是：{raw_reply}
+原因是：{reason}
+现在请你将这条具体内容改写成一条适合在群聊中发送的回复消息。
 你需要使用合适的语法和句法，参考聊天内容，组织一条日常且口语化的回复。请你修改你想表达的原句，符合你的表达风格和语言习惯
-{reply_style}，你可以完全重组回复，保留最基本的表达含义就好，但重组后保持语意通顺。
+{reply_style}
+你可以完全重组回复，保留最基本的表达含义就好，但重组后保持语意通顺。
 {keywords_reaction_prompt}
 {moderation_prompt}
 不要输出多余内容(包括前后缀，冒号和引号，括号，表情包，emoji,at或 @等 )，只输出一条回复就好。
@@ -66,43 +69,38 @@ def init_prompt():
 
     # s4u 风格的 prompt 模板
     Prompt(
-        """
-{expression_habits_block}{tool_info_block}
-{knowledge_prompt}{memory_block}{relation_info_block}
-{extra_info_block}
-{identity}
-{action_descriptions}
-{time_block}
-你现在的主要任务是和 {sender_name} 聊天。同时，也有其他用户会参与聊天，你可以参考他们的回复内容，但是你现在想回复{sender_name}的发言。
+        """{identity}
+你正在群聊中聊天，你想要回复 {sender_name} 的发言。同时，也有其他用户会参与聊天，你可以参考他们的回复内容，但是你现在想回复{sender_name}的发言。
 
+{time_block}
 {background_dialogue_prompt}
 {core_dialogue_prompt}
 
+{expression_habits_block}{tool_info_block}
+{knowledge_prompt}{memory_block}{relation_info_block}
+{extra_info_block}
+
 {reply_target_block}
-
-
-你现在的心情是：{mood_state}
+你的心情：{mood_state}
 {reply_style}
 注意不要复读你说过的话
 {keywords_reaction_prompt}
 请注意不要输出多余内容(包括前后缀，冒号和引号，at或 @等 )。只输出回复内容。
 {moderation_prompt}
 不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，emoji,at或 @等 )。只输出一条回复就好
-现在，你说：
-""",
+现在，你说：""",
         "replyer_prompt",
     )
 
     Prompt(
-        """
-{expression_habits_block}{tool_info_block}
-{knowledge_prompt}{memory_block}{relation_info_block}
-{extra_info_block}
-{identity}
-{action_descriptions}
+        """{identity}
 {time_block}
 你现在正在一个QQ群里聊天，以下是正在进行的聊天内容：
 {background_dialogue_prompt}
+
+{expression_habits_block}{tool_info_block}
+{knowledge_prompt}{memory_block}{relation_info_block}
+{extra_info_block}
 
 你现在想补充说明你刚刚自己的发言内容：{target}，原因是{reason}
 请你根据聊天内容，组织一条新回复。注意，{target} 是刚刚你自己的发言，你要在这基础上进一步发言，请按照你自己的角度来继续进行回复。
@@ -638,9 +636,12 @@ class DefaultReplyer:
         """构建动作提示"""
 
         action_descriptions = ""
+        skip_names = ["emoji","build_memory","build_relation","reply"]
         if available_actions:
             action_descriptions = "除了进行回复之外，你可以做以下这些动作，不过这些动作由另一个模型决定，：\n"
             for action_name, action_info in available_actions.items():
+                if action_name in skip_names:
+                    continue
                 action_description = action_info.description
                 action_descriptions += f"- {action_name}: {action_description}\n"
             action_descriptions += "\n"
@@ -649,7 +650,7 @@ class DefaultReplyer:
         if chosen_actions_info:
             for action_plan_info in chosen_actions_info:
                 action_name = action_plan_info.action_type
-                if action_name == "reply":
+                if action_name in skip_names:
                     continue
                 action_description: str = "无描述"
                 reasoning: str = "无原因"
@@ -679,12 +680,12 @@ class DefaultReplyer:
 
     async def build_prompt_reply_context(
         self,
+        reply_message: DatabaseMessages,
         extra_info: str = "",
         reply_reason: str = "",
         available_actions: Optional[Dict[str, ActionInfo]] = None,
         chosen_actions: Optional[List[ActionPlannerInfo]] = None,
         enable_tool: bool = True,
-        reply_message: Optional[DatabaseMessages] = None,
     ) -> Tuple[str, List[int]]:
         """
         构建回复器上下文
@@ -725,6 +726,7 @@ class DefaultReplyer:
             mood_prompt = chat_mood.mood_state
 
         target = replace_user_references(target, chat_stream.platform, replace_bot_name=True)
+        target = re.sub(r"\\[picid:[^\\]]+\\]", "[图片]", target)
 
         message_list_before_now_long = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_id,
@@ -809,6 +811,11 @@ class DefaultReplyer:
 
         moderation_prompt_block = "请不要输出违法违规内容，不要输出色情，暴力，政治相关内容，如有敏感内容，请规避。"
 
+
+
+        
+
+
         if sender:
             if is_group_chat:
                 reply_target_block = (
@@ -879,6 +886,8 @@ class DefaultReplyer:
         is_group_chat = bool(chat_stream.group_info)
 
         sender, target = self._parse_reply_target(reply_to)
+        target = replace_user_references(target, chat_stream.platform, replace_bot_name=True)
+        target = re.sub(r"\\[picid:[^\\]]+\\]", "[图片]", target)
 
         # 添加情绪状态获取
         if global_config.mood.enable_mood:
@@ -1008,6 +1017,8 @@ class DefaultReplyer:
             # 直接使用已初始化的模型实例
             logger.info(f"使用模型集生成回复: {', '.join(map(str, self.express_model.model_for_task.model_list))}")
 
+            logger.info(f"\n{prompt}\n")
+            
             if global_config.debug.show_prompt:
                 logger.info(f"\n{prompt}\n")
             else:

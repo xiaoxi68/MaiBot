@@ -51,6 +51,7 @@ def init_prompt():
 请你根据聊天内容和用户的最新消息选择合适回复或者沉默:
 1.你可以选择呼叫了你的名字，但是你没有做出回应的消息进行回复
 2.你可以自然的顺着正在进行的聊天内容进行回复或自然的提出一个问题
+3.你的兴趣是：{interest}
 4.如果你刚刚进行了回复，不要对同一个话题重复回应
 5.请控制你的发言频率，不要太过频繁的发言,当你刚刚发送了消息，没有人回复时，选择no_action
 6.如果有人对你感到厌烦，请减少回复
@@ -92,8 +93,8 @@ def init_prompt():
 **回复标准**
 请你选择合适的消息进行回复:
 1.你可以选择呼叫了你的名字，但是你没有做出回应的消息进行回复
-2.你可以自然的顺着正在进行的聊天内容进行回复
-3.你可以自然的提出一个问题
+2.你可以自然的顺着正在进行的聊天内容进行回复，或者自然的提出一个问题
+3.你的兴趣是{interest}
 4.如果有人对你感到厌烦，请你不要太积极的提问或是表达，可以进行顺从
 5.如果有人对你进行攻击，或者情绪激动，请你以合适的方法应对
 6.最好不要选择图片和表情包作为回复对象
@@ -597,6 +598,7 @@ class ActionPlanner:
                 chat_content_block=chat_content_block,
                 # actions_before_now_block=actions_before_now_block,
                 message_id_list=message_id_list,
+                interest=global_config.personality.interest,
             )
 
             # --- 调用 LLM (普通文本生成) ---
@@ -757,6 +759,7 @@ class ActionPlanner:
         mode: ChatMode = ChatMode.FOCUS,
         # actions_before_now_block :str = "",
         chat_content_block: str = "",
+        interest: str = "",
     ) -> tuple[str, List[Tuple[str, "DatabaseMessages"]]]:  # sourcery skip: use-join
         """构建 Planner LLM 的提示词 (获取模板并填充数据)"""
         try:
@@ -834,6 +837,7 @@ class ActionPlanner:
                     # action_options_text=action_options_block,
                     moderation_prompt=moderation_prompt_block,
                     name_block=name_block,
+                    interest=interest,
                 )
             else:
                 planner_prompt_template = await global_prompt_manager.get_prompt_async("planner_reply_prompt")
@@ -844,6 +848,7 @@ class ActionPlanner:
                     moderation_prompt=moderation_prompt_block,
                     name_block=name_block,
                     actions_before_now_block=actions_before_now_block,
+                    interest=interest,
                 )
             return prompt, message_id_list
         except Exception as e:

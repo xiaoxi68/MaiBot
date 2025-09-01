@@ -11,6 +11,7 @@
 import time
 from typing import List, Dict, Any, Tuple, Optional
 from src.common.data_models.database_data_model import DatabaseMessages
+from src.common.database.database_model import Images
 from src.config.config import global_config
 from src.chat.utils.chat_message_builder import (
     get_raw_msg_by_timestamp,
@@ -488,3 +489,15 @@ def filter_mai_messages(messages: List[DatabaseMessages]) -> List[DatabaseMessag
         过滤后的消息列表
     """
     return [msg for msg in messages if msg.user_info.user_id != str(global_config.bot.qq_account)]
+
+
+
+
+def translate_pid_to_description(pid: str) -> str:
+    image = Images.get_or_none(Images.image_id == pid)
+    description = ""
+    if image and image.description:
+        description = image.description
+    else:
+        description = "[图片]"
+    return description
