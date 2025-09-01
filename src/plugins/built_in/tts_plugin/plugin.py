@@ -13,21 +13,16 @@ class TTSAction(BaseAction):
     """TTS语音转换动作处理类"""
 
     # 激活设置
-    focus_activation_type = ActionActivationType.LLM_JUDGE
-    normal_activation_type = ActionActivationType.KEYWORD
+    activation_type = ActionActivationType.LLM_JUDGE
     parallel_action = False
 
     # 动作基本信息
     action_name = "tts_action"
     action_description = "将文本转换为语音进行播放，适用于需要语音输出的场景"
 
-    # 关键词配置 - Normal模式下使用关键词触发
-    activation_keywords = ["语音", "tts", "播报", "读出来", "语音播放", "听", "朗读"]
-    keyword_case_sensitive = False
-
     # 动作参数定义
     action_parameters = {
-        "text": "需要转换为语音的文本内容，必填，内容应当适合语音播报，语句流畅、清晰",
+        "voice_text": "你想用语音表达的内容，这段内容将会以语音形式发出",
     }
 
     # 动作使用场景
@@ -46,7 +41,7 @@ class TTSAction(BaseAction):
         logger.info(f"{self.log_prefix} 执行TTS动作: {self.reasoning}")
 
         # 获取要转换的文本
-        text = self.action_data.get("text")
+        text = self.action_data.get("voice_text")
 
         if not text:
             logger.error(f"{self.log_prefix} 执行TTS动作时未提供文本内容")

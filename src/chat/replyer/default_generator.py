@@ -26,7 +26,6 @@ from src.chat.utils.chat_message_builder import (
 )
 from src.chat.express.expression_selector import expression_selector
 from src.chat.memory_system.memory_activator import MemoryActivator
-from src.chat.memory_system.instant_memory import InstantMemory
 from src.mood.mood_manager import mood_manager
 from src.person_info.person_info import Person, is_person_known
 from src.plugin_system.base.component_types import ActionInfo, EventType
@@ -52,11 +51,14 @@ def init_prompt():
 {chat_info}
 {identity}
 
-你正在{chat_target_2},{reply_target_block}
-对这句话，你想表达，原句：{raw_reply},原因是：{reason}。你现在要思考怎么组织回复
 你现在的心情是：{mood_state}
+你正在{chat_target_2},{reply_target_block}
+你想要对上述的发言进行回复，回复的具体内容（原句）是：{raw_reply}
+原因是：{reason}
+现在请你将这条具体内容改写成一条适合在群聊中发送的回复消息。
 你需要使用合适的语法和句法，参考聊天内容，组织一条日常且口语化的回复。请你修改你想表达的原句，符合你的表达风格和语言习惯
-{reply_style}，你可以完全重组回复，保留最基本的表达含义就好，但重组后保持语意通顺。
+{reply_style}
+你可以完全重组回复，保留最基本的表达含义就好，但重组后保持语意通顺。
 {keywords_reaction_prompt}
 {moderation_prompt}
 不要输出多余内容(包括前后缀，冒号和引号，括号，表情包，emoji,at或 @等 )，只输出一条回复就好。
@@ -67,43 +69,38 @@ def init_prompt():
 
     # s4u 风格的 prompt 模板
     Prompt(
-        """
-{expression_habits_block}{tool_info_block}
-{knowledge_prompt}{memory_block}{relation_info_block}
-{extra_info_block}
-{identity}
-{action_descriptions}
-{time_block}
-你现在的主要任务是和 {sender_name} 聊天。同时，也有其他用户会参与聊天，你可以参考他们的回复内容，但是你现在想回复{sender_name}的发言。
+        """{identity}
+你正在群聊中聊天，你想要回复 {sender_name} 的发言。同时，也有其他用户会参与聊天，你可以参考他们的回复内容，但是你现在想回复{sender_name}的发言。
 
+{time_block}
 {background_dialogue_prompt}
 {core_dialogue_prompt}
 
+{expression_habits_block}{tool_info_block}
+{knowledge_prompt}{memory_block}{relation_info_block}
+{extra_info_block}
+
 {reply_target_block}
-
-
-你现在的心情是：{mood_state}
+你的心情：{mood_state}
 {reply_style}
 注意不要复读你说过的话
 {keywords_reaction_prompt}
 请注意不要输出多余内容(包括前后缀，冒号和引号，at或 @等 )。只输出回复内容。
 {moderation_prompt}
 不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，emoji,at或 @等 )。只输出一条回复就好
-现在，你说：
-""",
+现在，你说：""",
         "replyer_prompt",
     )
 
     Prompt(
-        """
-{expression_habits_block}{tool_info_block}
-{knowledge_prompt}{memory_block}{relation_info_block}
-{extra_info_block}
-{identity}
-{action_descriptions}
+        """{identity}
 {time_block}
 你现在正在一个QQ群里聊天，以下是正在进行的聊天内容：
 {background_dialogue_prompt}
+
+{expression_habits_block}{tool_info_block}
+{knowledge_prompt}{memory_block}{relation_info_block}
+{extra_info_block}
 
 你现在想补充说明你刚刚自己的发言内容：{target}，原因是{reason}
 请你根据聊天内容，组织一条新回复。注意，{target} 是刚刚你自己的发言，你要在这基础上进一步发言，请按照你自己的角度来继续进行回复。
@@ -147,7 +144,6 @@ class DefaultReplyer:
         self.is_group_chat, self.chat_target_info = get_chat_type_and_target_info(self.chat_stream.stream_id)
         self.heart_fc_sender = HeartFCSender()
         self.memory_activator = MemoryActivator()
-        self.instant_memory = InstantMemory(chat_id=self.chat_stream.stream_id)
 
         from src.plugin_system.core.tool_use import ToolExecutor  # 延迟导入ToolExecutor，不然会循环依赖
 
@@ -375,19 +371,10 @@ class DefaultReplyer:
 
         instant_memory = None
 
-        # running_memories = await self.memory_activator.activate_memory_with_chat_history(
-        #     target_message=target, chat_history=chat_history
-        # )
+        running_memories = await self.memory_activator.activate_memory_with_chat_history(
+            target_message=target, chat_history=chat_history
+        )
         running_memories = None
-
-        if global_config.memory.enable_instant_memory:
-            chat_history_str = build_readable_messages(
-                messages=chat_history, replace_bot_name=True, timestamp_mode="normal"
-            )
-            asyncio.create_task(self.instant_memory.create_and_store_memory(chat_history_str))
-
-            instant_memory = await self.instant_memory.get_memory(target)
-            logger.info(f"即时记忆：{instant_memory}")
 
         if not running_memories:
             return ""
@@ -649,9 +636,12 @@ class DefaultReplyer:
         """构建动作提示"""
 
         action_descriptions = ""
+        skip_names = ["emoji","build_memory","build_relation","reply"]
         if available_actions:
             action_descriptions = "除了进行回复之外，你可以做以下这些动作，不过这些动作由另一个模型决定，：\n"
             for action_name, action_info in available_actions.items():
+                if action_name in skip_names:
+                    continue
                 action_description = action_info.description
                 action_descriptions += f"- {action_name}: {action_description}\n"
             action_descriptions += "\n"
@@ -660,11 +650,13 @@ class DefaultReplyer:
         if chosen_actions_info:
             for action_plan_info in chosen_actions_info:
                 action_name = action_plan_info.action_type
-                if action_name == "reply":
+                if action_name in skip_names:
                     continue
+                action_description: str = "无描述"
+                reasoning: str = "无原因"
                 if action := available_actions.get(action_name):
-                    action_description = action.description or "无描述"
-                    reasoning = action_plan_info.reasoning or "无原因"
+                    action_description = action.description or action_description
+                    reasoning = action_plan_info.reasoning or reasoning
 
                 chosen_action_descriptions += f"- {action_name}: {action_description}，原因：{reasoning}\n"
 
@@ -682,18 +674,18 @@ class DefaultReplyer:
             bot_nickname = ""
 
         prompt_personality = (
-            f"{global_config.personality.personality_core};{global_config.personality.personality_side}"
+            f"{global_config.personality.personality};"
         )
         return f"你的名字是{bot_name}{bot_nickname}，你{prompt_personality}"
 
     async def build_prompt_reply_context(
         self,
+        reply_message: DatabaseMessages,
         extra_info: str = "",
         reply_reason: str = "",
         available_actions: Optional[Dict[str, ActionInfo]] = None,
         chosen_actions: Optional[List[ActionPlannerInfo]] = None,
         enable_tool: bool = True,
-        reply_message: Optional[DatabaseMessages] = None,
     ) -> Tuple[str, List[int]]:
         """
         构建回复器上下文
@@ -716,24 +708,25 @@ class DefaultReplyer:
         is_group_chat = bool(chat_stream.group_info)
         platform = chat_stream.platform
 
+        user_id = "用户ID"
+        person_name = "用户"
+        sender = "用户"
+        target = "消息"
+
         if reply_message:
             user_id = reply_message.user_info.user_id
             person = Person(platform=platform, user_id=user_id)
             person_name = person.person_name or user_id
             sender = person_name
             target = reply_message.processed_plain_text
-        else:
-            person_name = "用户"
-            sender = "用户"
-            target = "消息"
 
+        mood_prompt: str = ""
         if global_config.mood.enable_mood:
             chat_mood = mood_manager.get_mood_by_chat_id(chat_id)
             mood_prompt = chat_mood.mood_state
-        else:
-            mood_prompt = ""
 
         target = replace_user_references(target, chat_stream.platform, replace_bot_name=True)
+        target = re.sub(r"\\[picid:[^\\]]+\\]", "[图片]", target)
 
         message_list_before_now_long = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_id,
@@ -789,14 +782,14 @@ class DefaultReplyer:
         for name, result, duration in task_results:
             results_dict[name] = result
             chinese_name = task_name_mapping.get(name, name)
-            if duration < 0.01:
+            if duration < 0.1:
                 almost_zero_str += f"{chinese_name},"
                 continue
 
             timing_logs.append(f"{chinese_name}: {duration:.1f}s")
             if duration > 8:
                 logger.warning(f"回复生成前信息获取耗时过长: {chinese_name} 耗时: {duration:.1f}s，请使用更快的模型")
-        logger.info(f"回复准备: {'; '.join(timing_logs)}; {almost_zero_str} <0.01s")
+        logger.info(f"回复准备: {'; '.join(timing_logs)}; {almost_zero_str} <0.1s")
 
         expression_habits_block, selected_expressions = results_dict["expression_habits"]
         expression_habits_block: str
@@ -817,6 +810,11 @@ class DefaultReplyer:
         time_block = f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
 
         moderation_prompt_block = "请不要输出违法违规内容，不要输出色情，暴力，政治相关内容，如有敏感内容，请规避。"
+
+
+
+        
+
 
         if sender:
             if is_group_chat:
@@ -888,6 +886,8 @@ class DefaultReplyer:
         is_group_chat = bool(chat_stream.group_info)
 
         sender, target = self._parse_reply_target(reply_to)
+        target = replace_user_references(target, chat_stream.platform, replace_bot_name=True)
+        target = re.sub(r"\\[picid:[^\\]]+\\]", "[图片]", target)
 
         # 添加情绪状态获取
         if global_config.mood.enable_mood:
@@ -950,9 +950,7 @@ class DefaultReplyer:
         else:
             chat_target_name = "对方"
             if self.chat_target_info:
-                chat_target_name = (
-                    self.chat_target_info.person_name or self.chat_target_info.user_nickname or "对方"
-                )
+                chat_target_name = self.chat_target_info.person_name or self.chat_target_info.user_nickname or "对方"
             chat_target_1 = await global_prompt_manager.format_prompt(
                 "chat_target_private1", sender_name=chat_target_name
             )
@@ -1019,6 +1017,8 @@ class DefaultReplyer:
             # 直接使用已初始化的模型实例
             logger.info(f"使用模型集生成回复: {', '.join(map(str, self.express_model.model_for_task.model_list))}")
 
+            logger.info(f"\n{prompt}\n")
+            
             if global_config.debug.show_prompt:
                 logger.info(f"\n{prompt}\n")
             else:

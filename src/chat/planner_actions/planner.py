@@ -40,41 +40,39 @@ def init_prompt():
         """
 {time_block}
 {name_block}
-你现在需要根据聊天内容，选择的合适的action来参与聊天。
-请你根据以下行事风格来决定action:
-{plan_style}
-
 {chat_context_description}，以下是具体的聊天内容
+**聊天内容**
 {chat_content_block}
 
-{moderation_prompt}
-
-现在请你根据聊天内容和用户的最新消息选择合适的action和触发action的消息:
+**动作记录**
 {actions_before_now_block}
 
-动作：no_action
-动作描述：不进行动作，等待合适的时机
-- 当你刚刚发送了消息，没有人回复时，选择no_action
-- 当你一次发送了太多消息，为了避免过于烦人，可以不回复
+**回复标准**
+请你根据聊天内容和用户的最新消息选择合适回复或者沉默:
+1.你可以选择呼叫了你的名字，但是你没有做出回应的消息进行回复
+2.你可以自然的顺着正在进行的聊天内容进行回复或自然的提出一个问题
+3.你的兴趣是：{interest}
+4.如果你刚刚进行了回复，不要对同一个话题重复回应
+5.请控制你的发言频率，不要太过频繁的发言,当你刚刚发送了消息，没有人回复时，选择no_action
+6.如果有人对你感到厌烦，请减少回复
+7.如果有人对你进行攻击，或者情绪激动，请你以合适的方法应对
+8.最好不要选择图片和表情包作为回复对象
+{moderation_prompt}
+
+**动作**
+保持沉默：no_action
 {{
     "action": "no_action",
-    "reason":"不动作的原因"
+    "reason":"不回复的原因"
 }}
 
-动作：reply
-动作描述：参与聊天回复，发送文本进行表达
-- 你想要闲聊或者随便附和
-- 有人提到了你，但是你还没有回应
-- {mentioned_bonus}
-- 如果你刚刚进行了回复，不要对同一个话题重复回应
+进行回复：reply
 {{
     "action": "reply",
     "target_message_id":"想要回复的消息id",
     "reason":"回复的原因"
 }}
-
 你必须从上面列出的可用action中选择一个，并说明触发action的消息id（不是消息原文）和选择该action的原因。消息id格式:m+数字
-
 请根据动作示例，以严格的 JSON 格式输出，且仅包含 JSON 内容：
 """,
         "planner_prompt",
@@ -85,19 +83,22 @@ def init_prompt():
 {time_block}
 {name_block}
 
-{chat_context_description}，以下是具体的聊天内容
+{chat_context_description}
+**聊天内容**
 {chat_content_block}
 
-{moderation_prompt}
-
-现在，最新的聊天消息引起了你的兴趣，你想要对其中的消息进行回复，回复标准如下：
-- 你想要闲聊或者随便附和
-- 有人提到了你，但是你还没有回应
-- {mentioned_bonus}
-- 如果你刚刚进行了回复，不要对同一个话题重复回应
-
-你之前的动作记录：
+**动作记录**
 {actions_before_now_block}
+
+**回复标准**
+请你选择合适的消息进行回复:
+1.你可以选择呼叫了你的名字，但是你没有做出回应的消息进行回复
+2.你可以自然的顺着正在进行的聊天内容进行回复，或者自然的提出一个问题
+3.你的兴趣是{interest}
+4.如果有人对你感到厌烦，请你不要太积极的提问或是表达，可以进行顺从
+5.如果有人对你进行攻击，或者情绪激动，请你以合适的方法应对
+6.最好不要选择图片和表情包作为回复对象
+7.{moderation_prompt}
 
 请你从新消息中选出一条需要回复的消息并输出其id,输出格式如下：
 {{
@@ -105,7 +106,6 @@ def init_prompt():
     "target_message_id":"想要回复的消息id，消息id格式:m+数字",
     "reason":"回复的原因"
 }}
-
 请根据示例，以严格的 JSON 格式输出，且仅包含 JSON 内容：
 """,
         "planner_reply_prompt",
@@ -129,12 +129,18 @@ def init_prompt():
         """
 {name_block}
 
-{chat_context_description}，{time_block}，现在请你根据以下聊天内容，选择一个或多个action来参与聊天。如果没有合适的action，请选择no_action。,
+{chat_context_description}，{time_block}，现在请你根据以下聊天内容，选择一个或多个合适的action。如果没有合适的action，请选择no_action。,
 {chat_content_block}
 
-{moderation_prompt}
-现在请你根据聊天内容和用户的最新消息选择合适的action和触发action的消息:
+**要求**
+1.action必须符合使用条件，如果符合条件，就选择
+2.如果聊天内容不适合使用action，即使符合条件，也不要使用
+3.{moderation_prompt}
+4.请注意如果相同的内容已经被执行，请不要重复执行
+这是你最近执行过的动作:
+{actions_before_now_block}
 
+**可用的action**
 
 no_action：不选择任何动作
 {{
@@ -143,9 +149,6 @@ no_action：不选择任何动作
 }}
 
 {action_options_text}
-
-这是你最近执行过的动作，请注意如果相同的内容已经被执行，请不要重复执行：
-{actions_before_now_block}
 
 请选择，并说明触发action的消息id和选择该action的原因。消息id格式:m+数字
 请根据动作示例，以严格的 JSON 格式输出，且仅包含 JSON 内容：
@@ -465,7 +468,7 @@ class ActionPlanner:
                 )
             )
 
-        logger.info(f"{self.log_prefix}副规划器返回了{len(action_planner_infos)}个action")
+        logger.debug(f"{self.log_prefix}副规划器返回了{len(action_planner_infos)}个action")
         return action_planner_infos
 
     async def plan(
@@ -510,7 +513,7 @@ class ActionPlanner:
         )
 
         self.last_obs_time_mark = time.time()
-
+        all_sub_planner_results: List[ActionPlannerInfo] = []  # 防止Unbound
         try:
             sub_planner_actions: Dict[str, ActionInfo] = {}
 
@@ -553,7 +556,7 @@ class ActionPlanner:
                 for i, (action_name, action_info) in enumerate(action_items):
                     sub_planner_lists[i % sub_planner_num].append((action_name, action_info))
 
-                logger.info(
+                logger.debug(
                     f"{self.log_prefix}成功将{sub_planner_actions_num}个actions分配到{sub_planner_num}个子列表中"
                 )
                 for i, action_list in enumerate(sub_planner_lists):
@@ -581,11 +584,10 @@ class ActionPlanner:
             sub_plan_results = await asyncio.gather(*sub_plan_tasks)
 
             # 收集所有结果
-            all_sub_planner_results: List[ActionPlannerInfo] = []
             for sub_result in sub_plan_results:
                 all_sub_planner_results.extend(sub_result)
 
-            logger.info(f"{self.log_prefix}所有副规划器共返回了{len(all_sub_planner_results)}个action")
+            logger.info(f"{self.log_prefix}小脑决定执行{len(all_sub_planner_results)}个动作")
 
             # --- 构建提示词 (调用修改后的 PromptBuilder 方法) ---
             prompt, message_id_list = await self.build_planner_prompt(
@@ -596,6 +598,7 @@ class ActionPlanner:
                 chat_content_block=chat_content_block,
                 # actions_before_now_block=actions_before_now_block,
                 message_id_list=message_id_list,
+                interest=global_config.personality.interest,
             )
 
             # --- 调用 LLM (普通文本生成) ---
@@ -724,11 +727,9 @@ class ActionPlanner:
                 ]
 
             action_str = ""
-            for action in actions:
-                action_str += f"{action.action_type} "
-            logger.info(
-                f"{self.log_prefix}大脑小脑决定执行{len(actions)}个动作: {action_str}"
-            )
+            for action_planner_info in actions:
+                action_str += f"{action_planner_info.action_type} "
+            logger.info(f"{self.log_prefix}大脑小脑决定执行{len(actions)}个动作: {action_str}")
         else:
             # 如果为假，只返回副规划器的结果
             actions = self._filter_no_actions(all_sub_planner_results)
@@ -758,6 +759,7 @@ class ActionPlanner:
         mode: ChatMode = ChatMode.FOCUS,
         # actions_before_now_block :str = "",
         chat_content_block: str = "",
+        interest: str = "",
     ) -> tuple[str, List[Tuple[str, "DatabaseMessages"]]]:  # sourcery skip: use-join
         """构建 Planner LLM 的提示词 (获取模板并填充数据)"""
         try:
@@ -776,12 +778,6 @@ class ActionPlanner:
                 actions_before_now_block = f"你刚刚选择并执行过的action是：\n{actions_before_now_block}"
             else:
                 actions_before_now_block = ""
-
-            mentioned_bonus = ""
-            if global_config.chat.mentioned_bot_inevitable_reply:
-                mentioned_bonus = "\n- 有人提到你"
-            if global_config.chat.at_bot_inevitable_reply:
-                mentioned_bonus = "\n- 有人提到你，或者at你"
 
             chat_context_description = "你现在正在一个群聊中"
             chat_target_name = None
@@ -838,11 +834,10 @@ class ActionPlanner:
                     chat_context_description=chat_context_description,
                     chat_content_block=chat_content_block,
                     actions_before_now_block=actions_before_now_block,
-                    mentioned_bonus=mentioned_bonus,
                     # action_options_text=action_options_block,
                     moderation_prompt=moderation_prompt_block,
                     name_block=name_block,
-                    plan_style=global_config.personality.plan_style,
+                    interest=interest,
                 )
             else:
                 planner_prompt_template = await global_prompt_manager.get_prompt_async("planner_reply_prompt")
@@ -850,10 +845,10 @@ class ActionPlanner:
                     time_block=time_block,
                     chat_context_description=chat_context_description,
                     chat_content_block=chat_content_block,
-                    mentioned_bonus=mentioned_bonus,
                     moderation_prompt=moderation_prompt_block,
                     name_block=name_block,
                     actions_before_now_block=actions_before_now_block,
+                    interest=interest,
                 )
             return prompt, message_id_list
         except Exception as e:

@@ -39,7 +39,7 @@ class BaseAction(ABC):
         chat_stream: ChatStream,
         log_prefix: str = "",
         plugin_config: Optional[dict] = None,
-        action_message: Optional[dict] = None,
+        action_message: Optional["DatabaseMessages"] = None,
         **kwargs,
     ):
         # sourcery skip: hoist-similar-statement-from-if, merge-else-if-into-elif, move-assign-in-block, swap-if-else-branches, swap-nested-ifs
@@ -76,15 +76,19 @@ class BaseAction(ABC):
         self.action_require: list[str] = getattr(self.__class__, "action_require", []).copy()
 
         # 设置激活类型实例属性（从类属性复制，提供默认值）
-        self.focus_activation_type = getattr(self.__class__, "focus_activation_type", ActionActivationType.ALWAYS) #已弃用
+        self.focus_activation_type = getattr(
+            self.__class__, "focus_activation_type", ActionActivationType.ALWAYS
+        )  # 已弃用
         """FOCUS模式下的激活类型"""
-        self.normal_activation_type = getattr(self.__class__, "normal_activation_type", ActionActivationType.ALWAYS) #已弃用
+        self.normal_activation_type = getattr(
+            self.__class__, "normal_activation_type", ActionActivationType.ALWAYS
+        )  # 已弃用
         """NORMAL模式下的激活类型"""
         self.activation_type = getattr(self.__class__, "activation_type", self.focus_activation_type)
         """激活类型"""
         self.random_activation_probability: float = getattr(self.__class__, "random_activation_probability", 0.0)
         """当激活类型为RANDOM时的概率"""
-        self.llm_judge_prompt: str = getattr(self.__class__, "llm_judge_prompt", "") #已弃用
+        self.llm_judge_prompt: str = getattr(self.__class__, "llm_judge_prompt", "")  # 已弃用
         """协助LLM进行判断的Prompt"""
         self.activation_keywords: list[str] = getattr(self.__class__, "activation_keywords", []).copy()
         """激活类型为KEYWORD时的KEYWORDS列表"""
@@ -114,16 +118,21 @@ class BaseAction(ABC):
 
         if self.action_message:
             self.has_action_message = True
-        else:
-            self.action_message = {}
 
-        if self.has_action_message:
             if self.action_name != "no_action":
-                self.group_id = str(self.action_message.get("chat_info_group_id", None))
-                self.group_name = self.action_message.get("chat_info_group_name", None)
+                self.group_id = (
+                    str(self.action_message.chat_info.group_info.group_id)
+                    if self.action_message.chat_info.group_info
+                    else None
+                )
+                self.group_name = (
+                    self.action_message.chat_info.group_info.group_name
+                    if self.action_message.chat_info.group_info
+                    else None
+                )
 
-                self.user_id = str(self.action_message.get("user_id", None))
-                self.user_nickname = self.action_message.get("user_nickname", None)
+                self.user_id = str(self.action_message.user_info.user_id)
+                self.user_nickname = self.action_message.user_info.user_nickname
                 if self.group_id:
                     self.is_group = True
                     self.target_id = self.group_id

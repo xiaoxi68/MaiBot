@@ -25,6 +25,7 @@ from .base import (
     EventType,
     MaiMessages,
     ToolParamType,
+    CustomEventHandlerResult,
 )
 
 # 导入工具模块
@@ -37,7 +38,7 @@ from .utils import (
 
 from .apis import (
     chat_api,
-    tool_api,  
+    tool_api,
     component_manage_api,
     config_api,
     database_api,
@@ -51,6 +52,15 @@ from .apis import (
     register_plugin,
     get_logger,
 )
+
+from src.common.data_models.database_data_model import (
+    DatabaseMessages,
+    DatabaseUserInfo,
+    DatabaseGroupInfo,
+    DatabaseChatInfo,
+)
+from src.common.data_models.info_data_model import TargetPersonInfo, ActionPlannerInfo
+from src.common.data_models.llm_data_model import LLMGenerationDataModel
 
 
 __version__ = "2.0.0"
@@ -92,6 +102,7 @@ __all__ = [
     "ToolParamType",
     # 消息
     "MaiMessages",
+    "CustomEventHandlerResult",
     # 装饰器
     "register_plugin",
     "ConfigField",
@@ -101,4 +112,12 @@ __all__ = [
     # "ManifestGenerator",
     # "validate_plugin_manifest",
     # "generate_plugin_manifest",
+    # 数据模型
+    "DatabaseMessages",
+    "DatabaseUserInfo",
+    "DatabaseGroupInfo",
+    "DatabaseChatInfo",
+    "TargetPersonInfo",
+    "ActionPlannerInfo",
+    "LLMGenerationDataModel"
 ]

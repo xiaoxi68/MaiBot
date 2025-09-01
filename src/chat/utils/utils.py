@@ -43,15 +43,15 @@ def db_message_to_str(message_dict: dict) -> str:
     return result
 
 
-def is_mentioned_bot_in_message(message: MessageRecv) -> tuple[bool, float]:
+def is_mentioned_bot_in_message(message: MessageRecv) -> tuple[bool, bool, float]:
     """检查消息是否提到了机器人"""
-    keywords = [global_config.bot.nickname]
-    nicknames = global_config.bot.alias_names
+    keywords = [global_config.bot.nickname] + list(global_config.bot.alias_names)
     reply_probability = 0.0
     is_at = False
     is_mentioned = False
-    if message.is_mentioned is not None:
-        return bool(message.is_mentioned), message.is_mentioned
+    
+    # 这部分怎么处理啊啊啊啊
+    #我觉得可以给消息加一个 reply_probability_boost字段
     if (
         message.message_info.additional_config is not None
         and message.message_info.additional_config.get("is_mentioned") is not None
@@ -59,28 +59,21 @@ def is_mentioned_bot_in_message(message: MessageRecv) -> tuple[bool, float]:
         try:
             reply_probability = float(message.message_info.additional_config.get("is_mentioned"))  # type: ignore
             is_mentioned = True
-            return is_mentioned, reply_probability
+            return is_mentioned, is_at, reply_probability
         except Exception as e:
             logger.warning(str(e))
             logger.warning(
                 f"消息中包含不合理的设置 is_mentioned: {message.message_info.additional_config.get('is_mentioned')}"
             )
 
-    if global_config.bot.nickname in message.processed_plain_text:
-        is_mentioned = True
-
-    for alias_name in global_config.bot.alias_names:
-        if alias_name in message.processed_plain_text:
+    for keyword in keywords:
+        if keyword in message.processed_plain_text:
             is_mentioned = True
 
     # 判断是否被@
     if re.search(rf"@<(.+?):{global_config.bot.qq_account}>", message.processed_plain_text):
         is_at = True
         is_mentioned = True
-
-    # print(f"message.processed_plain_text: {message.processed_plain_text}")
-    # print(f"is_mentioned: {is_mentioned}")
-    # print(f"is_at: {is_at}")
 
     if is_at and global_config.chat.at_bot_inevitable_reply:
         reply_probability = 1.0
@@ -104,13 +97,10 @@ def is_mentioned_bot_in_message(message: MessageRecv) -> tuple[bool, float]:
                 for keyword in keywords:
                     if keyword in message_content:
                         is_mentioned = True
-                for nickname in nicknames:
-                    if nickname in message_content:
-                        is_mentioned = True
-        if is_mentioned and global_config.chat.mentioned_bot_inevitable_reply:
+        if is_mentioned and global_config.chat.mentioned_bot_reply:
             reply_probability = 1.0
             logger.debug("被提及，回复概率设置为100%")
-    return is_mentioned, reply_probability
+    return is_mentioned, is_at, reply_probability
 
 
 async def get_embedding(text, request_type="embedding") -> Optional[List[float]]:
@@ -834,3 +824,79 @@ def parse_keywords_string(keywords_input) -> list[str]:
 
     # 如果没有分隔符，返回单个关键词
     return [keywords_str] if keywords_str else []
+
+
+
+
+def cut_key_words(concept_name: str) -> list[str]:
+    """对概念名称进行jieba分词，并过滤掉关键词列表中的关键词"""
+    concept_name_tokens = list(jieba.cut(concept_name))
+
+    # 定义常见连词、停用词与标点
+    conjunctions = {
+        "和", "与", "及", "跟", "以及", "并且", "而且", "或", "或者", "并"
+    }
+    stop_words = {
+        "的", "了", "呢", "吗", "吧", "啊", "哦", "恩", "嗯", "呀", "嘛", "哇",
+        "在", "是", "很", "也", "又", "就", "都", "还", "更", "最", "被", "把",
+        "给", "对", "和", "与", "及", "跟", "并", "而且", "或者", "或", "以及"
+    }
+    chinese_punctuations = set("，。！？、；：（）【】《》“”‘’—…·-——,.!?;:()[]<>'\"/\\")
+
+    # 清理空白并初步过滤纯标点
+    cleaned_tokens = []
+    for tok in concept_name_tokens:
+        t = tok.strip()
+        if not t:
+            continue
+        # 去除纯标点
+        if all(ch in chinese_punctuations for ch in t):
+            continue
+        cleaned_tokens.append(t)
+
+    # 合并连词两侧的词（仅当两侧都存在且不是标点/停用词时）
+    merged_tokens = []
+    i = 0
+    n = len(cleaned_tokens)
+    while i < n:
+        tok = cleaned_tokens[i]
+        if tok in conjunctions and merged_tokens and i + 1 < n:
+            left = merged_tokens[-1]
+            right = cleaned_tokens[i + 1]
+            # 左右都需要是有效词
+            if left and right \
+                and left not in conjunctions and right not in conjunctions \
+                and left not in stop_words and right not in stop_words \
+                and not all(ch in chinese_punctuations for ch in left) \
+                and not all(ch in chinese_punctuations for ch in right):
+                # 合并为一个新词，并替换掉左侧与跳过右侧
+                combined = f"{left}{tok}{right}"
+                merged_tokens[-1] = combined
+                i += 2
+                continue
+        # 常规推进
+        merged_tokens.append(tok)
+        i += 1
+
+    # 二次过滤：去除停用词、单字符纯标点与无意义项
+    result_tokens = []
+    seen = set()
+    # ban_words = set(getattr(global_config.memory, "memory_ban_words", []) or [])
+    for tok in merged_tokens:
+        if tok in conjunctions:
+            # 独立连词丢弃
+            continue
+        if tok in stop_words:
+            continue
+        # if tok in ban_words:
+            # continue
+        if all(ch in chinese_punctuations for ch in tok):
+            continue
+        if tok.strip() == "":
+            continue
+        if tok not in seen:
+            seen.add(tok)
+            result_tokens.append(tok)
+
+    filtered_concept_name_tokens = result_tokens
+    return filtered_concept_name_tokens

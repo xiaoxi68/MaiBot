@@ -182,7 +182,7 @@ class ChatMood:
         else:
             bot_nickname = ""
 
-        prompt_personality = global_config.personality.personality_core
+        prompt_personality = global_config.personality.personality
         indentify_block = f"你的名字是{bot_name}{bot_nickname}，你{prompt_personality}："
 
         async def _update_text_mood():
@@ -261,7 +261,7 @@ class ChatMood:
         else:
             bot_nickname = ""
 
-        prompt_personality = global_config.personality.personality_core
+        prompt_personality = global_config.personality.personality
         indentify_block = f"你的名字是{bot_name}{bot_nickname}，你{prompt_personality}："
 
         async def _regress_text_mood():

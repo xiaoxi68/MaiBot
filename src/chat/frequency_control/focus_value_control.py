@@ -3,26 +3,7 @@ from src.config.config import global_config
 from src.chat.frequency_control.utils import parse_stream_config_to_chat_id
 
 
-class FocusValueControl:
-    def __init__(self, chat_id: str):
-        self.chat_id = chat_id
-        self.focus_value_adjust: float = 1
-
-    def get_current_focus_value(self) -> float:
-        return get_current_focus_value(self.chat_id) * self.focus_value_adjust
-
-
-class FocusValueControlManager:
-    def __init__(self):
-        self.focus_value_controls: dict[str, FocusValueControl] = {}
-
-    def get_focus_value_control(self, chat_id: str) -> FocusValueControl:
-        if chat_id not in self.focus_value_controls:
-            self.focus_value_controls[chat_id] = FocusValueControl(chat_id)
-        return self.focus_value_controls[chat_id]
-
-
-def get_current_focus_value(chat_id: Optional[str] = None) -> float:
+def get_config_base_focus_value(chat_id: Optional[str] = None) -> float:
     """
     根据当前时间和聊天流获取对应的 focus_value
     """
@@ -139,5 +120,3 @@ def get_global_focus_value() -> Optional[float]:
 
     return None
 
-
-focus_value_control = FocusValueControlManager()

@@ -35,21 +35,15 @@ class BotConfig(ConfigBase):
 class PersonalityConfig(ConfigBase):
     """人格配置类"""
 
-    personality_core: str
-    """核心人格"""
+    personality: str
+    """人格"""
 
-    personality_side: str
-    """人格侧写"""
-
-    identity: str = ""
-    """身份特征"""
+    emotion_style: str
+    """情感特征"""
 
     reply_style: str = ""
     """表达风格"""
     
-    plan_style: str = ""
-    """行为风格"""
-
     interest: str = ""
     """兴趣"""
 
@@ -59,9 +53,6 @@ class RelationshipConfig(ConfigBase):
 
     enable_relationship: bool = True
     """是否启用关系系统"""
-
-    relation_frequency: int = 1
-    """关系频率，麦麦构建关系的速度"""
 
 
 @dataclass
@@ -74,14 +65,14 @@ class ChatConfig(ConfigBase):
     interest_rate_mode: Literal["fast", "accurate"] = "fast"
     """兴趣值计算模式，fast为快速计算，accurate为精确计算"""
 
-    mentioned_bot_inevitable_reply: bool = False
-    """提及 bot 必然回复"""
+    mentioned_bot_reply: float = 1
+    """提及 bot 必然回复，1为100%回复，0为不额外增幅"""
     
     planner_size: float = 1.5
     """副规划器大小，越小，麦麦的动作执行能力越精细，但是消耗更多token，调大可以缓解429类错误"""
 
-    at_bot_inevitable_reply: bool = False
-    """@bot 必然回复"""
+    at_bot_inevitable_reply: float = 1
+    """@bot 必然回复，1为100%回复，0为不额外增幅"""
     
     talk_frequency: float = 0.5
     """回复频率阈值"""
@@ -336,14 +327,8 @@ class MemoryConfig(ConfigBase):
 
     enable_memory: bool = True
     """是否启用记忆系统"""
-    
-    memory_build_frequency: int = 1
-    """记忆构建频率（秒）"""
 
-    memory_compress_rate: float = 0.1
-    """记忆压缩率"""
-
-    forget_memory_interval: int = 1000
+    forget_memory_interval: int = 1500
     """记忆遗忘间隔（秒）"""
 
     memory_forget_time: int = 24
@@ -354,9 +339,6 @@ class MemoryConfig(ConfigBase):
 
     memory_ban_words: list[str] = field(default_factory=lambda: ["表情包", "图片", "回复", "聊天记录"])
     """不允许记忆的词列表"""
-
-    enable_instant_memory: bool = True
-    """是否启用即时记忆"""
 
 
 @dataclass

@@ -84,7 +84,7 @@ class Message(MessageBase):
             return await self._process_single_segment(segment)  # type: ignore
 
     @abstractmethod
-    async def _process_single_segment(self, segment):
+    async def _process_single_segment(self, segment) -> str:
         pass
 
 
@@ -108,6 +108,8 @@ class MessageRecv(Message):
         self.has_picid = False
         self.is_voice = False
         self.is_mentioned = None
+        self.is_at = False
+        self.reply_probability_boost = 0.0
         self.is_notify = False
 
         self.is_command = False
@@ -353,44 +355,44 @@ class MessageProcessBase(Message):
         self.thinking_time = round(time.time() - self.thinking_start_time, 2)
         return self.thinking_time
 
-    async def _process_single_segment(self, seg: Seg) -> str | None:
+    async def _process_single_segment(self, segment: Seg) -> str:
         """处理单个消息段
 
         Args:
-            seg: 要处理的消息段
+            segment: 要处理的消息段
 
         Returns:
             str: 处理后的文本
         """
         try:
-            if seg.type == "text":
-                return seg.data  # type: ignore
-            elif seg.type == "image":
+            if segment.type == "text":
+                return segment.data  # type: ignore
+            elif segment.type == "image":
                 # 如果是base64图片数据
-                if isinstance(seg.data, str):
-                    return await get_image_manager().get_image_description(seg.data)
+                if isinstance(segment.data, str):
+                    return await get_image_manager().get_image_description(segment.data)
                 return "[图片，网卡了加载不出来]"
-            elif seg.type == "emoji":
-                if isinstance(seg.data, str):
-                    return await get_image_manager().get_emoji_tag(seg.data)
+            elif segment.type == "emoji":
+                if isinstance(segment.data, str):
+                    return await get_image_manager().get_emoji_tag(segment.data)
                 return "[表情，网卡了加载不出来]"
-            elif seg.type == "voice":
-                if isinstance(seg.data, str):
-                    return await get_voice_text(seg.data)
+            elif segment.type == "voice":
+                if isinstance(segment.data, str):
+                    return await get_voice_text(segment.data)
                 return "[发了一段语音，网卡了加载不出来]"
-            elif seg.type == "at":
-                return f"[@{seg.data}]"
-            elif seg.type == "reply":
+            elif segment.type == "at":
+                return f"[@{segment.data}]"
+            elif segment.type == "reply":
                 if self.reply and hasattr(self.reply, "processed_plain_text"):
                     # print(f"self.reply.processed_plain_text: {self.reply.processed_plain_text}")
                     # print(f"reply: {self.reply}")
                     return f"[回复<{self.reply.message_info.user_info.user_nickname}:{self.reply.message_info.user_info.user_id}> 的消息：{self.reply.processed_plain_text}]"  # type: ignore
-                return None
+                return ""
             else:
-                return f"[{seg.type}:{str(seg.data)}]"
+                return f"[{segment.type}:{str(segment.data)}]"
         except Exception as e:
-            logger.error(f"处理消息段失败: {str(e)}, 类型: {seg.type}, 数据: {seg.data}")
-            return f"[处理失败的{seg.type}消息]"
+            logger.error(f"处理消息段失败: {str(e)}, 类型: {segment.type}, 数据: {segment.data}")
+            return f"[处理失败的{segment.type}消息]"
 
     def _generate_detailed_text(self) -> str:
         """生成详细文本，包含时间和用户信息"""

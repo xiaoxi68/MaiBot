@@ -99,6 +99,8 @@ async def _send_to_target(
         # 创建消息段
         message_segment = Seg(type=message_type, data=content)  # type: ignore
 
+        reply_to_platform_id = ""
+        anchor_message: Union["MessageRecv", None] = None
         if reply_message:
             anchor_message = message_dict_to_message_recv(reply_message.flatten())
             if anchor_message:
@@ -107,9 +109,6 @@ async def _send_to_target(
                 reply_to_platform_id = (
                     f"{anchor_message.message_info.platform}:{anchor_message.message_info.user_info.user_id}"
                 )
-        else:
-            reply_to_platform_id = ""
-            anchor_message = None
 
         # 构建发送消息对象
         bot_message = MessageSending(

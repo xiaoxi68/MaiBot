@@ -67,6 +67,8 @@ class DatabaseMessages(BaseDataModel):
         key_words: Optional[str] = None,
         key_words_lite: Optional[str] = None,
         is_mentioned: Optional[bool] = None,
+        is_at: Optional[bool] = None,
+        reply_probability_boost: Optional[float] = None,
         processed_plain_text: Optional[str] = None,
         display_message: Optional[str] = None,
         priority_mode: Optional[str] = None,
@@ -103,6 +105,9 @@ class DatabaseMessages(BaseDataModel):
         self.key_words = key_words
         self.key_words_lite = key_words_lite
         self.is_mentioned = is_mentioned
+
+        self.is_at = is_at
+        self.reply_probability_boost = reply_probability_boost
 
         self.processed_plain_text = processed_plain_text
         self.display_message = display_message
@@ -171,6 +176,8 @@ class DatabaseMessages(BaseDataModel):
             "key_words": self.key_words,
             "key_words_lite": self.key_words_lite,
             "is_mentioned": self.is_mentioned,
+            "is_at": self.is_at,
+            "reply_probability_boost": self.reply_probability_boost,
             "processed_plain_text": self.processed_plain_text,
             "display_message": self.display_message,
             "priority_mode": self.priority_mode,

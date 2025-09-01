@@ -203,18 +203,21 @@ def get_actions_by_timestamp_with_chat(
         query = query.order_by(ActionRecords.time.asc())
 
     actions = list(query)
-    return [DatabaseActionRecords(
-        action_id=action.action_id,
-        time=action.time,
-        action_name=action.action_name,
-        action_data=action.action_data,
-        action_done=action.action_done,
-        action_build_into_prompt=action.action_build_into_prompt,
-        action_prompt_display=action.action_prompt_display,
-        chat_id=action.chat_id,
-        chat_info_stream_id=action.chat_info_stream_id,
-        chat_info_platform=action.chat_info_platform,
-    ) for action in actions]
+    return [
+        DatabaseActionRecords(
+            action_id=action.action_id,
+            time=action.time,
+            action_name=action.action_name,
+            action_data=action.action_data,
+            action_done=action.action_done,
+            action_build_into_prompt=action.action_build_into_prompt,
+            action_prompt_display=action.action_prompt_display,
+            chat_id=action.chat_id,
+            chat_info_stream_id=action.chat_info_stream_id,
+            chat_info_platform=action.chat_info_platform,
+        )
+        for action in actions
+    ]
 
 
 def get_actions_by_timestamp_with_chat_inclusive(
@@ -474,7 +477,7 @@ def _build_readable_messages_internal(
 
             truncated_content = content
             if 0 < limit < original_len:
-                truncated_content = f"{content[:limit]}{replace_content}"
+                truncated_content = f"{content[:limit]}{replace_content}"  # pyright: ignore[reportPossiblyUnboundVariable]
 
             detailed_message.append((timestamp, name, truncated_content, is_action))
     else:
@@ -544,7 +547,7 @@ def build_pic_mapping_info(pic_id_mapping: Dict[str, str]) -> str:
     return "\n".join(mapping_lines)
 
 
-def build_readable_actions(actions: List[DatabaseActionRecords],mode:str="relative") -> str:
+def build_readable_actions(actions: List[DatabaseActionRecords], mode: str = "relative") -> str:
     """
     将动作列表转换为可读的文本格式。
     格式: 在（）分钟前，你使用了(action_name)，具体内容是：（action_prompt_display）
@@ -585,6 +588,8 @@ def build_readable_actions(actions: List[DatabaseActionRecords],mode:str="relati
             action_time_struct = time.localtime(action_time)
             time_str = time.strftime("%H:%M:%S", action_time_struct)
             time_ago_str = f"在{time_str}"
+        else:
+            raise ValueError(f"Unsupported mode: {mode}")
 
         line = f"{time_ago_str}，你使用了“{action_name}”，具体内容是：“{action_prompt_display}”"
         output_lines.append(line)

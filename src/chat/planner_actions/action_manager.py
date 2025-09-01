@@ -84,7 +84,7 @@ class ActionManager:
                 log_prefix=log_prefix,
                 shutting_down=shutting_down,
                 plugin_config=plugin_config,
-                action_message=action_message.flatten() if action_message else None,
+                action_message=action_message,
             )
 
             logger.debug(f"创建Action实例成功: {action_name}")
