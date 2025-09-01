@@ -178,7 +178,7 @@ class ChatAction:
         else:
             bot_nickname = ""
 
-        prompt_personality = global_config.personality.personality_core
+        prompt_personality = global_config.personality.personality
         indentify_block = f"你的名字是{bot_name}{bot_nickname}，你{prompt_personality}："
 
         try:
@@ -241,7 +241,7 @@ class ChatAction:
         else:
             bot_nickname = ""
 
-        prompt_personality = global_config.personality.personality_core
+        prompt_personality = global_config.personality.personality
         indentify_block = f"你的名字是{bot_name}{bot_nickname}，你{prompt_personality}："
         try:
             # 冷却池处理：过滤掉冷却中的动作

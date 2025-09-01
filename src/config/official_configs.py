@@ -35,21 +35,15 @@ class BotConfig(ConfigBase):
 class PersonalityConfig(ConfigBase):
     """人格配置类"""
 
-    personality_core: str
-    """核心人格"""
+    personality: str
+    """人格"""
 
-    personality_side: str
-    """人格侧写"""
-
-    identity: str = ""
-    """身份特征"""
+    emotion_style: str
+    """情感特征"""
 
     reply_style: str = ""
     """表达风格"""
     
-    plan_style: str = ""
-    """行为风格"""
-
     interest: str = ""
     """兴趣"""
 

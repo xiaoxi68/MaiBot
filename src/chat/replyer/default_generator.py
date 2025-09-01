@@ -673,7 +673,7 @@ class DefaultReplyer:
             bot_nickname = ""
 
         prompt_personality = (
-            f"{global_config.personality.personality_core};{global_config.personality.personality_side}"
+            f"{global_config.personality.personality};"
         )
         return f"你的名字是{bot_name}{bot_nickname}，你{prompt_personality}"
 
@@ -780,14 +780,14 @@ class DefaultReplyer:
         for name, result, duration in task_results:
             results_dict[name] = result
             chinese_name = task_name_mapping.get(name, name)
-            if duration < 0.01:
+            if duration < 0.1:
                 almost_zero_str += f"{chinese_name},"
                 continue
 
             timing_logs.append(f"{chinese_name}: {duration:.1f}s")
             if duration > 8:
                 logger.warning(f"回复生成前信息获取耗时过长: {chinese_name} 耗时: {duration:.1f}s，请使用更快的模型")
-        logger.info(f"回复准备: {'; '.join(timing_logs)}; {almost_zero_str} <0.01s")
+        logger.info(f"回复准备: {'; '.join(timing_logs)}; {almost_zero_str} <0.1s")
 
         expression_habits_block, selected_expressions = results_dict["expression_habits"]
         expression_habits_block: str

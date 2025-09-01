@@ -272,6 +272,9 @@ class FrequencyControl:
             # 限制调整范围
             target_talk_adjust = max(self.min_adjust, min(self.max_adjust, target_talk_adjust))
             
+            # 记录调整前的值
+            old_adjust = self.talk_frequency_adjust
+            
             # 平滑调整
             self.talk_frequency_adjust = (
                 self.talk_frequency_adjust * (1 - self.smoothing_factor) + 
@@ -288,12 +291,21 @@ class FrequencyControl:
                     adjust_direction = "不调整(该时段无活跃度)"
                 else:
                     adjust_direction = "保持"
+            
+            # 计算实际变化方向
+            actual_change = ""
+            if self.talk_frequency_adjust > old_adjust:
+                actual_change = f"(实际提高: {old_adjust:.2f}→{self.talk_frequency_adjust:.2f})"
+            elif self.talk_frequency_adjust < old_adjust:
+                actual_change = f"(实际降低: {old_adjust:.2f}→{self.talk_frequency_adjust:.2f})"
+            else:
+                actual_change = f"(无变化: {self.talk_frequency_adjust:.2f})"
                 
             logger.info(
                 f"{self.log_prefix} 发言频率调整: "
-                f"当前: {message_count}消息/{user_count}用户, 人均: {message_count/user_count if user_count > 0 else 0:.2f}消息/用户, "
-                f"基准: {current_hour_10min_messages:.2f}消息/{current_hour_10min_users:.2f}用户,人均：{current_hour_10min_messages/current_hour_10min_users if current_hour_10min_users > 0 else 0:.2f}消息/用户, "
-                f"调整: {adjust_direction} → {target_talk_adjust:.2f} → {self.talk_frequency_adjust:.2f}"
+                f"当前: {message_count}消息/{user_count}用户, 人均: {message_count/user_count if user_count > 0 else 0:.2f}消息|"
+                f"基准: {current_hour_10min_messages:.2f}消息/{current_hour_10min_users:.2f}用户,人均：{current_hour_10min_messages/current_hour_10min_users if current_hour_10min_users > 0 else 0:.2f}消息|"
+                f"目标调整: {adjust_direction}到{target_talk_adjust:.2f}, 实际结果: {self.talk_frequency_adjust:.2f} {actual_change}"
             )
             
         except Exception as e:
@@ -368,6 +380,9 @@ class FrequencyControl:
             # 限制调整范围
             target_focus_adjust = max(self.min_adjust, min(self.max_adjust, target_focus_adjust))
             
+            # 记录调整前的值
+            old_focus_adjust = self.focus_value_adjust
+            
             # 平滑调整
             self.focus_value_adjust = (
                 self.focus_value_adjust * (1 - self.smoothing_factor) + 
@@ -388,13 +403,22 @@ class FrequencyControl:
                     adjust_direction = "不调整(该时段无活跃度)"
                 else:
                     adjust_direction = "保持"
+            
+            # 计算实际变化方向
+            actual_change = ""
+            if self.focus_value_adjust > old_focus_adjust:
+                actual_change = f"(实际提高: {old_focus_adjust:.2f}→{self.focus_value_adjust:.2f})"
+            elif self.focus_value_adjust < old_focus_adjust:
+                actual_change = f"(实际降低: {old_focus_adjust:.2f}→{self.focus_value_adjust:.2f})"
+            else:
+                actual_change = f"(无变化: {self.focus_value_adjust:.2f})"
                 
             logger.info(
                 f"{self.log_prefix} 专注度调整(10分钟): "
-                f"当前: {message_count}消息/{user_count}用户,人均：{message_count/user_count if user_count > 0 else 0:.2f}消息/用户, "
-                f"基准: {current_hour_10min_messages:.2f}消息/{current_hour_10min_users:.2f}用户,人均：{current_hour_10min_messages/current_hour_10min_users if current_hour_10min_users > 0 else 0:.2f}消息/用户, "
+                f"当前: {message_count}消息/{user_count}用户,人均：{message_count/user_count if user_count > 0 else 0:.2f}消息|"
+                f"基准: {current_hour_10min_messages:.2f}消息/{current_hour_10min_users:.2f}用户,人均：{current_hour_10min_messages/current_hour_10min_users if current_hour_10min_users > 0 else 0:.2f}消息|"
                 f"比率: 用户{user_count/current_hour_10min_users if current_hour_10min_users > 0 else 0:.2f}x, 消息{message_count/current_hour_10min_messages if current_hour_10min_messages > 0 else 0:.2f}x, "
-                f"调整: {adjust_direction} → {target_focus_adjust:.2f} → {self.focus_value_adjust:.2f}"
+                f"目标调整: {adjust_direction}到{target_focus_adjust:.2f}, 实际结果: {self.focus_value_adjust:.2f} {actual_change}"
             )
             
         except Exception as e:
