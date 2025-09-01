@@ -175,8 +175,8 @@ class HeartFChatting:
 
         logger.info(
             f"{self.log_prefix} 第{self._current_cycle_detail.cycle_id}次思考,"
-            f"耗时: {self._current_cycle_detail.end_time - self._current_cycle_detail.start_time:.1f}秒, "  # type: ignore
-            f"选择动作: {action_type}" + (f"\n详情: {'; '.join(timer_strings)}" if timer_strings else "")
+            f"耗时: {self._current_cycle_detail.end_time - self._current_cycle_detail.start_time:.1f}秒"  # type: ignore
+            + (f"\n详情: {'; '.join(timer_strings)}" if timer_strings else "")
         )
     
     async def caculate_interest_value(self, recent_messages_list: List["DatabaseMessages"]) -> float:
@@ -295,6 +295,7 @@ class HeartFChatting:
         
         if random.random() < normal_mode_probability:
             interest_triggerd = True
+
             logger.info(
                 f"{self.log_prefix} 有新消息，在{normal_mode_probability * 100:.0f}%概率下选择回复"
             )

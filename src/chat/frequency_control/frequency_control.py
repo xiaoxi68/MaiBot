@@ -295,17 +295,17 @@ class FrequencyControl:
             # 计算实际变化方向
             actual_change = ""
             if self.talk_frequency_adjust > old_adjust:
-                actual_change = f"(实际提高: {old_adjust:.2f}→{self.talk_frequency_adjust:.2f})"
+                actual_change = f"{old_adjust:.2f}x → {self.talk_frequency_adjust:.2f}x"
             elif self.talk_frequency_adjust < old_adjust:
-                actual_change = f"(实际降低: {old_adjust:.2f}→{self.talk_frequency_adjust:.2f})"
+                actual_change = f"{old_adjust:.2f}x → {self.talk_frequency_adjust:.2f}x"
             else:
-                actual_change = f"(无变化: {self.talk_frequency_adjust:.2f})"
+                actual_change = f"无变化: {self.talk_frequency_adjust:.2f}x"
                 
             logger.info(
                 f"{self.log_prefix} 发言频率调整: "
-                f"当前: {message_count}消息/{user_count}用户, 人均: {message_count/user_count if user_count > 0 else 0:.2f}消息|"
-                f"基准: {current_hour_10min_messages:.2f}消息/{current_hour_10min_users:.2f}用户,人均：{current_hour_10min_messages/current_hour_10min_users if current_hour_10min_users > 0 else 0:.2f}消息|"
-                f"目标调整: {adjust_direction}到{target_talk_adjust:.2f}, 实际结果: {self.talk_frequency_adjust:.2f} {actual_change}"
+                f"{user_count}名用户正在参与聊天，当前消息数: {message_count}|"
+                f"群基准: {current_hour_10min_messages:.2f}消息/{current_hour_10min_users:.2f}用户|"
+                f"[{adjust_direction}]{actual_change}"
             )
             
         except Exception as e:
@@ -407,18 +407,17 @@ class FrequencyControl:
             # 计算实际变化方向
             actual_change = ""
             if self.focus_value_adjust > old_focus_adjust:
-                actual_change = f"(实际提高: {old_focus_adjust:.2f}→{self.focus_value_adjust:.2f})"
+                actual_change = f"{old_focus_adjust:.2f}x → {self.focus_value_adjust:.2f}x"
             elif self.focus_value_adjust < old_focus_adjust:
-                actual_change = f"(实际降低: {old_focus_adjust:.2f}→{self.focus_value_adjust:.2f})"
+                actual_change = f"{old_focus_adjust:.2f}x → {self.focus_value_adjust:.2f}x"
             else:
-                actual_change = f"(无变化: {self.focus_value_adjust:.2f})"
+                actual_change = f"无变化: {self.focus_value_adjust:.2f}x"
                 
             logger.info(
-                f"{self.log_prefix} 专注度调整(10分钟): "
-                f"当前: {message_count}消息/{user_count}用户,人均：{message_count/user_count if user_count > 0 else 0:.2f}消息|"
-                f"基准: {current_hour_10min_messages:.2f}消息/{current_hour_10min_users:.2f}用户,人均：{current_hour_10min_messages/current_hour_10min_users if current_hour_10min_users > 0 else 0:.2f}消息|"
-                f"比率: 用户{user_count/current_hour_10min_users if current_hour_10min_users > 0 else 0:.2f}x, 消息{message_count/current_hour_10min_messages if current_hour_10min_messages > 0 else 0:.2f}x, "
-                f"目标调整: {adjust_direction}到{target_focus_adjust:.2f}, 实际结果: {self.focus_value_adjust:.2f} {actual_change}"
+                f"{self.log_prefix} 专注度调整: "
+                f"{user_count}名用户正在参与聊天，当前消息数: {message_count}|"
+                f"群基准: {current_hour_10min_messages:.2f}消息/{current_hour_10min_users:.2f}用户|"
+                f"[{adjust_direction}]{actual_change}"
             )
             
         except Exception as e:
