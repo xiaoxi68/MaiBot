@@ -374,8 +374,6 @@ class DefaultReplyer:
         running_memories = await self.memory_activator.activate_memory_with_chat_history(
             target_message=target, chat_history=chat_history
         )
-        running_memories = None
-
         if not running_memories:
             return ""
 
@@ -680,7 +678,7 @@ class DefaultReplyer:
 
     async def build_prompt_reply_context(
         self,
-        reply_message: DatabaseMessages,
+        reply_message: Optional[DatabaseMessages] = None,
         extra_info: str = "",
         reply_reason: str = "",
         available_actions: Optional[Dict[str, ActionInfo]] = None,
