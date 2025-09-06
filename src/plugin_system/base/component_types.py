@@ -1,4 +1,5 @@
 import copy
+import warnings
 from enum import Enum
 from typing import Dict, Any, List, Optional, Tuple
 from dataclasses import dataclass, field
@@ -6,6 +7,7 @@ from maim_message import Seg
 
 from src.llm_models.payload_content.tool_option import ToolParamType as ToolParamType
 from src.llm_models.payload_content.tool_option import ToolCall as ToolCall
+
 
 # 组件类型枚举
 class ComponentType(Enum):
@@ -56,6 +58,7 @@ class EventType(Enum):
 
     ON_START = "on_start"  # 启动事件，用于调用按时任务
     ON_STOP = "on_stop"  # 停止事件，用于调用按时任务
+    ON_MESSAGE_PRE_PROCESS = "on_message_pre_process"
     ON_MESSAGE = "on_message"
     ON_PLAN = "on_plan"
     POST_LLM = "post_llm"
@@ -116,9 +119,9 @@ class ActionInfo(ComponentInfo):
     action_require: List[str] = field(default_factory=list)  # 动作需求说明
     associated_types: List[str] = field(default_factory=list)  # 关联的消息类型
     # 激活类型相关
-    focus_activation_type: ActionActivationType = ActionActivationType.ALWAYS #已弃用
-    normal_activation_type: ActionActivationType = ActionActivationType.ALWAYS #已弃用
-    activation_type: ActionActivationType = ActionActivationType.ALWAYS 
+    focus_activation_type: ActionActivationType = ActionActivationType.ALWAYS  # 已弃用
+    normal_activation_type: ActionActivationType = ActionActivationType.ALWAYS  # 已弃用
+    activation_type: ActionActivationType = ActionActivationType.ALWAYS
     random_activation_probability: float = 0.0
     llm_judge_prompt: str = ""
     activation_keywords: List[str] = field(default_factory=list)  # 激活关键词列表
@@ -154,7 +157,9 @@ class CommandInfo(ComponentInfo):
 class ToolInfo(ComponentInfo):
     """工具组件信息"""
 
-    tool_parameters: List[Tuple[str, ToolParamType, str, bool, List[str] | None]] = field(default_factory=list)  # 工具参数定义
+    tool_parameters: List[Tuple[str, ToolParamType, str, bool, List[str] | None]] = field(
+        default_factory=list
+    )  # 工具参数定义
     tool_description: str = ""  # 工具描述
 
     def __post_init__(self):
@@ -234,6 +239,15 @@ class PluginInfo:
 
 
 @dataclass
+class ModifyFlag:
+    modify_message_segments: bool = False
+    modify_plain_text: bool = False
+    modify_llm_prompt: bool = False
+    modify_llm_response_content: bool = False
+    modify_llm_response_reasoning: bool = False
+
+
+@dataclass
 class MaiMessages:
     """MaiM插件消息"""
 
@@ -263,28 +277,126 @@ class MaiMessages:
 
     llm_response_content: Optional[str] = None
     """LLM响应内容"""
-    
+
     llm_response_reasoning: Optional[str] = None
     """LLM响应推理内容"""
-    
+
     llm_response_model: Optional[str] = None
     """LLM响应模型名称"""
-    
+
     llm_response_tool_call: Optional[List[ToolCall]] = None
     """LLM使用的工具调用"""
-    
+
     action_usage: Optional[List[str]] = None
     """使用的Action"""
 
     additional_data: Dict[Any, Any] = field(default_factory=dict)
     """附加数据，可以存储额外信息"""
 
+    _modify_flags: ModifyFlag = field(default_factory=ModifyFlag)
+
     def __post_init__(self):
         if self.message_segments is None:
             self.message_segments = []
-    
+
     def deepcopy(self):
         return copy.deepcopy(self)
+
+    def modify_message_segments(self, new_segments: List[Seg], suppress_warning: bool = False):
+        """
+        修改消息段列表
+
+        Warning:
+            在生成了plain_text的情况下调用此方法，可能会导致plain_text内容与消息段不一致
+
+        Args:
+            new_segments (List[Seg]): 新的消息段列表
+        """
+        if self.plain_text and not suppress_warning:
+            warnings.warn(
+                "修改消息段后，plain_text可能与消息段内容不一致，建议同时更新plain_text",
+                UserWarning,
+                stacklevel=2,
+            )
+        self.message_segments = new_segments
+        self._modify_flags.modify_message_segments = True
+
+    def modify_llm_prompt(self, new_prompt: str, suppress_warning: bool = False):
+        """
+        修改LLM提示词
+
+        Warning:
+            在没有生成llm_prompt的情况下调用此方法，可能会导致修改无效
+
+        Args:
+            new_prompt (str): 新的提示词内容
+        """
+        if self.llm_prompt is None and not suppress_warning:
+            warnings.warn(
+                "当前llm_prompt为空，此时调用方法可能导致修改无效",
+                UserWarning,
+                stacklevel=2,
+            )
+        self.llm_prompt = new_prompt
+        self._modify_flags.modify_llm_prompt = True
+
+    def modify_plain_text(self, new_text: str, suppress_warning: bool = False):
+        """
+        修改生成的plain_text内容
+
+        Warning:
+            在未生成plain_text的情况下调用此方法，可能会导致plain_text为空或者修改无效
+
+        Args:
+            new_text (str): 新的纯文本内容
+        """
+        if not self.plain_text and not suppress_warning:
+            warnings.warn(
+                "当前plain_text为空，此时调用方法可能导致修改无效",
+                UserWarning,
+                stacklevel=2,
+            )
+        self.plain_text = new_text
+        self._modify_flags.modify_plain_text = True
+
+    def modify_llm_response_content(self, new_content: str, suppress_warning: bool = False):
+        """
+        修改生成的llm_response_content内容
+
+        Warning:
+            在未生成llm_response_content的情况下调用此方法，可能会导致llm_response_content为空或者修改无效
+
+        Args:
+            new_content (str): 新的LLM响应内容
+        """
+        if not self.llm_response_content and not suppress_warning:
+            warnings.warn(
+                "当前llm_response_content为空，此时调用方法可能导致修改无效",
+                UserWarning,
+                stacklevel=2,
+            )
+        self.llm_response_content = new_content
+        self._modify_flags.modify_llm_response_content = True
+
+    def modify_llm_response_reasoning(self, new_reasoning: str, suppress_warning: bool = False):
+        """
+        修改生成的llm_response_reasoning内容
+
+        Warning:
+            在未生成llm_response_reasoning的情况下调用此方法，可能会导致llm_response_reasoning为空或者修改无效
+
+        Args:
+            new_reasoning (str): 新的LLM响应推理内容
+        """
+        if not self.llm_response_reasoning and not suppress_warning:
+            warnings.warn(
+                "当前llm_response_reasoning为空，此时调用方法可能导致修改无效",
+                UserWarning,
+                stacklevel=2,
+            )
+        self.llm_response_reasoning = new_reasoning
+        self._modify_flags.modify_llm_response_reasoning = True
+
 
 @dataclass
 class CustomEventHandlerResult:

@@ -3,7 +3,7 @@ import os
 import re
 
 from typing import Dict, Any, Optional
-from maim_message import UserInfo
+from maim_message import UserInfo, Seg
 
 from src.common.logger import get_logger
 from src.config.config import global_config
@@ -169,8 +169,12 @@ class ChatBot:
 
         # 处理消息内容
         await message.process()
-        
-        _ = Person.register_person(platform=message.message_info.platform, user_id=message.message_info.user_info.user_id,nickname=user_info.user_nickname) # type: ignore
+
+        _ = Person.register_person(
+            platform=message.message_info.platform,
+            user_id=message.message_info.user_info.user_id,
+            nickname=user_info.user_nickname,
+        )  # type: ignore
 
         await self.s4u_message_processor.process_message(message)
 
@@ -220,9 +224,17 @@ class ChatBot:
             user_info = message.message_info.user_info
             if message.message_info.additional_config:
                 sent_message = message.message_info.additional_config.get("echo", False)
-                if sent_message:  # 这一段只是为了在一切处理前劫持上报的自身消息，用于更新message_id，需要ada支持上报事件，实际测试中不会对正常使用造成任何问题
+                if sent_message:  # 处理上报的自身消息，更新message_id，需要ada支持上报事件
                     await MessageStorage.update_message(message)
                     return
+
+            continue_flag, modified_message = await events_manager.handle_mai_events(
+                EventType.ON_MESSAGE_PRE_PROCESS, message
+            )
+            if not continue_flag:
+                return
+            if modified_message and modified_message._modify_flags.modify_message_segments:
+                message.message_segment = Seg(type="seglist", data=modified_message.message_segments)
 
             get_chat_manager().register_message(message)
 
@@ -258,8 +270,11 @@ class ChatBot:
                 logger.info(f"命令处理完成，跳过后续消息处理: {cmd_result}")
                 return
 
-            if not await events_manager.handle_mai_events(EventType.ON_MESSAGE, message):
+            continue_flag, modified_message = await events_manager.handle_mai_events(EventType.ON_MESSAGE, message)
+            if not continue_flag:
                 return
+            if modified_message and modified_message._modify_flags.modify_plain_text:
+                message.processed_plain_text = modified_message.plain_text
 
             # 确认从接口发来的message是否有自定义的prompt模板信息
             if message.message_info.template_info and not message.message_info.template_info.template_default:

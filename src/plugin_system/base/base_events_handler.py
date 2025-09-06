@@ -37,19 +37,19 @@ class BaseEventHandler(ABC):
     @abstractmethod
     async def execute(
         self, message: MaiMessages | None
-    ) -> Tuple[bool, bool, Optional[str], Optional[CustomEventHandlerResult]]:
+    ) -> Tuple[bool, bool, Optional[str], Optional[CustomEventHandlerResult], Optional[MaiMessages]]:
         """执行事件处理的抽象方法，子类必须实现
         Args:
             message (MaiMessages | None): 事件消息对象，当你注册的事件为ON_START和ON_STOP时message为None
         Returns:
-            Tuple[bool, bool, Optional[str], Optional[CustomEventHandlerResult]]: (是否执行成功, 是否需要继续处理, 可选的返回消息, 可选的自定义结果)
+            Tuple[bool, bool, Optional[str], Optional[CustomEventHandlerResult], Optional[MaiMessages]]: (是否执行成功, 是否需要继续处理, 可选的返回消息, 可选的自定义结果，可选的修改后消息)
         """
         raise NotImplementedError("子类必须实现 execute 方法")
 
     @classmethod
     def get_handler_info(cls) -> "EventHandlerInfo":
         """获取事件处理器的信息"""
-        # 从类属性读取名称，如果没有定义则使用类名自动生成
+        # 从类属性读取名称，如果没有定义则使用类名自动生成S
         name: str = getattr(cls, "handler_name", cls.__name__.lower().replace("handler", ""))
         if "." in name:
             logger.error(f"事件处理器名称 '{name}' 包含非法字符 '.'，请使用下划线替代")

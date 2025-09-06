@@ -7,7 +7,7 @@ import re
 import jieba
 import networkx as nx
 import numpy as np
-from typing import List, Tuple, Set, Coroutine, Any, Dict
+from typing import List, Tuple, Set, Coroutine, Any
 from collections import Counter
 import traceback
 
@@ -21,7 +21,6 @@ from src.common.logger import get_logger
 from src.chat.utils.utils import cut_key_words
 from src.chat.utils.chat_message_builder import (
     build_readable_messages,
-    get_raw_msg_by_timestamp_with_chat_inclusive,
 )  # 导入 build_readable_messages
 
 
@@ -1183,9 +1182,7 @@ class ParahippocampalGyrus:
         # 规范化输入为列表[str]
         if isinstance(keywords, str):
             # 支持中英文逗号、顿号、空格分隔
-            parts = (
-                keywords.replace("，", ",").replace("、", ",").replace(" ", ",").strip(", ")
-            )
+            parts = keywords.replace("，", ",").replace("、", ",").replace(" ", ",").strip(", ")
             keyword_list = [p.strip() for p in parts.split(",") if p.strip()]
         else:
             keyword_list = [k.strip() for k in keywords if isinstance(k, str) and k.strip()]

@@ -5,7 +5,6 @@ import math
 import random
 from typing import List, Optional, Dict, Any, Tuple, TYPE_CHECKING
 from rich.traceback import install
-from collections import deque
 
 from src.config.config import global_config
 from src.common.logger import get_logger
@@ -101,7 +100,6 @@ class HeartFChatting:
 
         self.last_read_time = time.time() - 10
 
-
     async def start(self):
         """检查是否需要启动主循环，如果未激活则启动。"""
 
@@ -178,7 +176,7 @@ class HeartFChatting:
             f"耗时: {self._current_cycle_detail.end_time - self._current_cycle_detail.start_time:.1f}秒"  # type: ignore
             + (f"\n详情: {'; '.join(timer_strings)}" if timer_strings else "")
         )
-    
+
     async def caculate_interest_value(self, recent_messages_list: List["DatabaseMessages"]) -> float:
         total_interest = 0.0
         for msg in recent_messages_list:
@@ -197,10 +195,13 @@ class HeartFChatting:
             filter_mai=True,
             filter_command=True,
         )
-        
+
         if recent_messages_list:
             self.last_read_time = time.time()
-            await self._observe(interest_value=await self.caculate_interest_value(recent_messages_list),recent_messages_list=recent_messages_list)
+            await self._observe(
+                interest_value=await self.caculate_interest_value(recent_messages_list),
+                recent_messages_list=recent_messages_list,
+            )
         else:
             # Normal模式：消息数量不足，等待
             await asyncio.sleep(0.2)
@@ -257,7 +258,7 @@ class HeartFChatting:
 
         return loop_info, reply_text, cycle_timers
 
-    async def _observe(self, interest_value: float = 0.0,recent_messages_list: List["DatabaseMessages"] = []) -> bool:
+    async def _observe(self, interest_value: float = 0.0, recent_messages_list: List["DatabaseMessages"] = []) -> bool:
         reply_text = ""  # 初始化reply_text变量，避免UnboundLocalError
 
         # 使用sigmoid函数将interest_value转换为概率
@@ -274,12 +275,10 @@ class HeartFChatting:
             return 1.0 / (1.0 + math.exp(-k * (interest_val - x0)))
 
         normal_mode_probability = (
-            calculate_normal_mode_probability(interest_value)
-            * 2
-            * self.frequency_control.get_final_talk_frequency()
+            calculate_normal_mode_probability(interest_value) * 2 * self.frequency_control.get_final_talk_frequency()
         )
-        
-        #对呼唤名字进行增幅
+
+        # 对呼唤名字进行增幅
         for msg in recent_messages_list:
             if msg.reply_probability_boost is not None and msg.reply_probability_boost > 0.0:
                 normal_mode_probability += msg.reply_probability_boost
@@ -287,18 +286,15 @@ class HeartFChatting:
                 normal_mode_probability += global_config.chat.mentioned_bot_reply
             if global_config.chat.at_bot_inevitable_reply and msg.is_at:
                 normal_mode_probability += global_config.chat.at_bot_inevitable_reply
-        
 
         # 根据概率决定使用直接回复
         interest_triggerd = False
         focus_triggerd = False
-        
+
         if random.random() < normal_mode_probability:
             interest_triggerd = True
 
-            logger.info(
-                f"{self.log_prefix} 有新消息，在{normal_mode_probability * 100:.0f}%概率下选择回复"
-            )
+            logger.info(f"{self.log_prefix} 有新消息，在{normal_mode_probability * 100:.0f}%概率下选择回复")
 
         if s4u_config.enable_s4u:
             await send_typing()
@@ -307,21 +303,20 @@ class HeartFChatting:
             await self.expression_learner.trigger_learning_for_chat()
 
             available_actions: Dict[str, ActionInfo] = {}
-            
-            #如果兴趣度不足以激活
-            if not interest_triggerd:
-            #看看专注值够不够
-                if random.random() < self.frequency_control.get_final_focus_value():
-                    #专注值足够，仍然进入正式思考
-                    focus_triggerd = True                 #都没触发，路边
 
-            
+            # 如果兴趣度不足以激活
+            if not interest_triggerd:
+                # 看看专注值够不够
+                if random.random() < self.frequency_control.get_final_focus_value():
+                    # 专注值足够，仍然进入正式思考
+                    focus_triggerd = True  # 都没触发，路边
+
             # 任意一种触发都行
             if interest_triggerd or focus_triggerd:
                 # 进入正式思考模式
                 cycle_timers, thinking_id = self.start_cycle()
                 logger.info(f"{self.log_prefix} 开始第{self._cycle_counter}次思考")
-                
+
                 # 第一步：动作检查
                 try:
                     await self.action_modifier.modify_actions()
@@ -353,17 +348,20 @@ class HeartFChatting:
                     # actions_before_now_block=actions_before_now_block,
                     message_id_list=message_id_list,
                 )
-                if not await events_manager.handle_mai_events(
+                continue_flag, modified_message = await events_manager.handle_mai_events(
                     EventType.ON_PLAN, None, prompt_info[0], None, self.chat_stream.stream_id
-                ):
+                )
+                if not continue_flag:
                     return False
+                if modified_message and modified_message._modify_flags.modify_llm_prompt:
+                    prompt_info = (modified_message.llm_prompt, prompt_info[1])
                 with Timer("规划器", cycle_timers):
                     # 根据不同触发，进入不同plan
                     if focus_triggerd:
                         mode = ChatMode.FOCUS
                     else:
                         mode = ChatMode.NORMAL
-                        
+
                     action_to_use_info, _ = await self.action_planner.plan(
                         mode=mode,
                         loop_start_time=self.last_read_time,
@@ -432,8 +430,7 @@ class HeartFChatting:
                         },
                     }
                     reply_text = action_reply_text
-                    
-                
+
                 self.end_cycle(loop_info, cycle_timers)
                 self.print_cycle_info(cycle_timers)
 

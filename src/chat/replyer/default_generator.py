@@ -202,10 +202,14 @@ class DefaultReplyer:
             from src.plugin_system.core.events_manager import events_manager
 
             if not from_plugin:
-                if not await events_manager.handle_mai_events(
+                continue_flag, modified_message = await events_manager.handle_mai_events(
                     EventType.POST_LLM, None, prompt, None, stream_id=stream_id
-                ):
+                )
+                if not continue_flag:
                     raise UserWarning("插件于请求前中断了内容生成")
+                if modified_message and modified_message._modify_flags.modify_llm_prompt:
+                    llm_response.prompt = modified_message.llm_prompt
+                    prompt = str(modified_message.llm_prompt)
 
             # 4. 调用 LLM 生成回复
             content = None
@@ -219,10 +223,19 @@ class DefaultReplyer:
                 llm_response.reasoning = reasoning_content
                 llm_response.model = model_name
                 llm_response.tool_calls = tool_call
-                if not from_plugin and not await events_manager.handle_mai_events(
+                continue_flag, modified_message = await events_manager.handle_mai_events(
                     EventType.AFTER_LLM, None, prompt, llm_response, stream_id=stream_id
-                ):
+                )
+                if not from_plugin and not continue_flag:
                     raise UserWarning("插件于请求后取消了内容生成")
+                if modified_message:
+                    if modified_message._modify_flags.modify_llm_prompt:
+                        logger.warning("警告：插件在内容生成后才修改了prompt，此修改不会生效")
+                        llm_response.prompt = modified_message.llm_prompt  # 虽然我不知道为什么在这里需要改prompt
+                    if modified_message._modify_flags.modify_llm_response_content:
+                        llm_response.content = modified_message.llm_response_content
+                    if modified_message._modify_flags.modify_llm_response_reasoning:
+                        llm_response.reasoning = modified_message.llm_response_reasoning
             except UserWarning as e:
                 raise e
             except Exception as llm_e:
@@ -634,7 +647,7 @@ class DefaultReplyer:
         """构建动作提示"""
 
         action_descriptions = ""
-        skip_names = ["emoji","build_memory","build_relation","reply"]
+        skip_names = ["emoji", "build_memory", "build_relation", "reply"]
         if available_actions:
             action_descriptions = "除了进行回复之外，你可以做以下这些动作，不过这些动作由另一个模型决定，：\n"
             for action_name, action_info in available_actions.items():
@@ -671,9 +684,7 @@ class DefaultReplyer:
         else:
             bot_nickname = ""
 
-        prompt_personality = (
-            f"{global_config.personality.personality};"
-        )
+        prompt_personality = f"{global_config.personality.personality};"
         return f"你的名字是{bot_name}{bot_nickname}，你{prompt_personality}"
 
     async def build_prompt_reply_context(
@@ -808,11 +819,6 @@ class DefaultReplyer:
         time_block = f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
 
         moderation_prompt_block = "请不要输出违法违规内容，不要输出色情，暴力，政治相关内容，如有敏感内容，请规避。"
-
-
-
-        
-
 
         if sender:
             if is_group_chat:
@@ -1016,7 +1022,7 @@ class DefaultReplyer:
             logger.info(f"使用模型集生成回复: {', '.join(map(str, self.express_model.model_for_task.model_list))}")
 
             logger.info(f"\n{prompt}\n")
-            
+
             if global_config.debug.show_prompt:
                 logger.info(f"\n{prompt}\n")
             else:
