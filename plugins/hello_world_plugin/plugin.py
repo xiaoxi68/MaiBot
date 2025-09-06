@@ -136,12 +136,12 @@ class PrintMessage(BaseEventHandler):
     handler_name = "print_message_handler"
     handler_description = "打印接收到的消息"
 
-    async def execute(self, message: MaiMessages | None) -> Tuple[bool, bool, str | None, None]:
+    async def execute(self, message: MaiMessages | None) -> Tuple[bool, bool, str | None, None, None]:
         """执行打印消息事件处理"""
         # 打印接收到的消息
         if self.get_config("print_message.enabled", False):
             print(f"接收到消息: {message.raw_message if message else '无效消息'}")
-        return True, True, "消息已打印", None
+        return True, True, "消息已打印", None, None
 
 
 # ===== 插件注册 =====
