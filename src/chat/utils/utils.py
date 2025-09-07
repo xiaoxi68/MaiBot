@@ -339,7 +339,7 @@ def process_llm_response(text: str, enable_splitter: bool = True, enable_chinese
     else:
         split_sentences = [cleaned_text]
 
-    sentences = []
+    sentences: List[str] = []
     for sentence in split_sentences:
         if global_config.chinese_typo.enable and enable_chinese_typo:
             typoed_text, typo_corrections = typo_generator.create_typo_sentence(sentence)

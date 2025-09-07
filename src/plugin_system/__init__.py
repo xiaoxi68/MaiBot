@@ -26,6 +26,7 @@ from .base import (
     MaiMessages,
     ToolParamType,
     CustomEventHandlerResult,
+    ReplyContentType,
 )
 
 # 导入工具模块
@@ -100,6 +101,7 @@ __all__ = [
     "EventHandlerInfo",
     "EventType",
     "ToolParamType",
+    "ReplyContentType",
     # 消息
     "MaiMessages",
     "CustomEventHandlerResult",

@@ -8,6 +8,6 @@
 - [x] 随时注册
 - [ ] <del>删除event</del>
     - [ ] 必要性？
-- [ ] 能够更改prompt
-- [ ] 能够更改llm_response
-- [ ] 能够更改message
+- [x] 能够更改prompt
+- [x] 能够更改llm_response
+- [x] 能够更改message

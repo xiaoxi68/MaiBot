@@ -24,6 +24,7 @@ from .component_types import (
     MaiMessages,
     ToolParamType,
     CustomEventHandlerResult,
+    ReplyContentType,
 )
 from .config_types import ConfigField
 
@@ -48,4 +49,5 @@ __all__ = [
     "MaiMessages",
     "ToolParamType",
     "CustomEventHandlerResult",
+    "ReplyContentType",
 ]

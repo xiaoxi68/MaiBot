@@ -7,6 +7,7 @@ from maim_message import Seg
 
 from src.llm_models.payload_content.tool_option import ToolParamType as ToolParamType
 from src.llm_models.payload_content.tool_option import ToolCall as ToolCall
+from src.common.data_models.message_data_model import ReplyContentType as ReplyContentType
 
 
 # 组件类型枚举
