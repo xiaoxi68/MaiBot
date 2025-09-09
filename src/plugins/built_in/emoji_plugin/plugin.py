@@ -63,5 +63,4 @@ class CoreActionsPlugin(BasePlugin):
         if self.get_config("components.enable_emoji", True):
             components.append((EmojiAction.get_action_info(), EmojiAction))
 
-
         return components

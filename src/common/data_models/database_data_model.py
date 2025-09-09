@@ -205,6 +205,7 @@ class DatabaseMessages(BaseDataModel):
             "chat_info_user_cardname": self.chat_info.user_info.user_cardname,
         }
 
+
 @dataclass(init=False)
 class DatabaseActionRecords(BaseDataModel):
     def __init__(

@@ -74,7 +74,9 @@ class BuildMemoryAction(BaseAction):
 
     # 动作基本信息
     action_name = "build_memory"
-    action_description = "了解对于某个概念或者某件事的记忆，并存储下来，在之后的聊天中，你可以根据这条记忆来获取相关信息"
+    action_description = (
+        "了解对于某个概念或者某件事的记忆，并存储下来，在之后的聊天中，你可以根据这条记忆来获取相关信息"
+    )
 
     # 动作参数定义
     action_parameters = {
@@ -103,31 +105,34 @@ class BuildMemoryAction(BaseAction):
             concept_name = self.action_data.get("concept_name", "")
             # 2. 获取目标用户信息
 
-
-
             # 对 concept_name 进行jieba分词
             concept_name_tokens = cut_key_words(concept_name)
             # logger.info(f"{self.log_prefix} 对 concept_name 进行分词结果: {concept_name_tokens}")
-            
+
             filtered_concept_name_tokens = [
-                token for token in concept_name_tokens if all(keyword not in token for keyword in global_config.memory.memory_ban_words)
+                token
+                for token in concept_name_tokens
+                if all(keyword not in token for keyword in global_config.memory.memory_ban_words)
             ]
-            
+
             if not filtered_concept_name_tokens:
                 logger.warning(f"{self.log_prefix} 过滤后的概念名称列表为空，跳过添加记忆")
                 return False, "过滤后的概念名称列表为空，跳过添加记忆"
-            
-            similar_topics_dict = hippocampus_manager.get_hippocampus().parahippocampal_gyrus.get_similar_topics_from_keywords(filtered_concept_name_tokens)
-            await hippocampus_manager.get_hippocampus().parahippocampal_gyrus.add_memory_with_similar(concept_description, similar_topics_dict)
-            
-            
-            
+
+            similar_topics_dict = (
+                hippocampus_manager.get_hippocampus().parahippocampal_gyrus.get_similar_topics_from_keywords(
+                    filtered_concept_name_tokens
+                )
+            )
+            await hippocampus_manager.get_hippocampus().parahippocampal_gyrus.add_memory_with_similar(
+                concept_description, similar_topics_dict
+            )
+
             return True, f"成功添加记忆: {concept_name}"
-            
+
         except Exception as e:
             logger.error(f"{self.log_prefix} 构建记忆时出错: {e}")
             return False, f"构建记忆时出错: {e}"
-        
 
 
 # 还缺一个关系的太多遗忘和对应的提取

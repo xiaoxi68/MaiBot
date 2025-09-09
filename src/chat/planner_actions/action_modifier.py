@@ -103,25 +103,23 @@ class ActionModifier:
             self.action_manager.remove_action_from_using(action_name)
             logger.debug(f"{self.log_prefix}阶段二移除动作: {action_name}，原因: {reason}")
 
-
-
         # === 第三阶段：激活类型判定 ===
         # if chat_content is not None:
-            # logger.debug(f"{self.log_prefix}开始激活类型判定阶段")
+        # logger.debug(f"{self.log_prefix}开始激活类型判定阶段")
 
-            # 获取当前使用的动作集（经过第一阶段处理）
-            # current_using_actions = self.action_manager.get_using_actions()
+        # 获取当前使用的动作集（经过第一阶段处理）
+        # current_using_actions = self.action_manager.get_using_actions()
 
-            # 获取因激活类型判定而需要移除的动作
-            # removals_s3 = await self._get_deactivated_actions_by_type(
-                # current_using_actions,
-                # chat_content,
-            # )
+        # 获取因激活类型判定而需要移除的动作
+        # removals_s3 = await self._get_deactivated_actions_by_type(
+        # current_using_actions,
+        # chat_content,
+        # )
 
-            # 应用第三阶段的移除
-            # for action_name, reason in removals_s3:
-                # self.action_manager.remove_action_from_using(action_name)
-                # logger.debug(f"{self.log_prefix}阶段三移除动作: {action_name}，原因: {reason}")
+        # 应用第三阶段的移除
+        # for action_name, reason in removals_s3:
+        # self.action_manager.remove_action_from_using(action_name)
+        # logger.debug(f"{self.log_prefix}阶段三移除动作: {action_name}，原因: {reason}")
 
         # === 统一日志记录 ===
         all_removals = removals_s1 + removals_s2
@@ -131,9 +129,7 @@ class ActionModifier:
 
         available_actions = list(self.action_manager.get_using_actions().keys())
         available_actions_text = "、".join(available_actions) if available_actions else "无"
-        logger.debug(
-            f"{self.log_prefix} 当前可用动作: {available_actions_text}||移除: {removals_summary}"
-        )
+        logger.debug(f"{self.log_prefix} 当前可用动作: {available_actions_text}||移除: {removals_summary}")
 
     def _check_action_associated_types(self, all_actions: Dict[str, ActionInfo], chat_context: ChatMessageContext):
         type_mismatched_actions: List[Tuple[str, str]] = []

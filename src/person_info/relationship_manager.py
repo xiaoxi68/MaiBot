@@ -1,11 +1,5 @@
-import json
-from json_repair import repair_json
-from datetime import datetime
 from src.common.logger import get_logger
-from src.llm_models.utils_model import LLMRequest
-from src.config.config import global_config, model_config
-from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
-from .person_info import Person
+from src.chat.utils.prompt_builder import Prompt
 
 
 logger = get_logger("relation")
@@ -43,4 +37,3 @@ def init_prompt():
 """,
         "attitude_to_me_prompt",
     )
-

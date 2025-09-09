@@ -77,10 +77,10 @@ class ExpressionSelector:
     def can_use_expression_for_chat(self, chat_id: str) -> bool:
         """
         检查指定聊天流是否允许使用表达
-        
+
         Args:
             chat_id: 聊天流ID
-            
+
         Returns:
             bool: 是否允许使用表达
         """
@@ -123,9 +123,7 @@ class ExpressionSelector:
                 return group_chat_ids
         return [chat_id]
 
-    def get_random_expressions(
-        self, chat_id: str, total_num: int
-    ) -> List[Dict[str, Any]]:
+    def get_random_expressions(self, chat_id: str, total_num: int) -> List[Dict[str, Any]]:
         # sourcery skip: extract-duplicate-method, move-assign
         # 支持多chat_id合并抽选
         related_chat_ids = self.get_related_chat_ids(chat_id)
@@ -200,7 +198,7 @@ class ExpressionSelector:
     ) -> Tuple[List[Dict[str, Any]], List[int]]:
         # sourcery skip: inline-variable, list-comprehension
         """使用LLM选择适合的表达方式"""
-        
+
         # 检查是否允许在此聊天流中使用表达
         if not self.can_use_expression_for_chat(chat_id):
             logger.debug(f"聊天流 {chat_id} 不允许使用表达，返回空列表")
@@ -208,7 +206,7 @@ class ExpressionSelector:
 
         # 1. 获取20个随机表达方式（现在按权重抽取）
         style_exprs = self.get_random_expressions(chat_id, 10)
-        
+
         if len(style_exprs) < 10:
             logger.info(f"聊天流 {chat_id} 表达方式正在积累中")
             return [], []
@@ -248,7 +246,6 @@ class ExpressionSelector:
 
         # 4. 调用LLM
         try:
-            
             # start_time = time.time()
             content, (reasoning_content, model_name, _) = await self.llm_model.generate_response_async(prompt=prompt)
             # logger.info(f"LLM请求时间: {model_name}  {time.time() - start_time} \n{prompt}")
@@ -295,7 +292,6 @@ class ExpressionSelector:
         except Exception as e:
             logger.error(f"LLM处理表达方式选择时出错: {e}")
             return [], []
-    
 
 
 init_prompt()

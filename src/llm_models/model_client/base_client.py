@@ -174,7 +174,7 @@ class ClientRegistry:
                 return client_class(api_provider)
             else:
                 raise KeyError(f"'{api_provider.client_type}' 类型的 Client 未注册")
-        
+
         # 正常的缓存逻辑
         if api_provider.name not in self.client_instance_cache:
             if client_class := self.client_registry.get(api_provider.client_type):

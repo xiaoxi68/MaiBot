@@ -34,7 +34,7 @@ def get_plugin_path(plugin_name: str) -> str:
 
     Returns:
         str: 插件目录的绝对路径。
-        
+
     Raises:
         ValueError: 如果插件不存在。
     """

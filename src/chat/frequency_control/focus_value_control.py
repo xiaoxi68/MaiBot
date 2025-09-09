@@ -119,4 +119,3 @@ def get_global_focus_value() -> Optional[float]:
             return get_time_based_focus_value(config_item[1:])
 
     return None
-

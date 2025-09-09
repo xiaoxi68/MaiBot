@@ -12,6 +12,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from rich.progress import Progress  # 替换为 rich 进度条
 
 from src.common.logger import get_logger
+
 # from src.chat.knowledge.lpmmconfig import global_config
 from src.chat.knowledge.ie_process import info_extract_from_str
 from src.chat.knowledge.open_ie import OpenIE
@@ -36,6 +37,7 @@ TEMP_DIR = os.path.join(ROOT_PATH, "temp")
 # IMPORTED_DATA_PATH = os.path.join(ROOT_PATH, "data", "imported_lpmm_data")
 OPENIE_OUTPUT_DIR = os.path.join(ROOT_PATH, "data", "openie")
 
+
 def ensure_dirs():
     """确保临时目录和输出目录存在"""
     if not os.path.exists(TEMP_DIR):
@@ -48,6 +50,7 @@ def ensure_dirs():
         os.makedirs(RAW_DATA_PATH)
         logger.info(f"已创建原始数据目录: {RAW_DATA_PATH}")
 
+
 # 创建一个线程安全的锁，用于保护文件操作和共享数据
 file_lock = Lock()
 open_ie_doc_lock = Lock()
@@ -56,13 +59,11 @@ open_ie_doc_lock = Lock()
 shutdown_event = Event()
 
 lpmm_entity_extract_llm = LLMRequest(
-    model_set=model_config.model_task_config.lpmm_entity_extract,
-    request_type="lpmm.entity_extract"
+    model_set=model_config.model_task_config.lpmm_entity_extract, request_type="lpmm.entity_extract"
 )
-lpmm_rdf_build_llm = LLMRequest(
-    model_set=model_config.model_task_config.lpmm_rdf_build,
-    request_type="lpmm.rdf_build"
-)
+lpmm_rdf_build_llm = LLMRequest(model_set=model_config.model_task_config.lpmm_rdf_build, request_type="lpmm.rdf_build")
+
+
 def process_single_text(pg_hash, raw_data):
     """处理单个文本的函数，用于线程池"""
     temp_file_path = f"{TEMP_DIR}/{pg_hash}.json"

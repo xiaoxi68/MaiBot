@@ -8,7 +8,7 @@ def dyn_select_top_k(
     # 检查输入列表是否为空
     if not score:
         return []
-    
+
     # 按照分数排序（降序）
     sorted_score = sorted(score, key=lambda x: x[1], reverse=True)
 

@@ -114,7 +114,7 @@ def set_value_by_path(d, path, value):
         if k not in d or not isinstance(d[k], dict):
             d[k] = {}
         d = d[k]
-    
+
     # 使用 tomlkit.item 来保持 TOML 格式
     try:
         d[path[-1]] = tomlkit.item(value)
@@ -253,7 +253,7 @@ def _update_config_generic(config_name: str, template_name: str):
                         f"已自动将{config_name}配置 {'.'.join(path)} 的值从旧默认值 {old_default} 更新为新默认值 {new_default}"
                     )
                     config_updated = True
-            
+
             # 如果配置有更新，立即保存到文件
             if config_updated:
                 with open(old_config_path, "w", encoding="utf-8") as f:

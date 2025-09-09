@@ -385,18 +385,18 @@ class StatisticOutputTask(AsyncTask):
                 time_cost_key = f"time_costs_by_{category.split('_')[-1]}"
                 avg_key = f"avg_time_costs_by_{category.split('_')[-1]}"
                 std_key = f"std_time_costs_by_{category.split('_')[-1]}"
-                
+
                 for item_name in stats[period_key][category]:
                     time_costs = stats[period_key][time_cost_key].get(item_name, [])
                     if time_costs:
                         # 计算平均耗时
                         avg_time_cost = sum(time_costs) / len(time_costs)
                         stats[period_key][avg_key][item_name] = round(avg_time_cost, 3)
-                        
+
                         # 计算标准差
                         if len(time_costs) > 1:
                             variance = sum((x - avg_time_cost) ** 2 for x in time_costs) / len(time_costs)
-                            std_time_cost = variance ** 0.5
+                            std_time_cost = variance**0.5
                             stats[period_key][std_key][item_name] = round(std_time_cost, 3)
                         else:
                             stats[period_key][std_key][item_name] = 0.0
@@ -505,8 +505,6 @@ class StatisticOutputTask(AsyncTask):
                         stats[period_key][MSG_CNT_BY_CHAT][chat_id] += 1
                     break
         return stats
-
-    
 
     def _collect_all_statistics(self, now: datetime) -> Dict[str, Dict[str, Any]]:
         """
@@ -639,7 +637,9 @@ class StatisticOutputTask(AsyncTask):
             cost = stats[COST_BY_MODEL][model_name]
             avg_time_cost = stats[AVG_TIME_COST_BY_MODEL][model_name]
             std_time_cost = stats[STD_TIME_COST_BY_MODEL][model_name]
-            output.append(data_fmt.format(name, count, in_tokens, out_tokens, tokens, cost, avg_time_cost, std_time_cost))
+            output.append(
+                data_fmt.format(name, count, in_tokens, out_tokens, tokens, cost, avg_time_cost, std_time_cost)
+            )
 
         output.append("")
         return "\n".join(output)
@@ -728,7 +728,9 @@ class StatisticOutputTask(AsyncTask):
                     f"<td>{stat_data[STD_TIME_COST_BY_MODEL][model_name]:.1f} 秒</td>"
                     f"</tr>"
                     for model_name, count in sorted(stat_data[REQ_CNT_BY_MODEL].items())
-                ] if stat_data[REQ_CNT_BY_MODEL] else ["<tr><td colspan='8' style='text-align: center; color: #999;'>暂无数据</td></tr>"]
+                ]
+                if stat_data[REQ_CNT_BY_MODEL]
+                else ["<tr><td colspan='8' style='text-align: center; color: #999;'>暂无数据</td></tr>"]
             )
             # 按请求类型分类统计
             type_rows = "\n".join(
@@ -744,7 +746,9 @@ class StatisticOutputTask(AsyncTask):
                     f"<td>{stat_data[STD_TIME_COST_BY_TYPE][req_type]:.1f} 秒</td>"
                     f"</tr>"
                     for req_type, count in sorted(stat_data[REQ_CNT_BY_TYPE].items())
-                ] if stat_data[REQ_CNT_BY_TYPE] else ["<tr><td colspan='8' style='text-align: center; color: #999;'>暂无数据</td></tr>"]
+                ]
+                if stat_data[REQ_CNT_BY_TYPE]
+                else ["<tr><td colspan='8' style='text-align: center; color: #999;'>暂无数据</td></tr>"]
             )
             # 按模块分类统计
             module_rows = "\n".join(
@@ -760,7 +764,9 @@ class StatisticOutputTask(AsyncTask):
                     f"<td>{stat_data[STD_TIME_COST_BY_MODULE][module_name]:.1f} 秒</td>"
                     f"</tr>"
                     for module_name, count in sorted(stat_data[REQ_CNT_BY_MODULE].items())
-                ] if stat_data[REQ_CNT_BY_MODULE] else ["<tr><td colspan='8' style='text-align: center; color: #999;'>暂无数据</td></tr>"]
+                ]
+                if stat_data[REQ_CNT_BY_MODULE]
+                else ["<tr><td colspan='8' style='text-align: center; color: #999;'>暂无数据</td></tr>"]
             )
 
             # 聊天消息统计
@@ -768,7 +774,9 @@ class StatisticOutputTask(AsyncTask):
                 [
                     f"<tr><td>{self.name_mapping[chat_id][0]}</td><td>{count}</td></tr>"
                     for chat_id, count in sorted(stat_data[MSG_CNT_BY_CHAT].items())
-                ] if stat_data[MSG_CNT_BY_CHAT] else ["<tr><td colspan='2' style='text-align: center; color: #999;'>暂无数据</td></tr>"]
+                ]
+                if stat_data[MSG_CNT_BY_CHAT]
+                else ["<tr><td colspan='2' style='text-align: center; color: #999;'>暂无数据</td></tr>"]
             )
             # 生成HTML
             return f"""

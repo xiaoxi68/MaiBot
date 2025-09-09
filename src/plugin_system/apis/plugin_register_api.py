@@ -2,7 +2,7 @@ from pathlib import Path
 
 from src.common.logger import get_logger
 
-logger = get_logger("plugin_manager") # 复用plugin_manager名称
+logger = get_logger("plugin_manager")  # 复用plugin_manager名称
 
 
 def register_plugin(cls):

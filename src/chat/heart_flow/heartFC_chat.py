@@ -261,7 +261,11 @@ class HeartFChatting:
 
         return loop_info, reply_text, cycle_timers
 
-    async def _observe(self, interest_value: float = 0.0, recent_messages_list: List["DatabaseMessages"] = []) -> bool:
+    async def _observe(
+        self, interest_value: float = 0.0, recent_messages_list: Optional[List["DatabaseMessages"]] = None
+    ) -> bool:
+        if recent_messages_list is None:
+            recent_messages_list = []
         reply_text = ""  # 初始化reply_text变量，避免UnboundLocalError
 
         # 使用sigmoid函数将interest_value转换为概率

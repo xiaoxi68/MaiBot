@@ -107,7 +107,7 @@ class BuildRelationAction(BaseAction):
             if not person.is_known:
                 logger.warning(f"{self.log_prefix} 用户 {person_name} 不存在，跳过添加记忆")
                 return False, f"用户 {person_name} 不存在，跳过添加记忆"
-            
+
             person.last_know = time.time()
             person.know_times += 1
             person.sync_to_database()
@@ -178,7 +178,9 @@ class BuildRelationAction(BaseAction):
 
             chat_model_config = models.get("utils")
             success, update_memory, _, _ = await llm_api.generate_with_model(
-                prompt, model_config=chat_model_config, request_type="relation.category.update" # type: ignore
+                prompt,
+                model_config=chat_model_config,
+                request_type="relation.category.update",  # type: ignore
             )
 
             update_memory_data = json.loads(repair_json(update_memory))
@@ -190,7 +192,7 @@ class BuildRelationAction(BaseAction):
                 # 新记忆
                 person.memory_points.append(f"{category}:{new_memory}:1.0")
                 person.sync_to_database()
-                
+
                 logger.info(f"{self.log_prefix} 为{person.person_name}新增记忆点: {new_memory}")
 
                 return True, f"为{person.person_name}新增记忆点: {new_memory}"
@@ -207,14 +209,15 @@ class BuildRelationAction(BaseAction):
                     person.memory_points.append(f"{category}:{integrate_memory}:{memory_weight + 1.0}")
                     person.sync_to_database()
 
-                    logger.info(f"{self.log_prefix} 更新{person.person_name}的记忆点: {memory_content} -> {integrate_memory}")
+                    logger.info(
+                        f"{self.log_prefix} 更新{person.person_name}的记忆点: {memory_content} -> {integrate_memory}"
+                    )
 
                     return True, f"更新{person.person_name}的记忆点: {memory_content} -> {integrate_memory}"
 
                 else:
                     logger.warning(f"{self.log_prefix} 删除记忆点失败: {memory_content}")
                     return False, f"删除{person.person_name}的记忆点失败: {memory_content}"
-                
 
             return True, "关系动作执行成功"
 

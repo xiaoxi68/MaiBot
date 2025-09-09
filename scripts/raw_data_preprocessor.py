@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 import sys  # 新增系统模块导入
 from src.chat.knowledge.utils.hash import get_sha256
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.common.logger import get_logger
 
@@ -9,6 +10,7 @@ logger = get_logger("lpmm")
 ROOT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 RAW_DATA_PATH = os.path.join(ROOT_PATH, "data/lpmm_raw_data")
 # IMPORTED_DATA_PATH = os.path.join(ROOT_PATH, "data/imported_lpmm_data")
+
 
 def _process_text_file(file_path):
     """处理单个文本文件，返回段落列表"""
@@ -43,6 +45,7 @@ def _process_multi_files() -> list:
         paragraphs = _process_text_file(file)
         all_paragraphs.extend(paragraphs)
     return all_paragraphs
+
 
 def load_raw_data() -> tuple[list[str], list[str]]:
     """加载原始数据文件

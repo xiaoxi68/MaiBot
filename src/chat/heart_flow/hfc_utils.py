@@ -124,6 +124,7 @@ async def send_typing():
         message_type="state", content="typing", stream_id=chat.stream_id, storage_message=False
     )
 
+
 async def stop_typing():
     group_info = GroupInfo(platform="amaidesu_default", group_id="114514", group_name="内心")
 

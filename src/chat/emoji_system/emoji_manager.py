@@ -708,7 +708,7 @@ class EmojiManager:
             if not emoji.is_deleted and emoji.hash == emoji_hash:
                 return emoji
         return None  # 如果循环结束还没找到，则返回 None
-    
+
     async def get_emoji_tag_by_hash(self, emoji_hash: str) -> Optional[List[str]]:
         """根据哈希值获取已注册表情包的情感标签列表
 
@@ -731,7 +731,7 @@ class EmojiManager:
                 emoji_record = Emoji.get_or_none(Emoji.emoji_hash == emoji_hash)
                 if emoji_record and emoji_record.emotion:
                     logger.info(f"[缓存命中] 从数据库获取表情包情感标签: {emoji_record.emotion[:50]}...")
-                    return emoji_record.emotion.split(',')
+                    return emoji_record.emotion.split(",")
             except Exception as e:
                 logger.error(f"从数据库查询表情包情感标签时出错: {e}")
 
