@@ -120,7 +120,7 @@ class BaseCommand(ABC):
     async def send_type(
         self,
         message_type: str,
-        content: str,
+        content: str | Dict,
         display_message: str = "",
         typing: bool = False,
         set_reply: bool = False,

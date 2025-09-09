@@ -171,10 +171,10 @@ class ChatBot:
         await message.process()
 
         _ = Person.register_person(
-            platform=message.message_info.platform,
-            user_id=message.message_info.user_info.user_id,
-            nickname=user_info.user_nickname,
-        )  # type: ignore
+            platform=message.message_info.platform,  # type: ignore
+            user_id=message.message_info.user_info.user_id,  # type: ignore
+            nickname=user_info.user_nickname,  # type: ignore
+        )
 
         await self.s4u_message_processor.process_message(message)
 

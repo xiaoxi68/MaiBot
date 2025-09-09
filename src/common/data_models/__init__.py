@@ -6,7 +6,8 @@ class BaseDataModel:
     def deepcopy(self):
         return copy.deepcopy(self)
 
-def temporarily_transform_class_to_dict(obj: Any) -> Any:
+
+def transform_class_to_dict(obj: Any) -> Any:
     # sourcery skip: assign-if-exp, reintroduce-else
     """
     将对象或容器中的 BaseDataModel 子类（类对象）或 BaseDataModel 实例

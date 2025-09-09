@@ -15,7 +15,7 @@ install(extra_lines=3)
 logger = get_logger("sender")
 
 
-async def send_message(message: MessageSending, show_log=True) -> bool:
+async def _send_message(message: MessageSending, show_log=True) -> bool:
     """合并后的消息发送函数，包含WS发送和日志记录"""
     message_preview = truncate_message(message.processed_plain_text, max_length=200)
 
@@ -32,7 +32,7 @@ async def send_message(message: MessageSending, show_log=True) -> bool:
         raise e  # 重新抛出其他异常
 
 
-class HeartFCSender:
+class UniversalMessageSender:
     """管理消息的注册、即时处理、发送和存储，并跟踪思考状态。"""
 
     def __init__(self):
@@ -76,7 +76,7 @@ class HeartFCSender:
                 )
                 await asyncio.sleep(typing_time)
 
-            sent_msg = await send_message(message, show_log=show_log)
+            sent_msg = await _send_message(message, show_log=show_log)
             if not sent_msg:
                 return False
 

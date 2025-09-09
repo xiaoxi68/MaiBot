@@ -15,7 +15,7 @@ from src.config.config import global_config, model_config
 from src.llm_models.utils_model import LLMRequest
 from src.chat.message_receive.message import UserInfo, Seg, MessageRecv, MessageSending
 from src.chat.message_receive.chat_stream import ChatStream
-from src.chat.message_receive.uni_message_sender import HeartFCSender
+from src.chat.message_receive.uni_message_sender import UniversalMessageSender
 from src.chat.utils.timer_calculator import Timer  # <--- Import Timer
 from src.chat.utils.utils import get_chat_type_and_target_info
 from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
@@ -142,7 +142,7 @@ class DefaultReplyer:
         self.express_model = LLMRequest(model_set=model_config.model_task_config.replyer, request_type=request_type)
         self.chat_stream = chat_stream
         self.is_group_chat, self.chat_target_info = get_chat_type_and_target_info(self.chat_stream.stream_id)
-        self.heart_fc_sender = HeartFCSender()
+        self.heart_fc_sender = UniversalMessageSender()
         self.memory_activator = MemoryActivator()
 
         from src.plugin_system.core.tool_use import ToolExecutor  # 延迟导入ToolExecutor，不然会循环依赖

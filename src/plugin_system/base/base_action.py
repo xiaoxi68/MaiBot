@@ -2,7 +2,7 @@ import time
 import asyncio
 
 from abc import ABC, abstractmethod
-from typing import Tuple, Optional, TYPE_CHECKING
+from typing import Tuple, Optional, TYPE_CHECKING, Dict
 
 from src.common.logger import get_logger
 from src.chat.message_receive.chat_stream import ChatStream
@@ -285,7 +285,7 @@ class BaseAction(ABC):
     async def send_custom(
         self,
         message_type: str,
-        content: str,
+        content: str | Dict,
         typing: bool = False,
         set_reply: bool = False,
         reply_message: Optional["DatabaseMessages"] = None,

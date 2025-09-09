@@ -9,6 +9,7 @@ from rich.traceback import install
 from src.config.config import global_config
 from src.common.logger import get_logger
 from src.common.data_models.info_data_model import ActionPlannerInfo
+from src.common.data_models.message_data_model import ReplyContentType
 from src.chat.message_receive.chat_stream import ChatStream, get_chat_manager
 from src.chat.utils.prompt_builder import global_prompt_manager
 from src.chat.utils.timer_calculator import Timer
@@ -32,6 +33,7 @@ from src.chat.utils.chat_message_builder import (
 
 if TYPE_CHECKING:
     from src.common.data_models.database_data_model import DatabaseMessages
+    from src.common.data_models.message_data_model import ReplySetModel
 
 
 ERROR_LOOP_INFO = {
@@ -155,21 +157,22 @@ class HeartFChatting:
             timer_strings.append(f"{name}: {formatted_time}")
 
         # 获取动作类型，兼容新旧格式
-        action_type = "未知动作"
-        if hasattr(self, "_current_cycle_detail") and self._current_cycle_detail:
-            loop_plan_info = self._current_cycle_detail.loop_plan_info
-            if isinstance(loop_plan_info, dict):
-                action_result = loop_plan_info.get("action_result", {})
-                if isinstance(action_result, dict):
-                    # 旧格式：action_result是字典
-                    action_type = action_result.get("action_type", "未知动作")
-                elif isinstance(action_result, list) and action_result:
-                    # 新格式：action_result是actions列表
-                    # TODO: 把这里写明白
-                    action_type = action_result[0].action_type or "未知动作"
-            elif isinstance(loop_plan_info, list) and loop_plan_info:
-                # 直接是actions列表的情况
-                action_type = loop_plan_info[0].get("action_type", "未知动作")
+        # 移除无用代码
+        # action_type = "未知动作"
+        # if hasattr(self, "_current_cycle_detail") and self._current_cycle_detail:
+        #     loop_plan_info = self._current_cycle_detail.loop_plan_info
+        #     if isinstance(loop_plan_info, dict):
+        #         action_result = loop_plan_info.get("action_result", {})
+        #         if isinstance(action_result, dict):
+        #             # 旧格式：action_result是字典
+        #             action_type = action_result.get("action_type", "未知动作")
+        #         elif isinstance(action_result, list) and action_result:
+        #             # 新格式：action_result是actions列表
+        #             # TODO: 把这里写明白
+        #             action_type = action_result[0].action_type or "未知动作"
+        #     elif isinstance(loop_plan_info, list) and loop_plan_info:
+        #         # 直接是actions列表的情况
+        #         action_type = loop_plan_info[0].get("action_type", "未知动作")
 
         logger.info(
             f"{self.log_prefix} 第{self._current_cycle_detail.cycle_id}次思考,"
@@ -177,7 +180,7 @@ class HeartFChatting:
             + (f"\n详情: {'; '.join(timer_strings)}" if timer_strings else "")
         )
 
-    async def caculate_interest_value(self, recent_messages_list: List["DatabaseMessages"]) -> float:
+    async def calculate_interest_value(self, recent_messages_list: List["DatabaseMessages"]) -> float:
         total_interest = 0.0
         for msg in recent_messages_list:
             interest_value = msg.interest_value
@@ -199,7 +202,7 @@ class HeartFChatting:
         if recent_messages_list:
             self.last_read_time = time.time()
             await self._observe(
-                interest_value=await self.caculate_interest_value(recent_messages_list),
+                interest_value=await self.calculate_interest_value(recent_messages_list),
                 recent_messages_list=recent_messages_list,
             )
         else:
@@ -210,7 +213,7 @@ class HeartFChatting:
 
     async def _send_and_store_reply(
         self,
-        response_set,
+        response_set: "ReplySetModel",
         action_message: "DatabaseMessages",
         cycle_timers: Dict[str, float],
         thinking_id,
@@ -288,11 +291,11 @@ class HeartFChatting:
                 normal_mode_probability += global_config.chat.at_bot_inevitable_reply
 
         # 根据概率决定使用直接回复
-        interest_triggerd = False
-        focus_triggerd = False
+        interest_triggered = False
+        focus_triggered = False
 
         if random.random() < normal_mode_probability:
-            interest_triggerd = True
+            interest_triggered = True
 
             logger.info(f"{self.log_prefix} 有新消息，在{normal_mode_probability * 100:.0f}%概率下选择回复")
 
@@ -305,14 +308,14 @@ class HeartFChatting:
             available_actions: Dict[str, ActionInfo] = {}
 
             # 如果兴趣度不足以激活
-            if not interest_triggerd:
+            if not interest_triggered:
                 # 看看专注值够不够
                 if random.random() < self.frequency_control.get_final_focus_value():
                     # 专注值足够，仍然进入正式思考
-                    focus_triggerd = True  # 都没触发，路边
+                    focus_triggered = True  # 都没触发，路边
 
             # 任意一种触发都行
-            if interest_triggerd or focus_triggerd:
+            if interest_triggered or focus_triggered:
                 # 进入正式思考模式
                 cycle_timers, thinking_id = self.start_cycle()
                 logger.info(f"{self.log_prefix} 开始第{self._cycle_counter}次思考")
@@ -357,7 +360,7 @@ class HeartFChatting:
                     prompt_info = (modified_message.llm_prompt, prompt_info[1])
                 with Timer("规划器", cycle_timers):
                     # 根据不同触发，进入不同plan
-                    if focus_triggerd:
+                    if focus_triggered:
                         mode = ChatMode.FOCUS
                     else:
                         mode = ChatMode.NORMAL
@@ -519,7 +522,7 @@ class HeartFChatting:
 
     async def _send_response(
         self,
-        reply_set,
+        reply_set: "ReplySetModel",
         message_data: "DatabaseMessages",
         selected_expressions: Optional[List[int]] = None,
     ) -> str:
@@ -534,8 +537,11 @@ class HeartFChatting:
 
         reply_text = ""
         first_replied = False
-        for reply_seg in reply_set:
-            data = reply_seg[1]
+        for reply_content in reply_set.reply_data:
+            
+            if reply_content.content_type != ReplyContentType.TEXT:
+                continue
+            data: str = reply_content.content # type: ignore
             if not first_replied:
                 await send_api.text_to_stream(
                     text=data,

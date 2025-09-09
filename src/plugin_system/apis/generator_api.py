@@ -12,6 +12,7 @@ import traceback
 from typing import Tuple, Any, Dict, List, Optional, TYPE_CHECKING
 from rich.traceback import install
 from src.common.logger import get_logger
+from src.common.data_models.message_data_model import ReplySetModel
 from src.chat.replyer.default_generator import DefaultReplyer
 from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.utils.utils import process_llm_response
@@ -138,12 +139,11 @@ async def generate_reply(
         if not success:
             logger.warning("[GeneratorAPI] 回复生成失败")
             return False, None
+        reply_set: Optional[ReplySetModel] = None
         if content := llm_response.content:
             reply_set = process_human_text(content, enable_splitter, enable_chinese_typo)
-        else:
-            reply_set = []
         llm_response.reply_set = reply_set
-        logger.debug(f"[GeneratorAPI] 回复生成成功，生成了 {len(reply_set)} 个回复项")
+        logger.debug(f"[GeneratorAPI] 回复生成成功，生成了 {len(reply_set) if reply_set else 0} 个回复项")
 
         return success, llm_response
 
@@ -158,6 +158,7 @@ async def generate_reply(
         logger.error(f"[GeneratorAPI] 生成回复时出错: {e}")
         logger.error(traceback.format_exc())
         return False, None
+
 
 async def rewrite_reply(
     chat_stream: Optional[ChatStream] = None,
@@ -208,12 +209,12 @@ async def rewrite_reply(
             reason=reason,
             reply_to=reply_to,
         )
-        reply_set = []
+        reply_set: Optional[ReplySetModel] = None
         if success and llm_response and (content := llm_response.content):
             reply_set = process_human_text(content, enable_splitter, enable_chinese_typo)
         llm_response.reply_set = reply_set
         if success:
-            logger.info(f"[GeneratorAPI] 重写回复成功，生成了 {len(reply_set)} 个回复项")
+            logger.info(f"[GeneratorAPI] 重写回复成功，生成了 {len(reply_set) if reply_set else 0} 个回复项")
         else:
             logger.warning("[GeneratorAPI] 重写回复失败")
 
@@ -227,7 +228,7 @@ async def rewrite_reply(
         return False, None
 
 
-def process_human_text(content: str, enable_splitter: bool, enable_chinese_typo: bool) -> List[Tuple[str, Any]]:
+def process_human_text(content: str, enable_splitter: bool, enable_chinese_typo: bool) -> Optional[ReplySetModel]:
     """将文本处理为更拟人化的文本
 
     Args:
@@ -238,18 +239,17 @@ def process_human_text(content: str, enable_splitter: bool, enable_chinese_typo:
     if not isinstance(content, str):
         raise ValueError("content 必须是字符串类型")
     try:
+        reply_set = ReplySetModel()
         processed_response = process_llm_response(content, enable_splitter, enable_chinese_typo)
 
-        reply_set = []
         for text in processed_response:
-            reply_seg = ("text", text)
-            reply_set.append(reply_seg)
+            reply_set.add_text_content(text)
 
         return reply_set
 
     except Exception as e:
         logger.error(f"[GeneratorAPI] 处理人形文本时出错: {e}")
-        return []
+        return None
 
 
 async def generate_response_custom(
