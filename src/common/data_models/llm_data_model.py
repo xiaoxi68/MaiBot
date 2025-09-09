@@ -2,8 +2,10 @@ from dataclasses import dataclass
 from typing import Optional, List, Tuple, TYPE_CHECKING, Any
 
 from . import BaseDataModel
+
 if TYPE_CHECKING:
     from src.llm_models.payload_content.tool_option import ToolCall
+
 
 @dataclass
 class LLMGenerationDataModel(BaseDataModel):

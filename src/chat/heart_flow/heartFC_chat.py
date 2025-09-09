@@ -155,21 +155,21 @@ class HeartFChatting:
             timer_strings.append(f"{name}: {formatted_time}")
 
         # 获取动作类型，兼容新旧格式
-        action_type = "未知动作"
+        _action_type = "未知动作"
         if hasattr(self, "_current_cycle_detail") and self._current_cycle_detail:
             loop_plan_info = self._current_cycle_detail.loop_plan_info
             if isinstance(loop_plan_info, dict):
                 action_result = loop_plan_info.get("action_result", {})
                 if isinstance(action_result, dict):
                     # 旧格式：action_result是字典
-                    action_type = action_result.get("action_type", "未知动作")
+                    _action_type = action_result.get("action_type", "未知动作")
                 elif isinstance(action_result, list) and action_result:
                     # 新格式：action_result是actions列表
                     # TODO: 把这里写明白
-                    action_type = action_result[0].action_type or "未知动作"
+                    _action_type = action_result[0].action_type or "未知动作"
             elif isinstance(loop_plan_info, list) and loop_plan_info:
                 # 直接是actions列表的情况
-                action_type = loop_plan_info[0].get("action_type", "未知动作")
+                _action_type = loop_plan_info[0].get("action_type", "未知动作")
 
         logger.info(
             f"{self.log_prefix} 第{self._current_cycle_detail.cycle_id}次思考,"
@@ -258,7 +258,11 @@ class HeartFChatting:
 
         return loop_info, reply_text, cycle_timers
 
-    async def _observe(self, interest_value: float = 0.0, recent_messages_list: List["DatabaseMessages"] = []) -> bool:
+    async def _observe(
+        self, interest_value: float = 0.0, recent_messages_list: Optional[List["DatabaseMessages"]] = None
+    ) -> bool:
+        if recent_messages_list is None:
+            recent_messages_list = []
         reply_text = ""  # 初始化reply_text变量，避免UnboundLocalError
 
         # 使用sigmoid函数将interest_value转换为概率

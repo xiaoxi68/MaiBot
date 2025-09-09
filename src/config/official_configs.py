@@ -43,9 +43,10 @@ class PersonalityConfig(ConfigBase):
 
     reply_style: str = ""
     """表达风格"""
-    
+
     interest: str = ""
     """兴趣"""
+
 
 @dataclass
 class RelationshipConfig(ConfigBase):
@@ -61,31 +62,30 @@ class ChatConfig(ConfigBase):
 
     max_context_size: int = 18
     """上下文长度"""
-    
+
     interest_rate_mode: Literal["fast", "accurate"] = "fast"
     """兴趣值计算模式，fast为快速计算，accurate为精确计算"""
 
     mentioned_bot_reply: float = 1
     """提及 bot 必然回复，1为100%回复，0为不额外增幅"""
-    
+
     planner_size: float = 1.5
     """副规划器大小，越小，麦麦的动作执行能力越精细，但是消耗更多token，调大可以缓解429类错误"""
 
     at_bot_inevitable_reply: float = 1
     """@bot 必然回复，1为100%回复，0为不额外增幅"""
-    
+
     talk_frequency: float = 0.5
     """回复频率阈值"""
 
     # 合并后的时段频率配置
     talk_frequency_adjust: list[list[str]] = field(default_factory=lambda: [])
 
-
     focus_value: float = 0.5
     """麦麦的专注思考能力，越低越容易专注，消耗token也越多"""
-    
+
     focus_value_adjust: list[list[str]] = field(default_factory=lambda: [])
-    
+
     """
     统一的活跃度和专注度配置
     格式：[["platform:chat_id:type", "HH:MM,frequency", "HH:MM,frequency", ...], ...]
@@ -110,7 +110,6 @@ class ChatConfig(ConfigBase):
     - talk_frequency_adjust 控制回复频率，数值越高回复越频繁
     - focus_value_adjust 控制专注思考能力，数值越低越容易专注，消耗token也越多
     """
-    
 
 
 @dataclass
@@ -122,6 +121,7 @@ class MessageReceiveConfig(ConfigBase):
 
     ban_msgs_regex: set[str] = field(default_factory=lambda: set())
     """过滤正则表达式列表"""
+
 
 @dataclass
 class ExpressionConfig(ConfigBase):

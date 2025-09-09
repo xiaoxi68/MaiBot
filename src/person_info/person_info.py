@@ -282,7 +282,7 @@ class Person:
 
             memory_category = parts[0].strip()
             memory_text = parts[1].strip()
-            memory_weight = parts[2].strip()
+            _memory_weight = parts[2].strip()
 
             # 检查分类是否匹配
             if memory_category != category:

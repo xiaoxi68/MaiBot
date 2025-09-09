@@ -23,6 +23,7 @@ OPENIE_DIR = os.path.join(ROOT_PATH, "data", "openie")
 
 logger = get_logger("OpenIE导入")
 
+
 def ensure_openie_dir():
     """确保OpenIE数据目录存在"""
     if not os.path.exists(OPENIE_DIR):
@@ -253,7 +254,7 @@ def main():
         # 没有运行的事件循环，创建新的
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-    
+
     try:
         # 在新的事件循环中运行异步主函数
         loop.run_until_complete(main_async())

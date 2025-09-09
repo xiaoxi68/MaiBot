@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 
 logger = get_logger("chat")
 
+
 async def _calculate_interest(message: MessageRecv) -> Tuple[float, list[str]]:
     """计算消息的兴趣度
 
@@ -34,14 +35,14 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, list[str]]:
     """
     if message.is_picid or message.is_emoji:
         return 0.0, []
-    
-    is_mentioned,is_at,reply_probability_boost = is_mentioned_bot_in_message(message)
+
+    is_mentioned, is_at, reply_probability_boost = is_mentioned_bot_in_message(message)
     interested_rate = 0.0
 
     with Timer("记忆激活"):
-        interested_rate, keywords,keywords_lite = await hippocampus_manager.get_activate_from_text(
+        interested_rate, keywords, keywords_lite = await hippocampus_manager.get_activate_from_text(
             message.processed_plain_text,
-            max_depth= 4,
+            max_depth=4,
             fast_retrieval=global_config.chat.interest_rate_mode == "fast",
         )
         message.key_words = keywords
@@ -51,7 +52,7 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, list[str]]:
     text_len = len(message.processed_plain_text)
     # 根据文本长度分布调整兴趣度，采用分段函数实现更精确的兴趣度计算
     # 基于实际分布：0-5字符(26.57%), 6-10字符(27.18%), 11-20字符(22.76%), 21-30字符(10.33%), 31+字符(13.86%)
-    
+
     if text_len == 0:
         base_interest = 0.01  # 空消息最低兴趣度
     elif text_len <= 5:
@@ -75,16 +76,15 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, list[str]]:
     else:
         # 100+字符：对数增长 0.26 -> 0.3，增长率递减
         base_interest = 0.26 + (0.3 - 0.26) * (math.log10(text_len - 99) / math.log10(901))  # 1000-99=901
-    
+
     # 确保在范围内
     base_interest = min(max(base_interest, 0.01), 0.3)
 
-        
     message.interest_value = base_interest
     message.is_mentioned = is_mentioned
     message.is_at = is_at
     message.reply_probability_boost = reply_probability_boost
-    
+
     return base_interest, keywords
 
 
@@ -115,14 +115,13 @@ class HeartFCMessageReceiver:
 
             # 2. 兴趣度计算与更新
             interested_rate, keywords = await _calculate_interest(message)
-            
 
             await self.storage.store_message(message, chat)
 
             heartflow_chat: HeartFChatting = await heartflow.get_or_create_heartflow_chat(chat.stream_id)  # type: ignore
 
             # subheartflow.add_message_to_normal_chat_cache(message, interested_rate, is_mentioned)
-            if global_config.mood.enable_mood:  
+            if global_config.mood.enable_mood:
                 chat_mood = mood_manager.get_mood_by_chat_id(heartflow_chat.stream_id)
                 asyncio.create_task(chat_mood.update_mood_by_message(message, interested_rate))
 
@@ -132,7 +131,7 @@ class HeartFCMessageReceiver:
             # 用这个pattern截取出id部分，picid是一个list，并替换成对应的图片描述
             picid_pattern = r"\[picid:([^\]]+)\]"
             picid_list = re.findall(picid_pattern, message.processed_plain_text)
-            
+
             # 创建替换后的文本
             processed_text = message.processed_plain_text
             if picid_list:
@@ -145,18 +144,20 @@ class HeartFCMessageReceiver:
                         # 如果没有找到图片描述，则移除[picid:xxxx]标记
                         processed_text = processed_text.replace(f"[picid:{picid}]", "[图片：网络不好，图片无法加载]")
 
-            
             # 应用用户引用格式替换，将回复<aaa:bbb>和@<aaa:bbb>格式转换为可读格式
             processed_plain_text = replace_user_references(
                 processed_text,
-                message.message_info.platform, # type: ignore
-                replace_bot_name=True
+                message.message_info.platform,  # type: ignore
+                replace_bot_name=True,
             )
-
 
             logger.info(f"[{mes_name}]{userinfo.user_nickname}:{processed_plain_text}[{interested_rate:.2f}]")  # type: ignore
 
-            _ = Person.register_person(platform=message.message_info.platform, user_id=message.message_info.user_info.user_id,nickname=userinfo.user_nickname) # type: ignore
+            _ = Person.register_person(
+                platform=message.message_info.platform,
+                user_id=message.message_info.user_info.user_id,
+                nickname=userinfo.user_nickname,
+            )  # type: ignore
 
         except Exception as e:
             logger.error(f"消息处理失败: {e}")

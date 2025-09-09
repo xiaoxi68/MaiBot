@@ -224,7 +224,7 @@ class PluginManager:
             list: 已注册的插件类名称列表。
         """
         return list(self.plugin_classes.keys())
-    
+
     def get_plugin_path(self, plugin_name: str) -> Optional[str]:
         """
         获取指定插件的路径。
@@ -401,9 +401,7 @@ class PluginManager:
                         command_components = [
                             c for c in plugin_info.components if c.component_type == ComponentType.COMMAND
                         ]
-                        tool_components = [
-                            c for c in plugin_info.components if c.component_type == ComponentType.TOOL
-                        ]
+                        tool_components = [c for c in plugin_info.components if c.component_type == ComponentType.TOOL]
                         event_handler_components = [
                             c for c in plugin_info.components if c.component_type == ComponentType.EVENT_HANDLER
                         ]

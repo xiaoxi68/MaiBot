@@ -121,5 +121,5 @@ __all__ = [
     "DatabaseChatInfo",
     "TargetPersonInfo",
     "ActionPlannerInfo",
-    "LLMGenerationDataModel"
+    "LLMGenerationDataModel",
 ]

@@ -425,7 +425,7 @@ class ManagementCommand(BaseCommand):
             await self._send_message(f"本地禁用组件成功: {component_name}")
         else:
             await self._send_message(f"本地禁用组件失败: {component_name}")
-    
+
     async def _send_message(self, message: str):
         await send_api.text_to_stream(message, self.stream_id, typing=False, storage_message=False)
 

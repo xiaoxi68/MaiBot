@@ -435,9 +435,7 @@ def build_readable_messages_to_str(
     Returns:
         格式化后的可读字符串
     """
-    return build_readable_messages(
-        messages, replace_bot_name, timestamp_mode, read_mark, truncate, show_actions
-    )
+    return build_readable_messages(messages, replace_bot_name, timestamp_mode, read_mark, truncate, show_actions)
 
 
 async def build_readable_messages_with_details(
@@ -489,8 +487,6 @@ def filter_mai_messages(messages: List[DatabaseMessages]) -> List[DatabaseMessag
         过滤后的消息列表
     """
     return [msg for msg in messages if msg.user_info.user_id != str(global_config.bot.qq_account)]
-
-
 
 
 def translate_pid_to_description(pid: str) -> str:

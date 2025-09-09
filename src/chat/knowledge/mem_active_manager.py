@@ -1,8 +1,8 @@
 raise DeprecationWarning("MemoryActiveManager is not used yet, please do not import it")
-from .lpmmconfig import global_config
-from .embedding_store import EmbeddingManager
-from .llm_client import LLMClient
-from .utils.dyn_topk import dyn_select_top_k
+from .lpmmconfig import global_config  # noqa
+from .embedding_store import EmbeddingManager  # noqa
+from .llm_client import LLMClient  # noqa
+from .utils.dyn_topk import dyn_select_top_k  # noqa
 
 
 class MemoryActiveManager:

@@ -18,7 +18,7 @@ class MessageStorage:
         if isinstance(keywords, list):
             return json.dumps(keywords, ensure_ascii=False)
         return "[]"
-    
+
     @staticmethod
     def _deserialize_keywords(keywords_str: str) -> list:
         """将JSON字符串反序列化为关键词列表"""
@@ -85,7 +85,7 @@ class MessageStorage:
                 key_words = MessageStorage._serialize_keywords(message.key_words)
                 key_words_lite = MessageStorage._serialize_keywords(message.key_words_lite)
                 selected_expressions = ""
-                
+
             chat_info_dict = chat_stream.to_dict()
             user_info_dict = message.message_info.user_info.to_dict()  # type: ignore
 

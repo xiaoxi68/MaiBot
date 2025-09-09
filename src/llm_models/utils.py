@@ -155,7 +155,13 @@ class LLMUsageRecorder:
             logger.error(f"创建 LLMUsage 表失败: {str(e)}")
 
     def record_usage_to_database(
-        self, model_info: ModelInfo, model_usage: UsageRecord, user_id: str, request_type: str, endpoint: str, time_cost: float = 0.0
+        self,
+        model_info: ModelInfo,
+        model_usage: UsageRecord,
+        user_id: str,
+        request_type: str,
+        endpoint: str,
+        time_cost: float = 0.0,
     ):
         input_cost = (model_usage.prompt_tokens / 1000000) * model_info.price_in
         output_cost = (model_usage.completion_tokens / 1000000) * model_info.price_out
@@ -173,7 +179,7 @@ class LLMUsageRecorder:
                 completion_tokens=model_usage.completion_tokens or 0,
                 total_tokens=model_usage.total_tokens or 0,
                 cost=total_cost or 0.0,
-                time_cost = round(time_cost or 0.0, 3),
+                time_cost=round(time_cost or 0.0, 3),
                 status="success",
                 timestamp=datetime.now(),  # Peewee 会处理 DateTimeField
             )
@@ -185,5 +191,6 @@ class LLMUsageRecorder:
             )
         except Exception as e:
             logger.error(f"记录token使用情况失败: {str(e)}")
+
 
 llm_usage_recorder = LLMUsageRecorder()

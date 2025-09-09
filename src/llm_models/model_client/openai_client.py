@@ -531,7 +531,7 @@ class OpenaiClient(BaseClient):
             # 添加详细的错误信息以便调试
             logger.error(f"OpenAI API连接错误（嵌入模型）: {str(e)}")
             logger.error(f"错误类型: {type(e)}")
-            if hasattr(e, '__cause__') and e.__cause__:
+            if hasattr(e, "__cause__") and e.__cause__:
                 logger.error(f"底层错误: {str(e.__cause__)}")
             raise NetworkConnectionError() from e
         except APIStatusError as e:

@@ -88,7 +88,7 @@ class GlobalAnnouncementManager:
             return False
         self._user_disabled_tools[chat_id].append(tool_name)
         return True
-    
+
     def enable_specific_chat_tool(self, chat_id: str, tool_name: str) -> bool:
         """启用特定聊天的某个工具"""
         if chat_id in self._user_disabled_tools:
@@ -111,7 +111,7 @@ class GlobalAnnouncementManager:
     def get_disabled_chat_event_handlers(self, chat_id: str) -> List[str]:
         """获取特定聊天禁用的所有事件处理器"""
         return self._user_disabled_event_handlers.get(chat_id, []).copy()
-    
+
     def get_disabled_chat_tools(self, chat_id: str) -> List[str]:
         """获取特定聊天禁用的所有工具"""
         return self._user_disabled_tools.get(chat_id, []).copy()

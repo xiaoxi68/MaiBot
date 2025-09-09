@@ -159,6 +159,7 @@ async def generate_reply(
         logger.error(traceback.format_exc())
         return False, None
 
+
 async def rewrite_reply(
     chat_stream: Optional[ChatStream] = None,
     reply_data: Optional[Dict[str, Any]] = None,

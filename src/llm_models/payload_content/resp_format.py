@@ -48,8 +48,7 @@ def _json_schema_type_check(instance) -> str | None:
     elif not isinstance(instance["name"], str) or instance["name"].strip() == "":
         return "schema的'name'字段必须是非空字符串"
     if "description" in instance and (
-        not isinstance(instance["description"], str)
-        or instance["description"].strip() == ""
+        not isinstance(instance["description"], str) or instance["description"].strip() == ""
     ):
         return "schema的'description'字段只能填入非空字符串"
     if "schema" not in instance:
@@ -101,9 +100,7 @@ def _link_definitions(schema: dict[str, Any]) -> dict[str, Any]:
             # 如果当前Schema是列表，则遍历每个元素
             for i in range(len(sub_schema)):
                 if isinstance(sub_schema[i], dict):
-                    sub_schema[i] = link_definitions_recursive(
-                        f"{path}/{str(i)}", sub_schema[i], defs
-                    )
+                    sub_schema[i] = link_definitions_recursive(f"{path}/{str(i)}", sub_schema[i], defs)
         else:
             # 否则为字典
             if "$defs" in sub_schema:
@@ -125,9 +122,7 @@ def _link_definitions(schema: dict[str, Any]) -> dict[str, Any]:
             for key, value in sub_schema.items():
                 if isinstance(value, (dict, list)):
                     # 如果当前值是字典或列表，则递归调用
-                    sub_schema[key] = link_definitions_recursive(
-                        f"{path}/{key}", value, defs
-                    )
+                    sub_schema[key] = link_definitions_recursive(f"{path}/{key}", value, defs)
 
         return sub_schema
 
@@ -163,9 +158,7 @@ class RespFormat:
     def _generate_schema_from_model(schema):
         json_schema = {
             "name": schema.__name__,
-            "schema": _remove_defs(
-                _link_definitions(_remove_title(schema.model_json_schema()))
-            ),
+            "schema": _remove_defs(_link_definitions(_remove_title(schema.model_json_schema()))),
             "strict": False,
         }
         if schema.__doc__:

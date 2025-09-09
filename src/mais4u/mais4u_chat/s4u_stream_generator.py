@@ -14,11 +14,8 @@ logger = get_logger("s4u_stream_generator")
 class S4UStreamGenerator:
     def __init__(self):
         # 使用LLMRequest替代AsyncOpenAIClient
-        self.llm_request = LLMRequest(
-            model_set=model_config.model_task_config.replyer, 
-            request_type="s4u_replyer"
-        )
-        
+        self.llm_request = LLMRequest(model_set=model_config.model_task_config.replyer, request_type="s4u_replyer")
+
         self.current_model_name = "unknown model"
         self.partial_response = ""
 
@@ -89,16 +86,16 @@ class S4UStreamGenerator:
 
     async def _generate_response_with_llm_request(self, prompt: str) -> AsyncGenerator[str, None]:
         """使用LLMRequest进行流式响应生成"""
-        
+
         # 构建消息
         message_builder = MessageBuilder()
         message_builder.add_text_content(prompt)
         messages = [message_builder.build()]
-        
+
         # 选择模型
         model_info, api_provider, client = self.llm_request._select_model()
         self.current_model_name = model_info.name
-        
+
         # 如果模型支持强制流式模式，使用真正的流式处理
         if model_info.force_stream_mode:
             # 简化流式处理：直接使用LLMRequest的流式功能
@@ -111,14 +108,14 @@ class S4UStreamGenerator:
                     model_info=model_info,
                     message_list=messages,
                 )
-                
+
                 # 处理响应内容
                 content = response.content or ""
                 if content:
                     # 将内容按句子分割并输出
                     async for chunk in self._process_content_streaming(content):
                         yield chunk
-                        
+
             except Exception as e:
                 logger.error(f"流式请求执行失败: {e}")
                 # 如果流式请求失败，回退到普通模式
@@ -132,7 +129,7 @@ class S4UStreamGenerator:
                 content = response.content or ""
                 async for chunk in self._process_content_streaming(content):
                     yield chunk
-            
+
         else:
             # 如果不支持流式，使用普通方式然后模拟流式输出
             response = await self.llm_request._execute_request(
@@ -142,7 +139,7 @@ class S4UStreamGenerator:
                 model_info=model_info,
                 message_list=messages,
             )
-            
+
             content = response.content or ""
             async for chunk in self._process_content_streaming(content):
                 yield chunk
@@ -163,7 +160,7 @@ class S4UStreamGenerator:
         """处理内容进行流式输出（用于非流式模型的模拟流式输出）"""
         buffer = content
         punctuation_buffer = ""
-        
+
         # 使用正则表达式匹配句子
         last_match_end = 0
         for match in self.sentence_split_pattern.finditer(buffer):

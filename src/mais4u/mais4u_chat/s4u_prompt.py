@@ -176,7 +176,7 @@ class PromptBuilder:
         message_list_before_now = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_stream.stream_id,
             timestamp=time.time(),
-        # sourcery skip: lift-duplicated-conditional, merge-duplicate-blocks, remove-redundant-if
+            # sourcery skip: lift-duplicated-conditional, merge-duplicate-blocks, remove-redundant-if
             limit=300,
         )
 
@@ -228,13 +228,17 @@ class PromptBuilder:
                 last_speaking_user_id = start_speaking_user_id
                 msg_seg_str = "对方的发言：\n"
 
-            msg_seg_str += f"{time.strftime('%H:%M:%S', time.localtime(first_msg.time))}: {first_msg.processed_plain_text}\n"
+            msg_seg_str += (
+                f"{time.strftime('%H:%M:%S', time.localtime(first_msg.time))}: {first_msg.processed_plain_text}\n"
+            )
 
             all_msg_seg_list = []
             for msg in core_dialogue_list[1:]:
                 speaker = msg.user_info.user_id
                 if speaker == last_speaking_user_id:
-                    msg_seg_str += f"{time.strftime('%H:%M:%S', time.localtime(msg.time))}: {msg.processed_plain_text}\n"
+                    msg_seg_str += (
+                        f"{time.strftime('%H:%M:%S', time.localtime(msg.time))}: {msg.processed_plain_text}\n"
+                    )
                 else:
                     msg_seg_str = f"{msg_seg_str}\n"
                     all_msg_seg_list.append(msg_seg_str)

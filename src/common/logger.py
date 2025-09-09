@@ -339,24 +339,18 @@ MODULE_COLORS = {
     #   67         ：具体的颜色编号（0-255），这里是较暗的蓝色
     "sender": "\033[38;5;24m",  # 67号色，较暗的蓝色，适合不显眼的日志
     "send_api": "\033[38;5;24m",  # 208号色，橙色，适合突出显示
-    
     # 生成
     "replyer": "\033[38;5;208m",  # 橙色
     "llm_api": "\033[38;5;208m",  # 橙色
-    
     # 消息处理
     "chat": "\033[38;5;82m",  # 亮蓝色
     "chat_image": "\033[38;5;68m",  # 浅蓝色
-    
-    #emoji
+    # emoji
     "emoji": "\033[38;5;214m",  # 橙黄色，偏向橙色
     "emoji_api": "\033[38;5;214m",  # 橙黄色，偏向橙色
-    
     # 核心模块
     "main": "\033[1;97m",  # 亮白色+粗体 (主程序)
-
     "memory": "\033[38;5;34m",  # 天蓝色
-    
     "config": "\033[93m",  # 亮黄色
     "common": "\033[95m",  # 亮紫色
     "tools": "\033[96m",  # 亮青色
@@ -367,9 +361,6 @@ MODULE_COLORS = {
     "llm_models": "\033[36m",  # 青色
     "remote": "\033[38;5;242m",  # 深灰色，更不显眼
     "planner": "\033[36m",
-   
-
-
     "relation": "\033[38;5;139m",  # 柔和的紫色，不刺眼
     # 聊天相关模块
     "normal_chat": "\033[38;5;81m",  # 亮蓝绿色
@@ -379,11 +370,9 @@ MODULE_COLORS = {
     "background_tasks": "\033[38;5;240m",  # 灰色
     "chat_message": "\033[38;5;45m",  # 青色
     "chat_stream": "\033[38;5;51m",  # 亮青色
-
     "message_storage": "\033[38;5;33m",  # 深蓝色
     "expressor": "\033[38;5;166m",  # 橙色
     # 专注聊天模块
-    
     "memory_activator": "\033[38;5;117m",  # 天蓝色
     # 插件系统
     "plugins": "\033[31m",  # 红色
@@ -412,7 +401,6 @@ MODULE_COLORS = {
     # 工具和实用模块
     "prompt_build": "\033[38;5;105m",  # 紫色
     "chat_utils": "\033[38;5;111m",  # 蓝色
-    
     "maibot_statistic": "\033[38;5;129m",  # 紫色
     # 特殊功能插件
     "mute_plugin": "\033[38;5;240m",  # 灰色
@@ -447,10 +435,8 @@ MODULE_ALIASES = {
     "llm_api": "生成API",
     "emoji": "表情包",
     "emoji_api": "表情包API",
-    
     "chat": "所见",
     "chat_image": "识图",
-    
     "action_manager": "动作",
     "memory_activator": "记忆",
     "tool_use": "工具",
@@ -460,7 +446,6 @@ MODULE_ALIASES = {
     "memory": "记忆",
     "tool_executor": "工具",
     "hfc": "聊天节奏",
-    
     "plugin_manager": "插件",
     "relationship_builder": "关系",
     "llm_models": "模型",

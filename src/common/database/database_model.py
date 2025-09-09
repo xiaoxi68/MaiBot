@@ -135,7 +135,7 @@ class Messages(BaseModel):
     interest_value = DoubleField(null=True)
     key_words = TextField(null=True)
     key_words_lite = TextField(null=True)
-    
+
     is_mentioned = BooleanField(null=True)
     is_at = BooleanField(null=True)
     reply_probability_boost = DoubleField(null=True)
@@ -169,7 +169,7 @@ class Messages(BaseModel):
     is_picid = BooleanField(default=False)
     is_command = BooleanField(default=False)
     is_notify = BooleanField(default=False)
-    
+
     selected_expressions = TextField(null=True)
 
     class Meta:
@@ -267,12 +267,9 @@ class PersonInfo(BaseModel):
     know_times = FloatField(null=True)  # 认识时间 (时间戳)
     know_since = FloatField(null=True)  # 首次印象总结时间
     last_know = FloatField(null=True)  # 最后一次印象总结时间
-    
+
     attitude_to_me = TextField(null=True)  # 对bot的态度
     attitude_to_me_confidence = FloatField(null=True)  # 对bot的态度置信度
-
-
-
 
     class Meta:
         # database = db # 继承自 BaseModel
@@ -299,6 +296,7 @@ class GroupInfo(BaseModel):
         # database = db # 继承自 BaseModel
         table_name = "group_info"
 
+
 class Expression(BaseModel):
     """
     用于存储表达风格的模型。
@@ -314,6 +312,7 @@ class Expression(BaseModel):
 
     class Meta:
         table_name = "expression"
+
 
 class GraphNodes(BaseModel):
     """
@@ -374,7 +373,7 @@ def initialize_database(sync_constraints=False):
     """
     检查所有定义的表是否存在，如果不存在则创建它们。
     检查所有表的所有字段是否存在，如果缺失则自动添加。
-    
+
     Args:
         sync_constraints (bool): 是否同步字段约束。默认为 False。
                                如果为 True，会检查并修复字段的 NULL 约束不一致问题。
@@ -456,13 +455,13 @@ def initialize_database(sync_constraints=False):
                         logger.info(f"字段 '{field_name}' 删除成功")
                     except Exception as e:
                         logger.error(f"删除字段 '{field_name}' 失败: {e}")
-                        
+
         # 如果启用了约束同步，执行约束检查和修复
         if sync_constraints:
             logger.debug("开始同步数据库字段约束...")
             sync_field_constraints()
             logger.debug("数据库字段约束同步完成")
-            
+
     except Exception as e:
         logger.exception(f"检查表或字段是否存在时出错: {e}")
         # 如果检查失败（例如数据库不可用），则退出
@@ -476,7 +475,7 @@ def sync_field_constraints():
     同步数据库字段约束，确保现有数据库字段的 NULL 约束与模型定义一致。
     如果发现不一致，会自动修复字段约束。
     """
-    
+
     models = [
         ChatStreams,
         LLMUsage,
@@ -501,50 +500,55 @@ def sync_field_constraints():
                     continue
 
                 logger.debug(f"检查表 '{table_name}' 的字段约束...")
-                
+
                 # 获取当前表结构信息
                 cursor = db.execute_sql(f"PRAGMA table_info('{table_name}')")
-                current_schema = {row[1]: {'type': row[2], 'notnull': bool(row[3]), 'default': row[4]} 
-                                for row in cursor.fetchall()}
-                
+                current_schema = {
+                    row[1]: {"type": row[2], "notnull": bool(row[3]), "default": row[4]} for row in cursor.fetchall()
+                }
+
                 # 检查每个模型字段的约束
                 constraints_to_fix = []
                 for field_name, field_obj in model._meta.fields.items():
                     if field_name not in current_schema:
                         continue  # 字段不存在，跳过
-                    
-                    current_notnull = current_schema[field_name]['notnull']
+
+                    current_notnull = current_schema[field_name]["notnull"]
                     model_allows_null = field_obj.null
-                    
+
                     # 如果模型允许 null 但数据库字段不允许 null，需要修复
                     if model_allows_null and current_notnull:
-                        constraints_to_fix.append({
-                            'field_name': field_name,
-                            'field_obj': field_obj,
-                            'action': 'allow_null',
-                            'current_constraint': 'NOT NULL',
-                            'target_constraint': 'NULL'
-                        })
+                        constraints_to_fix.append(
+                            {
+                                "field_name": field_name,
+                                "field_obj": field_obj,
+                                "action": "allow_null",
+                                "current_constraint": "NOT NULL",
+                                "target_constraint": "NULL",
+                            }
+                        )
                         logger.warning(f"字段 '{field_name}' 约束不一致: 模型允许NULL，但数据库为NOT NULL")
-                    
+
                     # 如果模型不允许 null 但数据库字段允许 null，也需要修复（但要小心）
                     elif not model_allows_null and not current_notnull:
-                        constraints_to_fix.append({
-                            'field_name': field_name,
-                            'field_obj': field_obj,
-                            'action': 'disallow_null',
-                            'current_constraint': 'NULL',
-                            'target_constraint': 'NOT NULL'
-                        })
+                        constraints_to_fix.append(
+                            {
+                                "field_name": field_name,
+                                "field_obj": field_obj,
+                                "action": "disallow_null",
+                                "current_constraint": "NULL",
+                                "target_constraint": "NOT NULL",
+                            }
+                        )
                         logger.warning(f"字段 '{field_name}' 约束不一致: 模型不允许NULL，但数据库允许NULL")
-                
+
                 # 修复约束不一致的字段
                 if constraints_to_fix:
                     logger.info(f"表 '{table_name}' 需要修复 {len(constraints_to_fix)} 个字段约束")
                     _fix_table_constraints(table_name, model, constraints_to_fix)
                 else:
                     logger.debug(f"表 '{table_name}' 的字段约束已同步")
-                    
+
     except Exception as e:
         logger.exception(f"同步字段约束时出错: {e}")
 
@@ -557,40 +561,39 @@ def _fix_table_constraints(table_name, model, constraints_to_fix):
     try:
         # 备份表名
         backup_table = f"{table_name}_backup_{int(datetime.datetime.now().timestamp())}"
-        
+
         logger.info(f"开始修复表 '{table_name}' 的字段约束...")
-        
+
         # 1. 创建备份表
         db.execute_sql(f"CREATE TABLE {backup_table} AS SELECT * FROM {table_name}")
         logger.info(f"已创建备份表 '{backup_table}'")
-        
+
         # 2. 删除原表
         db.execute_sql(f"DROP TABLE {table_name}")
         logger.info(f"已删除原表 '{table_name}'")
-        
+
         # 3. 重新创建表（使用当前模型定义）
         db.create_tables([model])
         logger.info(f"已重新创建表 '{table_name}' 使用新的约束")
-        
+
         # 4. 从备份表恢复数据
         # 获取字段列表
         fields = list(model._meta.fields.keys())
-        fields_str = ', '.join(fields)
-        
+        fields_str = ", ".join(fields)
+
         # 对于需要从 NOT NULL 改为 NULL 的字段，直接复制数据
         # 对于需要从 NULL 改为 NOT NULL 的字段，需要处理 NULL 值
         insert_sql = f"INSERT INTO {table_name} ({fields_str}) SELECT {fields_str} FROM {backup_table}"
-        
+
         # 检查是否有字段需要从 NULL 改为 NOT NULL
         null_to_notnull_fields = [
-            constraint['field_name'] for constraint in constraints_to_fix 
-            if constraint['action'] == 'disallow_null'
+            constraint["field_name"] for constraint in constraints_to_fix if constraint["action"] == "disallow_null"
         ]
-        
+
         if null_to_notnull_fields:
             # 需要处理 NULL 值，为这些字段设置默认值
             logger.warning(f"字段 {null_to_notnull_fields} 将从允许NULL改为不允许NULL，需要处理现有的NULL值")
-            
+
             # 构建更复杂的 SELECT 语句来处理 NULL 值
             select_fields = []
             for field_name in fields:
@@ -607,21 +610,21 @@ def _fix_table_constraints(table_name, model, constraints_to_fix):
                         default_value = f"'{datetime.datetime.now()}'"
                     else:
                         default_value = "''"
-                    
+
                     select_fields.append(f"COALESCE({field_name}, {default_value}) as {field_name}")
                 else:
                     select_fields.append(field_name)
-            
-            select_str = ', '.join(select_fields)
+
+            select_str = ", ".join(select_fields)
             insert_sql = f"INSERT INTO {table_name} ({fields_str}) SELECT {select_str} FROM {backup_table}"
-        
+
         db.execute_sql(insert_sql)
         logger.info(f"已从备份表恢复数据到 '{table_name}'")
-        
+
         # 5. 验证数据完整性
         original_count = db.execute_sql(f"SELECT COUNT(*) FROM {backup_table}").fetchone()[0]
         new_count = db.execute_sql(f"SELECT COUNT(*) FROM {table_name}").fetchone()[0]
-        
+
         if original_count == new_count:
             logger.info(f"数据完整性验证通过: {original_count} 行数据")
             # 删除备份表
@@ -630,12 +633,14 @@ def _fix_table_constraints(table_name, model, constraints_to_fix):
         else:
             logger.error(f"数据完整性验证失败: 原始 {original_count} 行，新表 {new_count} 行")
             logger.error(f"备份表 '{backup_table}' 已保留，请手动检查")
-        
+
         # 记录修复的约束
         for constraint in constraints_to_fix:
-            logger.info(f"已修复字段 '{constraint['field_name']}': "
-                       f"{constraint['current_constraint']} -> {constraint['target_constraint']}")
-                       
+            logger.info(
+                f"已修复字段 '{constraint['field_name']}': "
+                f"{constraint['current_constraint']} -> {constraint['target_constraint']}"
+            )
+
     except Exception as e:
         logger.exception(f"修复表 '{table_name}' 约束时出错: {e}")
         # 尝试恢复
@@ -654,7 +659,7 @@ def check_field_constraints():
     检查但不修复字段约束，返回不一致的字段信息。
     用于在修复前预览需要修复的内容。
     """
-    
+
     models = [
         ChatStreams,
         LLMUsage,
@@ -669,9 +674,9 @@ def check_field_constraints():
         GraphEdges,
         ActionRecords,
     ]
-    
+
     inconsistencies = {}
-    
+
     try:
         with db:
             for model in models:
@@ -681,49 +686,49 @@ def check_field_constraints():
 
                 # 获取当前表结构信息
                 cursor = db.execute_sql(f"PRAGMA table_info('{table_name}')")
-                current_schema = {row[1]: {'type': row[2], 'notnull': bool(row[3]), 'default': row[4]} 
-                                for row in cursor.fetchall()}
-                
+                current_schema = {
+                    row[1]: {"type": row[2], "notnull": bool(row[3]), "default": row[4]} for row in cursor.fetchall()
+                }
+
                 table_inconsistencies = []
-                
+
                 # 检查每个模型字段的约束
                 for field_name, field_obj in model._meta.fields.items():
                     if field_name not in current_schema:
                         continue
-                    
-                    current_notnull = current_schema[field_name]['notnull']
+
+                    current_notnull = current_schema[field_name]["notnull"]
                     model_allows_null = field_obj.null
-                    
+
                     if model_allows_null and current_notnull:
-                        table_inconsistencies.append({
-                            'field_name': field_name,
-                            'issue': 'model_allows_null_but_db_not_null',
-                            'model_constraint': 'NULL',
-                            'db_constraint': 'NOT NULL',
-                            'recommended_action': 'allow_null'
-                        })
+                        table_inconsistencies.append(
+                            {
+                                "field_name": field_name,
+                                "issue": "model_allows_null_but_db_not_null",
+                                "model_constraint": "NULL",
+                                "db_constraint": "NOT NULL",
+                                "recommended_action": "allow_null",
+                            }
+                        )
                     elif not model_allows_null and not current_notnull:
-                        table_inconsistencies.append({
-                            'field_name': field_name,
-                            'issue': 'model_not_null_but_db_allows_null',
-                            'model_constraint': 'NOT NULL',
-                            'db_constraint': 'NULL',
-                            'recommended_action': 'disallow_null'
-                        })
-                
+                        table_inconsistencies.append(
+                            {
+                                "field_name": field_name,
+                                "issue": "model_not_null_but_db_allows_null",
+                                "model_constraint": "NOT NULL",
+                                "db_constraint": "NULL",
+                                "recommended_action": "disallow_null",
+                            }
+                        )
+
                 if table_inconsistencies:
                     inconsistencies[table_name] = table_inconsistencies
-                    
+
     except Exception as e:
         logger.exception(f"检查字段约束时出错: {e}")
-    
-    return inconsistencies
 
+    return inconsistencies
 
 
 # 模块加载时调用初始化函数
 initialize_database(sync_constraints=True)
-
-
-
-

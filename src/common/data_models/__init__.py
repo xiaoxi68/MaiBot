@@ -6,6 +6,7 @@ class BaseDataModel:
     def deepcopy(self):
         return copy.deepcopy(self)
 
+
 def temporarily_transform_class_to_dict(obj: Any) -> Any:
     # sourcery skip: assign-if-exp, reintroduce-else
     """

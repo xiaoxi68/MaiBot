@@ -16,7 +16,6 @@ import json
 from .s4u_mood_manager import mood_manager
 from src.mais4u.s4u_config import s4u_config
 from src.person_info.person_info import get_person_id
-from .super_chat_manager import get_super_chat_manager
 from .yes_or_no import yes_or_no_head
 
 logger = get_logger("S4U_chat")
@@ -33,15 +32,12 @@ class MessageSenderContainer:
         self._task: Optional[asyncio.Task] = None
         self._paused_event = asyncio.Event()
         self._paused_event.set()  # 默认设置为非暂停状态
-        
-        self.msg_id = ""
-        
-        self.last_msg_id = ""
-        
-        self.voice_done = ""
-        
 
-        
+        self.msg_id = ""
+
+        self.last_msg_id = ""
+
+        self.voice_done = ""
 
     async def add_message(self, chunk: str):
         """向队列中添加一个消息块。"""
@@ -131,7 +127,7 @@ class MessageSenderContainer:
                     reply_to=f"{self.original_message.message_info.user_info.platform}:{self.original_message.message_info.user_info.user_id}",
                 )
                 await bot_message.process()
-                
+
                 await self.storage.store_message(bot_message, self.chat_stream)
 
             except Exception as e:
@@ -198,12 +194,12 @@ class S4UChat:
         self.gpt = S4UStreamGenerator()
         self.gpt.chat_stream = self.chat_stream
         self.interest_dict: Dict[str, float] = {}  # 用户兴趣分
-        
-        self.internal_message :List[MessageRecvS4U] = []
-        
+
+        self.internal_message: List[MessageRecvS4U] = []
+
         self.msg_id = ""
         self.voice_done = ""
-        
+
         logger.info(f"[{self.stream_name}] S4UChat with two-queue system initialized.")
 
     def _get_priority_info(self, message: MessageRecv) -> dict:
@@ -226,7 +222,7 @@ class S4UChat:
     def _get_interest_score(self, user_id: str) -> float:
         """获取用户的兴趣分，默认为1.0"""
         return self.interest_dict.get(user_id, 1.0)
-    
+
     def go_processing(self):
         if self.voice_done == self.last_msg_id:
             return True
@@ -237,14 +233,14 @@ class S4UChat:
         为消息计算基础优先级分数。分数越高，优先级越高。
         """
         score = 0.0
-        
+
         # 加上消息自带的优先级
         score += priority_info.get("message_priority", 0.0)
 
         # 加上用户的固有兴趣分
         score += self._get_interest_score(message.message_info.user_info.user_id)
         return score
-    
+
     def decay_interest_score(self):
         for person_id, score in self.interest_dict.items():
             if score > 0:
@@ -252,15 +248,14 @@ class S4UChat:
             else:
                 self.interest_dict[person_id] = 0
 
-    async def add_message(self, message: MessageRecvS4U|MessageRecv) -> None:
-        
+    async def add_message(self, message: MessageRecvS4U | MessageRecv) -> None:
         self.decay_interest_score()
-        
+
         """根据VIP状态和中断逻辑将消息放入相应队列。"""
         user_id = message.message_info.user_info.user_id
         platform = message.message_info.platform
-        person_id = get_person_id(platform, user_id)
-        
+        _person_id = get_person_id(platform, user_id)
+
         # try:
         #     is_gift = message.is_gift
         #     is_superchat = message.is_superchat
@@ -276,7 +271,7 @@ class S4UChat:
         #         # 安全地增加兴趣分，如果person_id不存在则先初始化为1.0
         #         current_score = self.interest_dict.get(person_id, 1.0)
         #         self.interest_dict[person_id] = current_score + 0.1 * float(message.superchat_price)
-                
+
         #         # 添加SuperChat到管理器
         #         super_chat_manager = get_super_chat_manager()
         #         await super_chat_manager.add_superchat(message)
@@ -284,16 +279,19 @@ class S4UChat:
         #         await self.relationship_builder.build_relation(20)
         # except Exception:
         #     traceback.print_exc()
-            
+
         logger.info(f"[{self.stream_name}] 消息处理完毕，消息内容：{message.processed_plain_text}")
-        
+
         priority_info = self._get_priority_info(message)
         is_vip = self._is_vip(priority_info)
         new_priority_score = self._calculate_base_priority_score(message, priority_info)
 
         should_interrupt = False
-        if (s4u_config.enable_message_interruption and 
-            self._current_generation_task and not self._current_generation_task.done()):
+        if (
+            s4u_config.enable_message_interruption
+            and self._current_generation_task
+            and not self._current_generation_task.done()
+        ):
             if self._current_message_being_replied:
                 current_queue, current_priority, _, current_msg = self._current_message_being_replied
 
@@ -344,39 +342,45 @@ class S4UChat:
         """清理普通队列中不在最近N条消息范围内的消息"""
         if not s4u_config.enable_old_message_cleanup or self._normal_queue.empty():
             return
-        
+
         # 计算阈值：保留最近 recent_message_keep_count 条消息
         cutoff_counter = max(0, self._entry_counter - s4u_config.recent_message_keep_count)
-        
+
         # 临时存储需要保留的消息
         temp_messages = []
         removed_count = 0
-        
+
         # 取出所有普通队列中的消息
         while not self._normal_queue.empty():
             try:
                 item = self._normal_queue.get_nowait()
                 neg_priority, entry_count, timestamp, message = item
-                
+
                 # 如果消息在最近N条消息范围内，保留它
-                logger.info(f"检查消息:{message.processed_plain_text},entry_count:{entry_count} cutoff_counter:{cutoff_counter}")
-                
+                logger.info(
+                    f"检查消息:{message.processed_plain_text},entry_count:{entry_count} cutoff_counter:{cutoff_counter}"
+                )
+
                 if entry_count >= cutoff_counter:
                     temp_messages.append(item)
                 else:
                     removed_count += 1
                     self._normal_queue.task_done()  # 标记被移除的任务为完成
-                    
+
             except asyncio.QueueEmpty:
                 break
-        
+
         # 将保留的消息重新放入队列
         for item in temp_messages:
             self._normal_queue.put_nowait(item)
-        
+
         if removed_count > 0:
-            logger.info(f"消息{message.processed_plain_text}超过{s4u_config.recent_message_keep_count}条，现在counter:{self._entry_counter}被移除")
-            logger.info(f"[{self.stream_name}] Cleaned up {removed_count} old normal messages outside recent {s4u_config.recent_message_keep_count} range.")
+            logger.info(
+                f"消息{message.processed_plain_text}超过{s4u_config.recent_message_keep_count}条，现在counter:{self._entry_counter}被移除"
+            )
+            logger.info(
+                f"[{self.stream_name}] Cleaned up {removed_count} old normal messages outside recent {s4u_config.recent_message_keep_count} range."
+            )
 
     async def _message_processor(self):
         """调度器：优先处理VIP队列，然后处理普通队列。"""
@@ -385,7 +389,7 @@ class S4UChat:
                 # 等待有新消息的信号，避免空转
                 await self._new_message_event.wait()
                 self._new_message_event.clear()
-                
+
                 # 清理普通队列中的过旧消息
                 self._cleanup_old_normal_messages()
 
@@ -396,7 +400,6 @@ class S4UChat:
                     queue_name = "vip"
                 # 其次处理普通队列
                 elif not self._normal_queue.empty():
-
                     neg_priority, entry_count, timestamp, message = self._normal_queue.get_nowait()
                     priority = -neg_priority
                     # 检查普通消息是否超时
@@ -411,13 +414,15 @@ class S4UChat:
                     if self.internal_message:
                         message = self.internal_message[-1]
                         self.internal_message = []
-                        
+
                         priority = 0
                         neg_priority = 0
                         entry_count = 0
                         queue_name = "internal"
 
-                        logger.info(f"[{self.stream_name}] normal/vip 队列都空，触发 internal_message 回复: {getattr(message, 'processed_plain_text', str(message))[:20]}...")
+                        logger.info(
+                            f"[{self.stream_name}] normal/vip 队列都空，触发 internal_message 回复: {getattr(message, 'processed_plain_text', str(message))[:20]}..."
+                        )
                     else:
                         continue  # 没有消息了，回去等事件
 
@@ -457,23 +462,21 @@ class S4UChat:
             except Exception as e:
                 logger.error(f"[{self.stream_name}] Message processor main loop error: {e}", exc_info=True)
                 await asyncio.sleep(1)
-                
-        
+
     def get_processing_message_id(self):
         self.last_msg_id = self.msg_id
         self.msg_id = f"{time.time()}_{random.randint(1000, 9999)}"
-
 
     async def _generate_and_send(self, message: MessageRecv):
         """为单个消息生成文本回复。整个过程可以被中断。"""
         self._is_replying = True
         total_chars_sent = 0  # 跟踪发送的总字符数
-        
+
         self.get_processing_message_id()
-        
+
         # 视线管理：开始生成回复时切换视线状态
         chat_watching = watching_manager.get_watching_by_chat_id(self.stream_id)
-        
+
         if message.is_internal:
             await chat_watching.on_internal_message_start()
         else:
@@ -516,16 +519,19 @@ class S4UChat:
                 total_chars_sent = len("麦麦不知道哦")
 
             mood = mood_manager.get_mood_by_chat_id(self.stream_id)
-            await yes_or_no_head(text = total_chars_sent,emotion = mood.mood_state,chat_history=message.processed_plain_text,chat_id=self.stream_id)
+            await yes_or_no_head(
+                text=total_chars_sent,
+                emotion=mood.mood_state,
+                chat_history=message.processed_plain_text,
+                chat_id=self.stream_id,
+            )
 
             # 等待所有文本消息发送完成
             await sender_container.close()
             await sender_container.join()
-            
+
             await chat_watching.on_thinking_finished()
-            
-            
-            
+
             start_time = time.time()
             logged = False
             while not self.go_processing():
@@ -536,7 +542,7 @@ class S4UChat:
                     logger.info(f"[{self.stream_name}] 等待消息发送完成...")
                     logged = True
                 await asyncio.sleep(0.2)
-            
+
             logger.info(f"[{self.stream_name}] 所有文本块处理完毕。")
 
         except asyncio.CancelledError:
@@ -548,11 +554,11 @@ class S4UChat:
             # 回复生成实时展示：清空内容（出错时）
         finally:
             self._is_replying = False
-            
+
             # 视线管理：回复结束时切换视线状态
             chat_watching = watching_manager.get_watching_by_chat_id(self.stream_id)
             await chat_watching.on_reply_finished()
-            
+
             # 确保发送器被妥善关闭（即使已关闭，再次调用也是安全的）
             sender_container.resume()
             if not sender_container._task.done():
@@ -576,4 +582,3 @@ class S4UChat:
             await self._processing_task
         except asyncio.CancelledError:
             logger.info(f"处理任务已成功取消: {self.stream_name}")
-        

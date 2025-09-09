@@ -426,9 +426,7 @@ class KGManager:
         # 获取最终结果
         # 从搜索结果中提取文段节点的结果
         passage_node_res = [
-            (node_key, score)
-            for node_key, score in ppr_res.items()
-            if node_key.startswith("paragraph")
+            (node_key, score) for node_key, score in ppr_res.items() if node_key.startswith("paragraph")
         ]
         del ppr_res
 
