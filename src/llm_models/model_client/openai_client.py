@@ -551,12 +551,18 @@ class OpenaiClient(BaseClient):
 
         # 解析使用情况
         if hasattr(raw_response, "usage"):
+            usage_obj = raw_response.usage
+            # 安全地获取usage属性，处理不同API版本的差异
+            prompt_tokens = getattr(usage_obj, 'prompt_tokens', 0) or 0
+            completion_tokens = getattr(usage_obj, 'completion_tokens', 0) or 0
+            total_tokens = getattr(usage_obj, 'total_tokens', 0) or 0
+            
             response.usage = UsageRecord(
                 model_name=model_info.name,
                 provider_name=model_info.api_provider,
-                prompt_tokens=raw_response.usage.prompt_tokens or 0,
-                completion_tokens=raw_response.usage.completion_tokens or 0,  # type: ignore
-                total_tokens=raw_response.usage.total_tokens or 0,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                total_tokens=total_tokens,
             )
 
         return response
