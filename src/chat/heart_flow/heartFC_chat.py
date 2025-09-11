@@ -194,7 +194,7 @@ class HeartFChatting:
                         break
                 # 没有提到，继续保持沉默
                 if self.no_reply_until_call:
-                    logger.info(f"{self.log_prefix} 没有提到，继续保持沉默")
+                    # logger.info(f"{self.log_prefix} 没有提到，继续保持沉默")
                     await asyncio.sleep(1)
                     return True
                     
