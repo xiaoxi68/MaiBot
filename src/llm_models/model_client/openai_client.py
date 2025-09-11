@@ -277,10 +277,12 @@ async def _default_stream_response_handler(
         # 空 choices / usage-only 帧的防御
         if not hasattr(event, "choices") or not event.choices:
             if hasattr(event, "usage") and event.usage:
+                # 安全地获取usage属性，处理不同API版本的差异
+                usage_obj = event.usage
                 _usage_record = (
-                    event.usage.prompt_tokens or 0,
-                    event.usage.completion_tokens or 0,
-                    event.usage.total_tokens or 0,
+                    getattr(usage_obj, 'prompt_tokens', 0) or 0,
+                    getattr(usage_obj, 'completion_tokens', 0) or 0,
+                    getattr(usage_obj, 'total_tokens', 0) or 0,
                 )
             continue  # 跳过本帧，避免访问 choices[0]
         delta = event.choices[0].delta  # 获取当前块的delta内容
@@ -300,10 +302,12 @@ async def _default_stream_response_handler(
 
         if event.usage:
             # 如果有使用情况，则将其存储在APIResponse对象中
+            # 安全地获取usage属性，处理不同API版本的差异
+            usage_obj = event.usage
             _usage_record = (
-                event.usage.prompt_tokens or 0,
-                event.usage.completion_tokens or 0,
-                event.usage.total_tokens or 0,
+                getattr(usage_obj, 'prompt_tokens', 0) or 0,
+                getattr(usage_obj, 'completion_tokens', 0) or 0,
+                getattr(usage_obj, 'total_tokens', 0) or 0,
             )
 
     try:
@@ -370,10 +374,12 @@ def _default_normal_response_parser(
 
     # 提取Usage信息
     if resp.usage:
+        # 安全地获取usage属性，处理不同API版本的差异
+        usage_obj = resp.usage
         _usage_record = (
-            resp.usage.prompt_tokens or 0,
-            resp.usage.completion_tokens or 0,
-            resp.usage.total_tokens or 0,
+            getattr(usage_obj, 'prompt_tokens', 0) or 0,
+            getattr(usage_obj, 'completion_tokens', 0) or 0,
+            getattr(usage_obj, 'total_tokens', 0) or 0,
         )
     else:
         _usage_record = None

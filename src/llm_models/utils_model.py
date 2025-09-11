@@ -5,6 +5,7 @@ import time
 from enum import Enum
 from rich.traceback import install
 from typing import Tuple, List, Dict, Optional, Callable, Any
+import traceback
 
 from src.common.logger import get_logger
 from src.config.config import model_config
@@ -391,6 +392,7 @@ class LLMRequest:
             logger.debug(f"附加内容: {str(e.ext_info)}")
             return -1, None  # 不再重试请求该模型
         else:
+            print(traceback.format_exc())
             logger.error(f"任务-'{task_name}' 模型-'{model_name}': 未知异常，错误信息-{str(e)}")
             return -1, None  # 不再重试请求该模型
 
