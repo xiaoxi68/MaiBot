@@ -61,6 +61,7 @@ reply
 no_reply
 动作描述：
 保持沉默，不回复直到有新消息
+控制聊天频率，不要太过频繁的发言
 {{
     "action": "no_reply",
 }}
@@ -68,6 +69,7 @@ no_reply
 no_reply_until_call
 动作描述：
 保持沉默，直到有人直接叫你的名字
+当前话题不感兴趣时使用，或有人不喜欢你的发言时使用
 {{
     "action": "no_reply_until_call",
 }}
