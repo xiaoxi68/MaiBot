@@ -46,6 +46,12 @@ class PersonalityConfig(ConfigBase):
 
     interest: str = ""
     """兴趣"""
+    
+    plan_style: str = ""
+    """说话规则，行为风格"""
+    
+    visual_style: str = ""
+    """图片提示词"""
 
 
 @dataclass
@@ -383,14 +389,6 @@ class KeywordReactionConfig(ConfigBase):
         for rule in self.keyword_rules + self.regex_rules:
             if not isinstance(rule, KeywordRuleConfig):
                 raise ValueError(f"规则必须是KeywordRuleConfig类型，而不是{type(rule).__name__}")
-
-
-@dataclass
-class CustomPromptConfig(ConfigBase):
-    """自定义提示词配置类"""
-
-    image_prompt: str = ""
-    """图片提示词"""
 
 
 @dataclass

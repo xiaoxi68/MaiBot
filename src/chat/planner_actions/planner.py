@@ -39,6 +39,7 @@ def init_prompt():
         """
 {time_block}
 {name_block}
+你的兴趣是：{interest}
 {chat_context_description}，以下是具体的聊天内容
 **聊天内容**
 {chat_content_block}
@@ -76,13 +77,8 @@ no_reply_until_call
 请选择合适的action，并说明触发action的消息id和选择该action的原因。消息id格式:m+数字
 先输出你的选择思考理由，再输出你选择的action，理由是一段平文本，不要分点，精简。
 **动作选择要求**
-请你根据聊天内容和用户的最新消息选择合适的动作:
-1.思考**所有**的可用的action中的**每个动作**是否符合当下条件，如果动作使用调节符合当下条件就使用
-2.如果相同的内容已经被执行，请不要重复执行
-3.你的兴趣是：{interest}
-4.请控制你的发言频率，不要太过频繁的发言
-5.如果有人对你感到厌烦，请减少回复
-6.如果有人对你进行攻击，或者情绪激动，请你以合适的方法应对
+请你根据聊天内容,用户的最新消息和以下标准选择合适的动作:
+{plan_style}
 {moderation_prompt}
 
 请选择所有符合使用要求的action，动作用json格式输出，如果输出多个json，每个json都要单独用```json包裹，你可以重复使用同一个动作或不同动作:
@@ -349,6 +345,7 @@ class ActionPlanner:
                 moderation_prompt=moderation_prompt_block,
                 name_block=name_block,
                 interest=interest,
+                plan_style=global_config.personality.plan_style,
             )
 
             return prompt, message_id_list

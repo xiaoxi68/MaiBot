@@ -32,7 +32,6 @@ from src.config.official_configs import (
     ToolConfig,
     VoiceConfig,
     DebugConfig,
-    CustomPromptConfig,
 )
 
 from .api_ada_configs import (
@@ -357,7 +356,6 @@ class Config(ConfigBase):
     lpmm_knowledge: LPMMKnowledgeConfig
     tool: ToolConfig
     debug: DebugConfig
-    custom_prompt: CustomPromptConfig
     voice: VoiceConfig
 
 

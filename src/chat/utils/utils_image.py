@@ -270,7 +270,7 @@ class ImageManager:
 
             # 调用AI获取描述
             image_format = Image.open(io.BytesIO(image_bytes)).format.lower()  # type: ignore
-            prompt = global_config.custom_prompt.image_prompt
+            prompt = global_config.personality.visual_style
             logger.info(f"[VLM调用] 为图片生成新描述 (Hash: {image_hash[:8]}...)")
             description, _ = await self.vlm.generate_response_for_image(
                 prompt, image_base64, image_format, temperature=0.4, max_tokens=300
@@ -566,7 +566,7 @@ class ImageManager:
             image_format = Image.open(io.BytesIO(image_bytes)).format.lower()  # type: ignore
 
             # 构建prompt
-            prompt = global_config.custom_prompt.image_prompt
+            prompt = global_config.personality.visual_style
 
             # 获取VLM描述
             description, _ = await self.vlm.generate_response_for_image(
