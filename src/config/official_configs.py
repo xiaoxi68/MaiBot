@@ -72,6 +72,9 @@ class ChatConfig(ConfigBase):
     planner_size: float = 1.5
     """副规划器大小，越小，麦麦的动作执行能力越精细，但是消耗更多token，调大可以缓解429类错误"""
 
+    mentioned_bot_reply: bool = True
+    """是否启用提及必回复"""
+
     at_bot_inevitable_reply: float = 1
     """@bot 必然回复，1为100%回复，0为不额外增幅"""
 

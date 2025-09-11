@@ -199,7 +199,7 @@ class HeartFChatting:
             # !处理no_reply_until_call逻辑
             if self.no_reply_until_call:
                 for message in recent_messages_list:
-                    if message.is_mentioned or message.is_at:
+                    if message.is_mentioned or message.is_at or len(recent_messages_list) >= 8 or time.time() - self.last_read_time > 600:
                         self.no_reply_until_call = False
                         break
                 # 没有提到，继续保持沉默
@@ -333,6 +333,31 @@ class HeartFChatting:
                     loop_start_time=self.last_read_time,
                     available_actions=available_actions,
                 )
+                
+            
+            # !此处使at或者提及必定回复
+            metioned_message = None
+            for message in recent_messages_list:
+                if (message.is_mentioned or message.is_at) and global_config.chat.mentioned_bot_reply:
+                    metioned_message = message
+            
+            has_reply = False
+            for action in action_to_use_info:
+                if action.action_type == "reply":
+                    has_reply =True
+                    break
+                
+            if not has_reply and metioned_message:
+                action_to_use_info.append(
+                    ActionPlannerInfo(
+                        action_type="reply",
+                        reasoning="有人提到了你，进行回复",
+                        action_data={},
+                        action_message=metioned_message,
+                        available_actions=available_actions,
+                    )
+                )
+            
 
             # 3. 并行执行所有动作
             action_tasks = [
@@ -350,18 +375,15 @@ class HeartFChatting:
             reply_text_from_reply = ""
             action_success = False
             action_reply_text = ""
-            action_command = ""
 
             for i, result in enumerate(results):
                 if isinstance(result, BaseException):
                     logger.error(f"{self.log_prefix} 动作执行异常: {result}")
                     continue
 
-                _cur_action = action_to_use_info[i]
                 if result["action_type"] != "reply":
                     action_success = result["success"]
                     action_reply_text = result["reply_text"]
-                    action_command = result.get("command", "")
                 elif result["action_type"] == "reply":
                     if result["success"]:
                         reply_loop_info = result["loop_info"]
@@ -377,7 +399,6 @@ class HeartFChatting:
                 loop_info["loop_action_info"].update(
                     {
                         "action_taken": action_success,
-                        "command": action_command,
                         "taken_time": time.time(),
                     }
                 )
@@ -391,7 +412,6 @@ class HeartFChatting:
                     "loop_action_info": {
                         "action_taken": action_success,
                         "reply_text": action_reply_text,
-                        "command": action_command,
                         "taken_time": time.time(),
                     },
                 }

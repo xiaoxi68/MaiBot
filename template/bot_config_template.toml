@@ -50,7 +50,8 @@ expression_groups = [
 
 
 [chat] #麦麦的聊天设置
-talk_value = 1.5 
+talk_value = 1
+mentioned_bot_reply = true # 是否启用提及必回复
 max_context_size = 20 # 上下文长度
 
 [relationship]

@@ -71,14 +71,6 @@ no_reply_until_call
     "action": "no_reply_until_call",
 }}
 
-wait_time
-动作描述：
-沉默等待时间，等待一段时间后回复
-{{
-    "action": "wait_time",
-    "time":"等待时间",
-}}
-
 {action_options_text}
 
 请选择合适的action，并说明触发action的消息id和选择该action的原因。消息id格式:m+数字
@@ -175,7 +167,7 @@ class ActionPlanner:
         try:
             action = action_json.get("action", "no_action")
             reasoning = action_json.get("reason", "未提供原因")
-            action_data = {key: value for key, value in action_json.items() if key not in ["action", "reasoning"]}
+            action_data = {key: value for key, value in action_json.items() if key not in ["action", "reason"]}
             # 非no_action动作需要target_message_id
             target_message = None
             
