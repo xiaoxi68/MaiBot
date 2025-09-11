@@ -46,36 +46,34 @@ def init_prompt():
 **动作记录**
 {actions_before_now_block}
 
-**要求**
-请你根据聊天内容和用户的最新消息选择合适的动作:
+**可用的action**
+reply
+动作描述：
 1.你可以选择呼叫了你的名字，但是你没有做出回应的消息进行回复
 2.你可以自然的顺着正在进行的聊天内容进行回复或自然的提出一个问题
-3.你的兴趣是：{interest}
-4.如果你刚刚进行了回复，不要对同一个话题重复回应
-5.请控制你的发言频率，不要太过频繁的发言
-6.如果有人对你感到厌烦，请减少回复
-7.如果有人对你进行攻击，或者情绪激动，请你以合适的方法应对
-{moderation_prompt}
-
-**可用的action**
-no_reply：保持沉默，不回复直到有新消息
-{{
-    "action": "no_reply",
-}}
-
-reply：进行回复
 {{
     "action": "reply",
     "target_message_id":"想要回复的消息id",
     "reason":"回复的原因"
 }}
 
-no_reply_until_call：保持沉默，直到有人直接叫的名字
+no_reply
+动作描述：
+保持沉默，不回复直到有新消息
+{{
+    "action": "no_reply",
+}}
+
+no_reply_until_call
+动作描述：
+保持沉默，直到有人直接叫你的名字
 {{
     "action": "no_reply_until_call",
 }}
 
-wait_time：沉默等待时间，等待一段时间后回复
+wait_time
+动作描述：
+沉默等待时间，等待一段时间后回复
 {{
     "action": "wait_time",
     "time":"等待时间",
@@ -83,11 +81,18 @@ wait_time：沉默等待时间，等待一段时间后回复
 
 {action_options_text}
 
-请选择一个或多个合适的action，并说明触发action的消息id和选择该action的原因。消息id格式:m+数字
+请选择合适的action，并说明触发action的消息id和选择该action的原因。消息id格式:m+数字
 先输出你的选择思考理由，再输出你选择的action，理由是一段平文本，不要分点，精简。
-理由要求：
-1.思考每个动作是否符合当下条件，如果符合就使用
+**动作选择要求**
+请你根据聊天内容和用户的最新消息选择合适的动作:
+1.思考**所有**的可用的action中的**每个动作**是否符合当下条件，如果动作使用调节符合当下条件就使用
 2.如果相同的内容已经被执行，请不要重复执行
+3.你的兴趣是：{interest}
+4.请控制你的发言频率，不要太过频繁的发言
+5.如果有人对你感到厌烦，请减少回复
+6.如果有人对你进行攻击，或者情绪激动，请你以合适的方法应对
+{moderation_prompt}
+
 请选择所有符合使用要求的action，动作用json格式输出，如果输出多个json，每个json都要单独用```json包裹，你可以重复使用同一个动作或不同动作:
 **示例**
 // 理由文本
@@ -114,6 +119,7 @@ wait_time：沉默等待时间，等待一段时间后回复
         """
 {action_name}
 动作描述：{action_description}
+使用条件：
 {action_require}
 {{
     "action": "{action_name}",{action_parameters},

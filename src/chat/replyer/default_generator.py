@@ -77,7 +77,7 @@ def init_prompt():
 {core_dialogue_prompt}
 
 {expression_habits_block}{tool_info_block}
-{knowledge_prompt}{memory_block}{relation_info_block}
+{knowledge_prompt}{relation_info_block}
 {extra_info_block}
 
 {reply_target_block}
@@ -99,7 +99,7 @@ def init_prompt():
 {background_dialogue_prompt}
 
 {expression_habits_block}{tool_info_block}
-{knowledge_prompt}{memory_block}{relation_info_block}
+{knowledge_prompt}{relation_info_block}
 {extra_info_block}
 
 你现在想补充说明你刚刚自己的发言内容：{target}，原因是{reason}
@@ -763,7 +763,7 @@ class DefaultReplyer:
                 self.build_expression_habits(chat_talking_prompt_short, target), "expression_habits"
             ),
             self._time_and_run_task(self.build_relation_info(sender, target), "relation_info"),
-            self._time_and_run_task(self.build_memory_block(message_list_before_short, target), "memory_block"),
+            # self._time_and_run_task(self.build_memory_block(message_list_before_short, target), "memory_block"),
             self._time_and_run_task(
                 self.build_tool_info(chat_talking_prompt_short, sender, target, enable_tool=enable_tool), "tool_info"
             ),
@@ -776,7 +776,7 @@ class DefaultReplyer:
         task_name_mapping = {
             "expression_habits": "选取表达方式",
             "relation_info": "感受关系",
-            "memory_block": "回忆",
+            # "memory_block": "回忆",
             "tool_info": "使用工具",
             "prompt_info": "获取知识",
             "actions_info": "动作信息",
@@ -804,7 +804,7 @@ class DefaultReplyer:
         expression_habits_block: str
         selected_expressions: List[int]
         relation_info: str = results_dict["relation_info"]
-        memory_block: str = results_dict["memory_block"]
+        # memory_block: str = results_dict["memory_block"]
         tool_info: str = results_dict["tool_info"]
         prompt_info: str = results_dict["prompt_info"]  # 直接使用格式化后的结果
         actions_info: str = results_dict["actions_info"]
@@ -843,7 +843,7 @@ class DefaultReplyer:
                 expression_habits_block=expression_habits_block,
                 tool_info_block=tool_info,
                 knowledge_prompt=prompt_info,
-                memory_block=memory_block,
+                # memory_block=memory_block,
                 relation_info_block=relation_info,
                 extra_info_block=extra_info_block,
                 identity=personality_prompt,
@@ -863,7 +863,7 @@ class DefaultReplyer:
                 expression_habits_block=expression_habits_block,
                 tool_info_block=tool_info,
                 knowledge_prompt=prompt_info,
-                memory_block=memory_block,
+                # memory_block=memory_block,
                 relation_info_block=relation_info,
                 extra_info_block=extra_info_block,
                 identity=personality_prompt,

@@ -12,7 +12,7 @@ from src.plugins.built_in.memory.build_memory import BuildMemoryAction
 logger = get_logger("relation_actions")
 
 
-@register_plugin
+# @register_plugin
 class MemoryBuildPlugin(BasePlugin):
     """关系动作插件
 
