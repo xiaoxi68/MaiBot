@@ -77,6 +77,9 @@ class ChatConfig(ConfigBase):
 
     talk_frequency: float = 0.5
     """回复频率阈值"""
+    
+    talk_value: float = 1
+    """思考频率"""
 
     # 合并后的时段频率配置
     talk_frequency_adjust: list[list[str]] = field(default_factory=lambda: [])
@@ -319,26 +322,6 @@ class EmojiConfig(ConfigBase):
 
     filtration_prompt: str = "符合公序良俗"
     """表情包过滤要求"""
-
-
-@dataclass
-class MemoryConfig(ConfigBase):
-    """记忆配置类"""
-
-    enable_memory: bool = True
-    """是否启用记忆系统"""
-
-    forget_memory_interval: int = 1500
-    """记忆遗忘间隔（秒）"""
-
-    memory_forget_time: int = 24
-    """记忆遗忘时间（小时）"""
-
-    memory_forget_percentage: float = 0.01
-    """记忆遗忘比例"""
-
-    memory_ban_words: list[str] = field(default_factory=lambda: ["表情包", "图片", "回复", "聊天记录"])
-    """不允许记忆的词列表"""
 
 
 @dataclass

@@ -109,7 +109,7 @@ class HeartFChatting:
 
         self.last_read_time = time.time() - 10
         
-        
+        self.talk_threshold = global_config.chat.talk_value
         
         self.no_reply_until_call = False
 
@@ -172,6 +172,16 @@ class HeartFChatting:
             f"耗时: {self._current_cycle_detail.end_time - self._current_cycle_detail.start_time:.1f}秒"  # type: ignore
             + (f"\n详情: {'; '.join(timer_strings)}" if timer_strings else "")
         )
+        
+    def get_talk_threshold(self):
+        talk_value = global_config.chat.talk_value
+        # 处理talk_value：取整数部分和小数部分
+        base_value = int(talk_value)
+        probability = talk_value - base_value
+        # 根据概率决定是否+1
+        think_len = base_value + 1 if random.random() < probability else base_value
+        self.talk_threshold = think_len
+        logger.info(f"{self.log_prefix} 思考频率阈值: {self.talk_threshold}")
 
     async def _loopbody(self):
         recent_messages_list = message_api.get_messages_by_time_in_chat(
@@ -184,7 +194,7 @@ class HeartFChatting:
             filter_command=True,
         )
 
-        if recent_messages_list:
+        if len(recent_messages_list) >= self.talk_threshold:
             
             # !处理no_reply_until_call逻辑
             if self.no_reply_until_call:
@@ -203,6 +213,7 @@ class HeartFChatting:
             await self._observe(
                 recent_messages_list=recent_messages_list,
             )
+            self.get_talk_threshold()
         else:
             # Normal模式：消息数量不足，等待
             await asyncio.sleep(0.2)

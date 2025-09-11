@@ -23,10 +23,6 @@ from src.plugin_system.core.plugin_manager import plugin_manager
 # 导入消息API和traceback模块
 from src.common.message import get_global_api
 
-# 条件导入记忆系统
-if global_config.memory.enable_memory:
-    from src.chat.memory_system.Hippocampus import hippocampus_manager
-
 # 插件系统现在使用统一的插件加载器
 
 install(extra_lines=3)
@@ -36,10 +32,6 @@ logger = get_logger("main")
 
 class MainSystem:
     def __init__(self):
-        # 根据配置条件性地初始化记忆系统
-        self.hippocampus_manager = None
-        if global_config.memory.enable_memory:
-            self.hippocampus_manager = hippocampus_manager
 
         # 使用消息API替代直接的FastAPI实例
         self.app: MessageServer = get_global_api()
@@ -101,13 +93,13 @@ class MainSystem:
 
         logger.info("聊天管理器初始化成功")
 
-        # 根据配置条件性地初始化记忆系统
-        if global_config.memory.enable_memory:
-            if self.hippocampus_manager:
-                self.hippocampus_manager.initialize()
-                logger.info("记忆系统初始化成功")
-        else:
-            logger.info("记忆系统已禁用，跳过初始化")
+        # # 根据配置条件性地初始化记忆系统
+        # if global_config.memory.enable_memory:
+        #     if self.hippocampus_manager:
+        #         self.hippocampus_manager.initialize()
+        #         logger.info("记忆系统初始化成功")
+        # else:
+        #     logger.info("记忆系统已禁用，跳过初始化")
 
         # await asyncio.sleep(0.5) #防止logger输出飞了
 
@@ -139,14 +131,14 @@ class MainSystem:
             ]
 
             # 根据配置条件性地添加记忆系统相关任务
-            if global_config.memory.enable_memory and self.hippocampus_manager:
-                tasks.extend(
-                    [
-                        # 移除记忆构建的定期调用，改为在heartFC_chat.py中调用
-                        # self.build_memory_task(),
-                        self.forget_memory_task(),
-                    ]
-                )
+            # if global_config.memory.enable_memory and self.hippocampus_manager:
+            #     tasks.extend(
+            #         [
+            #             # 移除记忆构建的定期调用，改为在heartFC_chat.py中调用
+            #             # self.build_memory_task(),
+            #             self.forget_memory_task(),
+            #         ]
+            #     )
 
             await asyncio.gather(*tasks)
 

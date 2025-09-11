@@ -25,7 +25,7 @@ from src.chat.utils.chat_message_builder import (
     replace_user_references,
 )
 from src.chat.express.expression_selector import expression_selector
-from src.chat.memory_system.memory_activator import MemoryActivator
+# from src.chat.memory_system.memory_activator import MemoryActivator
 from src.mood.mood_manager import mood_manager
 from src.person_info.person_info import Person, is_person_known
 from src.plugin_system.base.component_types import ActionInfo, EventType
@@ -143,7 +143,7 @@ class DefaultReplyer:
         self.chat_stream = chat_stream
         self.is_group_chat, self.chat_target_info = get_chat_type_and_target_info(self.chat_stream.stream_id)
         self.heart_fc_sender = UniversalMessageSender()
-        self.memory_activator = MemoryActivator()
+        # self.memory_activator = MemoryActivator()
 
         from src.plugin_system.core.tool_use import ToolExecutor  # 延迟导入ToolExecutor，不然会循环依赖
 
@@ -1019,9 +1019,6 @@ class DefaultReplyer:
     async def llm_generate_content(self, prompt: str):
         with Timer("LLM生成", {}):  # 内部计时器，可选保留
             # 直接使用已初始化的模型实例
-            logger.info(f"使用模型集生成回复: {', '.join(map(str, self.express_model.model_for_task.model_list))}")
-
-            logger.info(f"\n{prompt}\n")
 
             if global_config.debug.show_prompt:
                 logger.info(f"\n{prompt}\n")

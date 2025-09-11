@@ -6,7 +6,6 @@ import traceback
 from typing import Tuple, TYPE_CHECKING
 
 from src.config.config import global_config
-from src.chat.memory_system.Hippocampus import hippocampus_manager
 from src.chat.message_receive.message import MessageRecv
 from src.chat.message_receive.storage import MessageStorage
 from src.chat.heart_flow.heartflow import heartflow
@@ -38,16 +37,16 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, list[str]]:
 
     is_mentioned, is_at, reply_probability_boost = is_mentioned_bot_in_message(message)
     interested_rate = 0.0
-
-    with Timer("记忆激活"):
-        interested_rate, keywords, keywords_lite = await hippocampus_manager.get_activate_from_text(
-            message.processed_plain_text,
-            max_depth=4,
-            fast_retrieval=global_config.chat.interest_rate_mode == "fast",
-        )
-        message.key_words = keywords
-        message.key_words_lite = keywords_lite
-        logger.debug(f"记忆激活率: {interested_rate:.2f}, 关键词: {keywords}")
+    keywords = []
+    # with Timer("记忆激活"):
+    #     interested_rate, keywords, keywords_lite = await hippocampus_manager.get_activate_from_text(
+    #         message.processed_plain_text,
+    #         max_depth=4,
+    #         fast_retrieval=global_config.chat.interest_rate_mode == "fast",
+    #     )
+    #     message.key_words = keywords
+    #     message.key_words_lite = keywords_lite
+    #     logger.debug(f"记忆激活率: {interested_rate:.2f}, 关键词: {keywords}")
 
     text_len = len(message.processed_plain_text)
     # 根据文本长度分布调整兴趣度，采用分段函数实现更精确的兴趣度计算
