@@ -62,11 +62,11 @@ class ChatMood:
 
         self.regression_count: int = 0
 
-        self.mood_model = LLMRequest(model_set=model_config.model_task_config.emotion, request_type="mood")
+        self.mood_model = LLMRequest(model_set=model_config.model_task_config.utils, request_type="mood")
 
         self.last_change_time: float = 0
 
-    async def update_mood_by_message(self, message: MessageRecv, interested_rate: float):
+    async def update_mood_by_message(self, message: MessageRecv):
         self.regression_count = 0
 
         during_last_time = message.message_info.time - self.last_change_time  # type: ignore
@@ -74,10 +74,9 @@ class ChatMood:
         base_probability = 0.05
         time_multiplier = 4 * (1 - math.exp(-0.01 * during_last_time))
 
-        if interested_rate <= 0:
-            interest_multiplier = 0
-        else:
-            interest_multiplier = 2 * math.pow(interested_rate, 0.25)
+        # 基于消息长度计算基础兴趣度
+        message_length = len(message.message_content.content or "")
+        interest_multiplier = min(2.0, 1.0 + message_length / 100)
 
         logger.debug(
             f"base_probability: {base_probability}, time_multiplier: {time_multiplier}, interest_multiplier: {interest_multiplier}"
@@ -90,7 +89,7 @@ class ChatMood:
             return
 
         logger.debug(
-            f"{self.log_prefix} 更新情绪状态，感兴趣度: {interested_rate:.2f}, 更新概率: {update_probability:.2f}"
+            f"{self.log_prefix} 更新情绪状态，更新概率: {update_probability:.2f}"
         )
 
         message_time: float = message.message_info.time  # type: ignore
