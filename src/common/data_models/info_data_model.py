@@ -23,3 +23,4 @@ class ActionPlannerInfo(BaseDataModel):
     action_data: Optional[Dict] = None
     action_message: Optional["DatabaseMessages"] = None
     available_actions: Optional[Dict[str, "ActionInfo"]] = None
+    loop_start_time: Optional[float] = None

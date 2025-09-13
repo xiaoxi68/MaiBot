@@ -10,7 +10,6 @@ from src.chat.message_receive.message import MessageRecv
 from src.chat.message_receive.storage import MessageStorage
 from src.chat.heart_flow.heartflow import heartflow
 from src.chat.utils.utils import is_mentioned_bot_in_message
-from src.chat.utils.timer_calculator import Timer
 from src.chat.utils.chat_message_builder import replace_user_references
 from src.common.logger import get_logger
 from src.mood.mood_manager import mood_manager
@@ -36,7 +35,7 @@ async def _calculate_interest(message: MessageRecv) -> Tuple[float, list[str]]:
         return 0.0, []
 
     is_mentioned, is_at, reply_probability_boost = is_mentioned_bot_in_message(message)
-    interested_rate = 0.0
+    # interested_rate = 0.0
     keywords = []
 
     message.interest_value = 1
@@ -113,10 +112,10 @@ class HeartFCMessageReceiver:
             logger.info(f"[{mes_name}]{userinfo.user_nickname}:{processed_plain_text}[{interested_rate:.2f}]")  # type: ignore
 
             _ = Person.register_person(
-                platform=message.message_info.platform,
-                user_id=message.message_info.user_info.user_id,
-                nickname=userinfo.user_nickname,
-            )  # type: ignore
+                platform=message.message_info.platform,  # type: ignore
+                user_id=message.message_info.user_info.user_id,  # type: ignore
+                nickname=userinfo.user_nickname,  # type: ignore
+            )
 
         except Exception as e:
             logger.error(f"消息处理失败: {e}")

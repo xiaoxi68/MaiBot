@@ -108,9 +108,9 @@ class HeartFChatting:
         self._current_cycle_detail: CycleDetail = None  # type: ignore
 
         self.last_read_time = time.time() - 10
-        
+
         self.talk_threshold = global_config.chat.talk_value
-        
+
         self.no_reply_until_call = False
 
     async def start(self):
@@ -172,7 +172,7 @@ class HeartFChatting:
             f"耗时: {self._current_cycle_detail.end_time - self._current_cycle_detail.start_time:.1f}秒"  # type: ignore
             + (f"\n详情: {'; '.join(timer_strings)}" if timer_strings else "")
         )
-        
+
     def get_talk_threshold(self):
         talk_value = global_config.chat.talk_value
         # 处理talk_value：取整数部分和小数部分
@@ -183,7 +183,7 @@ class HeartFChatting:
         self.talk_threshold = think_len
         logger.info(f"{self.log_prefix} 思考频率阈值: {self.talk_threshold}")
 
-    async def _loopbody(self):
+    async def _loopbody(self):  # sourcery skip: hoist-if-from-if
         recent_messages_list = message_api.get_messages_by_time_in_chat(
             chat_id=self.stream_id,
             start_time=self.last_read_time,
@@ -195,11 +195,15 @@ class HeartFChatting:
         )
 
         if len(recent_messages_list) >= self.talk_threshold:
-            
             # !处理no_reply_until_call逻辑
             if self.no_reply_until_call:
                 for message in recent_messages_list:
-                    if message.is_mentioned or message.is_at or len(recent_messages_list) >= 8 or time.time() - self.last_read_time > 600:
+                    if (
+                        message.is_mentioned
+                        or message.is_at
+                        or len(recent_messages_list) >= 8
+                        or time.time() - self.last_read_time > 600
+                    ):
                         self.no_reply_until_call = False
                         break
                 # 没有提到，继续保持沉默
@@ -207,8 +211,7 @@ class HeartFChatting:
                     # logger.info(f"{self.log_prefix} 没有提到，继续保持沉默")
                     await asyncio.sleep(1)
                     return True
-                    
-            
+
             self.last_read_time = time.time()
             await self._observe(
                 recent_messages_list=recent_messages_list,
@@ -271,9 +274,9 @@ class HeartFChatting:
         return loop_info, reply_text, cycle_timers
 
     async def _observe(
-        self, # interest_value: float = 0.0, 
-        recent_messages_list: Optional[List["DatabaseMessages"]] = None
-    ) -> bool:
+        self,  # interest_value: float = 0.0,
+        recent_messages_list: Optional[List["DatabaseMessages"]] = None,
+    ) -> bool:  # sourcery skip: merge-else-if-into-elif, remove-redundant-if
         if recent_messages_list is None:
             recent_messages_list = []
         reply_text = ""  # 初始化reply_text变量，避免UnboundLocalError
@@ -283,7 +286,7 @@ class HeartFChatting:
 
         async with global_prompt_manager.async_message_scope(self.chat_stream.context.get_template_name()):
             await self.expression_learner.trigger_learning_for_chat()
-            
+
             cycle_timers, thinking_id = self.start_cycle()
             logger.info(f"{self.log_prefix} 开始第{self._cycle_counter}次思考")
 
@@ -326,27 +329,25 @@ class HeartFChatting:
                 return False
             if modified_message and modified_message._modify_flags.modify_llm_prompt:
                 prompt_info = (modified_message.llm_prompt, prompt_info[1])
-                
-                
+
             with Timer("规划器", cycle_timers):
                 action_to_use_info, _ = await self.action_planner.plan(
                     loop_start_time=self.last_read_time,
                     available_actions=available_actions,
                 )
-                
-            
+
             # !此处使at或者提及必定回复
             metioned_message = None
             for message in recent_messages_list:
                 if (message.is_mentioned or message.is_at) and global_config.chat.mentioned_bot_reply:
                     metioned_message = message
-            
+
             has_reply = False
             for action in action_to_use_info:
                 if action.action_type == "reply":
-                    has_reply =True
+                    has_reply = True
                     break
-                
+
             if not has_reply and metioned_message:
                 action_to_use_info.append(
                     ActionPlannerInfo(
@@ -357,7 +358,6 @@ class HeartFChatting:
                         available_actions=available_actions,
                     )
                 )
-            
 
             # 3. 并行执行所有动作
             action_tasks = [
@@ -521,10 +521,9 @@ class HeartFChatting:
         reply_text = ""
         first_replied = False
         for reply_content in reply_set.reply_data:
-            
             if reply_content.content_type != ReplyContentType.TEXT:
                 continue
-            data: str = reply_content.content # type: ignore
+            data: str = reply_content.content  # type: ignore
             if not first_replied:
                 await send_api.text_to_stream(
                     text=data,
@@ -574,17 +573,18 @@ class HeartFChatting:
                     action_name="no_action",
                 )
                 return {"action_type": "no_action", "success": True, "reply_text": "", "command": ""}
-            
+
             elif action_planner_info.action_type == "wait_time":
+                action_planner_info.action_data = action_planner_info.action_data or {}
                 logger.info(f"{self.log_prefix} 等待{action_planner_info.action_data['time']}秒后回复")
                 await asyncio.sleep(action_planner_info.action_data["time"])
                 return {"action_type": "wait_time", "success": True, "reply_text": "", "command": ""}
-            
+
             elif action_planner_info.action_type == "no_reply_until_call":
                 logger.info(f"{self.log_prefix} 保持沉默，直到有人直接叫的名字")
                 self.no_reply_until_call = True
                 return {"action_type": "no_reply_until_call", "success": True, "reply_text": "", "command": ""}
-            
+
             elif action_planner_info.action_type == "reply":
                 try:
                     success, llm_response = await generator_api.generate_reply(
@@ -624,7 +624,7 @@ class HeartFChatting:
                     "reply_text": reply_text,
                     "loop_info": loop_info,
                 }
-                
+
             # 其他动作
             else:
                 # 执行普通动作
@@ -643,7 +643,7 @@ class HeartFChatting:
                     "reply_text": reply_text,
                     "command": command,
                 }
-                
+
         except Exception as e:
             logger.error(f"{self.log_prefix} 执行动作时出错: {e}")
             logger.error(f"{self.log_prefix} 错误信息: {traceback.format_exc()}")
