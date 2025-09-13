@@ -146,7 +146,7 @@ class ImageManager:
                     return "[表情包(GIF处理失败)]"
                 vlm_prompt = "这是一个动态图表情包，每一张图代表了动态图的某一帧，黑色背景代表透明，描述一下表情包表达的情感和内容，描述细节，从互联网梗,meme的角度去分析"
                 detailed_description, _ = await self.vlm.generate_response_for_image(
-                    vlm_prompt, image_base64_processed, "jpg", temperature=0.4, max_tokens=300
+                    vlm_prompt, image_base64_processed, "jpg", temperature=0.4
                 )
             else:
                 vlm_prompt = (
