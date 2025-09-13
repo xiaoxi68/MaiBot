@@ -368,37 +368,37 @@ class DefaultReplyer:
 
         return f"{expression_habits_title}\n{expression_habits_block}", selected_ids
 
-    async def build_memory_block(self, chat_history: List[DatabaseMessages], target: str) -> str:
-        """构建记忆块
+    # async def build_memory_block(self, chat_history: List[DatabaseMessages], target: str) -> str:
+    #     """构建记忆块
 
-        Args:
-            chat_history: 聊天历史记录
-            target: 目标消息内容
+    #     Args:
+    #         chat_history: 聊天历史记录
+    #         target: 目标消息内容
 
-        Returns:
-            str: 记忆信息字符串
-        """
+    #     Returns:
+    #         str: 记忆信息字符串
+    #     """
 
-        if not global_config.memory.enable_memory:
-            return ""
+    #     if not global_config.memory.enable_memory:
+    #         return ""
 
-        instant_memory = None
+    #     instant_memory = None
 
-        running_memories = await self.memory_activator.activate_memory_with_chat_history(
-            target_message=target, chat_history=chat_history
-        )
-        if not running_memories:
-            return ""
+    #     running_memories = await self.memory_activator.activate_memory_with_chat_history(
+    #         target_message=target, chat_history=chat_history
+    #     )
+    #     if not running_memories:
+    #         return ""
 
-        memory_str = "以下是当前在聊天中，你回忆起的记忆：\n"
-        for running_memory in running_memories:
-            keywords, content = running_memory
-            memory_str += f"- {keywords}：{content}\n"
+    #     memory_str = "以下是当前在聊天中，你回忆起的记忆：\n"
+    #     for running_memory in running_memories:
+    #         keywords, content = running_memory
+    #         memory_str += f"- {keywords}：{content}\n"
 
-        if instant_memory:
-            memory_str += f"- {instant_memory}\n"
+    #     if instant_memory:
+    #         memory_str += f"- {instant_memory}\n"
 
-        return memory_str
+    #     return memory_str
 
     async def build_tool_info(self, chat_history: str, sender: str, target: str, enable_tool: bool = True) -> str:
         """构建工具信息块

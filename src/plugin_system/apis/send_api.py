@@ -21,7 +21,7 @@
 
 import traceback
 import time
-from typing import Optional, Union, Dict, List, TYPE_CHECKING
+from typing import Optional, Union, Dict, List, TYPE_CHECKING, Tuple
 
 from src.common.logger import get_logger
 from src.common.data_models.message_data_model import ReplyContentType
@@ -29,11 +29,11 @@ from src.config.config import global_config
 from src.chat.message_receive.chat_stream import get_chat_manager
 from src.chat.message_receive.uni_message_sender import UniversalMessageSender
 from src.chat.message_receive.message import MessageSending, MessageRecv
-from maim_message import Seg, UserInfo
+from maim_message import Seg, UserInfo, MessageBase, BaseMessageInfo
 
 if TYPE_CHECKING:
     from src.common.data_models.database_data_model import DatabaseMessages
-    from src.common.data_models.message_data_model import ReplySetModel
+    from src.common.data_models.message_data_model import ReplySetModel, ReplyContent, ForwardNode
 
 logger = get_logger("send_api")
 
@@ -367,89 +367,84 @@ async def custom_reply_set_to_stream(
     flag: bool = True
     for reply_content in reply_set.reply_data:
         status: bool = False
-        content_type = reply_content.content_type
-        message_data = reply_content.content
-        if content_type == ReplyContentType.TEXT:
-            status = await _send_to_target(
-                message_segment=Seg(type="text", data=message_data),  # type: ignore
-                stream_id=stream_id,
-                display_message=display_message,
-                typing=typing,
-                reply_message=reply_message,
-                set_reply=set_reply,
-                storage_message=storage_message,
-                show_log=show_log,
-            )
-        elif content_type in [
-            ReplyContentType.IMAGE,
-            ReplyContentType.EMOJI,
-            ReplyContentType.COMMAND,
-            ReplyContentType.VOICE,
-        ]:
-            message_segment: Seg
-            if ReplyContentType == ReplyContentType.IMAGE:
-                message_segment = Seg(type="image", data=message_data)  # type: ignore
-            elif ReplyContentType == ReplyContentType.EMOJI:
-                message_segment = Seg(type="emoji", data=message_data)  # type: ignore
-            elif ReplyContentType == ReplyContentType.COMMAND:
-                message_segment = Seg(type="command", data=message_data)  # type: ignore
-            elif ReplyContentType == ReplyContentType.VOICE:
-                message_segment = Seg(type="voice", data=message_data)  # type: ignore
-            status = await _send_to_target(
-                message_segment=message_segment,
-                stream_id=stream_id,
-                display_message=display_message,
-                typing=False,
-                reply_message=reply_message,
-                set_reply=set_reply,
-                storage_message=storage_message,
-                show_log=show_log,
-            )
-        elif content_type == ReplyContentType.HYBRID:
-            assert isinstance(message_data, list), "混合类型内容必须是列表"
-            sub_seg_list: List[Seg] = []
-            for sub_content in message_data:
-                sub_content_type = sub_content.content_type
-                sub_content_data = sub_content.content
-
-                if sub_content_type == ReplyContentType.TEXT:
-                    sub_seg_list.append(Seg(type="text", data=sub_content_data))  # type: ignore
-                elif sub_content_type == ReplyContentType.IMAGE:
-                    sub_seg_list.append(Seg(type="image", data=sub_content_data))  # type: ignore
-                elif sub_content_type == ReplyContentType.EMOJI:
-                    sub_seg_list.append(Seg(type="emoji", data=sub_content_data))  # type: ignore
-                else:
-                    logger.warning(f"[SendAPI] 混合类型中不支持的子内容类型: {repr(sub_content_type)}")
-                    continue
-            status = await _send_to_target(
-                message_segment=Seg(type="seglist", data=sub_seg_list),  # type: ignore
-                stream_id=stream_id,
-                display_message=display_message,
-                typing=typing,
-                reply_message=reply_message,
-                set_reply=set_reply,
-                storage_message=storage_message,
-                show_log=show_log,
-            )
-        elif content_type == ReplyContentType.FORWARD:
-            assert isinstance(message_data, list), "转发类型内容必须是列表"
-            # TODO: 完成转发消息的发送机制
-        else:
-            message_type_in_str = (
-                content_type.value if isinstance(content_type, ReplyContentType) else str(content_type)
-            )
-            return await _send_to_target(
-                message_segment=Seg(type=message_type_in_str, data=message_data),  # type: ignore
-                stream_id=stream_id,
-                display_message=display_message,
-                typing=typing,
-                reply_message=reply_message,
-                set_reply=set_reply,
-                storage_message=storage_message,
-                show_log=show_log,
-            )
+        message_seg, need_typing = _parse_content_to_seg(reply_content)
+        status = await _send_to_target(
+            message_segment=message_seg,
+            stream_id=stream_id,
+            display_message=display_message,
+            typing=bool(need_typing and typing),
+            reply_message=reply_message,
+            set_reply=set_reply,
+            storage_message=storage_message,
+            show_log=show_log,
+        )
         if not status:
             flag = False
-            logger.error(f"[SendAPI] 发送{repr(content_type)}消息失败，消息内容：{str(message_data)[:100]}")
+            logger.error(
+                f"[SendAPI] 发送{repr(reply_content.content_type)}消息失败，消息内容：{str(reply_content.content)[:100]}"
+            )
 
     return flag
+
+
+def _parse_content_to_seg(reply_content: "ReplyContent") -> Tuple[Seg, bool]:
+    """
+    把 ReplyContent 转换为 Seg 结构 (Forward 中仅递归一次)
+    Args:
+        reply_content: ReplyContent 对象
+    Returns:
+        Tuple[Seg, bool]: 转换后的 Seg 结构和是否需要typing的标志
+    """
+    content_type = reply_content.content_type
+    if content_type == ReplyContentType.TEXT:
+        text_data: str = reply_content.content  # type: ignore
+        return Seg(type="text", data=text_data), True
+    elif content_type == ReplyContentType.IMAGE:
+        return Seg(type="image", data=reply_content.content), False  # type: ignore
+    elif content_type == ReplyContentType.EMOJI:
+        return Seg(type="emoji", data=reply_content.content), False  # type: ignore
+    elif content_type == ReplyContentType.COMMAND:
+        return Seg(type="command", data=reply_content.content), False  # type: ignore
+    elif content_type == ReplyContentType.VOICE:
+        return Seg(type="voice", data=reply_content.content), False  # type: ignore
+    elif content_type == ReplyContentType.HYBRID:
+        hybrid_message_list_data: List[ReplyContent] = reply_content.content  # type: ignore
+        assert isinstance(hybrid_message_list_data, list), "混合类型内容必须是列表"
+        sub_seg_list: List[Seg] = []
+        for sub_content in hybrid_message_list_data:
+            sub_content_type = sub_content.content_type
+            sub_content_data = sub_content.content
+
+            if sub_content_type == ReplyContentType.TEXT:
+                sub_seg_list.append(Seg(type="text", data=sub_content_data))  # type: ignore
+            elif sub_content_type == ReplyContentType.IMAGE:
+                sub_seg_list.append(Seg(type="image", data=sub_content_data))  # type: ignore
+            elif sub_content_type == ReplyContentType.EMOJI:
+                sub_seg_list.append(Seg(type="emoji", data=sub_content_data))  # type: ignore
+            else:
+                logger.warning(f"[SendAPI] 混合类型中不支持的子内容类型: {repr(sub_content_type)}")
+                continue
+        return Seg(type="seglist", data=sub_seg_list), True
+    elif content_type == ReplyContentType.FORWARD:
+        forward_message_list_data: List["ForwardNode"] = reply_content.content  # type: ignore
+        assert isinstance(forward_message_list_data, list), "转发类型内容必须是列表"
+        forward_message_list: List[MessageBase] = []
+        for forward_node in forward_message_list_data:
+            message_segment = Seg(type="id", data=forward_node.content)  # type: ignore
+            user_info: Optional[UserInfo] = None
+            if forward_node.user_id and forward_node.user_nickname:
+                assert isinstance(forward_node.content, list), "转发节点内容必须是列表"
+                user_info = UserInfo(user_id=forward_node.user_id, user_nickname=forward_node.user_nickname)
+                single_node_content: List[Seg] = []
+                for sub_content in forward_node.content:
+                    if sub_content.content_type != ReplyContentType.FORWARD:
+                        sub_seg, _ = _parse_content_to_seg(sub_content)
+                        single_node_content.append(sub_seg)
+                message_segment = Seg(type="seglist", data=single_node_content)
+            forward_message_list.append(
+                MessageBase(message_segment=message_segment, message_info=BaseMessageInfo(user_info=user_info))
+            )
+        return Seg(type="forward", data=forward_message_list), False  # type: ignore
+    else:
+        message_type_in_str = content_type.value if isinstance(content_type, ReplyContentType) else str(content_type)
+        return Seg(type=message_type_in_str, data=reply_content.content), True  # type: ignore

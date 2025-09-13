@@ -1,4 +1,4 @@
-from typing import Optional, TYPE_CHECKING, List, Tuple, Union, Dict
+from typing import Optional, TYPE_CHECKING, List, Tuple, Union, Dict, Any
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -51,9 +51,64 @@ class ReplyContentType(Enum):
 
 
 @dataclass
+class ForwardNode(BaseDataModel):
+    user_id: Optional[str] = None
+    user_nickname: Optional[str] = None
+    content: Union[List["ReplyContent"], str] = field(default_factory=list)
+
+    @classmethod
+    def construct_as_id_reference(cls, message_id: str) -> "ForwardNode":
+        return cls(user_id="", user_nickname="", content=message_id)
+
+    @classmethod
+    def construct_as_created_node(
+        cls, user_id: str, user_nickname: str, content: List["ReplyContent"]
+    ) -> "ForwardNode":
+        return cls(user_id=user_id, user_nickname=user_nickname, content=content)
+
+
+@dataclass
 class ReplyContent(BaseDataModel):
     content_type: ReplyContentType | str
-    content: Union[str, Dict, List["ReplyContent"]]  # 支持嵌套的 ReplyContent
+    content: Union[str, Dict, List[ForwardNode], List["ReplyContent"]]  # 支持嵌套的 ReplyContent
+
+    @classmethod
+    def construct_as_text(cls, text: str):
+        return cls(content_type=ReplyContentType.TEXT, content=text)
+
+    @classmethod
+    def construct_as_image(cls, image_base64: str):
+        return cls(content_type=ReplyContentType.IMAGE, content=image_base64)
+
+    @classmethod
+    def construct_as_voice(cls, voice_base64: str):
+        return cls(content_type=ReplyContentType.VOICE, content=voice_base64)
+
+    @classmethod
+    def construct_as_emoji(cls, emoji_str: str):
+        return cls(content_type=ReplyContentType.EMOJI, content=emoji_str)
+
+    @classmethod
+    def construct_as_command(cls, command_arg: Dict):
+        return cls(content_type=ReplyContentType.COMMAND, content=command_arg)
+
+    @classmethod
+    def construct_as_hybrid(cls, hybrid_content: List[Tuple[ReplyContentType | str, str]]):
+        hybrid_content_list: List[ReplyContent] = []
+        for content_type, content in hybrid_content:
+            assert content_type not in [
+                ReplyContentType.HYBRID,
+                ReplyContentType.FORWARD,
+                ReplyContentType.VOICE,
+                ReplyContentType.COMMAND,
+            ], "混合内容的每个项不能是混合、转发、语音或命令类型"
+            assert isinstance(content, str), "混合内容的每个项必须是字符串"
+            hybrid_content_list.append(ReplyContent(content_type=content_type, content=content))
+        return cls(content_type=ReplyContentType.HYBRID, content=hybrid_content_list)
+
+    @classmethod
+    def construct_as_forward(cls, forward_nodes: List[ForwardNode]):
+        return cls(content_type=ReplyContentType.FORWARD, content=forward_nodes)
 
     def __post_init__(self):
         if isinstance(self.content_type, ReplyContentType):
@@ -82,36 +137,70 @@ class ReplySetModel(BaseDataModel):
         return len(self.reply_data)
 
     def add_text_content(self, text: str):
-        """添加文本内容"""
+        """
+        添加文本内容
+        Args:
+            text: 文本内容
+        """
         self.reply_data.append(ReplyContent(content_type=ReplyContentType.TEXT, content=text))
 
     def add_image_content(self, image_base64: str):
-        """添加图片内容，base64编码的图片数据"""
+        """
+        添加图片内容，base64编码的图片数据
+        Args:
+            image_base64: base64编码的图片数据
+        """
         self.reply_data.append(ReplyContent(content_type=ReplyContentType.IMAGE, content=image_base64))
 
     def add_voice_content(self, voice_base64: str):
-        """添加语音内容，base64编码的音频数据"""
+        """
+        添加语音内容，base64编码的音频数据
+        Args:
+            voice_base64: base64编码的音频数据
+        """
         self.reply_data.append(ReplyContent(content_type=ReplyContentType.VOICE, content=voice_base64))
 
-    def add_hybrid_content(self, hybrid_content: List[Tuple[ReplyContentType, str]]):
+    def add_hybrid_content_by_raw(self, hybrid_content: List[Tuple[ReplyContentType | str, str]]):
         """
-        添加混合型内容，可以包含多种类型的内容
-
-        实际解析时只关注最外层，没有递归嵌套处理
+        添加混合型内容，可以包含text, image, emoji的任意组合
+        Args:
+            hybrid_content: 元组 (类型, 消息内容) 构成的列表，如[(ReplyContentType.TEXT, "Hello"), (ReplyContentType.IMAGE, "<base64")]
         """
+        hybrid_content_list: List[ReplyContent] = []
         for content_type, content in hybrid_content:
+            assert content_type not in [
+                ReplyContentType.HYBRID,
+                ReplyContentType.FORWARD,
+                ReplyContentType.VOICE,
+                ReplyContentType.COMMAND,
+            ], "混合内容的每个项不能是混合、转发、语音或命令类型"
             assert isinstance(content, str), "混合内容的每个项必须是字符串"
-            self.reply_data.append(ReplyContent(content_type=content_type, content=content))
+            hybrid_content_list.append(ReplyContent(content_type=content_type, content=content))
 
-    def add_custom_content(self, content_type: str, content: str):
-        """添加自定义类型的内容"""
+        self.reply_data.append(ReplyContent(content_type=ReplyContentType.HYBRID, content=hybrid_content_list))
+
+    def add_hybrid_content(self, hybrid_content: List[ReplyContent]):
+        """
+        添加混合型内容，使用已经构造好的 ReplyContent 列表
+        Args:
+            hybrid_content: ReplyContent 构成的列表，如[ReplyContent(ReplyContentType.TEXT, "Hello"), ReplyContent(ReplyContentType.IMAGE, "<base64")]
+        """
+        for content in hybrid_content:
+            assert content.content_type not in [
+                ReplyContentType.HYBRID,
+                ReplyContentType.FORWARD,
+                ReplyContentType.VOICE,
+                ReplyContentType.COMMAND,
+            ], "混合内容的每个项不能是混合、转发、语音或命令类型"
+            assert isinstance(content.content, str), "混合内容的每个项必须是字符串"
+
+        self.reply_data.append(ReplyContent(content_type=ReplyContentType.HYBRID, content=hybrid_content))
+
+    def add_custom_content(self, content_type: str, content: Any):
+        """
+        添加自定义类型的内容"""
         self.reply_data.append(ReplyContent(content_type=content_type, content=content))
 
-    def add_forward_content(self, forward_content: List[Tuple[ReplyContentType, Union[str, ReplyContent]]]):
+    def add_forward_content(self, forward_content: List[ForwardNode]):
         """添加转发内容，可以是字符串或ReplyContent，嵌套的转发内容需要自己构造放入"""
-        for content_type, content in forward_content:
-            if isinstance(content, ReplyContent):
-                self.reply_data.append(content)
-            else:
-                assert isinstance(content, str), "转发内容的每个data必须是字符串或ReplyContent"
-                self.reply_data.append(ReplyContent(content_type=content_type, content=content))
+        self.reply_data.append(ReplyContent(content_type=ReplyContentType.FORWARD, content=forward_content))
