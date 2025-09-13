@@ -306,7 +306,7 @@ class DefaultReplyer:
             traceback.print_exc()
             return False, llm_response
 
-    async def build_relation_info(self, sender: str, target: str):
+    async def build_relation_info(self, chat_content: str, sender: str, person_list: List[Person] = None):
         if not global_config.relationship.enable_relationship:
             return ""
 
@@ -322,7 +322,13 @@ class DefaultReplyer:
             logger.warning(f"未找到用户 {sender} 的ID，跳过信息提取")
             return f"你完全不认识{sender}，不理解ta的相关信息。"
 
-        return person.build_relationship()
+        sender_relation = await person.build_relationship(chat_content)
+        others_relation = ""
+        for person in person_list:
+            person_relation = await person.build_relationship()
+            others_relation += person_relation
+        
+        return f"{sender_relation}\n{others_relation}"
 
     async def build_expression_habits(self, chat_history: str, target: str) -> Tuple[str, List[int]]:
         # sourcery skip: for-append-to-extend
@@ -748,6 +754,19 @@ class DefaultReplyer:
             timestamp=time.time(),
             limit=int(global_config.chat.max_context_size * 0.33),
         )
+        
+        person_list_short:List[Person] = []
+        for msg in message_list_before_short:
+            if global_config.bot.qq_account == msg.user_info.user_id and global_config.bot.platform == msg.user_info.platform:
+                continue
+            if reply_message and reply_message.user_info.user_id == msg.user_info.user_id and reply_message.user_info.platform == msg.user_info.platform:
+                continue
+            person = Person(platform=msg.user_info.platform, user_id=msg.user_info.user_id)
+            if person.is_known:
+                person_list_short.append(person)
+
+        for person in person_list_short:
+            print(person.person_name)
 
         chat_talking_prompt_short = build_readable_messages(
             message_list_before_short,
@@ -762,7 +781,7 @@ class DefaultReplyer:
             self._time_and_run_task(
                 self.build_expression_habits(chat_talking_prompt_short, target), "expression_habits"
             ),
-            self._time_and_run_task(self.build_relation_info(sender, target), "relation_info"),
+            self._time_and_run_task(self.build_relation_info(chat_talking_prompt_short,sender, person_list_short), "relation_info"),
             # self._time_and_run_task(self.build_memory_block(message_list_before_short, target), "memory_block"),
             self._time_and_run_task(
                 self.build_tool_info(chat_talking_prompt_short, sender, target, enable_tool=enable_tool), "tool_info"
@@ -916,7 +935,7 @@ class DefaultReplyer:
         # 并行执行2个构建任务
         (expression_habits_block, _), relation_info, personality_prompt = await asyncio.gather(
             self.build_expression_habits(chat_talking_prompt_half, target),
-            self.build_relation_info(sender, target),
+            self.build_relation_info(chat_talking_prompt_half, sender),
             self.build_personality_prompt(),
         )
 
@@ -1019,7 +1038,8 @@ class DefaultReplyer:
     async def llm_generate_content(self, prompt: str):
         with Timer("LLM生成", {}):  # 内部计时器，可选保留
             # 直接使用已初始化的模型实例
-
+            logger.info(f"\n{prompt}\n")
+            
             if global_config.debug.show_prompt:
                 logger.info(f"\n{prompt}\n")
             else:

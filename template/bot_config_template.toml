@@ -1,5 +1,5 @@
 [inner]
-version = "6.11.0"
+version = "6.12.0"
 
 #----以下是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 #如果你想要修改配置文件，请递增version的值
@@ -54,8 +54,11 @@ learning_list = [ # 表达学习配置列表，支持按聊天流配置
 ]
 
 expression_groups = [
-    ["qq:1919810:private","qq:114514:private","qq:1111111:group"], # 在这里设置互通组，相同组的chat_id会共享学习到的表达方式
-    # 格式：["qq:123456:private","qq:654321:group"]
+    # ["*"], # 全局共享组：所有chat_id共享学习到的表达方式（取消注释以启用全局共享）
+    ["qq:1919810:private","qq:114514:private","qq:1111111:group"], # 特定互通组，相同组的chat_id会共享学习到的表达方式
+    # 格式说明：
+    # ["*"] - 启用全局共享，所有聊天流共享表达方式
+    # ["qq:123456:private","qq:654321:group"] - 特定互通组，组内chat_id共享表达方式
     # 注意：如果为群聊，则需要设置为group，如果设置为私聊，则需要设置为private
 ]
 
@@ -86,7 +89,7 @@ content_filtration = false  # 是否启用表情包过滤，只有符合该要�
 filtration_prompt = "符合公序良俗" # 表情包过滤要求，只有符合该要求的表情包才会被保存
 
 [voice]
-enable_asr = false # 是否启用语音识别，启用后麦麦可以识别语音消息，启用该功能需要配置语音识别模型[model.voice]s
+enable_asr = false # 是否启用语音识别，启用后麦麦可以识别语音消息，启用该功能需要配置语音识别模型[model_task_config.voice]
 
 [message_receive]
 # 以下是消息过滤，可以根据规则过滤特定消息，将不会读取这些消息
