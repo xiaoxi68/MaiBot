@@ -216,10 +216,6 @@ class ChatBot:
             # logger.debug(str(message_data))
             message = MessageRecv(message_data)
 
-            if await self.handle_notice_message(message):
-                # return
-                pass
-
             group_info = message.message_info.group_info
             user_info = message.message_info.user_info
             if message.message_info.additional_config:
@@ -235,6 +231,10 @@ class ChatBot:
                 return
             if modified_message and modified_message._modify_flags.modify_message_segments:
                 message.message_segment = Seg(type="seglist", data=modified_message.message_segments)
+
+            if await self.handle_notice_message(message):
+                # return
+                pass
 
             get_chat_manager().register_message(message)
 

@@ -25,6 +25,7 @@ from src.chat.utils.chat_message_builder import (
     replace_user_references,
 )
 from src.chat.express.expression_selector import expression_selector
+
 # from src.chat.memory_system.memory_activator import MemoryActivator
 from src.mood.mood_manager import mood_manager
 from src.person_info.person_info import Person, is_person_known
@@ -306,7 +307,7 @@ class DefaultReplyer:
             traceback.print_exc()
             return False, llm_response
 
-    async def build_relation_info(self, chat_content: str, sender: str, person_list: List[Person] = None):
+    async def build_relation_info(self, chat_content: str, sender: str, person_list: List[Person]):
         if not global_config.relationship.enable_relationship:
             return ""
 
@@ -327,7 +328,7 @@ class DefaultReplyer:
         for person in person_list:
             person_relation = await person.build_relationship()
             others_relation += person_relation
-        
+
         return f"{sender_relation}\n{others_relation}"
 
     async def build_expression_habits(self, chat_history: str, target: str) -> Tuple[str, List[int]]:
@@ -754,12 +755,19 @@ class DefaultReplyer:
             timestamp=time.time(),
             limit=int(global_config.chat.max_context_size * 0.33),
         )
-        
-        person_list_short:List[Person] = []
+
+        person_list_short: List[Person] = []
         for msg in message_list_before_short:
-            if global_config.bot.qq_account == msg.user_info.user_id and global_config.bot.platform == msg.user_info.platform:
+            if (
+                global_config.bot.qq_account == msg.user_info.user_id
+                and global_config.bot.platform == msg.user_info.platform
+            ):
                 continue
-            if reply_message and reply_message.user_info.user_id == msg.user_info.user_id and reply_message.user_info.platform == msg.user_info.platform:
+            if (
+                reply_message
+                and reply_message.user_info.user_id == msg.user_info.user_id
+                and reply_message.user_info.platform == msg.user_info.platform
+            ):
                 continue
             person = Person(platform=msg.user_info.platform, user_id=msg.user_info.user_id)
             if person.is_known:
@@ -781,7 +789,9 @@ class DefaultReplyer:
             self._time_and_run_task(
                 self.build_expression_habits(chat_talking_prompt_short, target), "expression_habits"
             ),
-            self._time_and_run_task(self.build_relation_info(chat_talking_prompt_short,sender, person_list_short), "relation_info"),
+            self._time_and_run_task(
+                self.build_relation_info(chat_talking_prompt_short, sender, person_list_short), "relation_info"
+            ),
             # self._time_and_run_task(self.build_memory_block(message_list_before_short, target), "memory_block"),
             self._time_and_run_task(
                 self.build_tool_info(chat_talking_prompt_short, sender, target, enable_tool=enable_tool), "tool_info"
@@ -935,7 +945,7 @@ class DefaultReplyer:
         # 并行执行2个构建任务
         (expression_habits_block, _), relation_info, personality_prompt = await asyncio.gather(
             self.build_expression_habits(chat_talking_prompt_half, target),
-            self.build_relation_info(chat_talking_prompt_half, sender),
+            self.build_relation_info(chat_talking_prompt_half, sender, []),
             self.build_personality_prompt(),
         )
 
@@ -1039,7 +1049,7 @@ class DefaultReplyer:
         with Timer("LLM生成", {}):  # 内部计时器，可选保留
             # 直接使用已初始化的模型实例
             logger.info(f"\n{prompt}\n")
-            
+
             if global_config.debug.show_prompt:
                 logger.info(f"\n{prompt}\n")
             else:

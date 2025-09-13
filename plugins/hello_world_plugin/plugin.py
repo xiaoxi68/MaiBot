@@ -1,3 +1,4 @@
+import random
 from typing import List, Tuple, Type, Any
 from src.plugin_system import (
     BasePlugin,
@@ -12,7 +13,9 @@ from src.plugin_system import (
     EventType,
     MaiMessages,
     ToolParamType,
+    ReplyContentType,
 )
+from src.config.config import global_config
 
 
 class CompareNumbersTool(BaseTool):
@@ -144,6 +147,44 @@ class PrintMessage(BaseEventHandler):
         return True, True, "消息已打印", None, None
 
 
+class ForwardMessages(BaseEventHandler):
+    """
+    把接收到的消息转发到指定聊天ID
+    
+    此组件是HYBRID消息和FORWARD消息的使用示例。
+    每收到10条消息，就会以1%的概率使用HYBRID消息转发，否则使用FORWARD消息转发。
+    """
+
+    event_type = EventType.ON_MESSAGE
+    handler_name = "forward_messages_handler"
+    handler_description = "把接收到的消息转发到指定聊天ID"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.counter = 0  # 用于计数转发的消息数量
+        self.messages: List[str] = []
+
+    async def execute(self, message: MaiMessages | None) -> Tuple[bool, bool, None, None, None]:
+        if self.get_config("print_message.enabled", False):
+            return True, True, None, None, None
+        if not message:
+            return True, True, None, None, None
+        stream_id = message.stream_id or ""
+
+        if message.plain_text:
+            self.messages.append(message.plain_text)
+            self.counter += 1
+        if self.counter % 10 == 0:
+            if random.random() < 0.01:
+                success = await self.send_hybrid(stream_id, [(ReplyContentType.TEXT, msg) for msg in self.messages])
+            else:
+                success = await self.send_forward(stream_id, [(str(global_config.bot.qq_account), str(global_config.bot.nickname), [(ReplyContentType.TEXT, msg)]) for msg in self.messages])
+            if not success:
+                raise ValueError("转发消息失败")
+            self.messages = []
+        return True, True, None, None, None
+
+
 # ===== 插件注册 =====
 
 
@@ -185,6 +226,7 @@ class HelloWorldPlugin(BasePlugin):
             (ByeAction.get_action_info(), ByeAction),  # 添加告别Action
             (TimeCommand.get_command_info(), TimeCommand),
             (PrintMessage.get_handler_info(), PrintMessage),
+            (ForwardMessages.get_handler_info(), ForwardMessages),
         ]
 
 

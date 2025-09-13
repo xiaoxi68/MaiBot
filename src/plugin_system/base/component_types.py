@@ -8,6 +8,9 @@ from maim_message import Seg
 from src.llm_models.payload_content.tool_option import ToolParamType as ToolParamType
 from src.llm_models.payload_content.tool_option import ToolCall as ToolCall
 from src.common.data_models.message_data_model import ReplyContentType as ReplyContentType
+from src.common.data_models.message_data_model import ReplyContent as ReplyContent
+from src.common.data_models.message_data_model import ForwardNode as ForwardNode
+from src.common.data_models.message_data_model import ReplySetModel as ReplySetModel
 
 
 # 组件类型枚举
