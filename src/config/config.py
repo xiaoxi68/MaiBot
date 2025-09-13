@@ -32,7 +32,6 @@ from src.config.official_configs import (
     ToolConfig,
     VoiceConfig,
     DebugConfig,
-    CustomPromptConfig,
 )
 
 from .api_ada_configs import (
@@ -55,7 +54,7 @@ TEMPLATE_DIR = os.path.join(PROJECT_ROOT, "template")
 
 # 考虑到，实际上配置文件中的mai_version是不会自动更新的,所以采用硬编码
 # 对该字段的更新，请严格参照语义化版本规范：https://semver.org/lang/zh-CN/
-MMC_VERSION = "0.10.3-snapshot.2"
+MMC_VERSION = "0.10.3-snapshot.3"
 
 
 def get_key_comment(toml_table, key):
@@ -357,7 +356,6 @@ class Config(ConfigBase):
     lpmm_knowledge: LPMMKnowledgeConfig
     tool: ToolConfig
     debug: DebugConfig
-    custom_prompt: CustomPromptConfig
     voice: VoiceConfig
 
 

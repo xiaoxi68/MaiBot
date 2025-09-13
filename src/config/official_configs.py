@@ -46,6 +46,12 @@ class PersonalityConfig(ConfigBase):
 
     interest: str = ""
     """兴趣"""
+    
+    plan_style: str = ""
+    """说话规则，行为风格"""
+    
+    visual_style: str = ""
+    """图片提示词"""
 
 
 @dataclass
@@ -71,6 +77,9 @@ class ChatConfig(ConfigBase):
 
     planner_size: float = 1.5
     """副规划器大小，越小，麦麦的动作执行能力越精细，但是消耗更多token，调大可以缓解429类错误"""
+
+    mentioned_bot_reply: bool = True
+    """是否启用提及必回复"""
 
     at_bot_inevitable_reply: float = 1
     """@bot 必然回复，1为100%回复，0为不额外增幅"""
@@ -380,14 +389,6 @@ class KeywordReactionConfig(ConfigBase):
         for rule in self.keyword_rules + self.regex_rules:
             if not isinstance(rule, KeywordRuleConfig):
                 raise ValueError(f"规则必须是KeywordRuleConfig类型，而不是{type(rule).__name__}")
-
-
-@dataclass
-class CustomPromptConfig(ConfigBase):
-    """自定义提示词配置类"""
-
-    image_prompt: str = ""
-    """图片提示词"""
 
 
 @dataclass

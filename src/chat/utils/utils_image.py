@@ -153,7 +153,7 @@ class ImageManager:
                     "这是一个表情包，请详细描述一下表情包所表达的情感和内容，描述细节，从互联网梗,meme的角度去分析"
                 )
                 detailed_description, _ = await self.vlm.generate_response_for_image(
-                    vlm_prompt, image_base64, image_format, temperature=0.4, max_tokens=300
+                    vlm_prompt, image_base64, image_format, temperature=0.4
                 )
 
             if detailed_description is None:
@@ -175,7 +175,7 @@ class ImageManager:
             # 使用较低温度确保输出稳定
             emotion_llm = LLMRequest(model_set=model_config.model_task_config.utils, request_type="emoji")
             emotion_result, _ = await emotion_llm.generate_response_async(
-                emotion_prompt, temperature=0.3, max_tokens=50
+                emotion_prompt, temperature=0.3
             )
 
             if not emotion_result:
@@ -270,7 +270,7 @@ class ImageManager:
 
             # 调用AI获取描述
             image_format = Image.open(io.BytesIO(image_bytes)).format.lower()  # type: ignore
-            prompt = global_config.custom_prompt.image_prompt
+            prompt = global_config.personality.visual_style
             logger.info(f"[VLM调用] 为图片生成新描述 (Hash: {image_hash[:8]}...)")
             description, _ = await self.vlm.generate_response_for_image(
                 prompt, image_base64, image_format, temperature=0.4, max_tokens=300
@@ -566,7 +566,7 @@ class ImageManager:
             image_format = Image.open(io.BytesIO(image_bytes)).format.lower()  # type: ignore
 
             # 构建prompt
-            prompt = global_config.custom_prompt.image_prompt
+            prompt = global_config.personality.visual_style
 
             # 获取VLM描述
             description, _ = await self.vlm.generate_response_for_image(
