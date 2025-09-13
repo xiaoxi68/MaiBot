@@ -188,7 +188,7 @@ class HeartFChatting:
             chat_id=self.stream_id,
             start_time=self.last_read_time,
             end_time=time.time(),
-            limit=10,
+            limit=20,
             limit_mode="latest",
             filter_mai=True,
             filter_command=True,
