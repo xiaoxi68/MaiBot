@@ -268,9 +268,6 @@ class PersonInfo(BaseModel):
     know_since = FloatField(null=True)  # 首次印象总结时间
     last_know = FloatField(null=True)  # 最后一次印象总结时间
 
-    attitude_to_me = TextField(null=True)  # 对bot的态度
-    attitude_to_me_confidence = FloatField(null=True)  # 对bot的态度置信度
-
     class Meta:
         # database = db # 继承自 BaseModel
         table_name = "person_info"

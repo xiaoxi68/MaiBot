@@ -26,12 +26,10 @@
 **🍔MaiCore 是一个基于大语言模型的可交互智能体**
 
 - 💭 **智能对话系统**：基于 LLM 的自然语言交互，聊天时机控制。
-- 🔌 **强大插件系统**：全面重构的插件架构，更多API。
 - 🤔 **实时思维系统**：模拟人类思考过程。
 - 🧠 **表达学习功能**：学习群友的说话风格和表达方式
 - 💝 **情感表达系统**：情绪系统和表情包系统。
-- 🧠 **持久记忆系统**：基于图的长期记忆存储。
-- 🔄 **动态人格系统**：自适应的性格特征和表达方式。
+- 🔌 **强大插件系统**：提供API和事件系统，可编写强大插件。
 
 <div style="text-align: center">
 <a href="https://www.bilibili.com/video/BV1amAneGE3P" target="_blank">
@@ -64,7 +62,7 @@
 > - QQ 机器人存在被限制风险，请自行了解，谨慎使用。
 > - 由于程序处于开发中，可能消耗较多 token。
 
-## 麦麦MC项目（早期开发）
+## 麦麦MC项目MaiCraft（早期开发）
 [让麦麦玩MC](https://github.com/MaiM-with-u/Maicraft)
 
 交流群：1058573197
@@ -72,13 +70,13 @@
 ## 💬 讨论
 
 **技术交流群：**
-- [一群](https://qm.qq.com/q/VQ3XZrWgMs) | 
-  [二群](https://qm.qq.com/q/RzmCiRtHEW) | 
-  [三群](https://qm.qq.com/q/wlH5eT8OmQ) |
-  [四群](https://qm.qq.com/q/wGePTl1UyY)
+  [麦麦脑电图](https://qm.qq.com/q/RzmCiRtHEW) | 
+  [麦麦脑磁图](https://qm.qq.com/q/wlH5eT8OmQ) |
+  [麦麦大脑磁共振](https://qm.qq.com/q/VQ3XZrWgMs) | 
+  [麦麦要当VTB](https://qm.qq.com/q/wGePTl1UyY)
 
 **聊天吹水群：**
-- [五群](https://qm.qq.com/q/JxvHZnxyec)
+- [麦麦之闲聊群](https://qm.qq.com/q/JxvHZnxyec)
 
 **插件开发测试版群：**
 - [插件开发群](https://qm.qq.com/q/1036092828)

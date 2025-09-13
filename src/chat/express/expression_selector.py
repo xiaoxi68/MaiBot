@@ -114,6 +114,20 @@ class ExpressionSelector:
     def get_related_chat_ids(self, chat_id: str) -> List[str]:
         """根据expression_groups配置，获取与当前chat_id相关的所有chat_id（包括自身）"""
         groups = global_config.expression.expression_groups
+        
+        # 检查是否存在全局共享组（包含"*"的组）
+        global_group_exists = any("*" in group for group in groups)
+        
+        if global_group_exists:
+            # 如果存在全局共享组，则返回所有可用的chat_id
+            all_chat_ids = set()
+            for group in groups:
+                for stream_config_str in group:
+                    if chat_id_candidate := self._parse_stream_config_to_chat_id(stream_config_str):
+                        all_chat_ids.add(chat_id_candidate)
+            return list(all_chat_ids) if all_chat_ids else [chat_id]
+        
+        # 否则使用现有的组逻辑
         for group in groups:
             group_chat_ids = []
             for stream_config_str in group:

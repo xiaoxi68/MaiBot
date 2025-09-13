@@ -130,16 +130,6 @@ class MainSystem:
                 self.server.run(),
             ]
 
-            # 根据配置条件性地添加记忆系统相关任务
-            # if global_config.memory.enable_memory and self.hippocampus_manager:
-            #     tasks.extend(
-            #         [
-            #             # 移除记忆构建的定期调用，改为在heartFC_chat.py中调用
-            #             # self.build_memory_task(),
-            #             self.forget_memory_task(),
-            #         ]
-            #     )
-
             await asyncio.gather(*tasks)
 
     # async def forget_memory_task(self):
