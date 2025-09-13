@@ -22,12 +22,12 @@ from src.chat.utils.chat_message_builder import (
 from src.chat.utils.utils import get_chat_type_and_target_info
 from src.chat.planner_actions.action_manager import ActionManager
 from src.chat.message_receive.chat_stream import get_chat_manager
-from src.plugin_system.base.component_types import ActionInfo, ChatMode, ComponentType, ActionActivationType
+from src.plugin_system.base.component_types import ActionInfo, ComponentType, ActionActivationType
 from src.plugin_system.core.component_registry import component_registry
 
 if TYPE_CHECKING:
     from src.common.data_models.info_data_model import TargetPersonInfo
-    from src.common.data_models.database_data_model import DatabaseMessages, DatabaseActionRecords
+    from src.common.data_models.database_data_model import DatabaseMessages
 
 logger = get_logger("planner")
 
@@ -121,7 +121,6 @@ no_reply_until_call
     )
 
 
-
 class ActionPlanner:
     def __init__(self, chat_id: str, action_manager: ActionManager):
         self.chat_id = chat_id
@@ -168,7 +167,7 @@ class ActionPlanner:
             action_data = {key: value for key, value in action_json.items() if key not in ["action", "reason"]}
             # 非no_action动作需要target_message_id
             target_message = None
-            
+
             if target_message_id := action_json.get("target_message_id"):
                 # 根据target_message_id查找原始消息
                 target_message = self.find_message_by_id(target_message_id, message_id_list)
@@ -179,12 +178,11 @@ class ActionPlanner:
             else:
                 target_message = message_id_list[-1][1]
                 logger.info(f"{self.log_prefix}动作'{action}'缺少target_message_id，使用最新消息作为target_message")
-                
 
             # 验证action是否可用
             available_action_names = [action_name for action_name, _ in current_available_actions]
             internal_action_names = ["no_reply", "reply", "wait_time", "no_reply_until_call"]
-            
+
             if action not in internal_action_names and action not in available_action_names:
                 logger.warning(
                     f"{self.log_prefix}LLM 返回了当前不可用或无效的动作: '{action}' (可用: {available_action_names})，将强制使用 'no_reply'"
@@ -223,18 +221,17 @@ class ActionPlanner:
 
         return action_planner_infos
 
-
     async def plan(
         self,
         available_actions: Dict[str, ActionInfo],
         loop_start_time: float = 0.0,
     ) -> Tuple[List[ActionPlannerInfo], Optional["DatabaseMessages"]]:
+        # sourcery skip: use-named-expression
         """
         规划器 (Planner): 使用LLM根据上下文决定做出什么动作。
         """
         target_message: Optional["DatabaseMessages"] = None
-        
-        
+
         # 获取聊天上下文
         message_list_before_now = get_raw_msg_before_timestamp_with_chat(
             chat_id=self.chat_id,
@@ -249,7 +246,7 @@ class ActionPlanner:
             truncate=True,
             show_actions=True,
         )
-        
+
         message_list_before_now_short = message_list_before_now[-int(global_config.chat.max_context_size * 0.3) :]
         chat_content_block_short, message_id_list_short = build_readable_messages_with_id(
             messages=message_list_before_now_short,
@@ -257,17 +254,15 @@ class ActionPlanner:
             truncate=False,
             show_actions=False,
         )
-        
+
         self.last_obs_time_mark = time.time()
-        
+
         # 获取必要信息
         is_group_chat, chat_target_info, current_available_actions = self.get_necessary_info()
-        
+
         # 应用激活类型过滤
-        filtered_actions = self._filter_actions_by_activation_type(
-            available_actions, chat_content_block_short
-        )
-        
+        filtered_actions = self._filter_actions_by_activation_type(available_actions, chat_content_block_short)
+
         logger.info(f"{self.log_prefix}过滤后有{len(filtered_actions)}个可用动作")
 
         # 构建包含所有动作的提示词
@@ -279,21 +274,21 @@ class ActionPlanner:
             message_id_list=message_id_list,
             interest=global_config.personality.interest,
         )
-        
+
         # 调用LLM获取决策
         actions = await self._execute_main_planner(
             prompt=prompt,
             message_id_list=message_id_list,
             filtered_actions=filtered_actions,
             available_actions=available_actions,
-            loop_start_time=loop_start_time
+            loop_start_time=loop_start_time,
         )
-        
+
         # 获取target_message（如果有非no_action的动作）
         non_no_actions = [a for a in actions if a.action_type != "no_reply"]
         if non_no_actions:
             target_message = non_no_actions[0].action_message
-        
+
         return actions, target_message
 
     async def build_planner_prompt(
@@ -333,7 +328,9 @@ class ActionPlanner:
             moderation_prompt_block = "请不要输出违法违规内容，不要输出色情，暴力，政治相关内容，如有敏感内容，请规避。"
             time_block = f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
             bot_name = global_config.bot.nickname
-            bot_nickname = f",也有人叫你{','.join(global_config.bot.alias_names)}" if global_config.bot.alias_names else ""
+            bot_nickname = (
+                f",也有人叫你{','.join(global_config.bot.alias_names)}" if global_config.bot.alias_names else ""
+            )
             name_block = f"你的名字是{bot_name}{bot_nickname}，请注意哪些是你自己的发言。"
 
             # 获取主规划器模板并填充
@@ -379,15 +376,12 @@ class ActionPlanner:
 
         return is_group_chat, chat_target_info, current_available_actions
 
-    
     def _filter_actions_by_activation_type(
-        self, 
-        available_actions: Dict[str, ActionInfo], 
-        chat_content_block: str
+        self, available_actions: Dict[str, ActionInfo], chat_content_block: str
     ) -> Dict[str, ActionInfo]:
         """根据激活类型过滤动作"""
         filtered_actions = {}
-        
+
         for action_name, action_info in available_actions.items():
             if action_info.activation_type == ActionActivationType.NEVER:
                 logger.debug(f"{self.log_prefix}动作 {action_name} 设置为 NEVER 激活类型，跳过")
@@ -405,14 +399,15 @@ class ActionPlanner:
                             break
             else:
                 logger.warning(f"{self.log_prefix}未知的激活类型: {action_info.activation_type}，跳过处理")
-        
+
         return filtered_actions
-    
+
     async def _build_action_options_block(self, current_available_actions: Dict[str, ActionInfo]) -> str:
+        # sourcery skip: use-join
         """构建动作选项块"""
         if not current_available_actions:
             return ""
-        
+
         action_options_block = ""
         for action_name, action_info in current_available_actions.items():
             # 构建参数文本
@@ -422,13 +417,13 @@ class ActionPlanner:
                 for param_name, param_description in action_info.action_parameters.items():
                     param_text += f'    "{param_name}":"{param_description}"\n'
                 param_text = param_text.rstrip("\n")
-            
+
             # 构建要求文本
             require_text = ""
             for require_item in action_info.action_require:
                 require_text += f"- {require_item}\n"
             require_text = require_text.rstrip("\n")
-            
+
             # 获取动作提示模板并填充
             using_action_prompt = await global_prompt_manager.get_prompt_async("action_prompt")
             using_action_prompt = using_action_prompt.format(
@@ -437,30 +432,30 @@ class ActionPlanner:
                 action_parameters=param_text,
                 action_require=require_text,
             )
-            
+
             action_options_block += using_action_prompt
-        
+
         return action_options_block
-    
+
     async def _execute_main_planner(
         self,
         prompt: str,
         message_id_list: List[Tuple[str, "DatabaseMessages"]],
         filtered_actions: Dict[str, ActionInfo],
         available_actions: Dict[str, ActionInfo],
-        loop_start_time: float
+        loop_start_time: float,
     ) -> List[ActionPlannerInfo]:
         """执行主规划器"""
         llm_content = None
         actions: List[ActionPlannerInfo] = []
-        
+
         try:
             # 调用LLM
             llm_content, (reasoning_content, _, _) = await self.planner_llm.generate_response_async(prompt=prompt)
-            
+
             logger.info(f"{self.log_prefix}规划器原始提示词: {prompt}")
             logger.info(f"{self.log_prefix}规划器原始响应: {llm_content}")
-            
+
             if global_config.debug.show_prompt:
                 logger.info(f"{self.log_prefix}规划器原始提示词: {prompt}")
                 logger.info(f"{self.log_prefix}规划器原始响应: {llm_content}")
@@ -471,7 +466,7 @@ class ActionPlanner:
                 logger.debug(f"{self.log_prefix}规划器原始响应: {llm_content}")
                 if reasoning_content:
                     logger.debug(f"{self.log_prefix}规划器推理: {reasoning_content}")
-                    
+
         except Exception as req_e:
             logger.error(f"{self.log_prefix}LLM 请求执行失败: {req_e}")
             return [
@@ -483,41 +478,38 @@ class ActionPlanner:
                     available_actions=available_actions,
                 )
             ]
-        
+
         # 解析LLM响应
         if llm_content:
             try:
-                # 处理新的格式：多个```json包裹的JSON对象
-                json_objects = self._extract_json_from_markdown(llm_content)
-                
-                if json_objects:
+                if json_objects := self._extract_json_from_markdown(llm_content):
                     logger.info(f"{self.log_prefix}从响应中提取到{len(json_objects)}个JSON对象")
                     filtered_actions_list = list(filtered_actions.items())
                     for json_obj in json_objects:
-                        actions.extend(
-                            self._parse_single_action(json_obj, message_id_list, filtered_actions_list)
-                        )
+                        actions.extend(self._parse_single_action(json_obj, message_id_list, filtered_actions_list))
                 else:
                     # 尝试解析为直接的JSON
                     logger.warning(f"{self.log_prefix}LLM没有返回可用动作: {llm_content}")
                     actions = self._create_no_reply("LLM没有返回可用动作", available_actions)
-                    
+
             except Exception as json_e:
                 logger.warning(f"{self.log_prefix}解析LLM响应JSON失败 {json_e}. LLM原始输出: '{llm_content}'")
                 actions = self._create_no_reply(f"解析LLM响应JSON失败: {json_e}", available_actions)
                 traceback.print_exc()
         else:
             actions = self._create_no_reply("规划器没有获得LLM响应", available_actions)
-            
-        
+
         # 添加循环开始时间到所有非no_action动作
         for action in actions:
+            action.action_data = action.action_data or {}
             action.action_data["loop_start_time"] = loop_start_time
-        
-        logger.info(f"{self.log_prefix}规划器决定执行{len(actions)}个动作: {' '.join([a.action_type for a in actions])}")
-        
+
+        logger.info(
+            f"{self.log_prefix}规划器决定执行{len(actions)}个动作: {' '.join([a.action_type for a in actions])}"
+        )
+
         return actions
-    
+
     def _create_no_reply(self, reasoning: str, available_actions: Dict[str, ActionInfo]) -> List[ActionPlannerInfo]:
         """创建no_action"""
         return [
@@ -529,23 +521,22 @@ class ActionPlanner:
                 available_actions=available_actions,
             )
         ]
-    
+
     def _extract_json_from_markdown(self, content: str) -> List[dict]:
+        # sourcery skip: for-append-to-extend
         """从Markdown格式的内容中提取JSON对象"""
         json_objects = []
-        
+
         # 使用正则表达式查找```json包裹的JSON内容
-        json_pattern = r'```json\s*(.*?)\s*```'
+        json_pattern = r"```json\s*(.*?)\s*```"
         matches = re.findall(json_pattern, content, re.DOTALL)
-        
+
         for match in matches:
             try:
                 # 清理可能的注释和格式问题
-                json_str = re.sub(r'//.*?\n', '\n', match)  # 移除单行注释
-                json_str = re.sub(r'/\*.*?\*/', '', json_str, flags=re.DOTALL)  # 移除多行注释
-                json_str = json_str.strip()
-                
-                if json_str:
+                json_str = re.sub(r"//.*?\n", "\n", match)  # 移除单行注释
+                json_str = re.sub(r"/\*.*?\*/", "", json_str, flags=re.DOTALL)  # 移除多行注释
+                if json_str := json_str.strip():
                     json_obj = json.loads(repair_json(json_str))
                     if isinstance(json_obj, dict):
                         json_objects.append(json_obj)
@@ -556,7 +547,7 @@ class ActionPlanner:
             except Exception as e:
                 logger.warning(f"解析JSON块失败: {e}, 块内容: {match[:100]}...")
                 continue
-        
+
         return json_objects
 
 

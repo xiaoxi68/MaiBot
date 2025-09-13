@@ -179,7 +179,7 @@ class BuildRelationAction(BaseAction):
             chat_model_config = models.get("utils")
             success, update_memory, _, _ = await llm_api.generate_with_model(
                 prompt,
-                model_config=chat_model_config,
+                model_config=chat_model_config,  # type: ignore
                 request_type="relation.category.update",  # type: ignore
             )
 

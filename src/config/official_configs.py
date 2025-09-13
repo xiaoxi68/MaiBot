@@ -72,9 +72,6 @@ class ChatConfig(ConfigBase):
     interest_rate_mode: Literal["fast", "accurate"] = "fast"
     """兴趣值计算模式，fast为快速计算，accurate为精确计算"""
 
-    mentioned_bot_reply: float = 1
-    """提及 bot 必然回复，1为100%回复，0为不额外增幅"""
-
     planner_size: float = 1.5
     """副规划器大小，越小，麦麦的动作执行能力越精细，但是消耗更多token，调大可以缓解429类错误"""
 
