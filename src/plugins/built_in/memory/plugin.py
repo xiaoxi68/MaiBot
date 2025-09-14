@@ -1,7 +1,7 @@
 from typing import List, Tuple, Type
 
 # 导入新插件系统
-from src.plugin_system import BasePlugin, register_plugin, ComponentInfo
+from src.plugin_system import BasePlugin, ComponentInfo
 from src.plugin_system.base.config_types import ConfigField
 
 # 导入依赖的系统组件

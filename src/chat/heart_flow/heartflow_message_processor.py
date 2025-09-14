@@ -1,6 +1,5 @@
 import asyncio
 import re
-import math
 import traceback
 
 from typing import Tuple, TYPE_CHECKING

@@ -3,7 +3,6 @@ from typing import Optional, Dict
 from src.plugin_system.apis import message_api
 from src.chat.message_receive.chat_stream import ChatStream, get_chat_manager
 from src.common.logger import get_logger
-from src.chat.frequency_control.talk_frequency_control import get_config_base_talk_frequency
 from src.chat.frequency_control.focus_value_control import get_config_base_focus_value
 
 logger = get_logger("frequency_control")
