@@ -492,7 +492,7 @@ class HeartFChatting:
                 return False, "", ""
 
             # 处理动作并获取结果
-            result = await action_handler.handle_action()
+            result = await action_handler.execute()
             success, action_text = result
             command = ""
 

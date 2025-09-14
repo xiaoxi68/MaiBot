@@ -292,8 +292,6 @@ async def command_to_stream(
     stream_id: str,
     storage_message: bool = True,
     display_message: str = "",
-    set_reply: bool = False,
-    reply_message: Optional["DatabaseMessages"] = None,
 ) -> bool:
     """向指定流发送命令
 
@@ -301,6 +299,7 @@ async def command_to_stream(
         command: 命令
         stream_id: 聊天流ID
         storage_message: 是否存储消息到数据库
+        display_message: 显示消息
 
     Returns:
         bool: 是否发送成功
@@ -311,8 +310,6 @@ async def command_to_stream(
         display_message=display_message,
         typing=False,
         storage_message=storage_message,
-        set_reply=set_reply,
-        reply_message=reply_message,
     )
 
 
@@ -363,7 +360,18 @@ async def custom_reply_set_to_stream(
     storage_message: bool = True,
     show_log: bool = True,
 ) -> bool:
-    """向指定流发送混合型消息集"""
+    """
+    向指定流发送混合型消息集
+    
+    Args:
+        reply_set: ReplySetModel 对象，包含多个 ReplyContent
+        stream_id: 聊天流ID
+        display_message: 显示消息
+        typing: 是否显示正在输入
+        reply_to: 回复消息，格式为"发送者:消息内容"
+        storage_message: 是否存储消息到数据库
+        show_log: 是否显示日志
+    """
     flag: bool = True
     for reply_content in reply_set.reply_data:
         status: bool = False
@@ -428,7 +436,7 @@ def _parse_content_to_seg(reply_content: "ReplyContent") -> Tuple[Seg, bool]:
     elif content_type == ReplyContentType.FORWARD:
         forward_message_list_data: List["ForwardNode"] = reply_content.content  # type: ignore
         assert isinstance(forward_message_list_data, list), "转发类型内容必须是列表"
-        forward_message_list: List[MessageBase] = []
+        forward_message_list: List[Dict] = []
         for forward_node in forward_message_list_data:
             message_segment = Seg(type="id", data=forward_node.content)  # type: ignore
             user_info: Optional[UserInfo] = None
@@ -442,7 +450,7 @@ def _parse_content_to_seg(reply_content: "ReplyContent") -> Tuple[Seg, bool]:
                         single_node_content.append(sub_seg)
                 message_segment = Seg(type="seglist", data=single_node_content)
             forward_message_list.append(
-                MessageBase(message_segment=message_segment, message_info=BaseMessageInfo(user_info=user_info))
+                MessageBase(message_segment=message_segment, message_info=BaseMessageInfo(user_info=user_info)).to_dict()
             )
         return Seg(type="forward", data=forward_message_list), False  # type: ignore
     else:

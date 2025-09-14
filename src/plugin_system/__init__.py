@@ -27,6 +27,9 @@ from .base import (
     ToolParamType,
     CustomEventHandlerResult,
     ReplyContentType,
+    ReplyContent,
+    ForwardNode,
+    ReplySetModel,
 )
 
 # 导入工具模块
@@ -101,8 +104,11 @@ __all__ = [
     "EventHandlerInfo",
     "EventType",
     "ToolParamType",
-    "ReplyContentType",
     # 消息
+    "ReplyContentType",
+    "ReplyContent",
+    "ForwardNode",
+    "ReplySetModel",
     "MaiMessages",
     "CustomEventHandlerResult",
     # 装饰器
