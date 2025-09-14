@@ -180,6 +180,23 @@ class ChatBot:
 
         return
 
+    async def echo_message_process(self, raw_data: Dict[str, Any]) -> None:
+        """
+        用于专门处理回送消息ID的函数
+        """
+        message_data: Dict[str, Any] = raw_data.get("content", {})
+        if not message_data:
+            return
+        message_type = message_data.get("type")
+        if message_type != "echo":
+            return
+        mmc_message_id = message_data.get("echo")
+        actual_message_id = message_data.get("actual_id")
+        if MessageStorage.update_message(mmc_message_id, actual_message_id):
+            logger.debug(f"更新消息ID成功: {mmc_message_id} -> {actual_message_id}")
+        else:
+            logger.warning(f"更新消息ID失败: {mmc_message_id} -> {actual_message_id}")
+
     async def message_process(self, message_data: Dict[str, Any]) -> None:
         """处理转化后的统一格式消息
         这个函数本质是预处理一些数据，根据配置信息和消息内容，预处理消息，并分发到合适的消息处理器中
@@ -215,14 +232,8 @@ class ChatBot:
             # print(message_data)
             # logger.debug(str(message_data))
             message = MessageRecv(message_data)
-
             group_info = message.message_info.group_info
             user_info = message.message_info.user_info
-            if message.message_info.additional_config:
-                sent_message = message.message_info.additional_config.get("echo", False)
-                if sent_message:  # 处理上报的自身消息，更新message_id，需要ada支持上报事件
-                    await MessageStorage.update_message(message)
-                    return
 
             continue_flag, modified_message = await events_manager.handle_mai_events(
                 EventType.ON_MESSAGE_PRE_PROCESS, message
