@@ -34,9 +34,11 @@ from src.plugin_system.apis import llm_api
 
 from src.chat.replyer.lpmm_prompt import init_lpmm_prompt
 from src.chat.replyer.replyer_prompt import init_replyer_prompt
+from src.chat.replyer.rewrite_prompt import init_rewrite_prompt
 
 init_lpmm_prompt()
 init_replyer_prompt()
+init_rewrite_prompt()
 
 
 logger = get_logger("replyer")
