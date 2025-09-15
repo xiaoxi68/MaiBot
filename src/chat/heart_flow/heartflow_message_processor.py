@@ -1,6 +1,5 @@
 import asyncio
 import re
-import math
 import traceback
 
 from typing import Tuple, TYPE_CHECKING
@@ -72,16 +71,15 @@ class HeartFCMessageReceiver:
             chat = message.chat_stream
 
             # 2. 兴趣度计算与更新
-            interested_rate, keywords = await _calculate_interest(message)
+            _, keywords = await _calculate_interest(message)
 
             await self.storage.store_message(message, chat)
 
             heartflow_chat: HeartFChatting = await heartflow.get_or_create_heartflow_chat(chat.stream_id)  # type: ignore
 
-            # subheartflow.add_message_to_normal_chat_cache(message, interested_rate, is_mentioned)
             if global_config.mood.enable_mood:
                 chat_mood = mood_manager.get_mood_by_chat_id(heartflow_chat.stream_id)
-                asyncio.create_task(chat_mood.update_mood_by_message(message, interested_rate))
+                asyncio.create_task(chat_mood.update_mood_by_message(message))
 
             # 3. 日志记录
             mes_name = chat.group_info.group_name if chat.group_info else "私聊"
@@ -109,7 +107,7 @@ class HeartFCMessageReceiver:
                 replace_bot_name=True,
             )
 
-            logger.info(f"[{mes_name}]{userinfo.user_nickname}:{processed_plain_text}[{interested_rate:.2f}]")  # type: ignore
+            logger.info(f"[{mes_name}]{userinfo.user_nickname}:{processed_plain_text}")  # type: ignore
 
             _ = Person.register_person(
                 platform=message.message_info.platform,  # type: ignore

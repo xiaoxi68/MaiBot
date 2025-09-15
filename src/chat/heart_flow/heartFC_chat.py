@@ -1,7 +1,6 @@
 import asyncio
 import time
 import traceback
-import math
 import random
 from typing import List, Optional, Dict, Any, Tuple, TYPE_CHECKING
 from rich.traceback import install
@@ -20,7 +19,7 @@ from src.chat.heart_flow.hfc_utils import CycleDetail
 from src.chat.heart_flow.hfc_utils import send_typing, stop_typing
 from src.chat.express.expression_learner import expression_learner_manager
 from src.person_info.person_info import Person
-from src.plugin_system.base.component_types import ChatMode, EventType, ActionInfo
+from src.plugin_system.base.component_types import EventType, ActionInfo
 from src.plugin_system.core import events_manager
 from src.plugin_system.apis import generator_api, send_api, message_api, database_api
 from src.mais4u.mai_think import mai_thinking_manager
@@ -376,7 +375,7 @@ class HeartFChatting:
             action_success = False
             action_reply_text = ""
 
-            for i, result in enumerate(results):
+            for result in results:
                 if isinstance(result, BaseException):
                     logger.error(f"{self.log_prefix} 动作执行异常: {result}")
                     continue

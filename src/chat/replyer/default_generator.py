@@ -18,7 +18,7 @@ from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.message_receive.uni_message_sender import UniversalMessageSender
 from src.chat.utils.timer_calculator import Timer  # <--- Import Timer
 from src.chat.utils.utils import get_chat_type_and_target_info
-from src.chat.utils.prompt_builder import Prompt, global_prompt_manager
+from src.chat.utils.prompt_builder import global_prompt_manager
 from src.chat.utils.chat_message_builder import (
     build_readable_messages,
     get_raw_msg_before_timestamp_with_chat,
@@ -32,107 +32,16 @@ from src.person_info.person_info import Person, is_person_known
 from src.plugin_system.base.component_types import ActionInfo, EventType
 from src.plugin_system.apis import llm_api
 
+from src.chat.replyer.lpmm_prompt import init_lpmm_prompt
+from src.chat.replyer.replyer_prompt import init_replyer_prompt
+from src.chat.replyer.rewrite_prompt import init_rewrite_prompt
+
+init_lpmm_prompt()
+init_replyer_prompt()
+init_rewrite_prompt()
+
 
 logger = get_logger("replyer")
-
-
-def init_prompt():
-    Prompt("你正在qq群里聊天，下面是群里在聊的内容：", "chat_target_group1")
-    Prompt("你正在和{sender_name}聊天，这是你们之前聊的内容：", "chat_target_private1")
-    Prompt("在群里聊天", "chat_target_group2")
-    Prompt("和{sender_name}聊天", "chat_target_private2")
-
-    Prompt(
-        """
-{expression_habits_block}
-{relation_info_block}
-
-{chat_target}
-{time_block}
-{chat_info}
-{identity}
-
-你现在的心情是：{mood_state}
-你正在{chat_target_2},{reply_target_block}
-你想要对上述的发言进行回复，回复的具体内容（原句）是：{raw_reply}
-原因是：{reason}
-现在请你将这条具体内容改写成一条适合在群聊中发送的回复消息。
-你需要使用合适的语法和句法，参考聊天内容，组织一条日常且口语化的回复。请你修改你想表达的原句，符合你的表达风格和语言习惯
-{reply_style}
-你可以完全重组回复，保留最基本的表达含义就好，但重组后保持语意通顺。
-{keywords_reaction_prompt}
-{moderation_prompt}
-不要输出多余内容(包括前后缀，冒号和引号，括号，表情包，emoji,at或 @等 )，只输出一条回复就好。
-现在，你说：
-""",
-        "default_expressor_prompt",
-    )
-
-    # s4u 风格的 prompt 模板
-    Prompt(
-        """{identity}
-你正在群聊中聊天，你想要回复 {sender_name} 的发言。同时，也有其他用户会参与聊天，你可以参考他们的回复内容，但是你现在想回复{sender_name}的发言。
-
-{time_block}
-{background_dialogue_prompt}
-{core_dialogue_prompt}
-
-{expression_habits_block}{tool_info_block}
-{knowledge_prompt}{relation_info_block}
-{extra_info_block}
-
-{reply_target_block}
-你的心情：{mood_state}
-{reply_style}
-注意不要复读你说过的话
-{keywords_reaction_prompt}
-请注意不要输出多余内容(包括前后缀，冒号和引号，at或 @等 )。只输出回复内容。
-{moderation_prompt}
-不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，emoji,at或 @等 )。只输出一条回复就好
-现在，你说：""",
-        "replyer_prompt",
-    )
-
-    Prompt(
-        """{identity}
-{time_block}
-你现在正在一个QQ群里聊天，以下是正在进行的聊天内容：
-{background_dialogue_prompt}
-
-{expression_habits_block}{tool_info_block}
-{knowledge_prompt}{relation_info_block}
-{extra_info_block}
-
-你现在想补充说明你刚刚自己的发言内容：{target}，原因是{reason}
-请你根据聊天内容，组织一条新回复。注意，{target} 是刚刚你自己的发言，你要在这基础上进一步发言，请按照你自己的角度来继续进行回复。
-注意保持上下文的连贯性。
-你现在的心情是：{mood_state}
-{reply_style}
-{keywords_reaction_prompt}
-请注意不要输出多余内容(包括前后缀，冒号和引号，at或 @等 )。只输出回复内容。
-{moderation_prompt}
-不要输出多余内容(包括前后缀，冒号和引号，括号()，表情包，emoji,at或 @等 )。只输出一条回复就好
-现在，你说：
-""",
-        "replyer_self_prompt",
-    )
-
-    Prompt(
-        """
-你是一个专门获取知识的助手。你的名字是{bot_name}。现在是{time_now}。
-群里正在进行的聊天内容：
-{chat_history}
-
-现在，{sender}发送了内容:{target_message},你想要回复ta。
-请仔细分析聊天内容，考虑以下几点：
-1. 内容中是否包含需要查询信息的问题
-2. 是否有明确的知识获取指令
-
-If you need to use the search tool, please directly call the function "lpmm_search_knowledge". If you do not need to use any tool, simply output "No tool needed".
-""",
-        name="lpmm_get_knowledge_prompt",
-    )
-
 
 class DefaultReplyer:
     def __init__(
@@ -369,7 +278,7 @@ class DefaultReplyer:
         expression_habits_title = ""
         if style_habits_str.strip():
             expression_habits_title = (
-                "你可以参考以下的语言习惯，当情景合适就使用，但不要生硬使用，以合理的方式结合到你的回复中："
+                "在回复时,你可以参考以下的语言习惯，当情景合适就使用，但不要生硬使用，以合理的方式结合到你的回复中："
             )
             expression_habits_block += f"{style_habits_str}\n"
 
@@ -557,18 +466,6 @@ class DefaultReplyer:
             except Exception as e:
                 logger.error(f"处理消息记录时出错: {msg}, 错误: {e}")
 
-        # 构建背景对话 prompt
-        all_dialogue_prompt = ""
-        if message_list_before_now:
-            latest_25_msgs = message_list_before_now[-int(global_config.chat.max_context_size) :]
-            all_dialogue_prompt_str = build_readable_messages(
-                latest_25_msgs,
-                replace_bot_name=True,
-                timestamp_mode="normal_no_YMD",
-                truncate=True,
-            )
-            all_dialogue_prompt = f"所有用户的发言：\n{all_dialogue_prompt_str}"
-
         # 构建核心对话 prompt
         core_dialogue_prompt = ""
         if core_dialogue_list:
@@ -600,6 +497,22 @@ class DefaultReplyer:
 {core_dialogue_prompt_str}
 --------------------------------
 """
+
+
+        # 构建背景对话 prompt
+        all_dialogue_prompt = ""
+        if message_list_before_now:
+            latest_25_msgs = message_list_before_now[-int(global_config.chat.max_context_size) :]
+            all_dialogue_prompt_str = build_readable_messages(
+                latest_25_msgs,
+                replace_bot_name=True,
+                timestamp_mode="normal_no_YMD",
+                truncate=True,
+            )
+            if core_dialogue_prompt:
+                all_dialogue_prompt = f"所有用户的发言：\n{all_dialogue_prompt_str}"
+            else:
+                all_dialogue_prompt = f"{all_dialogue_prompt_str}"
 
         return core_dialogue_prompt, all_dialogue_prompt
 
@@ -852,11 +765,11 @@ class DefaultReplyer:
         if sender:
             if is_group_chat:
                 reply_target_block = (
-                    f"现在{sender}说的:{target}。引起了你的注意，你想要在群里发言或者回复这条消息。原因是{reply_reason}"
+                    f"现在{sender}说的:{target}。引起了你的注意"
                 )
             else:  # private chat
                 reply_target_block = (
-                    f"现在{sender}说的:{target}。引起了你的注意，针对这条消息回复。原因是{reply_reason}"
+                    f"现在{sender}说的:{target}。引起了你的注意"
                 )
         else:
             reply_target_block = ""
@@ -1148,4 +1061,4 @@ def weighted_sample_no_replacement(items, weights, k) -> list:
     return selected
 
 
-init_prompt()
+
