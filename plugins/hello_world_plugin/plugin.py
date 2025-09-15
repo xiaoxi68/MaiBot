@@ -165,8 +165,6 @@ class ForwardMessages(BaseEventHandler):
         self.messages: List[str] = []
 
     async def execute(self, message: MaiMessages | None) -> Tuple[bool, bool, None, None, None]:
-        if self.get_config("print_message.enabled", False):
-            return True, True, None, None, None
         if not message:
             return True, True, None, None, None
         stream_id = message.stream_id or ""
@@ -194,7 +192,7 @@ class HelloWorldPlugin(BasePlugin):
 
     # 插件基本信息
     plugin_name: str = "hello_world_plugin"  # 内部标识符
-    enable_plugin: bool = True
+    enable_plugin: bool = False
     dependencies: List[str] = []  # 插件依赖列表
     python_dependencies: List[str] = []  # Python包依赖列表
     config_file_name: str = "config.toml"  # 配置文件名

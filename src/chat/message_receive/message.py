@@ -8,6 +8,7 @@ from typing import Optional, Any, List
 from maim_message import Seg, UserInfo, BaseMessageInfo, MessageBase
 
 from src.common.logger import get_logger
+from src.config.config import global_config
 from src.chat.utils.utils_image import get_image_manager
 from src.chat.utils.utils_voice import get_voice_text
 from .chat_stream import ChatStream
@@ -79,6 +80,14 @@ class Message(MessageBase):
                 if processed:
                     segments_text.append(processed)
             return " ".join(segments_text)
+        elif segment.type == "forward":
+            segments_text = []
+            for node_dict in segment.data:
+                message = MessageBase.from_dict(node_dict)  # type: ignore
+                processed_text = await self._process_message_segments(message.message_segment)
+                if processed_text:
+                    segments_text.append(f"{global_config.bot.nickname}: {processed_text}")
+            return "[合并消息]: " + "\n".join(segments_text)
         else:
             # 处理单个消息段
             return await self._process_single_segment(segment)  # type: ignore

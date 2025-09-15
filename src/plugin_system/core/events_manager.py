@@ -2,7 +2,7 @@ import asyncio
 import contextlib
 from typing import List, Dict, Optional, Type, Tuple, TYPE_CHECKING
 
-from src.chat.message_receive.message import MessageRecv
+from src.chat.message_receive.message import MessageRecv, MessageSending
 from src.chat.message_receive.chat_stream import get_chat_manager
 from src.common.logger import get_logger
 from src.plugin_system.base.component_types import EventType, EventHandlerInfo, MaiMessages, CustomEventHandlerResult
@@ -66,7 +66,7 @@ class EventsManager:
     async def handle_mai_events(
         self,
         event_type: EventType,
-        message: Optional[MessageRecv] = None,
+        message: Optional[MessageRecv | MessageSending] = None,
         llm_prompt: Optional[str] = None,
         llm_response: Optional["LLMGenerationDataModel"] = None,
         stream_id: Optional[str] = None,
@@ -206,7 +206,7 @@ class EventsManager:
 
     def _transform_event_message(
         self,
-        message: MessageRecv,
+        message: MessageRecv | MessageSending,
         llm_prompt: Optional[str] = None,
         llm_response: Optional["LLMGenerationDataModel"] = None,
     ) -> MaiMessages:
@@ -295,7 +295,7 @@ class EventsManager:
     def _prepare_message(
         self,
         event_type: EventType,
-        message: Optional[MessageRecv] = None,
+        message: Optional[MessageRecv | MessageSending] = None,
         llm_prompt: Optional[str] = None,
         llm_response: Optional["LLMGenerationDataModel"] = None,
         stream_id: Optional[str] = None,

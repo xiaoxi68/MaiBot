@@ -310,6 +310,7 @@ async def command_to_stream(
         display_message=display_message,
         typing=False,
         storage_message=storage_message,
+        set_reply=False,
     )
 
 

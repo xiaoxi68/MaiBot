@@ -320,6 +320,8 @@ class BaseCommand(ABC):
             reply_set=reply_set,
             stream_id=chat_stream.stream_id,
             storage_message=storage_message,
+            set_reply=False,
+            reply_message=None,
         )
 
     async def send_custom(

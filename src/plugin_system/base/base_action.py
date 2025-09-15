@@ -397,6 +397,8 @@ class BaseAction(ABC):
             reply_set=reply_set,
             stream_id=self.chat_id,
             storage_message=storage_message,
+            set_reply=False,
+            reply_message=None,
         )
 
     async def send_voice(self, audio_base64: str) -> bool:
