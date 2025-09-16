@@ -50,8 +50,7 @@ def init_prompt():
 **可用的action**
 reply
 动作描述：
-1.你可以选择呼叫了你的名字，但是你没有做出回应的消息进行回复
-2.你可以自然的顺着正在进行的聊天内容进行回复或自然的提出一个问题
+进行回复，你可以自然的顺着正在进行的聊天内容进行回复或自然的提出一个问题
 {{
     "action": "reply",
     "target_message_id":"想要回复的消息id",
@@ -60,18 +59,9 @@ reply
 
 no_reply
 动作描述：
-保持沉默，不回复直到有新消息
-控制聊天频率，不要太过频繁的发言
+保持沉默，等待对方发言
 {{
     "action": "no_reply",
-}}
-
-no_reply_until_call
-动作描述：
-保持沉默，直到有人直接叫你的名字
-当前话题不感兴趣时使用，或有人不喜欢你的发言时使用
-{{
-    "action": "no_reply_until_call",
 }}
 
 {action_options_text}
@@ -102,7 +92,7 @@ no_reply_until_call
 ```
 
 """,
-        "planner_prompt",
+        "brain_planner_prompt",
     )
 
     Prompt(
@@ -117,11 +107,11 @@ no_reply_until_call
     "reason":"触发action的原因"
 }}
 """,
-        "action_prompt",
+        "brain_action_prompt",
     )
 
 
-class ActionPlanner:
+class BrainPlanner:
     def __init__(self, chat_id: str, action_manager: ActionManager):
         self.chat_id = chat_id
         self.log_prefix = f"[{get_chat_manager().get_stream_name(chat_id) or chat_id}]"
@@ -181,7 +171,7 @@ class ActionPlanner:
 
             # 验证action是否可用
             available_action_names = [action_name for action_name, _ in current_available_actions]
-            internal_action_names = ["no_reply", "reply", "wait_time", "no_reply_until_call"]
+            internal_action_names = ["no_reply", "reply", "wait_time"]
 
             if action not in internal_action_names and action not in available_action_names:
                 logger.warning(
@@ -316,7 +306,7 @@ class ActionPlanner:
                 actions_before_now_block = ""
 
             # 构建聊天上下文描述
-            chat_context_description = "你现在正在一个群聊中"
+            chat_context_description = f"你正在和 {chat_target_info.person_name or chat_target_info.user_nickname or '对方'} 聊天中"
 
             # 构建动作选项块
             action_options_block = await self._build_action_options_block(current_available_actions)
@@ -326,12 +316,12 @@ class ActionPlanner:
             time_block = f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
             bot_name = global_config.bot.nickname
             bot_nickname = (
-                f",也有人叫你{','.join(global_config.bot.alias_names)}" if global_config.bot.alias_names else ""
+                f",也可以叫你{','.join(global_config.bot.alias_names)}" if global_config.bot.alias_names else ""
             )
             name_block = f"你的名字是{bot_name}{bot_nickname}，请注意哪些是你自己的发言。"
 
             # 获取主规划器模板并填充
-            planner_prompt_template = await global_prompt_manager.get_prompt_async("planner_prompt")
+            planner_prompt_template = await global_prompt_manager.get_prompt_async("brain_planner_prompt")
             prompt = planner_prompt_template.format(
                 time_block=time_block,
                 chat_context_description=chat_context_description,
@@ -422,7 +412,7 @@ class ActionPlanner:
             require_text = require_text.rstrip("\n")
 
             # 获取动作提示模板并填充
-            using_action_prompt = await global_prompt_manager.get_prompt_async("action_prompt")
+            using_action_prompt = await global_prompt_manager.get_prompt_async("brain_action_prompt")
             using_action_prompt = using_action_prompt.format(
                 action_name=action_name,
                 action_description=action_info.description,

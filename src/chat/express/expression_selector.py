@@ -219,7 +219,7 @@ class ExpressionSelector:
             return [], []
 
         # 1. 获取20个随机表达方式（现在按权重抽取）
-        style_exprs = self.get_random_expressions(chat_id, 10)
+        style_exprs = self.get_random_expressions(chat_id, 20)
 
         if len(style_exprs) < 10:
             logger.info(f"聊天流 {chat_id} 表达方式正在积累中")

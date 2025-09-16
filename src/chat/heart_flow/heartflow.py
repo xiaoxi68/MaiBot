@@ -4,7 +4,7 @@ from typing import Any, Optional, Dict
 from src.chat.message_receive.chat_stream import get_chat_manager
 from src.common.logger import get_logger
 from src.chat.heart_flow.heartFC_chat import HeartFChatting
-from src.chat.heart_flow.brain_chat import BrainChatting
+from src.chat.brain_chat.brain_chat import BrainChatting
 from src.chat.message_receive.chat_stream import ChatStream
 
 logger = get_logger("heartflow")

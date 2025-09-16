@@ -12,7 +12,7 @@ from src.common.data_models.message_data_model import ReplyContentType
 from src.chat.message_receive.chat_stream import ChatStream, get_chat_manager
 from src.chat.utils.prompt_builder import global_prompt_manager
 from src.chat.utils.timer_calculator import Timer
-from src.chat.planner_actions.planner import ActionPlanner
+from src.chat.brain_chat.brain_planner import BrainPlanner
 from src.chat.planner_actions.action_modifier import ActionModifier
 from src.chat.planner_actions.action_manager import ActionManager
 from src.chat.heart_flow.hfc_utils import CycleDetail
@@ -22,8 +22,6 @@ from src.person_info.person_info import Person
 from src.plugin_system.base.component_types import EventType, ActionInfo
 from src.plugin_system.core import events_manager
 from src.plugin_system.apis import generator_api, send_api, message_api, database_api
-from src.mais4u.mai_think import mai_thinking_manager
-from src.mais4u.s4u_config import s4u_config
 from src.chat.utils.chat_message_builder import (
     build_readable_messages_with_id,
     get_raw_msg_before_timestamp_with_chat,
@@ -83,7 +81,7 @@ class BrainChatting:
         self.expression_learner = expression_learner_manager.get_expression_learner(self.stream_id)
 
         self.action_manager = ActionManager()
-        self.action_planner = ActionPlanner(chat_id=self.stream_id, action_manager=self.action_manager)
+        self.action_planner = BrainPlanner(chat_id=self.stream_id, action_manager=self.action_manager)
         self.action_modifier = ActionModifier(action_manager=self.action_manager, chat_id=self.stream_id)
 
         # 循环控制内部状态
@@ -97,9 +95,8 @@ class BrainChatting:
 
         self.last_read_time = time.time() - 2
 
-        self.talk_threshold = global_config.chat.talk_value
-
-        self.no_reply_until_call = False
+        self.more_plan = False
+        
 
     async def start(self):
         """检查是否需要启动主循环，如果未激活则启动。"""
@@ -173,28 +170,11 @@ class BrainChatting:
         )
 
         if len(recent_messages_list) >= 1:
-            # !处理no_reply_until_call逻辑
-            if self.no_reply_until_call:
-                for message in recent_messages_list:
-                    if (
-                        message.is_mentioned
-                        or message.is_at
-                        or len(recent_messages_list) >= 8
-                        or time.time() - self.last_read_time > 600
-                    ):
-                        self.no_reply_until_call = False
-                        break
-                # 没有提到，继续保持沉默
-                if self.no_reply_until_call:
-                    # logger.info(f"{self.log_prefix} 没有提到，继续保持沉默")
-                    await asyncio.sleep(1)
-                    return True
-
             self.last_read_time = time.time()
-            
             await self._observe(
                 recent_messages_list=recent_messages_list
             )
+            
         else:
             # Normal模式：消息数量不足，等待
             await asyncio.sleep(0.2)
@@ -259,9 +239,6 @@ class BrainChatting:
             recent_messages_list = []
         reply_text = ""  # 初始化reply_text变量，避免UnboundLocalError
 
-        if s4u_config.enable_s4u:
-            await send_typing()
-
         async with global_prompt_manager.async_message_scope(self.chat_stream.context.get_template_name()):
             await self.expression_learner.trigger_learning_for_chat()
 
@@ -312,23 +289,6 @@ class BrainChatting:
                 action_to_use_info, _ = await self.action_planner.plan(
                     loop_start_time=self.last_read_time,
                     available_actions=available_actions,
-                )
-
-            has_reply = False
-            for action in action_to_use_info:
-                if action.action_type == "reply":
-                    has_reply = True
-                    break
-
-            if not has_reply:
-                action_to_use_info.append(
-                    ActionPlannerInfo(
-                        action_type="reply",
-                        reasoning="进行回复",
-                        action_data={},
-                        action_message=recent_messages_list[0],
-                        available_actions=available_actions,
-                    )
                 )
 
             # 3. 并行执行所有动作
@@ -391,12 +351,6 @@ class BrainChatting:
 
             self.end_cycle(loop_info, cycle_timers)
             self.print_cycle_info(cycle_timers)
-
-            """S4U内容，暂时保留"""
-            if s4u_config.enable_s4u:
-                await stop_typing()
-                await mai_thinking_manager.get_mai_think(self.stream_id).do_think_after_response(reply_text)
-            """S4U内容，暂时保留"""
 
             return True
 
@@ -553,11 +507,6 @@ class BrainChatting:
                     logger.info(f"{self.log_prefix} 等待{action_planner_info.action_data['time']}秒后回复")
                     await asyncio.sleep(action_planner_info.action_data["time"])
                     return {"action_type": "wait_time", "success": True, "reply_text": "", "command": ""}
-
-                elif action_planner_info.action_type == "no_reply_until_call":
-                    logger.info(f"{self.log_prefix} 保持沉默，直到有人直接叫的名字")
-                    self.no_reply_until_call = True
-                    return {"action_type": "no_reply_until_call", "success": True, "reply_text": "", "command": ""}
 
                 elif action_planner_info.action_type == "reply":
                     try:
