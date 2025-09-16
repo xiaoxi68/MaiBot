@@ -3,20 +3,21 @@ from typing import Dict, Optional
 from src.common.logger import get_logger
 from src.chat.message_receive.chat_stream import ChatStream, get_chat_manager
 from src.chat.replyer.default_generator import DefaultReplyer
+from src.chat.replyer.private_generator import PrivateReplyer
 
 logger = get_logger("ReplyerManager")
 
 
 class ReplyerManager:
     def __init__(self):
-        self._repliers: Dict[str, DefaultReplyer] = {}
+        self._repliers: Dict[str, DefaultReplyer | PrivateReplyer] = {}
 
     def get_replyer(
         self,
         chat_stream: Optional[ChatStream] = None,
         chat_id: Optional[str] = None,
         request_type: str = "replyer",
-    ) -> Optional[DefaultReplyer]:
+    ) -> Optional[DefaultReplyer | PrivateReplyer]:
         """
         获取或创建回复器实例。
 
@@ -46,10 +47,17 @@ class ReplyerManager:
             return None
 
         # model_configs 只在此时（初始化时）生效
-        replyer = DefaultReplyer(
-            chat_stream=target_stream,
-            request_type=request_type,
-        )
+        if target_stream.group_info:
+            replyer = DefaultReplyer(
+                chat_stream=target_stream,
+                request_type=request_type,
+            )
+        else:
+            replyer = PrivateReplyer(
+                chat_stream=target_stream,
+                request_type=request_type,
+            )
+
         self._repliers[stream_id] = replyer
         return replyer
 

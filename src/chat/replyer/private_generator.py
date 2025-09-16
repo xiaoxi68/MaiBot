@@ -43,7 +43,7 @@ init_rewrite_prompt()
 
 logger = get_logger("replyer")
 
-class DefaultReplyer:
+class PrivateReplyer:
     def __init__(
         self,
         chat_stream: ChatStream,
@@ -216,7 +216,7 @@ class DefaultReplyer:
             traceback.print_exc()
             return False, llm_response
 
-    async def build_relation_info(self, chat_content: str, sender: str, person_list: List[Person]):
+    async def build_relation_info(self, chat_content: str, sender: str):
         if not global_config.relationship.enable_relationship:
             return ""
 
@@ -233,12 +233,8 @@ class DefaultReplyer:
             return f"你完全不认识{sender}，不理解ta的相关信息。"
 
         sender_relation = await person.build_relationship(chat_content)
-        others_relation = ""
-        for person in person_list:
-            person_relation = await person.build_relationship()
-            others_relation += person_relation
 
-        return f"{sender_relation}\n{others_relation}"
+        return f"{sender_relation}"
 
     async def build_expression_habits(self, chat_history: str, target: str) -> Tuple[str, List[int]]:
         # sourcery skip: for-append-to-extend
@@ -703,7 +699,7 @@ class DefaultReplyer:
                 self.build_expression_habits(chat_talking_prompt_short, target), "expression_habits"
             ),
             self._time_and_run_task(
-                self.build_relation_info(chat_talking_prompt_short, sender, person_list_short), "relation_info"
+                self.build_relation_info(chat_talking_prompt_short, sender), "relation_info"
             ),
             # self._time_and_run_task(self.build_memory_block(message_list_before_short, target), "memory_block"),
             self._time_and_run_task(
@@ -762,17 +758,10 @@ class DefaultReplyer:
 
         moderation_prompt_block = "请不要输出违法违规内容，不要输出色情，暴力，政治相关内容，如有敏感内容，请规避。"
 
-        if sender:
-            if is_group_chat:
-                reply_target_block = (
-                    f"现在{sender}说的:{target}。引起了你的注意"
-                )
-            else:  # private chat
-                reply_target_block = (
-                    f"现在{sender}说的:{target}。引起了你的注意"
-                )
-        else:
-            reply_target_block = ""
+        reply_target_block = (
+            f"现在对方说的:{target}。引起了你的注意"
+        )
+
 
         # 构建分离的对话 prompt
         core_dialogue_prompt, background_dialogue_prompt = self.build_s4u_chat_history_prompts(
@@ -781,7 +770,7 @@ class DefaultReplyer:
 
         if global_config.bot.qq_account == user_id and platform == global_config.bot.platform:
             return await global_prompt_manager.format_prompt(
-                "replyer_self_prompt",
+                "private_replyer_self_prompt",
                 expression_habits_block=expression_habits_block,
                 tool_info_block=tool_info,
                 knowledge_prompt=prompt_info,
@@ -795,6 +784,7 @@ class DefaultReplyer:
                 time_block=time_block,
                 target=target,
                 reason=reply_reason,
+                sender = sender,
                 reply_style=global_config.personality.reply_style,
                 keywords_reaction_prompt=keywords_reaction_prompt,
                 moderation_prompt=moderation_prompt_block,
@@ -812,9 +802,9 @@ class DefaultReplyer:
                 action_descriptions=actions_info,
                 sender_name=sender,
                 mood_state=mood_prompt,
-                background_dialogue_prompt=background_dialogue_prompt,
+                dialogue_prompt=background_dialogue_prompt,
                 time_block=time_block,
-                core_dialogue_prompt=core_dialogue_prompt,
+                sender = sender,
                 reply_target_block=reply_target_block,
                 reply_style=global_config.personality.reply_style,
                 keywords_reaction_prompt=keywords_reaction_prompt,
@@ -858,7 +848,7 @@ class DefaultReplyer:
         # 并行执行2个构建任务
         (expression_habits_block, _), relation_info, personality_prompt = await asyncio.gather(
             self.build_expression_habits(chat_talking_prompt_half, target),
-            self.build_relation_info(chat_talking_prompt_half, sender, []),
+            self.build_relation_info(chat_talking_prompt_half, sender),
             self.build_personality_prompt(),
         )
 
