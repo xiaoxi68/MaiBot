@@ -456,9 +456,6 @@ class ExperimentalConfig(ConfigBase):
     enable_friend_chat: bool = False
     """是否启用好友聊天"""
 
-    pfc_chatting: bool = False
-    """是否启用PFC"""
-
 
 @dataclass
 class MaimMessageConfig(ConfigBase):

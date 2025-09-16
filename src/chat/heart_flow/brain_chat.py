@@ -55,19 +55,18 @@ install(extra_lines=3)
 
 # 注释：原来的动作修改超时常量已移除，因为改为顺序执行
 
-logger = get_logger("hfc")  # Logger Name Changed
+logger = get_logger("bc")  # Logger Name Changed
 
 
-class HeartFChatting:
+class BrainChatting:
     """
-    管理一个连续的Focus Chat循环
+    管理一个连续的私聊Brain Chat循环
     用于在特定聊天流中生成回复。
-    其生命周期现在由其关联的 SubHeartflow 的 FOCUSED 状态控制。
     """
 
     def __init__(self, chat_id: str):
         """
-        HeartFChatting 初始化函数
+        BrainChatting 初始化函数
 
         参数:
             chat_id: 聊天流唯一标识符(如stream_id)
@@ -107,7 +106,7 @@ class HeartFChatting:
 
         # 如果循环已经激活，直接返回
         if self.running:
-            logger.debug(f"{self.log_prefix} HeartFChatting 已激活，无需重复启动")
+            logger.debug(f"{self.log_prefix} BrainChatting 已激活，无需重复启动")
             return
 
         try:
@@ -116,25 +115,25 @@ class HeartFChatting:
 
             self._loop_task = asyncio.create_task(self._main_chat_loop())
             self._loop_task.add_done_callback(self._handle_loop_completion)
-            logger.info(f"{self.log_prefix} HeartFChatting 启动完成")
+            logger.info(f"{self.log_prefix} BrainChatting 启动完成")
 
         except Exception as e:
             # 启动失败时重置状态
             self.running = False
             self._loop_task = None
-            logger.error(f"{self.log_prefix} HeartFChatting 启动失败: {e}")
+            logger.error(f"{self.log_prefix} BrainChatting 启动失败: {e}")
             raise
 
     def _handle_loop_completion(self, task: asyncio.Task):
         """当 _hfc_loop 任务完成时执行的回调。"""
         try:
             if exception := task.exception():
-                logger.error(f"{self.log_prefix} HeartFChatting: 脱离了聊天(异常): {exception}")
+                logger.error(f"{self.log_prefix} BrainChatting: 脱离了聊天(异常): {exception}")
                 logger.error(traceback.format_exc())  # Log full traceback for exceptions
             else:
-                logger.info(f"{self.log_prefix} HeartFChatting: 脱离了聊天 (外部停止)")
+                logger.info(f"{self.log_prefix} BrainChatting: 脱离了聊天 (外部停止)")
         except asyncio.CancelledError:
-            logger.info(f"{self.log_prefix} HeartFChatting: 结束了聊天")
+            logger.info(f"{self.log_prefix} BrainChatting: 结束了聊天")
 
     def start_cycle(self) -> Tuple[Dict[str, float], str]:
         self._cycle_counter += 1
@@ -193,19 +192,8 @@ class HeartFChatting:
 
             self.last_read_time = time.time()
             
-            # !此处使at或者提及必定回复
-            metioned_message = None
-            for message in recent_messages_list:
-                if (message.is_mentioned or message.is_at) and global_config.chat.mentioned_bot_reply:
-                    metioned_message = message
-            
-            # *控制频率用
-            if not metioned_message:
-                if random.random() > global_config.chat.talk_value:
-                    return True
-            
             await self._observe(
-                recent_messages_list=recent_messages_list,force_reply_message=metioned_message
+                recent_messages_list=recent_messages_list
             )
         else:
             # Normal模式：消息数量不足，等待
@@ -265,7 +253,7 @@ class HeartFChatting:
 
     async def _observe(
         self,  # interest_value: float = 0.0,
-        recent_messages_list: Optional[List["DatabaseMessages"]] = None, force_reply_message:"DatabaseMessages" = None
+        recent_messages_list: Optional[List["DatabaseMessages"]] = None
     ) -> bool:  # sourcery skip: merge-else-if-into-elif, remove-redundant-if
         if recent_messages_list is None:
             recent_messages_list = []
@@ -332,13 +320,13 @@ class HeartFChatting:
                     has_reply = True
                     break
 
-            if not has_reply and force_reply_message:
+            if not has_reply:
                 action_to_use_info.append(
                     ActionPlannerInfo(
                         action_type="reply",
-                        reasoning="有人提到了你，进行回复",
+                        reasoning="进行回复",
                         action_data={},
-                        action_message=force_reply_message,
+                        action_message=recent_messages_list[0],
                         available_actions=available_actions,
                     )
                 )

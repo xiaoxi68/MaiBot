@@ -177,7 +177,7 @@ class ActionPlanner:
                     target_message = message_id_list[-1][1]
             else:
                 target_message = message_id_list[-1][1]
-                logger.info(f"{self.log_prefix}动作'{action}'缺少target_message_id，使用最新消息作为target_message")
+                logger.debug(f"{self.log_prefix}动作'{action}'缺少target_message_id，使用最新消息作为target_message")
 
             # 验证action是否可用
             available_action_names = [action_name for action_name, _ in current_available_actions]
@@ -263,7 +263,7 @@ class ActionPlanner:
         # 应用激活类型过滤
         filtered_actions = self._filter_actions_by_activation_type(available_actions, chat_content_block_short)
 
-        logger.info(f"{self.log_prefix}过滤后有{len(filtered_actions)}个可用动作")
+        logger.debug(f"{self.log_prefix}过滤后有{len(filtered_actions)}个可用动作")
 
         # 构建包含所有动作的提示词
         prompt, message_id_list = await self.build_planner_prompt(
@@ -483,7 +483,7 @@ class ActionPlanner:
         if llm_content:
             try:
                 if json_objects := self._extract_json_from_markdown(llm_content):
-                    logger.info(f"{self.log_prefix}从响应中提取到{len(json_objects)}个JSON对象")
+                    logger.debug(f"{self.log_prefix}从响应中提取到{len(json_objects)}个JSON对象")
                     filtered_actions_list = list(filtered_actions.items())
                     for json_obj in json_objects:
                         actions.extend(self._parse_single_action(json_obj, message_id_list, filtered_actions_list))

@@ -278,7 +278,7 @@ class DefaultReplyer:
         expression_habits_title = ""
         if style_habits_str.strip():
             expression_habits_title = (
-                "在回复时,你可以参考以下的语言习惯，当情景合适就使用，但不要生硬使用，以合理的方式结合到你的回复中："
+                "在回复时,你可以参考以下的语言习惯，不要生硬使用："
             )
             expression_habits_block += f"{style_habits_str}\n"
 

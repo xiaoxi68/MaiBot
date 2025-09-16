@@ -181,4 +181,4 @@ key_file = "" # SSL密钥文件路径，仅在use_wss=true时有效
 enable = true
 
 [experimental] #实验性功能
-enable_friend_chat = false # 是否启用好友聊天
+none = false # 暂无
