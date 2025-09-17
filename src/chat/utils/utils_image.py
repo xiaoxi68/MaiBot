@@ -174,9 +174,7 @@ class ImageManager:
 
             # 使用较低温度确保输出稳定
             emotion_llm = LLMRequest(model_set=model_config.model_task_config.utils, request_type="emoji")
-            emotion_result, _ = await emotion_llm.generate_response_async(
-                emotion_prompt, temperature=0.3
-            )
+            emotion_result, _ = await emotion_llm.generate_response_async(emotion_prompt, temperature=0.3)
 
             if not emotion_result:
                 logger.warning("LLM未能生成情感标签，使用详细描述的前几个词")
@@ -228,6 +226,7 @@ class ImageManager:
                         type="emoji",
                         description=detailed_description,  # 保存详细描述
                         timestamp=current_timestamp,
+                        vlm_processed=True,
                     )
             except Exception as e:
                 logger.error(f"保存表情包文件或元数据失败: {str(e)}")
