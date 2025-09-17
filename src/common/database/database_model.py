@@ -725,7 +725,21 @@ def check_field_constraints():
         logger.exception(f"检查字段约束时出错: {e}")
 
     return inconsistencies
-
+def fix_image_id():
+    """
+    修复表情包的 image_id 字段
+    """
+    import uuid
+    try:
+        with db:
+            for img in Images.select():
+                if not img.image_id:
+                    img.image_id = str(uuid.uuid4())
+                    img.save()
+                    logger.info(f"已为表情包 {img.id} 生成新的 image_id: {img.image_id}")
+    except Exception as e:
+        logger.exception(f"修复 image_id 时出错: {e}")
 
 # 模块加载时调用初始化函数
 initialize_database(sync_constraints=True)
+fix_image_id()
