@@ -23,17 +23,16 @@ class Heartflow:
                 if chat := self.heartflow_chat_list.get(chat_id):
                     return chat
             else:
-                chat_stream: ChatStream = get_chat_manager().get_stream(chat_id)
+                chat_stream: ChatStream | None = get_chat_manager().get_stream(chat_id)
+                if not chat_stream:
+                    raise ValueError(f"未找到 chat_id={chat_id} 的聊天流")
                 if chat_stream.group_info:
                     new_chat = HeartFChatting(chat_id=chat_id)
-                    await new_chat.start()
-                    self.heartflow_chat_list[chat_id] = new_chat
-                    return new_chat
                 else:
                     new_chat = BrainChatting(chat_id=chat_id)
-                    await new_chat.start()
-                    self.heartflow_chat_list[chat_id] = new_chat
-                    return new_chat
+                await new_chat.start()
+                self.heartflow_chat_list[chat_id] = new_chat
+                return new_chat
         except Exception as e:
             logger.error(f"创建心流聊天 {chat_id} 失败: {e}", exc_info=True)
             traceback.print_exc()

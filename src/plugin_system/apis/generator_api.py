@@ -14,6 +14,7 @@ from rich.traceback import install
 from src.common.logger import get_logger
 from src.common.data_models.message_data_model import ReplySetModel
 from src.chat.replyer.default_generator import DefaultReplyer
+from src.chat.replyer.private_generator import PrivateReplyer
 from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.utils.utils import process_llm_response
 from src.chat.replyer.replyer_manager import replyer_manager
@@ -38,7 +39,7 @@ def get_replyer(
     chat_stream: Optional[ChatStream] = None,
     chat_id: Optional[str] = None,
     request_type: str = "replyer",
-) -> Optional[DefaultReplyer]:
+) -> Optional[DefaultReplyer | PrivateReplyer]:
     """获取回复器对象
 
     优先使用chat_stream，如果没有则使用chat_id直接查找。

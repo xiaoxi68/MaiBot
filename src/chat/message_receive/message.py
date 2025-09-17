@@ -87,7 +87,7 @@ class Message(MessageBase):
                 processed_text = await self._process_message_segments(message.message_segment)
                 if processed_text:
                     segments_text.append(f"{global_config.bot.nickname}: {processed_text}")
-            return "[合并消息]: " + "\n".join(segments_text)
+            return "[合并消息]: " + "\n--  ".join(segments_text)
         else:
             # 处理单个消息段
             return await self._process_single_segment(segment)  # type: ignore

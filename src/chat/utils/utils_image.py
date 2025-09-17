@@ -222,6 +222,7 @@ class ImageManager:
                     img_obj.save()
                 except Images.DoesNotExist:  # type: ignore
                     Images.create(
+                        image_id=str(uuid.uuid4()),
                         emoji_hash=image_hash,
                         path=file_path,
                         type="emoji",

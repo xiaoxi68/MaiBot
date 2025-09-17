@@ -192,21 +192,18 @@ class HeartFChatting:
                     return True
 
             self.last_read_time = time.time()
-            
+
             # !此处使at或者提及必定回复
-            metioned_message = None
+            mentioned_message = None
             for message in recent_messages_list:
                 if (message.is_mentioned or message.is_at) and global_config.chat.mentioned_bot_reply:
-                    metioned_message = message
-            
+                    mentioned_message = message
+
             # *控制频率用
-            if not metioned_message:
-                if random.random() > global_config.chat.talk_value:
-                    return True
-            
-            await self._observe(
-                recent_messages_list=recent_messages_list,force_reply_message=metioned_message
-            )
+            if mentioned_message:
+                await self._observe(recent_messages_list=recent_messages_list, force_reply_message=mentioned_message)
+            elif random.random() > global_config.chat.talk_value:
+                return True
         else:
             # Normal模式：消息数量不足，等待
             await asyncio.sleep(0.2)
@@ -265,7 +262,8 @@ class HeartFChatting:
 
     async def _observe(
         self,  # interest_value: float = 0.0,
-        recent_messages_list: Optional[List["DatabaseMessages"]] = None, force_reply_message:"DatabaseMessages" = None
+        recent_messages_list: Optional[List["DatabaseMessages"]] = None,
+        force_reply_message: Optional["DatabaseMessages"] = None,
     ) -> bool:  # sourcery skip: merge-else-if-into-elif, remove-redundant-if
         if recent_messages_list is None:
             recent_messages_list = []
@@ -542,7 +540,6 @@ class HeartFChatting:
         """执行单个动作的通用函数"""
         try:
             with Timer(f"动作{action_planner_info.action_type}", cycle_timers):
-                
                 if action_planner_info.action_type == "no_reply":
                     # 直接处理no_action逻辑，不再通过动作系统
                     reason = action_planner_info.reasoning or "选择不回复"
@@ -586,7 +583,9 @@ class HeartFChatting:
 
                         if not success or not llm_response or not llm_response.reply_set:
                             if action_planner_info.action_message:
-                                logger.info(f"对 {action_planner_info.action_message.processed_plain_text} 的回复生成失败")
+                                logger.info(
+                                    f"对 {action_planner_info.action_message.processed_plain_text} 的回复生成失败"
+                                )
                             else:
                                 logger.info("回复生成失败")
                             return {"action_type": "reply", "success": False, "reply_text": "", "loop_info": None}

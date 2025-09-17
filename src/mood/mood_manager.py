@@ -75,7 +75,7 @@ class ChatMood:
         time_multiplier = 4 * (1 - math.exp(-0.01 * during_last_time))
 
         # 基于消息长度计算基础兴趣度
-        message_length = len(message.message_content.content or "")
+        message_length = len(message.processed_plain_text or "")
         interest_multiplier = min(2.0, 1.0 + message_length / 100)
 
         logger.debug(
