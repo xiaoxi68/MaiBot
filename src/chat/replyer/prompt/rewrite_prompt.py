@@ -13,8 +13,6 @@ def init_rewrite_prompt():
     Prompt(
         """
 {expression_habits_block}
-{relation_info_block}
-
 {chat_target}
 {time_block}
 {chat_info}

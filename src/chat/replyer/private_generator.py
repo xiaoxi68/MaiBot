@@ -216,25 +216,25 @@ class PrivateReplyer:
             traceback.print_exc()
             return False, llm_response
 
-    async def build_relation_info(self, chat_content: str, sender: str):
-        if not global_config.relationship.enable_relationship:
-            return ""
+    # async def build_relation_info(self, chat_content: str, sender: str):
+    #     if not global_config.relationship.enable_relationship:
+    #         return ""
 
-        if not sender:
-            return ""
+    #     if not sender:
+    #         return ""
 
-        if sender == global_config.bot.nickname:
-            return ""
+    #     if sender == global_config.bot.nickname:
+    #         return ""
 
-        # 获取用户ID
-        person = Person(person_name=sender)
-        if not is_person_known(person_name=sender):
-            logger.warning(f"未找到用户 {sender} 的ID，跳过信息提取")
-            return f"你完全不认识{sender}，不理解ta的相关信息。"
+    #     # 获取用户ID
+    #     person = Person(person_name=sender)
+    #     if not is_person_known(person_name=sender):
+    #         logger.warning(f"未找到用户 {sender} 的ID，跳过信息提取")
+    #         return f"你完全不认识{sender}，不理解ta的相关信息。"
 
-        sender_relation = await person.build_relationship(chat_content)
+    #     sender_relation = await person.build_relationship(chat_content)
 
-        return f"{sender_relation}"
+    #     return f"{sender_relation}"
 
     async def build_expression_habits(self, chat_history: str, target: str) -> Tuple[str, List[int]]:
         # sourcery skip: for-append-to-extend
@@ -724,9 +724,9 @@ class PrivateReplyer:
         )
 
         # 并行执行2个构建任务
-        (expression_habits_block, _), relation_info, personality_prompt = await asyncio.gather(
+        (expression_habits_block, _), personality_prompt = await asyncio.gather(
             self.build_expression_habits(chat_talking_prompt_half, target),
-            self.build_relation_info(chat_talking_prompt_half, sender),
+            # self.build_relation_info(chat_talking_prompt_half, sender),
             self.build_personality_prompt(),
         )
 
@@ -777,7 +777,7 @@ class PrivateReplyer:
         return await global_prompt_manager.format_prompt(
             template_name,
             expression_habits_block=expression_habits_block,
-            relation_info_block=relation_info,
+            # relation_info_block=relation_info,
             chat_target=chat_target_1,
             time_block=time_block,
             chat_info=chat_talking_prompt_half,

@@ -502,12 +502,6 @@ class BrainChatting:
                     )
                     return {"action_type": "no_action", "success": True, "reply_text": "", "command": ""}
 
-                elif action_planner_info.action_type == "wait_time":
-                    action_planner_info.action_data = action_planner_info.action_data or {}
-                    logger.info(f"{self.log_prefix} 等待{action_planner_info.action_data['time']}秒后回复")
-                    await asyncio.sleep(action_planner_info.action_data["time"])
-                    return {"action_type": "wait_time", "success": True, "reply_text": "", "command": ""}
-
                 elif action_planner_info.action_type == "reply":
                     try:
                         success, llm_response = await generator_api.generate_reply(

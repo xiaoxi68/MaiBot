@@ -28,6 +28,7 @@ class CompareNumbersTool(BaseTool):
         ("num1", ToolParamType.FLOAT, "第一个数字", True, None),
         ("num2", ToolParamType.FLOAT, "第二个数字", True, None),
     ]
+    available_for_llm = True
 
     async def execute(self, function_args: dict[str, Any]) -> dict[str, Any]:
         """执行比较两个数的大小

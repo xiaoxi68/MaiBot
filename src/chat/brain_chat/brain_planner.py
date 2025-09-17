@@ -59,7 +59,7 @@ reply
 
 no_reply
 动作描述：
-保持沉默，等待对方发言
+等待，保持沉默，等待对方发言
 {{
     "action": "no_reply",
 }}
@@ -332,7 +332,7 @@ class BrainPlanner:
                 moderation_prompt=moderation_prompt_block,
                 name_block=name_block,
                 interest=interest,
-                plan_style=global_config.personality.plan_style,
+                plan_style=global_config.personality.private_plan_style,
             )
 
             return prompt, message_id_list
