@@ -14,6 +14,7 @@ from src.plugin_system import (
     MaiMessages,
     ToolParamType,
     ReplyContentType,
+    emoji_api,
 )
 from src.config.config import global_config
 
@@ -181,7 +182,26 @@ class ForwardMessages(BaseEventHandler):
                 raise ValueError("转发消息失败")
             self.messages = []
         return True, True, None, None, None
+class RandomEmojis(BaseCommand):
+    command_name = "random_emojis"
+    command_description = "发送多张随机表情包"
+    command_pattern = r"^/random_emojis$"
 
+    async def execute(self):
+        emojis = await emoji_api.get_random(5)
+        if not emojis:
+            return False, "未找到表情包", False
+        emoji_base64_list = []
+        for emoji in emojis:
+            emoji_base64_list.append(emoji[0])
+        return await self.forward_images(emoji_base64_list)
+
+    async def forward_images(self, images: List[str]):
+        """
+        把多张图片用合并转发的方式发给用户
+        """
+        success = await self.send_forward([("0", "神秘用户", [(ReplyContentType.IMAGE, img)]) for img in images])
+        return (True, "已发送随机表情包", True) if success else (False, "发送随机表情包失败", False)
 
 # ===== 插件注册 =====
 
@@ -225,6 +245,7 @@ class HelloWorldPlugin(BasePlugin):
             (TimeCommand.get_command_info(), TimeCommand),
             (PrintMessage.get_handler_info(), PrintMessage),
             (ForwardMessages.get_handler_info(), ForwardMessages),
+            (RandomEmojis.get_command_info(), RandomEmojis),
         ]
 
 
