@@ -202,7 +202,9 @@ class HeartFChatting:
             # *控制频率用
             if mentioned_message:
                 await self._observe(recent_messages_list=recent_messages_list, force_reply_message=mentioned_message)
-            elif random.random() > global_config.chat.talk_value:
+            elif random.random() < global_config.chat.talk_value:
+                await self._observe(recent_messages_list=recent_messages_list)
+            else:
                 return True
         else:
             # Normal模式：消息数量不足，等待
