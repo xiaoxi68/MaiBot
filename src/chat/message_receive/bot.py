@@ -150,7 +150,7 @@ class ChatBot:
             return False, None, True  # 出错时继续处理消息
 
     async def handle_notice_message(self, message: MessageRecv):
-        if message.message_info.message_id == "notice":
+        if message.message_info.message_id == "notice" and not message.message_info.additional_config.get("target_id"):
             message.is_notify = True
             logger.info("notice消息")
             # print(message)
