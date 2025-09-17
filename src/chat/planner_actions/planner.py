@@ -343,6 +343,7 @@ class ActionPlanner:
                 interest=interest,
                 plan_style=global_config.personality.plan_style,
             )
+            
 
             return prompt, message_id_list
         except Exception as e:
@@ -450,8 +451,8 @@ class ActionPlanner:
             # 调用LLM
             llm_content, (reasoning_content, _, _) = await self.planner_llm.generate_response_async(prompt=prompt)
 
-            # logger.info(f"{self.log_prefix}规划器原始提示词: {prompt}")
-            # logger.info(f"{self.log_prefix}规划器原始响应: {llm_content}")
+            logger.info(f"{self.log_prefix}规划器原始提示词: {prompt}")
+            logger.info(f"{self.log_prefix}规划器原始响应: {llm_content}")
 
             if global_config.debug.show_prompt:
                 logger.info(f"{self.log_prefix}规划器原始提示词: {prompt}")

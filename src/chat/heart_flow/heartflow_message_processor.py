@@ -106,8 +106,8 @@ class HeartFCMessageReceiver:
                 message.message_info.platform,  # type: ignore
                 replace_bot_name=True,
             )
-            if not processed_plain_text:
-                print(message)
+            # if not processed_plain_text:
+                # print(message)
 
             logger.info(f"[{mes_name}]{userinfo.user_nickname}:{processed_plain_text}")  # type: ignore
 

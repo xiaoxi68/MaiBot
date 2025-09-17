@@ -140,7 +140,7 @@ class EmojiAction(BaseAction):
                 # 存储动作信息
                 await self.store_action_info(
                     action_build_into_prompt=True,
-                    action_prompt_display=f"发送了表情包，原因：{reason}",
+                    action_prompt_display=f"你发送了表情包，原因：{reason}",
                     action_done=True,
                 )
                 return True, f"成功发送表情包:{emoji_description}"

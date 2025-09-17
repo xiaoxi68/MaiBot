@@ -78,7 +78,7 @@ max_context_size = 20 # 上下文长度
 enable_relationship = true # 是否启用关系系统
 
 [tool]
-enable_tool = false # 是否启用回复工具
+enable_tool = true # 是否启用回复工具
 
 [mood]
 enable_mood = true # 是否启用情绪系统
@@ -86,7 +86,6 @@ mood_update_threshold = 1 # 情绪更新阈值,越高，更新越慢
 
 [emoji]
 emoji_chance = 0.6 # 麦麦激活表情包动作的概率
-
 max_reg_num = 100 # 表情包最大注册数量
 do_replace = true # 开启则在达到最大数量时删除（替换）表情包，关闭则达到最大数量时不会继续收集表情包
 check_interval = 10 # 检查表情包（注册，破损，删除）的时间间隔(分钟)

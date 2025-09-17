@@ -702,9 +702,9 @@ class DefaultReplyer:
             self._time_and_run_task(
                 self.build_expression_habits(chat_talking_prompt_short, target), "expression_habits"
             ),
-            self._time_and_run_task(
-                self.build_relation_info(chat_talking_prompt_short, sender, person_list_short), "relation_info"
-            ),
+            # self._time_and_run_task(
+            #     self.build_relation_info(chat_talking_prompt_short, sender, person_list_short), "relation_info"
+            # ),
             # self._time_and_run_task(self.build_memory_block(message_list_before_short, target), "memory_block"),
             self._time_and_run_task(
                 self.build_tool_info(chat_talking_prompt_short, sender, target, enable_tool=enable_tool), "tool_info"
@@ -745,7 +745,7 @@ class DefaultReplyer:
         expression_habits_block, selected_expressions = results_dict["expression_habits"]
         expression_habits_block: str
         selected_expressions: List[int]
-        relation_info: str = results_dict["relation_info"]
+        # relation_info: str = results_dict["relation_info"]
         # memory_block: str = results_dict["memory_block"]
         tool_info: str = results_dict["tool_info"]
         prompt_info: str = results_dict["prompt_info"]  # 直接使用格式化后的结果
@@ -786,7 +786,7 @@ class DefaultReplyer:
                 tool_info_block=tool_info,
                 knowledge_prompt=prompt_info,
                 # memory_block=memory_block,
-                relation_info_block=relation_info,
+                # relation_info_block=relation_info,
                 extra_info_block=extra_info_block,
                 identity=personality_prompt,
                 action_descriptions=actions_info,
@@ -806,7 +806,7 @@ class DefaultReplyer:
                 tool_info_block=tool_info,
                 knowledge_prompt=prompt_info,
                 # memory_block=memory_block,
-                relation_info_block=relation_info,
+                # relation_info_block=relation_info,
                 extra_info_block=extra_info_block,
                 identity=personality_prompt,
                 action_descriptions=actions_info,
@@ -856,9 +856,9 @@ class DefaultReplyer:
         )
 
         # 并行执行2个构建任务
-        (expression_habits_block, _), relation_info, personality_prompt = await asyncio.gather(
+        (expression_habits_block, _), personality_prompt = await asyncio.gather(
             self.build_expression_habits(chat_talking_prompt_half, target),
-            self.build_relation_info(chat_talking_prompt_half, sender, []),
+            # self.build_relation_info(chat_talking_prompt_half, sender, []),
             self.build_personality_prompt(),
         )
 
@@ -909,7 +909,7 @@ class DefaultReplyer:
         return await global_prompt_manager.format_prompt(
             template_name,
             expression_habits_block=expression_habits_block,
-            relation_info_block=relation_info,
+            # relation_info_block=relation_info,
             chat_target=chat_target_1,
             time_block=time_block,
             chat_info=chat_talking_prompt_half,
