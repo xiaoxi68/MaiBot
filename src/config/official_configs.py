@@ -52,6 +52,9 @@ class PersonalityConfig(ConfigBase):
     
     visual_style: str = ""
     """图片提示词"""
+    
+    private_plan_style: str = ""
+    """私聊说话规则，行为风格"""
 
 
 @dataclass

@@ -18,6 +18,7 @@ from src.chat.planner_actions.action_manager import ActionManager
 from src.chat.heart_flow.hfc_utils import CycleDetail
 from src.chat.heart_flow.hfc_utils import send_typing, stop_typing
 from src.chat.express.expression_learner import expression_learner_manager
+from src.chat.frequency_control.frequency_control import frequency_control_manager
 from src.person_info.person_info import Person
 from src.plugin_system.base.component_types import EventType, ActionInfo
 from src.plugin_system.core import events_manager
@@ -202,7 +203,7 @@ class HeartFChatting:
             # *控制频率用
             if mentioned_message:
                 await self._observe(recent_messages_list=recent_messages_list, force_reply_message=mentioned_message)
-            elif random.random() < global_config.chat.talk_value:
+            elif random.random() < global_config.chat.talk_value * frequency_control_manager.get_or_create_frequency_control(self.stream_id).get_talk_frequency_adjust():
                 await self._observe(recent_messages_list=recent_messages_list)
             else:
                 return True
