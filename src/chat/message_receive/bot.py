@@ -58,6 +58,10 @@ def _check_ban_regex(text: str, chat: ChatStream, userinfo: UserInfo) -> bool:
     Returns:
         bool: 是否匹配过滤正则
     """
+    # 检查text是否为None或空字符串
+    if text is None or not text:
+        return False
+    
     for pattern in global_config.message_receive.ban_msgs_regex:
         if re.search(pattern, text):
             chat_name = chat.group_info.group_name if chat.group_info else "私聊"
