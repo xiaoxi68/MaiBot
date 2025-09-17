@@ -67,6 +67,7 @@ class EventType(Enum):
     ON_PLAN = "on_plan"
     POST_LLM = "post_llm"
     AFTER_LLM = "after_llm"
+    POST_SEND_PRE_PROCESS = "post_send_pre_process"
     POST_SEND = "post_send"
     AFTER_SEND = "after_send"
     UNKNOWN = "unknown"  # 未知事件类型

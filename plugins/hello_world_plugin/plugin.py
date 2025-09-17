@@ -151,7 +151,7 @@ class PrintMessage(BaseEventHandler):
 class ForwardMessages(BaseEventHandler):
     """
     把接收到的消息转发到指定聊天ID
-    
+
     此组件是HYBRID消息和FORWARD消息的使用示例。
     每收到10条消息，就会以1%的概率使用HYBRID消息转发，否则使用FORWARD消息转发。
     """
@@ -177,11 +177,23 @@ class ForwardMessages(BaseEventHandler):
             if random.random() < 0.01:
                 success = await self.send_hybrid(stream_id, [(ReplyContentType.TEXT, msg) for msg in self.messages])
             else:
-                success = await self.send_forward(stream_id, [(str(global_config.bot.qq_account), str(global_config.bot.nickname), [(ReplyContentType.TEXT, msg)]) for msg in self.messages])
+                success = await self.send_forward(
+                    stream_id,
+                    [
+                        (
+                            str(global_config.bot.qq_account),
+                            str(global_config.bot.nickname),
+                            [(ReplyContentType.TEXT, msg)],
+                        )
+                        for msg in self.messages
+                    ],
+                )
             if not success:
                 raise ValueError("转发消息失败")
             self.messages = []
         return True, True, None, None, None
+
+
 class RandomEmojis(BaseCommand):
     command_name = "random_emojis"
     command_description = "发送多张随机表情包"
@@ -202,6 +214,7 @@ class RandomEmojis(BaseCommand):
         """
         success = await self.send_forward([("0", "神秘用户", [(ReplyContentType.IMAGE, img)]) for img in images])
         return (True, "已发送随机表情包", True) if success else (False, "发送随机表情包失败", False)
+
 
 # ===== 插件注册 =====
 

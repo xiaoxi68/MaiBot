@@ -2,6 +2,7 @@ import asyncio
 import traceback
 
 from rich.traceback import install
+from maim_message import Seg
 
 from src.common.message.api import get_global_api
 from src.common.logger import get_logger
@@ -66,7 +67,35 @@ class UniversalMessageSender:
                 message.build_reply()
                 logger.debug(f"[{chat_id}] 选择回复引用消息: {message.processed_plain_text[:20]}...")
 
+            from src.plugin_system.core.events_manager import events_manager
+            from src.plugin_system.base.component_types import EventType
+
+            continue_flag, modified_message = await events_manager.handle_mai_events(
+                EventType.POST_SEND_PRE_PROCESS, message=message, stream_id=chat_id
+            )
+            if not continue_flag:
+                logger.info(f"[{chat_id}] 消息发送被插件取消: {str(message.message_segment)[:100]}...")
+                return False
+            if modified_message:
+                if modified_message._modify_flags.modify_message_segments:
+                    message.message_segment = Seg(type="seglist", data=modified_message.message_segments)
+                if modified_message._modify_flags.modify_plain_text:
+                    logger.warning(f"[{chat_id}] 插件修改了消息的纯文本内容，可能导致此内容被覆盖。")
+                    message.processed_plain_text = modified_message.plain_text
+
             await message.process()
+
+            continue_flag, modified_message = await events_manager.handle_mai_events(
+                EventType.POST_SEND, message=message, stream_id=chat_id
+            )
+            if not continue_flag:
+                logger.info(f"[{chat_id}] 消息发送被插件取消: {str(message.message_segment)[:100]}...")
+                return False
+            if modified_message:
+                if modified_message._modify_flags.modify_message_segments:
+                    message.message_segment = Seg(type="seglist", data=modified_message.message_segments)
+                if modified_message._modify_flags.modify_plain_text:
+                    message.processed_plain_text = modified_message.plain_text
 
             if typing:
                 typing_time = calculate_typing_time(
@@ -79,6 +108,18 @@ class UniversalMessageSender:
             sent_msg = await _send_message(message, show_log=show_log)
             if not sent_msg:
                 return False
+
+            continue_flag, modified_message = await events_manager.handle_mai_events(
+                EventType.AFTER_SEND, message=message, stream_id=chat_id
+            )
+            if not continue_flag:
+                logger.info(f"[{chat_id}] 消息发送后续处理被插件取消: {str(message.message_segment)[:100]}...")
+                return True
+            if modified_message:
+                if modified_message._modify_flags.modify_message_segments:
+                    message.message_segment = Seg(type="seglist", data=modified_message.message_segments)
+                if modified_message._modify_flags.modify_plain_text:
+                    message.processed_plain_text = modified_message.plain_text
 
             if storage_message:
                 await self.storage.store_message(message, message.chat_stream)
