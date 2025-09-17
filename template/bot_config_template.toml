@@ -1,5 +1,5 @@
 [inner]
-version = "6.14.0"
+version = "6.14.1"
 
 #----以下是给开发人员阅读的，如果你只是部署了麦麦，不需要阅读----
 #如果你想要修改配置文件，请递增version的值
@@ -13,7 +13,7 @@ version = "6.14.0"
 
 [bot]
 platform = "qq" 
-qq_account = 1145141919810 # 麦麦的QQ账号
+qq_account = "1145141919810" # 麦麦的QQ账号
 nickname = "麦麦" # 麦麦的昵称
 alias_names = ["麦叠", "牢麦"] # 麦麦的别名
 
