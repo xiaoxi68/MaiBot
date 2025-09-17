@@ -434,129 +434,6 @@ class PrivateReplyer:
         duration = end_time - start_time
         return name, result, duration
 
-    def build_s4u_chat_history_prompts(
-        self, message_list_before_now: List[DatabaseMessages], target_user_id: str, sender: str
-    ) -> Tuple[str, str]:
-        """
-        构建 s4u 风格的分离对话 prompt
-
-        Args:
-            message_list_before_now: 历史消息列表
-            target_user_id: 目标用户ID（当前对话对象）
-
-        Returns:
-            Tuple[str, str]: (核心对话prompt, 背景对话prompt)
-        """
-        core_dialogue_list: List[DatabaseMessages] = []
-        bot_id = str(global_config.bot.qq_account)
-
-        # 过滤消息：分离bot和目标用户的对话 vs 其他用户的对话
-        for msg in message_list_before_now:
-            try:
-                msg_user_id = str(msg.user_info.user_id)
-                reply_to = msg.reply_to
-                _platform, reply_to_user_id = self._parse_reply_target(reply_to)
-                if (msg_user_id == bot_id and reply_to_user_id == target_user_id) or msg_user_id == target_user_id:
-                    # bot 和目标用户的对话
-                    core_dialogue_list.append(msg)
-            except Exception as e:
-                logger.error(f"处理消息记录时出错: {msg}, 错误: {e}")
-
-        # 构建核心对话 prompt
-        core_dialogue_prompt = ""
-        if core_dialogue_list:
-            # 检查最新五条消息中是否包含bot自己说的消息
-            latest_5_messages = core_dialogue_list[-5:] if len(core_dialogue_list) >= 5 else core_dialogue_list
-            has_bot_message = any(str(msg.user_info.user_id) == bot_id for msg in latest_5_messages)
-
-            # logger.info(f"最新五条消息：{latest_5_messages}")
-            # logger.info(f"最新五条消息中是否包含bot自己说的消息：{has_bot_message}")
-
-            # 如果最新五条消息中不包含bot的消息，则返回空字符串
-            if not has_bot_message:
-                core_dialogue_prompt = ""
-            else:
-                core_dialogue_list = core_dialogue_list[
-                    -int(global_config.chat.max_context_size * 0.6) :
-                ]  # 限制消息数量
-
-                core_dialogue_prompt_str = build_readable_messages(
-                    core_dialogue_list,
-                    replace_bot_name=True,
-                    timestamp_mode="normal_no_YMD",
-                    read_mark=0.0,
-                    truncate=True,
-                    show_actions=True,
-                )
-                core_dialogue_prompt = f"""--------------------------------
-这是你和{sender}的对话，你们正在交流中：
-{core_dialogue_prompt_str}
---------------------------------
-"""
-
-
-        # 构建背景对话 prompt
-        all_dialogue_prompt = ""
-        if message_list_before_now:
-            latest_25_msgs = message_list_before_now[-int(global_config.chat.max_context_size) :]
-            all_dialogue_prompt_str = build_readable_messages(
-                latest_25_msgs,
-                replace_bot_name=True,
-                timestamp_mode="normal_no_YMD",
-                truncate=True,
-            )
-            if core_dialogue_prompt:
-                all_dialogue_prompt = f"所有用户的发言：\n{all_dialogue_prompt_str}"
-            else:
-                all_dialogue_prompt = f"{all_dialogue_prompt_str}"
-
-        return core_dialogue_prompt, all_dialogue_prompt
-
-    def build_mai_think_context(
-        self,
-        chat_id: str,
-        memory_block: str,
-        relation_info: str,
-        time_block: str,
-        chat_target_1: str,
-        chat_target_2: str,
-        mood_prompt: str,
-        identity_block: str,
-        sender: str,
-        target: str,
-        chat_info: str,
-    ) -> Any:
-        """构建 mai_think 上下文信息
-
-        Args:
-            chat_id: 聊天ID
-            memory_block: 记忆块内容
-            relation_info: 关系信息
-            time_block: 时间块内容
-            chat_target_1: 聊天目标1
-            chat_target_2: 聊天目标2
-            mood_prompt: 情绪提示
-            identity_block: 身份块内容
-            sender: 发送者名称
-            target: 目标消息内容
-            chat_info: 聊天信息
-
-        Returns:
-            Any: mai_think 实例
-        """
-        mai_think = mai_thinking_manager.get_mai_think(chat_id)
-        mai_think.memory_block = memory_block
-        mai_think.relation_info_block = relation_info
-        mai_think.time_block = time_block
-        mai_think.chat_target = chat_target_1
-        mai_think.chat_target_2 = chat_target_2
-        mai_think.chat_info = chat_info
-        mai_think.mood_state = mood_prompt
-        mai_think.identity = identity_block
-        mai_think.sender = sender
-        mai_think.target = target
-        return mai_think
-
     async def build_actions_prompt(
         self, available_actions: Dict[str, ActionInfo], chosen_actions_info: Optional[List[ActionPlannerInfo]] = None
     ) -> str:
@@ -630,7 +507,6 @@ class PrivateReplyer:
             available_actions = {}
         chat_stream = self.chat_stream
         chat_id = chat_stream.stream_id
-        is_group_chat = bool(chat_stream.group_info)
         platform = chat_stream.platform
 
         user_id = "用户ID"
@@ -656,7 +532,15 @@ class PrivateReplyer:
         message_list_before_now_long = get_raw_msg_before_timestamp_with_chat(
             chat_id=chat_id,
             timestamp=time.time(),
-            limit=global_config.chat.max_context_size * 1,
+            limit=global_config.chat.max_context_size,
+        )
+        
+        dialogue_prompt = build_readable_messages(
+            message_list_before_now_long,
+            replace_bot_name=True,
+            timestamp_mode="relative",
+            read_mark=0.0,
+            show_actions=True,
         )
 
         message_list_before_short = get_raw_msg_before_timestamp_with_chat(
@@ -762,12 +646,6 @@ class PrivateReplyer:
             f"现在对方说的:{target}。引起了你的注意"
         )
 
-
-        # 构建分离的对话 prompt
-        core_dialogue_prompt, background_dialogue_prompt = self.build_s4u_chat_history_prompts(
-            message_list_before_now_long, user_id, sender
-        )
-
         if global_config.bot.qq_account == user_id and platform == global_config.bot.platform:
             return await global_prompt_manager.format_prompt(
                 "private_replyer_self_prompt",
@@ -780,7 +658,7 @@ class PrivateReplyer:
                 identity=personality_prompt,
                 action_descriptions=actions_info,
                 mood_state=mood_prompt,
-                background_dialogue_prompt=background_dialogue_prompt,
+                dialogue_prompt=dialogue_prompt,
                 time_block=time_block,
                 target=target,
                 reason=reply_reason,
@@ -791,7 +669,7 @@ class PrivateReplyer:
             ), selected_expressions
         else:
             return await global_prompt_manager.format_prompt(
-                "replyer_prompt",
+                "private_replyer_prompt",
                 expression_habits_block=expression_habits_block,
                 tool_info_block=tool_info,
                 knowledge_prompt=prompt_info,
@@ -802,7 +680,7 @@ class PrivateReplyer:
                 action_descriptions=actions_info,
                 sender_name=sender,
                 mood_state=mood_prompt,
-                dialogue_prompt=background_dialogue_prompt,
+                dialogue_prompt=dialogue_prompt,
                 time_block=time_block,
                 sender = sender,
                 reply_target_block=reply_target_block,

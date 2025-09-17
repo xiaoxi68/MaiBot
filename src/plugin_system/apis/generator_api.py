@@ -13,7 +13,7 @@ from typing import Tuple, Any, Dict, List, Optional, TYPE_CHECKING
 from rich.traceback import install
 from src.common.logger import get_logger
 from src.common.data_models.message_data_model import ReplySetModel
-from src.chat.replyer.default_generator import DefaultReplyer
+from src.chat.replyer.group_generator import DefaultReplyer
 from src.chat.replyer.private_generator import PrivateReplyer
 from src.chat.message_receive.chat_stream import ChatStream
 from src.chat.utils.utils import process_llm_response
