@@ -662,7 +662,7 @@ class PrivateReplyer:
                 time_block=time_block,
                 target=target,
                 reason=reply_reason,
-                sender = sender,
+                sender_name=sender,
                 reply_style=global_config.personality.reply_style,
                 keywords_reaction_prompt=keywords_reaction_prompt,
                 moderation_prompt=moderation_prompt_block,
@@ -678,15 +678,14 @@ class PrivateReplyer:
                 extra_info_block=extra_info_block,
                 identity=personality_prompt,
                 action_descriptions=actions_info,
-                sender_name=sender,
                 mood_state=mood_prompt,
                 dialogue_prompt=dialogue_prompt,
                 time_block=time_block,
-                sender = sender,
                 reply_target_block=reply_target_block,
                 reply_style=global_config.personality.reply_style,
                 keywords_reaction_prompt=keywords_reaction_prompt,
                 moderation_prompt=moderation_prompt_block,
+                sender_name=sender,
             ), selected_expressions
 
     async def build_prompt_rewrite_context(
