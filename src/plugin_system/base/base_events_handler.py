@@ -35,7 +35,6 @@ class BaseEventHandler(ABC):
         """对应插件名"""
         self.plugin_config: Optional[Dict] = None
         """插件配置字典"""
-        self._events_subscribed: List[EventType | str] = []
         if self.event_type == EventType.UNKNOWN:
             raise NotImplementedError("事件处理器必须指定 event_type")
 
