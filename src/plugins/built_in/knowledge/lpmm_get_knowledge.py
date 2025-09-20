@@ -15,7 +15,6 @@ class SearchKnowledgeFromLPMMTool(BaseTool):
     description = "从知识库中搜索相关信息，如果你需要知识，就使用这个工具"
     parameters = [
         ("query", ToolParamType.STRING, "搜索查询关键词", True, None),
-        ("threshold", ToolParamType.FLOAT, "相似度阈值，0.0到1.0之间", False, None),
     ]
     available_for_llm = global_config.lpmm_knowledge.enable
 
